@@ -128,8 +128,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -1028,6 +1026,48 @@ class SteamService : Service(), IChallengeUrlChanged {
             val filesModified: List<UserFileInfo>,
             val filesCreated: List<UserFileInfo>,
         )
+
+        /**
+         * loginusers.vdf writer for the OAuth-style refresh-token flow introduced in 2024.
+         *
+         * @param steamId64    64-bit SteamID of the logged-in user
+         * @param account      AccountName (same as you passed to logOn / poll result)
+         * @param refreshToken Long-lived token you get from AuthSession / QR / credentials
+         * @param accessToken  Optional – short-lived access token, Steam ignores it if absent
+         * @param personaName  What the client shows in the drop-down; defaults to AccountName
+         */
+        internal fun getLoginUsersVdfOauth(
+            steamId64: String,
+            account: String,
+            refreshToken: String,
+            accessToken: String? = null,
+            personaName: String = account,
+        ): String {
+            val epoch = System.currentTimeMillis() / 1_000
+
+            val vdf = buildString {
+                appendLine("\"users\"")
+                appendLine("{")
+                appendLine("    \"$steamId64\"")
+                appendLine("    {")
+                appendLine("        \"AccountName\"          \"$account\"")
+                appendLine("        \"PersonaName\"          \"$personaName\"")
+                appendLine("        \"RememberPassword\"     \"1\"")
+                appendLine("        \"AllowAutoLogin\"       \"1\"")
+                appendLine("        \"MostRecent\"           \"1\"")
+                appendLine("        \"Timestamp\"            \"$epoch\"")
+                appendLine("        \"AuthType\"             \"2\"")
+                accessToken?.let {
+                    appendLine("        \"AccessToken\"          \"$it\"")
+                }
+                appendLine("        \"RefreshToken\"         \"$refreshToken\"")
+                appendLine("    }")
+                appendLine("    \"currentuser\"              \"$steamId64\"")
+                appendLine("}")
+            }
+
+            return vdf;
+        }
 
         private fun login(
             username: String,

@@ -3,7 +3,10 @@ package app.gamenative.utils
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
+import app.gamenative.PrefManager
 import app.gamenative.service.SteamService
+import com.winlator.core.WineRegistryEditor
+import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.util.HardwareUtils
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -15,6 +18,7 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.name
 import timber.log.Timber
+import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -125,6 +129,27 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
         var replaced32 = false
         var replaced64 = false
+        val imageFs = ImageFs.find(context)
+        val vdfFileText = SteamService.getLoginUsersVdfOauth(
+            steamId64 = SteamService.userSteamId?.convertToUInt64().toString(),
+            account = PrefManager.username,
+            refreshToken = PrefManager.refreshToken,
+            accessToken = PrefManager.accessToken      // may be blank
+        )
+        File(imageFs.wineprefix + "/drive_c/Program Files (x86)/Steam/config", "loginusers.vdf").writeText(vdfFileText)
+        val rootDir = imageFs.rootDir
+        val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
+        val steamRoot = "C:\\Program Files (x86)\\Steam"
+        val steamExe = "$steamRoot\\steam.exe"
+        val hkcu = "Software\\Valve\\Steam"
+        WineRegistryEditor(userRegFile).use { reg ->
+            reg.setStringValue("Software\\Valve\\Steam", "AutoLoginUser", PrefManager.username)
+            reg.setStringValue("Software\\Valve\\Steam", "RememberPassword", "1")
+            reg.setStringValue(hkcu, "SteamExe", steamExe)
+            reg.setStringValue(hkcu, "SteamPath", steamRoot)
+            reg.setStringValue(hkcu, "InstallPath", steamRoot)
+        }
+
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
             if (it.name == "steam_api.dll" && it.exists()) {
                 Timber.i("Found steam_api.dll at ${it.absolutePathString()}, replacing...")
