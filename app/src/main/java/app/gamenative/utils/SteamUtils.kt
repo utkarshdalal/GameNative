@@ -136,7 +136,9 @@ object SteamUtils {
             refreshToken = PrefManager.refreshToken,
             accessToken = PrefManager.accessToken      // may be blank
         )
-        File(imageFs.wineprefix + "/drive_c/Program Files (x86)/Steam/config", "loginusers.vdf").writeText(vdfFileText)
+        val steamConfigDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/config")
+        steamConfigDir.mkdirs()
+        File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
         val rootDir = imageFs.rootDir
         val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
         val steamRoot = "C:\\Program Files (x86)\\Steam"
