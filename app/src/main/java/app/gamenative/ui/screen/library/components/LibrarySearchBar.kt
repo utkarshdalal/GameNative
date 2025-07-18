@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.debounce
 import timber.log.Timber
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.platform.LocalContext
+import app.gamenative.PrefManager
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -125,9 +127,10 @@ internal fun LibrarySearchBar(
  ***********/
 
 @Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES or android.content.res.Configuration.UI_MODE_TYPE_NORMAL)
-@Preview
 @Composable
 private fun Preview_LibrarySearchBar() {
+    val context = LocalContext.current
+    PrefManager.init(context)
     PluviaTheme {
         Surface {
             LibrarySearchBar(
