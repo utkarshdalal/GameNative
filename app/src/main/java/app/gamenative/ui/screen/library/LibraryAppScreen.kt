@@ -1271,6 +1271,7 @@ internal fun GameMigrationDialog(
 @Composable
 private fun Preview_AppScreen() {
     val context = LocalContext.current
+    PrefManager.init(context)
     val intent = Intent(context, SteamService::class.java)
     context.startForegroundService(intent)
     var isDownloading by remember { mutableStateOf(false) }

@@ -280,7 +280,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private val internalAppInstallPath: String
             get() {
-                return Paths.get(instance!!.dataDir.path, "Steam", "steamapps", "common").pathString
+                if (instance != null) {
+                    return Paths.get(instance!!.dataDir.path, "Steam", "steamapps", "common").pathString
+                }
+                return ""
             }
         private val externalAppInstallPath: String
             get() {

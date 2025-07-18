@@ -6,7 +6,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.PrefManager
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
@@ -61,9 +63,10 @@ internal fun LibraryDetailPane(
  ***********/
 
 @Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES or android.content.res.Configuration.UI_MODE_TYPE_NORMAL)
-@Preview
+@Preview(device = "spec:width=1920px,height=1080px,dpi=440") // Odin2 Mini
 @Composable
 private fun Preview_LibraryDetailPane() {
+    PrefManager.init(LocalContext.current)
     PluviaTheme {
         LibraryDetailPane(
             appId = Int.MAX_VALUE,

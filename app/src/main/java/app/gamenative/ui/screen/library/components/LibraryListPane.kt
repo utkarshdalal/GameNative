@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,6 +46,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.internal.fakeAppInfo
+import app.gamenative.PrefManager
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
 
@@ -199,9 +201,10 @@ internal fun LibraryListPane(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
-@Preview
+@Preview(device = "spec:width=1920px,height=1080px,dpi=440") // Odin2 Mini
 @Composable
 private fun Preview_LibraryListPane() {
+    PrefManager.init(LocalContext.current)
     val sheetState = rememberModalBottomSheetState()
     var state by remember {
         mutableStateOf(
