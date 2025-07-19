@@ -1740,14 +1740,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                // continuously check for pics changes
-                continuousPICSChangesChecker()
+                if (false) {
+                    // Noticeable performance hit to do this at present
+                    // and no social features are implemented at present
 
-                // request app pics data when needed
-                continuousPICSGetProductInfo()
+                    // continuously check for pics changes
+                    continuousPICSChangesChecker()
 
-                // continuously check for game names that friends are playing.
-                continuousFriendChecker()
+                    // request app pics data when needed
+                    continuousPICSGetProductInfo()
+
+                    // continuously check for game names that friends are playing.
+                    continuousFriendChecker()
+                }
 
                 // Tell steam we're online, this allows friends to update.
                 _steamFriends?.setPersonaState(PrefManager.personaState)
