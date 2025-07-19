@@ -72,50 +72,52 @@ internal fun LibraryBottomBar(
                 .padding(4.dp)
         ) {
 
-            // Prev page
-            OutlinedButton(
-                content = { Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null) },
-                onClick = { onPageChange(-1) },
-                contentPadding = PaddingValues(6.dp),
-                shape = RoundedCornerShape(7.dp, 0.dp, 0.dp, 7.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .height(35.dp)
-                    .width(40.dp)
-            )
+            if (state.lastPaginationPage > 1) {
+                // Prev page
+                OutlinedButton(
+                    content = { Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null) },
+                    onClick = { onPageChange(-1) },
+                    contentPadding = PaddingValues(6.dp),
+                    shape = RoundedCornerShape(7.dp, 0.dp, 0.dp, 7.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier
+                        .height(35.dp)
+                        .width(40.dp)
+                )
 
-            // Number
-            OutlinedButton(
-                content = { Text("${state.currentPaginationPage}/${state.lastPaginationPage}") },
-                onClick = { },
-                contentPadding = PaddingValues(4.dp),
-                shape = RectangleShape,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .height(35.dp)
-                    .width(55.dp)
-            )
+                // Number
+                OutlinedButton(
+                    content = { Text("${state.currentPaginationPage}/${state.lastPaginationPage}") },
+                    onClick = { },
+                    contentPadding = PaddingValues(4.dp),
+                    shape = RectangleShape,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier
+                        .height(35.dp)
+                        .width(55.dp)
+                )
 
-            // Next page
-            OutlinedButton(
-                content = { Icon(imageVector = Icons.AutoMirrored.Sharp.ArrowForward, contentDescription = null) },
-                onClick = { onPageChange(1) },
-                contentPadding = PaddingValues(6.dp),
-                shape = RoundedCornerShape(0.dp, 7.dp, 7.dp, 0.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .height(35.dp)
-                    .width(40.dp)
-            )
+                // Next page
+                OutlinedButton(
+                    content = { Icon(imageVector = Icons.AutoMirrored.Sharp.ArrowForward, contentDescription = null) },
+                    onClick = { onPageChange(1) },
+                    contentPadding = PaddingValues(6.dp),
+                    shape = RoundedCornerShape(0.dp, 7.dp, 7.dp, 0.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier
+                        .height(35.dp)
+                        .width(40.dp)
+                )
+            }
 
             // Fills space
             Box (
