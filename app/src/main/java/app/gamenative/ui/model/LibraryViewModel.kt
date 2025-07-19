@@ -145,10 +145,11 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
-                .sortedWith(
-                    compareByDescending<SteamApp> { SteamService.isAppInstalled(it.id) }
-                        .thenBy { it.name.lowercase() }
-                );
+                // Can sort by downloaded status later. Performance hit currently is massive.
+//                .sortedWith(
+//                    compareByDescending<SteamApp> { SteamService.isAppInstalled(it.id) }
+//                        .thenBy { it.name.lowercase() }
+//                );
 
             // Split here to get a count of the amount of games the filter includes
             val totalFound = filteredList.count()
