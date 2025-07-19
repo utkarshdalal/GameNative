@@ -1740,16 +1740,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
+                // continuously check for pics changes
+                continuousPICSChangesChecker()
+
+                // request app pics data when needed
+                continuousPICSGetProductInfo()
+
                 if (false) {
-                    // Noticeable performance hit to do this at present
-                    // and no social features are implemented at present
-
-                    // continuously check for pics changes
-                    continuousPICSChangesChecker()
-
-                    // request app pics data when needed
-                    continuousPICSGetProductInfo()
-
+                    // No social features are implemented at present
                     // continuously check for game names that friends are playing.
                     continuousFriendChecker()
                 }
