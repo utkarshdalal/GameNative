@@ -58,6 +58,7 @@ internal fun LibraryListPane(
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
+    onPageChange: (Int) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onLogout: () -> Unit,
     onNavigate: (Int) -> Unit,
@@ -79,6 +80,7 @@ internal fun LibraryListPane(
     Scaffold(
         modifier = if (isPortrait) Modifier else Modifier.statusBarsPadding(),
         snackbarHost = { SnackbarHost(snackBarHost) },
+        bottomBar = { LibraryBottomBar(onModalBottomSheet = onModalBottomSheet, onPageChange = onPageChange) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -228,6 +230,7 @@ private fun Preview_LibraryListPane() {
                 state = state,
                 sheetState = sheetState,
                 onFilterChanged = { },
+                onPageChange = { },
                 onModalBottomSheet = {
                     val currentState = state.modalBottomSheet
                     println("State: $currentState")

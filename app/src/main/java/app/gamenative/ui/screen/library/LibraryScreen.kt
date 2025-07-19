@@ -62,6 +62,7 @@ fun HomeLibraryScreen(
         listState = viewModel.listState,
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
+        onPageChange = viewModel::onPageChange,
         onModalBottomSheet = viewModel::onModalBottomSheet,
         onIsSearching = viewModel::onIsSearching,
         onSearchQuery = viewModel::onSearchQuery,
@@ -78,6 +79,7 @@ private fun LibraryScreenContent(
     listState: LazyListState,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
+    onPageChange: (Int) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
@@ -103,6 +105,7 @@ private fun LibraryScreenContent(
                 listState = listState,
                 sheetState = sheetState,
                 onFilterChanged = onFilterChanged,
+                onPageChange = onPageChange,
                 onModalBottomSheet = onModalBottomSheet,
                 onIsSearching = onIsSearching,
                 onSearchQuery = onSearchQuery,
@@ -162,6 +165,7 @@ private fun Preview_LibraryScreenContent() {
             onIsSearching = {},
             onSearchQuery = {},
             onFilterChanged = { },
+            onPageChange = { },
             onModalBottomSheet = {
                 val currentState = state.modalBottomSheet
                 println("State: $currentState")

@@ -29,7 +29,10 @@ import app.gamenative.PrefManager
 import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
-internal fun LibraryBottomBar() {
+internal fun LibraryBottomBar(
+    onModalBottomSheet: (Boolean) -> Unit,
+    onPageChange: (Int) -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -37,7 +40,7 @@ internal fun LibraryBottomBar() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
+                .height(2.dp)
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
@@ -48,7 +51,6 @@ internal fun LibraryBottomBar() {
                 )
         )
         FlowRow (
-//            horizontalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
@@ -58,24 +60,24 @@ internal fun LibraryBottomBar() {
             ExtendedFloatingActionButton(
                 text = { Text("Prev") },
                 icon = { Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null) },
-                onClick = { },
+                onClick = { onPageChange(-1) },
                 expanded = false,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .height(35.dp)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(7.dp, 0.dp, 0.dp, 7.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(7.dp, 0.dp, 0.dp, 7.dp))
                     .clipToBounds()
             )
 
             ExtendedFloatingActionButton(
                 text = { Text("Next") },
                 icon = { Icon(imageVector = Icons.AutoMirrored.Default.ArrowForwardIos, contentDescription = null) },
-                onClick = { },
+                onClick = { onPageChange(1) },
                 expanded = false,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .height(35.dp)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(0.dp, 7.dp, 7.dp, 0.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(0.dp, 7.dp, 7.dp, 0.dp))
                     .clipToBounds()
             )
 
@@ -87,13 +89,13 @@ internal fun LibraryBottomBar() {
             ExtendedFloatingActionButton(
                 text = { Text(text = "Filters") },
                 icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
-                onClick = { },
+                onClick = { onModalBottomSheet(true) },
 //                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(7.dp),
                 modifier = Modifier
                     .height(35.dp)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(7.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(7.dp))
                     .clipToBounds()
             )
         }
@@ -109,6 +111,8 @@ private fun Preview_LibrarySearchBar() {
     PluviaTheme {
         Surface {
             LibraryBottomBar(
+                onModalBottomSheet = {},
+                onPageChange = {},
             )
         }
     }

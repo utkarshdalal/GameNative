@@ -41,6 +41,7 @@ internal fun LibraryDetailPane(
                 listState = listState,
                 sheetState = sheetState,
                 onFilterChanged = {},
+                onPageChange = {},
                 onModalBottomSheet = {},
                 onIsSearching = {},
                 onLogout = {},
