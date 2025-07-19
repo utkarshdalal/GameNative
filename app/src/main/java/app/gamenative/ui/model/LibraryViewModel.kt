@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import kotlin.math.max
+import kotlin.math.min
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
@@ -36,8 +38,9 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyListState by mutableStateOf(LazyListState(0, 0))
 
     // How many items loaded on one page of results
-    private val paginationSize = 20;
-    private var paginationCurrentPage = 0;
+    private val paginationSize: Int = 20;
+    private var paginationCurrentPage: Int = 0;
+    private var lastPageInCurrentFilter: Int = 0;
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
@@ -93,7 +96,9 @@ class LibraryViewModel @Inject constructor(
 
     fun onPageChange(pageIncrement: Int) {
         // Amount to change by
-        onFilterApps(paginationCurrentPage + pageIncrement)
+        var toPage = max(0, paginationCurrentPage + pageIncrement)
+        toPage = min(toPage, lastPageInCurrentFilter)
+        onFilterApps(toPage)
     }
 
     private fun onFilterApps(paginationPage: Int = 0) {
@@ -104,7 +109,7 @@ class LibraryViewModel @Inject constructor(
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
             val firstItem = paginationPage * paginationSize;
-            val lastItem = firstItem + paginationSize;
+            val lastItem = firstItem + paginationSize - 1;
             paginationCurrentPage = paginationPage;
 
             val filteredList = appList
@@ -143,7 +148,13 @@ class LibraryViewModel @Inject constructor(
                 .sortedWith(
                     compareByDescending<SteamApp> { SteamService.isAppInstalled(it.id) }
                         .thenBy { it.name.lowercase() }
-                )
+                );
+
+            // Split here to get a count of the amount of games the filter includes
+            val totalFound = filteredList.count()
+            lastPageInCurrentFilter =  totalFound / paginationSize // Rounds down, correctly
+
+            val filteredListPage = filteredList
                 .filterIndexed { index, steamApp ->
                     // Paginate to only show one page of games
                     index in firstItem..lastItem
@@ -159,8 +170,14 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            Timber.tag("LibraryViewModel").d("Filtered list size: ${filteredList.size}")
-            _state.update { it.copy(appInfoList = filteredList) }
+            Timber.tag("LibraryViewModel").d("Filtered list size: ${totalFound}")
+            _state.update {
+                it.copy(
+                    appInfoList = filteredListPage,
+                    currentPaginationPage = paginationPage + 1,
+                    lastPaginationPage = lastPageInCurrentFilter + 1,
+                    )
+            }
         }
     }
 }

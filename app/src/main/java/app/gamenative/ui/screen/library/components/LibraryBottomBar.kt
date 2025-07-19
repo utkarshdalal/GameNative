@@ -25,6 +25,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
@@ -33,10 +36,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
+import app.gamenative.data.LibraryItem
+import app.gamenative.ui.data.LibraryState
+import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
 internal fun LibraryBottomBar(
+    state: LibraryState,
     onModalBottomSheet: (Boolean) -> Unit,
     onPageChange: (Int) -> Unit,
 ) {
@@ -82,7 +89,7 @@ internal fun LibraryBottomBar(
 
             // Number
             OutlinedButton(
-                content = { Text("5/28") },
+                content = { Text("${state.currentPaginationPage}/${state.lastPaginationPage}") },
                 onClick = { },
                 contentPadding = PaddingValues(4.dp),
                 shape = RectangleShape,
@@ -137,9 +144,25 @@ internal fun LibraryBottomBar(
 private fun Preview_LibrarySearchBar() {
     val context = LocalContext.current
     PrefManager.init(context)
+    val state by remember {
+        mutableStateOf(
+            LibraryState(
+                appInfoList = List(155) { idx ->
+                    val item = fakeAppInfo(idx)
+                    LibraryItem(
+                        index = idx,
+                        appId = item.id,
+                        name = item.name,
+                        iconHash = item.iconHash,
+                    )
+                }
+            )
+        )
+    }
     PluviaTheme {
         Surface {
             LibraryBottomBar(
+                state = state,
                 onModalBottomSheet = {},
                 onPageChange = {},
             )
