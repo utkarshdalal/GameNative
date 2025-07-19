@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,7 +49,9 @@ internal fun LibraryBottomBar(
     onPageChange: (Int) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Colored top border
         Box(
@@ -68,7 +71,6 @@ internal fun LibraryBottomBar(
             horizontalArrangement = Arrangement.spacedBy((-1).dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
                 .padding(4.dp)
         ) {
 
@@ -137,6 +139,12 @@ internal fun LibraryBottomBar(
                     .clipToBounds()
             )
         }
+
+        // Don't slip behind device navigation
+        Box (
+            modifier = Modifier
+                .navigationBarsPadding()
+        )
     }
 
 }
