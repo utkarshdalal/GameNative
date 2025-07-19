@@ -35,6 +35,10 @@ class LibraryViewModel @Inject constructor(
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyListState by mutableStateOf(LazyListState(0, 0))
 
+    // How many items loaded on one page of results
+    private val paginationSize = 20;
+    private var paginationCurrentPage = 0;
+
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
 
@@ -87,11 +91,21 @@ class LibraryViewModel @Inject constructor(
         onFilterApps()
     }
 
-    private fun onFilterApps() {
+    fun onPageChange(pageIncrement: Int) {
+        // Amount to change by
+        onFilterApps(paginationCurrentPage + pageIncrement)
+    }
+
+    private fun onFilterApps(paginationPage: Int = 0) {
+        // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps")
         viewModelScope.launch {
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
+
+            val firstItem = paginationPage * paginationSize;
+            val lastItem = firstItem + paginationSize;
+            paginationCurrentPage = paginationPage;
 
             val filteredList = appList
                 .asSequence()
@@ -130,6 +144,10 @@ class LibraryViewModel @Inject constructor(
                     compareByDescending<SteamApp> { SteamService.isAppInstalled(it.id) }
                         .thenBy { it.name.lowercase() }
                 )
+                .filterIndexed { index, steamApp ->
+                    // Paginate to only show one page of games
+                    index in firstItem..lastItem
+                }
                 .mapIndexed { idx, item ->
                     LibraryItem(
                         index = idx,
