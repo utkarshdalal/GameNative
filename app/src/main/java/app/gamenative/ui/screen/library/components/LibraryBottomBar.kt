@@ -67,13 +67,13 @@ internal fun LibraryBottomBar(
                     )
                 )
         )
-        FlowRow (
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy((-1).dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(4.dp)
         ) {
-
+            // Hide buttons when only a single page
             if (state.lastPaginationPage > 1) {
                 // Prev page
                 OutlinedButton(
@@ -165,7 +165,9 @@ private fun Preview_LibrarySearchBar() {
                         name = item.name,
                         iconHash = item.iconHash,
                     )
-                }
+                },
+                currentPaginationPage = 14,
+                lastPaginationPage = 20,
             )
         )
     }
