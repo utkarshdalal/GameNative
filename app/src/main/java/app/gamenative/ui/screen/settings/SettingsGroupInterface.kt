@@ -1,13 +1,12 @@
 package app.gamenative.ui.screen.settings
 
+import android.content.res.Configuration
 import android.os.Environment
 import android.os.storage.StorageManager
-import android.util.Log
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrightnessMedium
-import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,17 +17,19 @@ import androidx.compose.ui.platform.LocalContext
 import app.gamenative.PrefManager
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.dialog.SingleChoiceDialog
-import app.gamenative.ui.enums.HomeDestination
-import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.materialkolor.PaletteStyle
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.theme.PluviaTheme
+import com.alorma.compose.settings.ui.SettingsMenuLink
+import com.alorma.compose.settings.ui.SettingsSlider
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsGroupInterface(
@@ -40,6 +41,9 @@ fun SettingsGroupInterface(
     val context = LocalContext.current
 
     var openWebLinks by rememberSaveable { mutableStateOf(PrefManager.openWebLinksExternally) }
+
+    var infiniteScroll by rememberSaveable { mutableStateOf(PrefManager.infiniteScroll) }
+    var itemsPerPage by rememberSaveable { mutableStateOf(PrefManager.itemsPerPage) }
 
     var openAppThemeDialog by rememberSaveable { mutableStateOf(false) }
     var openAppPaletteDialog by rememberSaveable { mutableStateOf(false) }
@@ -74,6 +78,36 @@ fun SettingsGroupInterface(
                 PrefManager.openWebLinksExternally = it
             },
         )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = "Infinite Scroll") },
+            subtitle = { Text(text = "Or pages in your library") },
+            state = infiniteScroll,
+            onCheckedChange = {
+                infiniteScroll = it
+                PrefManager.infiniteScroll = it
+            },
+        )
+
+        if (! infiniteScroll) {
+            SettingsSlider(
+                colors = settingsTileColorsAlt(),
+                title = {
+                    Row() {
+                        Text("Items Per Page")
+                        Box(modifier = Modifier.weight(1f))
+                        Text(itemsPerPage.toString())
+                    } },
+                value = itemsPerPage.toFloat(),
+                steps = 18,
+                valueRange = 10f..200f,
+                onValueChange = { it ->
+                    itemsPerPage = it.roundToInt()
+                    PrefManager.itemsPerPage = itemsPerPage
+                },
+            )
+        }
     }
 
     // Downloads settings
@@ -170,4 +204,20 @@ fun SettingsGroupInterface(
         },
         onDismiss = { openRegionDialog = false }
     )
+}
+
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_SettingsScreen() {
+    val context = LocalContext.current
+    PrefManager.init(context)
+    PluviaTheme {
+        SettingsGroupInterface (
+            appTheme = AppTheme.DAY,
+            paletteStyle = PaletteStyle.TonalSpot,
+            onAppTheme = { },
+            onPaletteStyle = { },
+        )
+    }
 }
