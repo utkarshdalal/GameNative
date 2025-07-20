@@ -10,6 +10,7 @@ import app.gamenative.PrefManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.db.dao.SteamAppDao
+import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
@@ -111,6 +112,8 @@ class LibraryViewModel @Inject constructor(
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
+            val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
+
             val firstItem = paginationPage * paginationSize;
             val lastItem = firstItem + paginationSize - 1;
             paginationCurrentPage = paginationPage;
@@ -143,16 +146,15 @@ class LibraryViewModel @Inject constructor(
                 }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
-                        SteamService.isAppInstalled(item.id)
+                        downloadDirectoryApps.contains(SteamService.getAppDirName(item))
                     } else {
                         true
                     }
                 }
-                // Can sort by downloaded status later. Performance hit currently is massive.
-//                .sortedWith(
-//                    compareByDescending<SteamApp> { SteamService.isAppInstalled(it.id) }
-//                        .thenBy { it.name.lowercase() }
-//                );
+                .sortedWith(
+                    // Comes from DAO in alphabetical order
+                    compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
+                );
 
             // Split here to get a count of the amount of games the filter includes
             val totalFound = filteredList.count()
