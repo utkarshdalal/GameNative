@@ -39,7 +39,6 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyListState by mutableStateOf(LazyListState(0, 0))
 
     // How many items loaded on one page of results
-    private val paginationSize: Int = 25;
     private var paginationCurrentPage: Int = 0;
     private var lastPageInCurrentFilter: Int = 0;
 
@@ -114,11 +113,7 @@ class LibraryViewModel @Inject constructor(
 
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
 
-            val firstItem = paginationPage * paginationSize;
-            val lastItem = firstItem + paginationSize - 1;
-            paginationCurrentPage = paginationPage;
-
-            val filteredList = appList
+            var filteredList = appList
                 .asSequence()
                 .filter { item ->
                     SteamService.familyMembers.ifEmpty {
@@ -158,13 +153,22 @@ class LibraryViewModel @Inject constructor(
 
             // Split here to get a count of the amount of games the filter includes
             val totalFound = filteredList.count()
-            lastPageInCurrentFilter =  totalFound / paginationSize // Rounds down, correctly
+
+            if (! PrefManager.infiniteScroll) {
+                // If paginated, filter to the current index range
+                val firstItem = paginationPage * PrefManager.itemsPerPage;
+                val lastItem = firstItem + PrefManager.itemsPerPage - 1;
+                paginationCurrentPage = paginationPage;
+                lastPageInCurrentFilter = totalFound / PrefManager.itemsPerPage // Rounds down, correctly
+
+                filteredList = filteredList
+                    .filterIndexed { index, steamApp ->
+                        // Paginate to only show one page of games
+                        index in firstItem..lastItem
+                    }
+            }
 
             val filteredListPage = filteredList
-                .filterIndexed { index, steamApp ->
-                    // Paginate to only show one page of games
-                    index in firstItem..lastItem
-                }
                 .mapIndexed { idx, item ->
                     LibraryItem(
                         index = idx,

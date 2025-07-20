@@ -79,7 +79,7 @@ internal fun LibraryListPane(
     Scaffold(
         modifier = if (isPortrait) Modifier else Modifier.statusBarsPadding(),
         snackbarHost = { SnackbarHost(snackBarHost) },
-        bottomBar = { LibraryBottomBar(state = state, onModalBottomSheet = onModalBottomSheet, onPageChange = onPageChange) }
+        bottomBar = { if (! PrefManager.infiniteScroll) LibraryBottomBar(state = state, onModalBottomSheet = onModalBottomSheet, onPageChange = onPageChange) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
