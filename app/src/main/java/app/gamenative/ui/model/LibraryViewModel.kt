@@ -38,7 +38,7 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyListState by mutableStateOf(LazyListState(0, 0))
 
     // How many items loaded on one page of results
-    private val paginationSize: Int = 20;
+    private val paginationSize: Int = 25;
     private var paginationCurrentPage: Int = 0;
     private var lastPageInCurrentFilter: Int = 0;
 
@@ -52,9 +52,12 @@ class LibraryViewModel @Inject constructor(
             ).collect { apps ->
                 Timber.tag("LibraryViewModel").d("Collecting ${apps.size} apps")
 
-                appList = apps
+                if (appList.size != apps.size) {
+                    // Don't filter if it's no change
+                    appList = apps
 
-                onFilterApps()
+                    onFilterApps(paginationCurrentPage)
+                }
             }
         }
     }
@@ -175,8 +178,9 @@ class LibraryViewModel @Inject constructor(
             _state.update {
                 it.copy(
                     appInfoList = filteredListPage,
-                    currentPaginationPage = paginationPage + 1,
+                    currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
+                    totalAppsInFilter = totalFound,
                     )
             }
         }

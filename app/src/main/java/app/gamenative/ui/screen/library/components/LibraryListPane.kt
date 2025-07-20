@@ -112,7 +112,7 @@ internal fun LibraryListPane(
                             )
                         )
                         Text(
-                            text = "${state.appInfoList.size} games • $installedCount installed",
+                            text = "${state.totalAppsInFilter} games • $installedCount installed",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
