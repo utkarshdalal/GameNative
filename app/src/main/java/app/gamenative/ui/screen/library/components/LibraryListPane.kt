@@ -164,21 +164,6 @@ internal fun LibraryListPane(
                     onItemClick = onNavigate,
                 )
 
-                // Filter FAB - Moved outside of Column scope
-                if (!state.isSearching) {
-                    ExtendedFloatingActionButton(
-                        text = { Text(text = "Filters") },
-                        expanded = expandedFab,
-                        icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
-                        onClick = { onModalBottomSheet(true) },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(24.dp)
-                    )
-                }
-
                 if (state.modalBottomSheet) {
                     ModalBottomSheet(
                         onDismissRequest = { onModalBottomSheet(false) },
