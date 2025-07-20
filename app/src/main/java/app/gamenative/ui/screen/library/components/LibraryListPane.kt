@@ -47,6 +47,7 @@ import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.PrefManager
+import app.gamenative.service.DownloadService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
 
@@ -67,9 +68,7 @@ internal fun LibraryListPane(
 ) {
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val snackBarHost = remember { SnackbarHostState() }
-    val installedCount = remember(state.appInfoList) {
-        state.appInfoList.count { SteamService.isAppInstalled(it.appId) }
-    }
+    val installedCount = remember { DownloadService.getDownloadDirectoryApps().count() }
 
     // Determine the orientation to add additional scaffold padding.
     val configuration = LocalConfiguration.current
