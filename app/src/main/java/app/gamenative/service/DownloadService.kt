@@ -14,9 +14,9 @@ object DownloadService {
         // What apps have folders in the download area?
         // Isn't checking for "complete" marker - incomplete is accepted
 
-        // Only update if cache is over 30 seconds old
+        // Only update if cache is over N milliseconds old
         val time = System.currentTimeMillis()
-        if (lastUpdateTime < (time - 30000) || lastUpdateTime > time) {
+        if (lastUpdateTime < (time - 5 * 1000) || lastUpdateTime > time) {
             lastUpdateTime = time
 
             // For now, grab parent directories from SteamService
