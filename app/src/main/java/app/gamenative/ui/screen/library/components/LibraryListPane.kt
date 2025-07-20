@@ -165,7 +165,7 @@ internal fun LibraryListPane(
                 )
 
                 // Filter FAB - Moved outside of Column scope
-                if (!state.isSearching) {
+                if (!state.isSearching && PrefManager.infiniteScroll) {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Filters") },
                         expanded = expandedFab,
