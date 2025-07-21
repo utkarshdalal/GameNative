@@ -147,6 +147,7 @@ import timber.log.Timber
 import java.lang.NullPointerException
 import java.util.concurrent.TimeUnit
 import android.os.Environment
+import android.os.SystemClock
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -331,40 +332,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             get() = instance!!._loginResult == LoginResult.InProgress
 
         private const val MAX_PARALLEL_DEPOTS   = 2     // instead of all 38
-        private const val CHUNKS_PER_DEPOT      = 8     // was 16
-        private const val CHUNK_TIMEOUT_MS      = 90_000   // was library default 15 s
-
-        fun widenH2Window(client: OkHttpClient) {
-            try {
-                val settingsCls = Class.forName("okhttp3.internal.http2.Settings")
-                val initWinField = settingsCls.getDeclaredField("initialWindowSize")
-                initWinField.isAccessible = true
-                // 16 MiB – same as desktop Steam
-                initWinField.setInt(null, 16 * 1024 * 1024)
-            } catch (e: Exception) {
-                // reflection failed – keep default window, you only lose ~10 %
-            }
-        }
-
-        // single OkHttpClient with larger per-stream timeout
-        object Net {
-            val http by lazy {
-                OkHttpClient.Builder()
-                    .readTimeout(CHUNK_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
-                    .dispatcher(Dispatcher().apply {
-                        maxRequests          = MAX_PARALLEL_DEPOTS * CHUNKS_PER_DEPOT
-                        maxRequestsPerHost   = MAX_PARALLEL_DEPOTS * CHUNKS_PER_DEPOT
-                    })
-                    .connectionPool(ConnectionPool(
-                        MAX_PARALLEL_DEPOTS * CHUNKS_PER_DEPOT, 5, TimeUnit.MINUTES))
-                    .build()
-                    .also { widenH2Window(it) }
-            }
-        }
+        private const val CHUNKS_PER_DEPOT      = 16
 
         // simple depot-level semaphore
         private val depotGate = Semaphore(MAX_PARALLEL_DEPOTS)
-
         suspend fun setPersonaState(state: EPersonaState) = withContext(Dispatchers.IO) {
             PrefManager.personaState = state
             instance?._steamFriends?.setPersonaState(state)
@@ -795,6 +766,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 depotGate.acquire()               // ── enter gate
                                 var success = false
                                 try {
+                                    val MIN_INTERVAL_MS = 1000L
+                                    var lastEmit = 0L
                                     Timber.i("Downloading game to " + defaultAppInstallPath)
                                     success = retry(times = 3, backoffMs = 2_000) {
                                         ContentDownloader(instance!!.steamClient!!)
@@ -806,7 +779,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 branch        = branch,
                                                 maxDownloads  = CHUNKS_PER_DEPOT,
                                                 onDownloadProgress = { p ->
-                                                    di.setProgress(p, idx)
+                                                    val now = SystemClock.elapsedRealtime()
+                                                    if (now - lastEmit >= MIN_INTERVAL_MS || p >= 1f) {
+                                                        lastEmit = now
+                                                        di.setProgress(p, idx)
+                                                    }
                                                 },
                                                 parentScope   = this,
                                             ).await()
@@ -1493,6 +1470,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 it.withCellID(PrefManager.cellId)
                 it.withServerListProvider(FileServerListProvider(File(serverListPath)))
                 it.withManifestProvider(ThreadSafeManifestProvider(File(depotManifestsPath).toPath()))
+                it.withConnectionTimeout(60000L)
             }
 
             // create our steam client instance
