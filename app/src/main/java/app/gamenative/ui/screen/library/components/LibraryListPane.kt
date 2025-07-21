@@ -46,10 +46,17 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.internal.fakeAppInfo
-import app.gamenative.PrefManager
 import app.gamenative.service.DownloadService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,10 +83,22 @@ internal fun LibraryListPane(
         configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     }
 
+    // Infinite scroll: load next page when scrolled to bottom
+    LaunchedEffect(listState, state.appInfoList.size) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex >= state.appInfoList.lastIndex
+                    && state.appInfoList.size < state.totalAppsInFilter) {
+                    onPageChange(1)
+                }
+            }
+    }
+
     Scaffold(
         modifier = if (isPortrait) Modifier else Modifier.statusBarsPadding(),
-        snackbarHost = { SnackbarHost(snackBarHost) },
-        bottomBar = { if (! PrefManager.infiniteScroll) LibraryBottomBar(state = state, onModalBottomSheet = onModalBottomSheet, onPageChange = onPageChange) }
+        snackbarHost = { SnackbarHost(snackBarHost) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -153,19 +172,41 @@ internal fun LibraryListPane(
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                LibraryList(
-                    list = state.appInfoList,
-                    listState = listState,
-                    contentPaddingValues = PaddingValues(
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
                         bottom = 72.dp
                     ),
-                    onItemClick = onNavigate,
-                )
+                ) {
+                    items(items = state.appInfoList, key = { it.index }) { item ->
+                        AppItem(
+                            modifier = Modifier.animateItem(),
+                            appInfo = item,
+                            onClick = { onNavigate(item.appId) }
+                        )
+                        if (item.index < state.appInfoList.lastIndex) {
+                            HorizontalDivider()
+                        }
+                    }
+                    if (state.appInfoList.size < state.totalAppsInFilter) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                }
 
-                // Filter FAB - Moved outside of Column scope
-                if (!state.isSearching && PrefManager.infiniteScroll) {
+                // Filter FAB - always show
+                if (!state.isSearching) {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Filters") },
                         expanded = expandedFab,
@@ -205,7 +246,6 @@ internal fun LibraryListPane(
 @Preview(device = "spec:width=1920px,height=1080px,dpi=440") // Odin2 Mini
 @Composable
 private fun Preview_LibraryListPane() {
-    PrefManager.init(LocalContext.current)
     val sheetState = rememberModalBottomSheetState()
     var state by remember {
         mutableStateOf(

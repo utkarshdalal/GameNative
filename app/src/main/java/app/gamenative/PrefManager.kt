@@ -496,17 +496,9 @@ object PrefManager {
             setPref(OPEN_WEB_LINKS_EXTERNALLY, value)
         }
 
-    // Whether to open links internally with a webview or open externally with a user's browser.
-    private val INFINITE_SCROLL = booleanPreferencesKey("infinite_scroll")
-    var infiniteScroll: Boolean
-        get() = getPref(INFINITE_SCROLL, true)
-        set(value) {
-            setPref(INFINITE_SCROLL, value)
-        }
-
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
-        get() = getPref(ITEMS_PER_PAGE, 30)
+        get() = getPref(ITEMS_PER_PAGE, 10)
         set(value) {
             setPref(ITEMS_PER_PAGE, value)
         }

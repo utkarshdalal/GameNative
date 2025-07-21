@@ -42,9 +42,6 @@ fun SettingsGroupInterface(
 
     var openWebLinks by rememberSaveable { mutableStateOf(PrefManager.openWebLinksExternally) }
 
-    var infiniteScroll by rememberSaveable { mutableStateOf(PrefManager.infiniteScroll) }
-    var itemsPerPage by rememberSaveable { mutableStateOf(PrefManager.itemsPerPage) }
-
     var openAppThemeDialog by rememberSaveable { mutableStateOf(false) }
     var openAppPaletteDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -78,36 +75,6 @@ fun SettingsGroupInterface(
                 PrefManager.openWebLinksExternally = it
             },
         )
-
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = "Infinite Scroll") },
-            subtitle = { Text(text = "Or pages in your library") },
-            state = infiniteScroll,
-            onCheckedChange = {
-                infiniteScroll = it
-                PrefManager.infiniteScroll = it
-            },
-        )
-
-        if (! infiniteScroll) {
-            SettingsSlider(
-                colors = settingsTileColorsAlt(),
-                title = {
-                    Row() {
-                        Text("Items Per Page")
-                        Box(modifier = Modifier.weight(1f))
-                        Text(itemsPerPage.toString())
-                    } },
-                value = itemsPerPage.toFloat(),
-                steps = 18,
-                valueRange = 10f..200f,
-                onValueChange = { it ->
-                    itemsPerPage = it.roundToInt()
-                    PrefManager.itemsPerPage = itemsPerPage
-                },
-            )
-        }
     }
 
     // Downloads settings

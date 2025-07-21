@@ -151,24 +151,19 @@ class LibraryViewModel @Inject constructor(
                     compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
                 );
 
-            // Split here to get a count of the amount of games the filter includes
+            // Total count for the current filter
             val totalFound = filteredList.count()
 
-            if (! PrefManager.infiniteScroll) {
-                // If paginated, filter to the current index range
-                val firstItem = paginationPage * PrefManager.itemsPerPage;
-                val lastItem = firstItem + PrefManager.itemsPerPage - 1;
-                paginationCurrentPage = paginationPage;
-                lastPageInCurrentFilter = totalFound / PrefManager.itemsPerPage // Rounds down, correctly
-
-                filteredList = filteredList
-                    .filterIndexed { index, steamApp ->
-                        // Paginate to only show one page of games
-                        index in firstItem..lastItem
-                    }
-            }
-
-            val filteredListPage = filteredList
+            // Determine how many pages and slice the list for incremental loading
+            val pageSize = PrefManager.itemsPerPage
+            // Update internal pagination state
+            paginationCurrentPage = paginationPage
+            lastPageInCurrentFilter = (totalFound - 1) / pageSize
+            // Calculate how many items to show: (pagesLoaded * pageSize)
+            val endIndex = min((paginationPage + 1) * pageSize, totalFound)
+            val pagedSequence = filteredList.take(endIndex)
+            // Map to UI model
+            val filteredListPage = pagedSequence
                 .mapIndexed { idx, item ->
                     LibraryItem(
                         index = idx,
