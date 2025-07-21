@@ -58,8 +58,8 @@ public class Container {
     private String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
     private String box86Version = DefaultVersion.BOX86;
     private String box64Version = DefaultVersion.BOX64;
-    private String box86Preset = Box86_64Preset.COMPATIBILITY;
-    private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private String box86Preset = Box86_64Preset.PERFORMANCE;
+    private String box64Preset = Box86_64Preset.PERFORMANCE;
     private File rootDir;
     private String installPath = "";
     private JSONObject extraData;

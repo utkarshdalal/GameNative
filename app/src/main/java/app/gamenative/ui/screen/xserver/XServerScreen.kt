@@ -210,7 +210,7 @@ fun XServerScreen(
                                 PostHog.capture(event = "onscreen_controller_enabled")
                                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                                 if (profiles.isNotEmpty()) {
-                                    showInputControls(profiles[2])
+                                    showInputControls(profiles[3])
                                 }
                             }
                             areControlsVisible = !areControlsVisible
