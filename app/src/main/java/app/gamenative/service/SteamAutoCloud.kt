@@ -60,6 +60,7 @@ object SteamAutoCloud {
         preferredSave: SaveLocation = SaveLocation.None,
         parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         prefixToPath: (String) -> String,
+        overrideLocalChangeNumber: Long? = null,
     ): Deferred<PostSyncInfo?> = parentScope.async {
         val postSyncInfo: PostSyncInfo?
 
@@ -533,7 +534,7 @@ object SteamAutoCloud {
         var microsecUploadFiles = 0L
 
         microsecTotal = measureTime {
-            val localAppChangeNumber = steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
+            val localAppChangeNumber = overrideLocalChangeNumber ?: steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
 
             val changeNumber = if (localAppChangeNumber >= 0) localAppChangeNumber else 0
             val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()

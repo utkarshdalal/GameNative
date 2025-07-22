@@ -986,6 +986,51 @@ class SteamService : Service(), IChallengeUrlChanged {
             return@async syncResult
         }
 
+        suspend fun forceSyncUserFiles(
+            appId: Int,
+            prefixToPath: (String) -> String,
+            preferredSave: SaveLocation = SaveLocation.None,
+            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+            overrideLocalChangeNumber: Long? = null,
+        ): Deferred<PostSyncInfo> = parentScope.async {
+            if (syncInProgress) {
+                Timber.w("Cannot force sync when sync already in progress")
+                return@async PostSyncInfo(SyncResult.InProgress)
+            }
+
+            syncInProgress = true
+
+            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
+
+            PrefManager.clientId?.let { clientId ->
+                instance?.let { steamInstance ->
+                    getAppInfoOf(appId)?.let { appInfo ->
+                        steamInstance._steamCloud?.let { steamCloud ->
+                            val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                                appInfo = appInfo,
+                                clientId = clientId,
+                                steamInstance = steamInstance,
+                                steamCloud = steamCloud,
+                                preferredSave = preferredSave,
+                                parentScope = parentScope,
+                                prefixToPath = prefixToPath,
+                                overrideLocalChangeNumber = overrideLocalChangeNumber,
+                            ).await()
+
+                            postSyncInfo?.let { info ->
+                                syncResult = info
+                                Timber.i("Force cloud sync completed for app $appId with result: ${info.syncResult}")
+                            }
+                        }
+                    }
+                }
+            }
+
+            syncInProgress = false
+
+            return@async syncResult
+        }
+
         suspend fun closeApp(appId: Int, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
             async {
                 if (syncInProgress) {
