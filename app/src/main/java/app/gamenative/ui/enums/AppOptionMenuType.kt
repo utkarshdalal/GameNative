@@ -9,5 +9,8 @@ enum class AppOptionMenuType(val text: String) {
     VerifyFiles("Verify files"),
     Update("Update"),
     MoveToExternalStorage("Move to external storage"),
-    MoveToInternalStorage("Move to internal storage")
+    MoveToInternalStorage("Move to internal storage"),
+    ForceCloudSync("Force cloud sync"),
+    ForceDownloadRemote("Force download remote saves"),
+    ForceUploadLocal("Force upload local saves")
 }

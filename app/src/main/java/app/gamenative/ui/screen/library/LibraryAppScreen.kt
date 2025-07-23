@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -121,6 +120,14 @@ import app.gamenative.PrefManager
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlin.math.roundToInt
+import app.gamenative.enums.PathType
+import com.winlator.container.ContainerManager
+import app.gamenative.enums.SyncResult
+import android.widget.Toast
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import app.gamenative.enums.SaveLocation
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -637,6 +644,113 @@ fun AppScreen(
                                         confirmBtnText = context.getString(R.string.delete_app),
                                         dismissBtnText = context.getString(R.string.cancel),
                                     )
+                                },
+                            ),
+                            AppMenuOption(
+                                AppOptionMenuType.ForceCloudSync,
+                                onClick = {
+                                    PostHog.capture(event = "cloud_sync_forced",
+                                        properties = mapOf(
+                                            "game_name" to appInfo.name
+                                        ))
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        // Activate container before sync (required for proper path resolution)
+                                        val containerManager = ContainerManager(context)
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                        containerManager.activateContainer(container)
+
+                                        val prefixToPath: (String) -> String = { prefix ->
+                                            PathType.from(prefix).toAbsPath(context, appId)
+                                        }
+                                        val syncResult = SteamService.forceSyncUserFiles(
+                                            appId = appId,
+                                            prefixToPath = prefixToPath
+                                        ).await()
+
+                                        // Handle result on main thread
+                                        scope.launch(Dispatchers.Main) {
+                                            when (syncResult.syncResult) {
+                                                SyncResult.Success -> {
+                                                    Toast.makeText(context, "Cloud sync completed successfully", Toast.LENGTH_SHORT).show()
+                                                }
+                                                SyncResult.UpToDate -> {
+                                                    Toast.makeText(context, "Save files are already up to date", Toast.LENGTH_SHORT).show()
+                                                }
+                                                else -> {
+                                                    Toast.makeText(context, "Cloud sync failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                            ),
+                            AppMenuOption(
+                                AppOptionMenuType.ForceDownloadRemote,
+                                onClick = {
+                                    PostHog.capture(event = "force_download_remote",
+                                        properties = mapOf(
+                                            "game_name" to appInfo.name
+                                        ))
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        val containerManager = ContainerManager(context)
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                        containerManager.activateContainer(container)
+
+                                        val prefixToPath: (String) -> String = { prefix ->
+                                            PathType.from(prefix).toAbsPath(context, appId)
+                                        }
+                                        val syncResult = SteamService.forceSyncUserFiles(
+                                            appId = appId,
+                                            prefixToPath = prefixToPath,
+                                            preferredSave = SaveLocation.Remote,
+                                            overrideLocalChangeNumber = -1L
+                                        ).await()
+
+                                        scope.launch(Dispatchers.Main) {
+                                            when (syncResult.syncResult) {
+                                                SyncResult.Success -> {
+                                                    Toast.makeText(context, "Remote saves downloaded successfully", Toast.LENGTH_SHORT).show()
+                                                }
+                                                else -> {
+                                                    Toast.makeText(context, "Download failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                            ),
+                            AppMenuOption(
+                                AppOptionMenuType.ForceUploadLocal,
+                                onClick = {
+                                    PostHog.capture(event = "force_upload_local",
+                                        properties = mapOf(
+                                            "game_name" to appInfo.name
+                                        ))
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        val containerManager = ContainerManager(context)
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                        containerManager.activateContainer(container)
+
+                                        val prefixToPath: (String) -> String = { prefix ->
+                                            PathType.from(prefix).toAbsPath(context, appId)
+                                        }
+                                        val syncResult = SteamService.forceSyncUserFiles(
+                                            appId = appId,
+                                            prefixToPath = prefixToPath,
+                                            preferredSave = SaveLocation.Local
+                                        ).await()
+
+                                        scope.launch(Dispatchers.Main) {
+                                            when (syncResult.syncResult) {
+                                                SyncResult.Success -> {
+                                                    Toast.makeText(context, "Local saves uploaded successfully", Toast.LENGTH_SHORT).show()
+                                                }
+                                                else -> {
+                                                    Toast.makeText(context, "Upload failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }
                                 },
                             ),
                         )

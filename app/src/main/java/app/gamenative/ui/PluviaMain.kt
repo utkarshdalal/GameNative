@@ -138,7 +138,7 @@ fun PluviaMain(
                                     visible = true,
                                     type = DialogType.SUPPORT,
                                     message = "Thank you for using GameNative, please consider supporting " +
-                                        "the original devs of Pluvia by tipping whatever amount is comfortable to you",
+                                        "open-source PC gaming on Android by donating whatever amount is comfortable to you",
                                     confirmBtnText = "Tip",
                                     dismissBtnText = "Close",
                                 )
