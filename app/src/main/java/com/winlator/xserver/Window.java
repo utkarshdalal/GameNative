@@ -414,4 +414,8 @@ public class Window extends XResource {
         }
         return result;
     }
+
+    public boolean isRenderable() {
+        return this.attributes.isMapped() && this.width > 1 && this.height > 1;
+    }
 }

@@ -52,6 +52,7 @@ import com.winlator.core.KeyValueSet
 import com.winlator.core.OnExtractFileListener
 import com.winlator.core.ProcessHelper
 import com.winlator.core.TarCompressorUtils
+import com.winlator.core.Win32AppWorkarounds
 import com.winlator.core.WineInfo
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineStartMenuCreator
@@ -185,6 +186,8 @@ fun XServerScreen(
         Timber.i("Remembering xServerView as $result")
         result
     }
+
+    var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
 
     var isKeyboardVisible = false
     var areControlsVisible = false
@@ -367,6 +370,11 @@ fun XServerScreen(
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
                 getxServer().winHandler = WinHandler(getxServer(), this)
+                win32AppWorkarounds = Win32AppWorkarounds(
+                    getxServer(),
+                    taskAffinityMask,
+                    taskAffinityMaskWoW64
+                )
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
                 if (!bootToContainer) {
@@ -418,7 +426,8 @@ fun XServerScreen(
                                         "\n\thasParent: ${window.parent != null}" +
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
-                            assignTaskAffinity(window, getxServer().winHandler, taskAffinityMask, taskAffinityMaskWoW64)
+//                            assignTaskAffinity(window, getxServer().winHandler, taskAffinityMask, taskAffinityMaskWoW64)
+                            win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(window)
                         }
 
@@ -722,6 +731,9 @@ private fun assignTaskAffinity(
     val className = window.getClassName()
     val processAffinity = if (window.isWoW64()) taskAffinityMaskWoW64 else taskAffinityMask
 
+    if (className.equals("steam.exe")) {
+        return;
+    }
     if (processId > 0) {
         winHandler.setProcessAffinity(processId, processAffinity)
     } else if (!className.isEmpty()) {
@@ -811,7 +823,6 @@ private fun setupXEnvironment(
     envVars.put("MESA_DEBUG", "silent")
     envVars.put("MESA_NO_ERROR", "1")
     envVars.put("WINEPREFIX", imageFs.wineprefix)
-    envVars.put("WINE_DO_NOT_UPDATE_IF_TABLE", "1")
     envVars.put("WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "1")
     if (container.isShowFPS){
         envVars.put("DXVK_HUD", "fps,frametimes")
@@ -950,14 +961,14 @@ private fun setupXEnvironment(
         environment.addComponent(vortekRendererComponent)
     }
 
-    val manager: RCManager = RCManager(context)
-    manager.loadRCFiles()
-    val rcfileId: Int = container.getRCFileId()
-    val rcfile: RCFile? = manager.getRcfile(rcfileId)
-    val file = File(container.rootDir, ".box64rc")
-    val str = if (rcfile == null) "" else rcfile.generateBox86_64rc()
-    FileUtils.writeString(file, str)
-    envVars.put("BOX64_RCFILE", file.getAbsolutePath())
+//    val manager: RCManager = RCManager(context)
+//    manager.loadRCFiles()
+//    val rcfileId: Int = container.getRCFileId()
+//    val rcfile: RCFile? = manager.getRcfile(rcfileId)
+//    val file = File(container.rootDir, ".box64rc")
+//    val str = if (rcfile == null) "" else rcfile.generateBox86_64rc()
+//    FileUtils.writeString(file, str)
+//    envVars.put("BOX64_RCFILE", file.getAbsolutePath())
 
     guestProgramLauncherComponent.envVars = envVars
     guestProgramLauncherComponent.setTerminationCallback { status ->

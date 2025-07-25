@@ -652,7 +652,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun isImageFsInstallable(context: Context): Boolean {
             val splitManager = SplitInstallManagerFactory.create(context)
-            return splitManager.installedModules.contains("ubuntufs") // || FileUtils.assetExists(context.assets, "imagefs_gamenative.txz")
+            return splitManager.installedModules.contains("ubuntufs") // || FileUtils.assetExists(context.assets, "imagefs_gamenative_winlator.txz")
         }
 
         fun downloadImageFs(
@@ -660,7 +660,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         ) = parentScope.async {
             if (!isImageFsInstalled(instance!!) && !isImageFsInstallable(instance!!)) {
-                Timber.i("imagefs_gamenative.txz will be downloaded")
+                Timber.i("imagefs_gamenative_winlator.txz will be downloaded")
                 val splitManager = SplitInstallManagerFactory.create(instance!!)
                 // if (!splitManager.installedModules.contains("ubuntufs")) {
                 val moduleInstallSessionId = splitManager.requestInstall(listOf("ubuntufs"))
@@ -668,7 +668,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // try {
                 do {
                     val sessionState = splitManager.requestSessionState(moduleInstallSessionId)
-                    // logD("imagefs_gamenative.txz session state status: ${sessionState.status}")
+                    // logD("imagefs_gamenative_winlator.txz session state status: ${sessionState.status}")
                     when (sessionState.status) {
                         SplitInstallSessionStatus.INSTALLED -> isInstalling = false
                         SplitInstallSessionStatus.PENDING,
@@ -683,7 +683,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                             val downloadPercent =
                                 sessionState.bytesDownloaded.toFloat() / sessionState.totalBytesToDownload
-                            // logD("imagefs_gamenative.txz download percent: $downloadPercent")
+                            // logD("imagefs_gamenative_winlator.txz download percent: $downloadPercent")
                             // downloadInfo.setProgress(downloadPercent, 0)
                             onDownloadProgress(downloadPercent)
                             delay(100)
@@ -707,7 +707,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 //     }
                 // }
                 val installedProperly = splitManager.installedModules.contains("ubuntufs")
-                Timber.i("imagefs_gamenative.txz module installed properly: $installedProperly")
+                Timber.i("imagefs_gamenative_winlator.txz module installed properly: $installedProperly")
                 // }
             } else {
                 Timber.i("ubuntufs module already installed, skipping download")

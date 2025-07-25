@@ -3,6 +3,7 @@ package com.winlator.xenvironment.components;
 import static com.winlator.core.ProcessHelper.splitCommand;
 
 import android.content.Context;
+import android.media.Image;
 import android.os.Process;
 import android.util.Log;
 
@@ -13,6 +14,7 @@ import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
+import com.winlator.core.FileUtils;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
@@ -73,6 +75,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         synchronized (lock) {
             stop();
             extractBox86_64Files();
+            copyDefaultBox64RCFile();
             if (preUnpack != null) preUnpack.run();
             pid = execGuestProgram();
             Log.d("GlibcProgramLauncherComponent", "Process " + pid + " started");
@@ -200,10 +203,13 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
 
+        Log.d("GlibcProgramLauncherComponent", "About to add LD_PRELOAD!");
+
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
                         ())
-            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
+            envVars.put("LD_PRELOAD", "libredirect_logging.so libandroid-sysvshm.so");
+            Log.d("GlibcProgramLauncherComponent", "Added LD_PRELOAD! " + envVars.get("LD_PRELOAD"));
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 
@@ -265,6 +271,13 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         }
     }
 
+    private void copyDefaultBox64RCFile() {
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
+        File rootDir = imageFs.getRootDir();
+        FileUtils.copy(context, "box86_64/default.box64rc", new File(rootDir, "/etc/config.box64rc"));
+    }
+
     private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {
         envVars.put("BOX86_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX86_DYNAREC", "1");
@@ -280,9 +293,11 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     }
 
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
         envVars.put("BOX64_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX64_DYNAREC", "1");
-        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
+//        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
 
         if (enableLogs) {
             envVars.put("BOX64_LOG", "1");
@@ -291,6 +306,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
         envVars.putAll(Box86_64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
         envVars.put("BOX64_X11GLX", "1");
+        File box64RCFile = new File(imageFs.getRootDir(), "/etc/config.box64rc");
+        envVars.put("BOX64_RCFILE", box64RCFile.getPath());
     }
 
     public void suspendProcess() {
@@ -332,7 +349,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
                         ())
-            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
+            envVars.put("LD_PRELOAD", "libredirect_logging.so libandroid-sysvshm.so");
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 
