@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlinx.coroutines.Job
+import app.gamenative.utils.ContainerUtils
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -193,7 +194,14 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: Int) {
-        SteamUtils.replaceSteamApi(context, appId)
+        // Check if we should use real Steam or replace Steam API
+        val container = ContainerUtils.getContainer(context, appId)
+        if (container.isLaunchRealSteam()) {
+            SteamUtils.restoreSteamApi(context, appId)
+        } else {
+            SteamUtils.replaceSteamApi(context, appId)
+        }
+        
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)

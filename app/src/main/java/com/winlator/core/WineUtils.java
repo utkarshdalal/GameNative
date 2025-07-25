@@ -25,6 +25,7 @@ public abstract class WineUtils {
         FileUtils.symlink("../drive_c", dosdevicesPath+"/c:");
         FileUtils.symlink(container.getRootDir().getPath() + "/../..", dosdevicesPath+"/z:");
 
+        String gameDirectoryPath = null;
         for (String[] drive : container.drivesIterator()) {
             File linkTarget = new File(drive[1]);
             String path = linkTarget.getAbsolutePath();
@@ -33,6 +34,29 @@ public abstract class WineUtils {
                 FileUtils.chmod(linkTarget, 0771);
             }
             FileUtils.symlink(path, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
+            
+            // Check if this is the A: drive (game directory)
+            if (drive[0].equals("A") && path.contains("/Steam/steamapps/common/")) {
+                gameDirectoryPath = path;
+            }
+        }
+        
+        // Create Steam symlink if we found the game directory
+        if (gameDirectoryPath != null) {
+            // Extract game name from path like "/data/data/app.gamenative/Steam/steamapps/common/GameName"
+            String gameName = new File(gameDirectoryPath).getName();
+            
+            // Create the Steam directory structure in C: drive
+            File steamCommonDir = new File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamapps/common");
+            if (!steamCommonDir.exists()) {
+                steamCommonDir.mkdirs();
+            }
+            
+            // Create symlink from C:\Program Files (x86)\Steam\steamapps\common\{gameName} to actual game directory
+            File steamGameLink = new File(steamCommonDir, gameName);
+            if (!steamGameLink.exists()) {
+                FileUtils.symlink(gameDirectoryPath, steamGameLink.getAbsolutePath());
+            }
         }
     }
 

@@ -548,6 +548,15 @@ fun ContainerConfigDialog(
                                     config = config.copy(showFPS = it)
                                 },
                             )
+                            SettingsSwitch(
+                                colors = settingsTileColorsAlt(),
+                                title = { Text(text = "Launch Real Steam") },
+                                subtitle = { Text(text = "Reduces performance, but fixes DRM, controller, cloud save issues and allows online play") },
+                                state = config.launchRealSteam,
+                                onCheckedChange = {
+                                    config = config.copy(launchRealSteam = it)
+                                },
+                            )
                         }
                         SettingsGroup(title = { Text(text = "Controller") }) {
                             if (!default) {

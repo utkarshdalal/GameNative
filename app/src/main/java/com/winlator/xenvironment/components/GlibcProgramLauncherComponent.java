@@ -208,7 +208,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
                         ())
-            envVars.put("LD_PRELOAD", "libredirect_logging.so libandroid-sysvshm.so");
+            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
             Log.d("GlibcProgramLauncherComponent", "Added LD_PRELOAD! " + envVars.get("LD_PRELOAD"));
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
@@ -349,7 +349,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
                         ())
-            envVars.put("LD_PRELOAD", "libredirect_logging.so libandroid-sysvshm.so");
+            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 

@@ -137,19 +137,22 @@ object SteamUtils {
             accessToken = PrefManager.accessToken      // may be blank
         )
         val steamConfigDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/config")
-        steamConfigDir.mkdirs()
-        File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
-        val rootDir = imageFs.rootDir
-        val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
-        val steamRoot = "C:\\Program Files (x86)\\Steam"
-        val steamExe = "$steamRoot\\steam.exe"
-        val hkcu = "Software\\Valve\\Steam"
-        WineRegistryEditor(userRegFile).use { reg ->
-            reg.setStringValue("Software\\Valve\\Steam", "AutoLoginUser", PrefManager.username)
-            reg.setStringValue("Software\\Valve\\Steam", "RememberPassword", "1")
-            reg.setStringValue(hkcu, "SteamExe", steamExe)
-            reg.setStringValue(hkcu, "SteamPath", steamRoot)
-            reg.setStringValue(hkcu, "InstallPath", steamRoot)
+        try {
+            File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
+            val rootDir = imageFs.rootDir
+            val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
+            val steamRoot = "C:\\Program Files (x86)\\Steam"
+            val steamExe = "$steamRoot\\steam.exe"
+            val hkcu = "Software\\Valve\\Steam"
+            WineRegistryEditor(userRegFile).use { reg ->
+                reg.setStringValue("Software\\Valve\\Steam", "AutoLoginUser", PrefManager.username)
+                reg.setStringValue("Software\\Valve\\Steam", "RememberPassword", "1")
+                reg.setStringValue(hkcu, "SteamExe", steamExe)
+                reg.setStringValue(hkcu, "SteamPath", steamRoot)
+                reg.setStringValue(hkcu, "InstallPath", steamRoot)
+            }
+        } catch (e: Exception) {
+            Timber.w("Could not add steam config options: $e")
         }
 
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
@@ -185,6 +188,100 @@ object SteamUtils {
             }
         }
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
+    }
+
+    /**
+     * Restores the original steam_api.dll and steam_api64.dll files from their .orig backups
+     * if they exist. Does not error if backup files are not found.
+     */
+    fun restoreSteamApi(context: Context, appId: Int) {
+        Timber.i("Starting restoreSteamApi for appId: $appId")
+        val appDirPath = SteamService.getAppDirPath(appId)
+        Timber.i("Checking directory: $appDirPath")
+        var restored32 = false
+        var restored64 = false
+
+        FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
+            if (it.name == "steam_api.dll.orig" && it.exists()) {
+                try {
+                    val originalPath = it.parent.resolve("steam_api.dll")
+                    Timber.i("Found steam_api.dll.orig at ${it.absolutePathString()}, restoring...")
+                    
+                    // Delete the current DLL if it exists
+                    if (Files.exists(originalPath)) {
+                        Files.delete(originalPath)
+                    }
+                    
+                    // Copy the backup back to the original location
+                    Files.copy(it, originalPath)
+                    
+                    Timber.i("Restored steam_api.dll from backup")
+                    restored32 = true
+                } catch (e: IOException) {
+                    Timber.w(e, "Failed to restore steam_api.dll from backup")
+                }
+            }
+            
+            if (it.name == "steam_api64.dll.orig" && it.exists()) {
+                try {
+                    val originalPath = it.parent.resolve("steam_api64.dll")
+                    Timber.i("Found steam_api64.dll.orig at ${it.absolutePathString()}, restoring...")
+                    
+                    // Delete the current DLL if it exists
+                    if (Files.exists(originalPath)) {
+                        Files.delete(originalPath)
+                    }
+                    
+                    // Copy the backup back to the original location
+                    Files.copy(it, originalPath)
+                    
+                    Timber.i("Restored steam_api64.dll from backup")
+                    restored64 = true
+                } catch (e: IOException) {
+                    Timber.w(e, "Failed to restore steam_api64.dll from backup")
+                }
+            }
+        }
+
+        Timber.i("Finished restoreSteamApi for appId: $appId. Restored 32bit: $restored32, Restored 64bit: $restored64")
+    }
+
+    /**
+     * Restores the original executable files from their .original.exe backups
+     * if they exist. Does not error if backup files are not found.
+     */
+    fun restoreOriginalExecutable(context: Context, appId: Int) {
+        Timber.i("Starting restoreOriginalExecutable for appId: $appId")
+        val appDirPath = SteamService.getAppDirPath(appId)
+        Timber.i("Checking directory: $appDirPath")
+        var restoredCount = 0
+
+        val imageFs = ImageFs.find(context)
+        val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
+
+        FileUtils.walkThroughPath(dosDevicesPath.toPath(), -1) {
+            if (it.name.endsWith(".original.exe") && it.exists()) {
+                try {
+                    val originalPath = it.parent.resolve(it.name.removeSuffix(".original.exe") + ".exe")
+                    Timber.i("Found ${it.name} at ${it.absolutePathString()}, restoring...")
+                    
+                    // Delete the current exe if it exists
+                    if (Files.exists(originalPath)) {
+                        Files.delete(originalPath)
+                    }
+                    
+                    // Copy the backup back to the original location
+                    Files.copy(it, originalPath)
+                    
+                    Timber.i("Restored ${originalPath.fileName} from backup")
+                    restoredCount++
+                } catch (e: IOException) {
+                    Timber.w(e, "Failed to restore ${it.name} from backup")
+                }
+            }
+        }
+
+        Timber.i("Finished restoreOriginalExecutable for appId: $appId. Restored $restoredCount executable(s)")
     }
 
     /**
