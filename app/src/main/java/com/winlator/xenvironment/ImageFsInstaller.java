@@ -56,10 +56,10 @@ public abstract class ImageFsInstaller {
         return Executors.newSingleThreadExecutor().submit(() -> {
             clearRootDir(rootDir);
             final byte compressionRatio = 22;
-            final long contentLength = (long)(FileUtils.getSize(assetManager, "imagefs_gamenative_winlator.txz") * (100.0f / compressionRatio));
+            final long contentLength = (long)(FileUtils.getSize(assetManager, "imagefs_gamenative.txz") * (100.0f / compressionRatio));
             AtomicLong totalSizeRef = new AtomicLong();
 
-            boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, "imagefs_gamenative_winlator.txz", rootDir, (file, size) -> {
+            boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, "imagefs_gamenative.txz", rootDir, (file, size) -> {
                 if (size > 0) {
                     long totalSize = totalSizeRef.addAndGet(size);
                     if (onProgress != null) {
@@ -144,9 +144,9 @@ public abstract class ImageFsInstaller {
             File wineSystem32Dir = new File(rootDir, "/opt/wine/lib/wine/x86_64-windows");
             File wineSysWoW64Dir = new File(rootDir, "/opt/wine/lib/wine/i386-windows");
 
-            File containerPatternDir = new File(context.getCacheDir(), "container_pattern_winlator2");
+            File containerPatternDir = new File(context.getCacheDir(), "container_pattern_gamenative");
             FileUtils.delete(containerPatternDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, assetManager, "container_pattern_winlator.tzst", containerPatternDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, assetManager, "container_pattern_gamenative.tzst", containerPatternDir);
 
             File containerSystem32Dir = new File(containerPatternDir, ".wine/drive_c/windows/system32");
             File containerSysWoW64Dir = new File(containerPatternDir, ".wine/drive_c/windows/syswow64");
@@ -197,7 +197,7 @@ public abstract class ImageFsInstaller {
 
                 FileUtils.writeString(new File(context.getCacheDir(), "common_dlls.json"), data.toString());
 
-                File outputFile = new File(context.getCacheDir(), "container_pattern_winlator.tzst");
+                File outputFile = new File(context.getCacheDir(), "container_pattern_gamenative.tzst");
                 FileUtils.delete(outputFile);
                 TarCompressorUtils.compress(TarCompressorUtils.Type.ZSTD, new File(containerPatternDir, ".wine"), outputFile, 22);
 
