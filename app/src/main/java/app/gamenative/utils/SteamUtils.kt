@@ -8,9 +8,14 @@ import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -18,10 +23,6 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.name
 import timber.log.Timber
-import java.io.File
-import java.io.IOException
-import java.nio.file.Path
-import java.nio.file.StandardOpenOption
 
 object SteamUtils {
 
@@ -191,6 +192,104 @@ object SteamUtils {
     }
 
     /**
+     * Creates a Steam ACF (Application Cache File) manifest for the given app
+     * This allows real Steam to detect the game as installed
+     */
+    private fun createAppManifest(context: Context, appId: Int) {
+        try {
+            Timber.i("Attempting to createAppManifest for appId: $appId")
+            val appInfo = SteamService.getAppInfoOf(appId)
+            if (appInfo == null) {
+                Timber.w("No app info found for appId: $appId")
+                return
+            }
+
+            val imageFs = ImageFs.find(context)
+
+            // Create the steamapps folder structure
+            val steamappsDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamapps")
+            if (!steamappsDir.exists()) {
+                steamappsDir.mkdirs()
+            }
+
+            // Create the common folder
+            val commonDir = File(steamappsDir, "common")
+            if (!commonDir.exists()) {
+                commonDir.mkdirs()
+            }
+
+            // Get game directory info
+            val gameDir = File(SteamService.getAppDirPath(appId))
+            val gameName = gameDir.name
+            val sizeOnDisk = calculateDirectorySize(gameDir)
+
+            // Create symlink from Steam common directory to actual game directory
+            val steamGameLink = File(commonDir, gameName)
+            if (!steamGameLink.exists()) {
+                Files.createSymbolicLink(steamGameLink.toPath(), gameDir.toPath())
+                Timber.i("Created symlink from ${steamGameLink.absolutePath} to ${gameDir.absolutePath}")
+            }
+
+            // Create ACF content
+            val acfContent = buildString {
+                appendLine("\"AppState\"")
+                appendLine("{")
+                appendLine("\t\"appid\"\t\t\"$appId\"")
+                appendLine("\t\"Universe\"\t\t\"1\"")
+                appendLine("\t\"name\"\t\t\"${escapeString(appInfo.name)}\"")
+                appendLine("\t\"StateFlags\"\t\t\"4\"") // 4 = fully installed
+                appendLine("\t\"LastUpdated\"\t\t\"${System.currentTimeMillis() / 1000}\"")
+                appendLine("\t\"SizeOnDisk\"\t\t\"$sizeOnDisk\"")
+
+                // Use the actual install directory name
+                val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
+                appendLine("\t\"InstallDir\"\t\t\"${escapeString(actualInstallDir)}\"")
+
+                appendLine("\t\"LastOwner\"\t\t\"0\"")
+                appendLine("\t\"BytesToDownload\"\t\t\"0\"")
+                appendLine("\t\"BytesDownloaded\"\t\t\"0\"")
+                appendLine("\t\"AutoUpdateBehavior\"\t\t\"0\"")
+                appendLine("\t\"AllowOtherDownloadsWhileRunning\"\t\t\"0\"")
+                appendLine("\t\"ScheduledAutoUpdate\"\t\t\"0\"")
+                appendLine("}")
+            }
+
+            // Write ACF file
+            val acfFile = File(steamappsDir, "appmanifest_$appId.acf")
+            acfFile.writeText(acfContent)
+
+            Timber.i("Created ACF manifest for ${appInfo.name} at ${acfFile.absolutePath}")
+
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to create ACF manifest for appId $appId")
+        }
+    }
+
+    private fun escapeString(input: String?): String {
+        if (input == null) return ""
+        return input.replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
+    }
+
+    private fun calculateDirectorySize(directory: File): Long {
+        if (!directory.exists() || !directory.isDirectory()) {
+            return 0L
+        }
+
+        var size = 0L
+        try {
+            directory.walkTopDown().forEach { file ->
+                if (file.isFile()) {
+                    size += file.length()
+                }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Error calculating directory size")
+        }
+
+        return size
+    }
+
+    /**
      * Restores the original steam_api.dll and steam_api64.dll files from their .orig backups
      * if they exist. Does not error if backup files are not found.
      */
@@ -206,35 +305,35 @@ object SteamUtils {
                 try {
                     val originalPath = it.parent.resolve("steam_api.dll")
                     Timber.i("Found steam_api.dll.orig at ${it.absolutePathString()}, restoring...")
-                    
+
                     // Delete the current DLL if it exists
                     if (Files.exists(originalPath)) {
                         Files.delete(originalPath)
                     }
-                    
+
                     // Copy the backup back to the original location
                     Files.copy(it, originalPath)
-                    
+
                     Timber.i("Restored steam_api.dll from backup")
                     restored32 = true
                 } catch (e: IOException) {
                     Timber.w(e, "Failed to restore steam_api.dll from backup")
                 }
             }
-            
+
             if (it.name == "steam_api64.dll.orig" && it.exists()) {
                 try {
                     val originalPath = it.parent.resolve("steam_api64.dll")
                     Timber.i("Found steam_api64.dll.orig at ${it.absolutePathString()}, restoring...")
-                    
+
                     // Delete the current DLL if it exists
                     if (Files.exists(originalPath)) {
                         Files.delete(originalPath)
                     }
-                    
+
                     // Copy the backup back to the original location
                     Files.copy(it, originalPath)
-                    
+
                     Timber.i("Restored steam_api64.dll from backup")
                     restored64 = true
                 } catch (e: IOException) {
@@ -244,6 +343,9 @@ object SteamUtils {
         }
 
         Timber.i("Finished restoreSteamApi for appId: $appId. Restored 32bit: $restored32, Restored 64bit: $restored64")
+
+        // Create Steam ACF manifest for real Steam compatibility
+        createAppManifest(context, appId)
     }
 
     /**
@@ -264,15 +366,15 @@ object SteamUtils {
                 try {
                     val originalPath = it.parent.resolve(it.name.removeSuffix(".original.exe") + ".exe")
                     Timber.i("Found ${it.name} at ${it.absolutePathString()}, restoring...")
-                    
+
                     // Delete the current exe if it exists
                     if (Files.exists(originalPath)) {
                         Files.delete(originalPath)
                     }
-                    
+
                     // Copy the backup back to the original location
                     Files.copy(it, originalPath)
-                    
+
                     Timber.i("Restored ${originalPath.fileName} from backup")
                     restoredCount++
                 } catch (e: IOException) {
