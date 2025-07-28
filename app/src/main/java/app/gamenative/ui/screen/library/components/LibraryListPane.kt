@@ -141,11 +141,7 @@ internal fun LibraryListPane(
                             LibrarySearchBar(
                                 state = state,
                                 listState = listState,
-                                onIsSearching = onIsSearching,
                                 onSearchQuery = onSearchQuery,
-                                onSettings = onSettings,
-                                onLogout = onLogout,
-                                onItemClick = onNavigate,
                             )
                         }
                     }
@@ -175,11 +171,7 @@ internal fun LibraryListPane(
                     LibrarySearchBar(
                         state = state,
                         listState = listState,
-                        onIsSearching = onIsSearching,
                         onSearchQuery = onSearchQuery,
-                        onSettings = onSettings,
-                        onLogout = onLogout,
-                        onItemClick = onNavigate,
                     )
                 }
             }
