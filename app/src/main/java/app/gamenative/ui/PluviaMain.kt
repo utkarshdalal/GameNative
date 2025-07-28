@@ -503,8 +503,8 @@ fun PluviaMain(
                             navController.popBackStack()
                         }
                     },
-                    onWindowMapped = { window ->
-                        viewModel.onWindowMapped(window, state.launchedAppId)
+                    onWindowMapped = { context, window ->
+                        viewModel.onWindowMapped(context, window, state.launchedAppId)
                     },
                     onExit = {
                         viewModel.exitSteamApp(context, state.launchedAppId)

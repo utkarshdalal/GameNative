@@ -189,6 +189,57 @@ object SteamUtils {
             }
         }
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
+
+        // Restore unpacked executable if it exists (for DRM-free mode)
+        restoreUnpackedExecutable(context, appId)
+
+        // Create Steam ACF manifest for real Steam compatibility
+        createAppManifest(context, appId)
+    }
+
+    /**
+     * Restores the unpacked executable (.unpacked.exe) if it exists and is different from current .exe
+     * This ensures we use the DRM-free version when not using real Steam
+     */
+    private fun restoreUnpackedExecutable(context: Context, appId: Int) {
+        try {
+            val imageFs = ImageFs.find(context)
+            val appDirPath = SteamService.getAppDirPath(appId)
+            val executablePath = SteamService.getInstalledExe(appId)
+
+            // Convert to Wine path format
+            val container = ContainerUtils.getContainer(context, appId)
+            val drives = container.drives
+            val driveIndex = drives.indexOf(appDirPath)
+            val drive = if (driveIndex > 1) {
+                drives[driveIndex - 2]
+            } else {
+                Timber.e("Could not locate game drive")
+                'D'
+            }
+            val executableFile = "$drive:\\${executablePath}"
+
+            val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
+            val unpackedExe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/') + ".unpacked.exe")
+
+            if (unpackedExe.exists()) {
+                // Check if files are different (compare size and last modified time for efficiency)
+                val areFilesDifferent = !exe.exists() ||
+                    exe.length() != unpackedExe.length() ||
+                    exe.lastModified() != unpackedExe.lastModified()
+
+                if (areFilesDifferent) {
+                    Files.copy(unpackedExe.toPath(), exe.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    Timber.i("Restored unpacked executable from ${unpackedExe.name} to ${exe.name}")
+                } else {
+                    Timber.i("Unpacked executable is already current, no restore needed")
+                }
+            } else {
+                Timber.i("No unpacked executable found, using current executable")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to restore unpacked executable for appId $appId")
+        }
     }
 
     /**
@@ -343,6 +394,9 @@ object SteamUtils {
         }
 
         Timber.i("Finished restoreSteamApi for appId: $appId. Restored 32bit: $restored32, Restored 64bit: $restored64")
+
+        // Restore original executable if it exists (for real Steam mode)
+        restoreOriginalExecutable(context, appId)
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, appId)

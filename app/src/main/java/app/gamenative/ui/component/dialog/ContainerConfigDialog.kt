@@ -550,8 +550,8 @@ fun ContainerConfigDialog(
                             )
                             SettingsSwitch(
                                 colors = settingsTileColorsAlt(),
-                                title = { Text(text = "Launch Real Steam") },
-                                subtitle = { Text(text = "Reduces performance, but fixes DRM, controller, cloud save issues and allows online play.\nTo use, first open container, open C:\\Program Files (x86)\\Steam\\Steam.exe, and sign in") },
+                                title = { Text(text = "Launch Steam Client (Beta)") },
+                                subtitle = { Text(text = "Reduces performance and significantly slows down launch\nAllows online play and fixes DRM and controller issues\nTo use, first open container, launch C:\\Program Files (x86)\\Steam\\Steam.exe, install and sign in") },
                                 state = config.launchRealSteam,
                                 onCheckedChange = {
                                     config = config.copy(launchRealSteam = it)

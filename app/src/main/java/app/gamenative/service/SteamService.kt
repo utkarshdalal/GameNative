@@ -234,12 +234,12 @@ class SteamService : Service(), IChallengeUrlChanged {
         /**
          * Default timeout to use when making requests
          */
-        var requestTimeout = 10.seconds
+        var requestTimeout = 30.seconds
 
         /**
          * Default timeout to use when reading the response body
          */
-        var responseTimeout = 60.seconds
+        var responseTimeout = 120.seconds
 
         private val PROTOCOL_TYPES = EnumSet.of(ProtocolTypes.WEB_SOCKET)
 

@@ -117,7 +117,7 @@ fun XServerScreen(
     bootToContainer: Boolean,
     navigateBack: () -> Unit,
     onExit: () -> Unit,
-    onWindowMapped: ((Window) -> Unit)? = null,
+    onWindowMapped: ((Context, Window) -> Unit)? = null,
     onWindowUnmapped: ((Window) -> Unit)? = null,
     onGameLaunchError: ((String) -> Unit)? = null,
 ) {
@@ -428,7 +428,7 @@ fun XServerScreen(
                             )
 //                            assignTaskAffinity(window, getxServer().winHandler, taskAffinityMask, taskAffinityMaskWoW64)
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
-                            onWindowMapped?.invoke(window)
+                            onWindowMapped?.invoke(context, window)
                         }
 
                         override fun onUnmapWindow(window: Window) {
@@ -1730,29 +1730,5 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
         }
         container.putExtra("audioDriver", audioDriver)
         container.saveData()
-    }
-}
-
-private fun restoreOriginalExecutable(
-    context: Context,
-    container: Container,
-    appId: Int,
-    appLaunchInfo: LaunchInfo?
-) {
-    val imageFs = ImageFs.find(context)
-    val executableFile = getSteamlessTarget(appId, container, appLaunchInfo)
-
-    val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
-    val originalExe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/') + ".original.exe")
-
-    try {
-        if (originalExe.exists()) {
-            Files.copy(originalExe.toPath(), exe.toPath(), REPLACE_EXISTING)
-            Timber.i("Restored original executable from ${originalExe.name} to ${exe.name}")
-        } else {
-            Timber.w("Original executable backup not found: ${originalExe.absolutePath}")
-        }
-    } catch (e: IOException) {
-        Timber.e("Failed to restore original executable: $e")
     }
 }
