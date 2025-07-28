@@ -30,6 +30,8 @@ public abstract class Box86_64PresetManager {
             envVars.put(ucPrefix + "_DYNAREC_FORWARD", "128");
             envVars.put(ucPrefix + "_DYNAREC_CALLRET", "0");
             envVars.put(ucPrefix + "_DYNAREC_WAIT", "0");
+            envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+            envVars.put("BOX64_DYNAREC_WEAKBARRIER", "0");
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "1");
@@ -44,6 +46,8 @@ public abstract class Box86_64PresetManager {
             envVars.put(ucPrefix + "_DYNAREC_FORWARD", "128");
             envVars.put(ucPrefix + "_DYNAREC_CALLRET", "0");
             envVars.put(ucPrefix + "_DYNAREC_WAIT", "1");
+            envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+            envVars.put("BOX64_DYNAREC_WEAKBARRIER", "1");
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "1");
@@ -58,6 +62,8 @@ public abstract class Box86_64PresetManager {
             envVars.put(ucPrefix + "_DYNAREC_FORWARD", "128");
             envVars.put(ucPrefix + "_DYNAREC_CALLRET", "0");
             envVars.put(ucPrefix + "_DYNAREC_WAIT", "1");
+            envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+            envVars.put("BOX64_DYNAREC_WEAKBARRIER", "2");
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "0");
@@ -72,6 +78,8 @@ public abstract class Box86_64PresetManager {
             envVars.put(ucPrefix + "_DYNAREC_FORWARD", "512");
             envVars.put(ucPrefix + "_DYNAREC_CALLRET", "1");
             envVars.put(ucPrefix + "_DYNAREC_WAIT", "1");
+            envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "1");
+            envVars.put("BOX64_DYNAREC_WEAKBARRIER", "2");
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "0");

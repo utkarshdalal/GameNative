@@ -12,6 +12,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.io.IOException
 import java.nio.file.Files
@@ -24,16 +25,19 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
-    fun getFolderSize(folderPath: String): Long {
+    suspend fun getFolderSize(folderPath: String): Long {
         val folder = File(folderPath)
-        return if (folder.exists()) {
-            folder.walkTopDown()
-                .filter { it.isFile }
-                .map { it.length() }
-                .sum()
-        } else {
-            0L
+        if (folder.exists()) {
+            var bytes = 0L
+            val tree = folder.walk()
+            tree.forEach {
+                bytes += it.length()
+                // allow interruption if run as coroutine
+                yield()
+            }
+            return bytes
         }
+        return 0L
     }
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {

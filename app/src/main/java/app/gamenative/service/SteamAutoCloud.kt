@@ -41,6 +41,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.net.SocketTimeoutException
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -346,6 +347,8 @@ object SteamAutoCloud {
                                 bytesDownloaded += fileDownloadInfo.fileSize
                             }
                         } catch (e: FileSystemException) {
+                            Timber.w("Could not download $actualFilePath: %s", e.message);
+                        } catch (e: SocketTimeoutException) {
                             Timber.w("Could not download $actualFilePath: %s", e.message);
                         }
 

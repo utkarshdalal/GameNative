@@ -94,15 +94,11 @@ import com.winlator.container.ContainerData
 import com.winlator.xenvironment.ImageFsInstaller
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.EnumSet
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import app.gamenative.PluviaApp
-import app.gamenative.ui.enums.Orientation
-import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService.Companion.DOWNLOAD_COMPLETE_MARKER
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import com.posthog.PostHog
@@ -115,8 +111,8 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.border
 import app.gamenative.PrefManager
+import app.gamenative.service.DownloadService
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlin.math.roundToInt
@@ -128,8 +124,47 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import app.gamenative.enums.SaveLocation
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.compositeOver
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
+
+@Composable
+private fun SkeletonText(
+    modifier: Modifier = Modifier,
+    lines: Int = 1,
+    lineHeight: Int = 16
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+
+    Column(modifier = modifier) {
+        repeat(lines) { index ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(if (index == lines - 1) 0.7f else 1f)
+                    .height(lineHeight.dp)
+                    .background(
+                        color = color,
+                        shape = RoundedCornerShape(4.dp)
+                    )
+            )
+            if (index < lines - 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -632,15 +667,12 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.Uninstall,
                                 onClick = {
-                                    val sizeOnDisk = StorageUtils.formatBinarySize(
-                                        StorageUtils.getFolderSize(SteamService.getAppDirPath(appInfo.id)),
-                                    )
                                     // TODO: show loading screen of delete progress
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.DELETE_APP,
                                         title = context.getString(R.string.delete_prompt_title),
-                                        message = "Are you sure you want to delete this app?\n\n\tSize on Disk: $sizeOnDisk",
+                                        message = "Are you sure you want to delete this app?",
                                         confirmBtnText = context.getString(R.string.delete_app),
                                         dismissBtnText = context.getString(R.string.cancel),
                                     )
@@ -820,6 +852,20 @@ private fun AppScreenContent(
 
     LaunchedEffect(appInfo.id) {
         scrollState.animateScrollTo(0)
+    }
+
+    var appSizeOnDisk by remember { mutableStateOf("") }
+
+    var appSizeDisplayed by remember { mutableStateOf(true) }
+    // Fatass disk size call - needs to stop if we do something important like launch the app
+    LaunchedEffect(appSizeDisplayed) {
+        if (isInstalled) {
+            appSizeOnDisk = " ..."
+
+            DownloadService.getSizeOnDiskDisplay(appInfo.id) {
+                appSizeOnDisk = "$it"
+            }
+        }
     }
 
     // Check if an update is pending
@@ -1006,7 +1052,11 @@ private fun AppScreenContent(
                     Button(
                         enabled = installEnabled && isValidToDownload,
                         modifier = Modifier.weight(1f),
-                        onClick = onDownloadInstallClick,
+                        onClick = {
+                            // Stop heavy operations first
+                            appSizeDisplayed = false
+                            onDownloadInstallClick()
+                        },
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         contentPadding = PaddingValues(16.dp)
@@ -1262,19 +1312,15 @@ private fun AppScreenContent(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = if (isInstalled) {
-                                            StorageUtils.formatBinarySize(
-                                                StorageUtils.getFolderSize(SteamService.getAppDirPath(appInfo.id))
-                                            )
-                                        } else {
-                                            val depots = SteamService.getDownloadableDepots(appInfo.id)
-                                            val downloadBytes = depots.values.sumOf { it.manifests["public"]?.download ?: 0L }
-                                            val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0L }
-                                            "${StorageUtils.formatBinarySize(installBytes)}"
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                    )
+                                    // Show skeleton while calculating disk size, otherwise show actual text
+                                    if (isInstalled && (appSizeOnDisk.isEmpty() || appSizeOnDisk == " ...")) {
+                                        SkeletonText(lines = 1, lineHeight = 20)
+                                    } else {
+                                        Text(
+                                            text = appSizeOnDisk,
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        )
+                                    }
                                 }
                             }
 

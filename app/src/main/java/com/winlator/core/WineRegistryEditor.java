@@ -13,7 +13,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Locale;
+import java.util.function.ToIntFunction;
 
 public class WineRegistryEditor implements Closeable {
     private final File file;
@@ -24,9 +27,11 @@ public class WineRegistryEditor implements Closeable {
     private String lastParentKey = "";
 
     public static class Location {
+        public final int end;
+        public int mbCount;
         public final int offset;
         public final int start;
-        public final int end;
+        private Object tag;
 
         public Location(int offset, int start, int end) {
             this.offset = offset;
@@ -35,7 +40,23 @@ public class WineRegistryEditor implements Closeable {
         }
 
         public int length() {
-            return end - start;
+            return this.end - this.start;
+        }
+
+        public String toString() {
+            return this.offset + "," + this.start + "," + this.end;
+        }
+
+        public int[] toIntArray() {
+            return new int[]{this.offset, this.start, this.end, this.mbCount};
+        }
+
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Location)) {
+                return false;
+            }
+            Location other = (Location) obj;
+            return this.offset == other.offset && this.start == other.start && this.end == other.end;
         }
     }
 
@@ -150,7 +171,24 @@ public class WineRegistryEditor implements Closeable {
     }
 
     public void setStringValue(String key, String name, String value) {
-        setRawValue(key, name, value != null ? "\""+escape(value)+"\"" : "\"\"");
+        String str;
+        if (value != null) {
+            str = "\"" + escape(value) + "\"";
+        } else {
+            str = "\"\"";
+        }
+        setRawValue(key, name, str);
+    }
+
+    public void setStringValues(String key, String[]... items) {
+        String[][] escapedItems = new String[items.length][];
+        for (int i = 0; i < items.length; i++) {
+            String[] strArr = new String[2];
+            strArr[0] = items[i][0];
+            strArr[1] = items[i][1] != null ? "\"" + escape(items[i][1]) + "\"" : "\"\"";
+            escapedItems[i] = strArr;
+        }
+        setRawValues(key, escapedItems);
     }
 
     public Integer getDwordValue(String key, String name) {
@@ -253,6 +291,123 @@ public class WineRegistryEditor implements Closeable {
             tempFile.renameTo(cloneFile);
         }
         else tempFile.delete();
+    }
+
+    private void setRawValues(String key, String[]... items) {
+        int i;
+        String str;
+        Location keyLocation = getKeyLocation(key);
+        if (keyLocation == null) {
+            if (this.createKeyIfNotExist) {
+                keyLocation = createKey(key);
+            } else {
+                return;
+            }
+        }
+        ArrayList<Location> valueLocations = new ArrayList<>();
+        int i2 = 0;
+        while (true) {
+            i = -1;
+            if (i2 >= items.length) {
+                break;
+            }
+            Location valueLocation = getValueLocation(keyLocation, items[i2][0]);
+            if (valueLocation == null) {
+                valueLocation = new Location(0, (Integer.MAX_VALUE - items.length) + i2, -1);
+            }
+            valueLocation.tag = items[i2];
+            valueLocations.add(valueLocation);
+            i2++;
+        }
+        valueLocations.sort(Comparator.comparingInt(new ToIntFunction() {
+            @Override
+            public final int applyAsInt(Object obj) {
+                return ((WineRegistryEditor.Location) obj).start;
+            }
+        }));
+        char[] buffer = new char[65536];
+        boolean success = false;
+        File tempFile = FileUtils.createTempFile(this.file.getParentFile(), FileUtils.getBasename(this.file.getPath()));
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(this.cloneFile), 65536);
+            try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile), 65536);
+                int position = 0;
+                try {
+                    Iterator<Location> it = valueLocations.iterator();
+                    while (it.hasNext()) {
+                        Location valueLocation2 = it.next();
+                        if (valueLocation2.end != i) {
+                            int i3 = position;
+                            while (true) {
+                                int i4 = valueLocation2.start;
+                                if (i3 >= i4) {
+                                    break;
+                                }
+                                int length = Math.min(buffer.length, i4 - i3);
+                                reader.read(buffer, 0, length);
+                                writer.write(buffer, 0, length);
+                                position += length;
+                                i3 += length;
+                            }
+                            writer.write(((String[]) valueLocation2.tag)[1]);
+                            reader.skip(valueLocation2.length());
+                            position += valueLocation2.length();
+                            i = -1;
+                        }
+                    }
+                    int i5 = position;
+                    while (true) {
+                        int i6 = keyLocation.end;
+                        if (i5 >= i6) {
+                            break;
+                        }
+                        int length2 = Math.min(buffer.length, i6 - i5);
+                        reader.read(buffer, 0, length2);
+                        writer.write(buffer, 0, length2);
+                        i5 += length2;
+                    }
+                    Iterator<Location> it2 = valueLocations.iterator();
+                    while (it2.hasNext()) {
+                        Location valueLocation3 = it2.next();
+                        if (valueLocation3.end == -1) {
+                            String[] item = (String[]) valueLocation3.tag;
+                            StringBuilder sb = new StringBuilder();
+                            sb.append("\n");
+                            if (item[0] != null) {
+                                str = "\"" + escape(item[0]) + "\"";
+                            } else {
+                                str = "@";
+                            }
+                            sb.append(str);
+                            sb.append("=");
+                            sb.append(item[1]);
+                            writer.write(sb.toString());
+                        }
+                    }
+                    while (true) {
+                        int length3 = reader.read(buffer);
+                        if (length3 == -1) {
+                            break;
+                        } else {
+                            writer.write(buffer, 0, length3);
+                        }
+                    }
+                    success = true;
+                    writer.close();
+                    reader.close();
+                } finally {
+                }
+            } finally {
+            }
+        } catch (IOException e) {
+        }
+        if (success) {
+            this.modified = true;
+            tempFile.renameTo(this.cloneFile);
+        } else {
+            tempFile.delete();
+        }
     }
 
     public void removeValue(String key, String name) {

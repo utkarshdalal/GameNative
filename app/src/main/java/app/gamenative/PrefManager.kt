@@ -191,6 +191,13 @@ object PrefManager {
             setPref(SHOW_FPS, value)
         }
 
+    private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
+    var launchRealSteam: Boolean
+        get() = getPref(LAUNCH_REAL_STEAM, false)
+        set(value) {
+            setPref(LAUNCH_REAL_STEAM, value)
+        }
+
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String
         get() = getPref(CPU_LIST, Container.getFallbackCPUList())

@@ -13,6 +13,8 @@ import com.winlator.core.NetworkHelper;
 import com.winlator.xenvironment.EnvironmentComponent;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 public class NetworkInfoUpdateComponent extends EnvironmentComponent {
     private BroadcastReceiver broadcastReceiver;
@@ -21,32 +23,19 @@ public class NetworkInfoUpdateComponent extends EnvironmentComponent {
     public void start() {
         Log.d("NetworkInfoUpdateComponent", "Starting...");
         Context context = environment.getContext();
-        final ConnectivityManager connectivityManager = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
         final NetworkHelper networkHelper = new NetworkHelper(context);
-        updateAdapterInfoFile(0, 0, 0);
-
-        broadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                int ipAddress = 0;
-                int netmask = 0;
-                int gateway = 0;
-
-                NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-                if (networkInfo != null && networkInfo.isAvailable() && networkInfo.isConnected() && networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
-                    ipAddress = networkHelper.getIpAddress();
-                    netmask = networkHelper.getNetmask();
-                    gateway = networkHelper.getGateway();
-                }
-
-                updateAdapterInfoFile(ipAddress, netmask, gateway);
-                updateEtcHostsFile(ipAddress);
+        updateIFAddrsFile(networkHelper.getIFAddresses());
+        updateEtcHostsFile(networkHelper.getIPv4Address());
+        this.broadcastReceiver = new BroadcastReceiver() { // from class: com.winlator.xenvironment.components.NetworkInfoUpdateComponent.1
+            @Override // android.content.BroadcastReceiver
+            public void onReceive(Context context2, Intent intent) {
+                NetworkInfoUpdateComponent.this.updateIFAddrsFile(networkHelper.getIFAddresses());
+                NetworkInfoUpdateComponent.this.updateEtcHostsFile(networkHelper.getIPv4Address());
             }
         };
-
         IntentFilter filter = new IntentFilter();
         filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        context.registerReceiver(broadcastReceiver, filter);
+        context.registerReceiver(this.broadcastReceiver, filter);
     }
 
     @Override
@@ -67,9 +56,26 @@ public class NetworkInfoUpdateComponent extends EnvironmentComponent {
         FileUtils.writeString(file, "Android Wi-Fi Adapter,"+NetworkHelper.formatIpAddress(ipAddress)+","+NetworkHelper.formatNetmask(netmask)+","+NetworkHelper.formatIpAddress(gateway));
     }
 
-    private void updateEtcHostsFile(int ipAddress) {
-        String ip = ipAddress != 0 ? NetworkHelper.formatIpAddress(ipAddress) : "127.0.0.1";
+    public void updateIFAddrsFile(List<NetworkHelper.IFAddress> ifAddresses) {
+        File file = new File(environment.getImageFs().getTmpDir(), "ifaddrs");
+        String content = "";
+        if (!ifAddresses.isEmpty()) {
+            for (NetworkHelper.IFAddress ifAddress : ifAddresses) {
+                StringBuilder sb = new StringBuilder();
+                sb.append(content);
+                sb.append(!content.isEmpty() ? "\n" : "");
+                sb.append(ifAddress.toString());
+                content = sb.toString();
+            }
+        } else {
+            content = new NetworkHelper.IFAddress().toString();
+        }
+        FileUtils.writeString(file, content);
+    }
+
+    public void updateEtcHostsFile(String ipAddress) {
+        String ip = ipAddress != null ? ipAddress : "127.0.0.1";
         File file = new File(environment.getImageFs().getRootDir(), "etc/hosts");
-        FileUtils.writeString(file, ip+"\tlocalhost\n");
+        FileUtils.writeString(file, ip + "\tlocalhost\n");
     }
 }

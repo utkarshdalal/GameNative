@@ -3,6 +3,8 @@ package app.gamenative.ui.screen.library.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,28 +20,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.debounce
-import timber.log.Timber
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.ui.platform.LocalContext
-import app.gamenative.PrefManager
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -53,19 +52,20 @@ internal fun LibrarySearchBar(
     onItemClick: (Int) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    // Debouncer: Scroll to the top after a short amount of time after typing quickly
     val internalSearchText = remember { MutableStateFlow(state.searchQuery) }
-    LaunchedEffect(Unit) {
-        internalSearchText.debounce(500).collect {
-            Timber.d("Debounced: Scrolling to top")
-            listState.scrollToItem(0)
-        }
-    }
+
+    val scope = rememberCoroutineScope()
 
     // Lambda function to provide new test to both onSearchQuery and internalSearchText
     val onSearchText: (String) -> Unit = {
         onSearchQuery(it)
-        internalSearchText.value = it
+        if (internalSearchText.value != it) {
+            // Input text changed, so update and scroll to top
+            internalSearchText.value = it
+            scope.launch {
+                listState.scrollToItem(0)
+            }
+        }
     }
 
     // Modern search field with rounded corners

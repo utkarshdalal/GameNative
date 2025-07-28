@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,7 +24,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,11 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.data.LibraryItem
+import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
-import app.gamenative.utils.StorageUtils
 
 @Composable
 internal fun AppItem(
@@ -52,12 +58,13 @@ internal fun AppItem(
         SteamService.isAppInstalled(appInfo.appId)
     }
 
-    val gameSize = remember(appInfo.appId) {
+    var appSizeOnDisk by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
         if (isInstalled) {
-            StorageUtils.formatBinarySize(
-                StorageUtils.getFolderSize(SteamService.getAppDirPath(appInfo.appId))
-            )
-        } else ""
+            appSizeOnDisk = "..."
+            DownloadService.getSizeOnDiskDisplay(appInfo.appId) {  appSizeOnDisk = it }
+        }
     }
 
     // Modern card-style item with gradient hover effect
@@ -107,10 +114,9 @@ internal fun AppItem(
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
-                Row(
+                Column(
                     modifier = Modifier.padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Status indicator: Installing / Installed / Not installed
                     val statusText = when {
@@ -148,24 +154,19 @@ internal fun AppItem(
                         }
                     }
 
-                    // Only show game size for installed games
+                    // Game size on its own line for installed games
                     if (isInstalled) {
                         Text(
-                            text = " • ",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Text(
-                            text = gameSize,
+                            text = "$appSizeOnDisk",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Family share indicator if needed
+                    // Family share indicator on its own line if needed
                     if (appInfo.isShared) {
                         Text(
-                            text = " • Family Shared",
+                            text = "Family Shared",
                             style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -198,7 +199,7 @@ internal fun AppItem(
  ***********/
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
-@Preview
+@Preview(device = "spec:width=1920px,height=1080px,dpi=440") // Odin2 Mini
 @Composable
 private fun Preview_AppItem() {
     PluviaTheme {

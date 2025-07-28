@@ -548,6 +548,15 @@ fun ContainerConfigDialog(
                                     config = config.copy(showFPS = it)
                                 },
                             )
+                            SettingsSwitch(
+                                colors = settingsTileColorsAlt(),
+                                title = { Text(text = "Launch Steam Client (Beta)") },
+                                subtitle = { Text(text = "Reduces performance and significantly slows down launch\nAllows online play and fixes DRM and controller issues\nTo use, first open container, launch C:\\Program Files (x86)\\Steam\\Steam.exe, install and sign in") },
+                                state = config.launchRealSteam,
+                                onCheckedChange = {
+                                    config = config.copy(launchRealSteam = it)
+                                },
+                            )
                         }
                         SettingsGroup(title = { Text(text = "Controller") }) {
                             if (!default) {

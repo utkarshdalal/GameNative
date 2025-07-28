@@ -51,6 +51,7 @@ object ContainerUtils {
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
             showFPS = PrefManager.showFps,
+            launchRealSteam = PrefManager.launchRealSteam,
             cpuList = PrefManager.cpuList,
             cpuListWoW64 = PrefManager.cpuListWoW64,
             wow64Mode = PrefManager.wow64Mode,
@@ -82,6 +83,7 @@ object ContainerUtils {
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
         PrefManager.showFps = containerData.showFPS
+        PrefManager.launchRealSteam = containerData.launchRealSteam
         PrefManager.cpuList = containerData.cpuList
         PrefManager.cpuListWoW64 = containerData.cpuListWoW64
         PrefManager.wow64Mode = containerData.wow64Mode
@@ -152,6 +154,7 @@ object ContainerUtils {
             execArgs = container.execArgs,
             executablePath = container.executablePath,
             showFPS = container.isShowFPS,
+            launchRealSteam = container.isLaunchRealSteam,
             cpuList = container.cpuList,
             cpuListWoW64 = container.cpuListWoW64,
             wow64Mode = container.isWoW64Mode,
@@ -219,6 +222,7 @@ object ContainerUtils {
         }
         container.executablePath = containerData.executablePath
         container.isShowFPS = containerData.showFPS
+        container.isLaunchRealSteam = containerData.launchRealSteam
         container.cpuList = containerData.cpuList
         container.cpuListWoW64 = containerData.cpuListWoW64
         container.isWoW64Mode = containerData.wow64Mode
@@ -301,6 +305,7 @@ object ContainerUtils {
                 drives = drives,
                 execArgs = PrefManager.execArgs,
                 showFPS = PrefManager.showFps,
+                launchRealSteam = PrefManager.launchRealSteam,
                 wow64Mode = PrefManager.wow64Mode,
                 startupSelection = PrefManager.startupSelection.toByte(),
                 box86Version = PrefManager.box86Version,
