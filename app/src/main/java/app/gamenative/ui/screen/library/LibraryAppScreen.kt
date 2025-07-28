@@ -124,8 +124,47 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import app.gamenative.enums.SaveLocation
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.compositeOver
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
+
+@Composable
+private fun SkeletonText(
+    modifier: Modifier = Modifier,
+    lines: Int = 1,
+    lineHeight: Int = 16
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+
+    Column(modifier = modifier) {
+        repeat(lines) { index ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(if (index == lines - 1) 0.7f else 1f)
+                    .height(lineHeight.dp)
+                    .background(
+                        color = color,
+                        shape = RoundedCornerShape(4.dp)
+                    )
+            )
+            if (index < lines - 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -824,7 +863,7 @@ private fun AppScreenContent(
             appSizeOnDisk = " ..."
 
             DownloadService.getSizeOnDiskDisplay(appInfo.id) {
-                appSizeOnDisk = " ($it on disk)"
+                appSizeOnDisk = "$it"
             }
         }
     }
@@ -1273,10 +1312,15 @@ private fun AppScreenContent(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = DownloadService.getSizeFromStoreDisplay(appInfo.id) + appSizeOnDisk,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                    )
+                                    // Show skeleton while calculating disk size, otherwise show actual text
+                                    if (isInstalled && (appSizeOnDisk.isEmpty() || appSizeOnDisk == " ...")) {
+                                        SkeletonText(lines = 1, lineHeight = 20)
+                                    } else {
+                                        Text(
+                                            text = appSizeOnDisk,
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        )
+                                    }
                                 }
                             }
 

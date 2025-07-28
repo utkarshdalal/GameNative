@@ -114,10 +114,9 @@ internal fun AppItem(
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
-                FlowRow(
+                Column(
                     modifier = Modifier.padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Status indicator: Installing / Installed / Not installed
                     val statusText = when {
@@ -155,24 +154,22 @@ internal fun AppItem(
                         }
                     }
 
-                    // Only show game size for installed games
+                    // Game size on its own line for installed games
                     if (isInstalled) {
                         Text(
-                            text = "• $appSizeOnDisk",
+                            text = "$appSizeOnDisk",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Family share indicator if needed
+                    // Family share indicator on its own line if needed
                     if (appInfo.isShared) {
-                        Box(modifier = Modifier.align(Alignment.CenterVertically)) {
-                            Text(
-                                text = "• Family Shared",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
+                        Text(
+                            text = "Family Shared",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
                     }
                 }
             }
