@@ -203,13 +203,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
 
-        Log.d("GlibcProgramLauncherComponent", "About to add LD_PRELOAD!");
-
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
                         ())
             envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
-            Log.d("GlibcProgramLauncherComponent", "Added LD_PRELOAD! " + envVars.get("LD_PRELOAD"));
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 
@@ -297,7 +294,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         ImageFs imageFs = ImageFs.find(context);
         envVars.put("BOX64_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX64_DYNAREC", "1");
-//        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
+        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
 
         if (enableLogs) {
             envVars.put("BOX64_LOG", "1");

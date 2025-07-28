@@ -57,15 +57,12 @@ public abstract class WineUtils {
             if (!steamGameLink.exists()) {
                 FileUtils.symlink(gameDirectoryPath, steamGameLink.getAbsolutePath());
             }
-            
+
             // Create the steamapps folder and ACF manifest
             File steamappsDir = new File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamapps");
             if (!steamappsDir.exists()) {
                 steamappsDir.mkdirs();
             }
-            
-            // Extract appId from the container ID (assuming container ID == appId)
-            // createAppManifest(container.id, steamappsDir, gameName); // This line is removed
         }
     }
 

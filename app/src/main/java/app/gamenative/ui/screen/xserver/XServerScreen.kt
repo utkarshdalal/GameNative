@@ -426,7 +426,6 @@ fun XServerScreen(
                                         "\n\thasParent: ${window.parent != null}" +
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
-//                            assignTaskAffinity(window, getxServer().winHandler, taskAffinityMask, taskAffinityMaskWoW64)
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }
@@ -960,15 +959,6 @@ private fun setupXEnvironment(
             VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2)
         environment.addComponent(vortekRendererComponent)
     }
-
-//    val manager: RCManager = RCManager(context)
-//    manager.loadRCFiles()
-//    val rcfileId: Int = container.getRCFileId()
-//    val rcfile: RCFile? = manager.getRcfile(rcfileId)
-//    val file = File(container.rootDir, ".box64rc")
-//    val str = if (rcfile == null) "" else rcfile.generateBox86_64rc()
-//    FileUtils.writeString(file, str)
-//    envVars.put("BOX64_RCFILE", file.getAbsolutePath())
 
     guestProgramLauncherComponent.envVars = envVars
     guestProgramLauncherComponent.setTerminationCallback { status ->
