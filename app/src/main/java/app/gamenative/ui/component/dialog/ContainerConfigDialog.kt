@@ -111,6 +111,7 @@ fun ContainerConfigDialog(
         val turnipVersions = stringArrayResource(R.array.turnip_version_entries).toList()
         val virglVersions = stringArrayResource(R.array.virgl_version_entries).toList()
         val zinkVersions = stringArrayResource(R.array.zink_version_entries).toList()
+        val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
 
         var screenSizeIndex by rememberSaveable {
             val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
@@ -135,6 +136,7 @@ fun ContainerConfigDialog(
             return when (driverType) {
                 "turnip" -> turnipVersions
                 "virgl" -> virglVersions
+                "vortek" -> vortekVersions
                 else -> zinkVersions
             }
         }
