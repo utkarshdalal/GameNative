@@ -248,15 +248,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private var instance: SteamService? = null
 
-        const val DOWNLOAD_COMPLETE_MARKER = ".download_complete"
-
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
         /** Returns true if there is an incomplete download on disk (no complete marker). */
         fun hasPartialDownload(appId: Int): Boolean {
-            val dir = File(getAppDirPath(appId))
-            val marker = File(dir, DOWNLOAD_COMPLETE_MARKER)
-            return dir.exists() && !marker.exists()
+            val dirPath = getAppDirPath(appId)
+            return File(dirPath).exists() && !MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
         }
 
         private var syncInProgress: Boolean = false
