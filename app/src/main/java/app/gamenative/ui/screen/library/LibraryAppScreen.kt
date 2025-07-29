@@ -326,7 +326,7 @@ fun AppScreen(
                 val depots = SteamService.getDownloadableDepots(appId)
                 Timber.i("There are ${depots.size} depots belonging to $appId")
                 // TODO: get space available based on where user wants to install
-                val availableBytes = StorageUtils.getAvailableSpace(context.filesDir.absolutePath)
+                val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultAppInstallPath)
                 val availableSpace = StorageUtils.formatBinarySize(availableBytes)
                 // TODO: un-hardcode "public" branch
                 val downloadSize = StorageUtils.formatBinarySize(
