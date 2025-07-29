@@ -124,6 +124,7 @@ import androidx.compose.runtime.setValue
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SaveLocation
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.utils.MarkerUtils
 
@@ -1319,6 +1320,33 @@ private fun AppScreenContent(
                                             Text(
                                                 text = appSizeOnDisk,
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Location item
+                            if (isInstalled) {
+                                item (span = { GridItemSpan(maxLineSpan) }) {
+
+                                    Column {
+                                        Text(
+                                            text = "Location",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
+                                        ) {
+                                            Text(
+                                                text = getAppDirPath(appInfo.id),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                             )
                                         }
                                     }
