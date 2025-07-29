@@ -298,6 +298,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "staging").pathString
             }
 
+        val defaultStoragePath: String
+            get() {
+                return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
+                    // We still have an SD card file structure as expected
+                    Timber.i("External storage path is " + PrefManager.externalStoragePath)
+                    PrefManager.externalStoragePath
+                } else {
+                    if (instance != null) {
+                        return instance!!.dataDir.path
+                    }
+                    return ""
+                }
+            }
+
         val defaultAppInstallPath: String
             get() {
                 return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
