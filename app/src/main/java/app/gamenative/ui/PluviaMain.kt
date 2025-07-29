@@ -464,8 +464,8 @@ fun PluviaMain(
                     onChat = {
                         navController.navigate(PluviaScreen.Chat.route(it))
                     },
-                    onSettings = {
-                        navController.navigate(PluviaScreen.Settings.route)
+                    onNavigateRoute = {
+                        navController.navigate(it)
                     },
                     onLogout = {
                         SteamService.logOut()

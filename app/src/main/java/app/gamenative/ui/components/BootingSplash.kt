@@ -1,6 +1,7 @@
 package app.gamenative.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -27,7 +28,7 @@ fun BootingSplash(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(),
+        enter = fadeIn(animationSpec = tween(durationMillis = 99)),
         exit = fadeOut()
     ) {
         Box(

@@ -51,7 +51,7 @@ import java.util.EnumSet
 fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
     onClickPlay: (Int, Boolean) -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -67,7 +67,7 @@ fun HomeLibraryScreen(
         onIsSearching = viewModel::onIsSearching,
         onSearchQuery = viewModel::onSearchQuery,
         onClickPlay = onClickPlay,
-        onSettings = onSettings,
+        onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
     )
 }
@@ -84,7 +84,7 @@ private fun LibraryScreenContent(
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
     onClickPlay: (Int, Boolean) -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     var selectedAppId by remember { mutableStateOf<Int?>(null) }
@@ -109,7 +109,7 @@ private fun LibraryScreenContent(
                 onModalBottomSheet = onModalBottomSheet,
                 onIsSearching = onIsSearching,
                 onSearchQuery = onSearchQuery,
-                onSettings = onSettings,
+                onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
                 onNavigate = { appId -> selectedAppId = appId }
             )
@@ -172,7 +172,7 @@ private fun Preview_LibraryScreenContent() {
                 state = state.copy(modalBottomSheet = !currentState)
             },
             onClickPlay = { _, _ -> },
-            onSettings = {},
+            onNavigateRoute = {},
             onLogout = {},
         )
     }

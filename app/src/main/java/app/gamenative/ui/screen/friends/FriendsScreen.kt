@@ -128,7 +128,7 @@ fun FriendsScreen(
     viewModel: FriendsViewModel = hiltViewModel(),
     onChat: (Long) -> Unit,
     onLogout: () -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
 ) {
     val navigator = rememberListDetailPaneScaffoldNavigator<Unit>()
     val state by viewModel.friendsState.collectAsStateWithLifecycle()
@@ -146,7 +146,7 @@ fun FriendsScreen(
         onHeaderAction = viewModel::onHeaderAction,
         onLogout = onLogout,
         onNickName = viewModel::onNickName,
-        onSettings = onSettings,
+        onNavigateRoute = onNavigateRoute,
         onAlias = viewModel::onAlias,
     )
 }
@@ -164,7 +164,7 @@ private fun FriendsScreenContent(
     onHeaderAction: (String) -> Unit,
     onLogout: () -> Unit,
     onNickName: (String) -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onAlias: () -> Unit,
 ) {
     val listState = rememberLazyListState() // Hoisted high to preserve state
@@ -203,7 +203,7 @@ private fun FriendsScreenContent(
                     },
                     onHeaderAction = onHeaderAction,
                     onLogout = onLogout,
-                    onSettings = onSettings,
+                    onNavigateRoute = onNavigateRoute,
                 )
             }
         },
@@ -237,7 +237,7 @@ private fun FriendsListPane(
     onFriendClick: (SteamFriend) -> Unit,
     onHeaderAction: (String) -> Unit,
     onLogout: () -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
@@ -246,7 +246,7 @@ private fun FriendsListPane(
                 title = { Text(text = "Friends") },
                 actions = {
                     AccountButton(
-                        onSettings = onSettings,
+                        onNavigateRoute = onNavigateRoute,
                         onLogout = onLogout,
                     )
                 },
@@ -807,7 +807,7 @@ private fun Preview_FriendsScreenContent(
                 onFriendClick = { },
                 onHeaderAction = { },
                 onBack = { },
-                onSettings = { },
+                onNavigateRoute = { },
                 onLogout = { },
                 onChat = { },
                 onBlock = { },

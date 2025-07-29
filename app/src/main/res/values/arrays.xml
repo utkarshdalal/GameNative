@@ -33,6 +33,9 @@
     <string-array name="zink_version_entries">
         <item>22.2.5</item>
     </string-array>
+    <string-array name="vortek_version_entries">
+        <item>2.0</item>
+    </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>

@@ -39,14 +39,14 @@ import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
 fun HomeDownloadsScreen(
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     val onBackPressedDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
     DownloadsScreenContent(
         onBack = { onBackPressedDispatcher?.onBackPressed() },
-        onSettings = onSettings,
+        onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
     )
 }
@@ -55,7 +55,7 @@ fun HomeDownloadsScreen(
 @Composable
 private fun DownloadsScreenContent(
     onBack: () -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     val snackbarHost = remember { SnackbarHostState() }
@@ -78,7 +78,7 @@ private fun DownloadsScreenContent(
                         navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, 1L)
                     },
                     onBack = onBack,
-                    onSettings = onSettings,
+                    onNavigateRoute = onNavigateRoute,
                     onLogout = onLogout,
                 )
             }
@@ -102,7 +102,7 @@ private fun DownloadsScreenPane(
     snackbarHost: SnackbarHostState,
     onClick: () -> Unit,
     onBack: () -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     Scaffold(
@@ -112,7 +112,7 @@ private fun DownloadsScreenPane(
                 title = { Text(text = "Downloads") },
                 actions = {
                     AccountButton(
-                        onSettings = onSettings,
+                        onNavigateRoute = onNavigateRoute,
                         onLogout = onLogout,
                     )
                 },
@@ -197,7 +197,7 @@ private fun Preview_DownloadsScreenContent() {
         Surface {
             DownloadsScreenContent(
                 onBack = {},
-                onSettings = {},
+                onNavigateRoute = {},
                 onLogout = {},
             )
         }

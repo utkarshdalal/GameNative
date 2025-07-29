@@ -162,6 +162,7 @@ class LibraryViewModel @Inject constructor(
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
             val pagedSequence = filteredList.take(endIndex)
+            val thisSteamId: Int = SteamService.userSteamId?.accountID?.toInt() ?: 0
             // Map to UI model
             val filteredListPage = pagedSequence
                 .mapIndexed { idx, item ->
@@ -170,7 +171,7 @@ class LibraryViewModel @Inject constructor(
                         appId = item.id,
                         name = item.name,
                         iconHash = item.clientIconHash,
-                        isShared = !item.ownerAccountId.contains(SteamService.userSteamId!!.accountID.toInt()),
+                        isShared = (thisSteamId != 0 && !item.ownerAccountId.contains(thisSteamId)),
                     )
                 }
                 .toList()

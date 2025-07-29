@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.utils.getAvatarURL
@@ -44,7 +45,7 @@ fun ProfileDialog(
     avatarHash: String,
     state: EPersonaState,
     onStatusChange: (EPersonaState) -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -102,7 +103,7 @@ fun ProfileDialog(
 
                 /* Action Buttons */
                 Spacer(modifier = Modifier.height(16.dp))
-                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onSettings) {
+                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }) {
                     Icon(imageVector = Icons.Default.Settings, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                     Text(text = "Settings")
@@ -133,7 +134,7 @@ private fun Preview_ProfileDialog() {
             avatarHash = "",
             state = EPersonaState.Online,
             onStatusChange = {},
-            onSettings = {},
+            onNavigateRoute = {},
             onLogout = {},
             onDismiss = {},
         )

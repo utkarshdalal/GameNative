@@ -72,6 +72,10 @@ public class KeyValueSet implements Iterable<String[]> {
         }
     }
 
+    public int getInt(String key) {
+        return getInt(key, 0);
+    }
+
     public int getInt(String key, int fallback) {
         try {
             String value = get(key);

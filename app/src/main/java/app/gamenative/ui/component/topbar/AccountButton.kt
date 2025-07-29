@@ -28,7 +28,7 @@ import timber.log.Timber
 
 @Composable
 fun AccountButton(
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -64,8 +64,8 @@ fun AccountButton(
                 SteamService.setPersonaState(it)
             }
         },
-        onSettings = {
-            onSettings()
+        onNavigateRoute = {
+            onNavigateRoute(it)
             showDialog = false
         },
         onLogout = {
@@ -97,7 +97,7 @@ private fun Preview_AccountButton() {
             title = { Text("Top App Bar") },
             actions = {
                 AccountButton(
-                    onSettings = {},
+                    onNavigateRoute = {},
                     onLogout = {},
                 )
             },

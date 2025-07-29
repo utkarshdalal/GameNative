@@ -1,8 +1,10 @@
 package com.winlator.xenvironment.components;
 
+import android.content.Context;
 import androidx.annotation.Keep;
 import com.winlator.contentdialog.VortekConfigDialog;
 import com.winlator.core.GPUHelper;
+import com.winlator.core.GeneralComponents;
 import com.winlator.core.KeyValueSet;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
@@ -26,10 +28,13 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
     private final Options options;
     private final UnixSocketConfig socketConfig;
     private final XServer xServer;
+    private Context context;
 
     private native long createVkContext(int i, Options options);
 
     private native void destroyVkContext(long j);
+
+    private native void initVulkanWrapper(String str, String str2);
 
     static {
         System.loadLibrary("vortekrenderer");
@@ -37,10 +42,13 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
 
     public static class Options {
         public int vkMaxVersion = VortekRendererComponent.VK_MAX_VERSION;
-        public int maxDeviceMemory = 4096;
+        public short maxDeviceMemory = 4096;
+        public short imageCacheSize = 256;
+        public byte resourceMemoryType = 0;
         public String[] exposedDeviceExtensions = null;
+        public String libvulkanPath = null;
 
-        public static Options fromKeyValueSet(KeyValueSet config) {
+        public static Options fromKeyValueSet(Context context, KeyValueSet config) {
             if (config == null || config.isEmpty()) {
                 return new Options();
             }
@@ -55,15 +63,22 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
                 String[] parts = vkMaxVersion.split("\\.");
                 options.vkMaxVersion = GPUHelper.vkMakeVersion(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), 128);
             }
-            options.maxDeviceMemory = config.getInt("maxDeviceMemory", 4096);
+            options.maxDeviceMemory = (short) config.getInt("maxDeviceMemory", 4096);
+            options.imageCacheSize = (short) config.getInt("imageCacheSize", 256);
+            options.resourceMemoryType = (byte) config.getInt("resourceMemoryType");
+            String adrenotoolsDriver = config.get("adrenotoolsDriver");
+            options.libvulkanPath = GeneralComponents.getDefinitivePath(GeneralComponents.Type.ADRENOTOOLS_DRIVER, context, adrenotoolsDriver);
             return options;
         }
     }
 
-    public VortekRendererComponent(XServer xServer, UnixSocketConfig socketConfig, Options options) {
+    public VortekRendererComponent(XServer xServer, UnixSocketConfig socketConfig, Options options, Context context) {
         this.xServer = xServer;
         this.socketConfig = socketConfig;
         this.options = options;
+        this.context = context;
+        String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
+        initVulkanWrapper(nativeLibraryDir, options.libvulkanPath);
     }
 
     @Override // com.winlator.xenvironment.EnvironmentComponent

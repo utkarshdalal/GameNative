@@ -22,7 +22,7 @@ fun HomeScreen(
     onClickExit: () -> Unit,
     onClickPlay: (Int, Boolean) -> Unit,
     onLogout: () -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
 
@@ -34,7 +34,7 @@ fun HomeScreen(
     // Always show the Library screen
     HomeLibraryScreen(
         onClickPlay = onClickPlay,
-        onSettings = onSettings,
+        onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
     )
 }
@@ -54,7 +54,7 @@ private fun Preview_HomeScreenContent() {
             onChat = {},
             onClickPlay = { _, _ -> },
             onLogout = {},
-            onSettings = {},
+            onNavigateRoute = {},
             onClickExit = {}
         )
     }

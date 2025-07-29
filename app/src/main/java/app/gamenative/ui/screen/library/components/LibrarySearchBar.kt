@@ -45,11 +45,7 @@ import kotlinx.coroutines.launch
 internal fun LibrarySearchBar(
     state: LibraryState,
     listState: LazyListState,
-    onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
-    onSettings: () -> Unit,
-    onLogout: () -> Unit,
-    onItemClick: (Int) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val internalSearchText = remember { MutableStateFlow(state.searchQuery) }
@@ -147,11 +143,7 @@ private fun Preview_LibrarySearchBar() {
                     },
                 ),
                 listState = rememberLazyListState(),
-                onIsSearching = { },
                 onSearchQuery = { },
-                onSettings = { },
-                onLogout = { },
-                onItemClick = { },
             )
         }
     }

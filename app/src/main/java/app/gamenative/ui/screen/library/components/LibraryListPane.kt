@@ -71,7 +71,7 @@ internal fun LibraryListPane(
     onLogout: () -> Unit,
     onNavigate: (Int) -> Unit,
     onSearchQuery: (String) -> Unit,
-    onSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
 ) {
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val snackBarHost = remember { SnackbarHostState() }
@@ -141,11 +141,7 @@ internal fun LibraryListPane(
                             LibrarySearchBar(
                                 state = state,
                                 listState = listState,
-                                onIsSearching = onIsSearching,
                                 onSearchQuery = onSearchQuery,
-                                onSettings = onSettings,
-                                onLogout = onLogout,
-                                onItemClick = onNavigate,
                             )
                         }
                     }
@@ -158,7 +154,7 @@ internal fun LibraryListPane(
                             .padding(8.dp)
                     ) {
                         AccountButton(
-                            onSettings = onSettings,
+                            onNavigateRoute = onNavigateRoute,
                             onLogout = onLogout
                         )
                     }
@@ -175,11 +171,7 @@ internal fun LibraryListPane(
                     LibrarySearchBar(
                         state = state,
                         listState = listState,
-                        onIsSearching = onIsSearching,
                         onSearchQuery = onSearchQuery,
-                        onSettings = onSettings,
-                        onLogout = onLogout,
-                        onItemClick = onNavigate,
                     )
                 }
             }
@@ -296,7 +288,7 @@ private fun Preview_LibraryListPane() {
                 },
                 onIsSearching = { },
                 onSearchQuery = { },
-                onSettings = { },
+                onNavigateRoute = { },
                 onLogout = { },
                 onNavigate = { },
             )

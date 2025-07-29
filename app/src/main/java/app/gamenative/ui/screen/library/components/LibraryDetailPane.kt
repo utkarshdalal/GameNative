@@ -47,7 +47,7 @@ internal fun LibraryDetailPane(
                 onLogout = {},
                 onNavigate = {},
                 onSearchQuery = {},
-                onSettings = {},
+                onNavigateRoute = {},
             )
         } else {
             AppScreen(

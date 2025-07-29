@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
+import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
@@ -124,9 +125,13 @@ object SteamUtils {
      * Replaces any existing `steam_api.dll` or `steam_api64.dll` in the app directory
      * with our pipe dll stored in assets
      */
-    fun replaceSteamApi(context: Context, appId: Int) {
-        Timber.i("Starting replaceSteamApi for appId: $appId")
+    suspend fun replaceSteamApi(context: Context, appId: Int) {
         val appDirPath = SteamService.getAppDirPath(appId)
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
+            return
+        }
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+        Timber.i("Starting replaceSteamApi for appId: $appId")
         Timber.i("Checking directory: $appDirPath")
         var replaced32 = false
         var replaced64 = false
@@ -195,6 +200,7 @@ object SteamUtils {
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, appId)
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
 
     /**
@@ -347,6 +353,10 @@ object SteamUtils {
     fun restoreSteamApi(context: Context, appId: Int) {
         Timber.i("Starting restoreSteamApi for appId: $appId")
         val appDirPath = SteamService.getAppDirPath(appId)
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
+            return
+        }
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         Timber.i("Checking directory: $appDirPath")
         var restored32 = false
         var restored64 = false
@@ -400,6 +410,7 @@ object SteamUtils {
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, appId)
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
     /**
