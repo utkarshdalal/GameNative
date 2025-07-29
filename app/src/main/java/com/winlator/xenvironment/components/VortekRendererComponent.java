@@ -10,7 +10,6 @@ import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
 import com.winlator.widget.XServerView;
 import com.winlator.xconnector.Client;
-import com.winlator.xconnector.Client;
 import com.winlator.xconnector.ConnectionHandler;
 import com.winlator.xconnector.RequestHandler;
 import com.winlator.xconnector.UnixSocketConfig;
@@ -184,9 +183,5 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
         if (texture != null) {
             texture.destroy();
         }
-    }
-
-    public void setContext(Context context){
-        this.context = context;
     }
 }
