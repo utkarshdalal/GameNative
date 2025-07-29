@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import app.gamenative.Constants
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -35,8 +34,6 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
 import com.posthog.PostHog
 import com.winlator.alsaserver.ALSAClient
-import com.winlator.box86_64.rc.RCFile
-import com.winlator.box86_64.rc.RCManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.contentdialog.NavigationDialog
@@ -373,7 +370,7 @@ fun XServerScreen(
                 win32AppWorkarounds = Win32AppWorkarounds(
                     getxServer(),
                     taskAffinityMask,
-                    taskAffinityMaskWoW64
+                    taskAffinityMaskWoW64,
                 )
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
@@ -861,7 +858,7 @@ private fun setupXEnvironment(
         if (enableWineDebug && wineDebugChannels.isNotEmpty())
             "+" + wineDebugChannels.replace(",", ",+")
         else
-            "-all"
+            "-all",
     )
     // capture debug output to file if either Wine or Box86/64 logging is enabled
     if (enableWineDebug || enableBox86Logs) {
@@ -954,10 +951,8 @@ private fun setupXEnvironment(
         )
     } else if (xServerState.value.graphicsDriver == "vortek") {
         Timber.i("Adding VortekRendererComponent to Environment")
-        val options2: VortekRendererComponent.Options? = VortekRendererComponent.Options.fromKeyValueSet(KeyValueSet(container.getGraphicsDriverConfig()))
-        val vortekRendererComponent: VortekRendererComponent =
-            VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2)
-        environment.addComponent(vortekRendererComponent)
+        val options2: VortekRendererComponent.Options? = VortekRendererComponent.Options.fromKeyValueSet(context, KeyValueSet(container.getGraphicsDriverConfig()))
+        environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
     guestProgramLauncherComponent.envVars = envVars
@@ -1019,7 +1014,7 @@ private fun getWineStartCommand(
     bootToContainer: Boolean,
     appLaunchInfo: LaunchInfo?,
     envVars: EnvVars,
-    guestProgramLauncherComponent: GuestProgramLauncherComponent
+    guestProgramLauncherComponent: GuestProgramLauncherComponent,
 ): String {
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
@@ -1157,7 +1152,7 @@ private fun unpackExecutableFile(
                             rootDir.path + "/usr/local/bin/box64",
                             "wine",
                             "z:\\\\generate_interfaces_file.exe",
-                            "A:\\" + relDllPath.replace('/', '\\')
+                            "A:\\" + relDllPath.replace('/', '\\'),
                         )
                         Timber.i("Running generate_interfaces_file " + Arrays.toString(shellCommandArray))
 
@@ -1166,7 +1161,7 @@ private fun unpackExecutableFile(
                         val genProc = Runtime.getRuntime().exec(
                             shellCommandArray,
                             shellCommandEnvVars.toStringArray(),
-                            imageFs.getRootDir()
+                            imageFs.getRootDir(),
                         )
                         val genReader     = BufferedReader(InputStreamReader(genProc.inputStream))
                         val genErrReader  = BufferedReader(InputStreamReader(genProc.errorStream))
@@ -1181,7 +1176,7 @@ private fun unpackExecutableFile(
                                 Files.copy(
                                     origSteamInterfaces.toPath(),
                                     finalSteamInterfaces.toPath(),
-                                    StandardCopyOption.REPLACE_EXISTING
+                                    StandardCopyOption.REPLACE_EXISTING,
                                 )
                                 Timber.i("Copied steam_interfaces.txt to ${finalSteamInterfaces.absolutePath}")
                             } catch (ioe: IOException) {
@@ -1697,11 +1692,10 @@ private fun extractGraphicsDriverFiles(
         envVars.put("VORTEK_SERVER_PATH", imageFs.getRootDir().getPath() + UnixSocketConfig.VORTEK_SERVER_PATH)
         Timber.i("dxwrapper is " + dxwrapper)
         if (dxwrapper.contains("dxvk")) {
-            dxwrapperConfig.put("constantBufferRangeCheck", "1")
-            DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
+            envVars.put("WINE_D3D_CONFIG", "renderer=gdi")
         }
         if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-1.0.tzst", rootDir)
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.0.tzst", rootDir)
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
         }
     }
