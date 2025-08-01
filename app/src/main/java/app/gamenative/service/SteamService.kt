@@ -850,58 +850,60 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         suspend fun notifyRunningProcesses(vararg gameProcesses: GameProcessInfo) = withContext(Dispatchers.IO) {
             instance?.let { steamInstance ->
-                val gamesPlayed = gameProcesses.mapNotNull { gameProcess ->
-                    getAppInfoOf(gameProcess.appId)?.let { appInfo ->
-                        getPkgInfoOf(gameProcess.appId)?.let { pkgInfo ->
-                            appInfo.branches[gameProcess.branch]?.let { branch ->
-                                val processId = gameProcess.processes
-                                    .firstOrNull { it.parentIsSteam }
-                                    ?.processId
-                                    ?: gameProcess.processes.firstOrNull()?.processId
-                                    ?: 0
+                if (isConnected) {
+                    val gamesPlayed = gameProcesses.mapNotNull { gameProcess ->
+                        getAppInfoOf(gameProcess.appId)?.let { appInfo ->
+                            getPkgInfoOf(gameProcess.appId)?.let { pkgInfo ->
+                                appInfo.branches[gameProcess.branch]?.let { branch ->
+                                    val processId = gameProcess.processes
+                                        .firstOrNull { it.parentIsSteam }
+                                        ?.processId
+                                        ?: gameProcess.processes.firstOrNull()?.processId
+                                        ?: 0
 
-                                val userAccountId = userSteamId!!.accountID.toInt()
-                                GamePlayedInfo(
-                                    gameId = gameProcess.appId.toLong(),
-                                    processId = processId,
-                                    ownerId = if (pkgInfo.ownerAccountId.contains(userAccountId)) {
-                                        userAccountId
-                                    } else {
-                                        pkgInfo.ownerAccountId.first()
-                                    },
-                                    // TODO: figure out what this is and un-hardcode
-                                    launchSource = 100,
-                                    gameBuildId = branch.buildId.toInt(),
-                                    processIdList = gameProcess.processes,
-                                )
+                                    val userAccountId = userSteamId!!.accountID.toInt()
+                                    GamePlayedInfo(
+                                        gameId = gameProcess.appId.toLong(),
+                                        processId = processId,
+                                        ownerId = if (pkgInfo.ownerAccountId.contains(userAccountId)) {
+                                            userAccountId
+                                        } else {
+                                            pkgInfo.ownerAccountId.first()
+                                        },
+                                        // TODO: figure out what this is and un-hardcode
+                                        launchSource = 100,
+                                        gameBuildId = branch.buildId.toInt(),
+                                        processIdList = gameProcess.processes,
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                Timber.i(
-                    "GameProcessInfo:%s",
-                    gamesPlayed.joinToString("\n") { game ->
-                        """
+                    Timber.i(
+                        "GameProcessInfo:%s",
+                        gamesPlayed.joinToString("\n") { game ->
+                            """
                         |   processId: ${game.processId}
                         |   gameId: ${game.gameId}
                         |   processes: ${
-                            game.processIdList.joinToString("\n") { process ->
-                                """
+                                game.processIdList.joinToString("\n") { process ->
+                                    """
                                 |   processId: ${process.processId}
                                 |   processIdParent: ${process.processIdParent}
                                 |   parentIsSteam: ${process.parentIsSteam}
                                 """.trimMargin()
+                                }
                             }
-                        }
                         """.trimMargin()
-                    },
-                )
+                        },
+                    )
 
-                steamInstance._steamApps?.notifyGamesPlayed(
-                    gamesPlayed = gamesPlayed,
-                    clientOsType = EOSType.AndroidUnknown,
-                )
+                    steamInstance._steamApps?.notifyGamesPlayed(
+                        gamesPlayed = gamesPlayed,
+                        clientOsType = EOSType.AndroidUnknown,
+                    )
+                }
             }
         }
 
