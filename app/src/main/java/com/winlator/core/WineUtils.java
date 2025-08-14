@@ -25,6 +25,24 @@ public abstract class WineUtils {
         FileUtils.symlink("../drive_c", dosdevicesPath+"/c:");
         FileUtils.symlink(container.getRootDir().getPath() + "/../..", dosdevicesPath+"/z:");
 
+        
+        // Auto-fix containers missing D: and E: drives
+        String currentDrives = container.getDrives();
+        if (!currentDrives.contains("D:") || !currentDrives.contains("E:")) {
+            Log.d("WineUtils", "Container missing D: or E: drives, adding them...");
+            String missingDrives = "";
+            if (!currentDrives.contains("D:")) {
+                missingDrives += "D:" + android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+            }
+            if (!currentDrives.contains("E:")) {
+                missingDrives += "E:/data/data/app.gamenative/storage";
+            }
+            String updatedDrives = missingDrives + currentDrives;
+            container.setDrives(updatedDrives);
+            container.saveData();
+            Log.d("WineUtils", "Updated container drives to: " + updatedDrives);
+        }
+
         String gameDirectoryPath = null;
         for (String[] drive : container.drivesIterator()) {
             File linkTarget = new File(drive[1]);
