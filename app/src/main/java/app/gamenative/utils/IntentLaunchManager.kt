@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.core.DXVKHelper
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -179,7 +180,11 @@ object IntentLaunchManager {
             graphicsDriver = if (json.has("graphicsDriver")) json.getString("graphicsDriver") else Container.DEFAULT_GRAPHICS_DRIVER,
             graphicsDriverVersion = if (json.has("graphicsDriverVersion")) json.getString("graphicsDriverVersion") else "",
             dxwrapper = if (json.has("dxwrapper")) json.getString("dxwrapper") else Container.DEFAULT_DXWRAPPER,
-            dxwrapperConfig = if (json.has("dxwrapperConfig")) json.getString("dxwrapperConfig") else "",
+            dxwrapperConfig = if (json.has("dxwrapperConfig")) {
+                json.getString("dxwrapperConfig")
+            } else {
+                ""
+            },
             audioDriver = if (json.has("audioDriver")) json.getString("audioDriver") else Container.DEFAULT_AUDIO_DRIVER,
             wincomponents = if (json.has("wincomponents")) json.getString("wincomponents") else Container.DEFAULT_WINCOMPONENTS,
             drives = if (json.has("drives")) json.getString("drives") else Container.DEFAULT_DRIVES,
@@ -247,7 +252,11 @@ object IntentLaunchManager {
             },
             graphicsDriverVersion = override.graphicsDriverVersion.ifEmpty { base.graphicsDriverVersion },
             dxwrapper = if (override.dxwrapper != Container.DEFAULT_DXWRAPPER) override.dxwrapper else base.dxwrapper,
-            dxwrapperConfig = override.dxwrapperConfig.ifEmpty { base.dxwrapperConfig },
+            dxwrapperConfig = when {
+                override.dxwrapperConfig.isNotEmpty() -> override.dxwrapperConfig
+                base.dxwrapperConfig.isNotEmpty() -> base.dxwrapperConfig
+                else -> DXVKHelper.DEFAULT_CONFIG
+            },
             audioDriver = if (override.audioDriver != Container.DEFAULT_AUDIO_DRIVER) override.audioDriver else base.audioDriver,
             wincomponents = if (override.wincomponents != Container.DEFAULT_WINCOMPONENTS) {
                 override.wincomponents
