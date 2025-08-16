@@ -302,33 +302,34 @@ object IntentLaunchManager {
 private object TemporaryConfigStore {
     private val overrides = mutableMapOf<Int, ContainerData>()
     private val originalConfigs = mutableMapOf<Int, ContainerData>()
+    private val lock = Any()
 
-    fun setOverride(appId: Int, config: ContainerData) {
+    fun setOverride(appId: Int, config: ContainerData) = synchronized(lock) {
         overrides[appId] = config
     }
 
-    fun getOverride(appId: Int): ContainerData? {
-        return overrides[appId]
+    fun getOverride(appId: Int): ContainerData? = synchronized(lock) {
+        overrides[appId]
     }
 
-    fun clearOverride(appId: Int) {
+    fun clearOverride(appId: Int) = synchronized(lock) {
         overrides.remove(appId)
         originalConfigs.remove(appId)
     }
 
-    fun hasOverride(appId: Int): Boolean {
-        return overrides.containsKey(appId)
+    fun hasOverride(appId: Int): Boolean = synchronized(lock) {
+        overrides.containsKey(appId)
     }
 
-    fun setOriginalConfig(appId: Int, config: ContainerData) {
+    fun setOriginalConfig(appId: Int, config: ContainerData) = synchronized(lock) {
         originalConfigs[appId] = config
     }
 
-    fun getOriginalConfig(appId: Int): ContainerData? {
-        return originalConfigs[appId]
+    fun getOriginalConfig(appId: Int): ContainerData? = synchronized(lock) {
+        originalConfigs[appId]
     }
 
-    fun clearAll() {
+    fun clearAll() = synchronized(lock) {
         overrides.clear()
         originalConfigs.clear()
     }
