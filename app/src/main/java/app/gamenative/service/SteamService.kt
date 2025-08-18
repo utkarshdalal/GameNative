@@ -1097,14 +1097,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 appendLine("        \"AccountName\"          \"$account\"")
                 appendLine("        \"PersonaName\"          \"$personaName\"")
                 appendLine("        \"RememberPassword\"     \"1\"")
+                appendLine("        \"WantsOfflineMode\"     \"0\"")
+                appendLine("        \"SkipOfflineModeWarning\"     \"0\"")
                 appendLine("        \"AllowAutoLogin\"       \"1\"")
                 appendLine("        \"MostRecent\"           \"1\"")
                 appendLine("        \"Timestamp\"            \"$epoch\"")
-                appendLine("        \"AuthType\"             \"2\"")
-                accessToken?.let {
-                    appendLine("        \"AccessToken\"          \"$it\"")
-                }
-                appendLine("        \"RefreshToken\"         \"$refreshToken\"")
                 appendLine("    }")
                 appendLine("    \"currentuser\"              \"$steamId64\"")
                 appendLine("}")

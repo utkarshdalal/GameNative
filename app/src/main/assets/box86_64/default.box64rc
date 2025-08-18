@@ -1,5 +1,5 @@
 [steam.exe]
-BOX64_ENV=WINEARGS=-noshaders -nooverlay -nocrashmonitor -no-shared-textures -cef-disable-gpu -cef-disable-gpu-compositing -cef-disable-gpu-sandbox -cef-disable-d3d11 -cef-disable-sandbox -no-cef-sandbox
+BOX64_ENV=WINEARGS=-no-browser -noreactlogin -noverifyfiles -nobootstrapupdate -skipinitialbootstrap -norepairfiles -no-dwrite -nobigpicture -cef-single-process -cef-in-process-gpu -single_core -cef-disable-d3d11 -cef-disable-sandbox -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad -silent -cef-disable-gpu steam://open/minigameslist
 BOX64_ENV1=WINEDLLOVERRIDES=gameoverlayui,gameoverlayui64.exe=d
 
 [steamwebhelper.exe]

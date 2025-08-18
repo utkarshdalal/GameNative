@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
+import app.gamenative.data.DepotInfo
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
@@ -136,30 +137,7 @@ object SteamUtils {
         var replaced32 = false
         var replaced64 = false
         val imageFs = ImageFs.find(context)
-        val vdfFileText = SteamService.getLoginUsersVdfOauth(
-            steamId64 = SteamService.userSteamId?.convertToUInt64().toString(),
-            account = PrefManager.username,
-            refreshToken = PrefManager.refreshToken,
-            accessToken = PrefManager.accessToken      // may be blank
-        )
-        val steamConfigDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/config")
-        try {
-            File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
-            val rootDir = imageFs.rootDir
-            val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
-            val steamRoot = "C:\\Program Files (x86)\\Steam"
-            val steamExe = "$steamRoot\\steam.exe"
-            val hkcu = "Software\\Valve\\Steam"
-            WineRegistryEditor(userRegFile).use { reg ->
-                reg.setStringValue("Software\\Valve\\Steam", "AutoLoginUser", PrefManager.username)
-                reg.setStringValue("Software\\Valve\\Steam", "RememberPassword", "1")
-                reg.setStringValue(hkcu, "SteamExe", steamExe)
-                reg.setStringValue(hkcu, "SteamPath", steamRoot)
-                reg.setStringValue(hkcu, "InstallPath", steamRoot)
-            }
-        } catch (e: Exception) {
-            Timber.w("Could not add steam config options: $e")
-        }
+        autoLoginUserChanges(imageFs)
 
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
             if (it.name == "steam_api.dll" && it.exists()) {
@@ -201,6 +179,33 @@ object SteamUtils {
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, appId)
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+    }
+
+    private fun autoLoginUserChanges(imageFs: ImageFs) {
+        val vdfFileText = SteamService.getLoginUsersVdfOauth(
+            steamId64 = SteamService.userSteamId?.convertToUInt64().toString(),
+            account = PrefManager.username,
+            refreshToken = PrefManager.refreshToken,
+            accessToken = PrefManager.accessToken,      // may be blank
+        )
+        val steamConfigDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/config")
+        try {
+            File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
+            val rootDir = imageFs.rootDir
+            val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
+            val steamRoot = "C:\\Program Files (x86)\\Steam"
+            val steamExe = "$steamRoot\\steam.exe"
+            val hkcu = "Software\\Valve\\Steam"
+            WineRegistryEditor(userRegFile).use { reg ->
+                reg.setStringValue("Software\\Valve\\Steam", "AutoLoginUser", PrefManager.username)
+                reg.setDwordValue("Software\\Valve\\Steam", "RememberPassword", 1)
+                reg.setStringValue(hkcu, "SteamExe", steamExe)
+                reg.setStringValue(hkcu, "SteamPath", steamRoot)
+                reg.setStringValue(hkcu, "InstallPath", steamRoot)
+            }
+        } catch (e: Exception) {
+            Timber.w("Could not add steam config options: $e")
+        }
     }
 
     /**
@@ -287,6 +292,26 @@ object SteamUtils {
                 Timber.i("Created symlink from ${steamGameLink.absolutePath} to ${gameDir.absolutePath}")
             }
 
+            // Get build ID and depot information
+            val buildId = appInfo.branches["public"]?.buildId ?: 0L
+            val downloadableDepots = SteamService.getDownloadableDepots(appId)
+
+            // Separate depots into regular depots (with manifests) and shared depots (without manifests)
+            val regularDepots = mutableMapOf<Int, DepotInfo>()
+            val sharedDepots = mutableMapOf<Int, DepotInfo>()
+
+            downloadableDepots.forEach { (depotId, depotInfo) ->
+                val manifest = depotInfo.manifests["public"]
+                if (manifest != null && manifest.gid != 0L) {
+                    regularDepots[depotId] = depotInfo
+                } else {
+                    sharedDepots[depotId] = depotInfo
+                }
+            }
+
+            // Find the main content depot (owner) - typically the one with the lowest ID that has content
+            val mainDepotId = regularDepots.keys.minOrNull()
+
             // Create ACF content
             val acfContent = buildString {
                 appendLine("\"AppState\"")
@@ -297,10 +322,11 @@ object SteamUtils {
                 appendLine("\t\"StateFlags\"\t\t\"4\"") // 4 = fully installed
                 appendLine("\t\"LastUpdated\"\t\t\"${System.currentTimeMillis() / 1000}\"")
                 appendLine("\t\"SizeOnDisk\"\t\t\"$sizeOnDisk\"")
+                appendLine("\t\"buildid\"\t\t\"$buildId\"")
 
                 // Use the actual install directory name
                 val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
-                appendLine("\t\"InstallDir\"\t\t\"${escapeString(actualInstallDir)}\"")
+                appendLine("\t\"installdir\"\t\t\"${escapeString(actualInstallDir)}\"")
 
                 appendLine("\t\"LastOwner\"\t\t\"0\"")
                 appendLine("\t\"BytesToDownload\"\t\t\"0\"")
@@ -308,6 +334,25 @@ object SteamUtils {
                 appendLine("\t\"AutoUpdateBehavior\"\t\t\"0\"")
                 appendLine("\t\"AllowOtherDownloadsWhileRunning\"\t\t\"0\"")
                 appendLine("\t\"ScheduledAutoUpdate\"\t\t\"0\"")
+
+                // Add InstalledDepots section (only regular depots with actual manifests)
+                if (regularDepots.isNotEmpty()) {
+                    appendLine("\t\"InstalledDepots\"")
+                    appendLine("\t{")
+                    regularDepots.forEach { (depotId, depotInfo) ->
+                        val manifest = depotInfo.manifests["public"]
+                        appendLine("\t\t\"$depotId\"")
+                        appendLine("\t\t{")
+                        appendLine("\t\t\t\"manifest\"\t\t\"${manifest?.gid ?: "0"}\"")
+                        appendLine("\t\t\t\"size\"\t\t\"${manifest?.size ?: 0}\"")
+                        appendLine("\t\t}")
+                    }
+                    appendLine("\t}")
+                }
+
+                appendLine("\t\"UserConfig\" { \"language\" \"english\" }")
+                appendLine("\t\"MountedConfig\" { \"language\" \"english\" }")
+
                 appendLine("}")
             }
 
@@ -316,6 +361,30 @@ object SteamUtils {
             acfFile.writeText(acfContent)
 
             Timber.i("Created ACF manifest for ${appInfo.name} at ${acfFile.absolutePath}")
+
+            // Create separate ACF for Steamworks Common Redistributables if we have shared depots
+            if (sharedDepots.isNotEmpty()) {
+                val steamworksAcfContent = buildString {
+                    appendLine("\"AppState\"")
+                    appendLine("{")
+                    appendLine("\t\"appid\"\t\t\"228980\"")
+                    appendLine("\t\"Universe\"\t\t\"1\"")
+                    appendLine("\t\"name\"\t\t\"Steamworks Common Redistributables\"")
+                    appendLine("\t\"StateFlags\"\t\t\"4\"")
+                    appendLine("\t\"installdir\"\t\t\"Steamworks Shared\"")
+                    appendLine("\t\"buildid\"\t\t\"1\"")
+
+                    appendLine("\t\"BytesToDownload\"\t\t\"0\"")
+                    appendLine("\t\"BytesDownloaded\"\t\t\"0\"")
+                    appendLine("}")
+                }
+
+                // Write Steamworks ACF file
+                val steamworksAcfFile = File(steamappsDir, "appmanifest_228980.acf")
+                steamworksAcfFile.writeText(steamworksAcfContent)
+
+                Timber.i("Created Steamworks Common Redistributables ACF manifest at ${steamworksAcfFile.absolutePath}")
+            }
 
         } catch (e: Exception) {
             Timber.e(e, "Failed to create ACF manifest for appId $appId")
@@ -360,6 +429,8 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
         var restored32 = false
         var restored64 = false
+        val imageFs = ImageFs.find(context)
+        autoLoginUserChanges(imageFs)
 
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
             if (it.name == "steam_api.dll.orig" && it.exists()) {

@@ -76,6 +76,25 @@ public abstract class WineUtils {
                 FileUtils.symlink(gameDirectoryPath, steamGameLink.getAbsolutePath());
             }
 
+            // Check if _CommonRedist exists in the game directory and symlink it to Steamworks Shared
+            File gameCommonRedist = new File(gameDirectoryPath, "_CommonRedist");
+            if (gameCommonRedist.exists() && gameCommonRedist.isDirectory()) {
+                Log.d("WineUtils", "Found _CommonRedist in game directory, creating Steamworks Shared symlink");
+                
+                // Create Steamworks Shared directory
+                File steamworksSharedDir = new File(steamCommonDir, "Steamworks Shared");
+                if (!steamworksSharedDir.exists()) {
+                    steamworksSharedDir.mkdirs();
+                }
+                
+                // Create symlink from Steamworks Shared/_CommonRedist to game/_CommonRedist
+                File steamworksCommonRedist = new File(steamworksSharedDir, "_CommonRedist");
+                if (!steamworksCommonRedist.exists()) {
+                    FileUtils.symlink(gameCommonRedist.getAbsolutePath(), steamworksCommonRedist.getAbsolutePath());
+                    Log.d("WineUtils", "Created symlink from " + steamworksCommonRedist.getAbsolutePath() + " to " + gameCommonRedist.getAbsolutePath());
+                }
+            }
+
             // Create the steamapps folder and ACF manifest
             File steamappsDir = new File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamapps");
             if (!steamappsDir.exists()) {
