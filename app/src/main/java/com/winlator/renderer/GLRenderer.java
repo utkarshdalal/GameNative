@@ -52,6 +52,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean magnifierEnabled = true;
     private int surfaceWidth;
     private int surfaceHeight;
+    private boolean sceneInitialized = false;
 
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
@@ -82,6 +83,18 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
+            // iterate all known drawables; if you don't have a central list,
+            // call this during updateScene() for each window's content.
+            android.util.SparseArray<Drawable> sa = xServer.drawableManager.all(); // adjust type if needed
+            for (int i = 0; i < sa.size(); i++) {
+                Drawable d = sa.valueAt(i);
+                if (d != null) d.getTexture().invalidate(); // sets textureId=0 so next draw re-creates
+            }
+            rootCursorDrawable.getTexture().invalidate();
+        }
+        updateScene();
+        xServerView.requestRender();
     }
 
     @Override

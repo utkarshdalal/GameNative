@@ -116,34 +116,36 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
                     when (event.result) {
                         LoginResult.Success -> {
-                            Timber.i("Navigating to library")
-                            navController.navigate(PluviaScreen.Home.route)
+                            if (PluviaApp.xEnvironment == null) {
+                                Timber.i("Navigating to library")
+                                navController.navigate(PluviaScreen.Home.route)
 
-                            // If a crash happen, lets not ask for a tip yet.
-                            // Instead, ask the user to contribute their issues to be addressed.
-                            if (!state.annoyingDialogShown && state.hasCrashedLastStart) {
-                                viewModel.setAnnoyingDialogShown(true)
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.CRASH,
-                                    title = "Recent Crash",
-                                    message = "Sorry about that!\n" +
-                                        "It would be nice to know about the recent issue you've had.\n" +
-                                        "You can view and export the most recent crash log in the app's settings " +
-                                        "and attach it as a Github issue in the project's repository.\n" +
-                                        "Link to the Github repo is also in settings!",
-                                    confirmBtnText = "OK",
-                                )
-                            } else if (!(PrefManager.tipped || BuildConfig.GOLD) && !state.annoyingDialogShown) {
-                                viewModel.setAnnoyingDialogShown(true)
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.SUPPORT,
-                                    message = "Thank you for using GameNative, please consider supporting " +
-                                        "open-source PC gaming on Android by donating whatever amount is comfortable to you",
-                                    confirmBtnText = "Tip",
-                                    dismissBtnText = "Close",
-                                )
+                                // If a crash happen, lets not ask for a tip yet.
+                                // Instead, ask the user to contribute their issues to be addressed.
+                                if (!state.annoyingDialogShown && state.hasCrashedLastStart) {
+                                    viewModel.setAnnoyingDialogShown(true)
+                                    msgDialogState = MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.CRASH,
+                                        title = "Recent Crash",
+                                        message = "Sorry about that!\n" +
+                                            "It would be nice to know about the recent issue you've had.\n" +
+                                            "You can view and export the most recent crash log in the app's settings " +
+                                            "and attach it as a Github issue in the project's repository.\n" +
+                                            "Link to the Github repo is also in settings!",
+                                        confirmBtnText = "OK",
+                                    )
+                                } else if (!(PrefManager.tipped || BuildConfig.GOLD) && !state.annoyingDialogShown) {
+                                    viewModel.setAnnoyingDialogShown(true)
+                                    msgDialogState = MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.SUPPORT,
+                                        message = "Thank you for using GameNative, please consider supporting " +
+                                            "open-source PC gaming on Android by donating whatever amount is comfortable to you",
+                                        confirmBtnText = "Tip",
+                                        dismissBtnText = "Close",
+                                    )
+                                }
                             }
                         }
 

@@ -120,6 +120,11 @@ public class Texture {
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
     }
 
+    public void invalidate() {
+        textureId = 0;
+        needsUpdate = true;
+    }
+
     public void destroy() {
         if (textureId > 0) {
             int[] textureIds = new int[]{textureId};

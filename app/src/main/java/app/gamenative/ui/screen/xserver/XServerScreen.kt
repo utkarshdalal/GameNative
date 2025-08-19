@@ -331,9 +331,14 @@ fun XServerScreen(
             //     PluviaApp.xServer = XServer(ScreenInfo(xServerState.value.screenSize))
             // }
             val frameLayout = FrameLayout(context)
+            val existingXServer =
+                PluviaApp.xEnvironment
+                    ?.getComponent<XServerComponent>(XServerComponent::class.java)
+                    ?.xServer
+            val xServerToUse = existingXServer ?: XServer(ScreenInfo(xServerState.value.screenSize))
             val xServerView = XServerView(
                 context,
-                XServer(ScreenInfo(xServerState.value.screenSize)),
+                xServerToUse,
             ).apply {
                 xServerView = this
                 // pointerEventListener = object: Callback<MotionEvent> {
@@ -442,13 +447,7 @@ fun XServerScreen(
                     },
                 )
 
-                if (PluviaApp.xEnvironment != null) {
-                    PluviaApp.xEnvironment = shiftXEnvironmentToContext(
-                        context,
-                        xEnvironment = PluviaApp.xEnvironment!!,
-                        getxServer(),
-                    )
-                } else {
+                if (PluviaApp.xEnvironment == null) {
                     val containerManager = ContainerManager(context)
                     val container = ContainerUtils.getContainer(context, appId)
                     // Configure WinHandler with container's input API settings

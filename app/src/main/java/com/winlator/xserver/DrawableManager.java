@@ -60,4 +60,8 @@ public class DrawableManager extends XResourceManager implements XResourceManage
     public Visual getVisual() {
         return xServer.pixmapManager.visual;
     }
+
+    public SparseArray<Drawable> all(){
+        return drawables;
+    }
 }
