@@ -2,7 +2,10 @@ package app.gamenative.ui.screen.xserver
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
 import android.view.View
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +23,11 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
@@ -120,6 +127,10 @@ fun XServerScreen(
 ) {
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
+    val view = LocalView.current
+    val imm = remember(context) {
+        context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    }
 
     // PluviaApp.events.emit(AndroidEvent.SetAppBarVisibility(false))
     PluviaApp.events.emit(AndroidEvent.SetSystemUIVisibility(false))
@@ -190,6 +201,22 @@ fun XServerScreen(
     var areControlsVisible = false
 
     BackHandler {
+        val imeVisible = ViewCompat.getRootWindowInsets(view)
+            ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+        if (imeVisible) {
+            PostHog.capture(event = "onscreen_keyboard_disabled")
+            view.post {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    view.windowInsetsController?.hide(WindowInsets.Type.ime())
+                } else {
+                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    if (view.windowToken != null) imm.hideSoftInputFromWindow(view.windowToken, 0)
+                }
+            }
+            return@BackHandler
+        }
+
         Timber.i("BackHandler")
         NavigationDialog(
             context,
@@ -197,9 +224,21 @@ fun XServerScreen(
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
                         NavigationDialog.ACTION_KEYBOARD -> {
-                            // Toggle keyboard using InputMethodManager
-                            PostHog.capture(event = "onscreen_keyboard_enabled")
-                            showKeyboard(context);
+                            val anchor = view // use the same composable root view
+                            val c = if (Build.VERSION.SDK_INT >= 30)
+                                anchor.windowInsetsController else null
+
+                            anchor.post {
+                                if (anchor.windowToken == null) return@post
+                                if (Build.VERSION.SDK_INT >= 30 && c != null) {
+                                    PostHog.capture(event = "onscreen_keyboard_enabled")
+                                    c.show(WindowInsets.Type.ime())
+                                } else {
+                                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                                    PostHog.capture(event = "onscreen_keyboard_enabled")
+                                    imm.showSoftInput(anchor, InputMethodManager.SHOW_IMPLICIT)
+                                }
+                            }
                         }
 
                         NavigationDialog.ACTION_INPUT_CONTROLS -> {
