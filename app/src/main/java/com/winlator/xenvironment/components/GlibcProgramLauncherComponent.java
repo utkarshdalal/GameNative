@@ -20,6 +20,7 @@ import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xenvironment.ImageFs;
+import com.winlator.container.Container;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -39,6 +40,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private String box64Version = DefaultVersion.BOX64;
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private String steamType = Container.STEAM_TYPE_NORMAL;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
@@ -110,6 +112,25 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
     public void setTerminationCallback(Callback<Integer> terminationCallback) {
         this.terminationCallback = terminationCallback;
+    }
+
+    public String getSteamType() { return steamType; }
+    public void setSteamType(String steamType) {
+        if (steamType == null) {
+            this.steamType = Container.STEAM_TYPE_NORMAL;
+            return;
+        }
+        String normalized = steamType.toLowerCase();
+        switch (normalized) {
+            case Container.STEAM_TYPE_LIGHT:
+                this.steamType = Container.STEAM_TYPE_LIGHT;
+                break;
+            case Container.STEAM_TYPE_ULTRALIGHT:
+                this.steamType = Container.STEAM_TYPE_ULTRALIGHT;
+                break;
+            default:
+                this.steamType = Container.STEAM_TYPE_NORMAL;
+        }
     }
 
     public String getGuestExecutable() {
@@ -272,7 +293,19 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
-        FileUtils.copy(context, "box86_64/default.box64rc", new File(rootDir, "/etc/config.box64rc"));
+        String assetPath;
+        switch (steamType) {
+            case Container.STEAM_TYPE_LIGHT:
+                assetPath = "box86_64/lightsteam.box64rc";
+                break;
+            case Container.STEAM_TYPE_ULTRALIGHT:
+                assetPath = "box86_64/ultralightsteam.box64rc";
+                break;
+            default:
+                assetPath = "box86_64/default.box64rc";
+                break;
+        }
+        FileUtils.copy(context, assetPath, new File(rootDir, "/etc/config.box64rc"));
     }
 
     private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {

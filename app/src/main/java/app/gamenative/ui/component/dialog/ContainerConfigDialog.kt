@@ -559,6 +559,28 @@ fun ContainerConfigDialog(
                                     config = config.copy(launchRealSteam = it)
                                 },
                             )
+                            // Steam Type Dropdown
+                            val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
+                            val currentSteamTypeIndex = when (config.steamType.lowercase()) {
+                                com.winlator.container.Container.STEAM_TYPE_LIGHT -> 1
+                                com.winlator.container.Container.STEAM_TYPE_ULTRALIGHT -> 2
+                                else -> 0
+                            }
+                            SettingsListDropdown(
+                                colors = settingsTileColors(),
+                                title = { Text(text = "Steam Type") },
+                                subtitle = { Text(text = "Select Box64 RC config for Steam") },
+                                value = currentSteamTypeIndex,
+                                items = steamTypeItems,
+                                onItemSelected = {
+                                    val type = when (it) {
+                                        1 -> com.winlator.container.Container.STEAM_TYPE_LIGHT
+                                        2 -> com.winlator.container.Container.STEAM_TYPE_ULTRALIGHT
+                                        else -> com.winlator.container.Container.STEAM_TYPE_NORMAL
+                                    }
+                                    config = config.copy(steamType = type)
+                                },
+                            )
                         }
                         SettingsGroup(title = { Text(text = "Controller") }) {
                             if (!default) {

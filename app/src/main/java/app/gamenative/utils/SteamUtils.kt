@@ -138,6 +138,7 @@ object SteamUtils {
         var replaced64 = false
         val imageFs = ImageFs.find(context)
         autoLoginUserChanges(imageFs)
+        setupLightweightSteamConfig(imageFs, SteamService.userSteamId?.toString())
 
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
             if (it.name == "steam_api.dll" && it.exists()) {
@@ -205,6 +206,86 @@ object SteamUtils {
             }
         } catch (e: Exception) {
             Timber.w("Could not add steam config options: $e")
+        }
+    }
+
+    /**
+     * Creates configuration files that make Steam run in lightweight mode
+     * with reduced resource usage and disabled community features
+     */
+    private fun setupLightweightSteamConfig(imageFs: ImageFs, steamId64: String?) {
+        Timber.i("Setting up lightweight steam configs")
+        try {
+            val steamPath = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam")
+
+            // Create necessary directories
+            val userDataPath = File(steamPath, "userdata/$steamId64")
+            val configPath = File(userDataPath, "config")
+            val remotePath = File(userDataPath, "7/remote")
+
+            configPath.mkdirs()
+            remotePath.mkdirs()
+
+            // Create localconfig.vdf for small mode and low resource usage
+            val localConfigContent = """
+                "UserLocalConfigStore"
+                {
+                  "Software"
+                  {
+                    "Valve"
+                    {
+                      "Steam"
+                      {
+                        "SmallMode"                      "1"
+                        "LibraryDisableCommunityContent" "1"
+                        "LibraryLowBandwidthMode"        "1"
+                        "LibraryLowPerfMode"             "1"
+                      }
+                    }
+                  }
+                  "friends"
+                  {
+                    "SignIntoFriends" "0"
+                  }
+                }
+            """.trimIndent()
+
+            // Create sharedconfig.vdf for additional optimizations
+            val sharedConfigContent = """
+                "UserRoamingConfigStore"
+                {
+                  "Software"
+                  {
+                    "Valve"
+                    {
+                      "Steam"
+                      {
+                        "SteamDefaultDialog" "#app_games"
+                        "FriendsUI"
+                        {
+                          "FriendsUIJSON" "{\"bSignIntoFriends\":false,\"bAnimatedAvatars\":false,\"PersonaNotifications\":0,\"bDisableRoomEffects\":true}"
+                        }
+                      }
+                    }
+                  }
+                }
+            """.trimIndent()
+
+            // Write the configuration files if they don't exist
+            val localConfigFile = File(configPath, "localconfig.vdf")
+            val sharedConfigFile = File(remotePath, "sharedconfig.vdf")
+
+            if (!localConfigFile.exists()) {
+                localConfigFile.writeText(localConfigContent)
+                Timber.i("Created lightweight Steam localconfig.vdf")
+            }
+
+            if (!sharedConfigFile.exists()) {
+                sharedConfigFile.writeText(sharedConfigContent)
+                Timber.i("Created lightweight Steam sharedconfig.vdf")
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to setup lightweight Steam configuration")
         }
     }
 
@@ -431,6 +512,7 @@ object SteamUtils {
         var restored64 = false
         val imageFs = ImageFs.find(context)
         autoLoginUserChanges(imageFs)
+        setupLightweightSteamConfig(imageFs, SteamService.userSteamId!!.accountID.toString())
 
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
             if (it.name == "steam_api.dll.orig" && it.exists()) {

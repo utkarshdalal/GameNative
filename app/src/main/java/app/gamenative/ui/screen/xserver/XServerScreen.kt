@@ -915,7 +915,10 @@ private fun setupXEnvironment(
     val usrGlibc: Boolean = PrefManager.getBoolean("use_glibc", true)
     val guestProgramLauncherComponent = if (usrGlibc) {
         Timber.i("Setting guestProgramLauncherComponent to GlibcProgarmLauncherComponent")
-        GlibcProgramLauncherComponent(contentsManager, contentsManager.getProfileByEntryName(container.wineVersion))
+        GlibcProgramLauncherComponent(
+            contentsManager,
+            contentsManager.getProfileByEntryName(container.wineVersion),
+        )
     }
     else {
         Timber.i("Setting guestProgramLauncherComponent to GuestProgramLauncherComponent")
@@ -932,6 +935,8 @@ private fun setupXEnvironment(
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
+        // Set steam type for selecting appropriate box64rc
+        guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
@@ -1064,8 +1069,8 @@ private fun getWineStartCommand(
         // Check if we should launch through real Steam
         if (container.isLaunchRealSteam()) {
             // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -no-browser -tcp " +
-                    "-nobigpicture -nobootstrapupdate -skipinitialbootstrap -nofriendsui -nochatui -nointro -applaunch $appId"
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
+                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $appId"
         } else {
             // Original logic for direct game launch
             val appDirPath = SteamService.getAppDirPath(appId)
