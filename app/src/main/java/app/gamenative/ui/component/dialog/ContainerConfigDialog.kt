@@ -553,7 +553,7 @@ fun ContainerConfigDialog(
                             SettingsSwitch(
                                 colors = settingsTileColorsAlt(),
                                 title = { Text(text = "Launch Steam Client (Beta)") },
-                                subtitle = { Text(text = "Reduces performance and significantly slows down launch\nAllows online play and fixes DRM and controller issues\nTo use, first open container, launch C:\\Program Files (x86)\\Steam\\Steam.exe, install and sign in") },
+                                subtitle = { Text(text = "Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work") },
                                 state = config.launchRealSteam,
                                 onCheckedChange = {
                                     config = config.copy(launchRealSteam = it)
@@ -569,7 +569,6 @@ fun ContainerConfigDialog(
                             SettingsListDropdown(
                                 colors = settingsTileColors(),
                                 title = { Text(text = "Steam Type") },
-                                subtitle = { Text(text = "Select Box64 RC config for Steam") },
                                 value = currentSteamTypeIndex,
                                 items = steamTypeItems,
                                 onItemSelected = {

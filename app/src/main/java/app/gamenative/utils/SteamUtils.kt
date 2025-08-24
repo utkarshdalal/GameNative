@@ -502,6 +502,8 @@ object SteamUtils {
      */
     fun restoreSteamApi(context: Context, appId: Int) {
         Timber.i("Starting restoreSteamApi for appId: $appId")
+        val imageFs = ImageFs.find(context)
+        skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(appId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
             return
@@ -510,7 +512,7 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
         var restored32 = false
         var restored64 = false
-        val imageFs = ImageFs.find(context)
+
         autoLoginUserChanges(imageFs)
         setupLightweightSteamConfig(imageFs, SteamService.userSteamId!!.accountID.toString())
 
@@ -664,5 +666,45 @@ object SteamUtils {
         val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
 
         return androidId.hashCode()
+    }
+
+    private fun skipFirstTimeSteamSetup(rootDir: File?) {
+        val systemRegFile = File(rootDir, ImageFs.WINEPREFIX + "/system.reg")
+        val redistributables = listOf(
+            "DirectX\\Jun2010" to "DXSetup",              // DirectX Jun 2010
+            ".NET\\3.5" to "3.5 SP1",              // .NET 3.5
+            ".NET\\3.5 Client Profile" to "3.5 Client Profile SP1",
+            ".NET\\4.0" to "4.0",                   // .NET 4.0
+            ".NET\\4.0 Client Profile" to "4.0 Client Profile",
+            ".NET\\4.5.2" to "4.5.2",
+            ".NET\\4.6" to "4.6",
+            ".NET\\4.7" to "4.7",
+            ".NET\\4.8" to "4.8",
+            "XNA\\3.0" to "3.0",                   // XNA 3.0
+            "XNA\\3.1" to "3.1",
+            "XNA\\4.0" to "4.0",
+            "OpenAL\\2.0.7.0" to "2.0.7.0",               // OpenAL 2.0.7.0
+            ".NET\\4.5.1" to "4.5.1",   // some Unity 5 titles
+            ".NET\\4.6.1" to "4.6.1",   // Space Engineers, Far Cry 5 :contentReference[oaicite:1]{index=1}
+            ".NET\\4.6.2" to "4.6.2",
+            ".NET\\4.7.1" to "4.7.1",
+            ".NET\\4.7.2" to "4.7.2",   // common fix loops :contentReference[oaicite:2]{index=2}
+            ".NET\\4.8.1" to "4.8.1",
+        )
+
+        WineRegistryEditor(systemRegFile).use { registryEditor ->
+            redistributables.forEach { (subPath, valueName) ->
+                registryEditor.setDwordValue(
+                    "Software\\Valve\\Steam\\Apps\\CommonRedist\\$subPath",
+                    valueName,
+                    1,
+                )
+                registryEditor.setDwordValue(
+                    "Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\$subPath",
+                    valueName,
+                    1,
+                )
+            }
+        }
     }
 }
