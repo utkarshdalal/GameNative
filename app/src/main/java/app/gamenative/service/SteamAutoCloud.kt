@@ -188,16 +188,25 @@ object SteamAutoCloud {
             appInfo.ufs.saveFilePatterns
                 .filter { userFile -> userFile.root.isWindows }
                 .associate { userFile ->
-                    val files = FileUtils.findFiles(
-                        Paths.get(prefixToPath(userFile.root.toString()), userFile.path),
-                        userFile.pattern,
+                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.path)
+
+                    Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
+
+                    val files = FileUtils.findFilesRecursive(
+                        rootPath = basePath,
+                        pattern = userFile.pattern,
+                        maxDepth = 5,
                     ).map {
                         val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
 
                         Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
 
-                        UserFileInfo(userFile.root, userFile.path, it.name, Files.getLastModifiedTime(it).toMillis(), sha)
+                        val relativePath = basePath.relativize(it).pathString
+
+                        UserFileInfo(userFile.root, userFile.path, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
                     }.collect(Collectors.toList())
+
+                    Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
 
                     Paths.get(userFile.prefix).pathString to files
                 }
@@ -341,6 +350,8 @@ object SteamAutoCloud {
                 val filesToUpload = fileChanges.filesCreated
                     .union(fileChanges.filesModified)
                     .map { it.prefixPath to it }
+                    // Filter out entries whose files no longer exist at upload time
+                    .filter { Files.exists(it.second.getAbsPath(prefixToPath)) }
 
                 Timber.i(
                     "Beginning app upload batch with ${filesToDelete.size} file(s) to delete " +
@@ -362,7 +373,13 @@ object SteamAutoCloud {
                 filesToUpload.map { it.second }.forEach { file ->
                     val absFilePath = file.getAbsPath(prefixToPath)
 
-                    val fileSize = Files.size(absFilePath).toInt()
+                    val fileSize = try {
+                        Files.size(absFilePath).toInt()
+                    } catch (e: Exception) {
+                        Timber.w("Skipping upload of ${file.prefixPath}: ${e.javaClass.simpleName}: ${e.message}")
+                        uploadBatchSuccess = false
+                        return@forEach
+                    }
 
                     Timber.i("Beginning upload of ${file.prefixPath} whose timestamp is ${file.timestamp}")
 

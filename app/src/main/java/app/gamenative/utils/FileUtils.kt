@@ -124,6 +124,45 @@ object FileUtils {
         }
     }
 
+    fun findFilesRecursive(
+        rootPath: Path,
+        pattern: String,
+        maxDepth: Int = -1,
+        includeDirectories: Boolean = false,
+    ): Stream<Path> {
+        val patternParts = pattern.split("*").filter { it.isNotEmpty() }
+        Timber.i("$pattern -> $patternParts (recursive, depth=$maxDepth)")
+        if (!Files.exists(rootPath)) return emptyList<Path>().stream()
+
+        val results = mutableListOf<Path>()
+
+        fun matches(fileName: String): Boolean {
+            var startIndex = 0
+            for (part in patternParts) {
+                val index = fileName.indexOf(part, startIndex)
+                if (index < 0) return false
+                startIndex = index + part.length
+            }
+            return true
+        }
+
+        walkThroughPath(rootPath, maxDepth) { path ->
+            if (path.isDirectory()) {
+                if (includeDirectories && matches(path.name)) {
+                    results.add(path)
+                }
+            } else {
+                val fileName = path.name
+                Timber.i("Checking $fileName for pattern $pattern (recursive)")
+                if (matches(fileName)) {
+                    results.add(path)
+                }
+            }
+        }
+
+        return results.stream()
+    }
+
     fun assetExists(assetManager: AssetManager, assetPath: String): Boolean {
         return try {
             assetManager.open(assetPath).use {
