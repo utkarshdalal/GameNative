@@ -8,6 +8,7 @@ import timber.log.Timber
 
 enum class PathType {
     GameInstall,
+    SteamUserData,
     WinMyDocuments,
     WinAppDataLocal,
     WinAppDataLocalLow,
@@ -28,9 +29,14 @@ enum class PathType {
      * [com.winlator.container.ContainerManager.activateContainer] on the proper
      * [com.winlator.container.Container] beforehand.
      */
-    fun toAbsPath(context: Context, appId: Int): String {
+    fun toAbsPath(context: Context, appId: Int, accountId: Long): String {
         val path = when (this) {
             GameInstall -> SteamService.getAppDirPath(appId)
+            SteamUserData -> Paths.get(
+                ImageFs.find(context).rootDir.absolutePath,
+                ImageFs.WINEPREFIX,
+                "/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId/remote",
+            ).toString()
             WinMyDocuments -> Paths.get(
                 ImageFs.find(context).rootDir.absolutePath,
                 ImageFs.WINEPREFIX,
@@ -84,6 +90,7 @@ enum class PathType {
     val isWindows: Boolean
         get() = when (this) {
             GameInstall,
+            SteamUserData,
             WinMyDocuments,
             WinAppDataLocal,
             WinAppDataLocalLow,
@@ -94,12 +101,15 @@ enum class PathType {
         }
 
     companion object {
-        val DEFAULT = PathType.GameInstall
+        val DEFAULT = SteamUserData
         fun from(keyValue: String?): PathType {
             return when (keyValue?.lowercase()) {
                 "%${GameInstall.name.lowercase()}%",
                 GameInstall.name.lowercase(),
                 -> GameInstall
+                "%${SteamUserData.name.lowercase()}%",
+                SteamUserData.name.lowercase(),
+                -> SteamUserData
                 "%${WinMyDocuments.name.lowercase()}%",
                 WinMyDocuments.name.lowercase(),
                 -> WinMyDocuments

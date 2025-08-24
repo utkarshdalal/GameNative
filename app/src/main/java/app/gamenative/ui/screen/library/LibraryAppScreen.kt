@@ -686,7 +686,7 @@ fun AppScreen(
                                         containerManager.activateContainer(container)
 
                                         val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, appId)
+                                            PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
                                         }
                                         val syncResult = SteamService.forceSyncUserFiles(
                                             appId = appId,
@@ -723,7 +723,7 @@ fun AppScreen(
                                         containerManager.activateContainer(container)
 
                                         val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, appId)
+                                            PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
                                         }
                                         val syncResult = SteamService.forceSyncUserFiles(
                                             appId = appId,
@@ -758,7 +758,7 @@ fun AppScreen(
                                         containerManager.activateContainer(container)
 
                                         val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, appId)
+                                            PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
                                         }
                                         val syncResult = SteamService.forceSyncUserFiles(
                                             appId = appId,
@@ -783,7 +783,19 @@ fun AppScreen(
                     } else {
                         emptyArray()
                     }
-                    ),
+                ),
+                (
+                    AppMenuOption(
+                        optionType = AppOptionMenuType.GetSupport,
+                        onClick = {
+                            val browserIntent = Intent(
+                                Intent.ACTION_VIEW,
+                                ("https://discord.gg/2hKv4VfZfE").toUri(),
+                            )
+                            context.startActivity(browserIntent)
+                        },
+                    )
+                )
             ),
         )
     }

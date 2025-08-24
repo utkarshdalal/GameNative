@@ -36,6 +36,9 @@ public class Container {
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
+    public static final String STEAM_TYPE_NORMAL = "normal";
+    public static final String STEAM_TYPE_LIGHT = "light";
+    public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final int id;
     private String name;
@@ -82,6 +85,8 @@ public class Container {
     private byte dinputMapperType = 1;  // 1=standard, 2=XInput mapper
     // Disable external mouse input
     private boolean disableMouseInput = false;
+    // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
+    private String steamType = STEAM_TYPE_NORMAL;
 
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
@@ -90,6 +95,25 @@ public class Container {
     public void setGraphicsDriverVersion(String graphicsDriverVersion) {
         Log.d("Container", "Setting graphicsDriverVersion: " + graphicsDriverVersion);
         this.graphicsDriverVersion = graphicsDriverVersion;
+    }
+
+    public String getSteamType() {
+        return steamType;
+    }
+
+    public void setSteamType(String steamType) {
+        String normalized = (steamType == null) ? "" : steamType.toLowerCase();
+        switch (normalized) {
+            case STEAM_TYPE_LIGHT:
+                this.steamType = STEAM_TYPE_LIGHT;
+                break;
+            case STEAM_TYPE_ULTRALIGHT:
+                this.steamType = STEAM_TYPE_ULTRALIGHT;
+                break;
+            default:
+                this.steamType = STEAM_TYPE_NORMAL;
+                break;
+        }
     }
 
     public String getExecArgs() {
@@ -503,6 +527,7 @@ public class Container {
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             data.put("installPath", installPath);
+            data.put("steamType", steamType);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -559,6 +584,9 @@ public class Container {
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));
+                    break;
+                case "steamType" :
+                    setSteamType(data.getString(key));
                     break;
                 case "inputType" :
                     setInputType(data.getInt(key));

@@ -4,6 +4,10 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
+import app.gamenative.enums.Marker;
+import app.gamenative.service.SteamService;
+import app.gamenative.utils.MarkerUtils;
+
 // import com.winlator.MainActivity;
 // import com.winlator.R;
 // import com.winlator.SettingsFragment;
@@ -23,12 +27,13 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
-    public static final byte LATEST_VERSION = 21;
+    public static final byte LATEST_VERSION = 22;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -81,6 +86,9 @@ public abstract class ImageFsInstaller {
                 }
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 resetContainerImgVersions(context);
+
+                // Clear Steam DLL markers for all games
+                clearSteamDllMarkers(context, containerManager);
             }
             else {
                 Log.e("ImageFsInstaller", "Failed to install system files");
@@ -208,5 +216,27 @@ public abstract class ImageFsInstaller {
                 Log.e("ImageFsInstaller", "Failed to read JSON data: " + e);
             }
         });
+    }
+
+    /**
+     * Clears Steam DLL markers for all containers by scanning each mapped drive path.
+     * Relies only on container drive mappings; does not call into SteamService.
+     */
+    private static void clearSteamDllMarkers(Context context, ContainerManager containerManager) {
+        try {
+            for (Container container : containerManager.getContainers()) {
+                try {
+                    String mappedPath = SteamService.Companion.getAppDirPath(container.id);
+                    MarkerUtils.INSTANCE.removeMarker(mappedPath, Marker.STEAM_DLL_REPLACED);
+                    MarkerUtils.INSTANCE.removeMarker(mappedPath, Marker.STEAM_DLL_RESTORED);
+                    Log.i("ImageFsInstaller", "Cleared markers for container: " + container.getName() + " (ID: " + container.id + ")");
+                } catch (Exception e) {
+                    Log.w("ImageFsInstaller", "Failed to clear markers for container ID " + container.id + ": " + e.getMessage());
+                }
+            }
+            Log.i("ImageFsInstaller", "Finished clearing Steam DLL markers for all containers");
+        } catch (Exception e) {
+            Log.e("ImageFsInstaller", "Error clearing Steam DLL markers: " + e.getMessage());
+        }
     }
 }

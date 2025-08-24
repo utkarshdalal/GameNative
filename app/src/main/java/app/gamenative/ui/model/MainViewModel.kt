@@ -50,6 +50,7 @@ class MainViewModel @Inject constructor(
         data object LaunchApp : MainUiEvent()
         data class ExternalGameLaunch(val appId: Int) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
+        data object ShowDiscordSupportDialog : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -238,13 +239,26 @@ class MainViewModel @Inject constructor(
 
             SteamService.notifyRunningProcesses()
             SteamService.closeApp(appId) { prefix ->
-                PathType.from(prefix).toAbsPath(context, appId)
+                PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
             }.await()
 
             // Prompt user to save temporary container configuration if one was applied
             if (hadTemporaryOverride) {
                 PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(appId))
                 // Dialog handler in PluviaMain manages the save/discard logic
+            }
+
+            // After app closes, trigger one-time support dialog per container
+            try {
+                val container = ContainerUtils.getContainer(context, appId)
+                val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
+                if (!shown) {
+                    container.putExtra("discord_support_prompt_shown", "true")
+                    container.saveData()
+                    _uiEvent.send(MainUiEvent.ShowDiscordSupportDialog)
+                }
+            } catch (_: Exception) {
+                // ignore container errors
             }
         }
     }

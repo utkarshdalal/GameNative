@@ -8,6 +8,7 @@ import android.util.Log;
 import com.winlator.PrefManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
+import com.winlator.container.Container;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.envvars.EnvVars;
@@ -37,6 +38,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private File workingDir;
 
     private Runnable preUnpack;
+    private String steamType;
+
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
     @Override
     public void start() {
@@ -79,6 +82,25 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.terminationCallback = terminationCallback;
     }
 
+    public String getSteamType() { return steamType; }
+    public void setSteamType(String steamType) {
+        if (steamType == null) {
+            this.steamType = Container.STEAM_TYPE_NORMAL;
+            return;
+        }
+        String normalized = steamType.toLowerCase();
+        switch (normalized) {
+            case Container.STEAM_TYPE_LIGHT:
+                this.steamType = Container.STEAM_TYPE_LIGHT;
+                break;
+            case Container.STEAM_TYPE_ULTRALIGHT:
+                this.steamType = Container.STEAM_TYPE_ULTRALIGHT;
+                break;
+            default:
+                this.steamType = Container.STEAM_TYPE_NORMAL;
+        }
+    }
+    
     public String getGuestExecutable() {
         return guestExecutable;
     }

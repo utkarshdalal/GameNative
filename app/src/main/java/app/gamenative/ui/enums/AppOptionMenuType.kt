@@ -4,6 +4,7 @@ enum class AppOptionMenuType(val text: String) {
     StorePage("Open store page"),
     RunContainer("Open container"),
     EditContainer("Edit container"),
+    GetSupport("Get support"),
     ResetDrm("Reset DRM"),
     Uninstall("Uninstall"),
     VerifyFiles("Verify files"),

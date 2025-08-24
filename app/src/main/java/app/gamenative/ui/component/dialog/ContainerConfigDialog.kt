@@ -553,10 +553,31 @@ fun ContainerConfigDialog(
                             SettingsSwitch(
                                 colors = settingsTileColorsAlt(),
                                 title = { Text(text = "Launch Steam Client (Beta)") },
-                                subtitle = { Text(text = "Reduces performance and significantly slows down launch\nAllows online play and fixes DRM and controller issues\nTo use, first open container, launch C:\\Program Files (x86)\\Steam\\Steam.exe, install and sign in") },
+                                subtitle = { Text(text = "Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work") },
                                 state = config.launchRealSteam,
                                 onCheckedChange = {
                                     config = config.copy(launchRealSteam = it)
+                                },
+                            )
+                            // Steam Type Dropdown
+                            val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
+                            val currentSteamTypeIndex = when (config.steamType.lowercase()) {
+                                com.winlator.container.Container.STEAM_TYPE_LIGHT -> 1
+                                com.winlator.container.Container.STEAM_TYPE_ULTRALIGHT -> 2
+                                else -> 0
+                            }
+                            SettingsListDropdown(
+                                colors = settingsTileColors(),
+                                title = { Text(text = "Steam Type") },
+                                value = currentSteamTypeIndex,
+                                items = steamTypeItems,
+                                onItemSelected = {
+                                    val type = when (it) {
+                                        1 -> com.winlator.container.Container.STEAM_TYPE_LIGHT
+                                        2 -> com.winlator.container.Container.STEAM_TYPE_ULTRALIGHT
+                                        else -> com.winlator.container.Container.STEAM_TYPE_NORMAL
+                                    }
+                                    config = config.copy(steamType = type)
                                 },
                             )
                         }

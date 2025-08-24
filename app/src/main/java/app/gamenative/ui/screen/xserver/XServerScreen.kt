@@ -2,7 +2,10 @@ package app.gamenative.ui.screen.xserver
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
 import android.view.View
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +23,11 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
@@ -120,6 +127,10 @@ fun XServerScreen(
 ) {
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
+    val view = LocalView.current
+    val imm = remember(context) {
+        context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    }
 
     // PluviaApp.events.emit(AndroidEvent.SetAppBarVisibility(false))
     PluviaApp.events.emit(AndroidEvent.SetSystemUIVisibility(false))
@@ -190,6 +201,22 @@ fun XServerScreen(
     var areControlsVisible = false
 
     BackHandler {
+        val imeVisible = ViewCompat.getRootWindowInsets(view)
+            ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+        if (imeVisible) {
+            PostHog.capture(event = "onscreen_keyboard_disabled")
+            view.post {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    view.windowInsetsController?.hide(WindowInsets.Type.ime())
+                } else {
+                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    if (view.windowToken != null) imm.hideSoftInputFromWindow(view.windowToken, 0)
+                }
+            }
+            return@BackHandler
+        }
+
         Timber.i("BackHandler")
         NavigationDialog(
             context,
@@ -197,9 +224,22 @@ fun XServerScreen(
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
                         NavigationDialog.ACTION_KEYBOARD -> {
-                            // Toggle keyboard using InputMethodManager
-                            PostHog.capture(event = "onscreen_keyboard_enabled")
-                            showKeyboard(context);
+                            val anchor = view // use the same composable root view
+                            val c = if (Build.VERSION.SDK_INT >= 30)
+                                anchor.windowInsetsController else null
+
+                            anchor.post {
+                                if (anchor.windowToken == null) return@post
+                                val show = {
+                                    PostHog.capture(event = "onscreen_keyboard_enabled")
+                                    imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                }
+                                if (Build.VERSION.SDK_INT > 29 && c != null) {
+                                    anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
+                                } else {
+                                    show()
+                                }
+                            }
                         }
 
                         NavigationDialog.ACTION_INPUT_CONTROLS -> {
@@ -331,9 +371,14 @@ fun XServerScreen(
             //     PluviaApp.xServer = XServer(ScreenInfo(xServerState.value.screenSize))
             // }
             val frameLayout = FrameLayout(context)
+            val existingXServer =
+                PluviaApp.xEnvironment
+                    ?.getComponent<XServerComponent>(XServerComponent::class.java)
+                    ?.xServer
+            val xServerToUse = existingXServer ?: XServer(ScreenInfo(xServerState.value.screenSize))
             val xServerView = XServerView(
                 context,
-                XServer(ScreenInfo(xServerState.value.screenSize)),
+                xServerToUse,
             ).apply {
                 xServerView = this
                 // pointerEventListener = object: Callback<MotionEvent> {
@@ -442,13 +487,7 @@ fun XServerScreen(
                     },
                 )
 
-                if (PluviaApp.xEnvironment != null) {
-                    PluviaApp.xEnvironment = shiftXEnvironmentToContext(
-                        context,
-                        xEnvironment = PluviaApp.xEnvironment!!,
-                        getxServer(),
-                    )
-                } else {
+                if (PluviaApp.xEnvironment == null) {
                     val containerManager = ContainerManager(context)
                     val container = ContainerUtils.getContainer(context, appId)
                     // Configure WinHandler with container's input API settings
@@ -877,7 +916,10 @@ private fun setupXEnvironment(
     val usrGlibc: Boolean = PrefManager.getBoolean("use_glibc", true)
     val guestProgramLauncherComponent = if (usrGlibc) {
         Timber.i("Setting guestProgramLauncherComponent to GlibcProgarmLauncherComponent")
-        GlibcProgramLauncherComponent(contentsManager, contentsManager.getProfileByEntryName(container.wineVersion))
+        GlibcProgramLauncherComponent(
+            contentsManager,
+            contentsManager.getProfileByEntryName(container.wineVersion),
+        )
     }
     else {
         Timber.i("Setting guestProgramLauncherComponent to GuestProgramLauncherComponent")
@@ -894,6 +936,8 @@ private fun setupXEnvironment(
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
+        // Set steam type for selecting appropriate box64rc
+        guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
@@ -1026,8 +1070,8 @@ private fun getWineStartCommand(
         // Check if we should launch through real Steam
         if (container.isLaunchRealSteam()) {
             // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -no-browser -tcp " +
-                    "-nobigpicture -nobootstrapupdate -skipinitialbootstrap -nofriendsui -nochatui -nointro -applaunch $appId"
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
+                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $appId"
         } else {
             // Original logic for direct game launch
             val appDirPath = SteamService.getAppDirPath(appId)
