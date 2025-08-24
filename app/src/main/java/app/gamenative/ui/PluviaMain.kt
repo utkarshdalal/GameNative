@@ -142,7 +142,7 @@ fun PluviaMain(
                                         type = DialogType.SUPPORT,
                                         message = "Thank you for using GameNative, please consider supporting " +
                                             "open-source PC gaming on Android by donating whatever amount is comfortable to you",
-                                        confirmBtnText = "Tip",
+                                        confirmBtnText = "Donate",
                                         dismissBtnText = "Close",
                                     )
                                 }
@@ -151,6 +151,17 @@ fun PluviaMain(
 
                         else -> Timber.i("Received non-result: ${event.result}")
                     }
+                }
+
+                MainViewModel.MainUiEvent.ShowDiscordSupportDialog -> {
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.DISCORD,
+                        title = "Did the game work?",
+                        message = "Join the Discord to get support to fix your game or improve performance.",
+                        confirmBtnText = "Open Discord",
+                        dismissBtnText = "Close",
+                    )
                 }
             }
         }
@@ -241,6 +252,18 @@ fun PluviaMain(
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
     when (msgDialogState.type) {
+        DialogType.DISCORD -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+            }
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+        }
         DialogType.SUPPORT -> {
             onConfirmClick = {
                 uriHandler.openUri(Constants.Misc.KO_FI_LINK)
