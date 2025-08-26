@@ -690,14 +690,14 @@ fun ContainerConfigDialog(
                             SettingsSwitch(
                                 colors = settingsTileColorsAlt(),
                                 title = { Text(text = "Emulate keyboard and mouse") },
-                                subtitle = { Text(text = "Left stick = WASD, Right stick = mouse. Map buttons below.") },
+                                subtitle = { Text(text = "Left stick = WASD, Right stick = mouse. L2 = left click, R2 = right click.") },
                                 state = config.emulateKeyboardMouse,
                                 onCheckedChange = { checked ->
                                     // Initialize defaults on first enable if empty
                                     var newBindings = config.controllerEmulationBindings
                                     if (checked && newBindings.isEmpty()) {
                                         newBindings = """
-                                            {"L2":"MOUSE_LEFT_BUTTON","R2":"MOUSE_RIGHT_BUTTON","A":"KEY_SPACE","B":"KEY_CTRL_L","X":"KEY_CTRL_L","Y":"KEY_TAB","SELECT":"KEY_ESC","L1":"NONE","L3":"NONE","R1":"NONE","R3":"NONE","DPAD_UP":"NONE","DPAD_DOWN":"NONE","DPAD_LEFT":"NONE","DPAD_RIGHT":"NONE","START":"NONE"}
+                                            {"L2":"MOUSE_LEFT_BUTTON","R2":"MOUSE_RIGHT_BUTTON","A":"KEY_SPACE","B":"KEY_Q","X":"KEY_E","Y":"KEY_TAB","SELECT":"KEY_ESC","L1":"KEY_SHIFT_L","L3":"NONE","R1":"KEY_CTRL_R","R3":"NONE","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT","START":"KEY_ENTER"}
                                         """.trimIndent()
                                     }
                                     config = config.copy(emulateKeyboardMouse = checked, controllerEmulationBindings = newBindings)

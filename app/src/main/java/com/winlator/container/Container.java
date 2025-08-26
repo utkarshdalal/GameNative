@@ -776,7 +776,7 @@ public class Container {
                 defaults.put("DPAD_DOWN", "KEY_DOWN");
                 defaults.put("DPAD_LEFT", "KEY_LEFT");
                 defaults.put("DPAD_RIGHT", "KEY_RIGHT");
-                defaults.put("START", "NONE");
+                defaults.put("START", "KEY_ENTER");
                 data.put("controllerEmulationBindings", defaults);
             }
         }
