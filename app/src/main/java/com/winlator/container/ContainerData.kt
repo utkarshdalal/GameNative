@@ -52,6 +52,10 @@ data class ContainerData(
     val disableMouseInput: Boolean = false,
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
+    /** Emulate keyboard/mouse using controller sticks and button bindings **/
+    val emulateKeyboardMouse: Boolean = false,
+    /** Button->Binding name map (JSON string) for emulation UI persistence **/
+    val controllerEmulationBindings: String = "",
 ) {
     companion object {
         val Saver = mapSaver(
@@ -88,6 +92,8 @@ data class ContainerData(
                     "dinputMapperType" to state.dinputMapperType,
                     "disableMouseInput" to state.disableMouseInput,
                     "language" to state.language,
+                    "emulateKeyboardMouse" to state.emulateKeyboardMouse,
+                    "controllerEmulationBindings" to state.controllerEmulationBindings,
                 )
             },
             restore = { savedMap ->
@@ -123,6 +129,8 @@ data class ContainerData(
                     dinputMapperType = savedMap["dinputMapperType"] as Byte,
                     disableMouseInput = savedMap["disableMouseInput"] as Boolean,
                     language = (savedMap["language"] as? String) ?: "english",
+                    emulateKeyboardMouse = (savedMap["emulateKeyboardMouse"] as? Boolean) ?: false,
+                    controllerEmulationBindings = (savedMap["controllerEmulationBindings"] as? String) ?: "",
                 )
             },
         )

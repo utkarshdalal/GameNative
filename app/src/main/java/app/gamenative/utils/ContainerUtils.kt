@@ -175,6 +175,8 @@ object ContainerUtils {
             enableDInput = enableD,
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
+            emulateKeyboardMouse = try { container.isEmulateKeyboardMouse() } catch (e: Exception) { false },
+            controllerEmulationBindings = try { container.getControllerEmulationBindings()?.toString() ?: "" } catch (e: Exception) { "" },
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -252,6 +254,13 @@ object ContainerUtils {
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.setDisableMouseInput(containerData.disableMouseInput)
+        container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
+        try {
+            val bindingsStr = containerData.controllerEmulationBindings
+            if (bindingsStr.isNotEmpty()) {
+                container.setControllerEmulationBindings(org.json.JSONObject(bindingsStr))
+            }
+        } catch (_: Exception) {}
         try { container.language = containerData.language } catch (e: Exception) { container.putExtra("language", containerData.language) }
         // Set container LC_ALL according to selected language
         val lcAll = mapLanguageToLocale(containerData.language)

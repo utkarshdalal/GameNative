@@ -64,6 +64,8 @@ import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVars
 import com.winlator.inputcontrols.ControlsProfile
+import com.winlator.inputcontrols.ControlElement
+import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.TouchMouse
@@ -96,6 +98,7 @@ import com.winlator.xserver.XServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -150,6 +153,7 @@ fun XServerScreen(
     val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
         if (ContainerUtils.hasContainer(context, appId)) {
             val container = ContainerUtils.getContainer(context, appId)
+            // Emulation wiring moved to InputControlsView init block
             mutableStateOf(
                 XServerState(
                     graphicsDriver = container.graphicsDriver,
@@ -250,7 +254,10 @@ fun XServerScreen(
                                 PostHog.capture(event = "onscreen_controller_enabled")
                                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                                 if (profiles.isNotEmpty()) {
-                                    showInputControls(profiles[2])
+                                    // Prefer emulated profile if present, else default index 2
+                                    val emu = profiles.firstOrNull { it.name == "Keyboard & Mouse Gamepad" }
+                                    val toShow = emu ?: profiles.getOrNull(2) ?: profiles.first()
+                                    showInputControls(toShow)
                                 }
                             }
                             areControlsVisible = !areControlsVisible
@@ -597,12 +604,28 @@ fun XServerScreen(
 
                 // Load a default controls profile
                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
-                if (profiles.isNotEmpty()) {
-                    setProfile(profiles[2])
+                PrefManager.init(context)
+                val container = ContainerUtils.getContainer(context, appId)
+                val emulate = container.isEmulateKeyboardMouse
+
+                if (emulate) {
+                    if (profiles.isNotEmpty()) {
+                        try {
+                            val targetProfile = emulateKeyboardMouseOnscreen(container, profiles, context)
+                            setProfile(targetProfile)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to apply emulated profile JSON")
+                            if (profiles.size > 2) setProfile(profiles[2])
+                        }
+                    }
+                }
+                else {
+                    if (profiles.isNotEmpty()) {
+                        setProfile(profiles[2])
+                    }
                 }
 
                 // Set overlay opacity from preferences if needed
-                PrefManager.init(context)
                 val opacity = PrefManager.getFloat("controls_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY)
                 setOverlayOpacity(opacity)
             }
@@ -613,11 +636,10 @@ fun XServerScreen(
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)
             hideInputControls()
-            // Show on-screen controls if no physical controller is connected
+            // Show on-screen controls if no physical controller is connected (respect current profile)
             if (ExternalController.getController(0) == null) {
-                val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
-                if (profiles.size > 2) {
-                    showInputControls(profiles[2])
+                PluviaApp.inputControlsView?.getProfile()?.let { profile ->
+                    showInputControls(profile)
                     areControlsVisible = true
                 }
             }
@@ -660,6 +682,86 @@ fun XServerScreen(
     //
     //     }
     // }
+}
+
+private fun emulateKeyboardMouseOnscreen(
+    container: Container,
+    profiles: List<ControlsProfile>,
+    context: Context,
+): ControlsProfile? {
+    val bindingsJson = container.controllerEmulationBindings
+    val emuJson = if (bindingsJson != null) JSONObject(bindingsJson.toString()) else null
+    val baseProfile = profiles.firstOrNull { it.id == 3 || it.name.contains("Virtual Gamepad", true) }
+        ?: profiles.getOrNull(2)
+        ?: profiles.first()
+    val baseFile = ControlsProfile.getProfileFile(context, baseProfile.id)
+    val profileJSONObject = JSONObject(FileUtils.readString(baseFile))
+    val elementsJSONArray = profileJSONObject.getJSONArray("elements")
+
+    fun optBinding(key: String, fallback: String): String {
+        return emuJson?.optString(key, fallback) ?: fallback
+    }
+
+    for (i in 0 until elementsJSONArray.length()) {
+        val e = elementsJSONArray.getJSONObject(i)
+        val type = e.getString("type")
+        val bindings = e.getJSONArray("bindings")
+        if (type == "D_PAD") {
+            bindings.put(0, optBinding("DPAD_UP", bindings.getString(0)))
+            bindings.put(1, optBinding("DPAD_RIGHT", bindings.getString(1)))
+            bindings.put(2, optBinding("DPAD_DOWN", bindings.getString(2)))
+            bindings.put(3, optBinding("DPAD_LEFT", bindings.getString(3)))
+        } else if (type == "STICK") {
+            val b0 = bindings.getString(0)
+            if (b0.startsWith("GAMEPAD_LEFT_THUMB")) {
+                bindings.put(0, "KEY_W")
+                bindings.put(1, "KEY_D")
+                bindings.put(2, "KEY_S")
+                bindings.put(3, "KEY_A")
+            } else if (b0.startsWith("GAMEPAD_RIGHT_THUMB")) {
+                bindings.put(0, "MOUSE_MOVE_UP")
+                bindings.put(1, "MOUSE_MOVE_RIGHT")
+                bindings.put(2, "MOUSE_MOVE_DOWN")
+                bindings.put(3, "MOUSE_MOVE_LEFT")
+            }
+        } else if (type == "BUTTON") {
+            val b0 = bindings.getString(0)
+            val logical = when (b0) {
+                "GAMEPAD_BUTTON_A" -> "A"
+                "GAMEPAD_BUTTON_B" -> "B"
+                "GAMEPAD_BUTTON_X" -> "X"
+                "GAMEPAD_BUTTON_Y" -> "Y"
+                "GAMEPAD_BUTTON_L1" -> "L1"
+                "GAMEPAD_BUTTON_L2" -> "L2"
+                "GAMEPAD_BUTTON_L3" -> "L3"
+                "GAMEPAD_BUTTON_R1" -> "R1"
+                "GAMEPAD_BUTTON_R2" -> "R2"
+                "GAMEPAD_BUTTON_R3" -> "R3"
+                "GAMEPAD_BUTTON_START" -> "START"
+                "GAMEPAD_BUTTON_SELECT" -> "SELECT"
+                else -> null
+            }
+            if (logical != null) {
+                val mapped = optBinding(logical, "NONE")
+                bindings.put(0, mapped)
+                bindings.put(1, "NONE")
+                bindings.put(2, "NONE")
+                bindings.put(3, "NONE")
+            }
+        }
+    }
+
+    val targetProfile = profiles.firstOrNull { it.name == "Keyboard & Mouse Gamepad" }
+        ?: PluviaApp.inputControlsManager?.duplicateProfile(baseProfile)?.apply {
+            setName("Keyboard & Mouse Gamepad")
+            save()
+        }
+        ?: baseProfile
+    // Log final JSON and persist to target profile file
+    Timber.d("Final emulated profile JSON: %s", profileJSONObject.toString())
+    val targetFile = ControlsProfile.getProfileFile(context, targetProfile.id)
+    FileUtils.writeString(targetFile, profileJSONObject.toString())
+    return targetProfile
 }
 
 private fun showInputControls(profile: ControlsProfile) {

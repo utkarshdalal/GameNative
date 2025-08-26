@@ -91,6 +91,11 @@ public class Container {
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
     private String steamType = STEAM_TYPE_NORMAL;
 
+    // Emulate keyboard/mouse using controller: left stick=WASD, right stick=mouse
+    private boolean emulateKeyboardMouse = false;
+    // Serialized as JSON object: logical button name -> Binding enum name
+    private JSONObject controllerEmulationBindings;
+
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
     }
@@ -541,6 +546,12 @@ public class Container {
             data.put("steamType", steamType);
             data.put("language", language);
 
+            // Emulated keyboard/mouse controller mappings
+            data.put("emulateKeyboardMouse", emulateKeyboardMouse);
+            if (controllerEmulationBindings != null) {
+                data.put("controllerEmulationBindings", controllerEmulationBindings);
+            }
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -675,6 +686,12 @@ public class Container {
                 case "installPath":
                     setInstallPath(data.getString(key));
                     break;
+                case "emulateKeyboardMouse":
+                    this.emulateKeyboardMouse = data.getBoolean(key);
+                    break;
+                case "controllerEmulationBindings":
+                    this.controllerEmulationBindings = data.getJSONObject(key);
+                    break;
             }
         }
     }
@@ -735,10 +752,53 @@ public class Container {
             }
 
             data.put("wincomponents", result);
+
+            // Initialize defaults for new emulate keyboard/mouse fields if missing
+            if (!data.has("emulateKeyboardMouse")) {
+                data.put("emulateKeyboardMouse", false);
+            }
+            if (!data.has("controllerEmulationBindings")) {
+                JSONObject defaults = new JSONObject();
+                // Defaults per request
+                defaults.put("L2", "MOUSE_LEFT_BUTTON");
+                defaults.put("R2", "MOUSE_RIGHT_BUTTON");
+                defaults.put("A", "KEY_SPACE");
+                defaults.put("B", "KEY_E");
+                defaults.put("X", "KEY_Q");
+                defaults.put("Y", "KEY_TAB");
+                defaults.put("SELECT", "KEY_ESC");
+                // All others default to NONE
+                defaults.put("L1", "KEY_SHIFT_L");
+                defaults.put("L3", "NONE");
+                defaults.put("R1", "KEY_CTRL_R");
+                defaults.put("R3", "NONE");
+                defaults.put("DPAD_UP", "KEY_UP");
+                defaults.put("DPAD_DOWN", "KEY_DOWN");
+                defaults.put("DPAD_LEFT", "KEY_LEFT");
+                defaults.put("DPAD_RIGHT", "KEY_RIGHT");
+                defaults.put("START", "NONE");
+                data.put("controllerEmulationBindings", defaults);
+            }
         }
         catch (JSONException e) {
             Log.e("Container", "Failed to check obsolete or missing properties: " + e);
         }
+    }
+
+    public boolean isEmulateKeyboardMouse() {
+        return emulateKeyboardMouse;
+    }
+
+    public void setEmulateKeyboardMouse(boolean emulate) {
+        this.emulateKeyboardMouse = emulate;
+    }
+
+    public JSONObject getControllerEmulationBindings() {
+        return controllerEmulationBindings;
+    }
+
+    public void setControllerEmulationBindings(JSONObject bindings) {
+        this.controllerEmulationBindings = bindings;
     }
 
     public static String getFallbackCPUList() {
