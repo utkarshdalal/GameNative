@@ -10,6 +10,8 @@ import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
+import com.winlator.inputcontrols.ControlsProfile
+import com.winlator.inputcontrols.InputControlsManager
 import java.io.File
 import kotlin.Boolean
 import org.json.JSONArray
@@ -287,6 +289,15 @@ object ContainerUtils {
             container.saveData()
         }
         Timber.d("Set container.execArgs to '${containerData.execArgs}'")
+
+        // Generate/update per-container emulation profile when enabled
+        try {
+            if (containerData.emulateKeyboardMouse) {
+                generateOrUpdateEmulationProfile(context, container)
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to generate/update emulation profile for container %s", container.id)
+        }
     }
 
     private fun mapLanguageToLocale(language: String): String {
@@ -444,6 +455,12 @@ object ContainerUtils {
                     if (effectiveConfig != null) {
                         applyToContainer(context, container, effectiveConfig, saveToDisk = false)
                         Timber.i("Applied temporary config override to existing container for app $appId (in-memory only)")
+                        // Also refresh emulation profile in-memory if enabled
+                        try {
+                            if (effectiveConfig.emulateKeyboardMouse) {
+                                generateOrUpdateEmulationProfile(context, container)
+                            }
+                        } catch (_: Exception) {}
                     }
                 }
             }
@@ -459,6 +476,150 @@ object ContainerUtils {
 
             createNewContainer(context, appId, containerId, containerManager, overrideConfig)
         }
+    }
+
+    /**
+     * Create or update a per-container ControlsProfile that remaps on-screen controls and
+     * adds controller bindings for physical gamepads according to container.controllerEmulationBindings.
+     * The profile name is the container id as a string, so it can be looked up easily at runtime.
+     */
+    fun generateOrUpdateEmulationProfile(context: Context, container: Container): ControlsProfile {
+        val inputControlsManager = InputControlsManager(context)
+        val profiles = inputControlsManager.getProfiles(false)
+
+        // Choose a base profile to clone from (Virtual Gamepad preferred)
+        val baseProfile = profiles.firstOrNull { it.id == 3 || it.name.contains("Virtual Gamepad", true) }
+            ?: profiles.getOrNull(2)
+            ?: profiles.first()
+        val baseFile = ControlsProfile.getProfileFile(context, baseProfile.id)
+
+        val profileJSONObject = org.json.JSONObject(FileUtils.readString(baseFile))
+        val elementsJSONArray = profileJSONObject.getJSONArray("elements")
+
+        val emuJson = try { container.controllerEmulationBindings } catch (_: Exception) { null }
+
+        fun optBinding(key: String, fallback: String): String {
+            return emuJson?.optString(key, fallback) ?: fallback
+        }
+
+        // Apply on-screen remaps similar to emulateKeyboardMouseOnscreen
+        for (i in 0 until elementsJSONArray.length()) {
+            val e = elementsJSONArray.getJSONObject(i)
+            val type = e.getString("type")
+            val bindings = e.getJSONArray("bindings")
+            if (type == "D_PAD") {
+                bindings.put(0, optBinding("DPAD_UP", bindings.getString(0)))
+                bindings.put(1, optBinding("DPAD_RIGHT", bindings.getString(1)))
+                bindings.put(2, optBinding("DPAD_DOWN", bindings.getString(2)))
+                bindings.put(3, optBinding("DPAD_LEFT", bindings.getString(3)))
+            } else if (type == "STICK") {
+                val b0 = bindings.getString(0)
+                if (b0.startsWith("GAMEPAD_LEFT_THUMB")) {
+                    bindings.put(0, "KEY_W")
+                    bindings.put(1, "KEY_D")
+                    bindings.put(2, "KEY_S")
+                    bindings.put(3, "KEY_A")
+                } else if (b0.startsWith("GAMEPAD_RIGHT_THUMB")) {
+                    bindings.put(0, "MOUSE_MOVE_UP")
+                    bindings.put(1, "MOUSE_MOVE_RIGHT")
+                    bindings.put(2, "MOUSE_MOVE_DOWN")
+                    bindings.put(3, "MOUSE_MOVE_LEFT")
+                }
+            } else if (type == "BUTTON") {
+                val b0 = bindings.getString(0)
+                val logical = when (b0) {
+                    "GAMEPAD_BUTTON_A" -> "A"
+                    "GAMEPAD_BUTTON_B" -> "B"
+                    "GAMEPAD_BUTTON_X" -> "X"
+                    "GAMEPAD_BUTTON_Y" -> "Y"
+                    "GAMEPAD_BUTTON_L1" -> "L1"
+                    "GAMEPAD_BUTTON_L2" -> "L2"
+                    "GAMEPAD_BUTTON_L3" -> "L3"
+                    "GAMEPAD_BUTTON_R1" -> "R1"
+                    "GAMEPAD_BUTTON_R2" -> "R2"
+                    "GAMEPAD_BUTTON_R3" -> "R3"
+                    "GAMEPAD_BUTTON_START" -> "START"
+                    "GAMEPAD_BUTTON_SELECT" -> "SELECT"
+                    else -> null
+                }
+                if (logical != null) {
+                    val mapped = optBinding(logical, "NONE")
+                    bindings.put(0, mapped)
+                    bindings.put(1, "NONE")
+                    bindings.put(2, "NONE")
+                    bindings.put(3, "NONE")
+                }
+            }
+        }
+
+        // Build controller bindings for connected gamepads
+        val controllersJSONArray = org.json.JSONArray()
+        val connected = com.winlator.inputcontrols.ExternalController.getControllers()
+
+        for (controller in connected) {
+            val controllerJSONObject = org.json.JSONObject()
+            controllerJSONObject.put("id", controller.id)
+            controllerJSONObject.put("name", controller.name)
+
+            val controllerBindingsJSONArray = org.json.JSONArray()
+
+            fun addBinding(keyCode: Int, bindingName: String?) {
+                if (bindingName == null || bindingName == "NONE" || bindingName.isEmpty()) return
+                val obj = org.json.JSONObject()
+                obj.put("keyCode", keyCode)
+                obj.put("binding", bindingName)
+                controllerBindingsJSONArray.put(obj)
+            }
+
+            // Left stick -> WASD
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Y, -1), "KEY_W")
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_X, +1), "KEY_D")
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Y, +1), "KEY_S")
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_X, -1), "KEY_A")
+
+            // Right stick -> mouse
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_RZ, -1), "MOUSE_MOVE_UP")
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Z, +1), "MOUSE_MOVE_RIGHT")
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_RZ, +1), "MOUSE_MOVE_DOWN")
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Z, -1), "MOUSE_MOVE_LEFT")
+
+            // D-Pad from HAT axes, allow overrides
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_Y, -1), optBinding("DPAD_UP", "KEY_UP"))
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_X, +1), optBinding("DPAD_RIGHT", "KEY_RIGHT"))
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_Y, +1), optBinding("DPAD_DOWN", "KEY_DOWN"))
+            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_X, -1), optBinding("DPAD_LEFT", "KEY_LEFT"))
+
+            // Buttons (allow overrides from emuJson)
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_A, optBinding("A", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_B, optBinding("B", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_X, optBinding("X", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_Y, optBinding("Y", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_L1, optBinding("L1", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_R1, optBinding("R1", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_L2, optBinding("L2", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_R2, optBinding("R2", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_THUMBL, optBinding("L3", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_THUMBR, optBinding("R3", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_START, optBinding("START", "NONE"))
+            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_SELECT, optBinding("SELECT", "NONE"))
+
+            controllerJSONObject.put("controllerBindings", controllerBindingsJSONArray)
+            controllersJSONArray.put(controllerJSONObject)
+        }
+
+        if (controllersJSONArray.length() > 0) {
+            profileJSONObject.put("controllers", controllersJSONArray)
+        }
+
+        // Create/find per-container profile by name = container id as string
+        val profileName = container.id.toString()
+        val targetProfile = profiles.firstOrNull { it.name == profileName }
+            ?: inputControlsManager.createProfile(profileName)
+
+        val targetFile = ControlsProfile.getProfileFile(context, targetProfile.id)
+        FileUtils.writeString(targetFile, profileJSONObject.toString())
+
+        return targetProfile
     }
 
     /**

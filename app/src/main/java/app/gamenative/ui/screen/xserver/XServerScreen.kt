@@ -254,10 +254,15 @@ fun XServerScreen(
                                 PostHog.capture(event = "onscreen_controller_enabled")
                                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                                 if (profiles.isNotEmpty()) {
-                                    // Prefer emulated profile if present, else default index 2
-                                    val emu = profiles.firstOrNull { it.name == "Keyboard & Mouse Gamepad" }
-                                    val toShow = emu ?: profiles.getOrNull(2) ?: profiles.first()
-                                    showInputControls(toShow)
+                                    val container = ContainerUtils.getContainer(context, appId)
+                                    val targetProfile = if (container.isEmulateKeyboardMouse()) {
+                                        val profileName = container.id.toString()
+                                        profiles.firstOrNull { it.name == profileName }
+                                            ?: ContainerUtils.generateOrUpdateEmulationProfile(context, container)
+                                    } else {
+                                        profiles[2]
+                                    }
+                                    showInputControls(targetProfile)
                                 }
                             }
                             areControlsVisible = !areControlsVisible
@@ -296,7 +301,13 @@ fun XServerScreen(
 
             var handled = false
             if (isGamepad) {
-                handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
+                val emulate = try { ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse() } catch (_: Exception) { false }
+                if (emulate) {
+                    handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
+                    if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
+                } else {
+                    handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
+                }
                 // handled = ExternalController.onKeyEvent(xServer.winHandler, it.event)
             }
             if (!handled && isKeyboard) {
@@ -309,7 +320,13 @@ fun XServerScreen(
 
             var handled = false
             if (isGamepad) {
-                handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
+                val emulate = try { ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse() } catch (_: Exception) { false }
+                if (emulate) {
+                    handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                    if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
+                } else {
+                    handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
+                }
             }
             if (!handled) {
                 handled = PluviaApp.touchpadView?.onExternalMouseEvent(it.event) == true
@@ -602,27 +619,19 @@ fun XServerScreen(
                 setXServer(xServerView.getxServer())
                 setTouchpadView(PluviaApp.touchpadView)
 
-                // Load a default controls profile
+                // Load default profile for now; may be overridden by container settings below
                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                 PrefManager.init(context)
-                val container = ContainerUtils.getContainer(context, appId)
-                val emulate = container.isEmulateKeyboardMouse
-
-                if (emulate) {
-                    if (profiles.isNotEmpty()) {
-                        try {
-                            val targetProfile = emulateKeyboardMouseOnscreen(container, profiles, context)
-                            setProfile(targetProfile)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to apply emulated profile JSON")
-                            if (profiles.size > 2) setProfile(profiles[2])
-                        }
+                if (profiles.isNotEmpty()) {
+                    val container = ContainerUtils.getContainer(context, appId)
+                    val targetProfile = if (container.isEmulateKeyboardMouse()) {
+                        val profileName = container.id.toString()
+                        profiles.firstOrNull { it.name == profileName }
+                            ?: ContainerUtils.generateOrUpdateEmulationProfile(context, container)
+                    } else {
+                        profiles[2]
                     }
-                }
-                else {
-                    if (profiles.isNotEmpty()) {
-                        setProfile(profiles[2])
-                    }
+                    setProfile(targetProfile)
                 }
 
                 // Set overlay opacity from preferences if needed
@@ -636,14 +645,27 @@ fun XServerScreen(
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)
             hideInputControls()
-            // Show on-screen controls if no physical controller is connected (respect current profile)
-            if (ExternalController.getController(0) == null) {
-                PluviaApp.inputControlsView?.getProfile()?.let { profile ->
-                    showInputControls(profile)
-                    areControlsVisible = true
+            val container = ContainerUtils.getContainer(context, appId)
+
+            // If emulation is enabled, select the per-container profile (named by container id)
+            if (container.isEmulateKeyboardMouse()) {
+                val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
+                val profileName = container.id.toString()
+                var target = profiles2.firstOrNull { it.name == profileName }
+                if (target == null) {
+                    target = ContainerUtils.generateOrUpdateEmulationProfile(context, container)
+                }
+                PluviaApp.inputControlsView?.setProfile(target)
+                PluviaApp.inputControlsView?.invalidate()
+            } else {
+                // Show on-screen controls if no physical controller is connected (respect current profile)
+                if (ExternalController.getController(0) == null) {
+                    val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
+                    if (profiles2.size > 2) {
+                        showInputControls(profiles2[2])
+                    }
                 }
             }
-            val container = ContainerUtils.getContainer(context, appId)
 
             if (container.isShowFPS()) {
                 Timber.i("Attempting to show FPS")

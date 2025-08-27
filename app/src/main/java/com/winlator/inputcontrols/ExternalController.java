@@ -177,8 +177,14 @@ public class ExternalController {
     }
 
     private void processTriggerButton(MotionEvent event) {
-        this.state.setPressed(IDX_BUTTON_L2, event.getAxisValue(MotionEvent.AXIS_LTRIGGER) == 1.0f || event.getAxisValue(MotionEvent.AXIS_BRAKE) == 1.0f);
-        this.state.setPressed(IDX_BUTTON_R2, event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 1.0f || event.getAxisValue(MotionEvent.AXIS_GAS) == 1.0f);
+        float l = event.getAxisValue(event.getAxisValue(MotionEvent.AXIS_LTRIGGER) == 0.0f ? MotionEvent.AXIS_BRAKE : MotionEvent.AXIS_LTRIGGER);
+        float r = event.getAxisValue(event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 0.0f ? MotionEvent.AXIS_GAS : MotionEvent.AXIS_RTRIGGER);
+        if (l > 0.99f) l = 1.0f; else if (l < 0.01f) l = 0.0f;
+        if (r > 0.99f) r = 1.0f; else if (r < 0.01f) r = 0.0f;
+        this.state.triggerL = l;
+        this.state.triggerR = r;
+        this.state.setPressed(IDX_BUTTON_L2, l == 1.0f);
+        this.state.setPressed(IDX_BUTTON_R2, r == 1.0f);
     }
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
