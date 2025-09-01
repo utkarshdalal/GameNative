@@ -24,6 +24,7 @@
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>
         <item>25.2.0</item>
+        <item>25.3.0</item>
         <item>25.0.0</item>
         <item>24.1.0</item>
     </string-array>

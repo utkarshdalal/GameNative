@@ -1602,10 +1602,10 @@ private fun extractDXWrapperFiles(
             )
         }
         "vkd3d" -> {
-            val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries)
+            Timber.i("Extracting VKD3D D3D12 DLLs for dxwrapper: $dxwrapper")
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD, context.assets,
-                "dxwrapper/dxvk-" + (dxvkVersions[dxvkVersions.size - 1]) + ".tzst", windowsDir, onExtractFileListener,
+                "dxwrapper/dxvk-2.3.1.tzst", windowsDir, onExtractFileListener,
             )
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD,
@@ -1804,7 +1804,7 @@ private fun extractGraphicsDriverFiles(
         if (dxwrapper.contains("dxvk")) {
             DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
         } else if (dxwrapper.contains("vkd3d")) {
-            envVars.put("VKD3D_FEATURE_LEVEL", "12_2")
+            envVars.put("VKD3D_FEATURE_LEVEL", "12_1")
         }
 
         envVars.put("GALLIUM_DRIVER", "zink")
