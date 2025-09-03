@@ -99,7 +99,7 @@ fun ContainerConfigDialog(
         val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
         val graphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
         val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
-        val dxvkVersions = stringArrayResource(R.array.dxvk_version_entries).toList()
+        val dxvkVersionsAll = stringArrayResource(R.array.dxvk_version_entries).toList()
         val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
         val gpuCards = ContainerUtils.getGPUCards(context)
         val renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList()
@@ -189,6 +189,21 @@ fun ContainerConfigDialog(
             val driverIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == config.dxwrapper }
             mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
         }
+        // VKD3D version control (forced depending on driver)
+        fun vkd3dForcedVersion(): String {
+            val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+            val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+            return if (isVortekLike) "2.5" else "2.14.1"
+        }
+        // Keep dxwrapperConfig in sync when VKD3D selected
+        LaunchedEffect(graphicsDriverIndex, dxWrapperIndex) {
+            val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+            if (isVKD3D) {
+                val kvs = KeyValueSet(config.dxwrapperConfig)
+                kvs.put("vkd3dVersion", vkd3dForcedVersion())
+                config = config.copy(dxwrapperConfig = kvs.toString())
+            }
+        }
         var dxvkVersionIndex by rememberSaveable {
             val rawConfig = config.dxwrapperConfig
             val kvs = KeyValueSet(rawConfig)
@@ -196,7 +211,7 @@ fun ContainerConfigDialog(
             val configuredVersion = kvs.get("version") // Direct call to get()
 
             // Find index where the parsed display string matches the configured version
-            val foundIndex = dxvkVersions.indexOfFirst {
+            val foundIndex = dxvkVersionsAll.indexOfFirst {
                 val parsedDisplay = StringUtils.parseIdentifier(it)
                 val match = parsedDisplay == configuredVersion
                 match
@@ -204,22 +219,40 @@ fun ContainerConfigDialog(
 
             // Use found index, or fallback to the app's default DXVK version, or 0 if not found
             val defaultVersion = DefaultVersion.DXVK
-            val defaultIndex = dxvkVersions.indexOfFirst {
+            val defaultIndex = dxvkVersionsAll.indexOfFirst {
                 StringUtils.parseIdentifier(it) == defaultVersion
             }.coerceAtLeast(0)
             val finalIndex = if (foundIndex >= 0) foundIndex else defaultIndex
             mutableIntStateOf(finalIndex)
         }
         // When DXVK version defaults to an 'async' build, enable DXVK_ASYNC by default
-        LaunchedEffect(dxvkVersionIndex) {
-            val version = StringUtils.parseIdentifier(dxvkVersions[dxvkVersionIndex])
+        LaunchedEffect(dxvkVersionIndex, graphicsDriverIndex, dxWrapperIndex) {
+            val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+            val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+            val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+            // Effective DXVK list based on constraints
+            val constrainedDxvkList = if (isVortekLike) listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3") else dxvkVersionsAll
+            val effectiveList = if (isVKD3D) emptyList() else constrainedDxvkList
+
+            // Ensure index within range or default
+            val selectedDisplay = effectiveList.getOrNull(dxvkVersionIndex)
+            val selectedVersion = StringUtils.parseIdentifier(selectedDisplay ?: "")
+            val version = if (selectedVersion.isEmpty()) {
+                if (isVortekLike) "async-1.10.3" else StringUtils.parseIdentifier(dxvkVersionsAll.getOrNull(dxvkVersionIndex) ?: DefaultVersion.DXVK)
+            } else selectedVersion
             val envSet = EnvVars(config.envVars)
             if (version.contains("async", ignoreCase = true)) {
                 envSet.put("DXVK_ASYNC", "1")
             } else {
                 envSet.remove("DXVK_ASYNC")
             }
-            config = config.copy(envVars = envSet.toString())
+            // Update dxwrapperConfig version only when DXVK wrapper selected
+            val wrapperIsDxvk = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "dxvk"
+            val kvs = KeyValueSet(config.dxwrapperConfig)
+            if (wrapperIsDxvk) {
+                kvs.put("version", version)
+            }
+            config = config.copy(envVars = envSet.toString(), dxwrapperConfig = kvs.toString())
         }
         var audioDriverIndex by rememberSaveable {
             val driverIndex = audioDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.audioDriver }
@@ -563,32 +596,59 @@ fun ContainerConfigDialog(
                                     config = config.copy(dxwrapper = StringUtils.parseIdentifier(dxWrappers[it]))
                                 },
                             )
-                            // DXVK Version Dropdown (Corrected to use SettingsListDropdown properly)
-                            SettingsListDropdown(
-                                colors = settingsTileColors(),
-                                title = { Text(text = stringResource(R.string.dxvk_version)) },
-                                value = dxvkVersionIndex,
-                                items = dxvkVersions,
-                                onItemSelected = {
-                                    dxvkVersionIndex = it
-                                    val version = StringUtils.parseIdentifier(dxvkVersions[it])
-                                    // Update dxwrapperConfig
-                                    val currentDxvkConfig = KeyValueSet(config.dxwrapperConfig)
-                                    currentDxvkConfig.put("version", version)
-                                    // Auto-manage DXVK_ASYNC env var
-                                    val envVarsSet = EnvVars(config.envVars)
-                                    if (version.contains("async", ignoreCase = true)) {
-                                        envVarsSet.put("DXVK_ASYNC", "1")
-                                    } else {
-                                        envVarsSet.remove("DXVK_ASYNC")
-                                    }
-                                    // Save both config and envVars
-                                    config = config.copy(
-                                        dxwrapperConfig = currentDxvkConfig.toString(),
-                                        envVars = envVarsSet.toString()
+                            // DXVK Version Dropdown (conditionally visible and constrained)
+                            run {
+                                val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+                                val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+                                val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+                                val items = if (isVortekLike) listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3") else dxvkVersionsAll
+                                if (!isVKD3D) {
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = stringResource(R.string.dxvk_version)) },
+                                        value = dxvkVersionIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0)),
+                                        items = items,
+                                        onItemSelected = {
+                                            dxvkVersionIndex = it
+                                            val version = StringUtils.parseIdentifier(items[it])
+                                            val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                            currentConfig.put("version", version)
+                                            val envVarsSet = EnvVars(config.envVars)
+                                            if (version.contains("async", ignoreCase = true)) envVarsSet.put("DXVK_ASYNC", "1") else envVarsSet.remove("DXVK_ASYNC")
+                                            config = config.copy(dxwrapperConfig = currentConfig.toString(), envVars = envVarsSet.toString())
+                                        },
                                     )
-                                },
-                            )
+                                } else {
+                                    // Ensure default version for vortek-like when hidden
+                                    val version = if (isVortekLike) "1.10.3" else "2.3.1"
+                                    val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                    currentConfig.put("version", version)
+                                    config = config.copy(dxwrapperConfig = currentConfig.toString())
+                                }
+                            }
+                            // VKD3D Version UI (visible only when VKD3D selected)
+                            run {
+                                val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+                                if (isVKD3D) {
+                                    val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+                                    val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+                                    val label = "VKD3D Version"
+                                    val version = vkd3dForcedVersion()
+
+                                    // Save VKD3D version in config - exact same pattern as DXVK
+                                    val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                    currentConfig.put("vkd3dVersion", version)
+                                    config = config.copy(dxwrapperConfig = currentConfig.toString())
+
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = label) },
+                                        value = 0,
+                                        items = listOf(version),
+                                        onItemSelected = { _ -> },
+                                    )
+                                }
+                            }
                             // Audio Driver Dropdown
                             SettingsListDropdown(
                                 colors = settingsTileColors(),

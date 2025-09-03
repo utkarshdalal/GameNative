@@ -20,6 +20,8 @@
         <item>Vortek (Universal)</item>
         <item>Turnip (Adreno)</item>
         <item>VirGL (Universal)</item>
+        <item>Qualcomm (Adreno)</item>
+        <item>Qualcomm (SD 8 Elite)</item>
     </string-array>
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>

@@ -1118,7 +1118,7 @@ private fun setupXEnvironment(
                 UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VIRGL_SERVER_PATH),
             ),
         )
-    } else if (xServerState.value.graphicsDriver == "vortek") {
+    } else if (xServerState.value.graphicsDriver == "vortek" || xServerState.value.graphicsDriver == "adreno" || xServerState.value.graphicsDriver == "sd-8-elite") {
         Timber.i("Adding VortekRendererComponent to Environment")
         val options2: VortekRendererComponent.Options? = VortekRendererComponent.Options.fromKeyValueSet(context, KeyValueSet(container.getGraphicsDriverConfig()))
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
@@ -1489,14 +1489,27 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
-    // val dxwrapper = this.dxwrapper
+    // Normalize dxwrapper for state (dxvk includes version for extraction switch)
     if (xServerState.value.dxwrapper == "dxvk") {
         xServerState.value = xServerState.value.copy(
             dxwrapper = "dxvk-" + xServerState.value.dxwrapperConfig?.get("version"),
         )
     }
 
-    if (xServerState.value.dxwrapper != container.getExtra("dxwrapper")) {
+    // Also normalize VKD3D to include version like vkd3d-<version>
+    if (xServerState.value.dxwrapper == "vkd3d") {
+        xServerState.value = xServerState.value.copy(
+            dxwrapper = "vkd3d-" + xServerState.value.dxwrapperConfig?.get("vkd3dVersion"),
+        )
+    }
+
+    val needReextract = xServerState.value.dxwrapper != container.getExtra("dxwrapper")
+
+    Timber.i("needReextract is " + needReextract)
+    Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
+    Timber.i("container.getExtra(\"dxwrapper\") is " + container.getExtra("dxwrapper"))
+
+    if (true || needReextract) {
         extractDXWrapperFiles(
             context,
             firstTimeBoot,
@@ -1580,11 +1593,12 @@ private fun extractDXWrapperFiles(
         "dxgi.dll",
         "ddraw.dll",
     )
-    if (firstTimeBoot && dxwrapper != "vkd3d") cloneOriginalDllFiles(imageFs, *dlls)
+    val splitDxWrapper = dxwrapper.split("-")[0]
+    if (firstTimeBoot && splitDxWrapper != "vkd3d") cloneOriginalDllFiles(imageFs, *dlls)
     val rootDir = imageFs.getRootDir()
     val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
 
-    when (dxwrapper) {
+    when (splitDxWrapper) {
         "wined3d" -> {
             restoreOriginalDllFiles(container, containerManager, imageFs, *dlls)
         }
@@ -1603,14 +1617,21 @@ private fun extractDXWrapperFiles(
         }
         "vkd3d" -> {
             Timber.i("Extracting VKD3D D3D12 DLLs for dxwrapper: $dxwrapper")
+            // Determine graphics driver to choose DXVK version
+            val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
+            val dxvkVersionForVkd3d = if (vortekLike) "1.10.3" else "2.3.1"
+            Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD, context.assets,
-                "dxwrapper/dxvk-2.3.1.tzst", windowsDir, onExtractFileListener,
+                "dxwrapper/dxvk-${dxvkVersionForVkd3d}.tzst", windowsDir, onExtractFileListener,
             )
+            // Determine VKD3D version from state config
+            Timber.i("Extracting VKD3D D3D12 DLLs version: $dxwrapper")
+
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD,
                 context.assets,
-                "dxwrapper/vkd3d-" + DefaultVersion.VKD3D + ".tzst",
+                "dxwrapper/$dxwrapper.tzst",
                 windowsDir,
                 onExtractFileListener,
             )
@@ -1777,7 +1798,7 @@ private fun extractGraphicsDriverFiles(
         }
     } else if (graphicsDriver == "virgl") {
         cacheId += "-" + DefaultVersion.VIRGL
-    } else if (graphicsDriver == "vortek") {
+    } else if (graphicsDriver == "vortek" || graphicsDriver == "adreno" || graphicsDriver == "sd-8-elite") {
         cacheId += "-" + DefaultVersion.VORTEK
     }
 
@@ -1799,14 +1820,13 @@ private fun extractGraphicsDriverFiles(
         container.putExtra("graphicsDriver", cacheId)
         container.saveData()
     }
+    if (dxwrapper.contains("dxvk")) {
+        DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
+    } else if (dxwrapper.contains("vkd3d")) {
+        envVars.put("VKD3D_FEATURE_LEVEL", "12_1")
+    }
 
     if (graphicsDriver == "turnip") {
-        if (dxwrapper.contains("dxvk")) {
-            DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
-        } else if (dxwrapper.contains("vkd3d")) {
-            envVars.put("VKD3D_FEATURE_LEVEL", "12_1")
-        }
-
         envVars.put("GALLIUM_DRIVER", "zink")
         envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096")
         if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox")
@@ -1867,8 +1887,74 @@ private fun extractGraphicsDriverFiles(
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.0.tzst", rootDir)
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
         }
+    } else if (graphicsDriver == "adreno" || graphicsDriver == "sd-8-elite") {
+        val assetZip = if (graphicsDriver == "adreno") "Adreno_819.2_adpkg.zip" else "SD8Elite_800.35.zip"
+
+        val componentRoot = com.winlator.core.GeneralComponents.getComponentDir(
+            com.winlator.core.GeneralComponents.Type.ADRENOTOOLS_DRIVER,
+            context,
+        )
+
+        // Read manifest name from zip to determine folder name
+        val identifier = readZipManifestNameFromAssets(context, assetZip) ?: assetZip.substringBeforeLast('.')
+
+        // Only (re)extract if changed
+        val adrenoCacheId = "${graphicsDriver}-${identifier}"
+        val needsExtract = changed || adrenoCacheId != container.getExtra("graphicsDriverAdreno")
+
+        if (true || needsExtract) {
+            val destinationDir = File(componentRoot.toString())
+            if (destinationDir.isDirectory) {
+                FileUtils.delete(destinationDir)
+            }
+            destinationDir.mkdirs()
+            com.winlator.core.FileUtils.extractZipFromAssets(context, assetZip, destinationDir)
+
+            val targetLibName = if (graphicsDriver == "adreno") "vulkan.ad8190.so" else "vulkan.adreno.so"
+
+            // Update cache and only the adrenotoolsDriver key within graphics driver config
+            container.putExtra("graphicsDriverAdreno", adrenoCacheId)
+            run {
+                val gcfg = KeyValueSet(container.getGraphicsDriverConfig())
+                gcfg.put("adrenotoolsDriver", targetLibName)
+                container.setGraphicsDriverConfig(gcfg.toString())
+            }
+            container.saveData()
+        }
+        envVars.put("GALLIUM_DRIVER", "zink")
+        envVars.put("ZINK_CONTEXT_THREADED", "1")
+        envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3")
+        envVars.put("WINEVKUSEPLACEDADDR", "1")
+        envVars.put("VORTEK_SERVER_PATH", imageFs.getRootDir().getPath() + UnixSocketConfig.VORTEK_SERVER_PATH)
+        Timber.i("dxwrapper is " + dxwrapper)
+        if (dxwrapper.contains("dxvk")) {
+            envVars.put("WINE_D3D_CONFIG", "renderer=gdi")
+        }
+        if (changed) {
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.0.tzst", rootDir)
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
+        }
     }
 
+}
+
+private fun readZipManifestNameFromAssets(context: Context, assetName: String): String? {
+    return com.winlator.core.FileUtils.readZipManifestNameFromAssets(context, assetName)
+}
+
+private fun readLibraryNameFromExtractedDir(destinationDir: File): String? {
+    return try {
+        val manifests = destinationDir.listFiles { _, name -> name.endsWith(".json") }
+        if (manifests != null && manifests.isNotEmpty()) {
+            val manifest = manifests[0]
+            val content = com.winlator.core.FileUtils.readString(manifest)
+            val json = org.json.JSONObject(content)
+            val libraryName = json.optString("libraryName", "").trim()
+            if (libraryName.isNotEmpty()) libraryName else null
+        } else null
+    } catch (_: Exception) {
+        null
+    }
 }
 private fun changeWineAudioDriver(audioDriver: String, container: Container, imageFs: ImageFs) {
     if (audioDriver != container.getExtra("audioDriver")) {

@@ -101,7 +101,6 @@ public class Container {
     }
 
     public void setGraphicsDriverVersion(String graphicsDriverVersion) {
-        Log.d("Container", "Setting graphicsDriverVersion: " + graphicsDriverVersion);
         this.graphicsDriverVersion = graphicsDriverVersion;
     }
 
