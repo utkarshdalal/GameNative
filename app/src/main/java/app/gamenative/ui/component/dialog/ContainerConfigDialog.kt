@@ -193,7 +193,7 @@ fun ContainerConfigDialog(
         fun vkd3dForcedVersion(): String {
             val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
             val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
-            return if (isVortekLike) "2.5" else "2.14.1"
+            return if (isVortekLike) "2.6" else "2.14.1"
         }
         // Keep dxwrapperConfig in sync when VKD3D selected
         LaunchedEffect(graphicsDriverIndex, dxWrapperIndex) {

@@ -7,7 +7,7 @@ public abstract class GPUHelper {
     public static native String[] vkGetDeviceExtensions();
 
     static {
-        System.loadLibrary("winlator");
+        System.loadLibrary("winlator_10");
     }
 
     public static int vkMakeVersion(String value) {
