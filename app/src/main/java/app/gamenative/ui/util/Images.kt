@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -67,7 +68,7 @@ internal fun SteamIconImage(
             CircularProgressIndicator()
         },
         failure = {
-            Icon(Icons.Filled.QuestionMark, null)
+            Icon(Icons.Default.AccountCircle, null)
         },
         previewPlaceholder = painterResource(R.drawable.ic_logo_color),
     )
