@@ -113,6 +113,8 @@ fun ContainerConfigDialog(
         val virglVersions = stringArrayResource(R.array.virgl_version_entries).toList()
         val zinkVersions = stringArrayResource(R.array.zink_version_entries).toList()
         val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
+        val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
+        val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
         val languages = listOf(
             "arabic",
             "bulgarian",
@@ -169,6 +171,8 @@ fun ContainerConfigDialog(
                 "turnip" -> turnipVersions
                 "virgl" -> virglVersions
                 "vortek" -> vortekVersions
+                "adreno" -> adrenoVersions
+                "sd-8-elite" -> sd8EliteVersions
                 else -> zinkVersions
             }
         }

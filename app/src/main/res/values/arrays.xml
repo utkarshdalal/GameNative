@@ -39,6 +39,12 @@
     <string-array name="vortek_version_entries">
         <item>2.0</item>
     </string-array>
+    <string-array name="adreno_version_entries">
+        <item>819.2</item>
+    </string-array>
+    <string-array name="sd8elite_version_entries">
+        <item>800.35</item>
+    </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>
