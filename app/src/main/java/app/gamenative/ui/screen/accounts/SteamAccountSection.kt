@@ -16,10 +16,8 @@ fun SteamAccountSection(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
-    
-    // State for Steam
     val isSteamLoggedIn = SteamService.isLoggedIn
-    
+
     AccountSection(
         title = "Steam",
         description = "Access your Steam library and games",
@@ -32,6 +30,13 @@ fun SteamAccountSection(
         onLogout = {
             scope.launch {
                 SteamService.logOut()
+                // Re-navigate to current screen to refresh logged in state
+                navController.navigate(PluviaScreen.AccountManagement.route) {
+                    popUpTo(PluviaScreen.Home.route) {
+                        inclusive = false
+                    }
+                    launchSingleTop = true
+                }
             }
         },
         modifier = modifier
