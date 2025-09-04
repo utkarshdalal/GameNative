@@ -1509,7 +1509,7 @@ private fun setupWineSystemFiles(
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
     Timber.i("container.getExtra(\"dxwrapper\") is " + container.getExtra("dxwrapper"))
 
-    if (true || needReextract) {
+    if (needReextract) {
         extractDXWrapperFiles(
             context,
             firstTimeBoot,
@@ -1902,7 +1902,7 @@ private fun extractGraphicsDriverFiles(
         val adrenoCacheId = "${graphicsDriver}-${identifier}"
         val needsExtract = changed || adrenoCacheId != container.getExtra("graphicsDriverAdreno")
 
-        if (true || needsExtract) {
+        if (needsExtract) {
             val destinationDir = File(componentRoot.toString())
             if (destinationDir.isDirectory) {
                 FileUtils.delete(destinationDir)
