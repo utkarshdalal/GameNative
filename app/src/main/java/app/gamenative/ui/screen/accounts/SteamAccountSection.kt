@@ -1,8 +1,5 @@
 package app.gamenative.ui.screen.accounts
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Games
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
@@ -21,7 +18,7 @@ fun SteamAccountSection(
     AccountSection(
         title = "Steam",
         description = "Access your Steam library and games",
-        icon = Icons.Default.Games,
+        icon = "https://store.steampowered.com/favicon.ico",
         isLoggedIn = isSteamLoggedIn,
         username = if (isSteamLoggedIn) "Steam User" else null,
         onLogin = {

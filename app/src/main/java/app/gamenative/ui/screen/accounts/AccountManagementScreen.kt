@@ -16,6 +16,8 @@ import app.gamenative.ui.component.topbar.BackButton
 import com.alorma.compose.settings.ui.SettingsGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Brush
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +105,7 @@ private fun AccountInfoCard() {
 fun AccountSection(
     title: String,
     description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: String,
     isLoggedIn: Boolean,
     username: String?,
     onLogin: () -> Unit,
@@ -143,14 +145,24 @@ fun AccountSection(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
+                CoilImage(
+                    imageModel = { icon },
+                    imageOptions = ImageOptions(
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        alignment = androidx.compose.ui.Alignment.Center
+                    ),
                     modifier = Modifier.size(32.dp),
-                    tint = if (isLoggedIn) 
-                        MaterialTheme.colorScheme.onPrimaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.onSurface
+                    failure = {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = if (isLoggedIn) 
+                                MaterialTheme.colorScheme.onPrimaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 )
                 
                 Column(modifier = Modifier.weight(1f)) {
