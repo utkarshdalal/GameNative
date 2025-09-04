@@ -1120,7 +1120,16 @@ private fun setupXEnvironment(
         )
     } else if (xServerState.value.graphicsDriver == "vortek" || xServerState.value.graphicsDriver == "adreno" || xServerState.value.graphicsDriver == "sd-8-elite") {
         Timber.i("Adding VortekRendererComponent to Environment")
-        val options2: VortekRendererComponent.Options? = VortekRendererComponent.Options.fromKeyValueSet(context, KeyValueSet(container.getGraphicsDriverConfig()))
+        val gcfg = KeyValueSet(container.getGraphicsDriverConfig())
+        val graphicsDriver = xServerState.value.graphicsDriver
+        if (graphicsDriver == "adreno"){
+            gcfg.put("adrenotoolsDriver", "vulkan.ad8190.so")
+            container.setGraphicsDriverConfig(gcfg.toString())
+        } else if (graphicsDriver == "sd-8-elite") {
+            gcfg.put("adrenotoolsDriver", "vulkan.adreno.so")
+            container.setGraphicsDriverConfig(gcfg.toString())
+        }
+        val options2: VortekRendererComponent.Options? = VortekRendererComponent.Options.fromKeyValueSet(context, gcfg)
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
@@ -1914,11 +1923,6 @@ private fun extractGraphicsDriverFiles(
 
             // Update cache and only the adrenotoolsDriver key within graphics driver config
             container.putExtra("graphicsDriverAdreno", adrenoCacheId)
-            run {
-                val gcfg = KeyValueSet(container.getGraphicsDriverConfig())
-                gcfg.put("adrenotoolsDriver", targetLibName)
-                container.setGraphicsDriverConfig(gcfg.toString())
-            }
             container.saveData()
         }
         envVars.put("GALLIUM_DRIVER", "zink")
