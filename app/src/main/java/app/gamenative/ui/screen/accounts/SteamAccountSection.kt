@@ -11,22 +11,18 @@ fun SteamAccountSection(
     onNavigateRoute: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
-    val isSteamLoggedIn = SteamService.isLoggedIn
+    val isSteamLoggedIn = remember { mutableStateOf(SteamService.isLoggedIn)}
 
     AccountSection(
         title = "Steam",
         description = "Access your Steam library and games",
         icon = "https://store.steampowered.com/favicon.ico",
-        isLoggedIn = isSteamLoggedIn,
-        username = if (isSteamLoggedIn) "Steam User" else null,
+        isLoggedIn = isSteamLoggedIn.value,
+        username = if (isSteamLoggedIn.value) "Steam User" else null,
         onLogin = { onNavigateRoute(PluviaScreen.LoginUser.route) },
         onLogout = {
-            scope.launch {
-                SteamService.logOut()
-                // Re-navigate to current screen to refresh logged in state
-                onNavigateRoute(PluviaScreen.AccountManagement.route)
-            }
+            SteamService.logOut()
+            isSteamLoggedIn.value = false // Trigger a redraw
         },
         modifier = modifier,
     )
