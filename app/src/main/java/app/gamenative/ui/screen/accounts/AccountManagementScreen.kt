@@ -12,8 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import app.gamenative.ui.component.topbar.BackButton
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.skydoves.landscapist.ImageOptions
@@ -58,45 +60,6 @@ private fun AccountsGroup(
     SettingsGroup(title = { Text(text = "Accounts") }) {
         SteamAccountSection(navController = navController)
         // Other account sections (GOG, Epic Games, etc.)
-    }
-}
-
-@Composable
-private fun AccountInfoCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = "Platform Information",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Text(
-                text = "• You can use GameNative without logging into any accounts\n" +
-                    "• Steam login enables downloading and playing Steam games",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
@@ -261,4 +224,11 @@ fun AccountSection(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AccountManagementScreenPreview() {
+    val navController = rememberNavController()
+    AccountManagementScreen(navController = navController)
 }
