@@ -777,17 +777,6 @@ public class Container {
                 defaults.put("START", "KEY_ENTER");
                 data.put("controllerEmulationBindings", defaults);
             }
-            
-            // Initialize or ensure extraData exists with default values
-            if (!data.has("extraData")) {
-                data.put("extraData", new JSONObject());
-            }
-            
-            // Always set config_changed to true in extraData for new containers
-            // This ensures the feedback dialog shows after first run
-            JSONObject extraData = data.getJSONObject("extraData");
-            extraData.put("config_changed", "true");
-            Log.d("Container", "Set config_changed=true in container extraData");
         }
         catch (JSONException e) {
             Log.e("Container", "Failed to check obsolete or missing properties: " + e);

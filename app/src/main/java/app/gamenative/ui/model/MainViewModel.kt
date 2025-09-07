@@ -253,14 +253,19 @@ class MainViewModel @Inject constructor(
             // After app closes, check if we need to show the feedback dialog
             try {
                 val container = ContainerUtils.getContainer(context, appId)
+                val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
                 val configChanged = container.getExtra("config_changed", "false") == "true"
-                
+                if (!shown) {
+                    container.putExtra("discord_support_prompt_shown", "true")
+                    container.saveData()
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                }
+
                 // Only show feedback if container config was changed before this game run
                 if (configChanged) {
                     // Clear the flag
                     container.putExtra("config_changed", "false")
                     container.saveData()
-                    
                     // Show the feedback dialog
                     _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                 }
@@ -338,7 +343,7 @@ class MainViewModel @Inject constructor(
             Timber.e("Game launch error: $error")
         }
     }
-    
+
     fun showToast(message: String) {
         viewModelScope.launch {
             _uiEvent.send(MainUiEvent.ShowToast(message))
