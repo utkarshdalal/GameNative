@@ -1657,12 +1657,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 try {
                     steamClient!!.servers.tryMark(steamClient!!.currentEndpoint, PROTOCOL_TYPES, ServerQuality.BAD)
+                } catch (e: NullPointerException) {
+                    // I don't care
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to mark endpoint as bad:")
                 }
 
                 try {
                     steamClient!!.disconnect()
+                } catch (e:  NullPointerException) {
+                    // I don't care
                 } catch (e: Exception) {
                     Timber.e(e, "There was an issue when disconnecting:")
                 }
