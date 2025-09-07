@@ -138,13 +138,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import okhttp3.ConnectionPool
-import okhttp3.Dispatcher
-import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.lang.NullPointerException
-import java.util.concurrent.TimeUnit
-import android.os.Environment
 import android.os.SystemClock
 import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
@@ -1780,6 +1775,11 @@ class SteamService : Service(), IChallengeUrlChanged {
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private fun onLoggedOn(callback: LoggedOnCallback) {
         Timber.i("Logged onto Steam: ${callback.result}")
+
+        if (userSteamId?.isValid == true && PrefManager.steamUserAccountId != userSteamId!!.accountID.toInt()) {
+            PrefManager.steamUserAccountId = userSteamId!!.accountID.toInt()
+            Timber.d("Saving logged in Steam accountID ${userSteamId!!.accountID.toInt()}")
+        }
 
         when (callback.result) {
             EResult.TryAnotherCM -> {
