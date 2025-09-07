@@ -387,26 +387,6 @@ fun PluviaMain(
         }
     }
 
-    // Timeout if stuck in connecting state for 10 seconds so that its not in loading state forever
-    LaunchedEffect(isConnecting) {
-        if (isConnecting) {
-            Timber.d("Started connecting, will timeout in 10s")
-            delay(10000)
-            Timber.d("Timeout reached, isSteamConnected=${state.isSteamConnected}")
-            if (!state.isSteamConnected) {
-                isConnecting = false
-            }
-        }
-    }
-
-    // Show loading or error UI as appropriate
-    when {
-        isConnecting -> {
-            LoadingScreen()
-            return
-        }
-    }
-
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
@@ -781,10 +761,10 @@ fun preLaunchApp(
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
     // TODO: add fail conditions
-    
+
     val gameId = libraryItem.gameId
     val appId = libraryItem.appId
-    
+
     CoroutineScope(Dispatchers.IO).launch {
         // set up Ubuntu file system
         SplitCompat.install(context)
@@ -1007,13 +987,13 @@ fun preLaunchApp(
  * Helper function to create a LibraryItem from an appId string
  * This is a temporary solution until we have proper LibraryItem objects throughout the codebase
  */
-private fun createLibraryItemFromAppId(appId: String): LibraryItem {    
+private fun createLibraryItemFromAppId(appId: String): LibraryItem {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-    
+
     // Try to get app info from Steam service
     val appInfo = SteamService.getAppInfoOf(gameId)
-    
+
     return LibraryItem(
         appId = appId,
         name = appInfo?.name ?: "Unknown Game",
