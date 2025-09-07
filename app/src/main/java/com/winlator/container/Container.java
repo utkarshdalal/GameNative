@@ -25,7 +25,7 @@ public class Container {
         THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
     }
 
-    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=30";
+    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60";
     public static final String DEFAULT_SCREEN_SIZE = "854x480";
     public static String DEFAULT_GRAPHICS_DRIVER = "vortek";
     public static final String DEFAULT_AUDIO_DRIVER = "alsa";
@@ -777,6 +777,17 @@ public class Container {
                 defaults.put("START", "KEY_ENTER");
                 data.put("controllerEmulationBindings", defaults);
             }
+            
+            // Initialize or ensure extraData exists with default values
+            if (!data.has("extraData")) {
+                data.put("extraData", new JSONObject());
+            }
+            
+            // Always set config_changed to true in extraData for new containers
+            // This ensures the feedback dialog shows after first run
+            JSONObject extraData = data.getJSONObject("extraData");
+            extraData.put("config_changed", "true");
+            Log.d("Container", "Set config_changed=true in container extraData");
         }
         catch (JSONException e) {
             Log.e("Container", "Failed to check obsolete or missing properties: " + e);

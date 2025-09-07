@@ -22,6 +22,10 @@ val keystoreProperties: Properties? = if (keystorePropertiesFile.exists()) {
 val posthogApiKey: String = project.findProperty("POSTHOG_API_KEY") as String? ?: System.getenv("POSTHOG_API_KEY") ?: ""
 val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: System.getenv("POSTHOG_HOST") ?: "https://us.i.posthog.com"
 
+// Add Supabase URL and key as build-time variables
+val supabaseUrl: String = project.findProperty("SUPABASE_URL") as String? ?: System.getenv("SUPABASE_URL") ?: "https://your-project.supabase.co"
+val supabaseKey: String = project.findProperty("SUPABASE_KEY") as String? ?: System.getenv("SUPABASE_KEY") ?: ""
+
 android {
     namespace = "app.gamenative"
     compileSdk = 35
@@ -52,6 +56,8 @@ android {
         buildConfigField("boolean", "GOLD", "false")
         buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
         buildConfigField("String", "POSTHOG_HOST", "\"$posthogHost\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"$supabaseKey\"")
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -227,4 +233,13 @@ dependencies {
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.+")
+
+    // 1) import the platform – it pins *every* Supabase + Ktor module
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.1.4"))
+
+    // 2) add whichever supabase-kt modules you actually use
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")   // PostgREST
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+
+    implementation("io.ktor:ktor-client-android:3.1.3")
 }

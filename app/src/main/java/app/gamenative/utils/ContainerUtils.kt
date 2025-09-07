@@ -291,6 +291,8 @@ object ContainerUtils {
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
+            // Mark that config has been changed, so we can show feedback dialog after next game run
+            container.putExtra("config_changed", "true")
             container.saveData()
         }
         Timber.d("Set container.execArgs to '${containerData.execArgs}'")

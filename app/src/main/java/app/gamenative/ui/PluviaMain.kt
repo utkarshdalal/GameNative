@@ -15,12 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.zIndex
+import android.widget.Toast
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -42,8 +44,10 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.DialogType
@@ -57,6 +61,7 @@ import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.R
 import com.google.android.play.core.splitcompat.SplitCompat
@@ -71,6 +76,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.reflect.KFunction2
+import io.ktor.client.plugins.HttpTimeout
 
 @Composable
 fun PluviaMain(
@@ -87,6 +93,10 @@ fun PluviaMain(
         mutableStateOf(MessageDialogState(false))
     }
     val setMessageDialogState: (MessageDialogState) -> Unit = { msgDialogState = it }
+
+    var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
+        mutableStateOf(GameFeedbackDialogState(false))
+    }
 
     var hasBack by rememberSaveable { mutableStateOf(navController.previousBackStackEntry?.destination?.route != null) }
 
@@ -236,6 +246,17 @@ fun PluviaMain(
                         dismissBtnText = "Close",
                     )
                 }
+
+                is MainViewModel.MainUiEvent.ShowGameFeedbackDialog -> {
+                    gameFeedbackState = GameFeedbackDialogState(
+                        visible = true,
+                        appId = event.appId
+                    )
+                }
+
+                is MainViewModel.MainUiEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -314,13 +335,23 @@ fun PluviaMain(
         )
     }
 
+    // Listen for game feedback request
+    val onShowGameFeedback: (AndroidEvent.ShowGameFeedback) -> Unit = { event ->
+        gameFeedbackState = GameFeedbackDialogState(
+            visible = true,
+            appId = event.appId
+        )
+    }
+
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
+        PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
+            PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
         }
     }
 
@@ -575,6 +606,61 @@ fun PluviaMain(
             icon = msgDialogState.type.icon,
             title = msgDialogState.title,
             message = msgDialogState.message,
+        )
+
+        GameFeedbackDialog(
+            state = gameFeedbackState,
+            onStateChange = { gameFeedbackState = it },
+            onSubmit = { feedbackState ->
+                Timber.d("GameFeedback: onSubmit called with rating=${feedbackState.rating}, tags=${feedbackState.selectedTags}, text=${feedbackState.feedbackText.take(20)}")
+                try {
+                    // Get the container for the app
+                    val appId = feedbackState.appId
+                    Timber.d("GameFeedback: Got appId=$appId")
+
+                    // Submit feedback to Supabase
+                    Timber.d("GameFeedback: Starting coroutine for submission")
+                    viewModel.viewModelScope.launch {
+                        Timber.d("GameFeedback: Inside coroutine scope")
+                        try {
+                            Timber.d("GameFeedback: Calling submitGameFeedback with rating=${feedbackState.rating}")
+                            val result = GameFeedbackUtils.submitGameFeedback(
+                                context = context,
+                                supabase = PluviaApp.supabase,
+                                appId = appId,
+                                rating = feedbackState.rating,
+                                tags = feedbackState.selectedTags.toList(),
+                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() }
+                            )
+
+                            Timber.d("GameFeedback: Submission returned $result")
+                            if (result) {
+                                Timber.d("GameFeedback: Showing success toast")
+                                viewModel.showToast("Thank you for your feedback!")
+                            } else {
+                                Timber.d("GameFeedback: Showing failure toast")
+                                viewModel.showToast("Failed to submit feedback")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "GameFeedback: Error submitting game feedback")
+                            viewModel.showToast("Error submitting feedback")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "GameFeedback: Error preparing game feedback")
+                    viewModel.showToast("Failed to submit feedback")
+                } finally {
+                    // Close the dialog regardless of success
+                    Timber.d("GameFeedback: Closing dialog")
+                    gameFeedbackState = GameFeedbackDialogState(visible = false)
+                }
+            },
+            onDismiss = {
+                gameFeedbackState = GameFeedbackDialogState(visible = false)
+            },
+            onDiscordSupport = {
+                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+            }
         )
 
         Box(modifier = Modifier.zIndex(10f)) {
