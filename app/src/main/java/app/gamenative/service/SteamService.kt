@@ -1440,6 +1440,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             appId: Int,
             branch: String = "public",
         ): Boolean = withContext(Dispatchers.IO) {
+            // Don't try if there's no internet
+            if (!isConnected) return@withContext false
+
             val steamApps = instance?._steamApps ?: return@withContext false
 
             // ── 1. Fetch the latest app header from Steam (PICS).
