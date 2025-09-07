@@ -279,16 +279,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "depot_manifests.zip").pathString
 
         val internalAppInstallPath: String
-            get() {
-                if (instance != null) {
-                    return Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
-                }
-                return ""
-            }
+            get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
+
         val externalAppInstallPath: String
-            get() {
-                return Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
-            }
+            get() = Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
 
         private val internalAppStagingPath: String
             get() {
