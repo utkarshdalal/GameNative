@@ -923,6 +923,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
+            if (!isConnected) {
+                syncResult = PostSyncInfo(SyncResult.DownloadFail)
+            }
+
             PrefManager.clientId?.let { clientId ->
                 instance?.let { steamInstance ->
                     getAppInfoOf(appId)?.let { appInfo ->
