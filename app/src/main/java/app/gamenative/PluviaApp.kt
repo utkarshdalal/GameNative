@@ -3,6 +3,7 @@ package app.gamenative
 import android.os.StrictMode
 import androidx.navigation.NavController
 import app.gamenative.events.EventDispatcher
+import app.gamenative.service.DownloadService
 import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.winlator.inputcontrols.InputControlsManager
@@ -44,6 +45,8 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+
+        DownloadService.populateDownloadService(this)
 
         // Clear any stale temporary config overrides from previous app sessions
         try {

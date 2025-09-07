@@ -278,15 +278,15 @@ class SteamService : Service(), IChallengeUrlChanged {
             private set
 
         private val serverListPath: String
-            get() = Paths.get(instance!!.cacheDir.path, "server_list.bin").pathString
+            get() = Paths.get(DownloadService.baseCacheDirPath, "server_list.bin").pathString
 
         private val depotManifestsPath: String
-            get() = Paths.get(instance!!.dataDir.path, "Steam", "depot_manifests.zip").pathString
+            get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "depot_manifests.zip").pathString
 
         val internalAppInstallPath: String
             get() {
                 if (instance != null) {
-                    return Paths.get(instance!!.dataDir.path, "Steam", "steamapps", "common").pathString
+                    return Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
                 }
                 return ""
             }
@@ -297,7 +297,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private val internalAppStagingPath: String
             get() {
-                return Paths.get(instance!!.dataDir.path, "Steam", "steamapps", "staging").pathString
+                return Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "staging").pathString
             }
         private val externalAppStagingPath: String
             get() {
@@ -312,7 +312,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     PrefManager.externalStoragePath
                 } else {
                     if (instance != null) {
-                        return instance!!.dataDir.path
+                        return DownloadService.baseDataDirPath
                     }
                     return ""
                 }
@@ -1821,7 +1821,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
                 }
-                
+
                 picsChangesCheckerJob = continuousPICSChangesChecker()
                 picsGetProductInfoJob = continuousPICSGetProductInfo()
 
@@ -2300,7 +2300,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     ensureActive()
                     if (!isLoggedIn) return@collect
                     val steamApps = instance?._steamApps ?: return@collect
-                    
+
                     val callback = steamApps.picsGetProductInfo(
                         apps = emptyList(),
                         packages = packageRequests,
@@ -2334,7 +2334,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                         }
 
-                        // TODO: This could be an issue. (Stalling)                        
+                        // TODO: This could be an issue. (Stalling)
                         steamApps.picsGetAccessTokens(
                             appIds = queue,
                             packageIds = emptyList(),

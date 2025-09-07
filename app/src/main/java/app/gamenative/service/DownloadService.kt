@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import android.content.Context
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -7,12 +8,21 @@ import timber.log.Timber
 import java.io.File
 
 object DownloadService {
-    init {
-        getDownloadDirectoryApps()
-    }
-
     private var lastUpdateTime: Long = 0
-    private lateinit var downloadDirectoryApps: MutableList<String>
+    private var downloadDirectoryApps: MutableList<String>? = null
+    var baseDataDirPath: String = ""
+        private set(value) {
+            field = value
+        }
+    var baseCacheDirPath: String = ""
+        private set(value) {
+            field = value
+        }
+
+    fun populateDownloadService(context: Context) {
+        baseDataDirPath = context.dataDir.path
+        baseCacheDirPath = context.cacheDir.path
+    }
 
     fun getDownloadDirectoryApps (): MutableList<String> {
         // What apps have folders in the download area?
@@ -30,7 +40,7 @@ object DownloadService {
             downloadDirectoryApps = subDir
         }
 
-        return downloadDirectoryApps
+        return downloadDirectoryApps ?: mutableListOf()
     }
 
     private fun getSubdirectories (path: String): MutableList<String> {
