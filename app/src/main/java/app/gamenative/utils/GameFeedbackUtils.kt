@@ -5,7 +5,9 @@ import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
+import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
+import com.winlator.xenvironment.ImageFs
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -13,9 +15,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import org.json.JSONObject
 
 import timber.log.Timber
+import java.io.File
 
 object GameFeedbackUtils {
 
@@ -45,6 +51,10 @@ object GameFeedbackUtils {
     ) = withContext(Dispatchers.IO) {
         Timber.d("GameFeedbackUtils: Starting submitGameFeedback method with rating=$rating")
         try {
+            val container = ContainerUtils.getContainer(context, appId)
+            val configJson = Json.parseToJsonElement(FileUtils.readString(container.getConfigFile()).replace("\\u0000", "").replace("\u0000", "")).jsonObject
+            Timber.d("config string is: " + FileUtils.readString(container.getConfigFile()).replace("\\u0000", "").replace("\u0000", ""))
+            Timber.d("configJson: $configJson")
             // Get the game name from container or use a fallback
             val appInfo = SteamService.getAppInfoOf(appId)!!
             val gameName = appInfo.name
@@ -73,25 +83,6 @@ object GameFeedbackUtils {
             // Get app version
             val appVersion = BuildConfig.VERSION_NAME
             Timber.d("GameFeedbackUtils: App version: $appVersion")
-
-            // Read container config
-            val configJson = try {
-                Timber.d("GameFeedbackUtils: Attempting to get container config")
-                // Simplify this - just create a minimal config rather than reading the file
-                // which might be failing
-                Timber.d("GameFeedbackUtils: Using minimal config instead of reading file")
-                JsonObject(
-                    mapOf(
-                        "app_id" to kotlinx.serialization.json.JsonPrimitive(appId),
-                        "rating" to kotlinx.serialization.json.JsonPrimitive(rating),
-                    ),
-                )
-            } catch (e: Exception) {
-                Timber.e(e, "GameFeedbackUtils: Failed to create config JSON: ${e.message}")
-                e.printStackTrace()
-                // Return an empty object as fallback
-                JsonObject(emptyMap())
-            }
 
             // Log the submission
             Timber.i("GameFeedbackUtils: Submitting game feedback: game=$gameName, device=$deviceModel, rating=$rating, tags=${tags.joinToString()}")
@@ -208,7 +199,7 @@ object GameFeedbackUtils {
                     configs = configs,
                     rating = rating,
                     tags = tags,
-                    notes = notes
+                    notes = notes,
                 )
 
                 from("game_runs").insert(run)
