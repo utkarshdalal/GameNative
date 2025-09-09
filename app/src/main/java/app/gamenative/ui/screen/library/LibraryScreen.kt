@@ -24,9 +24,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
-import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
-import app.gamenative.service.SteamService
+import app.gamenative.data.LibraryItem
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.internal.fakeAppInfo
@@ -39,7 +38,7 @@ import app.gamenative.ui.theme.PluviaTheme
 @Composable
 fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (LibraryItem, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -70,12 +69,12 @@ private fun LibraryScreenContent(
     onModalBottomSheet: (Boolean) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (LibraryItem, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
 ) {
-    var selectedAppId by remember { mutableStateOf<String?>(null) }
+    var selectedGame by remember { mutableStateOf<LibraryItem?>(null) }
 
-    BackHandler(selectedAppId != null) { selectedAppId = null }
+    BackHandler(selectedGame != null) { selectedGame = null }
     val safePaddingModifier =
         if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
             Modifier.displayCutoutPadding()
@@ -87,7 +86,7 @@ private fun LibraryScreenContent(
         Modifier.background(MaterialTheme.colorScheme.background)
             .then(safePaddingModifier),
     ) {
-        if (selectedAppId == null) {
+        if (selectedGame == null) {
             LibraryListPane(
                 state = state,
                 listState = listState,
@@ -98,22 +97,13 @@ private fun LibraryScreenContent(
                 onIsSearching = onIsSearching,
                 onSearchQuery = onSearchQuery,
                 onNavigateRoute = onNavigateRoute,
-                onNavigate = { appId -> selectedAppId = appId },
+                onNavigate = { libraryItem -> selectedGame = libraryItem },
             )
         } else {
-            // Find the LibraryItem from the state based on selectedAppId
-            val selectedLibraryItem = selectedAppId?.let { appId ->
-                state.appInfoList.find { it.appId == appId }
-            }
-
             LibraryDetailPane(
-                libraryItem = selectedLibraryItem,
-                onBack = { selectedAppId = null },
-                onClickPlay = {
-                    selectedLibraryItem?.let { libraryItem ->
-                        onClickPlay(libraryItem.gameId, it)
-                    }
-                },
+                libraryItem = selectedGame!!,
+                onBack = { selectedGame = null },
+                onClickPlay = { onClickPlay(selectedGame!!, it) },
             )
         }
     }

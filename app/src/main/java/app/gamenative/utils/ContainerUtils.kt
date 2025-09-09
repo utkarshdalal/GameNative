@@ -1,9 +1,10 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
-import app.gamenative.PrefManager
+import app.gamenative.service.GameManagerService
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -13,15 +14,15 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
+import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
+import java.io.File
 import kotlin.Boolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import com.winlator.winhandler.WinHandler.PreferredInputApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
 
 object ContainerUtils {
     data class GpuInfo(
@@ -175,14 +176,26 @@ object ContainerUtils {
             box86Preset = container.box86Preset,
             box64Preset = container.box64Preset,
             desktopTheme = container.desktopTheme,
-            language = try { container.language } catch (e: Exception) { container.getExtra("language", "english") },
+            language = try {
+                container.language
+            } catch (e: Exception) {
+                container.getExtra("language", "english")
+            },
             sdlControllerAPI = container.isSdlControllerAPI,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
-            emulateKeyboardMouse = try { container.isEmulateKeyboardMouse() } catch (e: Exception) { false },
-            controllerEmulationBindings = try { container.getControllerEmulationBindings()?.toString() ?: "" } catch (e: Exception) { "" },
+            emulateKeyboardMouse = try {
+                container.isEmulateKeyboardMouse()
+            } catch (e: Exception) {
+                false
+            },
+            controllerEmulationBindings = try {
+                container.getControllerEmulationBindings()?.toString() ?: ""
+            } catch (e: Exception) {
+                ""
+            },
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -262,7 +275,11 @@ object ContainerUtils {
                 container.setControllerEmulationBindings(org.json.JSONObject(bindingsStr))
             }
         } catch (_: Exception) {}
-        try { container.language = containerData.language } catch (e: Exception) { container.putExtra("language", containerData.language) }
+        try {
+            container.language = containerData.language
+        } catch (e: Exception) {
+            container.putExtra("language", containerData.language)
+        }
         // Set container LC_ALL according to selected language
         val lcAll = mapLanguageToLocale(containerData.language)
         container.setLC_ALL(lcAll)
@@ -360,10 +377,10 @@ object ContainerUtils {
         containerManager: ContainerManager,
         customConfig: ContainerData? = null,
     ): Container {
-        // set up container drives to include app
         val defaultDrives = PrefManager.drives
         val gameId = extractGameIdFromContainerId(appId)
-        val appDirPath = SteamService.getAppDirPath(gameId)
+        val appDirPath = GameManagerService.getAppDirPath(appId)
+
         val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
         val drives = "$defaultDrives$drive:$appDirPath"
         Timber.d("Prepared container drives: $drives")
@@ -491,7 +508,11 @@ object ContainerUtils {
         val profileJSONObject = org.json.JSONObject(FileUtils.readString(baseFile))
         val elementsJSONArray = profileJSONObject.getJSONArray("elements")
 
-        val emuJson = try { container.controllerEmulationBindings } catch (_: Exception) { null }
+        val emuJson = try {
+            container.controllerEmulationBindings
+        } catch (_: Exception) {
+            null
+        }
 
         fun optBinding(key: String, fallback: String): String {
             return emuJson?.optString(key, fallback) ?: fallback
@@ -650,11 +671,9 @@ object ContainerUtils {
      * Extracts the game source from a container ID string
      */
     fun extractGameSourceFromContainerId(containerId: String): GameSource {
-        return when {
-            containerId.startsWith("STEAM_") -> GameSource.STEAM
-            // Add other platforms here..
-            else -> GameSource.STEAM // default fallback
-        }
+        return GameSource.values().find { gameSource ->
+            containerId.startsWith("${gameSource.name}_")
+        } ?: GameSource.STEAM // default fallback
     }
 
     /**
@@ -669,54 +688,58 @@ object ContainerUtils {
         try {
             val imageFs = ImageFs.find(context)
             val homeDir = File(imageFs.rootDir, "home")
-            
+
             // Find all legacy numeric container directories
             val legacyContainers = homeDir.listFiles()?.filter { file ->
-                file.isDirectory() && 
-                file.name != ImageFs.USER && // Skip active symlink
-                file.name.startsWith("${ImageFs.USER}-") && // Must have xuser- prefix
-                file.name.removePrefix("${ImageFs.USER}-").matches(Regex("\\d+")) && // Numeric ID after prefix
-                File(file, ".container").exists() // Has container config
+                file.isDirectory() &&
+                    // Skip active symlink
+                    file.name != ImageFs.USER &&
+                    // Must have xuser- prefix
+                    file.name.startsWith("${ImageFs.USER}-") &&
+                    // Numeric ID after prefix
+                    file.name.removePrefix("${ImageFs.USER}-").matches(Regex("\\d+")) &&
+                    // Has container config
+                    File(file, ".container").exists()
             } ?: emptyList()
-            
+
             val totalContainers = legacyContainers.size
             var migratedContainers = 0
-            
+
             if (totalContainers == 0) {
                 withContext(Dispatchers.Main) {
                     onComplete(0)
                 }
                 return@withContext
             }
-            
+
             Timber.i("Found $totalContainers legacy containers to migrate")
-            
+
             for (legacyDir in legacyContainers) {
                 val legacyId = legacyDir.name.removePrefix("${ImageFs.USER}-") // Remove xuser- prefix
                 val newContainerId = "STEAM_$legacyId"
                 val newDir = File(homeDir, "${ImageFs.USER}-$newContainerId") // WITH xuser- prefix
-                
+
                 withContext(Dispatchers.Main) {
                     onProgressUpdate(legacyId, migratedContainers, totalContainers)
                 }
-                
+
                 try {
                     // Handle naming conflicts
                     var finalContainerId = newContainerId
                     var finalNewDir = newDir
                     var counter = 1
-                    
+
                     while (finalNewDir.exists()) {
                         finalContainerId = "STEAM_$legacyId($counter)"
                         finalNewDir = File(homeDir, "${ImageFs.USER}-$finalContainerId") // WITH xuser- prefix
                         counter++
                     }
-                    
+
                     // Rename directory
                     if (legacyDir.renameTo(finalNewDir)) {
                         // Update container config
                         updateContainerConfig(finalNewDir, finalContainerId)
-                        
+
                         // Update active symlink if this was the active container
                         val activeSymlink = File(homeDir, ImageFs.USER)
                         if (activeSymlink.exists() && activeSymlink.canonicalPath.endsWith(legacyId)) {
@@ -724,22 +747,20 @@ object ContainerUtils {
                             FileUtils.symlink("./${ImageFs.USER}-$finalContainerId", activeSymlink.path)
                             Timber.i("Updated active symlink to point to $finalContainerId")
                         }
-                        
+
                         migratedContainers++
                         Timber.i("Migrated container $legacyId -> $finalContainerId")
                     } else {
                         Timber.e("Failed to rename container directory: $legacyId")
                     }
-                    
                 } catch (e: Exception) {
                     Timber.e(e, "Error migrating container $legacyId")
                 }
             }
-            
+
             withContext(Dispatchers.Main) {
                 onComplete(migratedContainers)
             }
-            
         } catch (e: Exception) {
             Timber.e(e, "Error during container migration")
             withContext(Dispatchers.Main) {
@@ -755,15 +776,19 @@ object ContainerUtils {
         try {
             val imageFs = ImageFs.find(context)
             val homeDir = File(imageFs.rootDir, "home")
-            
+
             val legacyContainers = homeDir.listFiles()?.filter { file ->
-                file.isDirectory() && 
-                file.name != ImageFs.USER && // Skip active symlink
-                file.name.startsWith("${ImageFs.USER}-") && // Must have xuser- prefix
-                file.name.removePrefix("${ImageFs.USER}-").matches(Regex("\\d+")) && // Numeric ID after prefix
-                File(file, ".container").exists() // Has container config
+                file.isDirectory() &&
+                    // Skip active symlink
+                    file.name != ImageFs.USER &&
+                    // Must have xuser- prefix
+                    file.name.startsWith("${ImageFs.USER}-") &&
+                    // Numeric ID after prefix
+                    file.name.removePrefix("${ImageFs.USER}-").matches(Regex("\\d+")) &&
+                    // Has container config
+                    File(file, ".container").exists()
             } ?: emptyList()
-            
+
             return@withContext legacyContainers.isNotEmpty()
         } catch (e: Exception) {
             Timber.e(e, "Error checking for legacy containers")

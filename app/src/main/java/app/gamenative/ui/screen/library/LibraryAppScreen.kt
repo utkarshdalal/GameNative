@@ -1,13 +1,20 @@
 package app.gamenative.ui.screen.library
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Environment
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +28,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -48,8 +57,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -69,11 +80,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import app.gamenative.Constants
+import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
-import app.gamenative.data.SteamApp
+import app.gamenative.enums.Marker
+import app.gamenative.enums.PathType
+import app.gamenative.enums.SaveLocation
+import app.gamenative.enums.SyncResult
+import app.gamenative.service.GameManagerService
 import app.gamenative.service.SteamService
+import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -83,51 +100,25 @@ import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
-import app.gamenative.ui.internal.fakeAppInfo
+import app.gamenative.ui.internal.LocalGameManagerService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
 import com.google.android.play.core.splitcompat.SplitCompat
+import com.posthog.PostHog
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
-import app.gamenative.utils.SteamUtils
 import com.winlator.container.ContainerData
+import com.winlator.container.ContainerManager
 import com.winlator.xenvironment.ImageFsInstaller
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.nio.file.Paths
+import kotlin.io.path.pathString
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import app.gamenative.service.SteamService.Companion.getAppDirPath
-import com.posthog.PostHog
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.os.Environment
-import androidx.compose.foundation.border
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import app.gamenative.PrefManager
-import app.gamenative.service.DownloadService
-import java.nio.file.Paths
-import kotlin.io.path.pathString
-import kotlin.math.roundToInt
-import app.gamenative.enums.PathType
-import com.winlator.container.ContainerManager
-import app.gamenative.enums.SyncResult
-import android.widget.Toast
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import app.gamenative.enums.Marker
-import app.gamenative.enums.SaveLocation
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.ui.graphics.compositeOver
-import app.gamenative.utils.MarkerUtils
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -135,7 +126,7 @@ import app.gamenative.utils.MarkerUtils
 private fun SkeletonText(
     modifier: Modifier = Modifier,
     lines: Int = 1,
-    lineHeight: Int = 16
+    lineHeight: Int = 16,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
     val alpha by infiniteTransition.animateFloat(
@@ -143,9 +134,9 @@ private fun SkeletonText(
         targetValue = 0.25f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "alpha"
+        label = "alpha",
     )
 
     val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
@@ -158,8 +149,8 @@ private fun SkeletonText(
                     .height(lineHeight.dp)
                     .background(
                         color = color,
-                        shape = RoundedCornerShape(4.dp)
-                    )
+                        shape = RoundedCornerShape(4.dp),
+                    ),
             )
             if (index < lines - 1) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -177,26 +168,21 @@ fun AppScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
     val gameId = libraryItem.gameId
     val appId = libraryItem.appId
-    
-    val appInfo by remember(appId) {
-        mutableStateOf(SteamService.getAppInfoOf(gameId)!!)
-    }
 
     var downloadInfo by remember(appId) {
-        mutableStateOf(SteamService.getAppDownloadInfo(gameId))
+        mutableStateOf(GameManagerService.getDownloadInfo(libraryItem))
     }
     var downloadProgress by remember(appId) {
         mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f)
     }
     var isInstalled by remember(appId) {
-        mutableStateOf(SteamService.isAppInstalled(gameId))
+        mutableStateOf(GameManagerService.isGameInstalled(context, libraryItem))
     }
 
     val isValidToDownload by remember(appId) {
-        mutableStateOf(appInfo.branches.isNotEmpty() && appInfo.depots.isNotEmpty())
+        mutableStateOf(GameManagerService.isValidToDownload(libraryItem))
     }
 
     val isDownloading: () -> Boolean = { downloadInfo != null && downloadProgress < 1f }
@@ -223,10 +209,10 @@ fun AppScreen(
     DisposableEffect(downloadInfo) {
         val onDownloadProgress: (Float) -> Unit = {
             if (it >= 1f) {
-                isInstalled = SteamService.isAppInstalled(gameId)
+                isInstalled = GameManagerService.isGameInstalled(context, libraryItem)
                 downloadInfo = null
                 isInstalled = true
-                MarkerUtils.addMarker(getAppDirPath(gameId), Marker.DOWNLOAD_COMPLETE_MARKER)
+                MarkerUtils.addMarker(GameManagerService.getAppDirPath(libraryItem.appId), Marker.DOWNLOAD_COMPLETE_MARKER)
             }
             downloadProgress = it
         }
@@ -239,7 +225,7 @@ fun AppScreen(
     }
 
     LaunchedEffect(appId) {
-        Timber.d("Selected app $appId")
+        Timber.d("Selected app ${libraryItem.appId} (${libraryItem.gameSource})")
     }
 
     val oldGamesDirectory by remember {
@@ -305,8 +291,6 @@ fun AppScreen(
         )
     }
 
-
-
     val windowWidth = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
 
     /** Storage Permission **/
@@ -327,42 +311,7 @@ fun AppScreen(
 
             if (writePermissionGranted && readPermissionGranted) {
                 hasStoragePermission = true
-
-                val depots = SteamService.getDownloadableDepots(gameId)
-                Timber.i("There are ${depots.size} depots belonging to $appId")
-                // How much free space is on disk
-                val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
-                val availableSpace = StorageUtils.formatBinarySize(availableBytes)
-                // TODO: un-hardcode "public" branch
-                val downloadSize = StorageUtils.formatBinarySize(
-                    depots.values.sumOf {
-                        it.manifests["public"]?.download ?: 0
-                    },
-                )
-                val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
-                val installSize = StorageUtils.formatBinarySize(installBytes)
-                if (availableBytes < installBytes) {
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.NOT_ENOUGH_SPACE,
-                        title = context.getString(R.string.not_enough_space),
-                        message = "The app being installed needs $installSize of space but " +
-                                "there is only $availableSpace left on this device",
-                        confirmBtnText = context.getString(R.string.acknowledge),
-                    )
-                } else {
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.INSTALL_APP,
-                        title = context.getString(R.string.download_prompt_title),
-                        message = "The app being installed has the following space requirements. Would you like to proceed?" +
-                                "\n\n\tDownload Size: $downloadSize" +
-                                "\n\tSize on Disk: $installSize" +
-                                "\n\tAvailable Space: $availableSpace",
-                        confirmBtnText = context.getString(R.string.proceed),
-                        dismissBtnText = context.getString(R.string.cancel),
-                    )
-                }
+                msgDialogState = GameManagerService.getInstallInfoDialog(context, libraryItem)
             } else {
                 // Snack bar this?
                 Toast.makeText(context, "Storage permission required", Toast.LENGTH_SHORT).show()
@@ -370,22 +319,23 @@ fun AppScreen(
         },
     )
 
-
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
     when (msgDialogState.type) {
         DialogType.CANCEL_APP_DOWNLOAD -> {
             onConfirmClick = {
-                PostHog.capture(event = "game_install_cancelled",
+                PostHog.capture(
+                    event = "game_install_cancelled",
                     properties = mapOf(
-                        "game_name" to appInfo.name
-                    ))
+                        "game_name" to libraryItem.name,
+                    ),
+                )
                 downloadInfo?.cancel()
-                SteamService.deleteApp(gameId)
+                GameManagerService.deleteGame(context, libraryItem)
                 downloadInfo = null
                 downloadProgress = 0f
-                isInstalled = SteamService.isAppInstalled(gameId)
+                isInstalled = GameManagerService.isGameInstalled(context, libraryItem)
                 msgDialogState = MessageDialogState(false)
             }
             onDismissRequest = { msgDialogState = MessageDialogState(false) }
@@ -401,13 +351,15 @@ fun AppScreen(
         DialogType.INSTALL_APP -> {
             onDismissRequest = { msgDialogState = MessageDialogState(false) }
             onConfirmClick = {
-                PostHog.capture(event = "game_install_started",
+                PostHog.capture(
+                    event = "game_install_started",
                     properties = mapOf(
-                        "game_name" to appInfo.name
-                    ))
+                        "game_name" to libraryItem.name,
+                    ),
+                )
                 CoroutineScope(Dispatchers.IO).launch {
                     downloadProgress = 0f
-                    downloadInfo = SteamService.downloadApp(gameId)
+                    downloadInfo = GameManagerService.downloadGame(context, libraryItem)
                     msgDialogState = MessageDialogState(false)
                 }
             }
@@ -416,13 +368,12 @@ fun AppScreen(
 
         DialogType.DELETE_APP -> {
             onConfirmClick = {
-                // Delete the Steam app data
-                SteamService.deleteApp(gameId)
+                GameManagerService.deleteGame(context, libraryItem)
                 // Also delete the associated container so it will be recreated on next launch
                 ContainerUtils.deleteContainer(context, appId)
                 msgDialogState = MessageDialogState(false)
 
-                isInstalled = SteamService.isAppInstalled(gameId)
+                isInstalled = GameManagerService.isGameInstalled(context, libraryItem)
             }
             onDismissRequest = { msgDialogState = MessageDialogState(false) }
             onDismissClick = { msgDialogState = MessageDialogState(false) }
@@ -475,7 +426,7 @@ fun AppScreen(
 
     ContainerConfigDialog(
         visible = showConfigDialog,
-        title = "${appInfo.name} Config",
+        title = "${libraryItem.name} Config",
         initialConfig = containerData,
         onDismissRequest = { showConfigDialog = false },
         onSave = {
@@ -492,7 +443,7 @@ fun AppScreen(
     Scaffold {
         AppScreenContent(
             modifier = Modifier.padding(it),
-            appInfo = appInfo,
+            libraryItem = libraryItem,
             isInstalled = isInstalled,
             isValidToDownload = isValidToDownload,
             isDownloading = isDownloading(),
@@ -508,24 +459,26 @@ fun AppScreen(
                         confirmBtnText = context.getString(R.string.yes),
                         dismissBtnText = context.getString(R.string.no),
                     )
-                } else if (SteamService.hasPartialDownload(gameId)) {
+                } else if (GameManagerService.hasPartialDownload(libraryItem)) {
                     // Resume incomplete download
                     CoroutineScope(Dispatchers.IO).launch {
-                        downloadInfo = SteamService.downloadApp(gameId)
+                        downloadInfo = GameManagerService.downloadGame(context, libraryItem)
                     }
                 } else if (!isInstalled) {
                     permissionLauncher.launch(
                         arrayOf(
                             Manifest.permission.READ_EXTERNAL_STORAGE,
                             Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                            ),
-                        )
+                        ),
+                    )
                 } else {
                     // Already installed: launch app
-                    PostHog.capture(event = "game_launched",
+                    PostHog.capture(
+                        event = "game_launched",
                         properties = mapOf(
-                            "game_name" to appInfo.name
-                        ))
+                            "game_name" to libraryItem.name,
+                        ),
+                    )
                     onClickPlay(false)
                 }
             },
@@ -534,7 +487,7 @@ fun AppScreen(
                     downloadInfo?.cancel()
                     downloadInfo = null
                 } else {
-                    downloadInfo = SteamService.downloadApp(gameId)
+                    downloadInfo = GameManagerService.downloadGame(context, libraryItem)
                 }
             },
             onDeleteDownloadClick = {
@@ -544,10 +497,12 @@ fun AppScreen(
                     title = context.getString(R.string.cancel_download_prompt_title),
                     message = "Delete all downloaded data for this game?",
                     confirmBtnText = context.getString(R.string.yes),
-                    dismissBtnText = context.getString(R.string.no)
+                    dismissBtnText = context.getString(R.string.no),
                 )
             },
-            onUpdateClick = { CoroutineScope(Dispatchers.IO).launch { downloadInfo = SteamService.downloadApp(gameId) } },
+            onUpdateClick = {
+                CoroutineScope(Dispatchers.IO).launch { downloadInfo = GameManagerService.downloadGame(context, libraryItem) }
+            },
             onBack = onBack,
             optionsMenu = arrayOf(
                 AppMenuOption(
@@ -556,7 +511,7 @@ fun AppScreen(
                         // TODO add option to view web page externally or internally
                         val browserIntent = Intent(
                             Intent.ACTION_VIEW,
-                            (Constants.Library.STORE_URL + appInfo.id).toUri(),
+                            GameManagerService.getStoreUrl(libraryItem),
                         )
                         context.startActivity(browserIntent)
                     },
@@ -564,31 +519,37 @@ fun AppScreen(
                 AppMenuOption(
                     optionType = AppOptionMenuType.EditContainer,
                     onClick = {
-                        if (!SteamService.isImageFsInstalled(context)) {
-                            if (!SteamService.isImageFsInstallable(context)) {
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Download & Install ImageFS",
-                                    message = "The Ubuntu image needs to be downloaded and installed before " +
-                                        "being able to edit the configuration. This operation might take " +
-                                        "a few minutes. Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
-                                )
+                        // For Steam games, check ImageFS requirements
+                        if (libraryItem.gameSource == GameSource.STEAM) {
+                            if (!SteamService.isImageFsInstalled(context)) {
+                                if (!SteamService.isImageFsInstallable(context)) {
+                                    msgDialogState = MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.INSTALL_IMAGEFS,
+                                        title = "Download & Install ImageFS",
+                                        message = "The Ubuntu image needs to be downloaded and installed before " +
+                                            "being able to edit the configuration. This operation might take " +
+                                            "a few minutes. Would you like to continue?",
+                                        confirmBtnText = "Proceed",
+                                        dismissBtnText = "Cancel",
+                                    )
+                                } else {
+                                    msgDialogState = MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.INSTALL_IMAGEFS,
+                                        title = "Install ImageFS",
+                                        message = "The Ubuntu image needs to be installed before being able to edit " +
+                                            "the configuration. This operation might take a few minutes. " +
+                                            "Would you like to continue?",
+                                        confirmBtnText = "Proceed",
+                                        dismissBtnText = "Cancel",
+                                    )
+                                }
                             } else {
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Install ImageFS",
-                                    message = "The Ubuntu image needs to be installed before being able to edit " +
-                                        "the configuration. This operation might take a few minutes. " +
-                                        "Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
-                                )
+                                showEditConfigDialog()
                             }
                         } else {
+                            // For GOG games, directly show the config dialog (no ImageFS requirement)
                             showEditConfigDialog()
                         }
                     },
@@ -599,10 +560,11 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.RunContainer,
                                 onClick = {
-                                    PostHog.capture(event = "container_opened",
+                                    PostHog.capture(
+                                        event = "container_opened",
                                         properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        )
+                                            "game_name" to libraryItem.name,
+                                        ),
                                     )
                                     onClickPlay(true)
                                 },
@@ -619,7 +581,7 @@ fun AppScreen(
                                 AppOptionMenuType.VerifyFiles,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
-                                        downloadInfo = SteamService.downloadApp(gameId)
+                                        downloadInfo = GameManagerService.downloadGame(context, libraryItem)
                                     }
                                 },
                             ),
@@ -627,7 +589,7 @@ fun AppScreen(
                                 AppOptionMenuType.Update,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
-                                        downloadInfo = SteamService.downloadApp(gameId)
+                                        downloadInfo = GameManagerService.downloadGame(context, libraryItem)
                                     }
                                 },
                             ),
@@ -679,10 +641,12 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.ForceCloudSync,
                                 onClick = {
-                                    PostHog.capture(event = "cloud_sync_forced",
+                                    PostHog.capture(
+                                        event = "cloud_sync_forced",
                                         properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        ))
+                                            "game_name" to libraryItem.name,
+                                        ),
+                                    )
                                     CoroutineScope(Dispatchers.IO).launch {
                                         // Activate container before sync (required for proper path resolution)
                                         val containerManager = ContainerManager(context)
@@ -694,7 +658,7 @@ fun AppScreen(
                                         }
                                         val syncResult = SteamService.forceSyncUserFiles(
                                             appId = gameId,
-                                            prefixToPath = prefixToPath
+                                            prefixToPath = prefixToPath,
                                         ).await()
 
                                         // Handle result on main thread
@@ -717,10 +681,12 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.ForceDownloadRemote,
                                 onClick = {
-                                    PostHog.capture(event = "force_download_remote",
+                                    PostHog.capture(
+                                        event = "force_download_remote",
                                         properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        ))
+                                            "game_name" to libraryItem.name,
+                                        ),
+                                    )
                                     CoroutineScope(Dispatchers.IO).launch {
                                         val containerManager = ContainerManager(context)
                                         val container = ContainerUtils.getOrCreateContainer(context, appId)
@@ -733,7 +699,7 @@ fun AppScreen(
                                             appId = gameId,
                                             prefixToPath = prefixToPath,
                                             preferredSave = SaveLocation.Remote,
-                                            overrideLocalChangeNumber = -1L
+                                            overrideLocalChangeNumber = -1L,
                                         ).await()
 
                                         scope.launch(Dispatchers.Main) {
@@ -752,10 +718,12 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.ForceUploadLocal,
                                 onClick = {
-                                    PostHog.capture(event = "force_upload_local",
+                                    PostHog.capture(
+                                        event = "force_upload_local",
                                         properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        ))
+                                            "game_name" to libraryItem.name,
+                                        ),
+                                    )
                                     CoroutineScope(Dispatchers.IO).launch {
                                         val containerManager = ContainerManager(context)
                                         val container = ContainerUtils.getOrCreateContainer(context, appId)
@@ -767,7 +735,7 @@ fun AppScreen(
                                         val syncResult = SteamService.forceSyncUserFiles(
                                             appId = gameId,
                                             prefixToPath = prefixToPath,
-                                            preferredSave = SaveLocation.Local
+                                            preferredSave = SaveLocation.Local,
                                         ).await()
 
                                         scope.launch(Dispatchers.Main) {
@@ -787,7 +755,7 @@ fun AppScreen(
                     } else {
                         emptyArray()
                     }
-                ),
+                    ),
                 (
                     AppMenuOption(
                         optionType = AppOptionMenuType.GetSupport,
@@ -799,7 +767,7 @@ fun AppScreen(
                             context.startActivity(browserIntent)
                         },
                     )
-                )
+                    ),
             ),
         )
     }
@@ -808,7 +776,7 @@ fun AppScreen(
 @Composable
 private fun AppScreenContent(
     modifier: Modifier = Modifier,
-    appInfo: SteamApp,
+    libraryItem: LibraryItem,
     isInstalled: Boolean,
     isValidToDownload: Boolean,
     isDownloading: Boolean,
@@ -831,36 +799,7 @@ private fun AppScreenContent(
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
 
-    // Compute last played timestamp from local install folder
-    val lastPlayedText by remember(appInfo.id, isInstalled) {
-        mutableStateOf(
-            if (isInstalled) {
-                val path = SteamService.getAppDirPath(appInfo.id)
-                val file = java.io.File(path)
-                if (file.exists()) {
-                    SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
-                } else {
-                    "Never"
-                }
-            } else {
-                "Never"
-            }
-        )
-    }
-    // Compute real playtime by fetching owned games
-    var playtimeText by remember { mutableStateOf("0 hrs") }
-    LaunchedEffect(appInfo.id) {
-        val steamID = SteamService.userSteamId?.accountID?.toLong()
-        if (steamID != null) {
-            val games = SteamService.getOwnedGames(steamID)
-            val game = games.firstOrNull { it.appId == appInfo.id }
-            playtimeText = if (game != null) {
-                SteamUtils.formatPlayTime(game.playtimeForever) + " hrs"
-            } else "0 hrs"
-        }
-    }
-
-    LaunchedEffect(appInfo.id) {
+    LaunchedEffect(libraryItem.appId) {
         scrollState.animateScrollTo(0)
     }
 
@@ -870,18 +809,14 @@ private fun AppScreenContent(
     // Fatass disk size call - needs to stop if we do something important like launch the app
     LaunchedEffect(appSizeDisplayed) {
         if (isInstalled) {
-            appSizeOnDisk = " ..."
-
-            DownloadService.getSizeOnDiskDisplay(appInfo.id) {
-                appSizeOnDisk = "$it"
-            }
+            appSizeOnDisk = GameManagerService.getGameDiskSize(context, libraryItem)
         }
     }
 
     // Check if an update is pending
-    var isUpdatePending by remember(appInfo.id) { mutableStateOf(false) }
-    LaunchedEffect(appInfo.id) {
-        isUpdatePending = SteamService.isUpdatePending(appInfo.id)
+    var isUpdatePending by remember(libraryItem) { mutableStateOf(false) }
+    LaunchedEffect(libraryItem) {
+        isUpdatePending = GameManagerService.isUpdatePending(libraryItem)
     }
 
     Column(
@@ -894,12 +829,12 @@ private fun AppScreenContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp)
+                .height(250.dp),
         ) {
             // Hero background image
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
-                imageModel = { appInfo.getHeroUrl() },
+                imageModel = { GameManagerService.getHeroImage(libraryItem) },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },
                 failure = {
@@ -910,7 +845,7 @@ private fun AppScreenContent(
                         // Gradient background as fallback
                         Surface(
                             modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
                         ) { }
                     }
                 },
@@ -925,10 +860,10 @@ private fun AppScreenContent(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.8f)
-                            )
-                        )
-                    )
+                                Color.Black.copy(alpha = 0.8f),
+                            ),
+                        ),
+                    ),
             )
 
             // Back button (top left)
@@ -937,8 +872,8 @@ private fun AppScreenContent(
                     .padding(20.dp)
                     .background(
                         color = Color.Black.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        shape = RoundedCornerShape(12.dp),
+                    ),
             ) {
                 BackButton(onClick = onBack)
             }
@@ -947,20 +882,20 @@ private fun AppScreenContent(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(20.dp)
+                    .padding(20.dp),
             ) {
                 IconButton(
                     modifier = Modifier
                         .background(
                             color = Color.Black.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
                         ),
                     onClick = { optionsMenuVisible = !optionsMenuVisible },
                     content = {
                         Icon(
                             Icons.Filled.MoreVert,
                             contentDescription = "Settings",
-                            tint = Color.White
+                            tint = Color.White,
                         )
                     },
                 )
@@ -985,27 +920,28 @@ private fun AppScreenContent(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(20.dp)
+                    .padding(20.dp),
             ) {
                 Text(
-                    text = appInfo.name,
+                    text = libraryItem.name,
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Bold,
                         shadow = Shadow(
                             color = Color.Black.copy(alpha = 0.5f),
                             offset = Offset(0f, 2f),
-                            blurRadius = 10f
-                        )
+                            blurRadius = 10f,
+                        ),
                     ),
-                    color = Color.White
+                    color = Color.White,
                 )
 
+                val developer = GameManagerService.getAppInfo(libraryItem)?.developer ?: "Unknown"
+                val releaseDate = GameManagerService.getReleaseDate(libraryItem)
+
                 Text(
-                    text = "${appInfo.developer} • ${remember(appInfo.releaseDate) {
-                        SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(appInfo.releaseDate * 1000))
-                    }}",
+                    text = "$developer • $releaseDate",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = Color.White.copy(alpha = 0.9f),
                 )
             }
         }
@@ -1014,16 +950,17 @@ private fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(24.dp),
         ) {
             // Action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Pause/Resume and Delete when downloading or paused
                 // Determine if there's a partial download (in-session or from ungraceful close)
-                val isPartiallyDownloaded = (downloadProgress > 0f && downloadProgress < 1f) || SteamService.hasPartialDownload(appInfo.id)
+                val isPartiallyDownloaded =
+                    (downloadProgress > 0f && downloadProgress < 1f) || GameManagerService.hasPartialDownload(libraryItem)
                 // Disable resume when Wi-Fi only is enabled and there's no Wi-Fi
                 val isResume = !isDownloading && isPartiallyDownloaded
                 val pauseResumeEnabled = if (isResume) wifiAllowed else true
@@ -1035,12 +972,15 @@ private fun AppScreenContent(
                         onClick = onPauseResumeClick,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(16.dp),
                     ) {
                         Text(
-                            text = if (isDownloading) stringResource(R.string.pause_download)
-                                   else stringResource(R.string.resume_download),
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            text = if (isDownloading) {
+                                stringResource(R.string.pause_download)
+                            } else {
+                                stringResource(R.string.resume_download)
+                            },
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         )
                     }
                     // Delete (Cancel) download data
@@ -1050,7 +990,7 @@ private fun AppScreenContent(
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(16.dp),
                     ) {
                         Text(stringResource(R.string.delete_app), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     }
@@ -1069,7 +1009,7 @@ private fun AppScreenContent(
                         },
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(16.dp),
                     ) {
                         val text = when {
                             isInstalled -> stringResource(R.string.run_app)
@@ -1079,7 +1019,7 @@ private fun AppScreenContent(
                         }
                         Text(
                             text = text,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         )
                     }
                     // Uninstall if already installed
@@ -1090,11 +1030,11 @@ private fun AppScreenContent(
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(16.dp)
+                            contentPadding = PaddingValues(16.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.uninstall),
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             )
                         }
                     }
@@ -1126,21 +1066,21 @@ private fun AppScreenContent(
                     }
                 }
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "Installation Progress",
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
                             text = "${(downloadProgress * 100f).toInt()}%",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.tertiary
+                            color = MaterialTheme.colorScheme.tertiary,
                         )
                     }
 
@@ -1153,7 +1093,7 @@ private fun AppScreenContent(
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
                         color = MaterialTheme.colorScheme.tertiary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1161,17 +1101,17 @@ private fun AppScreenContent(
                     // This is placeholder text since we don't have exact size info in the state
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             text = "Downloading...",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             text = timeLeftText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
@@ -1189,32 +1129,32 @@ private fun AppScreenContent(
                             brush = Brush.linearGradient(
                                 colors = listOf(
                                     Color(0x1A06B6D4),
-                                    Color(0x1AA21CAF)
+                                    Color(0x1AA21CAF),
                                 ),
                                 start = Offset(0f, 0f),
-                                end = Offset(1000f, 1000f)
-                            )
+                                end = Offset(1000f, 1000f),
+                            ),
                         )
                         .border(1.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
-                        .padding(20.dp)
+                        .padding(20.dp),
                 ) {
                     Column {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .background(MaterialTheme.colorScheme.tertiary, CircleShape),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text("↑", color = MaterialTheme.colorScheme.onTertiary, fontSize = 14.sp)
                             }
                             Text(
                                 "Update Available",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.tertiary
+                                color = MaterialTheme.colorScheme.tertiary,
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -1224,9 +1164,9 @@ private fun AppScreenContent(
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary,
-                                contentColor = MaterialTheme.colorScheme.onTertiary
+                                contentColor = MaterialTheme.colorScheme.onTertiary,
                             ),
-                            contentPadding = PaddingValues(12.dp)
+                            contentPadding = PaddingValues(12.dp),
                         ) {
                             Text("Update Now", color = MaterialTheme.colorScheme.onTertiary)
                         }
@@ -1240,7 +1180,7 @@ private fun AppScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // Colored top border
@@ -1252,17 +1192,17 @@ private fun AppScreenContent(
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
-                                    )
-                                )
-                            )
+                                        MaterialTheme.colorScheme.tertiary,
+                                    ),
+                                ),
+                            ),
                     )
 
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
                             text = "Game Information",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 16.dp),
                         )
 
                         LazyVerticalGrid(
@@ -1270,7 +1210,7 @@ private fun AppScreenContent(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             // Setting a fixed height to avoid nested scrolling issues
-                            modifier = Modifier.height(220.dp)
+                            modifier = Modifier.height(220.dp),
                         ) {
                             // Status item
                             item {
@@ -1278,13 +1218,13 @@ private fun AppScreenContent(
                                     Text(
                                         text = "Status",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Surface(
                                         shape = RoundedCornerShape(20.dp),
                                         color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f))
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)),
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1295,8 +1235,8 @@ private fun AppScreenContent(
                                                     .size(8.dp)
                                                     .background(
                                                         color = MaterialTheme.colorScheme.tertiary,
-                                                        shape = CircleShape
-                                                    )
+                                                        shape = CircleShape,
+                                                    ),
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
@@ -1306,7 +1246,7 @@ private fun AppScreenContent(
                                                     else -> "Not Installed"
                                                 },
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                                color = MaterialTheme.colorScheme.tertiary
+                                                color = MaterialTheme.colorScheme.tertiary,
                                             )
                                         }
                                     }
@@ -1319,23 +1259,22 @@ private fun AppScreenContent(
                                     Text(
                                         text = "Size",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     // Show skeleton while calculating disk size, otherwise show actual text
                                     if (isInstalled && (appSizeOnDisk.isEmpty() || appSizeOnDisk == " ...")) {
                                         SkeletonText(lines = 1, lineHeight = 20)
                                     } else {
-                                        if (!isInstalled){
+                                        if (!isInstalled) {
                                             Text(
-                                                text = DownloadService.getSizeFromStoreDisplay(appInfo.id),
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                                text = GameManagerService.getDownloadSize(libraryItem),
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                             )
-                                        }
-                                        else {
+                                        } else {
                                             Text(
                                                 text = appSizeOnDisk,
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                             )
                                         }
                                     }
@@ -1344,13 +1283,12 @@ private fun AppScreenContent(
 
                             // Location item
                             if (isInstalled) {
-                                item (span = { GridItemSpan(maxLineSpan) }) {
-
+                                item(span = { GridItemSpan(maxLineSpan) }) {
                                     Column {
                                         Text(
                                             text = "Location",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Surface(
@@ -1359,7 +1297,7 @@ private fun AppScreenContent(
                                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
                                         ) {
                                             Text(
-                                                text = getAppDirPath(appInfo.id),
+                                                text = GameManagerService.getAppDirPath(libraryItem.appId),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1375,12 +1313,12 @@ private fun AppScreenContent(
                                     Text(
                                         text = "Developer",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = appInfo.developer,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        text = GameManagerService.getAppInfo(libraryItem)?.developer ?: "Unknown",
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                     )
                                 }
                             }
@@ -1391,15 +1329,12 @@ private fun AppScreenContent(
                                     Text(
                                         text = "Release Date",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = remember(appInfo.releaseDate) {
-                                            val date = Date(appInfo.releaseDate * 1000)
-                                            SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        text = GameManagerService.getReleaseDate(libraryItem),
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                     )
                                 }
                             }
@@ -1463,7 +1398,6 @@ internal fun GameMigrationDialog(
     )
 }
 
-
 /***********
  * PREVIEW *
  ***********/
@@ -1480,10 +1414,20 @@ private fun Preview_AppScreen() {
     val intent = Intent(context, SteamService::class.java)
     context.startForegroundService(intent)
     var isDownloading by remember { mutableStateOf(false) }
+    val gameManagerService = LocalGameManagerService.current
+    gameManagerService.ensureInitialized()
+
     PluviaTheme {
         Surface {
             AppScreenContent(
-                appInfo = fakeAppInfo(1),
+                libraryItem = LibraryItem(
+                    index = 0,
+                    appId = "STEAM_1",
+                    name = "Test Game",
+                    iconHash = "",
+                    isShared = false,
+                    gameSource = GameSource.STEAM,
+                ),
                 isInstalled = false,
                 isValidToDownload = true,
                 isDownloading = isDownloading,

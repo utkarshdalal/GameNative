@@ -4,6 +4,7 @@ import android.os.StrictMode
 import androidx.navigation.NavController
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
+import app.gamenative.service.GameManagerService
 import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.winlator.inputcontrols.InputControlsManager
@@ -62,6 +63,14 @@ class PluviaApp : SplitCompatApplication() {
             host = BuildConfig.POSTHOG_HOST,
         )
         PostHogAndroid.setup(this, postHogConfig)
+
+        // Initialize GameManagerService
+        try {
+            GameManagerService.initialize(this)
+            Timber.i("[PluviaApp]: GameManagerService initialized successfully")
+        } catch (e: Exception) {
+            Timber.e(e, "[PluviaApp]: Failed to initialize GameManagerService")
+        }
     }
 
     companion object {

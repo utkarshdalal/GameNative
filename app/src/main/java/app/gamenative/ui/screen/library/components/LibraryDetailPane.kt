@@ -9,11 +9,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.PrefManager
-import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
-import app.gamenative.service.SteamService
+import app.gamenative.data.LibraryItem
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
+import app.gamenative.ui.internal.LocalGameManagerService
 import app.gamenative.ui.screen.library.AppScreen
 import app.gamenative.ui.theme.PluviaTheme
 import java.util.EnumSet
@@ -21,7 +21,7 @@ import java.util.EnumSet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryDetailPane(
-    libraryItem: LibraryItem?,
+    libraryItem: LibraryItem,
     onClickPlay: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -69,13 +69,18 @@ internal fun LibraryDetailPane(
 @Composable
 private fun Preview_LibraryDetailPane() {
     PrefManager.init(LocalContext.current)
+    val gameManagerService = LocalGameManagerService.current
+    gameManagerService.ensureInitialized()
+
     PluviaTheme {
         LibraryDetailPane(
             libraryItem = LibraryItem(
-                appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
-                name = "Preview Game",
+                index = 0,
+                appId = "${GameSource.STEAM.name}_123",
+                name = "Test Game",
                 iconHash = "",
-                gameSource = GameSource.STEAM
+                isShared = false,
+                gameSource = GameSource.STEAM,
             ),
             onClickPlay = { },
             onBack = { },

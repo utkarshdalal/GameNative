@@ -14,19 +14,22 @@ import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.service.GameManagerService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.MainState
-import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.ui.screen.PluviaScreen
-import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.IntentLaunchManager
 import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
-import kotlinx.coroutines.Dispatchers
 import java.nio.file.Paths
 import javax.inject.Inject
 import kotlin.io.path.name
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,9 +39,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlinx.coroutines.Job
-import app.gamenative.utils.ContainerUtils
-import kotlinx.coroutines.async
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -218,12 +218,7 @@ class MainViewModel @Inject constructor(
             val gameId = libraryItem.gameId
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                if (container.isLaunchRealSteam()) {
-                    SteamUtils.restoreSteamApi(context, gameId)
-                } else {
-                    SteamUtils.replaceSteamApi(context, gameId)
-                }
+                GameManagerService.runBeforeLaunch(context, libraryItem)
             }
 
             // Small delay to ensure the splash screen is visible before proceeding

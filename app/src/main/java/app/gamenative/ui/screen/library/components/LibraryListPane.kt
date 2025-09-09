@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.ui.component.topbar.AccountButton
@@ -57,8 +58,6 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.DeviceUtils
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.distinctUntilChanged
-import app.gamenative.data.GameSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +69,7 @@ internal fun LibraryListPane(
     onModalBottomSheet: (Boolean) -> Unit,
     onPageChange: (Int) -> Unit,
     onIsSearching: (Boolean) -> Unit,
-    onNavigate: (String) -> Unit,
+    onNavigate: (LibraryItem) -> Unit,
     onSearchQuery: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
 ) {
@@ -194,7 +193,7 @@ internal fun LibraryListPane(
                         AppItem(
                             modifier = Modifier.animateItem(),
                             appInfo = item,
-                            onClick = { onNavigate(item.appId) },
+                            onClick = { onNavigate(item) },
                         )
                         if (item.index < state.appInfoList.lastIndex) {
                             HorizontalDivider()

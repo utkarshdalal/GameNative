@@ -2,11 +2,6 @@ package app.gamenative.data
 
 import app.gamenative.Constants
 
-enum class GameSource {
-    STEAM,
-    // Add other platforms here..
-}
-
 /**
  * Data class for the Library list
  */
@@ -19,8 +14,8 @@ data class LibraryItem(
     val gameSource: GameSource = GameSource.STEAM,
 ) {
     val clientIconUrl: String
-        get() = Constants.Library.ICON_URL + "${gameId}/$iconHash.ico"
-    
+        get() = Constants.Library.ICON_URL + "$gameId/$iconHash.ico"
+
     /**
      * Helper property to get the game ID as an integer
      * Extracts the numeric part by removing the gameSource prefix
