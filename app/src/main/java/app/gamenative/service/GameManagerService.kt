@@ -9,6 +9,8 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SteamApp
+import app.gamenative.service.GOG.GOGConstants
+import app.gamenative.service.GOG.GOGGameManager
 import app.gamenative.service.Steam.SteamGameManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.utils.ContainerUtils
@@ -30,6 +32,7 @@ import timber.log.Timber
 @Singleton
 class GameManagerService @Inject constructor(
     private val steamGameManager: SteamGameManager,
+    private val gogGameManager: GOGGameManager,
     // Add new game sources here
 ) {
     companion object {
@@ -48,6 +51,7 @@ class GameManagerService @Inject constructor(
                 // Set up default game managers using the real steamGameManager
                 gameManagers = mapOf(
                     GameSource.STEAM to serviceInstance.steamGameManager,
+                    GameSource.GOG to serviceInstance.gogGameManager
                     // Add new game sources here
                 )
             }

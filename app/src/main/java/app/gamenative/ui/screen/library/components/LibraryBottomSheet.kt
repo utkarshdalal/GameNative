@@ -39,8 +39,8 @@ fun LibraryBottomSheet(
            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AppFilter.entries.forEach { appFilter ->
-                // TODO properly fix this (and the one below)
-                if (appFilter.code !in listOf(0x01, 0x20)) {
+                // App Type filters: exclude status and platform filters
+                if (appFilter.code !in listOf(0x01, 0x20, 0x40, 0x80)) {
                     FlowFilterChip(
                         onClick = { onFilterChanged(appFilter) },
                         label = { Text(text = appFilter.displayText) },
@@ -58,6 +58,23 @@ fun LibraryBottomSheet(
         FlowRow {
             AppFilter.entries.forEach { appFilter ->
                 if (appFilter.code in listOf(0x01, 0x20)) {
+                    FlowFilterChip(
+                        onClick = { onFilterChanged(appFilter) },
+                        label = { Text(text = appFilter.displayText) },
+                        selected = selectedFilters.contains(appFilter),
+                        leadingIcon = { Icon(imageVector = appFilter.icon, contentDescription = null) },
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Platform", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow {
+            AppFilter.entries.forEach { appFilter ->
+                if (appFilter.code in listOf(0x40, 0x80)) { // Steam and GOG
                     FlowFilterChip(
                         onClick = { onFilterChanged(appFilter) },
                         label = { Text(text = appFilter.displayText) },

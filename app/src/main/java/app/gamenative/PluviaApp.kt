@@ -4,6 +4,7 @@ import android.os.StrictMode
 import androidx.navigation.NavController
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
+import app.gamenative.service.GOG.GOGService
 import app.gamenative.service.GameManagerService
 import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompatApplication
@@ -15,6 +16,8 @@ import com.winlator.widget.XServerView
 import com.winlator.xenvironment.XEnvironment
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
+import okhttp3.OkHttpClient
+import javax.inject.Inject
 
 // Add PostHog imports
 import com.posthog.android.PostHogAndroid
@@ -32,6 +35,9 @@ typealias NavChangedListener = NavController.OnDestinationChangedListener
 
 @HiltAndroidApp
 class PluviaApp : SplitCompatApplication() {
+
+    @Inject
+    lateinit var httpClient: OkHttpClient
 
     override fun onCreate() {
         super.onCreate()
@@ -91,6 +97,15 @@ class PluviaApp : SplitCompatApplication() {
             Timber.i("[PluviaApp]: GameManagerService initialized successfully")
         } catch (e: Exception) {
             Timber.e(e, "[PluviaApp]: Failed to initialize GameManagerService")
+        }
+
+        // Initialize GOG Service
+        try {
+            GOGService.initialize(this)
+            GOGService.setHttpClient(httpClient)
+            Timber.i("[PluviaApp]: GOG Service initialized successfully")
+        } catch (e: Exception) {
+            Timber.e(e, "[PluviaApp]: Failed to initialize GOG Service")
         }
     }
 

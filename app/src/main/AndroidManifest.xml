@@ -59,6 +59,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        
+        <!-- GOG OAuth Activity -->
+        <activity
+            android:name=".ui.screen.auth.GOGOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+        
         <service
             android:name=".service.SteamService"
             android:enabled="true"

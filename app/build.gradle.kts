@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.jetbrains.serialization)
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
+    id("com.chaquo.python") version "15.0.1"
 }
 
 val keystorePropertiesFile = rootProject.file("app/keystores/keystore.properties")
@@ -75,12 +76,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        proguardFiles(
-            // getDefaultProguardFile("proguard-android-optimize.txt"),
-            getDefaultProguardFile("proguard-android.txt"),
-            "proguard-rules.pro",
-        )
     }
 
     buildTypes {
@@ -94,11 +89,19 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android.txt"),
+                "proguard-rules.pro"
+            )
         }
         create("release-signed") {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("pluvia")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android.txt"),
+                "proguard-rules.pro"
+            )
         }
         create("release-gold") {
             isMinifyEnabled = true
@@ -113,6 +116,10 @@ android {
                     "icon" to iconValue,
                     "roundIcon" to iconRoundValue,
                 ),
+            )
+            proguardFiles(
+                getDefaultProguardFile("proguard-android.txt"),
+                "proguard-rules.pro"
             )
         }
     }
@@ -170,8 +177,30 @@ android {
     // }
 }
 
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        pip {
+            // Install GOGDL dependencies
+            install("requests")
+            // Use your Android-compatible fork instead of the original
+            install("git+https://github.com/unbelievableflavour/heroic-gogdl-android.git@0.0.4")
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            // Remove local Python source directory since we're using the external package
+            // srcDir("src/main/python")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.material)
+
+    // Chrome Custom Tabs for OAuth
+    implementation("androidx.browser:browser:1.8.0")
+
     // JavaSteaml
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {

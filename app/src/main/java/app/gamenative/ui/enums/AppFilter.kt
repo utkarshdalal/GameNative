@@ -5,7 +5,9 @@ import androidx.compose.material.icons.filled.AvTimer
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Diversity3
+import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.enums.AppType
@@ -45,6 +47,16 @@ enum class AppFilter(
         code = 0x20,
         displayText = "Family",
         icon = Icons.Default.Diversity3,
+    ),
+    STEAM(
+        code = 0x40,
+        displayText = "Steam",
+        icon = Icons.Default.Games,
+    ),
+    GOG(
+        code = 0x80,
+        displayText = "GOG",
+        icon = Icons.Default.LibraryBooks,
     ),
     // ALPHABETIC(
     //     code = 0x20,

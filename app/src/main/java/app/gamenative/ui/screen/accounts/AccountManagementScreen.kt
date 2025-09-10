@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.model.AccountManagementViewModel
 import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.skydoves.landscapist.ImageOptions
@@ -29,6 +31,7 @@ fun AccountManagementScreen(
     onNavigateRoute: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: AccountManagementViewModel = hiltViewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
@@ -51,7 +54,10 @@ fun AccountManagementScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            AccountsGroup(onNavigateRoute = onNavigateRoute)
+            AccountsGroup(
+                onNavigateRoute = onNavigateRoute,
+                viewModel = viewModel
+            )
         }
     }
 }
@@ -59,9 +65,11 @@ fun AccountManagementScreen(
 @Composable
 private fun AccountsGroup(
     onNavigateRoute: (String) -> Unit,
+    viewModel: AccountManagementViewModel,
 ) {
     SettingsGroup(title = { Text(text = "Accounts") }) {
         SteamAccountSection(onNavigateRoute = onNavigateRoute)
+        GOGAccountSection(viewModel = viewModel)
         // Other account sections (GOG, Epic Games, etc.)
     }
 }
@@ -79,6 +87,7 @@ fun AccountSection(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     error: String? = null,
+    isSyncing: Boolean = false,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary

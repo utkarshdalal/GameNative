@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
 import app.gamenative.data.Game
+import app.gamenative.data.GameSource
 import app.gamenative.service.GameManagerService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
@@ -101,6 +102,13 @@ class LibraryViewModel @Inject constructor() : ViewModel() {
 
             val filteredGames = allGames
                 .asSequence()
+                .filter { game ->
+                    when {
+                        currentState.appInfoSortType.contains(AppFilter.STEAM) -> game.source == GameSource.STEAM
+                        currentState.appInfoSortType.contains(AppFilter.GOG) -> game.source == GameSource.GOG
+                        else -> true
+                    }
+                }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
                         true
