@@ -95,6 +95,7 @@ object FakeGameManager : GameManager {
     override fun getReleaseDate(libraryItem: LibraryItem): String = "2024-01-01"
 
     override fun getHeroImage(libraryItem: LibraryItem): String = ""
+    override fun getIconImage(libraryItem: LibraryItem): String = ""
 
     override fun getInstallInfoDialog(context: Context, libraryItem: LibraryItem): MessageDialogState {
         return MessageDialogState(

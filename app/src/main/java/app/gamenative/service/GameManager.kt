@@ -116,6 +116,12 @@ interface GameManager {
      */
     fun getHeroImage(libraryItem: LibraryItem): String
 
+
+    /**
+     * Get the icon image for the given game
+     */
+    fun getIconImage(libraryItem: LibraryItem): String
+
     /**
      * Returns the install info dialog for the given game
      */
