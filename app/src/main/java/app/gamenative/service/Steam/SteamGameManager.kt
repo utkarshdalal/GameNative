@@ -3,6 +3,7 @@ package app.gamenative.service.Steam
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import app.gamenative.Constants
 import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.Game
@@ -245,6 +246,10 @@ class SteamGameManager @Inject constructor(
     override fun getHeroImage(libraryItem: LibraryItem): String {
         val appInfo = getAppInfo(libraryItem)
         return appInfo?.getHeroUrl() ?: ""
+    }
+
+    override fun getIconImage(libraryItem: LibraryItem): String {
+        return Constants.Library.ICON_URL + "${libraryItem.gameId}/${libraryItem.iconHash}.ico"
     }
 
     override fun getInstallInfoDialog(context: Context, libraryItem: LibraryItem): MessageDialogState {

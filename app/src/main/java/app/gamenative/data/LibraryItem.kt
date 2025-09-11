@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import app.gamenative.Constants
+import app.gamenative.service.GameManagerService
 
 /**
  * Data class for the Library list
@@ -14,7 +15,7 @@ data class LibraryItem(
     val gameSource: GameSource = GameSource.STEAM,
 ) {
     val clientIconUrl: String
-        get() = Constants.Library.ICON_URL + "$gameId/$iconHash.ico"
+        get() = GameManagerService.getIconImage(this)
 
     /**
      * Helper property to get the game ID as an integer
