@@ -10,6 +10,10 @@ import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -25,8 +29,14 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.name
 import timber.log.Timber
+import okhttp3.*
+import org.json.JSONObject
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 object SteamUtils {
+
+    private val http = OkHttpClient()
 
     private val sfd by lazy {
         SimpleDateFormat("MMM d - h:mm a", Locale.getDefault()).apply {
@@ -619,55 +629,31 @@ object SteamUtils {
         if (Files.notExists(settingsDir)) {
             Files.createDirectories(settingsDir)
         }
-        val offlineFile = settingsDir.resolve("offline.txt")
-        if (Files.notExists(offlineFile)) {
-            Files.createFile(offlineFile)
-        }
-        val disableNetworkingFile = settingsDir.resolve("disable_networking.txt")
-        if (Files.notExists(disableNetworkingFile)) {
-            Files.createFile(disableNetworkingFile)
-        }
         val appIdFile = settingsDir.resolve("steam_appid.txt")
         if (Files.notExists(appIdFile)) {
             Files.createFile(appIdFile)
             appIdFile.toFile().writeText(appId.toString())
         }
-        val steamIdFile = settingsDir.resolve("force_steamid.txt")
-        if (Files.notExists(steamIdFile)) {
-            Files.createFile(steamIdFile)
-            steamIdFile.toFile().writeText(SteamService.userSteamId?.convertToUInt64().toString())
-        }
-        // Write Goldberg language override file based on container setting (default to english)
-        val forceLanguageFile = settingsDir.resolve("force_language.txt")
-        if (Files.notExists(forceLanguageFile)) {
-            Files.createFile(forceLanguageFile)
-        }
-        try {
-            val container = ContainerUtils.getOrCreateContainer(context, "STEAM_$appId")
-            val language = (container.getExtra("language", null) ?: run {
-                try {
-                    // Prefer Container API if available
-                    val method = container.javaClass.getMethod("getLanguage")
-                    (method.invoke(container) as? String) ?: "english"
-                } catch (e: Exception) { "english" }
-            })
-            forceLanguageFile.toFile().writeText((language ?: "english").lowercase())
-        } catch (e: Exception) {
-            // Fallback to english if container retrieval fails
-            forceLanguageFile.toFile().writeText("english")
-        }
 
-        // Write Goldberg force account name override
-        val forceAccountNameFile = settingsDir.resolve("force_account_name.txt")
-        if (Files.notExists(forceAccountNameFile)) {
-            Files.createFile(forceAccountNameFile)
-        }
-        try {
-            val accountName = PrefManager.username
-            forceAccountNameFile.toFile().writeText(accountName)
-        } catch (e: Exception) {
-            // Leave file as empty if something goes wrong
-        }
+        val configsIni = settingsDir.resolve("configs.user.ini")
+        val accountName   = PrefManager.username
+        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
+        val language = runCatching {
+            val container = ContainerUtils.getOrCreateContainer(context, appId)
+            (container.getExtra("language", null)
+                ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
+                ?: "english"
+        }.getOrDefault("english").lowercase()
+
+        val iniContent = """
+            [user::general]
+            account_name=$accountName
+            account_steamid=$accountSteamId
+            language=$language
+        """.trimIndent()
+
+        if (Files.notExists(configsIni)) Files.createFile(configsIni)
+        configsIni.toFile().writeText(iniContent)
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
@@ -706,25 +692,6 @@ object SteamUtils {
             "vietnamese",
         )
         supportedLanguagesFile.toFile().writeText(supportedLanguages.joinToString("\n"))
-
-        // Write local save path file only if no UFS is defined; always use SteamUserData in that case
-        run {
-            try {
-                val appInfo = SteamService.getAppInfoOf(appId)
-                val hasUfs = appInfo?.ufs?.saveFilePatterns?.any { it.root.isWindows } == true
-                if (!hasUfs) {
-                    val localSaveFile = settingsDir.resolve("local_save.txt")
-                    if (Files.notExists(localSaveFile)) {
-                        Files.createFile(localSaveFile)
-                    }
-                    val accountId = SteamService.userSteamId?.accountID?.toLong() ?: 0L
-                    val steamUserDataPath = app.gamenative.enums.PathType.SteamUserData.toAbsPath(context, appId, accountId)
-                    localSaveFile.toFile().writeText(convertToWindowsPath(steamUserDataPath))
-                }
-            } catch (_: Exception) {
-                // Ignore; do not create file if we cannot determine UFS presence
-            }
-        }
     }
 
     private fun convertToWindowsPath(unixPath: String): String {
@@ -811,5 +778,60 @@ object SteamUtils {
                 )
             }
         }
+    }
+
+    fun fetchDirect3DMajor(appId: Int, callback: (Int) -> Unit) {
+        // Build a single Cargo query: SELECT API.direct3d_versions WHERE steam_appid="<appId>"
+        Timber.i("[DX Fetch] Starting fetchDirect3DMajor for appId=%d", appId)
+        val where = URLEncoder.encode("Infobox_game.Steam_AppID HOLDS \"$appId\"", "UTF-8")
+        val url =
+            "https://pcgamingwiki.com/w/api.php" +
+                    "?action=cargoquery" +
+                    "&tables=Infobox_game,AP" +
+                    "I&join_on=Infobox_game._pageID=API._pageID" +
+                    "&fields=API.Direct3D_versions" +
+                    "&where=$where" +
+                    "&format=json"
+
+        Timber.i("[DX Fetch] Starting fetchDirect3DMajor for query=%s", url)
+
+        http.newCall(Request.Builder().url(url).build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = callback(-1)
+
+            override fun onResponse(call: Call, res: Response) {
+                res.use {
+                    val body = it.body?.string() ?: run { callback(-1); return }
+                    Timber.i("[DX Fetch] Raw fbody etchDirect3DMajor for body=%s", body)
+                    val arr = JSONObject(body)
+                        .optJSONArray("cargoquery") ?: run { callback(-1); return }
+
+                    // There should be at most one row; take the first.
+                    val raw = arr.optJSONObject(0)
+                        ?.optJSONObject("title")
+                        ?.optString("Direct3D versions")
+                        ?.trim() ?: ""
+
+                    Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
+
+                    // Extract highest DX major number present.
+                    val dx = Regex("\\b(9|10|11|12)\\b")
+                        .findAll(raw)
+                        .map { it.value.toInt() }
+                        .maxOrNull() ?: -1
+
+                    Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
+
+                    callback(dx)
+                }
+            }
+        })
+    }
+
+    fun getSteamId64(): Long? {
+        return SteamService.userSteamId?.convertToUInt64()?.toLong()
+    }
+
+    fun getSteam3AccountId(): Long? {
+        return SteamService.userSteamId?.getAccountID()?.toLong()
     }
 }

@@ -40,7 +40,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private String box64Version = DefaultVersion.BOX64;
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
-    private String steamType = Container.STEAM_TYPE_NORMAL;
+    private String steamType = DefaultVersion.STEAM_TYPE;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;

@@ -1,5 +1,8 @@
 package com.winlator.container;
 
+import static com.winlator.container.Container.STEAM_TYPE_LIGHT;
+import static com.winlator.container.Container.STEAM_TYPE_NORMAL;
+
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
@@ -38,9 +41,13 @@ public class ContainerManager {
         if (GPUInformation.isTurnipCapable(context)) {
             Container.DEFAULT_GRAPHICS_DRIVER = "turnip";
             DefaultVersion.DXVK = "2.6.1-gplasync";
+            DefaultVersion.VKD3D = "2.14.1";
+            DefaultVersion.STEAM_TYPE = STEAM_TYPE_NORMAL;
         } else {
             Container.DEFAULT_GRAPHICS_DRIVER = "vortek";
             DefaultVersion.DXVK = "1.10.9-sarek";
+            DefaultVersion.VKD3D = "2.6";
+            DefaultVersion.STEAM_TYPE = STEAM_TYPE_LIGHT;
         }
         File rootDir = ImageFs.find(context).getRootDir();
         homeDir = new File(rootDir, "home");

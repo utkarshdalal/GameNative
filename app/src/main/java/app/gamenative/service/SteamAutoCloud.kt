@@ -189,7 +189,7 @@ object SteamAutoCloud {
 
             if (savePatterns.isNotEmpty()) {
                 savePatterns.associate { userFile ->
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.path)
+                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
@@ -204,7 +204,7 @@ object SteamAutoCloud {
 
                         val relativePath = basePath.relativize(it).pathString
 
-                        UserFileInfo(userFile.root, userFile.path, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
+                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
                     }.collect(Collectors.toList())
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")

@@ -193,6 +193,20 @@ fun ContainerConfigDialog(
             val driverIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == config.dxwrapper }
             mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
         }
+
+        fun currentDxvkContext(): Pair<Boolean, List<String>> {
+            val driverType    = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+            val isVortekLike  = driverType in listOf("vortek", "adreno", "sd-8-elite")
+
+            val isVKD3D       = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+            val constrained   = if (isVortekLike)
+                listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3")
+            else
+                dxvkVersionsAll
+
+            val effectiveList = if (isVKD3D) emptyList() else constrained
+            return isVortekLike to effectiveList
+        }
         // VKD3D version control (forced depending on driver)
         fun vkd3dForcedVersion(): String {
             val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
@@ -214,8 +228,10 @@ fun ContainerConfigDialog(
 
             val configuredVersion = kvs.get("version") // Direct call to get()
 
+            val (_, effectiveList) = currentDxvkContext()
+
             // Find index where the parsed display string matches the configured version
-            val foundIndex = dxvkVersionsAll.indexOfFirst {
+            val foundIndex = effectiveList.indexOfFirst {
                 val parsedDisplay = StringUtils.parseIdentifier(it)
                 val match = parsedDisplay == configuredVersion
                 match
@@ -223,7 +239,7 @@ fun ContainerConfigDialog(
 
             // Use found index, or fallback to the app's default DXVK version, or 0 if not found
             val defaultVersion = DefaultVersion.DXVK
-            val defaultIndex = dxvkVersionsAll.indexOfFirst {
+            val defaultIndex = effectiveList.indexOfFirst {
                 StringUtils.parseIdentifier(it) == defaultVersion
             }.coerceAtLeast(0)
             val finalIndex = if (foundIndex >= 0) foundIndex else defaultIndex
@@ -231,12 +247,8 @@ fun ContainerConfigDialog(
         }
         // When DXVK version defaults to an 'async' build, enable DXVK_ASYNC by default
         LaunchedEffect(dxvkVersionIndex, graphicsDriverIndex, dxWrapperIndex) {
-            val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-            val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
-            val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
-            // Effective DXVK list based on constraints
-            val constrainedDxvkList = if (isVortekLike) listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3") else dxvkVersionsAll
-            val effectiveList = if (isVKD3D) emptyList() else constrainedDxvkList
+            val (isVortekLike, effectiveList) = currentDxvkContext()
+            if (dxvkVersionIndex !in effectiveList.indices) dxvkVersionIndex = 0
 
             // Ensure index within range or default
             val selectedDisplay = effectiveList.getOrNull(dxvkVersionIndex)

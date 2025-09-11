@@ -52,6 +52,8 @@ class MainViewModel @Inject constructor(
         data class ExternalGameLaunch(val appId: String) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
+        data class ShowGameFeedbackDialog(val appId: Int) : MainUiEvent()
+        data class ShowToast(val message: String) : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -248,14 +250,24 @@ class MainViewModel @Inject constructor(
                 // Dialog handler in PluviaMain manages the save/discard logic
             }
 
-            // After app closes, trigger one-time support dialog per container
+            // After app closes, check if we need to show the feedback dialog
             try {
                 val container = ContainerUtils.getContainer(context, libraryItem.appId)
                 val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
+                val configChanged = container.getExtra("config_changed", "false") == "true"
                 if (!shown) {
                     container.putExtra("discord_support_prompt_shown", "true")
                     container.saveData()
-                    _uiEvent.send(MainUiEvent.ShowDiscordSupportDialog)
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                }
+
+                // Only show feedback if container config was changed before this game run
+                if (configChanged) {
+                    // Clear the flag
+                    container.putExtra("config_changed", "false")
+                    container.saveData()
+                    // Show the feedback dialog
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                 }
             } catch (_: Exception) {
                 // ignore container errors
@@ -331,6 +343,12 @@ class MainViewModel @Inject constructor(
 
             // You could also show an error dialog here if needed
             Timber.e("Game launch error: $error")
+        }
+    }
+
+    fun showToast(message: String) {
+        viewModelScope.launch {
+            _uiEvent.send(MainUiEvent.ShowToast(message))
         }
     }
 }

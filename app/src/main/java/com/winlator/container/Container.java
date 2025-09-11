@@ -25,7 +25,7 @@ public class Container {
         THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
     }
 
-    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=30";
+    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60";
     public static final String DEFAULT_SCREEN_SIZE = "854x480";
     public static String DEFAULT_GRAPHICS_DRIVER = "vortek";
     public static final String DEFAULT_AUDIO_DRIVER = "alsa";
@@ -89,7 +89,7 @@ public class Container {
     // Disable external mouse input
     private boolean disableMouseInput = false;
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
-    private String steamType = STEAM_TYPE_NORMAL;
+    private String steamType = DefaultVersion.STEAM_TYPE;
 
     // Emulate keyboard/mouse using controller: left stick=WASD, right stick=mouse
     private boolean emulateKeyboardMouse = false;

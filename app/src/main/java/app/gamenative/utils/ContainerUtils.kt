@@ -6,12 +6,17 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.GameManagerService
 import app.gamenative.service.SteamService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
+import kotlinx.coroutines.CompletableDeferred
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
@@ -303,6 +308,8 @@ object ContainerUtils {
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
+            // Mark that config has been changed, so we can show feedback dialog after next game run
+            container.putExtra("config_changed", "true")
             container.saveData()
         }
         Timber.d("Set container.execArgs to '${containerData.execArgs}'")
@@ -377,6 +384,7 @@ object ContainerUtils {
         containerManager: ContainerManager,
         customConfig: ContainerData? = null,
     ): Container {
+        // Set up container drives to include app
         val defaultDrives = PrefManager.drives
         val gameId = extractGameIdFromContainerId(appId)
         val appDirPath = GameManagerService.getAppDirPath(appId)
@@ -385,10 +393,21 @@ object ContainerUtils {
         val drives = "$defaultDrives$drive:$appDirPath"
         Timber.d("Prepared container drives: $drives")
 
+        // Prepare container data with default DX wrapper to start
+        val initialDxWrapper = if (customConfig?.dxwrapper != null) {
+            customConfig.dxwrapper
+        } else {
+            PrefManager.dxWrapper  // Use default until we get the real version
+        }
+
+        // Set up data for container creation
         val data = JSONObject()
         data.put("name", "container_$containerId")
+
+        // Create the actual container
         val container = containerManager.createContainerFuture(containerId, data).get()
 
+        // Initialize container with default/custom config
         val containerData = if (customConfig != null) {
             // Use custom config, but ensure drives are set if not specified
             if (customConfig.drives == Container.DEFAULT_DRIVES) {
@@ -405,7 +424,7 @@ object ContainerUtils {
                 cpuListWoW64 = PrefManager.cpuListWoW64,
                 graphicsDriver = PrefManager.graphicsDriver,
                 graphicsDriverVersion = PrefManager.graphicsDriverVersion,
-                dxwrapper = PrefManager.dxWrapper,
+                dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
                 wincomponents = PrefManager.winComponents,
@@ -421,7 +440,6 @@ object ContainerUtils {
                 box64Preset = PrefManager.box64Preset,
                 desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
                 language = PrefManager.containerLanguage,
-
                 csmt = PrefManager.csmt,
                 videoPciDeviceID = PrefManager.videoPciDeviceID,
                 offScreenRenderingMode = PrefManager.offScreenRenderingMode,
@@ -432,6 +450,52 @@ object ContainerUtils {
             )
         }
 
+        // If custom config is provided, just apply it and return
+        if (customConfig?.dxwrapper != null) {
+            applyToContainer(context, container, containerData)
+            return container
+        }
+
+        // No custom config, so determine the DX wrapper synchronously
+        runBlocking {
+            try {
+                Timber.i("Fetching DirectX version synchronously for app $appId")
+
+                // Create CompletableDeferred to wait for result
+                val deferred = kotlinx.coroutines.CompletableDeferred<Int>()
+
+                // Start the async fetch but wait for it to complete
+                SteamUtils.fetchDirect3DMajor(appId) { dxVersion ->
+                    deferred.complete(dxVersion)
+                }
+
+                // Wait for the result with a timeout
+                val dxVersion = try {
+                    withTimeout(10000) { deferred.await() }
+                } catch (e: Exception) {
+                    Timber.w(e, "Timeout waiting for DirectX version")
+                    -1 // Default on timeout
+                }
+
+                // Set wrapper based on DirectX version
+                val newDxWrapper = when {
+                    dxVersion == 12 -> "vkd3d"
+                    dxVersion in 1..8 -> "wined3d"
+                    else -> containerData.dxwrapper // Keep existing for DX10/11 or errors
+                }
+
+                // Update the wrapper if needed
+                if (newDxWrapper != containerData.dxwrapper) {
+                    Timber.i("Setting DX wrapper for app $appId to $newDxWrapper (DirectX version: $dxVersion)")
+                    containerData.dxwrapper = newDxWrapper
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Error determining DirectX version: ${e.message}")
+                // Continue with default wrapper on error
+            }
+        }
+
+        // Apply container data with the determined DX wrapper
         applyToContainer(context, container, containerData)
         return container
     }

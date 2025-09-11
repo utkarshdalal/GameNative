@@ -15,5 +15,6 @@ interface AndroidEvent<T> : Event<T> {
     data object EndProcess : AndroidEvent<Unit>
     data class ExternalGameLaunch(val appId: String) : AndroidEvent<Unit>
     data class PromptSaveContainerConfig(val appId: String) : AndroidEvent<Unit>
+    data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

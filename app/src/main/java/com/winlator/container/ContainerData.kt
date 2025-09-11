@@ -12,7 +12,7 @@ data class ContainerData(
     val envVars: String = Container.DEFAULT_ENV_VARS,
     val graphicsDriver: String = Container.DEFAULT_GRAPHICS_DRIVER,
     val graphicsDriverVersion: String = "",
-    val dxwrapper: String = Container.DEFAULT_DXWRAPPER,
+    var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
     val audioDriver: String = Container.DEFAULT_AUDIO_DRIVER,
     val wincomponents: String = Container.DEFAULT_WINCOMPONENTS,
