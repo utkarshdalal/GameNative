@@ -2,6 +2,7 @@ package app.gamenative.ui
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import android.widget.Toast
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -309,7 +309,7 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ShowGameFeedbackDialog -> {
                     gameFeedbackState = GameFeedbackDialogState(
                         visible = true,
-                        appId = event.appId
+                        appId = event.appId,
                     )
                 }
 
@@ -403,7 +403,7 @@ fun PluviaMain(
     val onShowGameFeedback: (AndroidEvent.ShowGameFeedback) -> Unit = { event ->
         gameFeedbackState = GameFeedbackDialogState(
             visible = true,
-            appId = event.appId
+            appId = event.appId,
         )
     }
 
@@ -686,7 +686,7 @@ fun PluviaMain(
                                 appId = appId,
                                 rating = feedbackState.rating,
                                 tags = feedbackState.selectedTags.toList(),
-                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() }
+                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() },
                             )
 
                             Timber.d("GameFeedback: Submission returned $result")
@@ -716,7 +716,7 @@ fun PluviaMain(
             },
             onDiscordSupport = {
                 uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
-            }
+            },
         )
 
         Box(modifier = Modifier.zIndex(10f)) {
@@ -960,7 +960,7 @@ fun preLaunchApp(
                             title = context.getString(R.string.sync_error_title),
                             message = "Failed to sync save files: ${postSyncInfo.syncResult}. Continuing can cause sync conflicts and lost data.\n\nYOU MAY LOSE SAVE DATA!",
                             dismissBtnText = "Cancel",
-                            confirmBtnText = "Launch anyway"
+                            confirmBtnText = "Launch anyway",
                         ),
                     )
                 }

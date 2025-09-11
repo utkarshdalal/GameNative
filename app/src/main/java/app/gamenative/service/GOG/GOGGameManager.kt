@@ -14,6 +14,10 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.db.dao.GOGGameDao
+import app.gamenative.enums.AppType
+import app.gamenative.enums.ControllerSupport
+import app.gamenative.enums.OS
+import app.gamenative.enums.ReleaseState
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.GameManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -24,6 +28,10 @@ import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.EnumSet
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -168,7 +176,6 @@ class GOGGameManager @Inject constructor(
         StorageUtils.formatBinarySize(folderSize)
     }
 
-
     override fun getAppDirPath(appId: String): String {
         return GOGConstants.GOG_GAMES_BASE_PATH
     }
@@ -218,7 +225,9 @@ class GOGGameManager @Inject constructor(
     }
 
     override fun getStoreUrl(libraryItem: LibraryItem): Uri {
-        return "https://www.gog.com/game/${libraryItem.appId}".toUri()
+        val gogGame = runBlocking { getGameById(libraryItem.gameId.toString()) }
+        val slug = gogGame?.slug ?: ""
+        return "https://www.gog.com/en/game/$slug".toUri()
     }
 
     override fun getWineStartCommand(
@@ -313,15 +322,37 @@ class GOGGameManager @Inject constructor(
     }
 
     override fun getAppInfo(libraryItem: LibraryItem): SteamApp? {
-        return null
+        val gogGame = runBlocking { getGameById(libraryItem.gameId.toString()) }
+        return if (gogGame != null) {
+            convertGOGGameToSteamApp(gogGame)
+        } else {
+            null
+        }
     }
 
     override fun getReleaseDate(libraryItem: LibraryItem): String {
-        return "Unknown"
+        val appInfo = getAppInfo(libraryItem)
+        if (appInfo?.releaseDate == null || appInfo.releaseDate == 0L) {
+            return "Unknown"
+        }
+        val date = Date(appInfo.releaseDate)
+        return SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
     }
 
     override fun getHeroImage(libraryItem: LibraryItem): String {
-        return "Not implemented yet."
+        val gogGame = runBlocking { getGameById(libraryItem.gameId.toString()) }
+        val imageUrl = gogGame?.imageUrl ?: ""
+
+        // Fix GOG URLs that are missing the protocol
+        return if (imageUrl.startsWith("//")) {
+            "https:$imageUrl"
+        } else {
+            imageUrl
+        }
+    }
+
+    override fun getIconImage(libraryItem: LibraryItem): String {
+        return libraryItem.iconHash
     }
 
     override fun getInstallInfoDialog(context: Context, libraryItem: LibraryItem): MessageDialogState {
@@ -399,8 +430,9 @@ class GOGGameManager @Inject constructor(
                     // For V1 games, find the subdirectory with .exe files
                     val v1GameDir = subdirs.find { subdir ->
                         val exeFiles = subdir.listFiles()?.filter {
-                            it.isFile && it.name.endsWith(".exe", ignoreCase = true) &&
-                            !isGOGUtilityExecutable(it.name)
+                            it.isFile &&
+                                it.name.endsWith(".exe", ignoreCase = true) &&
+                                !isGOGUtilityExecutable(it.name)
                         } ?: emptyList()
                         exeFiles.isNotEmpty()
                     }
@@ -428,8 +460,8 @@ class GOGGameManager @Inject constructor(
      */
     private fun isGOGUtilityExecutable(filename: String): Boolean {
         return filename.equals("unins000.exe", ignoreCase = true) ||
-               filename.equals("CheckApplication.exe", ignoreCase = true) ||
-               filename.equals("SettingsApplication.exe", ignoreCase = true)
+            filename.equals("CheckApplication.exe", ignoreCase = true) ||
+            filename.equals("SettingsApplication.exe", ignoreCase = true)
     }
 
     private fun getGameExecutable(installPath: String, gameDir: File): String {
@@ -498,5 +530,64 @@ class GOGGameManager @Inject constructor(
     fun cleanupDownload(libraryItem: LibraryItem) {
         downloadJobs.remove(libraryItem.gameId.toString())
         Timber.d("Cleaned up download info for GOG game: ${libraryItem.gameId}")
+    }
+
+    /**
+     * Convert GOGGame to SteamApp format for compatibility with existing UI components.
+     * This allows GOG games to be displayed using the same UI components as Steam games.
+     */
+    private fun convertGOGGameToSteamApp(gogGame: GOGGame): SteamApp {
+        // Convert release date string (ISO format like "2021-06-17T15:55:+0300") to timestamp
+        val releaseTimestamp = try {
+            if (gogGame.releaseDate.isNotEmpty()) {
+                // Try different date formats that GOG might use
+                val formats = arrayOf(
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ZZZZZ", Locale.US), // 2021-06-17T15:55:+0300
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ", Locale.US), // 2021-06-17T15:55+0300
+                    SimpleDateFormat("yyyy-MM-dd", Locale.US), // 2021-06-17
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US), // 2021-06-17T15:55:30
+                )
+
+                var parsedDate: Date? = null
+                for (format in formats) {
+                    try {
+                        parsedDate = format.parse(gogGame.releaseDate)
+                        break
+                    } catch (e: Exception) {
+                        // Try next format
+                    }
+                }
+
+                parsedDate?.time ?: 0L
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to parse release date: ${gogGame.releaseDate}")
+            0L
+        }
+
+        // Convert GOG game ID (string) to integer for SteamApp compatibility
+        val appId = try {
+            gogGame.id.toIntOrNull() ?: gogGame.id.hashCode()
+        } catch (e: Exception) {
+            gogGame.id.hashCode()
+        }
+
+        return SteamApp(
+            id = appId,
+            name = gogGame.title,
+            type = AppType.game,
+            osList = EnumSet.of(OS.windows),
+            releaseState = ReleaseState.released,
+            releaseDate = releaseTimestamp,
+            developer = gogGame.developer.takeIf { it.isNotEmpty() } ?: "Unknown Developer",
+            publisher = gogGame.publisher.takeIf { it.isNotEmpty() } ?: "Unknown Publisher",
+            controllerSupport = ControllerSupport.none,
+            logoHash = "",
+            iconHash = "",
+            clientIconHash = "",
+            installDir = gogGame.title.replace(Regex("[^a-zA-Z0-9 ]"), "").trim(),
+        )
     }
 }

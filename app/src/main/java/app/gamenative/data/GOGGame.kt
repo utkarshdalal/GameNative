@@ -14,6 +14,7 @@ data class GOGGame(
     val isInstalled: Boolean = false,
     val installPath: String = "",
     val imageUrl: String = "",
+    val iconUrl: String = "",
     val description: String = "",
     val releaseDate: String = "",
     val developer: String = "",

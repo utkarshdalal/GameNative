@@ -9,7 +9,6 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SteamApp
-import app.gamenative.service.GOG.GOGConstants
 import app.gamenative.service.GOG.GOGGameManager
 import app.gamenative.service.Steam.SteamGameManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -51,7 +50,7 @@ class GameManagerService @Inject constructor(
                 // Set up default game managers using the real steamGameManager
                 gameManagers = mapOf(
                     GameSource.STEAM to serviceInstance.steamGameManager,
-                    GameSource.GOG to serviceInstance.gogGameManager
+                    GameSource.GOG to serviceInstance.gogGameManager,
                     // Add new game sources here
                 )
             }
@@ -154,7 +153,7 @@ class GameManagerService @Inject constructor(
          * We may need to quickly get the container name in places that aren't using LibraryItem yet
          */
         fun getAppId(gameId: Int, gameSource: GameSource): String {
-            return gameSource.name+"_"+gameId
+            return gameSource.name + "_" + gameId
         }
 
         /**

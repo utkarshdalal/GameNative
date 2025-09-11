@@ -31,7 +31,7 @@ fun AccountManagementScreen(
     onNavigateRoute: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: AccountManagementViewModel = hiltViewModel()
+    viewModel: AccountManagementViewModel = hiltViewModel(),
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()

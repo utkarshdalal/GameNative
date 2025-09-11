@@ -21,8 +21,7 @@ import org.json.JSONObject
 import timber.log.Timber
 
 @Singleton
-class GOGService @Inject constructor(
-) : Service() {
+class GOGService @Inject constructor() : Service() {
 
     companion object {
         private var instance: GOGService? = null
@@ -397,38 +396,93 @@ class GOGService @Inject constructor(
                         ""
                     }
 
-                    // Get image URL
+                    // Get best available image URL - try different types in order of preference
                     val imageUrl = try {
                         val images = gameJson?.callAttr("get", "images")
-                        val logo = images?.callAttr("get", "logo")
-                        logo?.toString() ?: ""
-                    } catch (e: Exception) {
-                        ""
-                    }
+                        if (images != null) {
+                            // Try logo2x (high resolution) first, then logo, then other options
+                            val imageTypes = listOf("logo2x", "logo", "icon", "background")
 
-                    // Get developer and publisher
-                    val developer = try {
-                        val developers = gameJson?.callAttr("get", "developers")
-                        if (developers != null) {
-                            val firstDev = developers.callAttr("__getitem__", 0)
-                            firstDev?.toString() ?: ""
+                            var foundUrl = ""
+                            for (imageType in imageTypes) {
+                                val imageData = images.callAttr("get", imageType)?.toString()
+                                if (!imageData.isNullOrEmpty()) {
+                                    // GOG URLs start with // so we need to add https:
+                                    val fullUrl = if (imageData.startsWith("//")) {
+                                        "https:$imageData"
+                                    } else {
+                                        imageData
+                                    }
+
+                                    // Try to upgrade logo images to highest quality background version
+                                    foundUrl = when {
+                                        fullUrl.contains("_glx_logo.jpg") -> {
+                                            val baseUrl = fullUrl.substringBefore("_glx_logo.jpg")
+                                            "$baseUrl.jpg"
+                                        }
+                                        fullUrl.contains("_glx_logo_2x.jpg") -> {
+                                            val baseUrl = fullUrl.substringBefore("_glx_logo_2x.jpg")
+                                            "$baseUrl.jpg"
+                                        }
+                                        else -> fullUrl
+                                    }
+
+                                    Timber.d("Game $gameId - using $imageType image: $fullUrl -> $foundUrl")
+                                    break // Exit loop once we find a valid URL
+                                }
+                            }
+                            foundUrl
                         } else {
                             ""
                         }
                     } catch (e: Exception) {
+                        Timber.w(e, "Game $gameId - error extracting image URL")
                         ""
+                    }
+
+                    // Get icon URL specifically
+                    val iconUrl = try {
+                        val images = gameJson?.callAttr("get", "images")
+                        val iconData = images?.callAttr("get", "icon")?.toString()
+                        if (!iconData.isNullOrEmpty()) {
+                            val fullIconUrl = if (iconData.startsWith("//")) {
+                                "https:$iconData"
+                            } else {
+                                iconData
+                            }
+                            Timber.d("Game $gameId - icon URL: $fullIconUrl")
+                            fullIconUrl
+                        } else {
+                            ""
+                        }
+                    } catch (e: Exception) {
+                        Timber.w(e, "Game $gameId - error extracting icon URL")
+                        ""
+                    }
+
+                    // Get developer and publisher - these fields are often missing in GOG API
+                    val developer = try {
+                        val developers = gameJson?.callAttr("get", "developers")
+                        if (developers != null) {
+                            val firstDev = developers.callAttr("__getitem__", 0)
+                            firstDev?.toString()?.takeIf { it.isNotEmpty() } ?: "Unknown Developer"
+                        } else {
+                            "Unknown Developer"
+                        }
+                    } catch (e: Exception) {
+                        "Unknown Developer"
                     }
 
                     val publisher = try {
                         val publishers = gameJson?.callAttr("get", "publishers")
                         if (publishers != null) {
                             val firstPub = publishers.callAttr("__getitem__", 0)
-                            firstPub?.toString() ?: ""
+                            firstPub?.toString()?.takeIf { it.isNotEmpty() } ?: "Unknown Publisher"
                         } else {
-                            ""
+                            "Unknown Publisher"
                         }
                     } catch (e: Exception) {
-                        ""
+                        "Unknown Publisher"
                     }
 
                     // Get release date
@@ -446,6 +500,7 @@ class GOGService @Inject constructor(
                         slug = slug,
                         description = description,
                         imageUrl = imageUrl,
+                        iconUrl = iconUrl,
                         developer = developer,
                         publisher = publisher,
                         releaseDate = releaseDate,
@@ -491,7 +546,7 @@ class GOGService @Inject constructor(
                             "--support", supportDir.absolutePath,
                             "--skip-dlcs",
                             "--lang", "en-US",
-                            "--max-workers", "1"
+                            "--max-workers", "1",
                         )
 
                         if (result.isSuccess) {
@@ -680,7 +735,8 @@ class GOGService @Inject constructor(
                 // Check for completion (both V1 and V2)
                 if ((line.contains("All") && line.contains("files downloaded successfully")) ||
                     line.contains("Download completed successfully") ||
-                    line.contains("Installation completed")) {
+                    line.contains("Installation completed")
+                ) {
                     downloadInfo.setProgress(1.0f)
                     Timber.i("Download completed successfully")
                     return
@@ -691,7 +747,6 @@ class GOGService @Inject constructor(
                     Timber.w("Download error detected: $line")
                     return
                 }
-
             } catch (e: Exception) {
                 Timber.w("Error parsing progress: ${e.message}")
             }

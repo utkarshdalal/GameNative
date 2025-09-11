@@ -13,14 +13,14 @@ data class GOGGameWrapper(
     override val source: GameSource get() = GameSource.GOG
     override val isInstalled: Boolean get() = gogGame.isInstalled
     override val isShared: Boolean get() = false
-    override val iconUrl: String get() = "https://images.gog-statics.com/games/${gogGame.id}_icon.jpg"
+    override val iconUrl: String get() = gogGame.iconUrl
     override val appType: AppType get() = AppType.game
 
     override fun toLibraryItem(index: Int): LibraryItem = LibraryItem(
         index = index,
         appId = "GOG_${gogGame.id}",
         name = gogGame.title,
-        iconHash = "",
+        iconHash = iconUrl,
         isShared = false,
         gameSource = GameSource.GOG,
     )
