@@ -30,6 +30,7 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.GOG.GOGService
 import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
@@ -223,6 +224,11 @@ class MainActivity : ComponentActivity() {
             Timber.i("Stopping Steam Service")
             SteamService.stop()
         }
+
+        if (GOGService.isRunning && !isChangingConfigurations) {
+            Timber.i("Stopping GOG Service")
+            GOGService.stop()
+        }
     }
 
     override fun onResume() {
@@ -253,6 +259,15 @@ class MainActivity : ComponentActivity() {
         ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stop()
+        }
+
+        // stop GOGService only if no downloads or sync are in progress
+        if (!isChangingConfigurations &&
+            GOGService.isRunning &&
+            !GOGService.hasActiveOperations()
+        ) {
+            Timber.i("Stopping GOGService - no active operations")
+            GOGService.stop()
         }
     }
 

@@ -59,8 +59,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-        
-        <!-- GOG OAuth Activity -->
         <activity
             android:name=".ui.screen.auth.GOGOAuthActivity"
             android:exported="false"
@@ -68,6 +66,12 @@
         
         <service
             android:name=".service.SteamService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        
+        <service
+            android:name=".service.GOG.GOGService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

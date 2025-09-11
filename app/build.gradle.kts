@@ -76,6 +76,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Restore the original ProGuard configuration
+        proguardFiles(
+            getDefaultProguardFile("proguard-android.txt"),
+            "proguard-rules.pro",
+        )
     }
 
     buildTypes {
@@ -89,19 +95,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
-                "proguard-rules.pro"
-            )
         }
         create("release-signed") {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("pluvia")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
-                "proguard-rules.pro"
-            )
         }
         create("release-gold") {
             isMinifyEnabled = true
@@ -116,10 +114,6 @@ android {
                     "icon" to iconValue,
                     "roundIcon" to iconRoundValue,
                 ),
-            )
-            proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
-                "proguard-rules.pro"
             )
         }
     }

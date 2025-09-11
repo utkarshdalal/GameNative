@@ -54,10 +54,7 @@ fun AccountManagementScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            AccountsGroup(
-                onNavigateRoute = onNavigateRoute,
-                viewModel = viewModel
-            )
+            AccountsGroup(onNavigateRoute = onNavigateRoute, viewModel = viewModel)
         }
     }
 }
@@ -87,7 +84,6 @@ fun AccountSection(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     error: String? = null,
-    isSyncing: Boolean = false,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary

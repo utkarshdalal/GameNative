@@ -47,13 +47,11 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
-import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
-import app.gamenative.service.GOG.GOGLibraryManager
 import app.gamenative.service.GOG.GOGService
 import app.gamenative.service.GameManagerService
 import app.gamenative.service.SteamService
@@ -80,10 +78,6 @@ import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.ContainerManager
 import com.winlator.xenvironment.ImageFsInstaller
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import java.util.Date
 import java.util.EnumSet
@@ -92,7 +86,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import io.ktor.client.plugins.HttpTimeout
 
 @Composable
 fun PluviaMain(
@@ -378,21 +371,9 @@ fun PluviaMain(
                 navController.navigate(PluviaScreen.Home.route)
             }
 
-            // Auto-start GOG background sync if user has GOG credentials
-            if (GOGService.hasStoredCredentials(context)) {
-                Timber.d("[PluviaMain]: GOG credentials found - starting background library sync")
-                val gogLibraryManager = EntryPointAccessors.fromApplication(
-                    context,
-                    GOGLibraryManagerEntryPoint::class.java,
-                ).gogLibraryManager()
-
-                // Launch in coroutine scope to handle suspend function
-                scope.launch {
-                    val syncResult = gogLibraryManager.startBackgroundSync(context)
-                    if (syncResult.isFailure) {
-                        Timber.w("[PluviaMain]: Failed to start GOG background sync: ${syncResult.exceptionOrNull()?.message}")
-                    }
-                }
+            if (GOGService.hasStoredCredentials(context) && !GOGService.isRunning) {
+                Timber.d("[PluviaMain]: GOG credentials found - starting GOG service")
+                GOGService.start(context)
             }
         }
     }
@@ -1100,16 +1081,4 @@ fun preLaunchApp(
             -> onSuccess(context, libraryItem)
         }
     }
-}
-
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface GOGLibraryManagerEntryPoint {
-    fun gogLibraryManager(): GOGLibraryManager
-}
-
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface GOGGameDaoEntryPoint {
-    fun gogGameDao(): GOGGameDao
 }

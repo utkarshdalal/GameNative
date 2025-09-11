@@ -7,6 +7,7 @@ import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCredentials
 import app.gamenative.data.GOGGame
+import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import com.chaquo.python.Kwarg
 import com.chaquo.python.Python
@@ -32,6 +33,26 @@ class GOGService @Inject constructor(
 
         // Constants
         private const val GOG_CLIENT_ID = "46899977096215655"
+
+        // Add sync tracking variables
+        private var syncInProgress: Boolean = false
+        private var backgroundSyncJob: Job? = null
+
+        val isRunning: Boolean
+            get() = instance != null
+
+        fun start(context: Context) {
+            if (!isRunning) {
+                val intent = Intent(context, GOGService::class.java)
+                context.startForegroundService(intent)
+            }
+        }
+
+        fun stop() {
+            instance?.let { service ->
+                service.stopSelf()
+            }
+        }
 
         fun setHttpClient(client: OkHttpClient) {
             httpClient = client
@@ -979,11 +1000,74 @@ class GOGService @Inject constructor(
                 false
             }
         }
+
+        // Enhanced hasActiveOperations to track background sync
+        fun hasActiveOperations(): Boolean {
+            return syncInProgress || backgroundSyncJob?.isActive == true
+        }
+
+        // Add methods to control sync state
+        private fun setSyncInProgress(inProgress: Boolean) {
+            syncInProgress = inProgress
+        }
+
+        fun isSyncInProgress(): Boolean = syncInProgress
     }
+
+    // Add these for foreground service support
+    private lateinit var notificationHelper: NotificationHelper
+
+    @Inject
+    lateinit var gogLibraryManager: GOGLibraryManager
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        // Initialize notification helper for foreground service
+        notificationHelper = NotificationHelper(applicationContext)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Start as foreground service
+        val notification = notificationHelper.createForegroundNotification("GOG Service running...")
+        startForeground(2, notification) // Use different ID than SteamService (which uses 1)
+
+        // Start background library sync automatically when service starts with tracking
+        backgroundSyncJob = scope.launch {
+            try {
+                setSyncInProgress(true)
+                Timber.d("[GOGService]: Starting background library sync")
+
+                val syncResult = gogLibraryManager.startBackgroundSync(applicationContext)
+                if (syncResult.isFailure) {
+                    Timber.w("[GOGService]: Failed to start background sync: ${syncResult.exceptionOrNull()?.message}")
+                } else {
+                    Timber.i("[GOGService]: Background library sync started successfully")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "[GOGService]: Exception starting background sync")
+            } finally {
+                setSyncInProgress(false)
+            }
+        }
+
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        // Cancel sync operations
+        backgroundSyncJob?.cancel()
+        setSyncInProgress(false)
+
+        scope.cancel() // Cancel any ongoing operations
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        notificationHelper.cancel()
+        instance = null
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
