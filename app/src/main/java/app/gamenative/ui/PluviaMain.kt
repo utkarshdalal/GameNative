@@ -799,7 +799,7 @@ fun preLaunchApp(
             libraryItem = libraryItem,
             parentScope = this,
             ignorePendingOperations = ignorePendingOperations,
-            preferredSave = preferredSave?.ordinal,
+            preferredSave = preferredSave.ordinal,
         )
 
         setLoadingDialogVisible(false)
