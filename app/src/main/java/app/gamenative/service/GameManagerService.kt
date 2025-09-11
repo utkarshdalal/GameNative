@@ -147,6 +147,13 @@ class GameManagerService @Inject constructor(
         }
 
         /**
+         * We may need to quickly get the container name in places that aren't using LibraryItem yet
+         */
+        fun getAppId(gameId: Int, gameSource: GameSource): String {
+            return gameSource.name+"_"+gameId
+        }
+
+        /**
          * Get the app directory path for a given app ID
          */
         fun getAppDirPath(appId: String): String {

@@ -5,7 +5,9 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
+import app.gamenative.service.GameManagerService
 import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
@@ -639,7 +641,7 @@ object SteamUtils {
         val accountName   = PrefManager.username
         val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
         val language = runCatching {
-            val container = ContainerUtils.getOrCreateContainer(context, appId)
+            val container = ContainerUtils.getOrCreateContainer(context, GameManagerService.getAppId(appId, GameSource.STEAM))
             (container.getExtra("language", null)
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
@@ -780,10 +782,12 @@ object SteamUtils {
         }
     }
 
-    fun fetchDirect3DMajor(appId: Int, callback: (Int) -> Unit) {
-        // Build a single Cargo query: SELECT API.direct3d_versions WHERE steam_appid="<appId>"
-        Timber.i("[DX Fetch] Starting fetchDirect3DMajor for appId=%d", appId)
-        val where = URLEncoder.encode("Infobox_game.Steam_AppID HOLDS \"$appId\"", "UTF-8")
+    fun fetchDirect3DMajor(appId: String, callback: (Int) -> Unit) {
+        val id = ContainerUtils.extractGameIdFromContainerId(appId)
+
+        // Build a single Cargo query: SELECT API.direct3d_versions WHERE steam_appid="<id>"
+        Timber.i("[DX Fetch] Starting fetchDirect3DMajor for appId=%d", id)
+        val where = URLEncoder.encode("Infobox_game.Steam_AppID HOLDS \"$id\"", "UTF-8")
         val url =
             "https://pcgamingwiki.com/w/api.php" +
                     "?action=cargoquery" +

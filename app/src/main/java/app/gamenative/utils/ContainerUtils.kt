@@ -23,8 +23,6 @@ import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
 import java.io.File
 import kotlin.Boolean
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber

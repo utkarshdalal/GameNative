@@ -4,7 +4,7 @@ import androidx.compose.runtime.saveable.mapSaver
 
 data class GameFeedbackDialogState(
     val visible: Boolean,
-    val appId: Int = -1,
+    val appId: String = "",
     val rating: Int = 0, // 0-5 stars, 0 means no selection
     val selectedTags: Set<String> = emptySet(),
     val feedbackText: String = "",
@@ -22,7 +22,7 @@ data class GameFeedbackDialogState(
             "does_not_open",
             "directx_error"
         )
-        
+
         val Saver = mapSaver(
             save = { state ->
                 mapOf(
@@ -38,7 +38,7 @@ data class GameFeedbackDialogState(
             restore = { savedMap ->
                 GameFeedbackDialogState(
                     visible = savedMap["visible"] as Boolean,
-                    appId = savedMap["appId"] as Int,
+                    appId = savedMap["appId"] as String,
                     rating = savedMap["rating"] as Int,
                     selectedTags = (savedMap["selectedTags"] as List<String>).toSet(),
                     feedbackText = savedMap["feedbackText"] as String,

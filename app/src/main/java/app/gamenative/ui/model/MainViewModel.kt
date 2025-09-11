@@ -52,7 +52,7 @@ class MainViewModel @Inject constructor(
         data class ExternalGameLaunch(val appId: String) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
-        data class ShowGameFeedbackDialog(val appId: Int) : MainUiEvent()
+        data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowToast(val message: String) : MainUiEvent()
     }
 
@@ -258,7 +258,7 @@ class MainViewModel @Inject constructor(
                 if (!shown) {
                     container.putExtra("discord_support_prompt_shown", "true")
                     container.saveData()
-                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(libraryItem.appId))
                 }
 
                 // Only show feedback if container config was changed before this game run
@@ -267,7 +267,7 @@ class MainViewModel @Inject constructor(
                     container.putExtra("config_changed", "false")
                     container.saveData()
                     // Show the feedback dialog
-                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(libraryItem.appId))
                 }
             } catch (_: Exception) {
                 // ignore container errors
