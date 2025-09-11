@@ -30,6 +30,10 @@ interface GameManager {
      * Check if a game is installed
      */
     fun isGameInstalled(context: Context, libraryItem: LibraryItem): Boolean
+
+    /**
+     * Check if an update is pending for a game
+     */
     suspend fun isUpdatePending(libraryItem: LibraryItem): Boolean
 
     /**
