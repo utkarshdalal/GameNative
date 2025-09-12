@@ -59,7 +59,7 @@ interface GameManager {
     /**
      * Get the download size for a game
      */
-    fun getDownloadSize(libraryItem: LibraryItem): String
+    suspend fun getDownloadSize(libraryItem: LibraryItem): String
 
     /**
      * Check if a game is valid to download

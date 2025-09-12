@@ -38,11 +38,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+
 
 @Singleton
 class GOGGameManager @Inject constructor(
@@ -418,8 +420,40 @@ class GOGGameManager @Inject constructor(
         )
     }
 
-    override fun getDownloadSize(libraryItem: LibraryItem): String {
-        return "Unknown" // TODO: Add size info to GOG games
+    // Simple cache for download sizes
+    private val downloadSizeCache = mutableMapOf<String, String>()
+    private val loadingSizes = mutableSetOf<String>()
+
+    override suspend fun getDownloadSize(libraryItem: LibraryItem): String {
+        val gameId = libraryItem.gameId.toString()
+        
+        // Return cached result if available
+        downloadSizeCache[gameId]?.let { return it }
+        
+        // Get size info directly (now properly async)
+        return try {
+            Timber.d("Getting download size for game $gameId")
+            val sizeInfo = GOGService.getGameSizeInfo(gameId)
+            val formattedSize = sizeInfo?.let { StorageUtils.formatBinarySize(it.downloadSize) } ?: "Unknown"
+            
+            // Cache the result
+            downloadSizeCache[gameId] = formattedSize
+            Timber.d("Got download size for game $gameId: $formattedSize")
+            
+            formattedSize
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to get download size for game $gameId")
+            val errorResult = "Unknown"
+            downloadSizeCache[gameId] = errorResult
+            errorResult
+        }
+    }
+
+    /**
+     * Get cached download size if available
+     */
+    fun getCachedDownloadSize(gameId: String): String? {
+        return downloadSizeCache[gameId]
     }
 
     override fun isValidToDownload(library: LibraryItem): Boolean {
@@ -466,14 +500,17 @@ class GOGGameManager @Inject constructor(
         val availableBytes = StorageUtils.getAvailableSpace(context.dataDir.path)
         val availableSpace = StorageUtils.formatBinarySize(availableBytes)
 
-        // For now, show a basic install dialog for GOG games
-        // TODO: Get actual size information from GOG API
+        // Get cached download size if available, otherwise show "Calculating..."
+        val gameId = libraryItem.gameId.toString()
+        val downloadSize = getCachedDownloadSize(gameId) ?: "Calculating..."
+
         return MessageDialogState(
             visible = true,
             type = DialogType.INSTALL_APP,
             title = context.getString(R.string.download_prompt_title),
             message = "Install ${libraryItem.name} from GOG?" +
-                "\n\nInstall Path: $gogInstallPath/${libraryItem.name}" +
+                "\n\nDownload Size: $downloadSize" +
+                "\nInstall Path: $gogInstallPath/${libraryItem.name}" +
                 "\nAvailable Space: $availableSpace",
             confirmBtnText = context.getString(R.string.proceed),
             dismissBtnText = context.getString(R.string.cancel),
@@ -693,4 +730,5 @@ class GOGGameManager @Inject constructor(
         val validationResult = GOGService.validateCredentials(context)
         return validationResult.isSuccess && validationResult.getOrDefault(false)
     }
+
 }

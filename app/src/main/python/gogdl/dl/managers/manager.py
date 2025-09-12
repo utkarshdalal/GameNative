@@ -56,7 +56,7 @@ class AndroidManager:
                 return
             
             # Get builds to determine generation
-            builds = self._get_builds()
+            builds = self.get_builds(self.platform)
             if not builds or len(builds['items']) == 0:
                 raise Exception("No builds found")
             
@@ -190,8 +190,9 @@ class AndroidManager:
             raise
     
     def get_builds(self, build_platform):
-        password = '' if not self.arguments.password else '&password=' + self.arguments.password
-        generation = self.arguments.force_generation or "2"
+        password_arg = getattr(self.arguments, 'password', None)
+        password = '' if not password_arg else '&password=' + password_arg
+        generation = getattr(self.arguments, 'force_generation', None) or "2"
         response = self.api_handler.session.get(
             f"{constants.GOG_CONTENT_SYSTEM}/products/{self.game_id}/os/{build_platform}/builds?&generation={generation}{password}"
         )

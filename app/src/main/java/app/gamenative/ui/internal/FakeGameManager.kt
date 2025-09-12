@@ -66,7 +66,7 @@ object FakeGameManager : GameManager {
         )
     }
 
-    override fun getDownloadSize(libraryItem: LibraryItem): String = "1.5 GB"
+    override suspend fun getDownloadSize(libraryItem: LibraryItem): String = "1.5 GB"
     override fun isValidToDownload(library: LibraryItem): Boolean = true
     override fun getAppInfo(libraryItem: LibraryItem): SteamApp? = null
     override fun getAppDirPath(appId: String): String = "/path/to/fake/app/dir"

@@ -221,8 +221,10 @@ class SteamGameManager @Inject constructor(
         )
     }
 
-    override fun getDownloadSize(libraryItem: LibraryItem): String {
-        return DownloadService.getSizeFromStoreDisplay(libraryItem.gameId)
+    override suspend fun getDownloadSize(libraryItem: LibraryItem): String {
+        return withContext(Dispatchers.IO) {
+            DownloadService.getSizeFromStoreDisplay(libraryItem.gameId)
+        }
     }
 
     override fun isValidToDownload(libraryItem: LibraryItem): Boolean {

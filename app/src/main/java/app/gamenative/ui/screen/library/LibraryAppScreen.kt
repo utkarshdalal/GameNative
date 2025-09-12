@@ -214,7 +214,7 @@ fun AppScreen(
                 val appDirPath = GameManagerService.getAppDirPath(libraryItem.appId)
                 MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                
+
                 isInstalled = GameManagerService.isGameInstalled(context, libraryItem)
                 downloadInfo = null
                 isInstalled = true
@@ -538,7 +538,7 @@ fun AppScreen(
                 )
             },
             onUpdateClick = {
-                CoroutineScope(Dispatchers.IO).launch { 
+                CoroutineScope(Dispatchers.IO).launch {
                     val result = GameManagerService.downloadGameWithResult(context, libraryItem)
                     if (result.isSuccess) {
                         downloadInfo = result.getOrNull()
@@ -1327,8 +1327,16 @@ private fun AppScreenContent(
                                         SkeletonText(lines = 1, lineHeight = 20)
                                     } else {
                                         if (!isInstalled) {
+                                            // Use remember and LaunchedEffect to handle async size loading
+                                            var downloadSize by remember(libraryItem.gameId) { mutableStateOf("Loading...") }
+
+                                            LaunchedEffect(libraryItem.gameId) {
+                                                // Now properly async - no more polling needed!
+                                                downloadSize = GameManagerService.getDownloadSize(libraryItem)
+                                            }
+
                                             Text(
-                                                text = GameManagerService.getDownloadSize(libraryItem),
+                                                text = downloadSize,
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                             )
                                         } else {

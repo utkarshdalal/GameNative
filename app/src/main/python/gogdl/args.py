@@ -46,6 +46,9 @@ def init_parser():
     download_parser.add_argument('--lang', type=str, default='en-US', help='Language for the download')
     download_parser.add_argument('--max-workers', dest='workers_count', type=int, default=2, help='Number of download workers')
     download_parser.add_argument('--support', dest='support_path', type=str, help='Support files path')
+    download_parser.add_argument('--password', dest='password', help='Password to access other branches')
+    download_parser.add_argument('--force-gen', choices=['1', '2'], dest='force_generation', help='Force specific manifest generation (FOR DEBUGGING)')
+    download_parser.add_argument('--build', '-b', dest='build', help='Specify buildId')
 
     # Info command (same as heroic-gogdl calculate_size_parser)
     info_parser = subparsers.add_parser('info', help='Calculates estimated download size and list of DLCs')
@@ -67,6 +70,10 @@ def init_parser():
     repair_parser.add_argument('id', type=str, help='Game ID to repair')
     repair_parser.add_argument('--path', type=str, default=constants.ANDROID_GAMES_DIR, help='Game path')
     repair_parser.add_argument('--platform', type=str, default='windows', choices=['windows', 'linux'], help='Platform')
+    repair_parser.add_argument('--password', dest='password', help='Password to access other branches')
+    repair_parser.add_argument('--force-gen', choices=['1', '2'], dest='force_generation', help='Force specific manifest generation (FOR DEBUGGING)')
+    repair_parser.add_argument('--build', '-b', dest='build', help='Specify buildId')
+    repair_parser.add_argument('--branch', dest='branch', help='Choose build branch to use')
     
     # Save sync command
     save_parser = subparsers.add_parser('save-sync', help='Sync game saves')

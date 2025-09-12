@@ -179,7 +179,7 @@ class GameManagerService @Inject constructor(
             return getManagerForGameSource(gameSource).createLibraryItem(appId, gameId.toString(), context)
         }
 
-        fun getDownloadSize(libraryItem: LibraryItem): String {
+        suspend fun getDownloadSize(libraryItem: LibraryItem): String {
             return getManagerForGame(libraryItem).getDownloadSize(libraryItem)
         }
 
