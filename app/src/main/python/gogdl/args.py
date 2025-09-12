@@ -47,10 +47,20 @@ def init_parser():
     download_parser.add_argument('--max-workers', dest='workers_count', type=int, default=2, help='Number of download workers')
     download_parser.add_argument('--support', dest='support_path', type=str, help='Support files path')
 
-    # Info command
-    info_parser = subparsers.add_parser('info', help='Get game information')
-    info_parser.add_argument('id', type=str, help='Game ID')
-    info_parser.add_argument('--platform', type=str, default='windows', choices=['windows', 'linux'], help='Platform')
+    # Info command (same as heroic-gogdl calculate_size_parser)
+    info_parser = subparsers.add_parser('info', help='Calculates estimated download size and list of DLCs')
+    info_parser.add_argument('--with-dlcs', dest='dlcs', action='store_true', help='Should download all dlcs')
+    info_parser.add_argument('--skip-dlcs', dest='dlcs', action='store_false', help='Should skip all dlcs')
+    info_parser.add_argument('--dlcs', dest='dlcs_list', help='Comma separated list of dlc ids to download')
+    info_parser.add_argument('--dlc-only', dest='dlc_only', action='store_true', help='Download only DLC')
+    info_parser.add_argument('id', help='Game ID')
+    info_parser.add_argument('--platform', '--os', dest='platform', help='Target operating system', choices=['windows', 'linux'], default='windows')
+    info_parser.add_argument('--build', '-b', dest='build', help='Specify buildId')
+    info_parser.add_argument('--branch', dest='branch', help='Choose build branch to use')
+    info_parser.add_argument('--password', dest='password', help='Password to access other branches')
+    info_parser.add_argument('--force-gen', choices=['1', '2'], dest='force_generation', help='Force specific manifest generation (FOR DEBUGGING)')
+    info_parser.add_argument('--lang', '-l', dest='lang', help='Specify game language', default='en-US')
+    info_parser.add_argument('--max-workers', dest='workers_count', type=int, default=2, help='Number of download workers')
     
     # Repair command
     repair_parser = subparsers.add_parser('repair', help='Repair/verify game files')

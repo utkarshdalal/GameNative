@@ -154,7 +154,7 @@ def main():
             "download": download_manager.download,
             "repair": download_manager.download,
             "update": download_manager.download,
-            "info": download_manager.info,
+            "info": lambda: download_manager.calculate_download_size(arguments, unknown_args),
         })
     
     # Handle save sync command
