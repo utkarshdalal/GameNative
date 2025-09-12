@@ -178,13 +178,13 @@ chaquopy {
             // Install GOGDL dependencies
             install("requests")
             // Use your Android-compatible fork instead of the original
-            install("git+https://github.com/unbelievableflavour/heroic-gogdl-android.git@0.0.4")
+            // install("git+https://github.com/unbelievableflavour/heroic-gogdl-android.git@0.0.4")
         }
     }
     sourceSets {
         getByName("main") {
             // Remove local Python source directory since we're using the external package
-            // srcDir("src/main/python")
+            srcDir("src/main/python")
         }
     }
 }
