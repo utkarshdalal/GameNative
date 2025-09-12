@@ -10,6 +10,7 @@ import app.gamenative.data.GOGGame
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import com.chaquo.python.Kwarg
+import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.io.File
@@ -20,6 +21,24 @@ import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import timber.log.Timber
+
+/**
+ * Data class to hold metadata extracted from GOG GamesDB
+ */
+private data class GameMetadata(
+    val developer: String = "Unknown Developer",
+    val publisher: String = "Unknown Publisher", 
+    val title: String? = null,
+    val description: String? = null
+)
+
+/**
+ * Data class to hold size information from gogdl info command
+ */
+data class GameSizeInfo(
+    val downloadSize: Long,
+    val diskSize: Long
+)
 
 @Singleton
 class GOGService @Inject constructor() : Service() {
@@ -348,14 +367,114 @@ class GOGService @Inject constructor() : Service() {
         }
 
         /**
+         * Fetch rich metadata from GOG GamesDB API including developer and publisher info
+         */
+        private suspend fun fetchGamesDBMetadata(gameId: String): GameMetadata = withContext(Dispatchers.IO) {
+            try {
+                val python = Python.getInstance()
+                val requests = python.getModule("requests")
+
+                val gamesDbUrl = "https://gamesdb.gog.com/platforms/gog/external_releases/$gameId"
+                
+                // Create headers dictionary for GamesDB
+                val gamesDbHeaders = python.builtins.callAttr("dict")
+                gamesDbHeaders.callAttr("__setitem__", "User-Agent", "GOGGalaxyClient/2.0.45.61 (Windows_x86_64)")
+
+                Timber.d("Fetching GOG game metadata from GamesDB for ID: $gameId")
+
+                val gamesDbResponse = requests.callAttr(
+                    "get", gamesDbUrl,
+                    Kwarg("headers", gamesDbHeaders),
+                    Kwarg("timeout", 10),
+                )
+
+                val gamesDbStatusCode = gamesDbResponse.get("status_code")?.toInt() ?: 0
+                if (gamesDbStatusCode == 200) {
+                    val gamesDbJson = gamesDbResponse.callAttr("json")
+                    val gameData = gamesDbJson?.callAttr("get", "game")
+                    
+                    // Extract developer information
+                    val developers = extractDevelopers(gameData, gameId)
+                    
+                    // Extract publisher information
+                    val publishers = extractPublishers(gameData, gameId)
+
+                    // Extract title and description from GamesDB
+                    val title = gamesDbJson?.callAttr("get", "title")?.callAttr("get", "*")?.toString()
+                    val description = gamesDbJson?.callAttr("get", "summary")?.callAttr("get", "*")?.toString()
+                    
+                    return@withContext GameMetadata(
+                        developer = if (developers.isNotEmpty()) developers.joinToString(", ") else "Unknown Developer",
+                        publisher = if (publishers.isNotEmpty()) publishers.joinToString(", ") else "Unknown Publisher",
+                        title = title,
+                        description = description
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Error fetching GamesDB metadata for game $gameId")
+            }
+            
+            return@withContext GameMetadata()
+        }
+
+        /**
+         * Extract developer names from GamesDB game data
+         */
+        private fun extractDevelopers(gameData: PyObject?, gameId: String): List<String> {
+            val developers = gameData?.callAttr("get", "developers") ?: return emptyList()
+            
+            return try {
+                val developersList = mutableListOf<String>()
+                val length = developers.callAttr("__len__")?.toInt() ?: 0
+                for (i in 0 until length) {
+                    val dev = developers.callAttr("__getitem__", i)
+                    val devName = dev?.callAttr("get", "name")?.toString()
+                    if (!devName.isNullOrEmpty()) {
+                        developersList.add(devName)
+                    }
+                }
+                developersList
+            } catch (e: Exception) {
+                Timber.w(e, "Error parsing developers for game $gameId")
+                emptyList()
+            }
+        }
+
+        /**
+         * Extract publisher names from GamesDB game data
+         */
+        private fun extractPublishers(gameData: PyObject?, gameId: String): List<String> {
+            val publishers = gameData?.callAttr("get", "publishers") ?: return emptyList()
+            
+            return try {
+                val publishersList = mutableListOf<String>()
+                val length = publishers.callAttr("__len__")?.toInt() ?: 0
+                for (i in 0 until length) {
+                    val pub = publishers.callAttr("__getitem__", i)
+                    val pubName = pub?.callAttr("get", "name")?.toString()
+                    if (!pubName.isNullOrEmpty()) {
+                        publishersList.add(pubName)
+                    }
+                }
+                publishersList
+            } catch (e: Exception) {
+                Timber.w(e, "Error parsing publishers for game $gameId")
+                emptyList()
+            }
+        }
+
+        /**
          * Fetch detailed information for a specific GOG game
          */
         private suspend fun fetchGameDetails(gameId: String, accessToken: String): GOGGame? = withContext(Dispatchers.IO) {
             try {
                 val python = Python.getInstance()
                 val requests = python.getModule("requests")
+                
+                // First get rich metadata from GamesDB
+                val metadata = fetchGamesDBMetadata(gameId)
 
-                // Use the GOG API products endpoint to get game details
+                // Now fetch basic product info from the standard GOG API
                 val url = "https://api.gog.com/products/$gameId"
 
                 // Create headers dictionary
@@ -376,8 +495,8 @@ class GOGService @Inject constructor() : Service() {
                 if (statusCode == 200) {
                     val gameJson = response.callAttr("json")
 
-                    // Extract game information
-                    val title = gameJson?.callAttr("get", "title")?.toString() ?: "Unknown Game"
+                    // Extract game information, using GamesDB data as fallback
+                    val title = gameJson?.callAttr("get", "title")?.toString() ?: metadata.title ?: "Unknown Game"
                     val slug = gameJson?.callAttr("get", "slug")?.toString() ?: gameId
 
                     // Check the game_type field for filtering
@@ -388,8 +507,8 @@ class GOGService @Inject constructor() : Service() {
                         return@withContext null
                     }
 
-                    // Get description - it might be nested
-                    val description = try {
+                    // Get description - prefer GamesDB but fallback to product API
+                    val description = metadata.description ?: try {
                         gameJson?.callAttr("get", "description")?.callAttr("get", "full")?.toString()
                             ?: gameJson?.callAttr("get", "description")?.toString()
                             ?: ""
@@ -461,30 +580,7 @@ class GOGService @Inject constructor() : Service() {
                         ""
                     }
 
-                    // Get developer and publisher - these fields are often missing in GOG API
-                    val developer = try {
-                        val developers = gameJson?.callAttr("get", "developers")
-                        if (developers != null) {
-                            val firstDev = developers.callAttr("__getitem__", 0)
-                            firstDev?.toString()?.takeIf { it.isNotEmpty() } ?: "Unknown Developer"
-                        } else {
-                            "Unknown Developer"
-                        }
-                    } catch (e: Exception) {
-                        "Unknown Developer"
-                    }
-
-                    val publisher = try {
-                        val publishers = gameJson?.callAttr("get", "publishers")
-                        if (publishers != null) {
-                            val firstPub = publishers.callAttr("__getitem__", 0)
-                            firstPub?.toString()?.takeIf { it.isNotEmpty() } ?: "Unknown Publisher"
-                        } else {
-                            "Unknown Publisher"
-                        }
-                    } catch (e: Exception) {
-                        "Unknown Publisher"
-                    }
+                    // Developer and publisher info already extracted from GamesDB above
 
                     // Get release date
                     val releaseDate = try {
@@ -502,8 +598,8 @@ class GOGService @Inject constructor() : Service() {
                         description = description,
                         imageUrl = imageUrl,
                         iconUrl = iconUrl,
-                        developer = developer,
-                        publisher = publisher,
+                        developer = metadata.developer,
+                        publisher = metadata.publisher,
                         releaseDate = releaseDate,
                     )
                 } else {
@@ -1424,6 +1520,82 @@ class GOGService @Inject constructor() : Service() {
             } else {
                 Timber.w("No active download found for game: $gameId")
                 false
+            }
+        }
+
+        /**
+         * Get download and install size information using gogdl info command
+         * Uses the same CLI pattern as existing download methods
+         */
+        suspend fun getGameSizeInfo(gameId: String): GameSizeInfo? = withContext(Dispatchers.IO) {
+            try {
+                val authConfigPath = "/data/data/app.gamenative/files/gog_config.json"
+                
+                Timber.d("Getting size info for GOG game: $gameId")
+                
+                // Use the same executeCommand pattern as existing methods
+                val result = executeCommand("--auth-config-path", authConfigPath, "info", gameId, "--platform", "windows")
+                
+                if (result.isSuccess) {
+                    val output = result.getOrNull() ?: ""
+                    Timber.d("Got gogdl info output: $output")
+                    
+                    if (output.isNotEmpty()) {
+                        try {
+                            // Parse JSON output from gogdl info command
+                            val jsonResponse = JSONObject(output.trim())
+                            
+                            // Debug: Log the full JSON structure
+                            Timber.d("Full gogdl info JSON response: $output")
+                            
+                            // Extract size information from the JSON response
+                            val sizeInfo = jsonResponse.optJSONObject("size")
+                            Timber.d("Size info object: $sizeInfo")
+                            
+                            var maxDownloadSize = 0L
+                            var maxDiskSize = 0L
+                            
+                            if (sizeInfo != null) {
+                                // Iterate through all language keys to find the largest size
+                                val keys = sizeInfo.keys()
+                                while (keys.hasNext()) {
+                                    val key = keys.next()
+                                    val languageSize = sizeInfo.optJSONObject(key)
+                                    if (languageSize != null) {
+                                        val downloadSize = languageSize.optLong("download_size", 0L)
+                                        val diskSize = languageSize.optLong("disk_size", 0L)
+                                        
+                                        Timber.d("Language '$key' sizes - Download: $downloadSize bytes, Disk: $diskSize bytes")
+                                        
+                                        // Keep track of the largest sizes (usually the full game language pack)
+                                        if (downloadSize > maxDownloadSize) {
+                                            maxDownloadSize = downloadSize
+                                        }
+                                        if (diskSize > maxDiskSize) {
+                                            maxDiskSize = diskSize
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Timber.d("Final max sizes - Download: $maxDownloadSize bytes, Disk: $maxDiskSize bytes")
+                            
+                            if (maxDownloadSize > 0 || maxDiskSize > 0) {
+                                Timber.d("Got size info for $gameId - Download: ${app.gamenative.utils.StorageUtils.formatBinarySize(maxDownloadSize)}, Disk: ${app.gamenative.utils.StorageUtils.formatBinarySize(maxDiskSize)}")
+                                return@withContext GameSizeInfo(maxDownloadSize, maxDiskSize)
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to parse gogdl info JSON output")
+                        }
+                    }
+                } else {
+                    Timber.w("GOGDL info command failed: ${result.exceptionOrNull()?.message}")
+                }
+                
+                return@withContext null
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to get size info for game $gameId")
+                return@withContext null
             }
         }
     }
