@@ -209,10 +209,14 @@ fun AppScreen(
     DisposableEffect(downloadInfo) {
         val onDownloadProgress: (Float) -> Unit = {
             if (it >= 1f) {
+                // Download completed - update markers
+                val appDirPath = GameManagerService.getAppDirPath(libraryItem.appId)
+                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                
                 isInstalled = GameManagerService.isGameInstalled(context, libraryItem)
                 downloadInfo = null
                 isInstalled = true
-                MarkerUtils.addMarker(GameManagerService.getAppDirPath(libraryItem.appId), Marker.DOWNLOAD_COMPLETE_MARKER)
             }
             downloadProgress = it
         }

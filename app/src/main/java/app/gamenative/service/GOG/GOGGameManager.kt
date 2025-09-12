@@ -16,6 +16,7 @@ import app.gamenative.data.SteamApp
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.enums.AppType
 import app.gamenative.enums.ControllerSupport
+import app.gamenative.enums.Marker
 import app.gamenative.enums.OS
 import app.gamenative.enums.ReleaseState
 import app.gamenative.enums.SyncResult
@@ -23,6 +24,7 @@ import app.gamenative.service.GameManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
@@ -77,6 +79,12 @@ class GOGGameManager @Inject constructor(
                 if (downloadInfo != null) {
                     // Store the download info for progress tracking
                     downloadJobs[libraryItem.appId] = downloadInfo
+                    
+                    // Add download in progress marker and remove completion marker
+                    val appDirPath = getAppDirPath(libraryItem.appId)
+                    MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    
                     Timber.i("GOG game installation started successfully: ${libraryItem.name}")
                 }
                 return Result.success(downloadInfo)
@@ -111,6 +119,11 @@ class GOGGameManager @Inject constructor(
             if (installDir.exists()) {
                 val success = installDir.deleteRecursively()
                 if (success) {
+                    // Remove all markers
+                    val appDirPath = getAppDirPath(libraryItem.appId)
+                    MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    
                     // Update database to mark as not installed
                     val game = runBlocking { getGameById(gameId) }
                     if (game != null) {
@@ -128,6 +141,11 @@ class GOGGameManager @Inject constructor(
                 }
             } else {
                 Timber.w("GOG game directory doesn't exist: $installPath")
+                // Remove all markers even if directory doesn't exist
+                val appDirPath = getAppDirPath(libraryItem.appId)
+                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                
                 // Update database anyway to ensure consistency
                 val game = runBlocking { getGameById(gameId) }
                 if (game != null) {
@@ -145,24 +163,29 @@ class GOGGameManager @Inject constructor(
             return Result.failure(e)
         } finally {
             // Always remove from active downloads regardless of success/failure
-            downloadJobs.remove(libraryItem.gameId.toString())
+            downloadJobs.remove(libraryItem.appId)
         }
     }
 
     override fun isGameInstalled(context: Context, libraryItem: LibraryItem): Boolean {
-        val gameId = libraryItem.gameId.toString()
-        val gameName = libraryItem.name
         try {
-            val installPath = getGameInstallPath(context, gameId, gameName)
-            val installDir = File(installPath)
-            val isInstalled = installDir.exists() && installDir.listFiles()?.isNotEmpty() == true
-
+            val appDirPath = getAppDirPath(libraryItem.appId)
+            
+            // Use marker-based approach for reliable state tracking
+            val isDownloadComplete = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val isDownloadInProgress = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            
+            // Game is installed only if download is complete and not in progress
+            val isInstalled = isDownloadComplete && !isDownloadInProgress
+            
             // Update database if the install status has changed
+            val gameId = libraryItem.gameId.toString()
             val game = runBlocking { getGameById(gameId) }
             if (game != null && isInstalled != game.isInstalled) {
+                val installPath = if (isInstalled) getGameInstallPath(context, gameId, libraryItem.name) else ""
                 val updatedGame = game.copy(
                     isInstalled = isInstalled,
-                    installPath = if (isInstalled) installPath else "",
+                    installPath = installPath,
                 )
                 runBlocking { gogGameDao.update(updatedGame) }
             }
@@ -179,11 +202,39 @@ class GOGGameManager @Inject constructor(
     }
 
     override fun getDownloadInfo(libraryItem: LibraryItem): DownloadInfo? {
-        return downloadJobs[libraryItem.gameId.toString()]
+        return downloadJobs[libraryItem.appId]
     }
 
     override fun hasPartialDownload(libraryItem: LibraryItem): Boolean {
-        return false // GOG doesn't support partial downloads yet
+        try {
+            val appDirPath = getAppDirPath(libraryItem.appId)
+            
+            // Use marker-based approach for reliable state tracking
+            val isDownloadInProgress = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            val isDownloadComplete = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            
+            // Has partial download if download is in progress or if there are files but no completion marker
+            if (isDownloadInProgress) {
+                return true
+            }
+            
+            // Also check if there are files in the directory but no completion marker (interrupted download)
+            if (!isDownloadComplete) {
+                val gameId = libraryItem.gameId.toString()
+                val gameName = libraryItem.name
+                // Use GOGConstants directly since we don't have context here and it's not needed
+                val installPath = GOGConstants.getGameInstallPath(gameName)
+                val installDir = File(installPath)
+                
+                // If directory has files but no completion marker, it's a partial download
+                return installDir.exists() && installDir.listFiles()?.isNotEmpty() == true
+            }
+            
+            return false
+        } catch (e: Exception) {
+            Timber.w(e, "Error checking partial download status for ${libraryItem.name}")
+            return false
+        }
     }
 
     override suspend fun getGameDiskSize(context: Context, libraryItem: LibraryItem): String = withContext(Dispatchers.IO) {
@@ -195,6 +246,20 @@ class GOGGameManager @Inject constructor(
     }
 
     override fun getAppDirPath(appId: String): String {
+        // Extract the numeric game ID from the appId
+        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+        
+        // Get the game details to find the correct title
+        val game = runBlocking { getGameById(gameId.toString()) }
+        if (game != null) {
+            // Return the specific game installation path
+            val gamePath = GOGConstants.getGameInstallPath(game.title)
+            Timber.d("GOG getAppDirPath for appId $appId (game: ${game.title}) -> $gamePath")
+            return gamePath
+        }
+        
+        // Fallback to base path if game not found (shouldn't happen normally)
+        Timber.w("Could not find game for appId $appId, using base path")
         return GOGConstants.GOG_GAMES_BASE_PATH
     }
 
@@ -546,7 +611,7 @@ class GOGGameManager @Inject constructor(
      * Clean up download info when download is cancelled or fails (unused, might be necessary later?)
      */
     fun cleanupDownload(libraryItem: LibraryItem) {
-        downloadJobs.remove(libraryItem.gameId.toString())
+        downloadJobs.remove(libraryItem.appId)
         Timber.d("Cleaned up download info for GOG game: ${libraryItem.gameId}")
     }
 
