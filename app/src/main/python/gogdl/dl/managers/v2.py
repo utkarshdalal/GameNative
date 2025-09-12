@@ -256,7 +256,7 @@ class Manager:
             self.logger.info(f"Found {invalid} broken files, repairing...")
             diff = new_diff
 
-        executor = ExecutingManager(self.api_handler, self.allowed_threads, self.path, self.support, diff, secure_links)
+        executor = ExecutingManager(self.api_handler, self.allowed_threads, self.path, self.support, diff, secure_links, self.game_id)
         success = executor.setup()
         if not success:
             print('Unable to proceed, Not enough disk space')

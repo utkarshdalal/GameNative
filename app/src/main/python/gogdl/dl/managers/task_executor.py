@@ -17,16 +17,18 @@ from gogdl.dl.workers import task_executor
 from gogdl.dl.objects import generic, v2, v1, linux
 
 class ExecutingManager:
-    def __init__(self, api_handler, allowed_threads, path, support, diff, secure_links) -> None:
+    def __init__(self, api_handler, allowed_threads, path, support, diff, secure_links, game_id=None) -> None:
         self.api_handler = api_handler
         self.allowed_threads = allowed_threads
         self.path = path
         self.resume_file = os.path.join(path, '.gogdl-resume')
+        self.game_id = game_id  # Store game_id for cancellation checking
         self.support = support or os.path.join(path, 'gog-support')
         self.cache = os.path.join(path, '.gogdl-download-cache')
         self.diff: generic.BaseDiff = diff
         self.secure_links = secure_links
         self.logger = logging.getLogger("TASK_EXEC")
+        self.logger.info(f"ExecutingManager initialized with game_id: {self.game_id}")
 
         self.download_size = 0
         self.disk_size = 0
@@ -460,13 +462,14 @@ class ExecutingManager:
             self.threads.append(Thread(target=self.download_manager, args=(self.task_cond, self.temp_cond)))
             self.threads.append(Thread(target=self.process_task_results, args=(self.task_cond,)))
             self.threads.append(Thread(target=self.process_writer_task_results, args=(self.temp_cond,)))
-            self.progress = ProgressBar(self.disk_size, self.download_speed_updates, self.writer_speed_updates)
+            self.progress = ProgressBar(self.disk_size, self.download_speed_updates, self.writer_speed_updates, self.game_id)
 
             # Spawn workers using threads instead of processes
+            self.logger.info(f"Starting {self.allowed_threads} download workers for game {self.game_id}")
             for i in range(self.allowed_threads):
                 worker = Thread(target=task_executor.download_worker, args=(
                     self.download_queue, self.download_res_queue, 
-                    self.download_speed_updates, self.secure_links, self.temp_dir
+                    self.download_speed_updates, self.secure_links, self.temp_dir, self.game_id
                 ))
                 worker.start()
                 self.download_workers.append(worker)
@@ -491,6 +494,20 @@ class ExecutingManager:
                 self.progress.start()
 
             while self.processed_items < self.items_to_complete and not interrupted and not self.fatal_error:
+                # Check for Android cancellation signal
+                try:
+                    import builtins
+                    flag_name = f'GOGDL_CANCEL_{self.game_id}'
+                    if hasattr(builtins, flag_name):
+                        flag_value = getattr(builtins, flag_name, False)
+                        if flag_value:
+                            self.logger.info(f"Download cancelled by user for game {self.game_id}")
+                            self.fatal_error = True  # Mark as error to prevent completion
+                            interrupted = True
+                            break
+                except Exception as e:
+                    self.logger.debug(f"Error checking cancellation flag: {e}")
+                
                 time.sleep(1)
             if interrupted:
                 return True

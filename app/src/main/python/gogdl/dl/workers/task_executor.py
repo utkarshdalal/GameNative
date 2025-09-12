@@ -72,11 +72,21 @@ class WriterTaskResult:
     written: int = 0
 
 
-def download_worker(download_queue, results_queue, speed_queue, secure_links, temp_dir):
+def download_worker(download_queue, results_queue, speed_queue, secure_links, temp_dir, game_id):
     """Download worker function that runs in a thread"""
     session = requests.session()
     
     while True:
+        # Check for cancellation signal before processing next task
+        try:
+            import builtins
+            flag_name = f'GOGDL_CANCEL_{game_id}'
+            if hasattr(builtins, flag_name) and getattr(builtins, flag_name, False):
+                session.close()
+                return  # Exit worker thread if cancelled
+        except:
+            pass  # Continue if cancellation check fails
+            
         try:
             task: Union[DownloadTask1, DownloadTask2, TerminateWorker] = download_queue.get(timeout=1)
         except:
@@ -86,14 +96,14 @@ def download_worker(download_queue, results_queue, speed_queue, secure_links, te
             break
 
         if type(task) == DownloadTask2:
-            download_v2_chunk(task, session, secure_links, results_queue, speed_queue)
+            download_v2_chunk(task, session, secure_links, results_queue, speed_queue, game_id)
         elif type(task) == DownloadTask1:
-            download_v1_chunk(task, session, secure_links, results_queue, speed_queue)
+            download_v1_chunk(task, session, secure_links, results_queue, speed_queue, game_id)
 
     session.close()
 
 
-def download_v2_chunk(task: DownloadTask2, session, secure_links, results_queue, speed_queue):
+def download_v2_chunk(task: DownloadTask2, session, secure_links, results_queue, speed_queue, game_id):
     retries = 5 
     urls = secure_links[task.product_id]
     compressed_md5 = task.compressed_sum
@@ -123,6 +133,15 @@ def download_v2_chunk(task: DownloadTask2, session, secure_links, results_queue,
             response = session.get(url, stream=True, timeout=10)
             response.raise_for_status()
             for chunk in response.iter_content(1024 * 512):
+                # Check for cancellation during download
+                try:
+                    import builtins
+                    flag_name = f'GOGDL_CANCEL_{game_id}'
+                    if hasattr(builtins, flag_name) and getattr(builtins, flag_name, False):
+                        return  # Exit immediately if cancelled
+                except:
+                    pass
+                    
                 download_size += len(chunk)
                 compressed_sum.update(chunk)
                 decompressed = decompressor.decompress(chunk)
@@ -160,7 +179,7 @@ def download_v2_chunk(task: DownloadTask2, session, secure_links, results_queue,
     results_queue.put(DownloadTaskResult(True, None, task, temp_file=task.temp_file, download_size=download_size, decompressed_size=decompressed_size))
 
 
-def download_v1_chunk(task: DownloadTask1, session, secure_links, results_queue, speed_queue):
+def download_v1_chunk(task: DownloadTask1, session, secure_links, results_queue, speed_queue, game_id):
     retries = 5
     urls = secure_links[task.product_id]
 
@@ -168,7 +187,7 @@ def download_v1_chunk(task: DownloadTask1, session, secure_links, results_queue,
     if type(urls) == str:
         url = urls
     else:
-        endpoint = copy(urls[0])
+        endpoint = deepcopy(urls[0])
         endpoint["parameters"]["path"] += "/main.bin"
         url = dl_utils.merge_url_with_params(
             endpoint["url_format"], endpoint["parameters"]
@@ -186,6 +205,15 @@ def download_v1_chunk(task: DownloadTask1, session, secure_links, results_queue,
             # Stream directly to temp file instead of loading into memory
             with open(task.temp_file, 'wb') as temp_f:
                 for chunk in response.iter_content(1024 * 512):  # 512KB chunks
+                    # Check for cancellation during download
+                    try:
+                        import builtins
+                        flag_name = f'GOGDL_CANCEL_{game_id}'
+                        if hasattr(builtins, flag_name) and getattr(builtins, flag_name, False):
+                            return  # Exit immediately if cancelled
+                    except:
+                        pass
+                        
                     temp_f.write(chunk)
                     download_size += len(chunk)
                     speed_queue.put((len(chunk), len(chunk)))

@@ -59,6 +59,26 @@ class ChunkTask:
     old_file: Optional[str] = None
 
 @dataclass
+class V1Task:
+    product: str
+    index: int
+    offset: int
+    size: int
+    md5: str
+    cleanup: Optional[bool] = True
+
+    old_offset: Optional[int] = None
+    offload_to_cache: Optional[bool] = False
+    old_flags: TaskFlag = TaskFlag.NONE 
+    old_file: Optional[str] = None
+
+    # This isn't actual sum, but unique id of chunk we use to decide 
+    # if we should push it to writer
+    @property
+    def compressed_md5(self):
+        return self.md5 + "_" + str(self.index)
+
+@dataclass
 class Task:
     flag: TaskFlag
     file_path: Optional[str] = None

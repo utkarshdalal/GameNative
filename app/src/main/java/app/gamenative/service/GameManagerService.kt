@@ -94,6 +94,10 @@ class GameManagerService @Inject constructor(
         fun downloadGame(context: Context, libraryItem: LibraryItem): DownloadInfo? {
             return getManagerForGame(libraryItem).downloadGame(context, libraryItem).getOrNull()
         }
+        
+        fun downloadGameWithResult(context: Context, libraryItem: LibraryItem): Result<DownloadInfo?> {
+            return getManagerForGame(libraryItem).downloadGame(context, libraryItem)
+        }
 
         fun hasPartialDownload(libraryItem: LibraryItem): Boolean {
             return getManagerForGame(libraryItem).hasPartialDownload(libraryItem)

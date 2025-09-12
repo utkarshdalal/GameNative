@@ -89,6 +89,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.GameManagerService
+import app.gamenative.service.GOG.GOGService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.ui.component.LoadingScreen
@@ -335,7 +336,12 @@ fun AppScreen(
                         "game_name" to libraryItem.name,
                     ),
                 )
-                downloadInfo?.cancel()
+                // Cancel the download properly based on game source
+                if (libraryItem.gameSource == GameSource.GOG) {
+                    GOGService.cancelDownload(libraryItem.appId)
+                } else {
+                    downloadInfo?.cancel()
+                }
                 GameManagerService.deleteGame(context, libraryItem)
                 downloadInfo = null
                 downloadProgress = 0f
@@ -363,7 +369,15 @@ fun AppScreen(
                 )
                 CoroutineScope(Dispatchers.IO).launch {
                     downloadProgress = 0f
-                    downloadInfo = GameManagerService.downloadGame(context, libraryItem)
+                    val result = GameManagerService.downloadGameWithResult(context, libraryItem)
+                    if (result.isSuccess) {
+                        downloadInfo = result.getOrNull()
+                    } else {
+                        // Download failed - show error message
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                        }
+                    }
                     msgDialogState = MessageDialogState(false)
                 }
             }
@@ -466,7 +480,14 @@ fun AppScreen(
                 } else if (GameManagerService.hasPartialDownload(libraryItem)) {
                     // Resume incomplete download
                     CoroutineScope(Dispatchers.IO).launch {
-                        downloadInfo = GameManagerService.downloadGame(context, libraryItem)
+                        val result = GameManagerService.downloadGameWithResult(context, libraryItem)
+                        if (result.isSuccess) {
+                            downloadInfo = result.getOrNull()
+                        } else {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 } else if (!isInstalled) {
                     permissionLauncher.launch(
@@ -488,10 +509,22 @@ fun AppScreen(
             },
             onPauseResumeClick = {
                 if (isDownloading()) {
-                    downloadInfo?.cancel()
+                    // Cancel the download properly based on game source
+                    if (libraryItem.gameSource == GameSource.GOG) {
+                        GOGService.cancelDownload(libraryItem.appId)
+                    } else {
+                        downloadInfo?.cancel()
+                    }
                     downloadInfo = null
                 } else {
-                    downloadInfo = GameManagerService.downloadGame(context, libraryItem)
+                    val result = GameManagerService.downloadGameWithResult(context, libraryItem)
+                    if (result.isSuccess) {
+                        downloadInfo = result.getOrNull()
+                    } else {
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             },
             onDeleteDownloadClick = {
@@ -505,7 +538,16 @@ fun AppScreen(
                 )
             },
             onUpdateClick = {
-                CoroutineScope(Dispatchers.IO).launch { downloadInfo = GameManagerService.downloadGame(context, libraryItem) }
+                CoroutineScope(Dispatchers.IO).launch { 
+                    val result = GameManagerService.downloadGameWithResult(context, libraryItem)
+                    if (result.isSuccess) {
+                        downloadInfo = result.getOrNull()
+                    } else {
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             },
             onBack = onBack,
             optionsMenu = arrayOf(
@@ -585,7 +627,14 @@ fun AppScreen(
                                 AppOptionMenuType.VerifyFiles,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
-                                        downloadInfo = GameManagerService.downloadGame(context, libraryItem)
+                                        val result = GameManagerService.downloadGameWithResult(context, libraryItem)
+                                        if (result.isSuccess) {
+                                            downloadInfo = result.getOrNull()
+                                        } else {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
                                     }
                                 },
                             ),
@@ -593,7 +642,14 @@ fun AppScreen(
                                 AppOptionMenuType.Update,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
-                                        downloadInfo = GameManagerService.downloadGame(context, libraryItem)
+                                        val result = GameManagerService.downloadGameWithResult(context, libraryItem)
+                                        if (result.isSuccess) {
+                                            downloadInfo = result.getOrNull()
+                                        } else {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
                                     }
                                 },
                             ),

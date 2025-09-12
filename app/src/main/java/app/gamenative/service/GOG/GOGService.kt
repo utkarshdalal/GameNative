@@ -13,6 +13,7 @@ import com.chaquo.python.Kwarg
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.*
@@ -529,9 +530,12 @@ class GOGService @Inject constructor() : Service() {
 
                 // Create DownloadInfo for progress tracking
                 val downloadInfo = DownloadInfo(jobCount = 1)
+                
+                // Track this download in the active downloads map
+                getInstance()?.activeDownloads?.put(gameId, downloadInfo)
 
                 // Start GOGDL download with progress parsing
-                CoroutineScope(Dispatchers.IO).launch {
+                val downloadJob = CoroutineScope(Dispatchers.IO).launch {
                     try {
                         // Create support directory for redistributables (like Heroic does)
                         val supportDir = File(installDir.parentFile, "gog-support")
@@ -550,17 +554,33 @@ class GOGService @Inject constructor() : Service() {
                         )
 
                         if (result.isSuccess) {
-                            downloadInfo.setProgress(1.0f) // Mark as complete
-                            Timber.i("GOGDL download completed successfully")
+                            // Check if the download was actually cancelled
+                            if (downloadInfo.isCancelled()) {
+                                downloadInfo.setProgress(-1.0f) // Mark as cancelled
+                                Timber.i("GOGDL download was cancelled by user")
+                            } else {
+                                downloadInfo.setProgress(1.0f) // Mark as complete
+                                Timber.i("GOGDL download completed successfully")
+                            }
                         } else {
                             downloadInfo.setProgress(-1.0f) // Mark as failed
                             Timber.e("GOGDL download failed: ${result.exceptionOrNull()?.message}")
                         }
+                    } catch (e: CancellationException) {
+                        Timber.i("GOGDL download cancelled by user")
+                        downloadInfo.setProgress(-1.0f) // Mark as cancelled
                     } catch (e: Exception) {
                         Timber.e(e, "GOGDL download failed")
                         downloadInfo.setProgress(-1.0f) // Mark as failed
+                    } finally {
+                        // Clean up the download from active downloads
+                        getInstance()?.activeDownloads?.remove(gameId)
+                        Timber.d("Cleaned up download for game: $gameId")
                     }
                 }
+                
+                // Store the job in DownloadInfo so it can be cancelled
+                downloadInfo.setDownloadJob(downloadJob)
 
                 Result.success(downloadInfo)
             } catch (e: Exception) {
@@ -571,11 +591,15 @@ class GOGService @Inject constructor() : Service() {
 
         private suspend fun executeCommandWithProgressParsing(downloadInfo: DownloadInfo, vararg args: String): Result<String> {
             return withContext(Dispatchers.IO) {
+                var logMonitorJob: Job? = null
                 try {
                     // Start log monitoring for GOGDL progress (works for both V1 and V2)
-                    val logMonitorJob = CoroutineScope(Dispatchers.IO).launch {
+                    logMonitorJob = CoroutineScope(Dispatchers.IO).launch {
                         monitorGOGDLProgress(downloadInfo)
                     }
+                    
+                    // Store the progress monitor job in DownloadInfo so it can be cancelled
+                    downloadInfo.setProgressMonitorJob(logMonitorJob)
 
                     val python = Python.getInstance()
                     val sys = python.getModule("sys")
@@ -590,21 +614,46 @@ class GOGService @Inject constructor() : Service() {
                         val pythonList = python.builtins.callAttr("list", argsList.toTypedArray())
                         sys.put("argv", pythonList)
 
-                        // Execute the main function
-                        gogdlCli.callAttr("main")
+                        // Check for cancellation before starting
+                        ensureActive()
 
+                        // Set up cancellation mechanism for Python
+                        // Extract game ID from the download command arguments
+                        val gameIdFromArgs = args.find { it.matches(Regex("\\d+")) } ?: "unknown"
+                        val builtins = python.getModule("builtins")
+                        
+                        // Set a global variable that Python can check
+                        builtins.put("GOGDL_CANCEL_${gameIdFromArgs}", false)
+                        Timber.i("Set up Python cancellation flag: GOGDL_CANCEL_${gameIdFromArgs}")
+
+                        // Execute the main function with periodic cancellation checks
+                        val pythonExecutionJob = async(Dispatchers.IO) {
+                            gogdlCli.callAttr("main")
+                        }
+                        
+                        // Wait for either completion or cancellation
+                        while (pythonExecutionJob.isActive) {
+                            delay(100) // Check every 100ms
+                            ensureActive() // Throw CancellationException if cancelled
+                        }
+                        
+                        pythonExecutionJob.await()
                         Timber.d("GOGDL execution completed successfully")
                         Result.success("Download completed")
                     } catch (e: Exception) {
-                        Timber.d("GOGDL execution completed: ${e.message}")
-                        Result.success("Download completed")
+                        Timber.e(e, "GOGDL execution failed: ${e.message}")
+                        Result.failure(e)
                     } finally {
                         sys.put("argv", originalArgv)
-                        logMonitorJob.cancel()
                     }
+                } catch (e: CancellationException) {
+                    Timber.i("GOGDL command cancelled")
+                    throw e // Re-throw to propagate cancellation
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to execute GOGDL command: ${args.joinToString(" ")}")
                     Result.failure(e)
+                } finally {
+                    logMonitorJob?.cancel()
                 }
             }
         }
@@ -614,13 +663,29 @@ class GOGService @Inject constructor() : Service() {
          * Works for both V1 and V2 games using the same progress format
          */
         private suspend fun monitorGOGDLProgress(downloadInfo: DownloadInfo) {
+            var process: Process? = null
             try {
-                // Use logcat to read python.stderr logs in real-time
-                val process = ProcessBuilder("logcat", "-s", "python.stderr:W")
+                // Clear any existing logcat buffer to ensure fresh start
+                try {
+                    val clearProcess = ProcessBuilder("logcat", "-c").start()
+                    clearProcess.waitFor()
+                    Timber.d("Cleared logcat buffer for fresh progress monitoring")
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to clear logcat buffer, continuing anyway")
+                }
+                
+                // Add delay to ensure Python process has started and old logs are cleared
+                delay(1000)
+                
+                // Use logcat to read python.stderr logs in real-time with timestamp filtering
+                // Only process logs that are newer than when we started
+                val startTime = System.currentTimeMillis()
+                process = ProcessBuilder("logcat", "-s", "python.stderr:W", "-T", "1")
                     .redirectErrorStream(true)
                     .start()
 
                 val reader = process.inputStream.bufferedReader()
+                Timber.d("Progress monitoring logcat process started successfully with timestamp filtering")
                 
                 // Track progress state exactly like Heroic does
                 var currentPercent: Float? = null
@@ -629,9 +694,20 @@ class GOGService @Inject constructor() : Service() {
                 var currentDownSpeed: Float? = null
                 var currentDiskSpeed: Float? = null
 
-                while (downloadInfo.getProgress() < 1.0f && downloadInfo.getProgress() >= 0.0f) {
+                while (downloadInfo.getProgress() < 1.0f && downloadInfo.getProgress() >= 0.0f && !downloadInfo.isCancelled()) {
+                    // Check for cancellation before reading each line
+                    if (downloadInfo.isCancelled()) {
+                        Timber.d("Progress monitoring stopping due to cancellation")
+                        break
+                    }
+                    
                     val line = reader.readLine()
                     if (line != null) {
+                        // Double-check cancellation after reading line
+                        if (downloadInfo.isCancelled()) {
+                            Timber.d("Progress monitoring stopping due to cancellation after line read")
+                            break
+                        }
                         // Parse like Heroic: only update if field is empty/undefined
                         
                         // parse log for percent (only if not already set)
@@ -706,9 +782,12 @@ class GOGService @Inject constructor() : Service() {
                     }
                 }
 
-                process.destroy()
+                Timber.d("Progress monitoring loop ended - cancelled: ${downloadInfo.isCancelled()}, progress: ${downloadInfo.getProgress()}")
+                process?.destroyForcibly() // Use destroyForcibly for more aggressive termination
+                Timber.d("Logcat process destroyed forcibly")
             } catch (e: CancellationException) {
                 Timber.d("GOGDL progress monitoring cancelled")
+                process?.destroyForcibly()
                 throw e
             } catch (e: Exception) {
                 Timber.w(e, "Error monitoring GOGDL progress, falling back to estimation")
@@ -716,7 +795,7 @@ class GOGService @Inject constructor() : Service() {
                 var lastProgress = 0.0f
                 val startTime = System.currentTimeMillis()
 
-                while (downloadInfo.getProgress() < 1.0f && downloadInfo.getProgress() >= 0.0f) {
+                while (downloadInfo.getProgress() < 1.0f && downloadInfo.getProgress() >= 0.0f && !downloadInfo.isCancelled()) {
                     delay(2000L)
                     val elapsed = System.currentTimeMillis() - startTime
                     val estimatedProgress = when {
@@ -1276,6 +1355,77 @@ class GOGService @Inject constructor() : Service() {
         }
 
         fun isSyncInProgress(): Boolean = syncInProgress
+        
+        fun getInstance(): GOGService? = instance
+        
+        /**
+         * Check if any download is currently active
+         */
+        fun hasActiveDownload(): Boolean {
+            return getInstance()?.activeDownloads?.isNotEmpty() ?: false
+        }
+        
+        /**
+         * Get the currently downloading game ID (for error messages)
+         */
+        fun getCurrentlyDownloadingGame(): String? {
+            return getInstance()?.activeDownloads?.keys?.firstOrNull()
+        }
+        
+        /**
+         * Get download info for a specific game
+         */
+        fun getDownloadInfo(gameId: String): DownloadInfo? {
+            return getInstance()?.activeDownloads?.get(gameId)
+        }
+        
+
+        /**
+         * Clean up active download when game is deleted
+         */
+        fun cleanupDownload(gameId: String) {
+            getInstance()?.activeDownloads?.remove(gameId)
+        }
+        
+        /**
+         * Cancel an active download for a specific game
+         */
+        fun cancelDownload(gameId: String): Boolean {
+            val instance = getInstance()
+            val downloadInfo = instance?.activeDownloads?.get(gameId)
+            
+            return if (downloadInfo != null) {
+                Timber.i("Cancelling download for game: $gameId")
+                
+                try {
+                    // Signal Python to cancel the download
+                    val gameIdNum = ContainerUtils.extractGameIdFromContainerId(gameId)
+                    val python = Python.getInstance()
+                    val builtins = python.getModule("builtins")
+                    builtins.put("GOGDL_CANCEL_${gameIdNum}", true)
+                    Timber.i("Set Python cancellation flag for game: $gameIdNum")
+                    
+                    // Verify the flag was set
+                    val flagValue = builtins.get("GOGDL_CANCEL_${gameIdNum}")
+                    Timber.i("Verified Python cancellation flag value: $flagValue")
+                    
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to set Python cancellation flag")
+                }
+                
+                // Cancel the Kotlin coroutine
+                downloadInfo.cancel()
+                Timber.d("Cancelled download job and progress monitor job for game: $gameId")
+                
+                // Clean up immediately
+                instance.activeDownloads.remove(gameId)
+                Timber.d("Removed game from active downloads: $gameId")
+                true
+            } else {
+                Timber.w("No active download found for game: $gameId")
+                false
+            }
+        }
     }
 
     // Add these for foreground service support
@@ -1285,6 +1435,9 @@ class GOGService @Inject constructor() : Service() {
     lateinit var gogLibraryManager: GOGLibraryManager
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    // Track active downloads by game ID
+    private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
 
     override fun onCreate() {
         super.onCreate()

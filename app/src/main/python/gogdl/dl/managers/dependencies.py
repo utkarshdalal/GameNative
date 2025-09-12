@@ -107,7 +107,7 @@ class DependenciesManager:
             return
 
         secure_link = dl_utils.get_dependency_link(self.api) # This should never expire
-        executor = ExecutingManager(self.api, self.workers_count, self.path, os.path.join(self.path, 'gog-support'), diff, {'redist': secure_link})
+        executor = ExecutingManager(self.api, self.workers_count, self.path, os.path.join(self.path, 'gog-support'), diff, {'redist': secure_link}, 'gog-redist')
         success = executor.setup()
         if not success:
             print('Unable to proceed, Not enough disk space')

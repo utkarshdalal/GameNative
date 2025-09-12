@@ -6,7 +6,7 @@ from time import sleep, time
 
 
 class ProgressBar(threading.Thread):
-    def __init__(self, max_val: int, speed_queue: Queue, write_queue: Queue):
+    def __init__(self, max_val: int, speed_queue: Queue, write_queue: Queue, game_id=None):
         self.logger = logging.getLogger("PROGRESS")
         self.downloaded = 0
         self.total = max_val
@@ -15,6 +15,7 @@ class ProgressBar(threading.Thread):
         self.started_at = time()
         self.last_update = time()
         self.completed = False
+        self.game_id = game_id
 
         self.decompressed = 0
 
@@ -29,6 +30,18 @@ class ProgressBar(threading.Thread):
 
     def loop(self):
         while not self.completed:
+            # Check for cancellation signal
+            if self.game_id:
+                try:
+                    import builtins
+                    flag_name = f'GOGDL_CANCEL_{self.game_id}'
+                    if hasattr(builtins, flag_name) and getattr(builtins, flag_name, False):
+                        self.logger.info(f"Progress reporting cancelled for game {self.game_id}")
+                        self.completed = True
+                        break
+                except:
+                    pass
+                    
             self.print_progressbar()
             self.downloaded_since_last_update = self.decompressed_since_last_update = 0
             self.written_since_last_update = self.read_since_last_update = 0

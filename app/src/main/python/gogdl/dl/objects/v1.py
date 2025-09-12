@@ -1,14 +1,10 @@
-"""
-Android-compatible V1 objects for generation 1 games
-Based on heroic-gogdl v1.py but with Android compatibility
-"""
-
 import json
 import os
-import logging
 from gogdl.dl import dl_utils
 from gogdl.dl.objects import generic, v2
 from gogdl import constants
+from gogdl.languages import Language
+
 
 class Depot:
     def __init__(self, target_lang, depot_data):
@@ -36,6 +32,7 @@ class Dependency:
         self.size = data.get("size")
         self.target_dir = data.get("targetDir")
 
+
 class File:
     def __init__(self, data, product_id):
         self.offset = data.get("offset")
@@ -47,7 +44,7 @@ class File:
         if data.get("support"):
             self.flags.append("support")
         if data.get("executable"):
-            self.flags.append("executable")
+            self.flags.append("executble")
 
         self.product_id = product_id
 
@@ -56,7 +53,7 @@ class Manifest:
         self.platform = platform
         self.data = meta
         self.data['HGLPlatform'] = platform
-        self.data["HGLInstallLanguage"] = language.code if hasattr(language, 'code') else str(language)
+        self.data["HGLInstallLanguage"] = language.code
         self.data["HGLdlcs"] = dlcs
         self.product_id = meta["product"]["rootGameID"]
         self.dlcs = dlcs
@@ -67,15 +64,13 @@ class Manifest:
         self.dependencies_ids = [depot['redist'] for depot in meta["product"]["depots"] if depot.get('redist')]
 
         self.api_handler = api_handler
-        self.logger = logging.getLogger("V1Manifest")
 
         self.files = []
         self.dirs = []
 
     @classmethod
     def from_json(cls, meta, api_handler):
-        # Simplified for Android - just use the language string directly
-        manifest = cls(meta['HGLPlatform'], meta, meta['HGLInstallLanguage'], meta["HGLdlcs"], api_handler, False)
+        manifest = cls(meta['HGLPlatform'], meta, Language.parse(meta['HGLInstallLanguage']), meta["HGLdlcs"], api_handler, False)
         return manifest
     
     def serialize_to_json(self):
@@ -101,7 +96,8 @@ class Manifest:
         for depot in self.all_depots:
             for language in depot.languages:
                 if language != "Neutral":
-                    languages_dict.add(language)
+                    languages_dict.add(Language.parse(language).code)
+
         return list(languages_dict)
 
     def calculate_download_size(self):
@@ -123,28 +119,15 @@ class Manifest:
         
         return data 
 
+    
     def get_files(self):
-        """Get files from manifests - Android compatible version"""
-        try:
-            for depot in self.depots:
-                self.logger.debug(f"Getting files for depot {depot.manifest}")
-                manifest_url = f"{constants.GOG_CDN}/content-system/v1/manifests/{depot.game_ids[0]}/{self.platform}/{self.data['product']['timestamp']}/{depot.manifest}"
-                
-                # Use Android-compatible method to get manifest
-                manifest_data = dl_utils.get_json(self.api_handler, manifest_url)
-                
-                if manifest_data and "depot" in manifest_data and "files" in manifest_data["depot"]:
-                    for record in manifest_data["depot"]["files"]:
-                        if "directory" in record:
-                            self.dirs.append(Directory(record)) 
-                        else:
-                            self.files.append(File(record, depot.game_ids[0]))
+        for depot in self.depots:
+            manifest = dl_utils.get_json(self.api_handler, f"{constants.GOG_CDN}/content-system/v1/manifests/{depot.game_ids[0]}/{self.platform}/{self.data['product']['timestamp']}/{depot.manifest}")
+            for record in manifest["depot"]["files"]:
+                if "directory" in record:
+                    self.dirs.append(Directory(record)) 
                 else:
-                    self.logger.warning(f"No files found in manifest {depot.manifest}")
-                    
-        except Exception as e:
-            self.logger.error(f"Failed to get files: {e}")
-            raise
+                    self.files.append(File(record, depot.game_ids[0]))
 
 class ManifestDiff(generic.BaseDiff):
     def __init__(self):

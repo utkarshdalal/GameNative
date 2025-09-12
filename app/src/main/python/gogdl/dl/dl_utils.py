@@ -1,89 +1,60 @@
-"""
-Android-compatible download utilities
-"""
-
 import json
-import logging
-import os
-import requests
-import shutil
 import zlib
-from typing import Dict, Any, Tuple
-from gogdl import constants
+import os
+import gogdl.constants as constants
+from gogdl.dl.objects import v1, v2
+import shutil
+import time
+import requests
+from sys import exit, platform
+import logging
 
-logger = logging.getLogger("DLUtils")
+PATH_SEPARATOR = os.sep
+TIMEOUT = 10
 
-def get_json(api_handler, url: str) -> Dict[str, Any]:
-    """Get JSON data from URL using authenticated request"""
-    try:
-        response = api_handler.get_authenticated_request(url)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error(f"Failed to get JSON from {url}: {e}")
-        raise
 
-def get_zlib_encoded(api_handler, url: str) -> Tuple[Dict[str, Any], Dict[str, str]]:
-    """Get and decompress zlib-encoded data from URL - Android compatible version of heroic-gogdl"""
+def get_json(api_handler, url):
+    logger = logging.getLogger("DL_UTILS")
+    logger.info(f"Fetching JSON from: {url}")
+    x = api_handler.session.get(url, headers={"Accept": "application/json"})
+    logger.info(f"Response status: {x.status_code}")
+    if not x.ok:
+        logger.error(f"Request failed: {x.status_code} - {x.text}")
+        return
+    logger.info("JSON fetch successful")
+    return x.json()
+
+
+def get_zlib_encoded(api_handler, url):
     retries = 5
     while retries > 0:
         try:
-            response = api_handler.get_authenticated_request(url)
-            if not response.ok:
+            x = api_handler.session.get(url, timeout=TIMEOUT)
+            if not x.ok:
                 return None, None
-            
             try:
-                # Try zlib decompression first (with window size 15 like heroic-gogdl)
-                decompressed_data = zlib.decompress(response.content, 15)
-                json_data = json.loads(decompressed_data.decode('utf-8'))
+                decompressed = json.loads(zlib.decompress(x.content, 15))
             except zlib.error:
-                # If zlib decompression fails, try parsing as regular JSON (like heroic-gogdl)
-                json_data = response.json()
-            
-            return json_data, dict(response.headers)
-        except Exception as e:
-            logger.warning(f"Failed to get zlib data from {url} (retries left: {retries-1}): {e}")
-            if retries > 1:
-                import time
-                time.sleep(2)
-            retries -= 1
-    
-    logger.error(f"Failed to get zlib data from {url} after 5 retries")
+                return x.json(), x.headers
+            return decompressed, x.headers
+        except Exception:
+            time.sleep(2)
+            retries-=1
     return None, None
 
-def download_file_chunk(url: str, start: int, end: int, headers: Dict[str, str] = None) -> bytes:
-    """Download a specific chunk of a file using Range headers"""
-    try:
-        chunk_headers = headers.copy() if headers else {}
-        chunk_headers['Range'] = f'bytes={start}-{end}'
-        
-        response = requests.get(
-            url, 
-            headers=chunk_headers,
-            timeout=(constants.CONNECTION_TIMEOUT, constants.READ_TIMEOUT),
-            stream=True
-        )
-        response.raise_for_status()
-        
-        return response.content
-    except Exception as e:
-        logger.error(f"Failed to download chunk {start}-{end} from {url}: {e}")
-        raise
+
+def prepare_location(path, logger=None):
+    os.makedirs(path, exist_ok=True)
+    if logger:
+        logger.debug(f"Created directory {path}")
 
 
-def galaxy_path(manifest_hash: str):
-    """Format chunk hash for GOG Galaxy path structure"""
-    if manifest_hash.find("/") == -1:
-        return f"{manifest_hash[0:2]}/{manifest_hash[2:4]}/{manifest_hash}"
-    return manifest_hash
-
-
-def merge_url_with_params(url_template: str, parameters: dict):
-    """Replace parameters in URL template"""
-    result_url = url_template
-    for key, value in parameters.items():
-        result_url = result_url.replace("{" + key + "}", str(value))
-    return result_url
+# V1 Compatible
+def galaxy_path(manifest: str):
+    galaxy_path = manifest
+    if galaxy_path.find("/") == -1:
+        galaxy_path = manifest[0:2] + "/" + manifest[2:4] + "/" + galaxy_path
+    return galaxy_path
 
 
 def get_secure_link(api_handler, path, gameId, generation=2, logger=None, root=None):
@@ -96,7 +67,7 @@ def get_secure_link(api_handler, path, gameId, generation=2, logger=None, root=N
         url += f"&root={root}"
 
     try:
-        r = requests.get(url, headers=api_handler.session.headers, timeout=10)
+        r = requests.get(url, headers=api_handler.session.headers, timeout=TIMEOUT)
     except BaseException as exception:
         if logger:
             logger.info(exception)
@@ -113,6 +84,41 @@ def get_secure_link(api_handler, path, gameId, generation=2, logger=None, root=N
 
     return js['urls']
 
+def get_dependency_link(api_handler):
+    data = get_json(
+        api_handler,
+        f"{constants.GOG_CONTENT_SYSTEM}/open_link?generation=2&_version=2&path=/dependencies/store/",
+    )
+    if not data:
+        return None
+    return data["urls"]
+
+
+def merge_url_with_params(url, parameters):
+    for key in parameters.keys():
+        url = url.replace("{" + key + "}", str(parameters[key]))
+        if not url:
+            print(f"Error ocurred getting a secure link: {url}")
+    return url
+
+
+def parent_dir(path: str):
+    return os.path.split(path)[0]
+
+
+def calculate_sum(path, function, read_speed_function=None):
+    with open(path, "rb") as f:
+        calculate = function()
+        while True:
+            chunk = f.read(16 * 1024)
+            if not chunk:
+                break
+            if read_speed_function:
+                read_speed_function(len(chunk))
+            calculate.update(chunk)
+
+        return calculate.hexdigest()
+
 
 def get_readable_size(size):
     power = 2 ** 10
@@ -128,10 +134,8 @@ def check_free_space(size: int, path: str):
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
     _, _, available_space = shutil.disk_usage(path)
-    
-    if available_space < size:
-        return False
-    return True
+
+    return size < available_space
 
 
 def get_range_header(offset, size):
@@ -139,21 +143,15 @@ def get_range_header(offset, size):
     to_value = (int(offset) + int(size)) - 1
     return f"bytes={from_value}-{to_value}"
 
-
+# Creates appropriate Manifest class based on provided meta from json
 def create_manifest_class(meta: dict, api_handler):
-    """Creates appropriate Manifest class based on provided meta from json"""
     version = meta.get("version") 
     if version == 1:
-        from gogdl.dl.objects import v1
         return v1.Manifest.from_json(meta, api_handler)
     else:
-        from gogdl.dl.objects import v2
         return v2.Manifest.from_json(meta, api_handler)
 
-
 def get_case_insensitive_name(path):
-    """Get case-insensitive path name for cross-platform compatibility"""
-    from sys import platform
     if platform == "win32" or os.path.exists(path):
         return path
     root = path
@@ -184,20 +182,3 @@ def get_case_insensitive_name(path):
     if paths_to_find != paths_found:
         root = os.path.join(root, os.sep.join(s_working_dir[paths_found:]))
     return root
-
-
-def prepare_location(path):
-    """Create directory structure if it doesn't exist"""
-    import os
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-
-
-def get_dependency_link(api_handler):
-    """Get dependency download link"""
-    url = f"{constants.GOG_CDN}/content-system/v2/dependencies"
-    r = api_handler.session.get(url)
-    if not r.ok:
-        return None
-    js = r.json()
-    return js['url']

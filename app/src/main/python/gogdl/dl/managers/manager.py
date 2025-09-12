@@ -86,12 +86,7 @@ class AndroidManager:
             # Use the correct manager based on generation - same as heroic-gogdl
             if generation == 1:
                 self.logger.info("Using V1Manager for generation 1 game")
-                manager = v1.Manager(
-                    self.arguments, 
-                    self.unknown_arguments, 
-                    self.api_handler,
-                    max_workers=self.allowed_threads
-                )
+                manager = v1.Manager(self)  # Pass self like V2 does
             elif generation == 2:
                 self.logger.info("Using V2Manager for generation 2 game")
                 manager = v2.Manager(self)
