@@ -30,6 +30,7 @@ class TaskFlag(Flag):
     MAKE_EXE = auto()
     PATCH = auto()
     RELEASE_MEM = auto()
+    RELEASE_TEMP = auto()
     ZIP_DEC = auto()
 
 @dataclass
@@ -48,13 +49,14 @@ class ChunkTask:
 
     compressed_md5: str
     md5: str
-
-    compressed_size: int
     size: int
-
-    memory_segments: list[MemorySegment]
-
-    flag: TaskFlag
+    download_size: int
+    
+    cleanup: bool = False
+    offload_to_cache: bool = False
+    old_offset: Optional[int] = None
+    old_flags: TaskFlag = TaskFlag.NONE 
+    old_file: Optional[str] = None
 
 @dataclass
 class Task:
@@ -73,13 +75,13 @@ class Task:
 
 @dataclass
 class FileTask:
-    index: int
     path: str
-    md5: str
-    size: int
-    chunks: list[ChunkTask]
+    flags: TaskFlag
 
-    flag: TaskFlag
+    old_flags: TaskFlag = TaskFlag.NONE 
+    old_file: Optional[str] = None
+
+    patch_file: Optional[str] = None
 
 @dataclass
 class FileInfo:
@@ -98,3 +100,8 @@ class FileInfo:
 
     def __hash__(self):
         return hash((self.path, self.md5, self.size))
+
+
+@dataclass
+class TerminateWorker:
+    pass

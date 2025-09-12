@@ -569,15 +569,12 @@ class GOGService @Inject constructor() : Service() {
             }
         }
 
-        /**
-         * Execute GOGDL command with real progress parsing from Android logs
-         */
         private suspend fun executeCommandWithProgressParsing(downloadInfo: DownloadInfo, vararg args: String): Result<String> {
             return withContext(Dispatchers.IO) {
                 try {
-                    // Start log monitoring for V1Manager progress
+                    // Start log monitoring for GOGDL progress (works for both V1 and V2)
                     val logMonitorJob = CoroutineScope(Dispatchers.IO).launch {
-                        monitorV1ManagerLogs(downloadInfo)
+                        monitorGOGDLProgress(downloadInfo)
                     }
 
                     val python = Python.getInstance()
@@ -613,10 +610,10 @@ class GOGService @Inject constructor() : Service() {
         }
 
         /**
-         * Monitor GOGDL progress by reading Android logs for both V1 and V2 games
-         * This implements the Heroic Games Launcher approach
+         * Monitor GOGDL progress by parsing log output like Heroic Games Launcher does
+         * Works for both V1 and V2 games using the same progress format
          */
-        private suspend fun monitorV1ManagerLogs(downloadInfo: DownloadInfo) {
+        private suspend fun monitorGOGDLProgress(downloadInfo: DownloadInfo) {
             try {
                 // Use logcat to read python.stderr logs in real-time
                 val process = ProcessBuilder("logcat", "-s", "python.stderr:W")
@@ -624,12 +621,86 @@ class GOGService @Inject constructor() : Service() {
                     .start()
 
                 val reader = process.inputStream.bufferedReader()
+                
+                // Track progress state exactly like Heroic does
+                var currentPercent: Float? = null
+                var currentEta: String = ""
+                var currentBytes: String = ""
+                var currentDownSpeed: Float? = null
+                var currentDiskSpeed: Float? = null
 
                 while (downloadInfo.getProgress() < 1.0f && downloadInfo.getProgress() >= 0.0f) {
                     val line = reader.readLine()
                     if (line != null) {
-                        // Parse both V1Manager and V2Manager progress using Heroic's approach
-                        parseGOGDLProgress(line, downloadInfo)
+                        // Parse like Heroic: only update if field is empty/undefined
+                        
+                        // parse log for percent (only if not already set)
+                        if (currentPercent == null) {
+                            val percentMatch = Regex("""Progress: (\d+\.\d+) """).find(line)
+                            if (percentMatch != null) {
+                                val percent = percentMatch.groupValues[1].toFloatOrNull()
+                                if (percent != null && !percent.isNaN()) {
+                                    currentPercent = percent
+                                }
+                            }
+                        }
+
+                        // parse log for eta (only if empty)
+                        if (currentEta.isEmpty()) {
+                            val etaMatch = Regex("""ETA: (\d\d:\d\d:\d\d)""").find(line)
+                            if (etaMatch != null) {
+                                currentEta = etaMatch.groupValues[1]
+                            }
+                        }
+
+                        // parse log for game download progress (only if empty)
+                        if (currentBytes.isEmpty()) {
+                            val bytesMatch = Regex("""Downloaded: (\S+) MiB""").find(line)
+                            if (bytesMatch != null) {
+                                currentBytes = "${bytesMatch.groupValues[1]}MB"
+                            }
+                        }
+
+                        // parse log for download speed (only if not set)
+                        if (currentDownSpeed == null) {
+                            val downSpeedMatch = Regex("""Download\t- (\S+) MiB""").find(line)
+                            if (downSpeedMatch != null) {
+                                val speed = downSpeedMatch.groupValues[1].toFloatOrNull()
+                                if (speed != null && !speed.isNaN()) {
+                                    currentDownSpeed = speed
+                                }
+                            }
+                        }
+
+                        // parse disk write speed (only if not set)
+                        if (currentDiskSpeed == null) {
+                            val diskSpeedMatch = Regex("""Disk\t- (\S+) MiB""").find(line)
+                            if (diskSpeedMatch != null) {
+                                val speed = diskSpeedMatch.groupValues[1].toFloatOrNull()
+                                if (speed != null && !speed.isNaN()) {
+                                    currentDiskSpeed = speed
+                                }
+                            }
+                        }
+                        
+                        // only send update if all values are present (exactly like Heroic)
+                        if (currentPercent != null && currentEta.isNotEmpty() && 
+                            currentBytes.isNotEmpty() && currentDownSpeed != null && currentDiskSpeed != null) {
+                            
+                            // Update progress with the percentage
+                            val progress = (currentPercent!! / 100.0f).coerceIn(0.0f, 1.0f)
+                            downloadInfo.setProgress(progress)
+                            
+                            // Log exactly like Heroic does
+                            Timber.i("Progress for game: ${currentPercent}%/${currentBytes}/${currentEta} Down: ${currentDownSpeed}MB/s / Disk: ${currentDiskSpeed}MB/s")
+                            
+                            // reset (exactly like Heroic does)
+                            currentPercent = null
+                            currentEta = ""
+                            currentBytes = ""
+                            currentDownSpeed = null
+                            currentDiskSpeed = null
+                        }
                     } else {
                         delay(100L) // Brief delay if no new log lines
                     }
@@ -637,10 +708,10 @@ class GOGService @Inject constructor() : Service() {
 
                 process.destroy()
             } catch (e: CancellationException) {
-                Timber.d("GOGDL log monitoring cancelled")
+                Timber.d("GOGDL progress monitoring cancelled")
                 throw e
             } catch (e: Exception) {
-                Timber.w(e, "Error monitoring GOGDL logs, falling back to simple estimation")
+                Timber.w(e, "Error monitoring GOGDL progress, falling back to estimation")
                 // Simple fallback - just wait and set progress to completion
                 var lastProgress = 0.0f
                 val startTime = System.currentTimeMillis()
@@ -661,6 +732,144 @@ class GOGService @Inject constructor() : Service() {
                         lastProgress = estimatedProgress
                     }
                 }
+            }
+        }
+
+        /**
+         * Parse GOGDL progress components from log line using Heroic Games Launcher approach
+         * Collects all progress data before updating (prevents partial updates)
+         */
+        private fun parseGOGDLProgressComponents(
+            line: String,
+            onPercent: (Float) -> Unit,
+            onEta: (String) -> Unit,
+            onBytes: (String) -> Unit,
+            onDownSpeed: (Float) -> Unit,
+            onDiskSpeed: (Float) -> Unit
+        ) {
+            try {
+                // Parse progress percentage: "= Progress: 45.67 12345/67890, Running for: 00:01:23, ETA: 00:02:34"
+                val progressRegex = Regex("""= Progress: (\d+\.\d+) .+ETA: (\d\d:\d\d:\d\d)""")
+                val progressMatch = progressRegex.find(line)
+                
+                if (progressMatch != null) {
+                    val percent = progressMatch.groupValues[1].toFloat()
+                    val eta = progressMatch.groupValues[2]
+                    onPercent(percent)
+                    onEta(eta)
+                    return
+                }
+
+                // Parse download progress: "= Downloaded: 123.45 MiB, Written: 234.56 MiB"
+                val downloadedRegex = Regex("""= Downloaded: (\S+) MiB""")
+                val downloadedMatch = downloadedRegex.find(line)
+                
+                if (downloadedMatch != null) {
+                    val downloadedMB = downloadedMatch.groupValues[1]
+                    onBytes("${downloadedMB}MB")
+                    return
+                }
+
+                // Parse download speed: " + Download	- 12.34 MiB/s (raw) / 23.45 MiB/s (decompressed)"
+                val downloadSpeedRegex = Regex(""" \+ Download\t- (\S+) MiB/s \(raw\)""")
+                val downloadSpeedMatch = downloadSpeedRegex.find(line)
+                
+                if (downloadSpeedMatch != null) {
+                    val downloadSpeed = downloadSpeedMatch.groupValues[1].toFloat()
+                    onDownSpeed(downloadSpeed)
+                    return
+                }
+
+                // Parse disk speed: " + Disk	- 34.56 MiB/s (write) / 45.67 MiB/s (read)"
+                val diskSpeedRegex = Regex(""" \+ Disk\t- (\S+) MiB/s \(write\)""")
+                val diskSpeedMatch = diskSpeedRegex.find(line)
+                
+                if (diskSpeedMatch != null) {
+                    val diskSpeed = diskSpeedMatch.groupValues[1].toFloat()
+                    onDiskSpeed(diskSpeed)
+                    return
+                }
+
+                // Handle completion
+                if (line.contains("download completed") || line.contains("Download completed")) {
+                    Timber.i("GOGDL: Download completed")
+                    // Force 100% completion
+                    onPercent(100.0f)
+                    onEta("00:00:00")
+                    onBytes("Complete")
+                    onDownSpeed(0.0f)
+                    onDiskSpeed(0.0f)
+                    return
+                }
+
+            } catch (e: Exception) {
+                Timber.w(e, "Error parsing GOGDL progress line: $line")
+            }
+        }
+
+        /**
+         * Parse GOGDL progress from log line using Heroic Games Launcher patterns
+         * Works for both V1 and V2 games since they use the same ExecutingManager/ProgressBar
+         */
+        private fun parseGOGDLProgressLine(line: String, downloadInfo: DownloadInfo): Boolean {
+            try {
+                // Parse progress percentage: "= Progress: 45.67 12345/67890, Running for: 00:01:23, ETA: 00:02:34"
+                val progressRegex = Regex("""= Progress: (\d+\.\d+) """)
+                val progressMatch = progressRegex.find(line)
+                
+                if (progressMatch != null) {
+                    val percent = progressMatch.groupValues[1].toFloat()
+                    val progress = (percent / 100.0f).coerceIn(0.0f, 1.0f)
+                    downloadInfo.setProgress(progress)
+                    return true
+                }
+
+                // Parse download progress: "= Downloaded: 123.45 MiB, Written: 234.56 MiB"
+                val downloadedRegex = Regex("""= Downloaded: (\S+) MiB""")
+                val downloadedMatch = downloadedRegex.find(line)
+                
+                if (downloadedMatch != null) {
+                    val downloadedMB = downloadedMatch.groupValues[1]
+                    Timber.d("Downloaded: ${downloadedMB}MB")
+                    return true
+                }
+
+                // Parse download speed: " + Download	- 12.34 MiB/s (raw) / 23.45 MiB/s (decompressed)"
+                val downloadSpeedRegex = Regex(""" \+ Download\t- (\S+) MiB/s \(raw\)""")
+                val downloadSpeedMatch = downloadSpeedRegex.find(line)
+                
+                if (downloadSpeedMatch != null) {
+                    val downloadSpeed = downloadSpeedMatch.groupValues[1]
+                    Timber.d("Download speed: ${downloadSpeed}MB/s")
+                    return true
+                }
+
+                // Parse disk speed: " + Disk	- 34.56 MiB/s (write) / 45.67 MiB/s (read)"
+                val diskSpeedRegex = Regex(""" \+ Disk\t- (\S+) MiB/s \(write\)""")
+                val diskSpeedMatch = diskSpeedRegex.find(line)
+                
+                if (diskSpeedMatch != null) {
+                    val diskSpeed = diskSpeedMatch.groupValues[1]
+                    Timber.d("Disk speed: ${diskSpeed}MB/s")
+                    return true
+                }
+
+                // Log other important GOGDL messages
+                if (line.contains("Starting V1 download") || line.contains("Starting V2 download")) {
+                    Timber.i("GOGDL: $line")
+                    return true
+                }
+                
+                if (line.contains("download completed") || line.contains("Download completed")) {
+                    Timber.i("GOGDL: Download completed")
+                    downloadInfo.setProgress(1.0f)
+                    return true
+                }
+
+                return false
+            } catch (e: Exception) {
+                Timber.w(e, "Error parsing GOGDL progress line: $line")
+                return false
             }
         }
 

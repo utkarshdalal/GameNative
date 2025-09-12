@@ -43,6 +43,10 @@ def init_parser():
     download_parser.add_argument('--dlcs', dest='dlcs_list', default=[], help='List of dlc ids to download (separated by comma)')
     download_parser.add_argument('--dlc-only', dest='dlc_only', action='store_true', help='Download only DLC')
     
+    download_parser.add_argument('--lang', type=str, default='en-US', help='Language for the download')
+    download_parser.add_argument('--max-workers', dest='workers_count', type=int, default=2, help='Number of download workers')
+    download_parser.add_argument('--support', dest='support_path', type=str, help='Support files path')
+
     # Info command
     info_parser = subparsers.add_parser('info', help='Get game information')
     info_parser.add_argument('id', type=str, help='Game ID')

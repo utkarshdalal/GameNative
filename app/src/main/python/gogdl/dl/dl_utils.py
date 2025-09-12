@@ -4,7 +4,9 @@ Android-compatible download utilities
 
 import json
 import logging
+import os
 import requests
+import shutil
 import zlib
 from typing import Dict, Any, Tuple
 from gogdl import constants
@@ -110,3 +112,92 @@ def get_secure_link(api_handler, path, gameId, generation=2, logger=None, root=N
     js = r.json()
 
     return js['urls']
+
+
+def get_readable_size(size):
+    power = 2 ** 10
+    n = 0
+    power_labels = {0: "", 1: "K", 2: "M", 3: "G"}
+    while size > power:
+        size /= power
+        n += 1
+    return size, power_labels[n] + "B"
+
+
+def check_free_space(size: int, path: str):
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+    _, _, available_space = shutil.disk_usage(path)
+    
+    if available_space < size:
+        return False
+    return True
+
+
+def get_range_header(offset, size):
+    from_value = offset
+    to_value = (int(offset) + int(size)) - 1
+    return f"bytes={from_value}-{to_value}"
+
+
+def create_manifest_class(meta: dict, api_handler):
+    """Creates appropriate Manifest class based on provided meta from json"""
+    version = meta.get("version") 
+    if version == 1:
+        from gogdl.dl.objects import v1
+        return v1.Manifest.from_json(meta, api_handler)
+    else:
+        from gogdl.dl.objects import v2
+        return v2.Manifest.from_json(meta, api_handler)
+
+
+def get_case_insensitive_name(path):
+    """Get case-insensitive path name for cross-platform compatibility"""
+    from sys import platform
+    if platform == "win32" or os.path.exists(path):
+        return path
+    root = path
+    # Find existing directory
+    while not os.path.exists(root):
+        root = os.path.split(root)[0]
+    
+    if not root[len(root) - 1] in ["/", "\\"]:
+        root = root + os.sep
+    # Separate unknown path from existing one
+    s_working_dir = path.replace(root, "").split(os.sep)
+    paths_to_find = len(s_working_dir)
+    paths_found = 0
+    for directory in s_working_dir:
+        if not os.path.exists(root):
+            break
+        dir_list = os.listdir(root)
+        found = False
+        for existing_dir in dir_list:
+            if existing_dir.lower() == directory.lower():
+                root = os.path.join(root, existing_dir)
+                paths_found += 1
+                found = True
+        if not found:
+            root = os.path.join(root, directory)
+            paths_found += 1
+
+    if paths_to_find != paths_found:
+        root = os.path.join(root, os.sep.join(s_working_dir[paths_found:]))
+    return root
+
+
+def prepare_location(path):
+    """Create directory structure if it doesn't exist"""
+    import os
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
+
+def get_dependency_link(api_handler):
+    """Get dependency download link"""
+    url = f"{constants.GOG_CDN}/content-system/v2/dependencies"
+    r = api_handler.session.get(url)
+    if not r.ok:
+        return None
+    js = r.json()
+    return js['url']

@@ -76,13 +76,17 @@ class AndroidManager:
                         target_build = build
                         break
             
+            # Store builds and target_build as instance attributes for V2 Manager
+            self.builds = builds
+            self.target_build = target_build
+            
             generation = target_build.get("generation", 2)
             self.logger.info(f"Using build {target_build.get('build_id', 'unknown')} for download (generation: {generation})")
             
             # Use the correct manager based on generation - same as heroic-gogdl
             if generation == 1:
                 self.logger.info("Using V1Manager for generation 1 game")
-                manager = v1.V1Manager(
+                manager = v1.Manager(
                     self.arguments, 
                     self.unknown_arguments, 
                     self.api_handler,
@@ -90,12 +94,7 @@ class AndroidManager:
                 )
             elif generation == 2:
                 self.logger.info("Using V2Manager for generation 2 game")
-                manager = v2.V2Manager(
-                    self.arguments, 
-                    self.unknown_arguments, 
-                    self.api_handler,
-                    max_workers=self.allowed_threads
-                )
+                manager = v2.Manager(self)
             else:
                 raise Exception(f"Unsupported generation: {generation}")
             
@@ -110,7 +109,7 @@ class AndroidManager:
         try:
             # Use existing info logic but Android-compatible
             if self.platform == "windows":
-                manager = v2.V2Manager(self.arguments, self.unknown_arguments, self.api_handler)
+                manager = v2.Manager(self)
                 manager.info()
             else:
                 raise UnsupportedPlatform(f"Info for platform {self.platform} not supported")

@@ -58,6 +58,12 @@ class GOGGameManager @Inject constructor(
                 return Result.failure(Exception("GOG authentication required. Please log in to your GOG account first."))
             }
 
+            // Validate credentials and refresh if needed
+            val validationResult = runBlocking { GOGService.validateCredentials(context) }
+            if (!validationResult.isSuccess || !validationResult.getOrDefault(false)) {
+                return Result.failure(Exception("GOG authentication is invalid. Please re-authenticate."))
+            }
+
             val installPath = getGameInstallPath(context, libraryItem.appId, libraryItem.name)
             val authConfigPath = "${context.filesDir}/gog_auth.json"
 
@@ -589,5 +595,10 @@ class GOGGameManager @Inject constructor(
             clientIconHash = "",
             installDir = gogGame.title.replace(Regex("[^a-zA-Z0-9 ]"), "").trim(),
         )
+    }
+
+    private suspend fun ensureValidCredentials(context: Context): Boolean {
+        val validationResult = GOGService.validateCredentials(context)
+        return validationResult.isSuccess && validationResult.getOrDefault(false)
     }
 }

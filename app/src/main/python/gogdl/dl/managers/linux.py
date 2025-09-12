@@ -3,9 +3,9 @@ Android-compatible Linux manager (simplified)
 """
 
 import logging
-from gogdl.dl.managers.v2 import V2Manager
+from gogdl.dl.managers.v2 import Manager
 
-class LinuxManager(V2Manager):
+class LinuxManager(Manager):
     """Android-compatible Linux download manager"""
     
     def __init__(self, arguments, unknown_arguments, api_handler, max_workers=2):

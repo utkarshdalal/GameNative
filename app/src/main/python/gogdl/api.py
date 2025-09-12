@@ -79,6 +79,17 @@ class ApiHandler:
         """Make an authenticated request with proper headers"""
         return self.session.get(url)
 
+
+    def get_dependencies_repo(self, depot_version=2):
+        self.logger.info("Getting Dependencies repository")
+        url = constants.DEPENDENCIES_URL if depot_version == 2 else constants.DEPENDENCIES_V1_URL
+        response = self.session.get(url)
+        if not response.ok:
+            return None
+
+        json_data = json.loads(response.content)
+        return json_data
+
     def get_secure_link(self, product_id, path="", generation=2, root=None):
         """Get secure download links from GOG API"""
         url = ""

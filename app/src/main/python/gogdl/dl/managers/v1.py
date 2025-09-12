@@ -12,7 +12,7 @@ from gogdl.dl import dl_utils
 from gogdl import constants
 from gogdl.dl.objects import v1
 
-class V1Manager:
+class Manager:
     """Android-compatible V1 download manager for generation 1 games"""
     
     def __init__(self, arguments, unknown_arguments, api_handler, max_workers=2):
