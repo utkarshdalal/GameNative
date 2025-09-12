@@ -93,14 +93,26 @@ class GOGGameManager @Inject constructor(
 
     override fun deleteGame(context: Context, libraryItem: LibraryItem): Result<Unit> {
         try {
-            val installPath = getGameInstallPath(context, libraryItem.gameId.toString(), libraryItem.name)
+            val gameId = libraryItem.gameId.toString()
+            val installPath = getGameInstallPath(context, gameId, libraryItem.name)
             val installDir = File(installPath)
+
+            // Delete the manifest file to ensure fresh downloads on reinstall
+            val manifestPath = File(context.filesDir, "manifests/$gameId")
+            if (manifestPath.exists()) {
+                val manifestDeleted = manifestPath.delete()
+                if (manifestDeleted) {
+                    Timber.i("Deleted manifest file for game $gameId")
+                } else {
+                    Timber.w("Failed to delete manifest file for game $gameId")
+                }
+            }
 
             if (installDir.exists()) {
                 val success = installDir.deleteRecursively()
                 if (success) {
                     // Update database to mark as not installed
-                    val game = runBlocking { getGameById(libraryItem.gameId.toString()) }
+                    val game = runBlocking { getGameById(gameId) }
                     if (game != null) {
                         val updatedGame = game.copy(
                             isInstalled = false,
@@ -117,7 +129,7 @@ class GOGGameManager @Inject constructor(
             } else {
                 Timber.w("GOG game directory doesn't exist: $installPath")
                 // Update database anyway to ensure consistency
-                val game = runBlocking { getGameById(libraryItem.gameId.toString()) }
+                val game = runBlocking { getGameById(gameId) }
                 if (game != null) {
                     val updatedGame = game.copy(
                         isInstalled = false,
