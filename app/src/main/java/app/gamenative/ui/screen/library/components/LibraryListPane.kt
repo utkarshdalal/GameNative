@@ -69,7 +69,6 @@ internal fun LibraryListPane(
     onModalBottomSheet: (Boolean) -> Unit,
     onPageChange: (Int) -> Unit,
     onIsSearching: (Boolean) -> Unit,
-    onLogout: () -> Unit,
     onNavigate: (String) -> Unit,
     onSearchQuery: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
@@ -158,7 +157,6 @@ internal fun LibraryListPane(
                     ) {
                         AccountButton(
                             onNavigateRoute = onNavigateRoute,
-                            onLogout = onLogout,
                             onGoOnline = onGoOnline,
                             isOffline = isOffline,
                         )
@@ -294,7 +292,6 @@ private fun Preview_LibraryListPane() {
                 onIsSearching = { },
                 onSearchQuery = { },
                 onNavigateRoute = { },
-                onLogout = { },
                 onNavigate = { },
                 onGoOnline = { },
             )

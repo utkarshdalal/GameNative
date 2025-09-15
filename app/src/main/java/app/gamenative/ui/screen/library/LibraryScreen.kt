@@ -53,7 +53,6 @@ fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
     onClickPlay: (Int, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
-    onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
 ) {
@@ -71,7 +70,6 @@ fun HomeLibraryScreen(
         onSearchQuery = viewModel::onSearchQuery,
         onClickPlay = onClickPlay,
         onNavigateRoute = onNavigateRoute,
-        onLogout = onLogout,
         onGoOnline = onGoOnline,
         isOffline = isOffline,
     )
@@ -90,7 +88,6 @@ private fun LibraryScreenContent(
     onSearchQuery: (String) -> Unit,
     onClickPlay: (Int, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
-    onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
 ) {
@@ -117,7 +114,6 @@ private fun LibraryScreenContent(
                 onIsSearching = onIsSearching,
                 onSearchQuery = onSearchQuery,
                 onNavigateRoute = onNavigateRoute,
-                onLogout = onLogout,
                 onNavigate = { appId -> selectedAppId = appId },
                 onGoOnline = onGoOnline,
                 isOffline = isOffline,
@@ -191,7 +187,6 @@ private fun Preview_LibraryScreenContent() {
             },
             onClickPlay = { _, _ -> },
             onNavigateRoute = {},
-            onLogout = {},
             onGoOnline = {},
         )
     }

@@ -21,7 +21,6 @@ fun HomeScreen(
     onChat: (Long) -> Unit,
     onClickExit: () -> Unit,
     onClickPlay: (Int, Boolean) -> Unit,
-    onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false
@@ -37,7 +36,6 @@ fun HomeScreen(
     HomeLibraryScreen(
         onClickPlay = onClickPlay,
         onNavigateRoute = onNavigateRoute,
-        onLogout = onLogout,
         onGoOnline = onGoOnline,
         isOffline = isOffline,
     )
@@ -57,7 +55,6 @@ private fun Preview_HomeScreenContent() {
         HomeScreen(
             onChat = {},
             onClickPlay = { _, _ -> },
-            onLogout = {},
             onNavigateRoute = {},
             onClickExit = {},
             onGoOnline = {},

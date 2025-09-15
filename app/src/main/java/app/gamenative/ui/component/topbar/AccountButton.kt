@@ -29,7 +29,6 @@ import timber.log.Timber
 @Composable
 fun AccountButton(
     onNavigateRoute: (String) -> Unit,
-    onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
 ) {
@@ -70,10 +69,6 @@ fun AccountButton(
             onNavigateRoute(it)
             showDialog = false
         },
-        onLogout = {
-            onLogout()
-            showDialog = false
-        },
         onGoOnline = {
             onGoOnline()
             showDialog = false
@@ -105,7 +100,6 @@ private fun Preview_AccountButton() {
             actions = {
                 AccountButton(
                     onNavigateRoute = {},
-                    onLogout = {},
                     onGoOnline = {},
                 )
             },

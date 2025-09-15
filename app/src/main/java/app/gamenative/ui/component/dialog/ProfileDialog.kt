@@ -50,7 +50,6 @@ fun ProfileDialog(
     state: EPersonaState,
     onStatusChange: (EPersonaState) -> Unit,
     onNavigateRoute: (String) -> Unit,
-    onLogout: () -> Unit,
     onDismiss: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
@@ -110,13 +109,13 @@ fun ProfileDialog(
 
                 /* Action Buttons */
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.AccountManagement.route) }) {
                     Icon(imageVector = Icons.Default.AccountCircle, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                     Text(text = "Manage Accounts")
                 }
-                
+
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }) {
                     Icon(imageVector = Icons.Default.Settings, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
@@ -134,12 +133,6 @@ fun ProfileDialog(
                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                         Text(text = "Go Online")
-                    }
-                } else {
-                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = "Log Out")
                     }
                 }
             }
@@ -163,7 +156,6 @@ private fun Preview_ProfileDialog() {
             state = EPersonaState.Online,
             onStatusChange = {},
             onNavigateRoute = {},
-            onLogout = {},
             onDismiss = {},
             onGoOnline = {},
         )
