@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SteamAccountSection(
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     val isSteamLoggedIn = SteamService.isLoggedIn
@@ -36,6 +36,6 @@ fun SteamAccountSection(
                 }
             }
         },
-        modifier = modifier
+        modifier = modifier,
     )
 }

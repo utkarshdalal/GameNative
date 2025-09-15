@@ -18,6 +18,8 @@ import app.gamenative.ui.enums.AppFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.EnumSet
 import javax.inject.Inject
+import kotlin.math.max
+import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,8 +27,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.math.max
-import kotlin.math.min
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
@@ -40,8 +40,8 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyListState by mutableStateOf(LazyListState(0, 0))
 
     // How many items loaded on one page of results
-    private var paginationCurrentPage: Int = 0;
-    private var lastPageInCurrentFilter: Int = 0;
+    private var paginationCurrentPage: Int = 0
+    private var lastPageInCurrentFilter: Int = 0
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
@@ -156,8 +156,8 @@ class LibraryViewModel @Inject constructor(
                 }
                 .sortedWith(
                     // Comes from DAO in alphabetical order
-                    compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
-                );
+                    compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) },
+                )
 
             // Total count for the current filter
             val totalFound = filteredList.count()
@@ -183,14 +183,14 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            Timber.tag("LibraryViewModel").d("Filtered list size: ${totalFound}")
+            Timber.tag("LibraryViewModel").d("Filtered list size: $totalFound")
             _state.update {
                 it.copy(
                     appInfoList = filteredListPage,
                     currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
-                    )
+                )
             }
         }
     }

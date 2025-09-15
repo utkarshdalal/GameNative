@@ -58,6 +58,7 @@ import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.screen.accounts.AccountManagementScreen
 import app.gamenative.ui.screen.chat.ChatScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen

@@ -5,29 +5,21 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.displayCutoutPadding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.layout.AnimatedPane
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,15 +29,11 @@ import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
-import app.gamenative.ui.enums.Orientation
-import app.gamenative.events.AndroidEvent
-import app.gamenative.PluviaApp
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.theme.PluviaTheme
-import java.util.EnumSet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,14 +83,16 @@ private fun LibraryScreenContent(
 
     BackHandler(selectedAppId != null) { selectedAppId = null }
     val safePaddingModifier =
-        if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT)
+        if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
             Modifier.displayCutoutPadding()
-        else
+        } else {
             Modifier
+        }
 
     Box(
         Modifier.background(MaterialTheme.colorScheme.background)
-        .then(safePaddingModifier)) {
+            .then(safePaddingModifier),
+    ) {
         if (selectedAppId == null) {
             LibraryListPane(
                 state = state,
