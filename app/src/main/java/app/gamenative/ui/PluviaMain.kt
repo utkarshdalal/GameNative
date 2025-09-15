@@ -79,6 +79,7 @@ import timber.log.Timber
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
+import app.gamenative.ui.screen.accounts.AccountManagementScreen
 
 @Composable
 fun PluviaMain(
@@ -694,7 +695,7 @@ fun PluviaMain(
 
         NavHost(
             navController = navController,
-            startDestination = PluviaScreen.LoginUser.route,
+            startDestination = PluviaScreen.Home.route,
         ) {
             /** Login **/
             /** Login **/
@@ -704,6 +705,11 @@ fun PluviaMain(
                         navController.navigate(PluviaScreen.Home.route + "?offline=true")
                     },
                 )
+            }
+
+            /** Account Management **/
+            composable(route = PluviaScreen.AccountManagement.route) {
+                AccountManagementScreen(navController = navController)
             }
             /** Library, Downloads, Friends **/
             /** Library, Downloads, Friends **/
