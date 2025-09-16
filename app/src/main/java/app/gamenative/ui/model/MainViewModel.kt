@@ -131,6 +131,15 @@ class MainViewModel @Inject constructor(
                 _state.update { it.copy(paletteStyle = value) }
             }
         }
+
+        _state.update {
+            it.copy(
+                isFirstLaunch = true, // Temporarily always true for debugging
+                isSteamConnected = SteamService.isConnected,
+                hasCrashedLastStart = PrefManager.recentlyCrashed,
+                launchedAppId = "",
+            )
+        }
     }
 
     override fun onCleared() {
@@ -140,16 +149,6 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
-    }
-
-    init {
-        _state.update {
-            it.copy(
-                isSteamConnected = SteamService.isConnected,
-                hasCrashedLastStart = PrefManager.recentlyCrashed,
-                launchedAppId = "",
-            )
-        }
     }
 
     fun setTheme(value: AppTheme) {

@@ -4,6 +4,7 @@ package app.gamenative.ui.screen
  * Destinations for top level screens, excluding home screen destinations.
  */
 sealed class PluviaScreen(val route: String) {
+    data object Welcome : PluviaScreen("welcome")
     data object LoginUser : PluviaScreen("login")
     data object Home : PluviaScreen("home")
     data object XServer : PluviaScreen("xserver")

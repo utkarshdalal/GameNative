@@ -81,6 +81,7 @@ import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
 import app.gamenative.ui.screen.accounts.AccountManagementScreen
+import app.gamenative.ui.screen.welcome.WelcomeScreen
 
 @Composable
 fun PluviaMain(
@@ -201,8 +202,9 @@ fun PluviaMain(
                     when (event.result) {
                         LoginResult.Success -> {
                             if (PluviaApp.xEnvironment == null) {
-                                Timber.i("Navigating to library")
-                                navController.navigate(PluviaScreen.Home.route)
+                                navController.navigate(PluviaScreen.AccountManagement.route) {
+                                    popUpTo(PluviaScreen.LoginUser.route) { inclusive = true }
+                                }
 
                                 // If a crash happen, lets not ask for a tip yet.
                                 // Instead, ask the user to contribute their issues to be addressed.
@@ -309,7 +311,9 @@ fun PluviaMain(
                 isConnecting = true
                 context.startForegroundService(Intent(context, SteamService::class.java))
             }
-            if (SteamService.isLoggedIn && state.currentScreen == PluviaScreen.LoginUser) {
+            // Only auto-navigate to home if user is logged in, on login screen, AND it's not first launch
+            if (SteamService.isLoggedIn && state.currentScreen == PluviaScreen.LoginUser && !state.isFirstLaunch) {
+                Timber.i("DEBUG: Auto-navigation triggered - SteamService.isLoggedIn=${SteamService.isLoggedIn}, currentScreen=${state.currentScreen}, isFirstLaunch=${state.isFirstLaunch}")
                 navController.navigate(PluviaScreen.Home.route)
             }
         }
@@ -691,9 +695,20 @@ fun PluviaMain(
 
         NavHost(
             navController = navController,
-            startDestination = PluviaScreen.Home.route,
+            startDestination = PluviaScreen.Welcome.route,
         ) {
-            /** Login **/
+            /** Welcome **/
+            composable(route = PluviaScreen.Welcome.route) {
+                WelcomeScreen(
+                    onSetupAccounts = {
+                        navController.navigate(PluviaScreen.AccountManagement.route)
+                    },
+                    onSkipSignIn = {
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
+                    },
+                )
+            }
+
             /** Login **/
             composable(route = PluviaScreen.LoginUser.route) {
                 UserLoginScreen(

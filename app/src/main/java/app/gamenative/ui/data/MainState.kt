@@ -18,4 +18,5 @@ data class MainState(
     val launchedAppId: String = "",
     val bootToContainer: Boolean = false,
     val showBootingSplash: Boolean = false,
+    val isFirstLaunch: Boolean = true,
 )
