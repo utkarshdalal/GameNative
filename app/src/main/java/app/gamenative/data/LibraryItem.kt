@@ -1,5 +1,5 @@
 package app.gamenative.data
-import app.gamenative.service.GameManagerService
+import app.gamenative.enums.AppType
 
 /**
  * Data class for the Library list
@@ -10,6 +10,8 @@ data class LibraryItem(
     val name: String = "",
     val iconUrl: String = "",
     val isShared: Boolean = false,
+    val isInstalled: Boolean = false,
+    val appType: AppType = AppType.game,
     val gameSource: GameSource = GameSource.STEAM,
 ) {
 

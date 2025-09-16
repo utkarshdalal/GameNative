@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
 import app.gamenative.data.DownloadInfo
-import app.gamenative.data.Game
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SteamApp
@@ -87,5 +86,5 @@ object FakeGameManager : GameManager {
         // No-op for fake implementation
     }
 
-    override fun getAllGames(): Flow<List<Game>> = flowOf(emptyList())
+    override fun getAllGames(): Flow<List<LibraryItem>> = flowOf(emptyList())
 }

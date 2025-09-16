@@ -194,13 +194,16 @@ internal fun LibraryListPane(
                         bottom = 72.dp
                     ),
                 ) {
-                    items(items = state.appInfoList, key = { it.index }) { item ->
+                    items(
+                        items = state.appInfoList,
+                        key = { item -> item.appId }
+                    ) { item ->
                         AppItem(
                             modifier = Modifier.animateItem(),
                             appInfo = item,
                             onClick = { onNavigate(item.appId) }
                         )
-                        if (item.index < state.appInfoList.lastIndex) {
+                        if (item != state.appInfoList.last()) {
                             HorizontalDivider()
                         }
                     }

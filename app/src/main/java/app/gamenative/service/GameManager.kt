@@ -3,7 +3,6 @@ package app.gamenative.service
 import android.content.Context
 import android.net.Uri
 import app.gamenative.data.DownloadInfo
-import app.gamenative.data.Game
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PostSyncInfo
@@ -120,5 +119,5 @@ interface GameManager {
     /**
      * Get all games from this manager's source with wrappers pre-applied
      */
-    fun getAllGames(): Flow<List<Game>>
+    fun getAllGames(): Flow<List<LibraryItem>>
 }

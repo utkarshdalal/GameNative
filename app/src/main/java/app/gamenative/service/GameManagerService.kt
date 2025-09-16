@@ -3,7 +3,6 @@ package app.gamenative.service
 import android.content.Context
 import android.net.Uri
 import app.gamenative.data.DownloadInfo
-import app.gamenative.data.Game
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
@@ -183,31 +182,27 @@ class GameManagerService @Inject constructor(
             getManagerForGame(appId).runBeforeLaunch(context, appId)
         }
 
-        /**
-         * Provides a flow of all games from all sources combined
-         */
-        fun getAllGames(): Flow<List<Game>> {
-            // Get all pre-wrapped game flows from each manager
+        fun getAllGames(): Flow<List<LibraryItem>> {
+            // Get all LibraryItem flows from each manager
             val gameFlows = gameManagers.map { (_, manager) ->
                 manager.getAllGames()
             }.toTypedArray()
 
             return combine(*gameFlows) { gameArrays ->
-                val games = mutableListOf<Game>()
+                val libraryItems = mutableListOf<LibraryItem>()
 
-                gameArrays.forEachIndexed { index, wrappedGames ->
+                gameArrays.forEachIndexed { index, items ->
                     // Only log when there's actually a meaningful change
-                    if (wrappedGames.isNotEmpty()) {
+                    if (items.isNotEmpty()) {
                         val gameSource = gameManagers.keys.elementAt(index)
-                        Timber.tag("GameManagerService").d("Collecting ${wrappedGames.size} games from $gameSource")
+                        Timber.tag("GameManagerService").d("Collecting ${items.size} games from $gameSource")
                     }
 
-                    // Games are already wrapped, just add them directly
-                    games.addAll(wrappedGames)
+                    libraryItems.addAll(items)
                 }
 
-                games
-            }.distinctUntilChanged() // Prevent duplicate emissions
+                libraryItems
+            }.distinctUntilChanged()
         }
     }
 }

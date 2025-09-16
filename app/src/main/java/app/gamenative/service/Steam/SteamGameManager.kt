@@ -5,14 +5,14 @@ import android.net.Uri
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.data.DownloadInfo
-import app.gamenative.data.Game
+import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SteamApp
-import app.gamenative.data.SteamGameWrapper
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.enums.SyncResult
+import app.gamenative.service.DownloadService
 import app.gamenative.service.GameManager
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -105,9 +105,30 @@ class SteamGameManager @Inject constructor(
     // Not yet used in actual app
     override fun runBeforeLaunch(context: Context, appId: String) {}
 
-    override fun getAllGames(): Flow<List<Game>> {
+    override fun getAllGames(): Flow<List<LibraryItem>> {
         return steamAppDao.getAllOwnedApps().map { steamApps ->
-            steamApps.map { steamApp -> SteamGameWrapper(steamApp) }
+            steamApps.map { steamApp -> steamApp.toLibraryItem() }
         }
+    }
+
+    private fun SteamApp.toLibraryItem(): LibraryItem {
+        val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
+        val isInstalled = downloadDirectoryApps.contains(SteamService.getAppDirName(this))
+
+        val thisSteamId: Int = SteamService.userSteamId?.accountID?.toInt() ?: 0
+        val isShared = thisSteamId != 0 && !this.ownerAccountId.contains(thisSteamId)
+
+        val iconUrl = Constants.Library.ICON_URL + "${this.id}/${this.clientIconHash}.ico"
+
+        return LibraryItem(
+            index = 0, // Will be set later in the ViewModel
+            appId = "${GameSource.STEAM}_${this.id}",
+            name = this.name,
+            iconUrl = iconUrl,
+            isShared = isShared,
+            gameSource = GameSource.STEAM,
+            isInstalled = isInstalled,
+            appType = this.type,
+        )
     }
 }

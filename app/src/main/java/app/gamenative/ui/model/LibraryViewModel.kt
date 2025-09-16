@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
-import app.gamenative.data.Game
+import app.gamenative.data.LibraryItem
 import app.gamenative.service.GameManagerService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
@@ -36,14 +36,14 @@ class LibraryViewModel @Inject constructor() : ViewModel() {
     private var paginationCurrentPage: Int = 0;
     private var lastPageInCurrentFilter: Int = 0;
 
-    // Complete and unfiltered games from all sources
-    private var allGames: List<Game> = emptyList()
+    // Complete and unfiltered library items from all sources
+    private var allLibraryItems: List<LibraryItem> = emptyList()
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            GameManagerService.getAllGames().collect { games ->
-                if (allGames.size != games.size) {
-                    allGames = games
+            GameManagerService.getAllGames().collect { libraryItems ->
+                if (allLibraryItems.size != libraryItems.size) {
+                    allLibraryItems = libraryItems
                     onFilterApps(paginationCurrentPage)
                 }
             }
@@ -99,7 +99,7 @@ class LibraryViewModel @Inject constructor() : ViewModel() {
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
-            val filteredGames = allGames
+            val libraryItems = allLibraryItems
                 .asSequence()
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
@@ -130,15 +130,10 @@ class LibraryViewModel @Inject constructor() : ViewModel() {
                     }
                 }
                 .sortedWith(
-                    compareByDescending<Game> { it.isInstalled }
+                    compareByDescending<LibraryItem> { it.isInstalled }
                         .thenBy { it.name.lowercase() },
                 )
                 .toList()
-
-            // Convert to LibraryItems
-            val libraryItems = filteredGames.mapIndexed { index, item ->
-                item.toLibraryItem(index)
-            }
 
             // Total count for the current filter
             val totalFound = libraryItems.size
