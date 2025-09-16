@@ -7,12 +7,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
-import app.gamenative.data.LibraryItem
-import app.gamenative.data.SteamApp
-import app.gamenative.data.GameSource
-import app.gamenative.db.dao.SteamAppDao
-import app.gamenative.service.DownloadService
-import app.gamenative.service.SteamService
+import app.gamenative.data.Game
+import app.gamenative.service.GameManagerService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,10 +25,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 @HiltViewModel
-class LibraryViewModel @Inject constructor(
-    private val steamAppDao: SteamAppDao,
-) : ViewModel() {
-
+class LibraryViewModel @Inject constructor() : ViewModel() {
     private val _state = MutableStateFlow(LibraryState())
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
@@ -43,20 +36,14 @@ class LibraryViewModel @Inject constructor(
     private var paginationCurrentPage: Int = 0;
     private var lastPageInCurrentFilter: Int = 0;
 
-    // Complete and unfiltered app list
-    private var appList: List<SteamApp> = emptyList()
+    // Complete and unfiltered games from all sources
+    private var allGames: List<Game> = emptyList()
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            steamAppDao.getAllOwnedApps(
-                // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
-            ).collect { apps ->
-                Timber.tag("LibraryViewModel").d("Collecting ${apps.size} apps")
-
-                if (appList.size != apps.size) {
-                    // Don't filter if it's no change
-                    appList = apps
-
+            GameManagerService.getAllGames().collect { games ->
+                if (allGames.size != games.size) {
+                    allGames = games
                     onFilterApps(paginationCurrentPage)
                 }
             }
@@ -112,32 +99,13 @@ class LibraryViewModel @Inject constructor(
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
-            val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
-
-            var filteredList = appList
+            val filteredGames = allGames
                 .asSequence()
-                .filter { item ->
-                    SteamService.familyMembers.ifEmpty {
-                        // Handle the case where userSteamId might be null
-                        SteamService.userSteamId?.let { steamId ->
-                            listOf(steamId.accountID.toInt())
-                        } ?: emptyList()
-                    }.let { owners ->
-                        if (owners.isEmpty()) {
-                            true                       // no owner info ⇒ don’t filter the item out
-                        } else {
-                            owners.any { item.ownerAccountId.contains(it) }
-                        }
-                    }
-                }
-                .filter { item ->
-                    currentFilter.any { item.type == it }
-                }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
                         true
                     } else {
-                        item.ownerAccountId.contains(PrefManager.steamUserAccountId) || PrefManager.steamUserAccountId == 0
+                        !item.isShared
                     }
                 }
                 .filter { item ->
@@ -149,44 +117,45 @@ class LibraryViewModel @Inject constructor(
                 }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
-                        downloadDirectoryApps.contains(SteamService.getAppDirName(item))
+                        item.isInstalled
+                    } else {
+                        true
+                    }
+                }
+                .filter { item ->
+                    if (currentFilter.isNotEmpty()) {
+                        currentFilter.contains(item.appType)
                     } else {
                         true
                     }
                 }
                 .sortedWith(
-                    // Comes from DAO in alphabetical order
-                    compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
-                );
+                    compareByDescending<Game> { it.isInstalled }
+                        .thenBy { it.name.lowercase() },
+                )
+                .toList()
+
+            // Convert to LibraryItems
+            val libraryItems = filteredGames.mapIndexed { index, item ->
+                item.toLibraryItem(index)
+            }
 
             // Total count for the current filter
-            val totalFound = filteredList.count()
+            val totalFound = libraryItems.size
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
             // Update internal pagination state
             paginationCurrentPage = paginationPage
-            lastPageInCurrentFilter = (totalFound - 1) / pageSize
+            lastPageInCurrentFilter = if (totalFound > 0) (totalFound - 1) / pageSize else 0
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
-            val pagedSequence = filteredList.take(endIndex)
-            // Map to UI model
-            val filteredListPage = pagedSequence
-                .mapIndexed { idx, item ->
-                    LibraryItem(
-                        index = idx,
-                        appId = "${GameSource.STEAM.name}_${item.id}",
-                        name = item.name,
-                        iconHash = item.clientIconHash,
-                        isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
-                    )
-                }
-                .toList()
+            val pagedLibraryItems = libraryItems.take(endIndex)
 
             Timber.tag("LibraryViewModel").d("Filtered list size: ${totalFound}")
             _state.update {
                 it.copy(
-                    appInfoList = filteredListPage,
+                    appInfoList = pagedLibraryItems,
                     currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,

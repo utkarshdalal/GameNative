@@ -730,10 +730,8 @@ object ContainerUtils {
      * Extracts the game source from a container ID string
      */
     fun extractGameSourceFromContainerId(containerId: String): GameSource {
-        return when {
-            containerId.startsWith("STEAM_") -> GameSource.STEAM
-            // Add other platforms here..
-            else -> GameSource.STEAM // default fallback
-        }
+        return GameSource.values().find { gameSource ->
+            containerId.startsWith("${gameSource.name}_")
+        } ?: GameSource.STEAM // default fallback
     }
 }

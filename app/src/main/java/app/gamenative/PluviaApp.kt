@@ -6,6 +6,7 @@ import androidx.navigation.NavController
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
+import app.gamenative.service.GameManagerService
 import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
@@ -98,6 +99,14 @@ class PluviaApp : SplitCompatApplication() {
         } catch (e: Exception) {
             Timber.e(e, "Failed to initialize Supabase client: ${e.message}")
             e.printStackTrace()
+        }
+
+        // Initialize GameManagerService
+        try {
+            GameManagerService.initialize(this)
+            Timber.i("[PluviaApp]: GameManagerService initialized successfully")
+        } catch (e: Exception) {
+            Timber.e(e, "[PluviaApp]: Failed to initialize GameManagerService")
         }
     }
 

@@ -2,11 +2,6 @@ package app.gamenative.data
 
 import app.gamenative.Constants
 
-enum class GameSource {
-    STEAM,
-    // Add other platforms here..
-}
-
 /**
  * Data class for the Library list
  */
