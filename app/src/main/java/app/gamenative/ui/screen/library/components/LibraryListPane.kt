@@ -271,7 +271,7 @@ private fun Preview_LibraryListPane() {
                         index = idx,
                         appId = "${GameSource.STEAM.name}_${item.id}",
                         name = item.name,
-                        iconHash = item.iconHash,
+                        iconUrl = item.iconHash,
                         isShared = idx % 2 == 0,
                     )
                 },

@@ -175,10 +175,6 @@ class GameManagerService @Inject constructor(
             return getManagerForGame(appId).getHeroImage(appId)
         }
 
-        fun getIconImage(libraryItem: LibraryItem): String {
-            return getManagerForGame(libraryItem.appId).getIconImage(libraryItem)
-        }
-
         fun getInstallInfoDialog(context: Context, appId: String): MessageDialogState {
             return getManagerForGame(appId).getInstallInfoDialog(context, appId)
         }

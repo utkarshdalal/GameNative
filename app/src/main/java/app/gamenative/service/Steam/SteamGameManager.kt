@@ -95,10 +95,6 @@ class SteamGameManager @Inject constructor(
         return appInfo?.getHeroUrl() ?: ""
     }
 
-    override fun getIconImage(libraryItem: LibraryItem): String {
-        return Constants.Library.ICON_URL + "${libraryItem.gameId}/${libraryItem.iconHash}.ico"
-    }
-
     // Not yet used in actual app
     override fun getInstallInfoDialog(context: Context, appId: String): MessageDialogState {
         return MessageDialogState(

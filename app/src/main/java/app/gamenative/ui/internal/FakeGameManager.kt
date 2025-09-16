@@ -77,8 +77,6 @@ object FakeGameManager : GameManager {
 
     override fun getHeroImage(appId: String): String = ""
 
-    override fun getIconImage(libraryItem: LibraryItem): String = ""
-
     override fun getInstallInfoDialog(context: Context, appId: String): MessageDialogState {
         return MessageDialogState(
             false,

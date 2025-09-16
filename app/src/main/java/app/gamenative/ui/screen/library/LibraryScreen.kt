@@ -169,7 +169,7 @@ private fun Preview_LibraryScreenContent() {
                         index = idx,
                         appId = "${GameSource.STEAM.name}_${item.id}",
                         name = item.name,
-                        iconHash = item.iconHash,
+                        iconUrl = item.iconHash,
                     )
                 },
             ),

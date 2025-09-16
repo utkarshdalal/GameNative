@@ -34,7 +34,7 @@ data class SteamGameWrapper(
         index = index,
         appId = "STEAM_${steamApp.id}",
         name = steamApp.name,
-        iconHash = steamApp.clientIconHash,
+        iconUrl = iconUrl,
         isShared = isShared,
         gameSource = GameSource.STEAM,
     )

@@ -8,12 +8,10 @@ data class LibraryItem(
     val index: Int = 0,
     val appId: String = "",
     val name: String = "",
-    val iconHash: String = "",
+    val iconUrl: String = "",
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
 ) {
-    val clientIconUrl: String
-        get() = GameManagerService.getIconImage(this)
 
     /**
      * Helper property to get the game ID as an integer

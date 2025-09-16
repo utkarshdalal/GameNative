@@ -108,13 +108,6 @@ interface GameManager {
     fun getHeroImage(appId: String): String
 
     /**
-     * Get the icon image for the given game
-     * We use libraryItem here AS AN EXCEPTION due to the fact it's used in the game list. 
-     * Else it will result lot's of database calls.
-     */
-    fun getIconImage(libraryItem: LibraryItem): String
-
-    /**
      * Returns the install info dialog for the given game
      */
     fun getInstallInfoDialog(context: Context, appId: String): MessageDialogState

@@ -76,7 +76,7 @@ private fun Preview_LibraryDetailPane() {
             libraryItem = LibraryItem(
                 appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
                 name = "Preview Game",
-                iconHash = "",
+                iconUrl = "",
                 gameSource = GameSource.STEAM
             ),
             onClickPlay = { },
