@@ -9,6 +9,8 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SteamApp
+import app.gamenative.data.SteamGameWrapper
+import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.GameManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -19,9 +21,11 @@ import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
-class SteamGameManager @Inject constructor(): GameManager {
+class SteamGameManager @Inject constructor(
+    private val steamAppDao: SteamAppDao,
+): GameManager {
     // Not yet used in actual app
     override fun downloadGame(context: Context, appId: String): Result<DownloadInfo?> = Result.success(null)
 
@@ -99,6 +103,9 @@ class SteamGameManager @Inject constructor(): GameManager {
     // Not yet used in actual app
     override fun runBeforeLaunch(context: Context, appId: String) {}
 
-    // Not yet used in actual app
-    override fun getAllGames(): Flow<List<Game>> = flowOf(emptyList())
+    override fun getAllGames(): Flow<List<Game>> {
+        return steamAppDao.getAllOwnedApps().map { steamApps ->
+            steamApps.map { steamApp -> SteamGameWrapper(steamApp) }
+        }
+    }
 }
