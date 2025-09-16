@@ -127,6 +127,8 @@ import app.gamenative.enums.SaveLocation
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
+import app.gamenative.data.GameSource
+import app.gamenative.service.GameManagerService
 import app.gamenative.utils.MarkerUtils
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
@@ -493,6 +495,7 @@ fun AppScreen(
         AppScreenContent(
             modifier = Modifier.padding(it),
             appInfo = appInfo,
+            appId = appId,
             isInstalled = isInstalled,
             isValidToDownload = isValidToDownload,
             isDownloading = isDownloading(),
@@ -810,6 +813,7 @@ fun AppScreen(
 private fun AppScreenContent(
     modifier: Modifier = Modifier,
     appInfo: SteamApp,
+    appId: String,
     isInstalled: Boolean,
     isValidToDownload: Boolean,
     isDownloading: Boolean,
@@ -900,7 +904,7 @@ private fun AppScreenContent(
             // Hero background image
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
-                imageModel = { appInfo.getHeroUrl() },
+                imageModel = { GameManagerService.getHeroImage(appId) },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },
                 failure = {
@@ -1485,6 +1489,7 @@ private fun Preview_AppScreen() {
         Surface {
             AppScreenContent(
                 appInfo = fakeAppInfo(1),
+                appId = "${GameSource.STEAM}_1",
                 isInstalled = false,
                 isValidToDownload = true,
                 isDownloading = isDownloading,

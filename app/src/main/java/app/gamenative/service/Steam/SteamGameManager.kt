@@ -3,6 +3,7 @@ package app.gamenative.service.Steam
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import app.gamenative.Constants
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.Game
 import app.gamenative.data.LaunchInfo
@@ -13,6 +14,7 @@ import app.gamenative.data.SteamGameWrapper
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.GameManager
+import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
@@ -87,11 +89,15 @@ class SteamGameManager @Inject constructor(
     // Not yet used in actual app
     override fun getReleaseDate(appId: String): String = "2024-01-01"
 
-    // Not yet used in actual app
-    override fun getHeroImage(appId: String): String = ""
+    override fun getHeroImage(appId: String): String {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val appInfo = SteamService.getAppInfoOf(steamAppId)
+        return appInfo?.getHeroUrl() ?: ""
+    }
 
-    // Not yet used in actual app
-    override fun getIconImage(libraryItem: LibraryItem): String = ""
+    override fun getIconImage(libraryItem: LibraryItem): String {
+        return Constants.Library.ICON_URL + "${libraryItem.gameId}/${libraryItem.iconHash}.ico"
+    }
 
     // Not yet used in actual app
     override fun getInstallInfoDialog(context: Context, appId: String): MessageDialogState {
