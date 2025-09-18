@@ -183,25 +183,19 @@ class GameManagerService @Inject constructor(
         }
 
         fun getAllGames(): Flow<List<LibraryItem>> {
-            // Get all LibraryItem flows from each manager
-            val gameFlows = gameManagers.map { (_, manager) ->
-                manager.getAllGames()
-            }.toTypedArray()
-
-            return combine(*gameFlows) { gameArrays ->
-                val libraryItems = mutableListOf<LibraryItem>()
-
-                gameArrays.forEachIndexed { index, items ->
-                    // Only log when there's actually a meaningful change
+            val entries = gameManagers.entries.toList()
+            if (entries.isEmpty()) {
+                Timber.tag("GameManagerService").w("getAllGames called before initialization; returning empty list.")
+                return kotlinx.coroutines.flow.flowOf(emptyList())
+            }
+            val flows = entries.map { it.value.getAllGames() }.toTypedArray()
+            return combine(*flows) { arrays ->
+                arrays.forEachIndexed { idx, items ->
                     if (items.isNotEmpty()) {
-                        val gameSource = gameManagers.keys.elementAt(index)
-                        Timber.tag("GameManagerService").d("Collecting ${items.size} games from $gameSource")
+                        Timber.tag("GameManagerService").d("Collecting ${items.size} games from ${entries[idx].key}")
                     }
-
-                    libraryItems.addAll(items)
                 }
-
-                libraryItems
+                arrays.flatMap { it }
             }.distinctUntilChanged()
         }
     }
