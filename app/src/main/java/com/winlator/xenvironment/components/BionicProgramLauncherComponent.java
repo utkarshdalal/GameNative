@@ -380,7 +380,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("Extraction", "box64Version in use: " + wowbox64Version);
         Log.d("Extraction", "fexcoreVersion in use: " + fexcoreVersion);
 
-        if (true || !wowbox64Version.equals(container.getExtra("box64Version")) || container.getWineVersion() != imageFs.getArch()) {
+        if (!wowbox64Version.equals(container.getExtra("box64Version")) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
             if (profile != null)
                 contentsManager.applyContent(profile);
@@ -391,7 +391,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             containerDataChanged = true;
         }
 
-        if (true || !fexcoreVersion.equals(container.getExtra("fexcoreVersion")) || container.getWineVersion() != imageFs.getArch()) {
+        if (!fexcoreVersion.equals(container.getExtra("fexcoreVersion")) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
             if (profile != null)
                 contentsManager.applyContent(profile);
