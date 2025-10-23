@@ -97,7 +97,6 @@ public class DRI3Extension implements Extension {
     }
 
     private void pixmapFromBuffer(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
-        Log.d("Dri3", "Received pixmap from BUFFER");
         int pixmapId = inputStream.readInt();
         int windowId = inputStream.readInt();
         int size = inputStream.readInt();
