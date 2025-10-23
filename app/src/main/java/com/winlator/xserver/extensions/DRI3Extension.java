@@ -158,44 +158,9 @@ public class DRI3Extension implements Extension {
         }
     }
 
-//    private void pixmapFromBuffers(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
-//        Log.d("Dri3", "Received pixmap from buffers");
-//        int pixmapId = inputStream.readInt();
-//        Log.d("Dri3", "Read pixmap id " + pixmapId);
-//        int windowId = inputStream.readInt();
-//        Log.d("Dri3", "Read window id " + windowId);
-//        inputStream.skip(4);
-//        short width = inputStream.readShort();
-//        Log.d("Dri3", "Read width " + width);
-//        short height = inputStream.readShort();
-//        Log.d("Dri3", "Read height " + height);
-//        int stride = inputStream.readInt();
-//        Log.d("Dri3", "Read stride " + stride);
-//        int offset = inputStream.readInt();
-//        Log.d("Dri3", "Read offset " + offset);
-//        inputStream.skip(24);
-//        byte depth = inputStream.readByte();
-//        Log.d("Dri3", "Read depth " + depth);
-//        inputStream.skip(11);
-//
-//        Window window = client.xServer.windowManager.getWindow(windowId);
-//        if (window == null) throw new BadWindow(windowId);
-//
-//        Pixmap pixmap = client.xServer.pixmapManager.getPixmap(pixmapId);
-//        if (pixmap != null) throw new BadIdChoice(pixmapId);
-//
-//        int fd = inputStream.getAncillaryFd();
-//        long size = (long)stride * height;
-//        pixmapFromFd(client, pixmapId, width, height, stride, offset, depth, fd, size);
-//    }
-
     private void pixmapFromFd(XClient client, int pixmapId, short width, short height, int stride, int offset, byte depth, int fd, long size)  throws IOException, XRequestError {
         try {
             ByteBuffer buffer = SysVSharedMemory.mapSHMSegment(fd, size, offset, true);
-            Log.d("DRI3", "pixmapId=" + pixmapId +
-                    " width=" + width + " height=" + height +
-                    " stride=" + stride + " offset=" + offset +
-                    " size=" + size + " fd=" + fd);
             if (buffer == null) throw new BadAlloc();
 
             short totalWidth = (short)(stride / 4);

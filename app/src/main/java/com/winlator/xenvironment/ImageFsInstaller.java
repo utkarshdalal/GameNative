@@ -101,13 +101,7 @@ public abstract class ImageFsInstaller {
             if (success) {
                 Log.d("ImageFsInstaller", "Successfully installed system files");
                 ContainerManager containerManager = new ContainerManager(context);
-//                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + DefaultVersion.BOX64 + ".tzst", rootDir);
-//                File homeDir = new File(rootDir, "home");
-//                ContentsManager contentsManager = new ContentsManager(context);
-//                for (Container container : containerManager.getContainers()) {
-//                    File containerDir = new File(homeDir, ImageFs.USER + "-" + container.id);
-//                    containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null);
-//                }
+
                 installWineFromAssets(context, assetManager);
                 installGuestLibs(context);
                 imageFs.createImgVersionFile(LATEST_VERSION);
