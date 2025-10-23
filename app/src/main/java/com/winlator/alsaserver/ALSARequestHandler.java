@@ -54,7 +54,9 @@ public class ALSARequestHandler implements RequestHandler {
                 return true;
             case RequestCodes.WRITE:
                 ByteBuffer sharedBuffer = alsaClient.getSharedBuffer();
-                if (sharedBuffer != null) {
+                int dataCap = sharedBuffer != null ? sharedBuffer.capacity() - 4 : 0;
+
+                if (sharedBuffer != null && requestLength <= dataCap) {
                     copySharedBuffer(alsaClient, requestLength, outputStream);
                     alsaClient.writeDataToTrack(alsaClient.getAuxBuffer());
                     sharedBuffer.putInt(0, alsaClient.pointer());
@@ -105,21 +107,8 @@ public class ALSARequestHandler implements RequestHandler {
         auxBuffer.position(0).limit(requestLength);
         sharedBuffer.position(4).limit(requestLength + 4);
         auxBuffer.put(sharedBuffer);
-        XStreamLock lock = outputStream.lock();
-        try {
+        try (XStreamLock lock = outputStream.lock()){
             outputStream.writeByte((byte) 1);
-            if (lock != null) {
-                lock.close();
-            }
-        } catch (Throwable th) {
-            if (lock != null) {
-                try {
-                    lock.close();
-                } catch (Throwable th2) {
-                    th.addSuppressed(th2);
-                }
-            }
-            throw th;
         }
     }
 
