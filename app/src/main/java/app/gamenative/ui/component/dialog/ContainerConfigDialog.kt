@@ -88,6 +88,7 @@ import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
+import com.winlator.core.WineInfo.MAIN_WINE_VERSION
 import com.winlator.fexcore.FEXCoreManager
 import java.util.Locale
 
@@ -138,6 +139,8 @@ fun ContainerConfigDialog(
         val mouseWarps = stringArrayResource(R.array.mouse_warp_override_entries).toList()
         val winCompOpts = stringArrayResource(R.array.win_component_entries).toList()
         val box64Versions = stringArrayResource(R.array.box64_version_entries).toList()
+        val wowBox64Versions = stringArrayResource(R.array.wowbox64_version_entries).toList()
+        val box64BionicVersions = stringArrayResource(R.array.box64_bionic_version_entries).toList()
         val box64Presets = Box86_64PresetManager.getPresets("box64", context)
         val fexcoreVersions = stringArrayResource(R.array.fexcore_version_entries).toList()
         val fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList()
@@ -323,6 +326,17 @@ fun ContainerConfigDialog(
                 "sd-8-elite" -> sd8EliteVersions
                 else -> zinkVersions
             }
+        }
+
+        fun getVersionsForBox64(): List<String> {
+            if (config.wineVersion.equals(MAIN_WINE_VERSION.identifier())) {
+                return box64Versions
+            } else if (config.wineVersion.contains("x86_64", true)) {
+                return box64BionicVersions
+            } else if (config.wineVersion.contains("arm64ec", true)) {
+                return wowBox64Versions
+            }
+            return box64Versions
         }
 
         var graphicsDriverVersionIndex by rememberSaveable {
@@ -1283,11 +1297,11 @@ fun ContainerConfigDialog(
                                 SettingsListDropdown(
                                     colors = settingsTileColors(),
                                     title = { Text(text = "Box64 Version") },
-                                    value = box64Versions.indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version },
-                                    items = box64Versions,
+                                    value = getVersionsForBox64().indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version },
+                                    items = getVersionsForBox64(),
                                     onItemSelected = {
                                         config = config.copy(
-                                            box64Version = StringUtils.parseIdentifier(box64Versions[it]),
+                                            box64Version = StringUtils.parseIdentifier(getVersionsForBox64()[it]),
                                         )
                                     },
                                 )

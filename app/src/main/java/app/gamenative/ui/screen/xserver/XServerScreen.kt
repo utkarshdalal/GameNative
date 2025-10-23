@@ -145,6 +145,7 @@ fun XServerScreen(
     // val generateWinePrefix = false
     var firstTimeBoot = false
     var needsUnpacking = false
+    var containerVariantChanged = false
     var frameRating by remember { mutableStateOf<FrameRating?>(null) }
     var frameRatingWindowId = -1
     var taskAffinityMask = 0
@@ -513,7 +514,8 @@ fun XServerScreen(
 
                     taskAffinityMask = ProcessHelper.getAffinityMask(container.getCPUList(true)).toShort().toInt()
                     taskAffinityMaskWoW64 = ProcessHelper.getAffinityMask(container.getCPUListWoW64(true)).toShort().toInt()
-                    firstTimeBoot = container.getExtra("appVersion").isEmpty() || container.containerVariant != imageFs.variant
+                    containerVariantChanged = container.containerVariant != imageFs.variant
+                    firstTimeBoot = container.getExtra("appVersion").isEmpty() || containerVariantChanged
                     needsUnpacking = container.isNeedsUnpacking
                     Timber.i("First time boot: $firstTimeBoot")
 
@@ -585,6 +587,7 @@ fun XServerScreen(
                         container,
                         appLaunchInfo,
                         xServerView!!.getxServer(),
+                        containerVariantChanged,
                         onGameLaunchError,
                     )
                 }
@@ -974,6 +977,7 @@ private fun setupXEnvironment(
     appLaunchInfo: LaunchInfo?,
     // shortcut: Shortcut?,
     xServer: XServer,
+    containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
 ): XEnvironment {
     val lc_all = container!!.lC_ALL
@@ -1094,7 +1098,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.box86Preset = container.box86Preset
         guestProgramLauncherComponent.box64Preset = container.box64Preset
         guestProgramLauncherComponent.setPreUnpack {
-            unpackExecutableFile(context, container.isNeedsUnpacking, container, appId, appLaunchInfo, guestProgramLauncherComponent, onGameLaunchError)
+            unpackExecutableFile(context, container.isNeedsUnpacking, container, appId, appLaunchInfo, guestProgramLauncherComponent, containerVariantChanged, onGameLaunchError)
         }
 
         val enableGstreamer = container.isGstreamerWorkaround()
@@ -1293,16 +1297,28 @@ private fun unpackExecutableFile(
     appId: String,
     appLaunchInfo: LaunchInfo?,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
+    containerVariantChanged: Boolean,
     onError: ((String) -> Unit)? = null,
 ) {
+    val imageFs = ImageFs.find(context)
+    var output = StringBuilder()
+    if (needsUnpacking || containerVariantChanged){
+        try {
+            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi"
+            Timber.i("Install mono command $monoCmd")
+            val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
+            output.append(monoOutput)
+            Timber.i("Result of mono command " + output)
+        } catch (e: Exception) {
+            Timber.e("Error during mono installation: $e")
+        }
+    }
     if (!needsUnpacking){
         return
     }
     try {
-        val imageFs = ImageFs.find(context)
         val rootDir: File = imageFs.getRootDir()
         val executableFile = getSteamlessTarget(appId, container, appLaunchInfo)
-        var output = StringBuilder()
 
         try {
             // a:/.../GameDir/orig_dll_path.txt  (same dir as the EXE inside A:)
@@ -1344,16 +1360,6 @@ private fun unpackExecutableFile(
             }
         } catch (e: Exception) {
             Timber.e("Error running generate_interfaces_file: $e")
-        }
-
-        try {
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi"
-            Timber.i("Install mono command $monoCmd")
-            val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
-            output.append(monoOutput)
-            Timber.i("Result of mono command " + output)
-        } catch (e: Exception) {
-            Timber.e("Error during mono installation: $e")
         }
 
         output = StringBuilder()
