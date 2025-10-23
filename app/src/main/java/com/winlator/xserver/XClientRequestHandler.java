@@ -450,7 +450,7 @@ public class XClientRequestHandler implements RequestHandler {
         }
         catch (XRequestError e) {
             client.skipRequest();
-            Log.d("DRI3", "Unsupported opcode error " + e);
+            Log.w("XClientRequestHandler", "handleNormalRequest error " + e);
             e.sendError(client, opcode);
         }
 

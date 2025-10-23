@@ -39,8 +39,6 @@ public class DXVKHelper {
 
         String framerate = config.get("framerate");
         if (!framerate.isEmpty() && !framerate.equals("0")) {
-//            content += "dxgi.maxFrameRate = "+framerate+"\n";
-//            content += "d3d9.maxFrameRate = "+framerate+"\n";
             envVars.put("DXVK_FRAME_RATE", framerate);
         }
         String customDevice = config.get("customDevice");
@@ -54,19 +52,13 @@ public class DXVKHelper {
 
         String async = config.get("async");
         if (!async.isEmpty() && !async.equals("0"))
-//            content += "dxvk.enableAsync = True;";
             envVars.put("DXVK_ASYNC", "1");
 
         String asyncCache = config.get("asyncCache");
         if (!asyncCache.isEmpty() && !asyncCache.equals("0"))
-//            content += "dxvk.gplAsyncCache = True;";
             envVars.put("DXVK_GPLASYNCCACHE", "1");
         content = content + '\"';
 
-//        FileUtils.delete(dxvkConfigFile);
-//        if (!content.isEmpty() && FileUtils.writeString(dxvkConfigFile, content)) {
-//            envVars.put("DXVK_CONFIG_FILE", imageFs.config_path+"/dxvk.conf");
-//        }
 
         envVars.put("DXVK_CONFIG_FILE", rootDir + ImageFs.CONFIG_PATH+"/dxvk.conf");
         envVars.put("DXVK_CONFIG", content);

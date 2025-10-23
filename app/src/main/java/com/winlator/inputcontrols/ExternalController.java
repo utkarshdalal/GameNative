@@ -71,9 +71,7 @@ public class ExternalController {
         triggerType = mode;
     }
 
-    private Context context; // Add this field
-
-    // In ExternalController.java
+    private Context context;
 
     public void setContext(Context context) {
         this.context = context;

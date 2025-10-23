@@ -78,6 +78,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             if (pid != -1) {
                 Process.killProcess(pid);
                 Log.d("GlibcProgramLauncherComponent", "Stopped process " + pid);
+                pid = -1;
                 List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
@@ -225,7 +226,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 contentsManager.applyContent(profile);
             }
             else {
-                Log.d("Extraction", "exctracting box64 with box64Version " + box64Version);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
             }
             PrefManager.putString("current_box64_version", box64Version);
