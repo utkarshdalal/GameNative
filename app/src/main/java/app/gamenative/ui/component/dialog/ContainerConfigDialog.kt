@@ -91,7 +91,6 @@ import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
 import com.winlator.fexcore.FEXCoreManager
-import java.io.File
 import java.util.Locale
 
 /**
