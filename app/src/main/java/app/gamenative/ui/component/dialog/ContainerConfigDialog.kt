@@ -132,19 +132,6 @@ fun ContainerConfigDialog(
         val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
         val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
         var graphicsDrivers by remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
-
-        // Perform filesystem discovery off the composition thread to avoid jank
-        LaunchedEffect(Unit) {
-            try {
-                val installed = AdrenotoolsManager(context).enumarateInstalledDrivers()
-                if (installed.isNotEmpty()) {
-                    val customDrivers = installed.map { "${it} (Custom)" }
-                    graphicsDrivers = (baseGraphicsDrivers + customDrivers).toMutableList()
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("ContainerConfigDialog", "Failed to discover custom drivers", e)
-            }
-        }
         val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
         val dxvkVersionsAll = stringArrayResource(R.array.dxvk_version_entries).toList()
         val vkd3dVersions = stringArrayResource(R.array.vkd3d_version_entries).toList()
