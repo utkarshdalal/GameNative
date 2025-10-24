@@ -262,7 +262,8 @@ class MainActivity : ComponentActivity() {
             SteamService.isConnected &&
             !SteamService.hasActiveOperations() &&
             !SteamService.isLoginInProgress &&
-            !SteamService.isGameRunning
+            !SteamService.isGameRunning &&
+            !SteamService.isImporting
         ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stop()

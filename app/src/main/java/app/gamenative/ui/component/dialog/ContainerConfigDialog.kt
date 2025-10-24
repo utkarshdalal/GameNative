@@ -74,6 +74,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.SteamService
+import com.winlator.contents.AdrenotoolsManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
@@ -128,14 +129,14 @@ fun ContainerConfigDialog(
             mutableStateOf(initialConfig)
         }
 
-    val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
-    val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
-    var graphicsDrivers by remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
+        val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
+        val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
+        var graphicsDrivers by remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
 
         // Perform filesystem discovery off the composition thread to avoid jank
         LaunchedEffect(Unit) {
             try {
-                val installed = com.winlator.core.FileUtils.listInstalledAdrenoDrivers(context)
+                val installed = AdrenotoolsManager(context).enumarateInstalledDrivers()
                 if (installed.isNotEmpty()) {
                     val customDrivers = installed.map { "${it} (Custom)" }
                     graphicsDrivers = (baseGraphicsDrivers + customDrivers).toMutableList()
@@ -173,7 +174,16 @@ fun ContainerConfigDialog(
         val glibcWineEntries = stringArrayResource(R.array.glibc_wine_entries).toList()
         val emulatorEntries = stringArrayResource(R.array.emulator_entries).toList()
         val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
-        val wrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
+        val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
+        var wrapperVersions by remember { mutableStateOf(baseWrapperVersions) }
+        LaunchedEffect(Unit) {
+            try {
+                val installed = AdrenotoolsManager(context).enumarateInstalledDrivers()
+                if (installed.isNotEmpty()) {
+                    wrapperVersions = (baseWrapperVersions + installed)
+                }
+            } catch (_: Exception) {}
+        }
         val frameSyncEntries = stringArrayResource(R.array.frame_sync_entries).toList()
         val languages = listOf(
             "arabic",
