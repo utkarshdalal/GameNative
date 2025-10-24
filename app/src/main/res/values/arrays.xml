@@ -133,6 +133,7 @@
     </string-array>
     <string-array name="box64_bionic_version_entries">
         <item>0.3.7 (Default)</item>
+        <item>0.3.8</item>
         <item>0.3.6</item>
         <item>0.3.2</item>
     </string-array>
@@ -143,6 +144,7 @@
     <string-array name="fexcore_version_entries">
         <item>2505</item>
         <item>2507</item>
+        <item>2508</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>
