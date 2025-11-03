@@ -20,7 +20,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.ProfileDialog
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.SteamIconImage
+import app.gamenative.utils.SteamIconImage
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import kotlinx.coroutines.launch

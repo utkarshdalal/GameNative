@@ -950,33 +950,14 @@ private fun AppScreenContent(
         ) {
             // Hero background image
             // Observe media change notifications to refresh hero immediately
-            val mediaVersion by SteamUtils.mediaVersionFlow.collectAsState(initial = 0)
-            fun bustCache(model: Any?, version: Int): Any? {
-                if (model == null) return null
-                return when (model) {
-                    is String -> {
-                        if (model.startsWith("http", ignoreCase = true) || model.startsWith("file:", ignoreCase = true)) {
-                            val sep = if (model.contains("?")) "&" else "?"
-                            model + sep + "v=" + version
-                        } else model
-                    }
-                    is android.net.Uri -> {
-                        val s = model.toString()
-                        if (s.startsWith("http", ignoreCase = true) || s.startsWith("file:", ignoreCase = true)) {
-                            val sep = if (s.contains("?")) "&" else "?"
-                            android.net.Uri.parse(s + sep + "v=" + version)
-                        } else model
-                    }
-                    else -> model
-                }
-            }
+            val mediaVersion by app.gamenative.utils.MediaUtils.mediaVersionFlow.collectAsState(initial = 0)
 
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
                 imageModel = {
-                    val custom = SteamUtils.getCustomHeroUri(appInfo.id)
+                    val custom = app.gamenative.utils.MediaUtils.getCustomHeroUri(appInfo.id)
                     val base = custom ?: appInfo.getHeroUrl()
-                    bustCache(base, mediaVersion)
+                    app.gamenative.utils.bustCache(base, mediaVersion)
                 },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },

@@ -1705,30 +1705,8 @@ fun ContainerConfigDialog(
                             }
                             if (selectedTab == 8) SettingsGroup(title = { Text(text = "Media") }) {
                                 // Observe global media change version to refresh previews instantly
-                                val mediaVersion by app.gamenative.utils.SteamUtils.mediaVersionFlow.collectAsState(initial = 0)
+                                val mediaVersion by app.gamenative.utils.MediaUtils.mediaVersionFlow.collectAsState(initial = 0)
 
-                                fun bustCache(model: Any?, version: Int): Any? {
-                                    if (model == null) return null
-                                    return when (model) {
-                                        is String -> {
-                                            // Append version for http(s) and file: string models
-                                            if (model.startsWith("http", ignoreCase = true) || model.startsWith("file:", ignoreCase = true)) {
-                                                val sep = if (model.contains("?")) "&" else "?"
-                                                model + sep + "v=" + version
-                                            } else model
-                                        }
-                                        is android.net.Uri -> {
-                                            // Append for http(s), file, and content URIs
-                                            val scheme = model.scheme?.lowercase()
-                                            if (scheme == "http" || scheme == "https" || scheme == "file" || scheme == "content") {
-                                                val s = model.toString()
-                                                val sep = if (s.contains("?")) "&" else "?"
-                                                android.net.Uri.parse(s + sep + "v=" + version)
-                                            } else model
-                                        }
-                                        else -> model
-                                    }
-                                }
 
                                 // HERO ---------------------------------------------
                                 Text(
@@ -1743,7 +1721,7 @@ fun ContainerConfigDialog(
                                 val currentHeroModel: Any? = run {
                                     val gid = gameId
                                     if (gid != null) {
-                                        val custom = app.gamenative.utils.SteamUtils.getCustomHeroUri(gid)
+                                        val custom = app.gamenative.utils.MediaUtils.getCustomHeroUri(gid)
                                         custom ?: mediaHeroUrl
                                     } else mediaHeroUrl
                                 }
@@ -1755,7 +1733,7 @@ fun ContainerConfigDialog(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .padding(8.dp),
-                                                imageModel = { bustCache(currentHeroModel, mediaVersion) },
+                                                imageModel = { app.gamenative.utils.bustCache(currentHeroModel, mediaVersion) },
                                                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                                                 previewPlaceholder = painterResource(app.gamenative.R.drawable.testhero),
                                             )
@@ -1770,7 +1748,7 @@ fun ContainerConfigDialog(
                                         // Steam or Custom badge overlay in settings
                                         val gid = gameId
                                         if (gid != null) {
-                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomHero(gid)
+                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomHero(gid)
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -1799,12 +1777,12 @@ fun ContainerConfigDialog(
                                 // Pick/Reset actions for Hero
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomHero(gameId)
+                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomHero(gameId)
                                     val pickHero = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
                                         if (uri != null) {
-                                            val ok = app.gamenative.utils.SteamUtils.saveCustomHero(context, gameId, uri)
+                                            val ok = app.gamenative.utils.MediaUtils.saveCustomHero(context, gameId, uri)
                                             Toast.makeText(context, if (ok) "Hero image updated" else "Failed to update hero", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -1816,7 +1794,7 @@ fun ContainerConfigDialog(
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
-                                                    app.gamenative.utils.SteamUtils.resetCustomHero(gameId)
+                                                    app.gamenative.utils.MediaUtils.resetCustomHero(gameId)
                                                     Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
                                                 },
                                             ) { Text("Reset to default") }
@@ -1842,7 +1820,7 @@ fun ContainerConfigDialog(
                                 val currentLogoModel: Any? = run {
                                     val gid = gameId
                                     if (gid != null) {
-                                        val custom = app.gamenative.utils.SteamUtils.getCustomLogoUri(gid)
+                                        val custom = app.gamenative.utils.MediaUtils.getCustomLogoUri(gid)
                                         custom ?: mediaLogoUrl
                                     } else mediaLogoUrl
                                 }
@@ -1854,7 +1832,7 @@ fun ContainerConfigDialog(
                                                 modifier = Modifier
                                                     .width(200.dp)
                                                     .padding(8.dp),
-                                                imageModel = { bustCache(currentLogoModel, mediaVersion) },
+                                                imageModel = { app.gamenative.utils.bustCache(currentLogoModel, mediaVersion) },
                                                 imageOptions = ImageOptions(contentScale = ContentScale.Fit),
                                                 previewPlaceholder = painterResource(app.gamenative.R.drawable.testliblogo),
                                             )
@@ -1868,7 +1846,7 @@ fun ContainerConfigDialog(
 
                                         val gid = gameId
                                         if (gid != null) {
-                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomLogo(gid)
+                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomLogo(gid)
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -1896,12 +1874,12 @@ fun ContainerConfigDialog(
                                 // Pick/Reset actions for Logo
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomLogo(gameId)
+                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomLogo(gameId)
                                     val pickLogo = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
                                         if (uri != null) {
-                                            val ok = app.gamenative.utils.SteamUtils.saveCustomLogo(context, gameId, uri)
+                                            val ok = app.gamenative.utils.MediaUtils.saveCustomLogo(context, gameId, uri)
                                             Toast.makeText(context, if (ok) "Logo updated" else "Failed to update logo", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -1913,7 +1891,7 @@ fun ContainerConfigDialog(
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
-                                                    app.gamenative.utils.SteamUtils.resetCustomLogo(gameId)
+                                                    app.gamenative.utils.MediaUtils.resetCustomLogo(gameId)
                                                     Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
                                                 },
                                             ) { Text("Reset to default") }
@@ -1939,7 +1917,7 @@ fun ContainerConfigDialog(
                                 val currentCapsuleModel: Any? = run {
                                     val gid = gameId
                                     if (gid != null) {
-                                        val custom = app.gamenative.utils.SteamUtils.getCustomCapsuleUri(gid)
+                                        val custom = app.gamenative.utils.MediaUtils.getCustomCapsuleUri(gid)
                                         custom ?: mediaCapsuleUrl
                                     } else mediaCapsuleUrl
                                 }
@@ -1951,7 +1929,7 @@ fun ContainerConfigDialog(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .padding(8.dp),
-                                                imageModel = { bustCache(currentCapsuleModel, mediaVersion) },
+                                                imageModel = { app.gamenative.utils.bustCache(currentCapsuleModel, mediaVersion) },
                                                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                                                 previewPlaceholder = painterResource(app.gamenative.R.drawable.testhero),
                                             )
@@ -1965,7 +1943,7 @@ fun ContainerConfigDialog(
 
                                         val gid2 = gameId
                                         if (gid2 != null) {
-                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomCapsule(gid2)
+                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomCapsule(gid2)
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -1993,12 +1971,12 @@ fun ContainerConfigDialog(
 
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomCapsule(gameId)
+                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomCapsule(gameId)
                                     val pickCapsule = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
                                         if (uri != null) {
-                                            val ok = app.gamenative.utils.SteamUtils.saveCustomCapsule(context, gameId, uri)
+                                            val ok = app.gamenative.utils.MediaUtils.saveCustomCapsule(context, gameId, uri)
                                             Toast.makeText(context, if (ok) "Capsule image updated" else "Failed to update capsule", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -2010,7 +1988,7 @@ fun ContainerConfigDialog(
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
-                                                    app.gamenative.utils.SteamUtils.resetCustomCapsule(gameId)
+                                                    app.gamenative.utils.MediaUtils.resetCustomCapsule(gameId)
                                                     Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
                                                 },
                                             ) { Text("Reset to default") }
@@ -2033,7 +2011,7 @@ fun ContainerConfigDialog(
                                 val currentHeaderModel: Any? = run {
                                     val gid = gameId
                                     if (gid != null) {
-                                        val custom = app.gamenative.utils.SteamUtils.getCustomHeaderUri(gid)
+                                        val custom = app.gamenative.utils.MediaUtils.getCustomHeaderUri(gid)
                                         custom ?: mediaHeaderUrl
                                     } else mediaHeaderUrl
                                 }
@@ -2045,7 +2023,7 @@ fun ContainerConfigDialog(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .padding(8.dp),
-                                                imageModel = { bustCache(currentHeaderModel, mediaVersion) },
+                                                imageModel = { app.gamenative.utils.bustCache(currentHeaderModel, mediaVersion) },
                                                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                                                 previewPlaceholder = painterResource(app.gamenative.R.drawable.testhero),
                                             )
@@ -2059,7 +2037,7 @@ fun ContainerConfigDialog(
 
                                         val gid3 = gameId
                                         if (gid3 != null) {
-                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomHeader(gid3)
+                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomHeader(gid3)
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -2087,12 +2065,12 @@ fun ContainerConfigDialog(
 
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomHeader(gameId)
+                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomHeader(gameId)
                                     val pickHeader = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
                                         if (uri != null) {
-                                            val ok = app.gamenative.utils.SteamUtils.saveCustomHeader(context, gameId, uri)
+                                            val ok = app.gamenative.utils.MediaUtils.saveCustomHeader(context, gameId, uri)
                                             Toast.makeText(context, if (ok) "Header image updated" else "Failed to update header", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -2104,7 +2082,7 @@ fun ContainerConfigDialog(
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
-                                                    app.gamenative.utils.SteamUtils.resetCustomHeader(gameId)
+                                                    app.gamenative.utils.MediaUtils.resetCustomHeader(gameId)
                                                     Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
                                                 },
                                             ) { Text("Reset to default") }

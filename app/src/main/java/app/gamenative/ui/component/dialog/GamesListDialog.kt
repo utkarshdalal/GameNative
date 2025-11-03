@@ -39,7 +39,7 @@ import app.gamenative.Constants
 import app.gamenative.data.OwnedGames
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.ListItemImage
 import app.gamenative.utils.SteamUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
