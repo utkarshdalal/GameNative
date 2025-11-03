@@ -33,6 +33,148 @@ import java.util.concurrent.TimeUnit
 
 object SteamUtils {
 
+    // Observable media version to trigger UI refresh when custom images change
+    private val _mediaVersion = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val mediaVersionFlow: kotlinx.coroutines.flow.StateFlow<Int> = _mediaVersion
+    fun notifyMediaChanged() { _mediaVersion.value = _mediaVersion.value + 1 }
+
+    // --- Custom media (hero/logo/capsule/header) helpers ---
+    private fun mediaDirFor(appId: Int): File {
+        val base = File(SteamService.getAppDirPath(appId))
+        val dir = File(base, "media")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
+
+    fun getCustomHeroFile(appId: Int): File = File(mediaDirFor(appId), "custom_hero.jpg")
+    fun getCustomLogoFile(appId: Int): File = File(mediaDirFor(appId), "custom_logo.png")
+    fun getCustomCapsuleFile(appId: Int): File = File(mediaDirFor(appId), "custom_capsule.jpg")
+    fun getCustomHeaderFile(appId: Int): File = File(mediaDirFor(appId), "custom_header.jpg")
+
+    fun hasCustomHero(appId: Int): Boolean = getCustomHeroFile(appId).exists()
+    fun hasCustomLogo(appId: Int): Boolean = getCustomLogoFile(appId).exists()
+    fun hasCustomCapsule(appId: Int): Boolean = getCustomCapsuleFile(appId).exists()
+    fun hasCustomHeader(appId: Int): Boolean = getCustomHeaderFile(appId).exists()
+
+    fun resetCustomHero(appId: Int) {
+        runCatching { getCustomHeroFile(appId).delete() }
+        notifyMediaChanged()
+    }
+    fun resetCustomLogo(appId: Int) {
+        runCatching { getCustomLogoFile(appId).delete() }
+        notifyMediaChanged()
+    }
+    fun resetCustomCapsule(appId: Int) {
+        runCatching { getCustomCapsuleFile(appId).delete() }
+        notifyMediaChanged()
+    }
+    fun resetCustomHeader(appId: Int) {
+        runCatching { getCustomHeaderFile(appId).delete() }
+        notifyMediaChanged()
+    }
+
+    /**
+     * Save a custom hero image. The image will be center-cropped to 920x430 and saved as JPEG.
+     */
+    fun saveCustomHero(context: Context, appId: Int, sourceUri: android.net.Uri): Boolean =
+        try {
+            val bmp = decodeBitmap(context, sourceUri) ?: return false
+            val out = centerCropResize(bmp, 920, 430)
+            saveJpeg(out, getCustomHeroFile(appId))
+            notifyMediaChanged()
+            true
+        } catch (t: Throwable) { Timber.w(t, "saveCustomHero failed"); false }
+
+    /**
+     * Save a custom logo image. It will be fitted inside 600x200 canvas preserving aspect, with transparent background.
+     */
+    fun saveCustomLogo(context: Context, appId: Int, sourceUri: android.net.Uri): Boolean =
+        try {
+            val bmp = decodeBitmap(context, sourceUri) ?: return false
+            val out = fitIntoCanvas(bmp, 600, 200)
+            savePng(out, getCustomLogoFile(appId))
+            notifyMediaChanged()
+            true
+        } catch (t: Throwable) { Timber.w(t, "saveCustomLogo failed"); false }
+
+    /**
+     * Save a custom capsule image for grid capsule view. Center-crop to 600x900 (portrait) JPEG.
+     */
+    fun saveCustomCapsule(context: Context, appId: Int, sourceUri: android.net.Uri): Boolean =
+        try {
+            val bmp = decodeBitmap(context, sourceUri) ?: return false
+            val out = centerCropResize(bmp, 600, 900)
+            saveJpeg(out, getCustomCapsuleFile(appId))
+            notifyMediaChanged()
+            true
+        } catch (t: Throwable) { Timber.w(t, "saveCustomCapsule failed"); false }
+
+    /**
+     * Save a custom header image for list view. Center-crop to 460x215 JPEG.
+     */
+    fun saveCustomHeader(context: Context, appId: Int, sourceUri: android.net.Uri): Boolean =
+        try {
+            val bmp = decodeBitmap(context, sourceUri) ?: return false
+            val out = centerCropResize(bmp, 460, 215)
+            saveJpeg(out, getCustomHeaderFile(appId))
+            notifyMediaChanged()
+            true
+        } catch (t: Throwable) { Timber.w(t, "saveCustomHeader failed"); false }
+
+    private fun decodeBitmap(context: Context, uri: android.net.Uri): android.graphics.Bitmap? {
+        return try {
+            context.contentResolver.openInputStream(uri).use { ins ->
+                if (ins == null) null else android.graphics.BitmapFactory.decodeStream(ins)
+            }
+        } catch (t: Throwable) { Timber.w(t, "decodeBitmap failed"); null }
+    }
+
+    private fun centerCropResize(src: android.graphics.Bitmap, targetW: Int, targetH: Int): android.graphics.Bitmap {
+        val srcW = src.width
+        val srcH = src.height
+        val scale = maxOf(targetW.toFloat() / srcW, targetH.toFloat() / srcH)
+        val scaledW = (srcW * scale).toInt()
+        val scaledH = (srcH * scale).toInt()
+        val scaled = android.graphics.Bitmap.createScaledBitmap(src, scaledW, scaledH, true)
+        val x = (scaledW - targetW) / 2
+        val y = (scaledH - targetH) / 2
+        return android.graphics.Bitmap.createBitmap(scaled, x.coerceAtLeast(0), y.coerceAtLeast(0), targetW.coerceAtMost(scaled.width), targetH.coerceAtMost(scaled.height))
+    }
+
+    private fun fitIntoCanvas(src: android.graphics.Bitmap, canvasW: Int, canvasH: Int): android.graphics.Bitmap {
+        val out = android.graphics.Bitmap.createBitmap(canvasW, canvasH, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(out)
+        canvas.drawColor(android.graphics.Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+        val scale = minOf(canvasW.toFloat() / src.width, canvasH.toFloat() / src.height)
+        val w = (src.width * scale).toInt()
+        val h = (src.height * scale).toInt()
+        val left = (canvasW - w) / 2f
+        val top = (canvasH - h) / 2f
+        val dst = android.graphics.RectF(left, top, left + w, top + h)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        canvas.drawBitmap(src, null, dst, paint)
+        return out
+    }
+
+    private fun saveJpeg(bmp: android.graphics.Bitmap, file: File) {
+        if (!file.parentFile.exists()) file.parentFile.mkdirs()
+        java.io.FileOutputStream(file).use { fos ->
+            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, fos)
+        }
+    }
+
+    private fun savePng(bmp: android.graphics.Bitmap, file: File) {
+        if (!file.parentFile.exists()) file.parentFile.mkdirs()
+        java.io.FileOutputStream(file).use { fos ->
+            bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+        }
+    }
+
+    fun getCustomHeroUri(appId: Int): android.net.Uri? = getCustomHeroFile(appId).takeIf { it.exists() }?.let { android.net.Uri.fromFile(it) }
+    fun getCustomLogoUri(appId: Int): android.net.Uri? = getCustomLogoFile(appId).takeIf { it.exists() }?.let { android.net.Uri.fromFile(it) }
+    fun getCustomCapsuleUri(appId: Int): android.net.Uri? = getCustomCapsuleFile(appId).takeIf { it.exists() }?.let { android.net.Uri.fromFile(it) }
+    fun getCustomHeaderUri(appId: Int): android.net.Uri? = getCustomHeaderFile(appId).takeIf { it.exists() }?.let { android.net.Uri.fromFile(it) }
+
     internal val http = OkHttpClient.Builder()
         .readTimeout(5, TimeUnit.MINUTES)      // from 2 min → 5 min
         .protocols(listOf(Protocol.HTTP_1_1))  // skip HTTP/2 stream stalls

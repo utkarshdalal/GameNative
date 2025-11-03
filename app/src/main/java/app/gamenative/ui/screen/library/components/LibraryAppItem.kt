@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -146,16 +147,43 @@ internal fun AppItem(
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
-                    val imageUrl = if (paneType == PaneType.GRID_CAPSULE) {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                    // Observe media changes to refresh images immediately when user updates or resets
+                    val mediaVersion by app.gamenative.utils.SteamUtils.mediaVersionFlow.collectAsState(initial = 0)
+
+                    fun bustCache(model: Any?, version: Int): Any? {
+                        if (model == null) return null
+                        return when (model) {
+                            is String -> {
+                                if (model.startsWith("http", ignoreCase = true) || model.startsWith("file:", ignoreCase = true)) {
+                                    val sep = if (model.contains("?")) "&" else "?"
+                                    model + sep + "v=" + version
+                                } else model
+                            }
+                            is android.net.Uri -> {
+                                val s = model.toString()
+                                if (s.startsWith("http", ignoreCase = true) || s.startsWith("file:", ignoreCase = true)) {
+                                    val sep = if (s.contains("?")) "&" else "?"
+                                    android.net.Uri.parse(s + sep + "v=" + version)
+                                } else model
+                            }
+                            else -> model
+                        }
+                    }
+
+                    val baseModel: Any? = if (paneType == PaneType.GRID_CAPSULE) {
+                        // Prefer custom capsule if present, otherwise Steam capsule
+                        app.gamenative.utils.SteamUtils.getCustomCapsuleUri(appInfo.gameId)
+                            ?: ("https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg")
                     } else {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                        // Prefer custom header if present, otherwise Steam header
+                        app.gamenative.utils.SteamUtils.getCustomHeaderUri(appInfo.gameId)
+                            ?: ("https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg")
                     }
 
                     ListItemImage(
                         modifier = Modifier.aspectRatio(aspectRatio),
                         imageModifier = Modifier.clip(RoundedCornerShape(3.dp)).alpha(alpha),
-                        image = { imageUrl },
+                        image = { bustCache(baseModel, mediaVersion) },
                         onFailure = {
                             hideText = false
                             alpha = 0.1f

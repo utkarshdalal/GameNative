@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -516,6 +517,11 @@ fun AppScreen(
             showConfigDialog = false
             ContainerUtils.applyToContainer(context, appId, it)
         },
+        mediaHeroUrl = appInfo.getHeroUrl(),
+        mediaLogoUrl = appInfo.getLogoUrl(),
+        mediaCapsuleUrl = appInfo.getCapsuleUrl(),
+        mediaHeaderUrl = appInfo.getHeaderImageUrl(),
+        gameId = appInfo.id,
     )
 
     LoadingDialog(
@@ -943,9 +949,35 @@ private fun AppScreenContent(
                 .height(250.dp)
         ) {
             // Hero background image
+            // Observe media change notifications to refresh hero immediately
+            val mediaVersion by SteamUtils.mediaVersionFlow.collectAsState(initial = 0)
+            fun bustCache(model: Any?, version: Int): Any? {
+                if (model == null) return null
+                return when (model) {
+                    is String -> {
+                        if (model.startsWith("http", ignoreCase = true) || model.startsWith("file:", ignoreCase = true)) {
+                            val sep = if (model.contains("?")) "&" else "?"
+                            model + sep + "v=" + version
+                        } else model
+                    }
+                    is android.net.Uri -> {
+                        val s = model.toString()
+                        if (s.startsWith("http", ignoreCase = true) || s.startsWith("file:", ignoreCase = true)) {
+                            val sep = if (s.contains("?")) "&" else "?"
+                            android.net.Uri.parse(s + sep + "v=" + version)
+                        } else model
+                    }
+                    else -> model
+                }
+            }
+
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
-                imageModel = { appInfo.getHeroUrl() },
+                imageModel = {
+                    val custom = SteamUtils.getCustomHeroUri(appInfo.id)
+                    val base = custom ?: appInfo.getHeroUrl()
+                    bustCache(base, mediaVersion)
+                },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },
                 failure = {

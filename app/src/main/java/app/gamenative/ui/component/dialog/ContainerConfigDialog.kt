@@ -20,6 +20,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
@@ -49,6 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +61,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -125,6 +135,11 @@ fun ContainerConfigDialog(
     initialConfig: ContainerData = ContainerData(),
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
+    mediaHeroUrl: String? = null,
+    mediaLogoUrl: String? = null,
+    mediaCapsuleUrl: String? = null,
+    mediaHeaderUrl: String? = null,
+    gameId: Int? = null,
 ) {
     if (visible) {
         val context = LocalContext.current
@@ -688,7 +703,7 @@ fun ContainerConfigDialog(
                     },
                 ) { paddingValues ->
                     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-                    val tabs = listOf("General", "Graphics", "Emulation", "Controller", "Wine", "Win Components", "Environment", "Drives", "Advanced")
+                    val tabs = listOf("General", "Graphics", "Emulation", "Controller", "Wine", "Win Components", "Environment", "Drives", "Media", "Advanced")
                     Column(
                         modifier = Modifier
                             .padding(
@@ -1688,7 +1703,416 @@ fun ContainerConfigDialog(
                                     },
                                 )
                             }
-                            if (selectedTab == 8) SettingsGroup() {
+                            if (selectedTab == 8) SettingsGroup(title = { Text(text = "Media") }) {
+                                // Observe global media change version to refresh previews instantly
+                                val mediaVersion by app.gamenative.utils.SteamUtils.mediaVersionFlow.collectAsState(initial = 0)
+
+                                fun bustCache(model: Any?, version: Int): Any? {
+                                    if (model == null) return null
+                                    return when (model) {
+                                        is String -> {
+                                            // Append version for http(s) and file: string models
+                                            if (model.startsWith("http", ignoreCase = true) || model.startsWith("file:", ignoreCase = true)) {
+                                                val sep = if (model.contains("?")) "&" else "?"
+                                                model + sep + "v=" + version
+                                            } else model
+                                        }
+                                        is android.net.Uri -> {
+                                            // Append for http(s), file, and content URIs
+                                            val scheme = model.scheme?.lowercase()
+                                            if (scheme == "http" || scheme == "https" || scheme == "file" || scheme == "content") {
+                                                val s = model.toString()
+                                                val sep = if (s.contains("?")) "&" else "?"
+                                                android.net.Uri.parse(s + sep + "v=" + version)
+                                            } else model
+                                        }
+                                        else -> model
+                                    }
+                                }
+
+                                // HERO ---------------------------------------------
+                                Text(
+                                    text = "Hero Image",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+
+                                val currentHeroModel: Any? = run {
+                                    val gid = gameId
+                                    if (gid != null) {
+                                        val custom = app.gamenative.utils.SteamUtils.getCustomHeroUri(gid)
+                                        custom ?: mediaHeroUrl
+                                    } else mediaHeroUrl
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
+                                        if (currentHeroModel != null && (currentHeroModel as? String)?.isNotBlank() != false) {
+                                            CoilImage(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(8.dp),
+                                                imageModel = { bustCache(currentHeroModel, mediaVersion) },
+                                                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                                previewPlaceholder = painterResource(app.gamenative.R.drawable.testhero),
+                                            )
+                                        } else {
+                                            SettingsCenteredLabel(
+                                                colors = settingsTileColors(),
+                                                title = { Text(text = "No hero image available") },
+                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                            )
+                                        }
+
+                                        // Steam or Custom badge overlay in settings
+                                        val gid = gameId
+                                        if (gid != null) {
+                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomHero(gid)
+                                            val badgeText = if (isCustom) "Custom" else "Steam"
+                                            androidx.compose.foundation.layout.Box(
+                                                modifier = Modifier
+                                                    .padding(16.dp)
+                                                    .align(Alignment.TopStart)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                                    )
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(badgeText, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Recommended hint (below image)
+                                Text(
+                                    text = "Recommended: 920×430 JPG/PNG. Will be center-cropped to fit.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+
+                                // Pick/Reset actions for Hero
+                                if (gameId != null) {
+                                    val context = LocalContext.current
+                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomHero(gameId)
+                                    val pickHero = androidx.activity.compose.rememberLauncherForActivityResult(
+                                        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                                    ) { uri ->
+                                        if (uri != null) {
+                                            val ok = app.gamenative.utils.SteamUtils.saveCustomHero(context, gameId, uri)
+                                            Toast.makeText(context, if (ok) "Hero image updated" else "Failed to update hero", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                                    ) {
+                                        androidx.compose.material3.Button(onClick = { pickHero.launch("image/*") }) { Text("Choose image") }
+                                        if (isCustom) {
+                                            androidx.compose.material3.OutlinedButton(
+                                                onClick = {
+                                                    app.gamenative.utils.SteamUtils.resetCustomHero(gameId)
+                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                },
+                                            ) { Text("Reset to default") }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.padding(8.dp))
+
+                                // Separator
+                                androidx.compose.material3.Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                                // LOGO ---------------------------------------------
+                                Text(
+                                    text = "Logo",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+
+                                val currentLogoModel: Any? = run {
+                                    val gid = gameId
+                                    if (gid != null) {
+                                        val custom = app.gamenative.utils.SteamUtils.getCustomLogoUri(gid)
+                                        custom ?: mediaLogoUrl
+                                    } else mediaLogoUrl
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        if (currentLogoModel != null && (currentLogoModel as? String)?.isNotBlank() != false) {
+                                            CoilImage(
+                                                modifier = Modifier
+                                                    .width(200.dp)
+                                                    .padding(8.dp),
+                                                imageModel = { bustCache(currentLogoModel, mediaVersion) },
+                                                imageOptions = ImageOptions(contentScale = ContentScale.Fit),
+                                                previewPlaceholder = painterResource(app.gamenative.R.drawable.testliblogo),
+                                            )
+                                        } else {
+                                            SettingsCenteredLabel(
+                                                colors = settingsTileColors(),
+                                                title = { Text(text = "No logo available") },
+                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                            )
+                                        }
+
+                                        val gid = gameId
+                                        if (gid != null) {
+                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomLogo(gid)
+                                            val badgeText = if (isCustom) "Custom" else "Steam"
+                                            androidx.compose.foundation.layout.Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                                    )
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(badgeText, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Recommended hint (below image)
+                                Text(
+                                    text = "Recommended: up to 600×200 PNG with transparency. Will be scaled to fit.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+
+                                // Pick/Reset actions for Logo
+                                if (gameId != null) {
+                                    val context = LocalContext.current
+                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomLogo(gameId)
+                                    val pickLogo = androidx.activity.compose.rememberLauncherForActivityResult(
+                                        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                                    ) { uri ->
+                                        if (uri != null) {
+                                            val ok = app.gamenative.utils.SteamUtils.saveCustomLogo(context, gameId, uri)
+                                            Toast.makeText(context, if (ok) "Logo updated" else "Failed to update logo", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                                    ) {
+                                        androidx.compose.material3.Button(onClick = { pickLogo.launch("image/*") }) { Text("Choose image") }
+                                        if (isCustom) {
+                                            androidx.compose.material3.OutlinedButton(
+                                                onClick = {
+                                                    app.gamenative.utils.SteamUtils.resetCustomLogo(gameId)
+                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                },
+                                            ) { Text("Reset to default") }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.padding(8.dp))
+
+                                // Separator
+                                androidx.compose.material3.Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                                // CAPSULE ---------------------------------------------
+                                Text(
+                                    text = "Capsule (Grid view)",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+
+                                val currentCapsuleModel: Any? = run {
+                                    val gid = gameId
+                                    if (gid != null) {
+                                        val custom = app.gamenative.utils.SteamUtils.getCustomCapsuleUri(gid)
+                                        custom ?: mediaCapsuleUrl
+                                    } else mediaCapsuleUrl
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
+                                        if (currentCapsuleModel != null && (currentCapsuleModel as? String)?.isNotBlank() != false) {
+                                            CoilImage(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(8.dp),
+                                                imageModel = { bustCache(currentCapsuleModel, mediaVersion) },
+                                                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                                previewPlaceholder = painterResource(app.gamenative.R.drawable.testhero),
+                                            )
+                                        } else {
+                                            SettingsCenteredLabel(
+                                                colors = settingsTileColors(),
+                                                title = { Text(text = "No capsule image available") },
+                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                            )
+                                        }
+
+                                        val gid2 = gameId
+                                        if (gid2 != null) {
+                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomCapsule(gid2)
+                                            val badgeText = if (isCustom) "Custom" else "Steam"
+                                            androidx.compose.foundation.layout.Box(
+                                                modifier = Modifier
+                                                    .padding(16.dp)
+                                                    .align(Alignment.TopStart)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                                    )
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(badgeText, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Recommended hint (below image)
+                                Text(
+                                    text = "Recommended: 600×900 JPG/PNG. Will be center-cropped to fit.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+
+                                if (gameId != null) {
+                                    val context = LocalContext.current
+                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomCapsule(gameId)
+                                    val pickCapsule = androidx.activity.compose.rememberLauncherForActivityResult(
+                                        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                                    ) { uri ->
+                                        if (uri != null) {
+                                            val ok = app.gamenative.utils.SteamUtils.saveCustomCapsule(context, gameId, uri)
+                                            Toast.makeText(context, if (ok) "Capsule image updated" else "Failed to update capsule", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                                    ) {
+                                        androidx.compose.material3.Button(onClick = { pickCapsule.launch("image/*") }) { Text("Choose image") }
+                                        if (isCustom) {
+                                            androidx.compose.material3.OutlinedButton(
+                                                onClick = {
+                                                    app.gamenative.utils.SteamUtils.resetCustomCapsule(gameId)
+                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                },
+                                            ) { Text("Reset to default") }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.padding(8.dp))
+
+                                // HEADER ---------------------------------------------
+                                Text(
+                                    text = "Header (List view)",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+
+                                val currentHeaderModel: Any? = run {
+                                    val gid = gameId
+                                    if (gid != null) {
+                                        val custom = app.gamenative.utils.SteamUtils.getCustomHeaderUri(gid)
+                                        custom ?: mediaHeaderUrl
+                                    } else mediaHeaderUrl
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
+                                        if (currentHeaderModel != null && (currentHeaderModel as? String)?.isNotBlank() != false) {
+                                            CoilImage(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(8.dp),
+                                                imageModel = { bustCache(currentHeaderModel, mediaVersion) },
+                                                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                                previewPlaceholder = painterResource(app.gamenative.R.drawable.testhero),
+                                            )
+                                        } else {
+                                            SettingsCenteredLabel(
+                                                colors = settingsTileColors(),
+                                                title = { Text(text = "No header image available") },
+                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                            )
+                                        }
+
+                                        val gid3 = gameId
+                                        if (gid3 != null) {
+                                            val isCustom = app.gamenative.utils.SteamUtils.hasCustomHeader(gid3)
+                                            val badgeText = if (isCustom) "Custom" else "Steam"
+                                            androidx.compose.foundation.layout.Box(
+                                                modifier = Modifier
+                                                    .padding(16.dp)
+                                                    .align(Alignment.TopStart)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                                    )
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(badgeText, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Recommended hint (below image)
+                                Text(
+                                    text = "Recommended: 460×215 JPG/PNG. Will be center-cropped to fit.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+
+                                if (gameId != null) {
+                                    val context = LocalContext.current
+                                    val isCustom = app.gamenative.utils.SteamUtils.hasCustomHeader(gameId)
+                                    val pickHeader = androidx.activity.compose.rememberLauncherForActivityResult(
+                                        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                                    ) { uri ->
+                                        if (uri != null) {
+                                            val ok = app.gamenative.utils.SteamUtils.saveCustomHeader(context, gameId, uri)
+                                            Toast.makeText(context, if (ok) "Header image updated" else "Failed to update header", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                                    ) {
+                                        androidx.compose.material3.Button(onClick = { pickHeader.launch("image/*") }) { Text("Choose image") }
+                                        if (isCustom) {
+                                            androidx.compose.material3.OutlinedButton(
+                                                onClick = {
+                                                    app.gamenative.utils.SteamUtils.resetCustomHeader(gameId)
+                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                },
+                                            ) { Text("Reset to default") }
+                                        }
+                                    }
+                                }
+                            }
+                            if (selectedTab == 9) SettingsGroup() {
                                 SettingsListDropdown(
                                     colors = settingsTileColors(),
                                     title = { Text(text = "Startup Selection") },
