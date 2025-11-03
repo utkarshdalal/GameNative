@@ -140,10 +140,16 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
+                    // Observe media changes to refresh icon immediately when user updates or resets
+                    val mediaVersion by app.gamenative.utils.MediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+                    val iconModel: Any? = remember(mediaVersion, appInfo.gameId) {
+                        app.gamenative.utils.MediaUtils.getCustomIconUri(appInfo.gameId)
+                            ?: appInfo.clientIconUrl
+                    }
                     ListItemImage(
                         modifier = Modifier.size(56.dp),
                         imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        image = { appInfo.clientIconUrl }
+                        image = { app.gamenative.utils.bustCache(iconModel, mediaVersion) }
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }

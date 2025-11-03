@@ -58,11 +58,13 @@ object MediaUtils {
     fun getCustomLogoFile(appId: Int): File = File(mediaDirFor(appId), "custom_logo.png")
     fun getCustomCapsuleFile(appId: Int): File = File(mediaDirFor(appId), "custom_capsule.jpg")
     fun getCustomHeaderFile(appId: Int): File = File(mediaDirFor(appId), "custom_header.jpg")
+    fun getCustomIconFile(appId: Int): File = File(mediaDirFor(appId), "custom_icon.png")
 
     fun hasCustomHero(appId: Int): Boolean = getCustomHeroFile(appId).exists()
     fun hasCustomLogo(appId: Int): Boolean = getCustomLogoFile(appId).exists()
     fun hasCustomCapsule(appId: Int): Boolean = getCustomCapsuleFile(appId).exists()
     fun hasCustomHeader(appId: Int): Boolean = getCustomHeaderFile(appId).exists()
+    fun hasCustomIcon(appId: Int): Boolean = getCustomIconFile(appId).exists()
 
     fun resetCustomHero(appId: Int) {
         runCatching { getCustomHeroFile(appId).delete() }
@@ -78,6 +80,10 @@ object MediaUtils {
     }
     fun resetCustomHeader(appId: Int) {
         runCatching { getCustomHeaderFile(appId).delete() }
+        notifyMediaChanged()
+    }
+    fun resetCustomIcon(appId: Int) {
+        runCatching { getCustomIconFile(appId).delete() }
         notifyMediaChanged()
     }
 
@@ -128,6 +134,18 @@ object MediaUtils {
             notifyMediaChanged()
             true
         } catch (t: Throwable) { Timber.w(t, "saveCustomHeader failed"); false }
+
+    /**
+     * Save a custom icon image for list view. The image will be center-cropped to 512x512 and saved as PNG.
+     */
+    fun saveCustomIcon(context: Context, appId: Int, sourceUri: Uri): Boolean =
+        try {
+            val bmp = decodeBitmap(context, sourceUri) ?: return false
+            val out = centerCropResize(bmp, 512, 512)
+            savePng(out, getCustomIconFile(appId))
+            notifyMediaChanged()
+            true
+        } catch (t: Throwable) { Timber.w(t, "saveCustomIcon failed"); false }
 
     private fun decodeBitmap(context: Context, uri: Uri): Bitmap? {
         return try {
@@ -188,6 +206,7 @@ object MediaUtils {
     fun getCustomLogoUri(appId: Int): Uri? = getCustomLogoFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
     fun getCustomCapsuleUri(appId: Int): Uri? = getCustomCapsuleFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
     fun getCustomHeaderUri(appId: Int): Uri? = getCustomHeaderFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
+    fun getCustomIconUri(appId: Int): Uri? = getCustomIconFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
 }
 
 /**

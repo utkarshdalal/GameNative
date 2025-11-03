@@ -521,6 +521,7 @@ fun AppScreen(
         mediaLogoUrl = appInfo.getLogoUrl(),
         mediaCapsuleUrl = appInfo.getCapsuleUrl(),
         mediaHeaderUrl = appInfo.getHeaderImageUrl(),
+        mediaIconUrl = appInfo.clientIconUrl,
         gameId = appInfo.id,
     )
 
