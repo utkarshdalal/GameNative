@@ -1718,7 +1718,7 @@ fun ContainerConfigDialog(
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
 
-                                val currentHeroModel: Any? = run {
+                                val currentHeroModel: Any? = remember(mediaVersion, gameId) {
                                     val gid = gameId
                                     if (gid != null) {
                                         val custom = app.gamenative.utils.MediaUtils.getCustomHeroUri(gid)
@@ -1748,7 +1748,7 @@ fun ContainerConfigDialog(
                                         // Steam or Custom badge overlay in settings
                                         val gid = gameId
                                         if (gid != null) {
-                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomHero(gid)
+                                            val isCustom = remember(mediaVersion, gid) { app.gamenative.utils.MediaUtils.hasCustomHero(gid) }
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -1777,7 +1777,7 @@ fun ContainerConfigDialog(
                                 // Pick/Reset actions for Hero
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomHero(gameId)
+                                    val isCustom = remember(mediaVersion, gameId) { app.gamenative.utils.MediaUtils.hasCustomHero(gameId) }
                                     val pickHero = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
@@ -1817,7 +1817,7 @@ fun ContainerConfigDialog(
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
 
-                                val currentLogoModel: Any? = run {
+                                val currentLogoModel: Any? = remember(mediaVersion, gameId) {
                                     val gid = gameId
                                     if (gid != null) {
                                         val custom = app.gamenative.utils.MediaUtils.getCustomLogoUri(gid)
@@ -1846,7 +1846,7 @@ fun ContainerConfigDialog(
 
                                         val gid = gameId
                                         if (gid != null) {
-                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomLogo(gid)
+                                            val isCustom = remember(mediaVersion, gid) { app.gamenative.utils.MediaUtils.hasCustomLogo(gid) }
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -1874,7 +1874,7 @@ fun ContainerConfigDialog(
                                 // Pick/Reset actions for Logo
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomLogo(gameId)
+                                    val isCustom = remember(mediaVersion, gameId) { app.gamenative.utils.MediaUtils.hasCustomLogo(gameId) }
                                     val pickLogo = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
@@ -1914,7 +1914,7 @@ fun ContainerConfigDialog(
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
 
-                                val currentCapsuleModel: Any? = run {
+                                val currentCapsuleModel: Any? = remember(mediaVersion, gameId) {
                                     val gid = gameId
                                     if (gid != null) {
                                         val custom = app.gamenative.utils.MediaUtils.getCustomCapsuleUri(gid)
@@ -1943,7 +1943,7 @@ fun ContainerConfigDialog(
 
                                         val gid2 = gameId
                                         if (gid2 != null) {
-                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomCapsule(gid2)
+                                            val isCustom = remember(mediaVersion, gid2) { app.gamenative.utils.MediaUtils.hasCustomCapsule(gid2) }
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -1971,7 +1971,7 @@ fun ContainerConfigDialog(
 
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomCapsule(gameId)
+                                    val isCustom = remember(mediaVersion, gameId) { app.gamenative.utils.MediaUtils.hasCustomCapsule(gameId) }
                                     val pickCapsule = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
@@ -2008,7 +2008,7 @@ fun ContainerConfigDialog(
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
 
-                                val currentHeaderModel: Any? = run {
+                                val currentHeaderModel: Any? = remember(mediaVersion, gameId) {
                                     val gid = gameId
                                     if (gid != null) {
                                         val custom = app.gamenative.utils.MediaUtils.getCustomHeaderUri(gid)
@@ -2037,7 +2037,7 @@ fun ContainerConfigDialog(
 
                                         val gid3 = gameId
                                         if (gid3 != null) {
-                                            val isCustom = app.gamenative.utils.MediaUtils.hasCustomHeader(gid3)
+                                            val isCustom = remember(mediaVersion, gid3) { app.gamenative.utils.MediaUtils.hasCustomHeader(gid3) }
                                             val badgeText = if (isCustom) "Custom" else "Steam"
                                             androidx.compose.foundation.layout.Box(
                                                 modifier = Modifier
@@ -2065,7 +2065,7 @@ fun ContainerConfigDialog(
 
                                 if (gameId != null) {
                                     val context = LocalContext.current
-                                    val isCustom = app.gamenative.utils.MediaUtils.hasCustomHeader(gameId)
+                                    val isCustom = remember(mediaVersion, gameId) { app.gamenative.utils.MediaUtils.hasCustomHeader(gameId) }
                                     val pickHeader = androidx.activity.compose.rememberLauncherForActivityResult(
                                         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
                                     ) { uri ->
