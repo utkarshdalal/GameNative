@@ -32,6 +32,7 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object SteamUtils {
+    
     internal val http = OkHttpClient.Builder()
         .readTimeout(5, TimeUnit.MINUTES)      // from 2 min → 5 min
         .protocols(listOf(Protocol.HTTP_1_1))  // skip HTTP/2 stream stalls
