@@ -1719,7 +1719,7 @@ fun ContainerConfigDialog(
 
                                 // LOGO ---------------------------------------------
                                 Text(
-                                    text = "Logo",
+                                    text = stringResource(R.string.media_logo_title),
                                     color = Color.White,
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier
@@ -1748,8 +1748,8 @@ fun ContainerConfigDialog(
                                         } else {
                                             SettingsCenteredLabel(
                                                 colors = settingsTileColors(),
-                                                title = { Text(text = "No logo available") },
-                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                                title = { Text(text = stringResource(R.string.media_no_logo)) },
+                                                subtitle = { Text(text = stringResource(R.string.media_open_specific)) },
                                             )
                                         }
                                     }
@@ -1757,7 +1757,7 @@ fun ContainerConfigDialog(
 
                                 // Recommended hint (below image)
                                 Text(
-                                    text = "Recommended: up to 600×200 PNG with transparency. Will be scaled to fit.",
+                                    text = stringResource(R.string.media_logo_hint),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -1772,21 +1772,21 @@ fun ContainerConfigDialog(
                                     ) { uri ->
                                         if (uri != null) {
                                             val ok = app.gamenative.utils.MediaUtils.saveCustomLogo(context, gameId, uri)
-                                            Toast.makeText(context, if (ok) "Logo updated" else "Failed to update logo", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, if (ok) context.getString(R.string.media_updated, context.getString(R.string.media_logo_title)) else context.getString(R.string.media_update_failed, context.getString(R.string.media_logo_title).lowercase()), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                                     ) {
-                                        androidx.compose.material3.Button(onClick = { pickLogo.launch("image/*") }) { Text("Choose image") }
+                                        androidx.compose.material3.Button(onClick = { pickLogo.launch("image/*") }) { Text(stringResource(R.string.media_choose_image)) }
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
                                                     app.gamenative.utils.MediaUtils.resetCustomLogo(gameId)
-                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.media_reverted), Toast.LENGTH_SHORT).show()
                                                 },
-                                            ) { Text("Reset to default") }
+                                            ) { Text(stringResource(R.string.media_reset_to_default)) }
                                         }
                                     }
                                 }
@@ -1798,7 +1798,7 @@ fun ContainerConfigDialog(
 
                                 // ICON ---------------------------------------------
                                 Text(
-                                    text = "Icon (List view)",
+                                    text = stringResource(R.string.media_icon_title),
                                     color = Color.White,
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier
@@ -1828,8 +1828,8 @@ fun ContainerConfigDialog(
                                         } else {
                                             SettingsCenteredLabel(
                                                 colors = settingsTileColors(),
-                                                title = { Text(text = "No icon available") },
-                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                                title = { Text(text = stringResource(R.string.media_no_icon)) },
+                                                subtitle = { Text(text = stringResource(R.string.media_open_specific)) },
                                             )
                                         }
                                     }
@@ -1837,7 +1837,7 @@ fun ContainerConfigDialog(
 
                                 // Recommended hint (below image)
                                 Text(
-                                    text = "Recommended: Square PNG with transparency. Will be center-cropped to fit.",
+                                    text = stringResource(R.string.media_icon_hint),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -1852,21 +1852,21 @@ fun ContainerConfigDialog(
                                     ) { uri ->
                                         if (uri != null) {
                                             val ok = app.gamenative.utils.MediaUtils.saveCustomIcon(context, gameId, uri)
-                                            Toast.makeText(context, if (ok) "Icon updated" else "Failed to update icon", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, if (ok) context.getString(R.string.media_updated, context.getString(R.string.media_icon_title)) else context.getString(R.string.media_update_failed, context.getString(R.string.media_icon_title).lowercase()), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                                     ) {
-                                        androidx.compose.material3.Button(onClick = { pickIcon.launch("image/*") }) { Text("Choose image") }
+                                        androidx.compose.material3.Button(onClick = { pickIcon.launch("image/*") }) { Text(stringResource(R.string.media_choose_image)) }
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
                                                     app.gamenative.utils.MediaUtils.resetCustomIcon(gameId)
-                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.media_reverted), Toast.LENGTH_SHORT).show()
                                                 },
-                                            ) { Text("Reset to default") }
+                                            ) { Text(stringResource(R.string.media_reset_to_default)) }
                                         }
                                     }
                                 }
@@ -1878,7 +1878,7 @@ fun ContainerConfigDialog(
 
                                 // HERO ---------------------------------------------
                                 Text(
-                                    text = "Hero Image",
+                                    text = stringResource(R.string.media_hero_title),
                                     color = Color.White,
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier
@@ -1911,8 +1911,8 @@ fun ContainerConfigDialog(
                                         } else {
                                             SettingsCenteredLabel(
                                                 colors = settingsTileColors(),
-                                                title = { Text(text = "No hero image available") },
-                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                                title = { Text(text = stringResource(R.string.media_no_hero)) },
+                                                subtitle = { Text(text = stringResource(R.string.media_open_specific)) },
                                             )
                                         }
                                     }
@@ -1920,7 +1920,7 @@ fun ContainerConfigDialog(
 
                                 // Recommended hint (below image)
                                 Text(
-                                    text = "Recommended: 920×430 JPG/PNG. Will be center-cropped to fit.",
+                                    text = stringResource(R.string.media_hero_hint),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -1935,21 +1935,21 @@ fun ContainerConfigDialog(
                                     ) { uri ->
                                         if (uri != null) {
                                             val ok = app.gamenative.utils.MediaUtils.saveCustomHero(context, gameId, uri)
-                                            Toast.makeText(context, if (ok) "Hero image updated" else "Failed to update hero", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, if (ok) context.getString(R.string.media_updated, context.getString(R.string.media_hero_title)) else context.getString(R.string.media_update_failed, context.getString(R.string.media_hero_title).lowercase()), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                                     ) {
-                                        androidx.compose.material3.Button(onClick = { pickHero.launch("image/*") }) { Text("Choose image") }
+                                        androidx.compose.material3.Button(onClick = { pickHero.launch("image/*") }) { Text(stringResource(R.string.media_choose_image)) }
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
                                                     app.gamenative.utils.MediaUtils.resetCustomHero(gameId)
-                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.media_reverted), Toast.LENGTH_SHORT).show()
                                                 },
-                                            ) { Text("Reset to default") }
+                                            ) { Text(stringResource(R.string.media_reset_to_default)) }
                                         }
                                     }
                                 }
@@ -1961,7 +1961,7 @@ fun ContainerConfigDialog(
 
                                 // CAPSULE ---------------------------------------------
                                 Text(
-                                    text = "Capsule (Grid view)",
+                                    text = stringResource(R.string.media_capsule_title),
                                     color = Color.White,
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier
@@ -2000,8 +2000,8 @@ fun ContainerConfigDialog(
                                         } else {
                                             SettingsCenteredLabel(
                                                 colors = settingsTileColors(),
-                                                title = { Text(text = "No capsule image available") },
-                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                                title = { Text(text = stringResource(R.string.media_no_capsule)) },
+                                                subtitle = { Text(text = stringResource(R.string.media_open_specific)) },
                                             )
                                         }
                                     }
@@ -2009,7 +2009,7 @@ fun ContainerConfigDialog(
 
                                 // Recommended hint (below image)
                                 Text(
-                                    text = "Recommended: 600×900 JPG/PNG. Will be center-cropped to fit.",
+                                    text = stringResource(R.string.media_capsule_hint),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -2023,21 +2023,21 @@ fun ContainerConfigDialog(
                                     ) { uri ->
                                         if (uri != null) {
                                             val ok = app.gamenative.utils.MediaUtils.saveCustomCapsule(context, gameId, uri)
-                                            Toast.makeText(context, if (ok) "Capsule image updated" else "Failed to update capsule", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, if (ok) context.getString(R.string.media_updated, context.getString(R.string.media_capsule_title)) else context.getString(R.string.media_update_failed, context.getString(R.string.media_capsule_title).lowercase()), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                                     ) {
-                                        androidx.compose.material3.Button(onClick = { pickCapsule.launch("image/*") }) { Text("Choose image") }
+                                        androidx.compose.material3.Button(onClick = { pickCapsule.launch("image/*") }) { Text(stringResource(R.string.media_choose_image)) }
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
                                                     app.gamenative.utils.MediaUtils.resetCustomCapsule(gameId)
-                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.media_reverted), Toast.LENGTH_SHORT).show()
                                                 },
-                                            ) { Text("Reset to default") }
+                                            ) { Text(stringResource(R.string.media_reset_to_default)) }
                                         }
                                     }
                                 }
@@ -2049,7 +2049,7 @@ fun ContainerConfigDialog(
 
                                 // HEADER ---------------------------------------------
                                 Text(
-                                    text = "Header (List view)",
+                                    text = stringResource(R.string.media_header_title),
                                     color = Color.White,
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier
@@ -2088,8 +2088,8 @@ fun ContainerConfigDialog(
                                         } else {
                                             SettingsCenteredLabel(
                                                 colors = settingsTileColors(),
-                                                title = { Text(text = "No header image available") },
-                                                subtitle = { Text(text = "Open from a specific game to preview and change its media.") },
+                                                title = { Text(text = stringResource(R.string.media_no_header)) },
+                                                subtitle = { Text(text = stringResource(R.string.media_open_specific)) },
                                             )
                                         }
                                     }
@@ -2097,7 +2097,7 @@ fun ContainerConfigDialog(
 
                                 // Recommended hint (below image)
                                 Text(
-                                    text = "Recommended: 460×215 JPG/PNG. Will be center-cropped to fit.",
+                                    text = stringResource(R.string.media_header_hint),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -2111,21 +2111,21 @@ fun ContainerConfigDialog(
                                     ) { uri ->
                                         if (uri != null) {
                                             val ok = app.gamenative.utils.MediaUtils.saveCustomHeader(context, gameId, uri)
-                                            Toast.makeText(context, if (ok) "Header image updated" else "Failed to update header", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, if (ok) context.getString(R.string.media_updated, context.getString(R.string.media_header_title)) else context.getString(R.string.media_update_failed, context.getString(R.string.media_header_title).lowercase()), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                                     ) {
-                                        androidx.compose.material3.Button(onClick = { pickHeader.launch("image/*") }) { Text("Choose image") }
+                                        androidx.compose.material3.Button(onClick = { pickHeader.launch("image/*") }) { Text(stringResource(R.string.media_choose_image)) }
                                         if (isCustom) {
                                             androidx.compose.material3.OutlinedButton(
                                                 onClick = {
                                                     app.gamenative.utils.MediaUtils.resetCustomHeader(gameId)
-                                                    Toast.makeText(context, "Reverted to Steam default", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.media_reverted), Toast.LENGTH_SHORT).show()
                                                 },
-                                            ) { Text("Reset to default") }
+                                            ) { Text(stringResource(R.string.media_reset_to_default)) }
                                         }
                                     }
                                 }
