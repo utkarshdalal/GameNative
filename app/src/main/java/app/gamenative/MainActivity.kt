@@ -36,6 +36,7 @@ import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.ContainerConfigIO
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import com.posthog.PostHog
@@ -187,6 +188,28 @@ class MainActivity : ComponentActivity() {
     private fun handleLaunchIntent(intent: Intent) {
         Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}")
         try {
+            // Handle deep link config import (gamenative://config?data=... or https://gamenative.app/config?data=...)
+            if (intent.action == Intent.ACTION_VIEW && intent.data != null) {
+                val uri = intent.data!!
+                val isConfigLink = (uri.scheme == "gamenative" && uri.host == "config") ||
+                                  (uri.scheme == "https" && uri.host == "gamenative.app" && uri.path?.startsWith("/config") == true)
+                
+                if (isConfigLink) {
+                    Timber.d("[ConfigImport]: Received config import link: ${uri.scheme}://${uri.host}${uri.path}")
+                    val containerData = ContainerConfigIO.importFromDeepLink(uri)
+                    if (containerData != null) {
+                        Timber.i("[ConfigImport]: Successfully imported config from link: ${containerData.name}")
+                        // Store imported config for user to apply
+                        // You can emit an event here to show a dialog or navigate to container creation
+                        PluviaApp.events.emit(AndroidEvent.ConfigImported(containerData))
+                    } else {
+                        Timber.e("[ConfigImport]: Failed to parse config from link")
+                    }
+                    return
+                }
+            }
+            
+            // Handle game launch intent
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")

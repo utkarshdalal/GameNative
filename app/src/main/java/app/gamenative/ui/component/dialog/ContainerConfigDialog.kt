@@ -1,10 +1,14 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Intent
 import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +30,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -76,6 +84,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.ContainerConfigIO
 import app.gamenative.service.SteamService
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -131,6 +140,89 @@ fun ContainerConfigDialog(
 
         var config by rememberSaveable(stateSaver = ContainerData.Saver) {
             mutableStateOf(initialConfig)
+        }
+
+        // Import/Export state
+        var showImportDialog by remember { mutableStateOf(false) }
+        var showExportDialog by remember { mutableStateOf(false) }
+        var showImportMenu by remember { mutableStateOf(false) }
+        var showShareCodeDialog by remember { mutableStateOf(false) }
+        var shareCodeInput by remember { mutableStateOf("") }
+        
+        // File picker for import
+        val importLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri ->
+            uri?.let {
+                val imported = ContainerConfigIO.importFromFile(context, it)
+                if (imported != null) {
+                    config = imported
+                    Toast.makeText(context, "Configuration imported successfully", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to import configuration", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        
+        // File picker for export
+        val exportLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json")
+        ) { uri ->
+            uri?.let {
+                // Create a temporary container to export current config
+                val tempContainer = Container("temp").apply {
+                    name = config.name
+                    screenSize = config.screenSize
+                    envVars = config.envVars
+                    graphicsDriver = config.graphicsDriver
+                    graphicsDriverVersion = config.graphicsDriverVersion
+                    graphicsDriverConfig = config.graphicsDriverConfig
+                    dxWrapper = config.dxwrapper
+                    dxWrapperConfig = config.dxwrapperConfig
+                    audioDriver = config.audioDriver
+                    winComponents = config.wincomponents
+                    drives = config.drives
+                    execArgs = config.execArgs
+                    executablePath = config.executablePath
+                    installPath = config.installPath
+                    isShowFPS = config.showFPS
+                    isLaunchRealSteam = config.launchRealSteam
+                    isAllowSteamUpdates = config.allowSteamUpdates
+                    steamType = config.steamType
+                    setCPUList(config.cpuList)
+                    setCPUListWoW64(config.cpuListWoW64)
+                    isWoW64Mode = config.wow64Mode
+                    startupSelection = config.startupSelection
+                    box86Version = config.box86Version
+                    box64Version = config.box64Version
+                    box86Preset = config.box86Preset
+                    box64Preset = config.box64Preset
+                    desktopTheme = config.desktopTheme
+                    language = config.language
+                    containerVariant = config.containerVariant
+                    wineVersion = config.wineVersion
+                    emulator = config.emulator
+                    fexCoreVersion = config.fexcoreVersion
+                    dinputMapperType = config.dinputMapperType
+                    isSdlControllerAPI = config.sdlControllerAPI
+                    isDisableMouseInput = config.disableMouseInput
+                    isTouchscreenMode = config.touchscreenMode
+                    isUseDRI3 = config.useDRI3
+                    isEmulateKeyboardMouse = config.emulateKeyboardMouse
+                    isForceDlc = config.forceDlc
+                    // Set controller emulation bindings if present
+                    if (config.controllerEmulationBindings.isNotEmpty()) {
+                        putExtra("controllerEmulationBindings", config.controllerEmulationBindings)
+                    }
+                }
+                
+                val success = ContainerConfigIO.exportToFile(context, tempContainer, it)
+                if (success) {
+                    Toast.makeText(context, "Configuration exported successfully", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to export configuration", Toast.LENGTH_LONG).show()
+                }
+            }
         }
 
         val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
@@ -656,6 +748,64 @@ fun ContainerConfigDialog(
                 },
             )
         }
+        
+        // Share Code Import Dialog
+        if (showShareCodeDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showShareCodeDialog = false
+                    shareCodeInput = ""
+                },
+                title = { Text("Import from Share Code") },
+                text = {
+                    Column {
+                        Text("Paste the share code or link you received:")
+                        Spacer(modifier = Modifier.padding(4.dp))
+                        Text(
+                            text = "Accepts: GN1:..., gamenative://..., or https://gamenative.app/...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.padding(8.dp))
+                        OutlinedTextField(
+                            value = shareCodeInput,
+                            onValueChange = { shareCodeInput = it },
+                            label = { Text("Share Code or Link") },
+                            placeholder = { Text("GN1:... or https://...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false,
+                            maxLines = 6
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val imported = ContainerConfigIO.importFromShareCode(shareCodeInput)
+                            if (imported != null) {
+                                config = imported
+                                Toast.makeText(context, "Configuration imported successfully", Toast.LENGTH_SHORT).show()
+                                showShareCodeDialog = false
+                                shareCodeInput = ""
+                            } else {
+                                Toast.makeText(context, "Invalid share code or link", Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        enabled = shareCodeInput.isNotBlank()
+                    ) {
+                        Text("Import")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showShareCodeDialog = false
+                        shareCodeInput = ""
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
 
         Dialog(
             onDismissRequest = onDismissCheck,
@@ -684,6 +834,107 @@ fun ContainerConfigDialog(
                                 )
                             },
                             actions = {
+                                // Import configuration button with dropdown menu
+                                androidx.compose.foundation.layout.Box {
+                                    TextButton(
+                                        onClick = { showImportMenu = true },
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.FileOpen,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Import")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showImportMenu,
+                                        onDismissRequest = { showImportMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("From File") },
+                                            onClick = {
+                                                showImportMenu = false
+                                                importLauncher.launch("application/json")
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("From Share Code") },
+                                            onClick = {
+                                                showImportMenu = false
+                                                showShareCodeDialog = true
+                                            }
+                                        )
+                                    }
+                                }
+                                // Export configuration button
+                                TextButton(
+                                    onClick = { 
+                                        val filename = ContainerConfigIO.generateExportFilename(title.ifEmpty { "config" })
+                                        exportLauncher.launch(filename)
+                                    },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FileDownload,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Export")
+                                }
+                                // Share configuration button
+                                IconButton(
+                                    onClick = {
+                                        // Create a temporary container to share current config
+                                        val tempContainer = Container("temp").apply {
+                                            name = config.name
+                                            screenSize = config.screenSize
+                                            envVars = config.envVars
+                                            graphicsDriver = config.graphicsDriver
+                                            graphicsDriverVersion = config.graphicsDriverVersion
+                                            graphicsDriverConfig = config.graphicsDriverConfig
+                                            dxWrapper = config.dxwrapper
+                                            dxWrapperConfig = config.dxwrapperConfig
+                                            audioDriver = config.audioDriver
+                                            winComponents = config.wincomponents
+                                            drives = config.drives
+                                            execArgs = config.execArgs
+                                            isShowFPS = config.showFPS
+                                            isLaunchRealSteam = config.launchRealSteam
+                                            isAllowSteamUpdates = config.allowSteamUpdates
+                                            steamType = config.steamType
+                                            setCPUList(config.cpuList)
+                                            setCPUListWoW64(config.cpuListWoW64)
+                                            isWoW64Mode = config.wow64Mode
+                                            startupSelection = config.startupSelection
+                                            box86Version = config.box86Version
+                                            box64Version = config.box64Version
+                                            box86Preset = config.box86Preset
+                                            box64Preset = config.box64Preset
+                                            desktopTheme = config.desktopTheme
+                                            containerVariant = config.containerVariant
+                                            wineVersion = config.wineVersion
+                                            emulator = config.emulator
+                                            fexCoreVersion = config.fexcoreVersion
+                                            dinputMapperType = config.dinputMapperType
+                                            isSdlControllerAPI = config.sdlControllerAPI
+                                            isDisableMouseInput = config.disableMouseInput
+                                            isTouchscreenMode = config.touchscreenMode
+                                            isUseDRI3 = config.useDRI3
+                                            isEmulateKeyboardMouse = config.emulateKeyboardMouse
+                                            isForceDlc = config.forceDlc
+                                            language = config.language
+                                        }
+                                        val shareIntent = ContainerConfigIO.createShareMessageIntent(tempContainer, title)
+                                        context.startActivity(Intent.createChooser(shareIntent, "Share Config"))
+                                    },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share Config"
+                                    )
+                                }
+                                // Save button
                                 IconButton(
                                     onClick = { onSave(config) },
                                     content = { Icon(Icons.Default.Save, null) },
