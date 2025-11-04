@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
