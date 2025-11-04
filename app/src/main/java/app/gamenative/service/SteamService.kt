@@ -719,7 +719,13 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val appDirPath = getAppDirPath(appId)
 
-            return File(appDirPath).deleteRecursively()
+            val removed = File(appDirPath).deleteRecursively()
+            // Also remove any custom media for this game stored under app data
+            try {
+                app.gamenative.utils.MediaUtils.deleteAllMediaFor(appId)
+            } catch (_: Throwable) { }
+
+            return removed
         }
 
         fun downloadApp(appId: Int): DownloadInfo? {

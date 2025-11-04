@@ -25,7 +25,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
-import app.gamenative.service.SteamService
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
@@ -42,8 +41,8 @@ object MediaUtils {
     fun notifyMediaChanged() { _mediaVersion.value = _mediaVersion.value + 1 }
 
     private fun mediaDirFor(appId: Int): File {
-        val base = File(SteamService.getAppDirPath(appId))
-        val dir = File(base, "media")
+        val root = File(app.gamenative.service.DownloadService.baseDataDirPath, "media")
+        val dir = File(root, appId.toString())
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -201,6 +200,12 @@ object MediaUtils {
     fun getCustomCapsuleUri(appId: Int): Uri? = getCustomCapsuleFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
     fun getCustomHeaderUri(appId: Int): Uri? = getCustomHeaderFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
     fun getCustomIconUri(appId: Int): Uri? = getCustomIconFile(appId).takeIf { it.exists() }?.let { Uri.fromFile(it) }
+
+    // Remove all custom media for a specific appId from app storage
+    fun deleteAllMediaFor(appId: Int) {
+        runCatching { mediaDirFor(appId).deleteRecursively() }
+        notifyMediaChanged()
+    }
 }
 
 /**
