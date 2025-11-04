@@ -9,7 +9,6 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.RectF
 import android.net.Uri
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,11 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
-import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.service.SteamService
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -37,8 +34,6 @@ import timber.log.Timber
 
 /**
  * Media/image utilities shared across the app.
- *
- * Coding style aligns with other files under app.gamenative.utils (top-level helpers + object for stateful ops).
  */
 object MediaUtils {
     // Observable media version to trigger UI refresh when custom images change
@@ -46,7 +41,6 @@ object MediaUtils {
     val mediaVersionFlow: kotlinx.coroutines.flow.StateFlow<Int> = _mediaVersion
     fun notifyMediaChanged() { _mediaVersion.value = _mediaVersion.value + 1 }
 
-    // --- Custom media (hero/logo/capsule/header) helpers ---
     private fun mediaDirFor(appId: Int): File {
         val base = File(SteamService.getAppDirPath(appId))
         val dir = File(base, "media")
@@ -231,7 +225,7 @@ fun bustCache(model: Any?, version: Int): Any? {
                 Uri.parse(s + sep + "v=" + version)
             } else model
         }
-        else -> model // For File or other models we leave as-is.
+        else -> model // Leave as-is for File or other models
     }
 }
 
@@ -283,42 +277,4 @@ internal fun SteamIconImage(
         failure = { Icon(Icons.Default.AccountCircle, null) },
         previewPlaceholder = painterResource(R.drawable.ic_logo_color),
     )
-}
-
-@Composable
-fun EmoticonImage(
-    size: Dp = 54.dp,
-    image: () -> Any?,
-) {
-    CoilImage(
-        modifier = Modifier.size(size),
-        imageModel = image,
-        loading = { CircularProgressIndicator() },
-        failure = { Icon(Icons.Filled.QuestionMark, null) },
-        previewPlaceholder = painterResource(R.drawable.ic_logo_color),
-    )
-}
-
-@Composable
-fun StickerImage(
-    size: Dp = 150.dp,
-    image: () -> Any?,
-) {
-    EmoticonImage(size, image)
-}
-
-@Preview
-@Composable
-private fun Preview_EmoticonImage() {
-    PluviaTheme {
-        EmoticonImage { "https://steamcommunity-a.akamaihd.net/economy/emoticonlarge/roar" }
-    }
-}
-
-@Preview
-@Composable
-private fun Preview_StickerImage() {
-    PluviaTheme {
-        StickerImage { "https://steamcommunity-a.akamaihd.net/economy/sticker/Delivery%20Cat%20in%20a%20Blanket" }
-    }
 }
