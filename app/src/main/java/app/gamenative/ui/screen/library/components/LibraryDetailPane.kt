@@ -53,11 +53,16 @@ internal fun LibraryDetailPane(
                 onGoOnline = {},
             )
         } else {
-            AppScreen(
-                libraryItem = libraryItem,
-                onClickPlay = onClickPlay,
-                onBack = onBack,
-            )
+            // Don't show detailed app screen for containers (they don't have Steam app info)
+            if (libraryItem.gameSource == GameSource.CONTAINER) {
+                // Show nothing for now - in future could show container management here
+            } else {
+                AppScreen(
+                    libraryItem = libraryItem,
+                    onClickPlay = onClickPlay,
+                    onBack = onBack,
+                )
+            }
         }
     }
 }

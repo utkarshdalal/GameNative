@@ -1,5 +1,6 @@
 package app.gamenative.ui.model
 
+import android.content.Context
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,7 +16,9 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
+import app.gamenative.utils.ContainerUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.EnumSet
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +34,7 @@ import kotlin.math.min
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LibraryState())
@@ -113,6 +117,9 @@ class LibraryViewModel @Inject constructor(
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
+            
+            // Get custom containers
+            val customContainers = ContainerUtils.getCustomContainers(context)
 
             var filteredList = appList
                 .asSequence()
@@ -159,8 +166,20 @@ class LibraryViewModel @Inject constructor(
                     compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
                 );
 
-            // Total count for the current filter
-            val totalFound = filteredList.count()
+            // Total count for the current filter (Steam apps only for now)
+            val steamAppCount = filteredList.count()
+            
+            // Add custom containers to the list
+            val containerItems = customContainers
+                .filter { container ->
+                    if (currentState.searchQuery.isNotEmpty()) {
+                        container.name.contains(currentState.searchQuery, ignoreCase = true)
+                    } else {
+                        true
+                    }
+                }
+
+            val totalFound = steamAppCount + containerItems.size
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
@@ -169,9 +188,10 @@ class LibraryViewModel @Inject constructor(
             lastPageInCurrentFilter = (totalFound - 1) / pageSize
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
-            val pagedSequence = filteredList.take(endIndex)
-            // Map to UI model
-            val filteredListPage = pagedSequence
+            
+            // Map Steam apps to LibraryItems
+            val steamItems = filteredList
+                .take(min(endIndex, steamAppCount))
                 .mapIndexed { idx, item ->
                     LibraryItem(
                         index = idx,
@@ -179,9 +199,27 @@ class LibraryViewModel @Inject constructor(
                         name = item.name,
                         iconHash = item.clientIconHash,
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+                        gameSource = GameSource.STEAM,
                     )
                 }
                 .toList()
+            
+            // Map custom containers to LibraryItems
+            val customContainerItems = containerItems
+                .take(max(0, endIndex - steamAppCount))
+                .mapIndexed { idx, container ->
+                    LibraryItem(
+                        index = steamItems.size + idx,
+                        appId = "${GameSource.CONTAINER.name}_${container.id}",
+                        name = "🗂️ ${container.name}",  // Add container icon emoji
+                        iconHash = "",
+                        isShared = false,
+                        gameSource = GameSource.CONTAINER,
+                    )
+                }
+                .toList()
+            
+            val filteredListPage = steamItems + customContainerItems
 
             Timber.tag("LibraryViewModel").d("Filtered list size: ${totalFound}")
             _state.update {

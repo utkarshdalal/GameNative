@@ -23,6 +23,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 
 object ContainerUtils {
     data class GpuInfo(
@@ -452,10 +453,16 @@ object ContainerUtils {
 
     fun getContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
-        return if (containerManager.hasContainer(appId)) {
-            containerManager.getContainerById(appId)
+        // Normalize appId by removing GameSource prefix if present (e.g., "CONTAINER_custom_123" -> "custom_123")
+        val normalizedId = when {
+            appId.startsWith("${GameSource.CONTAINER.name}_") -> appId.removePrefix("${GameSource.CONTAINER.name}_")
+            appId.startsWith("${GameSource.STEAM.name}_") -> appId.removePrefix("${GameSource.STEAM.name}_")
+            else -> appId
+        }
+        return if (containerManager.hasContainer(normalizedId)) {
+            containerManager.getContainerById(normalizedId)
         } else {
-            throw Exception("Container does not exist for game $appId")
+            throw Exception("Container does not exist for game $appId (normalized: $normalizedId)")
         }
     }
 
@@ -798,16 +805,20 @@ object ContainerUtils {
 
     /**
      * Deletes the container associated with the given appId, if it exists.
+     * Should be called from a background thread.
      */
     fun deleteContainer(context: Context, appId: String) {
         val manager = ContainerManager(context)
         if (manager.hasContainer(appId)) {
-            // Remove the container directory asynchronously
-            manager.removeContainerAsync(
-                manager.getContainerById(appId),
-            ) {
+            val container = manager.getContainerById(appId)
+            // Delete the container directory directly
+            if (FileUtils.delete(container.rootDir)) {
                 Timber.i("Deleted container for appId=$appId")
+            } else {
+                throw IOException("Failed to delete container directory: ${container.rootDir}")
             }
+        } else {
+            throw IllegalArgumentException("Container with appId=$appId does not exist")
         }
     }
 
@@ -835,4 +846,293 @@ object ContainerUtils {
             else -> GameSource.STEAM // default fallback
         }
     }
+
+    /**
+     * Creates an empty standalone container not associated with any game.
+     * 
+     * @param context Android context
+     * @param containerName Display name for the container
+     * @param customConfig Optional custom configuration (uses defaults if null)
+     * @return The created container
+     */
+    fun createEmptyContainer(
+        context: Context,
+        containerName: String,
+        customConfig: ContainerData? = null
+    ): Container {
+        val containerManager = ContainerManager(context)
+        
+        // If custom config is provided, apply it to the container creation data
+        return if (customConfig != null) {
+            val containerId = "custom_${System.currentTimeMillis()}"
+            val data = org.json.JSONObject()
+            data.put("name", containerName)
+            data.put("screenSize", customConfig.screenSize)
+            data.put("envVars", customConfig.envVars)
+            data.put("cpuList", customConfig.cpuList)
+            data.put("cpuListWoW64", customConfig.cpuListWoW64)
+            data.put("graphicsDriver", customConfig.graphicsDriver)
+            data.put("graphicsDriverVersion", customConfig.graphicsDriverVersion)
+            data.put("graphicsDriverConfig", customConfig.graphicsDriverConfig)
+            data.put("dxwrapper", customConfig.dxwrapper)
+            data.put("dxwrapperConfig", customConfig.dxwrapperConfig)
+            data.put("audioDriver", customConfig.audioDriver)
+            data.put("wincomponents", customConfig.wincomponents)
+            data.put("drives", customConfig.drives)
+            data.put("showFPS", customConfig.showFPS)
+            data.put("wow64Mode", customConfig.wow64Mode)
+            data.put("startupSelection", customConfig.startupSelection.toInt())
+            data.put("box86Preset", customConfig.box86Preset)
+            data.put("box64Preset", customConfig.box64Preset)
+            data.put("desktopTheme", customConfig.desktopTheme)
+            data.put("containerVariant", customConfig.containerVariant)
+            data.put("wineVersion", customConfig.wineVersion)
+            
+            containerManager.createContainerFuture(containerId, data).get()
+        } else {
+            containerManager.createEmptyContainerFuture(containerName).get()
+        }
+    }
+
+    /**
+     * Gets all custom (non-game-specific) containers.
+     * 
+     * @param context Android context
+     * @return List of custom containers
+     */
+    fun getCustomContainers(context: Context): List<Container> {
+        val containerManager = ContainerManager(context)
+        return containerManager.getContainers().filter { it.id.startsWith("custom_") }
+    }
+
+    /**
+     * Duplicates a container with a new custom ID.
+     * 
+     * @param context Android context
+     * @param sourceContainer The container to duplicate
+     */
+    fun duplicateContainer(context: Context, sourceContainer: Container) {
+        val containerManager = ContainerManager(context)
+        val newContainerId = "custom_${System.currentTimeMillis()}"
+        val newName = "${sourceContainer.name} (Copy)"
+        
+        // Create new container data based on source
+        val data = JSONObject().apply {
+            put("name", newName)
+            put("screenSize", sourceContainer.screenSize)
+            put("envVars", sourceContainer.envVars)
+            put("graphicsDriver", sourceContainer.graphicsDriver)
+            put("audioDriver", sourceContainer.audioDriver)
+            put("dxwrapper", sourceContainer.getDXWrapper())
+            put("dxwrapperConfig", sourceContainer.getDXWrapperConfig())
+            put("drives", sourceContainer.drives)
+            put("showFPS", sourceContainer.isShowFPS)
+            put("wow64Mode", sourceContainer.isWoW64Mode())
+            put("startupSelection", sourceContainer.startupSelection.toInt())
+            put("box86Preset", sourceContainer.box86Preset)
+            put("box64Preset", sourceContainer.box64Preset)
+            put("desktopTheme", sourceContainer.desktopTheme)
+            put("containerVariant", sourceContainer.containerVariant)
+            put("wineVersion", sourceContainer.wineVersion)
+        }
+        
+        // Create the new container
+        containerManager.createContainerFuture(newContainerId, data).get()
+        
+        // Copy additional files from source container if needed
+        val sourceDir = sourceContainer.rootDir
+        val newContainer = containerManager.getContainerById(newContainerId)
+        if (newContainer != null) {
+            val newDir = newContainer.rootDir
+            
+            // Copy user files (like registry, desktop shortcuts, etc.)
+            val filesToCopy = listOf(
+                "user.reg",
+                "system.reg",
+                "userdef.reg"
+            )
+            
+            filesToCopy.forEach { filename ->
+                val sourceFile = sourceDir.resolve(filename)
+                val destFile = newDir.resolve(filename)
+                if (sourceFile.exists()) {
+                    sourceFile.copyTo(destFile, overwrite = true)
+                }
+            }
+        }
+    }
+
+    /**
+     * Converts a Container to ContainerData.
+     */
+    fun containerToData(container: Container): ContainerData {
+        return ContainerData(
+            screenSize = container.screenSize,
+            envVars = container.envVars,
+            graphicsDriver = container.graphicsDriver,
+            audioDriver = container.audioDriver,
+            dxwrapper = container.getDXWrapper(),
+            dxwrapperConfig = container.getDXWrapperConfig(),
+            drives = container.drives,
+            executablePath = container.executablePath,
+            execArgs = container.execArgs,
+            showFPS = container.isShowFPS,
+            wow64Mode = container.isWoW64Mode(),
+            startupSelection = container.startupSelection,
+            box86Preset = container.box86Preset,
+            box64Preset = container.box64Preset,
+            desktopTheme = container.desktopTheme,
+            containerVariant = container.containerVariant,
+            wineVersion = container.wineVersion
+        )
+    }
+
+    /**
+     * Updates a container's configuration.
+     */
+    fun updateContainerConfig(context: Context, containerId: String, config: ContainerData) {
+        val containerManager = ContainerManager(context)
+        val container = containerManager.getContainerById(containerId) ?: return
+        
+        // Update container properties
+        container.screenSize = config.screenSize
+        container.envVars = config.envVars
+        container.graphicsDriver = config.graphicsDriver
+        container.audioDriver = config.audioDriver
+        container.setDXWrapper(config.dxwrapper)
+        container.setDXWrapperConfig(config.dxwrapperConfig)
+        container.drives = config.drives
+        container.executablePath = config.executablePath
+        container.execArgs = config.execArgs
+        container.isShowFPS = config.showFPS
+        container.setWoW64Mode(config.wow64Mode)
+        container.startupSelection = config.startupSelection
+        container.box86Preset = config.box86Preset
+        container.box64Preset = config.box64Preset
+        container.desktopTheme = config.desktopTheme
+        container.containerVariant = config.containerVariant
+        container.wineVersion = config.wineVersion
+        
+        // Save container
+        container.saveData()
+    }
+    
+    /**
+     * Imports a folder and its contents into a custom container
+     * Copies files to C:\users\<user>\Desktop\<foldername> and scans for executables
+     * Auto-sets the most likely executable as the autorun exe
+     */
+    fun importFolderToContainer(
+        context: Context,
+        containerId: String,
+        sourceFolder: File
+    ) {
+        if (!sourceFolder.exists()) {
+            throw IllegalArgumentException("Source folder does not exist: ${sourceFolder.absolutePath}")
+        }
+        if (!sourceFolder.isDirectory) {
+            throw IllegalArgumentException("Source path is not a directory: ${sourceFolder.absolutePath}")
+        }
+        if (!sourceFolder.canRead()) {
+            throw IllegalArgumentException("Cannot read source folder: ${sourceFolder.absolutePath}")
+        }
+        
+        val container = getContainer(context, containerId)
+        
+        // Get the C: drive path (Wine prefix drive_c directory)
+        // The C: drive is at container.rootDir/.wine/drive_c
+        val cDrivePath = File(container.rootDir, ".wine/drive_c")
+        
+        if (!cDrivePath.exists()) {
+            throw Exception("Wine C: drive not found at ${cDrivePath.absolutePath}. Container may not be fully initialized.")
+        }
+        
+        // Target: C:\users\<username>\Desktop\<imported_folder>
+        val desktopPath = File(cDrivePath, "users/xuser/Desktop")
+        desktopPath.mkdirs()
+        
+        val folderName = sourceFolder.name
+        val targetPath = File(desktopPath, folderName)
+        
+        timber.log.Timber.d("Importing folder '$folderName' from ${sourceFolder.absolutePath} to ${targetPath.absolutePath}")
+        
+        // Copy folder contents using standard File API
+        copyFolder(sourceFolder, targetPath)
+        
+        // Scan the imported folder for executables
+        val executables = mutableListOf<String>()
+        targetPath.walkTopDown().forEach { file ->
+            if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                // Get path relative to C: drive
+                val relativePath = cDrivePath.toURI().relativize(file.toURI()).path
+                executables.add("C:\\${relativePath.replace("/", "\\")}")
+                timber.log.Timber.d("Found executable: C:\\${relativePath.replace("/", "\\")}")
+            }
+        }
+        
+        // Auto-set the most likely executable
+        if (executables.isNotEmpty()) {
+            val bestExe = findBestExecutable(executables)
+            container.executablePath = bestExe
+            container.saveData()
+            timber.log.Timber.i("Auto-set executable path: $bestExe")
+        }
+        
+        timber.log.Timber.i("Successfully imported folder with ${executables.size} executables")
+    }
+    
+    /**
+     * Recursively copies a folder and its contents
+     */
+    private fun copyFolder(
+        sourceFolder: File,
+        targetFolder: File
+    ) {
+        targetFolder.mkdirs()
+        
+        sourceFolder.listFiles()?.forEach { sourceFile ->
+            val targetFile = File(targetFolder, sourceFile.name)
+            if (sourceFile.isDirectory) {
+                copyFolder(sourceFile, targetFile)
+            } else if (sourceFile.isFile) {
+                sourceFile.inputStream().use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Finds the most likely main executable from a list
+     */
+    private fun findBestExecutable(executables: List<String>): String {
+        return executables.maxByOrNull { exe ->
+            val fileName = exe.substringAfterLast('\\').lowercase()
+            val baseName = fileName.substringBeforeLast('.')
+            
+            when {
+                fileName.contains("game") -> 100
+                fileName.contains("start") && !fileName.contains("unins") -> 90
+                fileName.contains("main") -> 85
+                fileName.contains("launcher") && !fileName.contains("unins") -> 80
+                baseName.length >= 4 && !isSystemExecutable(fileName) -> 70
+                !isSystemExecutable(fileName) -> 50
+                else -> 10
+            }
+        } ?: executables.first()
+    }
+    
+    /**
+     * Checks if an executable is likely a system/utility file
+     */
+    private fun isSystemExecutable(fileName: String): Boolean {
+        val systemKeywords = listOf(
+            "unins", "setup", "install", "config", "crash", "handler",
+            "viewer", "compiler", "tool", "redist", "vcredist", "directx"
+        )
+        return systemKeywords.any { fileName.contains(it) }
+    }
 }
+

@@ -1,6 +1,7 @@
 package app.gamenative.events
 
 import app.gamenative.ui.enums.Orientation
+import com.winlator.container.ContainerData
 import java.util.EnumSet
 
 interface AndroidEvent<T> : Event<T> {
@@ -18,5 +19,7 @@ interface AndroidEvent<T> : Event<T> {
     data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
     data object HideLaunchingOverlay : AndroidEvent<Unit>
+    data class ConfigImported(val containerData: ContainerData) : AndroidEvent<Unit>
+    data class LaunchContainerToDesktop(val containerId: String) : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

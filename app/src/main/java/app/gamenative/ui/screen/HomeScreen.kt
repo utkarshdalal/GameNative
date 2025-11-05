@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gamenative.data.LibraryItem
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.model.HomeViewModel
 import app.gamenative.ui.screen.library.HomeLibraryScreen
@@ -20,7 +21,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onChat: (Long) -> Unit,
     onClickExit: () -> Unit,
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (LibraryItem, Boolean) -> Unit,
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,

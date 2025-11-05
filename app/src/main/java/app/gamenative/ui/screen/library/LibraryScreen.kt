@@ -51,7 +51,7 @@ import java.util.EnumSet
 @Composable
 fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (LibraryItem, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -88,7 +88,7 @@ private fun LibraryScreenContent(
     onModalBottomSheet: (Boolean) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (LibraryItem, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -118,7 +118,17 @@ private fun LibraryScreenContent(
                 onSearchQuery = onSearchQuery,
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
-                onNavigate = { appId -> selectedAppId = appId },
+                onNavigate = { appId ->
+                    // Check if this is a container - if so, launch directly instead of showing detail pane
+                    val item = state.appInfoList.find { it.appId == appId }
+                    if (item?.gameSource == GameSource.CONTAINER) {
+                        // Launch container directly
+                        onClickPlay(item, false)
+                    } else {
+                        // Show detail pane for regular games
+                        selectedAppId = appId
+                    }
+                },
                 onGoOnline = onGoOnline,
                 isOffline = isOffline,
             )
@@ -133,7 +143,7 @@ private fun LibraryScreenContent(
                 onBack = { selectedAppId = null },
                 onClickPlay = {
                     selectedLibraryItem?.let { libraryItem ->
-                        onClickPlay(libraryItem.gameId, it)
+                        onClickPlay(libraryItem, it)
                     }
                 },
             )

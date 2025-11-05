@@ -187,12 +187,13 @@ fun XServerScreen(
     var keyboard by remember { mutableStateOf<Keyboard?>(null) }
     // var pointerEventListener by remember { mutableStateOf<Callback<MotionEvent>?>(null) }
 
-    val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-    val appLaunchInfo = SteamService.getAppInfoOf(gameId)?.let { appInfo ->
+    val isCustomContainer = appId.contains("custom_")
+    val gameId = if (isCustomContainer) 0 else ContainerUtils.extractGameIdFromContainerId(appId)
+    val appLaunchInfo = if (isCustomContainer) null else SteamService.getAppInfoOf(gameId)?.let { appInfo ->
         SteamService.getWindowsLaunchInfos(gameId).firstOrNull()
     }
 
-    var currentAppInfo = SteamService.getAppInfoOf(gameId)
+    var currentAppInfo = if (isCustomContainer) null else SteamService.getAppInfoOf(gameId)
 
     var xServerView: XServerView? by remember {
         val result = mutableStateOf<XServerView?>(null)
@@ -633,23 +634,27 @@ fun XServerScreen(
             hideInputControls()
             val container = ContainerUtils.getContainer(context, appId)
 
-            // If emulation is enabled, select the per-container profile (named by container id)
-            if (container.isEmulateKeyboardMouse()) {
-                val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
-                val profileName = container.id.toString()
-                var target = profiles2.firstOrNull { it.name == profileName }
-                if (target == null) {
-                    target = ContainerUtils.generateOrUpdateEmulationProfile(context, container)
-                }
-                PluviaApp.inputControlsView?.setProfile(target)
-                PluviaApp.inputControlsView?.invalidate()
-            } else {
-                // Show on-screen controls if no physical controller is connected (respect current profile)
-                if (ExternalController.getController(0) == null) {
+            // Wait for the view to be laid out before setting up controls
+            // This ensures getWidth() and getHeight() return correct values
+            icView.post {
+                // If emulation is enabled, select the per-container profile (named by container id)
+                if (container.isEmulateKeyboardMouse()) {
                     val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
-                    if (profiles2.size > 2) {
-                        showInputControls(profiles2[2], xServerView.getxServer().winHandler, container)
-                        areControlsVisible = true
+                    val profileName = container.id.toString()
+                    var target = profiles2.firstOrNull { it.name == profileName }
+                    if (target == null) {
+                        target = ContainerUtils.generateOrUpdateEmulationProfile(context, container)
+                    }
+                    PluviaApp.inputControlsView?.setProfile(target)
+                    PluviaApp.inputControlsView?.invalidate()
+                } else {
+                    // Show on-screen controls if no physical controller is connected (respect current profile)
+                    if (ExternalController.getController(0) == null) {
+                        val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
+                        if (profiles2.size > 2) {
+                            showInputControls(profiles2[2], xServerView.getxServer().winHandler, container)
+                            areControlsVisible = true
+                        }
                     }
                 }
             }
@@ -1231,9 +1236,33 @@ private fun getWineStartCommand(
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
 
-    Timber.tag("XServerScreen").d("appLaunchInfo is $appLaunchInfo")
-    val args = if (bootToContainer || appLaunchInfo == null) {
+    val args = if (bootToContainer) {
         "\"wfm.exe\""
+    } else if (appLaunchInfo == null) {
+        // Custom container - check if executablePath is set
+        if (container.executablePath.isNotEmpty()) {
+            
+            // Convert Windows path (C:\path\to\game.exe) to Wine path (C:/path/to/game.exe)
+            val winePath = container.executablePath.replace('\\', '/')
+            
+            // Extract working directory from executable path
+            val executableDir = winePath.substringBeforeLast('/', "")
+            if (executableDir.isNotEmpty()) {
+                // Set working directory to the exe's directory in the Wine filesystem
+                // For C:/users/path, the actual directory is container.rootDir/.wine/drive_c/users/path
+                val execDirWithoutDrive = executableDir.substringAfter(':', "")
+                guestProgramLauncherComponent.workingDir = File(container.rootDir, ".wine/drive_c$execDirWithoutDrive")
+                Timber.i("Working directory is ${guestProgramLauncherComponent.workingDir}")
+            } else {
+                guestProgramLauncherComponent.workingDir = File(container.rootDir, ".wine/drive_c")
+            }
+            
+            Timber.i("Final exe path is $winePath")
+            "\"$winePath\""
+        } else {
+            Timber.i("No executablePath set for custom container, defaulting to wfm.exe")
+            "\"wfm.exe\""
+        }
     } else {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)

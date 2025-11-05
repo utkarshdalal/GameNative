@@ -511,6 +511,7 @@ fun AppScreen(
         visible = showConfigDialog,
         title = "${appInfo.name} Config",
         initialConfig = containerData,
+        containerId = appId,
         onDismissRequest = { showConfigDialog = false },
         onSave = {
             showConfigDialog = false

@@ -275,6 +275,41 @@ public class ContainerManager {
         return null;
     }
 
+    /**
+     * Creates an empty standalone container not associated with any game.
+     * @param containerName Display name for the container
+     * @return Future that completes with the created container
+     */
+    public Future<Container> createEmptyContainerFuture(String containerName) {
+        // Generate unique ID with timestamp to avoid collisions
+        String containerId = "custom_" + System.currentTimeMillis();
+        
+        JSONObject data = new JSONObject();
+        try {
+            data.put("name", containerName);
+            data.put("screenSize", Container.DEFAULT_SCREEN_SIZE);
+            data.put("envVars", Container.DEFAULT_ENV_VARS);
+            data.put("cpuList", Container.getFallbackCPUList());
+            data.put("cpuListWoW64", Container.getFallbackCPUListWoW64());
+            data.put("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER);
+            data.put("dxwrapper", Container.DEFAULT_DXWRAPPER);
+            data.put("dxwrapperConfig", "");
+            data.put("audioDriver", Container.DEFAULT_AUDIO_DRIVER);
+            data.put("wincomponents", Container.DEFAULT_WINCOMPONENTS);
+            data.put("drives", Container.DEFAULT_DRIVES); // No game-specific drives
+            data.put("showFPS", false);
+            data.put("wow64Mode", true);
+            data.put("startupSelection", Container.STARTUP_SELECTION_ESSENTIAL);
+            data.put("box86Preset", Box86_64Preset.COMPATIBILITY);
+            data.put("box64Preset", Box86_64Preset.COMPATIBILITY);
+            data.put("desktopTheme", WineThemeManager.DEFAULT_DESKTOP_THEME);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        return createContainerFuture(containerId, data);
+    }
+
     private void deleteCommonDlls(String dstName,
                                   JSONObject commonDlls,
                                   File containerDir) throws JSONException {

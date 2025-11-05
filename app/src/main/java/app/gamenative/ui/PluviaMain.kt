@@ -43,6 +43,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryItem
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
@@ -132,6 +133,13 @@ fun PluviaMain(
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = viewModel::launchApp,
                     )
+                }
+
+                is MainViewModel.MainUiEvent.LaunchContainerToDesktop -> {
+                    Timber.i("[PluviaMain]: Received LaunchContainerToDesktop UI event for container ${event.containerId}")
+                    viewModel.setLaunchedAppId(event.containerId)
+                    viewModel.setBootToContainer(true)
+                    navController.navigate(PluviaScreen.XServer.route)
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
@@ -768,21 +776,33 @@ fun PluviaMain(
             ) { backStackEntry ->
                 val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
                 HomeScreen(
-                    onClickPlay = { gameId, asContainer ->
-                        val appId = "${GameSource.STEAM.name}_$gameId"
-                        viewModel.setLaunchedAppId(appId)
-                        viewModel.setBootToContainer(asContainer)
-                        viewModel.setOffline(isOffline)
-                        preLaunchApp(
-                            context = context,
-                            appId = appId,
-                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                            setLoadingProgress = viewModel::setLoadingDialogProgress,
-                            setLoadingMessage = viewModel::setLoadingDialogMessage,
-                            setMessageDialogState = { msgDialogState = it },
-                            onSuccess = viewModel::launchApp,
-                            isOffline = isOffline,
-                        )
+                    onClickPlay = { libraryItem, asContainer ->
+                        when (libraryItem.gameSource) {
+                            GameSource.STEAM -> {
+                                val appId = "${GameSource.STEAM.name}_${libraryItem.gameId}"
+                                viewModel.setLaunchedAppId(appId)
+                                viewModel.setBootToContainer(asContainer)
+                                viewModel.setOffline(isOffline)
+                                preLaunchApp(
+                                    context = context,
+                                    appId = appId,
+                                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                                    setMessageDialogState = { msgDialogState = it },
+                                    onSuccess = viewModel::launchApp,
+                                    isOffline = isOffline,
+                                )
+                            }
+                            GameSource.CONTAINER -> {
+                                // Launch custom container
+                                // Only boot to desktop (wfm.exe) if asContainer is true
+                                // Otherwise, use the container's executable path
+                                viewModel.setLaunchedAppId(libraryItem.containerId)
+                                viewModel.setBootToContainer(asContainer)
+                                viewModel.launchApp(context, libraryItem.containerId)
+                            }
+                        }
                     },
                     onClickExit = {
                         PluviaApp.events.emit(AndroidEvent.EndProcess)
@@ -869,6 +889,16 @@ fun PluviaMain(
                     onAppTheme = viewModel::setTheme,
                     onPaletteStyle = viewModel::setPalette,
                     onBack = { navController.navigateUp() },
+                    onNavigateToContainerManagement = {
+                        navController.navigate(PluviaScreen.ContainerManagement.route)
+                    }
+                )
+            }
+
+            /** Container Management **/
+            composable(route = PluviaScreen.ContainerManagement.route) {
+                app.gamenative.ui.screen.settings.ContainerManagementScreen(
+                    onNavigateBack = { navController.navigateUp() }
                 )
             }
         }

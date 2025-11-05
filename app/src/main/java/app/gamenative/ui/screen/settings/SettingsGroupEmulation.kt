@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.CreateEmptyContainerDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
@@ -15,11 +16,14 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 
 @Composable
-fun SettingsGroupEmulation() {
+fun SettingsGroupEmulation(
+    onNavigateToContainerManagement: () -> Unit = {}
+) {
     SettingsGroup(title = { Text(text = "Emulation") }) {
         var showConfigDialog by rememberSaveable { mutableStateOf(false) }
         var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
         var showBox64PresetsDialog by rememberSaveable { mutableStateOf(false) }
+        var showCreateContainerDialog by rememberSaveable { mutableStateOf(false) }
 
         OrientationDialog(
             openDialog = showOrientationDialog,
@@ -43,6 +47,11 @@ fun SettingsGroupEmulation() {
             onDismissRequest = { showBox64PresetsDialog = false },
         )
 
+        CreateEmptyContainerDialog(
+            visible = showCreateContainerDialog,
+            onDismissRequest = { showCreateContainerDialog = false },
+        )
+
         var showDriverManager by rememberSaveable { mutableStateOf(false) }
         if (showDriverManager) {
             // Lazy-load dialog composable to avoid cyclic imports
@@ -59,6 +68,18 @@ fun SettingsGroupEmulation() {
             title = { Text(text = "Allowed Orientations") },
             subtitle = { Text(text = "Choose which orientations can be rotated to when in-game") },
             onClick = { showOrientationDialog = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = "Create Empty Container") },
+            subtitle = { Text(text = "Create a standalone container for manual setup and testing") },
+            onClick = { showCreateContainerDialog = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = "Manage Containers") },
+            subtitle = { Text(text = "View, edit, launch, and manage custom containers") },
+            onClick = onNavigateToContainerManagement,
         )
         SettingsMenuLink(
             colors = settingsTileColors(),

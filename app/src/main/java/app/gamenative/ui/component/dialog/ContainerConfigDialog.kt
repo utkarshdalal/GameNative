@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Context
 import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
@@ -123,6 +124,7 @@ fun ContainerConfigDialog(
     default: Boolean = false,
     title: String,
     initialConfig: ContainerData = ContainerData(),
+    containerId: String = "",
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
 ) {
@@ -812,12 +814,13 @@ fun ContainerConfigDialog(
                                         )
                                     }
                                 }
-                                // Executable Path dropdown with all EXEs from A: drive
+                                // Executable Path dropdown - scans all container drives
                                 ExecutablePathDropdown(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                                     value = config.executablePath,
                                     onValueChange = { config = config.copy(executablePath = it) },
                                     containerData = config,
+                                    containerId = containerId,
                                 )
                                 OutlinedTextField(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1781,7 +1784,8 @@ private fun Preview_ContainerConfigDialog() {
 }
 
 /**
- * Editable dropdown for selecting executable paths from the container's A: drive
+ * Editable dropdown for selecting executable paths from the container's drives
+ * Scans A: drive for Steam games, or all drives for custom containers
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1790,6 +1794,7 @@ private fun ExecutablePathDropdown(
     value: String,
     onValueChange: (String) -> Unit,
     containerData: ContainerData,
+    containerId: String = "",
 ) {
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -1797,7 +1802,7 @@ private fun ExecutablePathDropdown(
 
     // Load executables from A: drive when component is first created
     LaunchedEffect(containerData.drives) {
-        executables = scanExecutablesInADrive(containerData.drives)
+        executables = scanExecutablesInADrive(context, containerData.drives, containerId)
     }
 
     ExposedDropdownMenuBox(
@@ -1853,34 +1858,65 @@ private fun ExecutablePathDropdown(
 }
 
 /**
- * Scans the container's A: drive for all .exe files
+ * Scans the container's drives for all .exe files
+ * For Steam games, scans A: drive. For custom containers, scans all drives with priority to C:
  */
-private fun scanExecutablesInADrive(drives: String): List<String> {
+private fun scanExecutablesInADrive(
+    context: Context,
+    drives: String,
+    containerId: String,
+): List<String> {
     val executables = mutableListOf<String>()
 
     try {
-        // Find the A: drive path from container drives
-        val aDrivePath = getADrivePath(drives)
-        if (aDrivePath == null) {
-            timber.log.Timber.w("No A: drive found in container drives")
-            return emptyList()
-        }
-
-        val aDir = java.io.File(aDrivePath)
-        if (!aDir.exists() || !aDir.isDirectory) {
-            timber.log.Timber.w("A: drive path does not exist or is not a directory: $aDrivePath")
-            return emptyList()
-        }
-
-        timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
-
-        // Recursively scan for .exe files using walkTopDown
-        aDir.walkTopDown().forEach { file ->
-            if (file.isFile && file.name.lowercase().endsWith(".exe")) {
-                // Convert to relative Windows path format
-                val relativePath = aDir.toURI().relativize(file.toURI()).path
-                executables.add(relativePath)
+        // Check if this is a custom container (ID contains "custom_")
+        val isCustomContainer = containerId.contains("custom_")
+        
+        // For custom containers, scan C: drive first (where imported folders are)
+        if (isCustomContainer && containerId.isNotEmpty()) {
+            try {
+                val container = app.gamenative.utils.ContainerUtils.getContainer(context, containerId)
+                if (container != null) {
+                    val cDriveDir = java.io.File(container.rootDir, ".wine/drive_c")
+                    if (cDriveDir.exists() && cDriveDir.isDirectory) {
+                        timber.log.Timber.d("Scanning C: drive for custom container: ${cDriveDir.absolutePath}")
+                        scanDriveForExecutables(cDriveDir, "C:", executables)
+                        timber.log.Timber.d("Found ${executables.size} executables in C: drive")
+                    }
+                }
+            } catch (e: Exception) {
+                timber.log.Timber.e(e, "Error scanning C: drive for custom container")
             }
+        }
+        
+        // First try A: drive (for Steam games)
+        val aDrivePath = getADrivePath(drives)
+        if (aDrivePath != null) {
+            val aDir = java.io.File(aDrivePath)
+            if (aDir.exists() && aDir.isDirectory) {
+                timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
+                scanDriveForExecutables(aDir, "A:", executables)
+                timber.log.Timber.d("Found ${executables.size} executables in A: drive")
+            }
+        }
+        
+        // If no A: drive or no executables found, scan all other drives
+        if (executables.isEmpty()) {
+            timber.log.Timber.d("Scanning all container drives for executables")
+            for (drive in Container.drivesIterator(drives)) {
+                val driveLetter = drive[0]
+                val drivePath = drive[1]
+                
+                // Skip A: drive as we already scanned it
+                if (driveLetter == "A") continue
+                
+                val driveDir = java.io.File(drivePath)
+                if (driveDir.exists() && driveDir.isDirectory) {
+                    timber.log.Timber.d("Scanning drive $driveLetter: at $drivePath")
+                    scanDriveForExecutables(driveDir, "$driveLetter:", executables)
+                }
+            }
+            timber.log.Timber.d("Found ${executables.size} total executables across all drives")
         }
 
         // Sort alphabetically and prioritize common game executables
@@ -1895,13 +1931,79 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
             }
         }
 
-        timber.log.Timber.d("Found ${executables.size} executables in A: drive")
-
     } catch (e: Exception) {
-        timber.log.Timber.e(e, "Error scanning A: drive for executables")
+        timber.log.Timber.e(e, "Error scanning drives for executables")
     }
 
     return executables
+}
+
+/**
+ * Scans a single drive directory for .exe files
+ */
+private fun scanDriveForExecutables(driveDir: java.io.File, driveLetter: String, executables: MutableList<String>) {
+    // Common Wine system directories to skip
+    val systemDirs = setOf(
+        "windows",
+        "program files",
+        "program files (x86)",
+        "programdata",
+        "users/public"
+    )
+    
+    driveDir.walkTopDown()
+        .onEnter { dir ->
+            // Skip Wine system directories
+            val dirNameLower = dir.name.lowercase()
+            val shouldEnter = !systemDirs.contains(dirNameLower)
+            if (!shouldEnter) {
+                timber.log.Timber.d("Skipping system directory: ${dir.name}")
+            }
+            shouldEnter
+        }
+        .forEach { file ->
+            if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                // Additional filter: skip common Wine system executables
+                if (!isWineSystemExecutable(file.name)) {
+                    // Convert to Windows path format: C:\path\to\file.exe
+                    val relativePath = driveDir.toURI().relativize(file.toURI()).path
+                    executables.add("$driveLetter\\$relativePath")
+                }
+            }
+        }
+}
+
+/**
+ * Checks if an executable is a Wine system file that should be hidden
+ */
+private fun isWineSystemExecutable(fileName: String): Boolean {
+    val lowerName = fileName.lowercase()
+    
+    // Common Wine utilities and system executables
+    val wineSystemExes = setOf(
+        "explorer.exe",
+        "winecfg.exe",
+        "wineboot.exe",
+        "winefile.exe",
+        "winemine.exe",
+        "winepath.exe",
+        "regsvr32.exe",
+        "regedit.exe",
+        "notepad.exe",
+        "wordpad.exe",
+        "taskmgr.exe",
+        "control.exe",
+        "cmd.exe",
+        "winedbg.exe",
+        "wineconsole.exe",
+        "progman.exe",
+        "clock.exe",
+        "winhelp.exe",
+        "rundll32.exe",
+        "msiexec.exe"
+    )
+    
+    return wineSystemExes.contains(lowerName)
 }
 
 /**

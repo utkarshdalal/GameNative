@@ -34,6 +34,7 @@ fun SettingsScreen(
     onAppTheme: (AppTheme) -> Unit,
     onPaletteStyle: (PaletteStyle) -> Unit,
     onBack: () -> Unit,
+    onNavigateToContainerManagement: () -> Unit = {},
 ) {
     SettingsScreenContent(
         appTheme = appTheme,
@@ -41,6 +42,7 @@ fun SettingsScreen(
         onAppTheme = onAppTheme,
         onPaletteStyle = onPaletteStyle,
         onBack = onBack,
+        onNavigateToContainerManagement = onNavigateToContainerManagement,
     )
 }
 
@@ -52,6 +54,7 @@ private fun SettingsScreenContent(
     onAppTheme: (AppTheme) -> Unit,
     onPaletteStyle: (PaletteStyle) -> Unit,
     onBack: () -> Unit,
+    onNavigateToContainerManagement: () -> Unit = {},
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
@@ -74,7 +77,9 @@ private fun SettingsScreenContent(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            SettingsGroupEmulation()
+            SettingsGroupEmulation(
+                onNavigateToContainerManagement = onNavigateToContainerManagement
+            )
             SettingsGroupInterface(
                 appTheme = appTheme,
                 paletteStyle = paletteStyle,

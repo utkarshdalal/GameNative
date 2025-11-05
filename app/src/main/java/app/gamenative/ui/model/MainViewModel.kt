@@ -50,6 +50,7 @@ class MainViewModel @Inject constructor(
         data object OnLoggedOut : MainUiEvent()
         data object LaunchApp : MainUiEvent()
         data class ExternalGameLaunch(val appId: String) : MainUiEvent()
+        data class LaunchContainerToDesktop(val containerId: String) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
@@ -109,11 +110,20 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private val onLaunchContainerToDesktop: (AndroidEvent.LaunchContainerToDesktop) -> Unit = {
+        Timber.i("[MainViewModel]: Received launch container to desktop event for container ${it.containerId}")
+        viewModelScope.launch {
+            Timber.i("[MainViewModel]: Sending LaunchContainerToDesktop UI event for container ${it.containerId}")
+            _uiEvent.send(MainUiEvent.LaunchContainerToDesktop(it.containerId))
+        }
+    }
+
     private var bootingSplashTimeoutJob: Job? = null
 
     init {
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
+        PluviaApp.events.on<AndroidEvent.LaunchContainerToDesktop, Unit>(onLaunchContainerToDesktop)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLoggingIn)
@@ -226,19 +236,26 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
-            val apiJob = viewModelScope.async(Dispatchers.IO) {
-                val container = ContainerUtils.getOrCreateContainer(context, appId)
-                if (container.isLaunchRealSteam()) {
-                    SteamUtils.restoreSteamApi(context, appId)
-                } else {
-                    SteamUtils.replaceSteamApi(context, appId)
+            // Custom containers don't need Steam API logic
+            val isCustomContainer = appId.contains("custom_")
+            if (!isCustomContainer) {
+                val apiJob = viewModelScope.async(Dispatchers.IO) {
+                    val container = ContainerUtils.getOrCreateContainer(context, appId)
+                    if (container.isLaunchRealSteam()) {
+                        SteamUtils.restoreSteamApi(context, appId)
+                    } else {
+                        SteamUtils.replaceSteamApi(context, appId)
+                    }
                 }
+
+                // Small delay to ensure the splash screen is visible before proceeding
+                delay(100)
+
+                apiJob.await()
+            } else {
+                // Small delay to ensure the splash screen is visible
+                delay(100)
             }
-
-            // Small delay to ensure the splash screen is visible before proceeding
-            delay(100)
-
-            apiJob.await()
 
             _uiEvent.send(MainUiEvent.LaunchApp)
         }
@@ -249,6 +266,13 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
+            
+            // Custom containers don't need Steam-specific exit logic
+            val isCustomContainer = appId.startsWith("custom_")
+            if (isCustomContainer) {
+                return@launch
+            }
+            
             // Check if we have a temporary override before doing anything
             val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
@@ -297,6 +321,10 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
 
+            // Skip Steam-specific processing for custom containers
+            val isCustomContainer = appId.startsWith("custom_")
+            if (isCustomContainer) return@launch
+            
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
             SteamService.getAppInfoOf(gameId)?.let { appInfo ->
