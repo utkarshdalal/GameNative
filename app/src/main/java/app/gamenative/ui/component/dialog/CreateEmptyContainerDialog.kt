@@ -239,6 +239,10 @@ fun CreateEmptyContainerDialog(
                                         "Container created successfully",
                                         Toast.LENGTH_SHORT
                                     ).show()
+                                    
+                                    // Emit event to refresh the library
+                                    app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.RefreshLibrary)
+                                    
                                     onContainerCreated()
                                     onDismissRequest()
                                 }

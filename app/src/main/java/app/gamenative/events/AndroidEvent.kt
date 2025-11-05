@@ -21,5 +21,6 @@ interface AndroidEvent<T> : Event<T> {
     data object HideLaunchingOverlay : AndroidEvent<Unit>
     data class ConfigImported(val containerData: ContainerData) : AndroidEvent<Unit>
     data class LaunchContainerToDesktop(val containerId: String) : AndroidEvent<Unit>
+    data object RefreshLibrary : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

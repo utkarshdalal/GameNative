@@ -50,7 +50,15 @@ class LibraryViewModel @Inject constructor(
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
 
+    // Event handler for library refresh
+    private val onRefreshLibrary: (app.gamenative.events.AndroidEvent.RefreshLibrary) -> Unit = {
+        refreshLibrary()
+    }
+
     init {
+        // Register event listener
+        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.RefreshLibrary, Unit>(onRefreshLibrary)
+        
         viewModelScope.launch(Dispatchers.IO) {
             steamAppDao.getAllOwnedApps(
                 // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
@@ -107,6 +115,11 @@ class LibraryViewModel @Inject constructor(
         var toPage = max(0, paginationCurrentPage + pageIncrement)
         toPage = min(toPage, lastPageInCurrentFilter)
         onFilterApps(toPage)
+    }
+
+    fun refreshLibrary() {
+        // Refresh the library to pick up new custom containers
+        onFilterApps(paginationCurrentPage)
     }
 
     private fun onFilterApps(paginationPage: Int = 0) {
@@ -231,5 +244,11 @@ class LibraryViewModel @Inject constructor(
                     )
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Unregister event listener
+        app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.RefreshLibrary, Unit>(onRefreshLibrary)
     }
 }
