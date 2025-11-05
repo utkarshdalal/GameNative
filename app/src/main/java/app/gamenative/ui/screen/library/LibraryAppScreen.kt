@@ -182,6 +182,13 @@ fun AppScreen(
 
     val gameId = libraryItem.gameId
     val appId = libraryItem.appId
+    
+    // Strip CONTAINER_ prefix if present to get actual container ID
+    val containerId = if (appId.startsWith("CONTAINER_")) {
+        appId.removePrefix("CONTAINER_")
+    } else {
+        appId
+    }
 
     val appInfo by remember(appId) {
         mutableStateOf(SteamService.getAppInfoOf(gameId)!!)
@@ -217,7 +224,7 @@ fun AppScreen(
     }
 
     val showEditConfigDialog: () -> Unit = {
-        val container = ContainerUtils.getOrCreateContainer(context, appId)
+        val container = ContainerUtils.getOrCreateContainer(context, containerId)
         containerData = ContainerUtils.toContainerData(container)
         // Seed FEXCore UI fields from actual per-container config file so values show up when editing
         try {
@@ -512,11 +519,11 @@ fun AppScreen(
         visible = showConfigDialog,
         title = "${appInfo.name} Config",
         initialConfig = containerData,
-        containerId = appId,
+        containerId = containerId,
         onDismissRequest = { showConfigDialog = false },
         onSave = {
             showConfigDialog = false
-            ContainerUtils.applyToContainer(context, appId, it)
+            ContainerUtils.applyToContainer(context, containerId, it)
         },
     )
 

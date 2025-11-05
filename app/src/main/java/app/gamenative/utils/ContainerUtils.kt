@@ -453,17 +453,7 @@ object ContainerUtils {
 
     fun getContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
-        // Normalize appId by removing GameSource prefix if present (e.g., "CONTAINER_custom_123" -> "custom_123")
-        val normalizedId = when {
-            appId.startsWith("${GameSource.CONTAINER.name}_") -> appId.removePrefix("${GameSource.CONTAINER.name}_")
-            appId.startsWith("${GameSource.STEAM.name}_") -> appId.removePrefix("${GameSource.STEAM.name}_")
-            else -> appId
-        }
-        return if (containerManager.hasContainer(normalizedId)) {
-            containerManager.getContainerById(normalizedId)
-        } else {
-            throw Exception("Container does not exist for game $appId (normalized: $normalizedId)")
-        }
+        return containerManager.getContainerById(appId)
     }
 
     private fun createNewContainer(
