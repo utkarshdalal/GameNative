@@ -53,9 +53,13 @@ internal fun LibraryDetailPane(
                 onGoOnline = {},
             )
         } else {
-            // Don't show detailed app screen for containers (they don't have Steam app info)
+            // Show appropriate screen based on game source
             if (libraryItem.gameSource == GameSource.CONTAINER) {
-                // Show nothing for now - in future could show container management here
+                app.gamenative.ui.screen.library.ContainerInfoScreen(
+                    libraryItem = libraryItem,
+                    onClickPlay = onClickPlay,
+                    onBack = onBack,
+                )
             } else {
                 AppScreen(
                     libraryItem = libraryItem,

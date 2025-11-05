@@ -42,6 +42,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
@@ -1547,6 +1548,289 @@ private fun Preview_AppScreen() {
                 }.toTypedArray(),
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ContainerInfoScreen(
+    libraryItem: LibraryItem,
+    onClickPlay: (Boolean) -> Unit,
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    val containerId = libraryItem.containerId
+    val container by remember(containerId) {
+        mutableStateOf(ContainerUtils.getContainer(context, containerId))
+    }
+    
+    var showConfigDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
+    var optionsMenuVisible by remember { mutableStateOf(false) }
+    
+    val containerName = container?.name ?: "Unknown Container"
+    
+    val optionsMenu = listOfNotNull(
+        AppMenuOption(
+            optionType = AppOptionMenuType.EditContainer,
+            onClick = { showConfigDialog = true }
+        ),
+        AppMenuOption(
+            optionType = AppOptionMenuType.RunContainer,
+            onClick = { onClickPlay(true) }
+        ),
+        if (containerId.contains("custom_")) {
+            AppMenuOption(
+                optionType = AppOptionMenuType.Uninstall,
+                onClick = { showDeleteConfirmation = true }
+            )
+        } else null
+    )
+    
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Header with gradient background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    )
+            ) {
+                // Back button and menu
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BackButton(onClick = onBack)
+                    
+                    Box {
+                        IconButton(
+                            onClick = { optionsMenuVisible = !optionsMenuVisible }
+                        ) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "Options",
+                                tint = Color.White
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = optionsMenuVisible,
+                            onDismissRequest = { optionsMenuVisible = false }
+                        ) {
+                            optionsMenu.forEach { menuOption ->
+                                DropdownMenuItem(
+                                    text = { Text(menuOption.optionType.text) },
+                                    onClick = {
+                                        menuOption.onClick()
+                                        optionsMenuVisible = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Container name
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        text = containerName,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                offset = Offset(0f, 2f),
+                                blurRadius = 10f
+                            )
+                        ),
+                        color = Color.White
+                    )
+                    
+                    Text(
+                        text = "Custom Container",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+            }
+            
+            // Action buttons
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Play button
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = { onClickPlay(false) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        Text(
+                            text = "Play",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                    
+                    // Open Container button
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { onClickPlay(true) },
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        Text(
+                            text = "Open Container",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Container info
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Container Information",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        
+                        if (container != null) {
+                            InfoRow(label = "ID", value = containerId)
+                            container?.executablePath?.let {
+                                if (it.isNotEmpty()) {
+                                    InfoRow(label = "Executable", value = it)
+                                }
+                            }
+                            InfoRow(label = "Wine Version", value = container?.wineVersion ?: "Default")
+                            InfoRow(label = "Screen Size", value = container?.screenSize ?: "Default")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Config dialog
+    if (showConfigDialog && container != null) {
+        ContainerConfigDialog(
+            visible = showConfigDialog,
+            title = containerName,
+            default = false,
+            initialConfig = ContainerUtils.containerToData(container!!),
+            containerId = containerId,
+            onDismissRequest = { showConfigDialog = false },
+            onSave = { newConfig ->
+                ContainerUtils.updateContainerConfig(context, containerId, newConfig)
+                showConfigDialog = false
+            }
+        )
+    }
+    
+    // Delete confirmation
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Container") },
+            text = { Text("Are you sure you want to delete this custom container? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            ContainerUtils.deleteContainer(context, containerId)
+                            app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.RefreshLibrary)
+                            withContext(Dispatchers.Main) {
+                                showDeleteConfirmation = false
+                                onBack()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.Medium
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

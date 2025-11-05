@@ -119,15 +119,8 @@ private fun LibraryScreenContent(
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
                 onNavigate = { appId ->
-                    // Check if this is a container - if so, launch directly instead of showing detail pane
-                    val item = state.appInfoList.find { it.appId == appId }
-                    if (item?.gameSource == GameSource.CONTAINER) {
-                        // Launch container directly
-                        onClickPlay(item, false)
-                    } else {
-                        // Show detail pane for regular games
-                        selectedAppId = appId
-                    }
+                    // Show detail pane for all items (including containers)
+                    selectedAppId = appId
                 },
                 onGoOnline = onGoOnline,
                 isOffline = isOffline,
