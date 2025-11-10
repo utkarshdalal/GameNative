@@ -10,7 +10,7 @@ import kotlin.math.roundToInt
 
 /**
  * Main service class for interacting with HowLongToBeat API
- * This has been adapted from the excellent work by https://github.com/ckatzorke/howlongtobeat
+ * This has been adapted to Kotlin from the excellent work by https://github.com/ckatzorke/howlongtobeat
  */
 class HowLongToBeatService {
 

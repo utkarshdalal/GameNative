@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -75,6 +76,7 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
+import app.gamenative.service.HowLongToBeat.HowLongToBeatService
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -184,6 +186,24 @@ fun AppScreen(
 
     val appInfo by remember(appId) {
         mutableStateOf(SteamService.getAppInfoOf(gameId)!!)
+    }
+
+    // How Long To Beat Integrations
+    val hltbService = remember { HowLongToBeatService() }
+    var hltbData by remember { mutableStateOf<app.gamenative.service.HowLongToBeat.howlongtobeat.HowLongToBeatEntry?>(null) }
+    var isLoadingHltb by remember { mutableStateOf(false) }
+
+    LaunchedEffect(appInfo.name) {
+        isLoadingHltb = true
+        try {
+            val results = hltbService.search(appInfo.name)
+            hltbData = results.firstOrNull()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to fetch HowLongToBeat data for ${appInfo.name}")
+            hltbData = null
+        } finally {
+            isLoadingHltb = false
+        }
     }
 
     var downloadInfo by remember(appId) {
@@ -581,6 +601,8 @@ fun AppScreen(
             isValidToDownload = isValidToDownload,
             isDownloading = isDownloading(),
             downloadProgress = downloadProgress,
+            hltbData = hltbData,
+            isLoadingHltb = isLoadingHltb,
             onDownloadInstallClick = {
                 if (isDownloading()) {
                     // Prompt to cancel ongoing download
@@ -864,6 +886,8 @@ private fun AppScreenContent(
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
+    hltbData: app.gamenative.service.HowLongToBeat.howlongtobeat.HowLongToBeatEntry? = null,
+    isLoadingHltb: Boolean = false,
     vararg optionsMenu: AppMenuOption,
 ) {
     // Determine Wi-Fi connectivity for 'Wi-Fi only' preference
@@ -1372,13 +1396,12 @@ private fun AppScreenContent(
                                     if (isInstalled && (appSizeOnDisk.isEmpty() || appSizeOnDisk == " ...")) {
                                         SkeletonText(lines = 1, lineHeight = 20)
                                     } else {
-                                        if (!isInstalled){
+                                        if (!isInstalled) {
                                             Text(
                                                 text = DownloadService.getSizeFromStoreDisplay(appInfo.id),
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                                             )
-                                        }
-                                        else {
+                                        } else {
                                             Text(
                                                 text = appSizeOnDisk,
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
@@ -1390,7 +1413,7 @@ private fun AppScreenContent(
 
                             // Location item
                             if (isInstalled) {
-                                item (span = { GridItemSpan(maxLineSpan) }) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
 
                                     Column {
                                         Text(
@@ -1431,6 +1454,7 @@ private fun AppScreenContent(
                                 }
                             }
 
+
                             // Release Date item
                             item {
                                 Column {
@@ -1447,6 +1471,71 @@ private fun AppScreenContent(
                                         },
                                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                                     )
+                                }
+                            }
+
+                            item(span = { GridItemSpan(maxLineSpan)}) {
+                                Column {
+                                    HorizontalDivider(thickness = 2.dp)
+                                    Text(
+                                        text = "How Long To Beat",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
+                                    )
+                                }
+                            }
+
+                            // Main Story completion time
+                            item {
+                                Column {
+                                    Text(
+                                        text = "Main Story",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    when {
+                                        isLoadingHltb -> Text(
+                                            text = "Loading...",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        hltbData?.gameplayMain?.let { it > 0 } == true -> Text(
+                                            text = "${hltbData?.gameplayMain} hours",
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        )
+                                        else -> Text(
+                                            text = "N/A",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Completionist time
+                            item {
+                                Column {
+                                    Text(
+                                        text = "Completionist",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    when {
+                                        isLoadingHltb -> Text(
+                                            text = "Loading...",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        hltbData?.gameplayCompletionist?.let { it > 0 } == true -> Text(
+                                            text = "${hltbData?.gameplayCompletionist} hours",
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        )
+                                        else -> Text(
+                                            text = "N/A",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
