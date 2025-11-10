@@ -23,6 +23,7 @@ internal class HltbSearch {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+        encodeDefaults = true  // Encode default values in JSON
     }
 
     @Serializable
@@ -30,7 +31,7 @@ internal class HltbSearch {
         val searchType: String = "games",
         val searchTerms: List<String>,
         val searchPage: Int = 1,
-        val size: Int = 20,
+        val size: Int = 5,
         val searchOptions: SearchOptions = SearchOptions()
     )
 
@@ -47,18 +48,18 @@ internal class HltbSearch {
     data class GamesOptions(
         val userId: Int = 0,
         val platform: String = "",
-        val sortCategory: String = "popular",
+        val sortCategory: String = "name",
         val rangeCategory: String = "main",
         val rangeTime: RangeTime = RangeTime(),
         val gameplay: Gameplay = Gameplay(),
         val rangeYear: RangeYear = RangeYear(),
-        val modifier: String = ""
+        val modifier: String = "hide_dlc"
     )
 
     @Serializable
     data class RangeTime(
-        val min: Int? = null,
-        val max: Int? = null
+        val min: Int = 0,
+        val max: Int = 0
     )
 
     @Serializable
@@ -109,15 +110,16 @@ internal class HltbSearch {
         val request = Request.Builder()
             .url(SEARCH_URL)
             .post(requestBody)
-            .addHeader("User-Agent", USER_AGENTS.random())
             .addHeader("Content-Type", "application/json")
-            .addHeader("Accept", "*/*")
-            .addHeader("Referer", BASE_URL)
+            .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36")
+            .addHeader("Referer", "https://howlongtobeat.com/")
+            .addHeader("Origin", "https://howlongtobeat.com")
+            .addHeader("Authority", "howlongtobeat.com")
             .build()
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw HltbException("Search failed: ${response.code}")
+                throw HltbException("Search failed: ${response.code} - ${response.message}")
             }
 
             val body = response.body?.string()
@@ -136,9 +138,10 @@ internal class HltbSearch {
         val request = Request.Builder()
             .url("$DETAIL_URL?id=$gameId")
             .get()
-            .addHeader("User-Agent", USER_AGENTS.random())
-            .addHeader("Accept", "text/html")
-            .addHeader("Referer", BASE_URL)
+            .addHeader("User-Agent", "Chrome: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.3")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Origin", "https://howlongtobeat.com/")
+            .addHeader("Referer", "https://howlongtobeat.com/")
             .build()
 
         client.newCall(request).execute().use { response ->
@@ -158,13 +161,6 @@ internal class HltbSearch {
         const val IMAGE_URL = "$BASE_URL/games/"
 
         private val MEDIA_TYPE_JSON = "application/json; charset=utf-8".toMediaType()
-
-        // Rotate user agents to avoid rate limiting
-        private val USER_AGENTS = listOf(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
     }
 }
 

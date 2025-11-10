@@ -88,7 +88,7 @@ internal object HowLongToBeatParser {
             gameplayMain = gameplayMain,
             gameplayMainExtra = gameplayMainExtra,
             gameplayCompletionist = gameplayComplete,
-            similarity = 1.0,
+            similarity = 0.7, // We can adjust this to be fuzzier on the search
             searchTerm = gameName
         )
     }
