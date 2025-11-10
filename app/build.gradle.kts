@@ -216,6 +216,7 @@ dependencies {
     implementation(libs.apng)
     implementation(libs.datastore.preferences)
     implementation(libs.jetbrains.kotlinx.json)
+    implementation(libs.jsoup)
     implementation(libs.kotlin.coroutines)
     implementation(libs.timber)
     implementation(libs.zxing)
