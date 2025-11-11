@@ -1678,9 +1678,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             instance?._unifiedFriends!!.getOwnedGames(friendID)
         }
 
-        /**
-         * Sync playtime data from owned games to the SteamApp database
-         */
         suspend fun syncPlaytimeData() = withContext(Dispatchers.IO) {
             try {
                 val steamId = userSteamId?.convertToUInt64() ?: return@withContext
@@ -1695,8 +1692,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
                 }
-
-                Timber.i("Synced playtime data for ${ownedGames.size} games")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to sync playtime data")
             }

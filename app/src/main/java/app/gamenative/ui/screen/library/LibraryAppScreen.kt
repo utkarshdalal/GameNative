@@ -1363,7 +1363,6 @@ internal fun AppScreenContent(
                                 }
                             }
 
-                            // Playtime item (only show if > 0)
                             if (playtimeForever > 0) {
                                 item {
                                     Column {
@@ -1381,7 +1380,6 @@ internal fun AppScreenContent(
                                 }
                             }
 
-                            // Metacritic score item (only show if > 0)
                             if (appInfo.metacriticScore > 0) {
                                 item {
                                     Column {
