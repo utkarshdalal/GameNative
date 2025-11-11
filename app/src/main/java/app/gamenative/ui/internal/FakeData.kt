@@ -41,6 +41,7 @@ internal fun fakeAppInfo(idx: Int): SteamApp {
         clientTgaHash = "",
         smallCapsule = mapOf(),
         headerImage = mapOf(),
+        playtimeForever = 62,
         libraryAssets = LibraryAssetsInfo(
             libraryCapsule = LibraryCapsuleInfo(image = mapOf(), image2x = mapOf()),
             libraryHero = LibraryHeroInfo(image = mapOf(), image2x = mapOf()),

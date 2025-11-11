@@ -62,11 +62,17 @@ object SteamUtils {
      * @return A string representing how many hours were played, ie: 1.5 hrs
      */
     fun formatPlayTime(time: Int): String {
+        if(time < 60){
+            return "$time minutes"
+        }
+
         val hours = time / 60.0
+
         return if (hours % 1 == 0.0) {
-            hours.toInt().toString()
+            val hours = hours.toInt().toString()
+            "$hours hour"
         } else {
-            String.format(Locale.getDefault(), "%.1f", time / 60.0)
+            String.format(Locale.getDefault(), "%.1f Hours", time / 60.0)
         }
     }
 

@@ -71,6 +71,8 @@ data class SteamApp(
     val reviewPercentage: Byte = 0,
     @ColumnInfo("controller_support")
     val controllerSupport: ControllerSupport = ControllerSupport.none,
+    @ColumnInfo("playtime_forever")
+    val playtimeForever: Int = 0, // playtime in minutes
 
     // Extended
     @ColumnInfo("demo_of_app_id")

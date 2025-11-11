@@ -18,6 +18,7 @@ data class LibraryItem(
     val name: String = "",
     val iconHash: String = "",
     val isShared: Boolean = false,
+    val playtimeForever: Int = 0, // playtime in minutes
     val gameSource: GameSource = GameSource.STEAM,
 ) {
     val clientIconUrl: String
