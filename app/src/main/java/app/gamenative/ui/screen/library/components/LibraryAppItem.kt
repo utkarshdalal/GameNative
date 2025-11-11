@@ -47,9 +47,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
@@ -174,23 +176,57 @@ internal fun AppItem(
                         val isInstalled = remember(appInfo.appId) {
                             SteamService.isAppInstalled(appInfo.gameId)
                         }
-                        // Cute floating icons for install status/family share
-                        if (isInstalled || appInfo.isShared) {
-                            Row(
+
+                        // Calculate padding for text to prevent overlap with icons
+                        val hasIcons = isInstalled || appInfo.isShared
+                        val iconWidth = when {
+                            isInstalled && appInfo.isShared -> 44.dp // Two icons + spacing
+                            hasIcons -> 22.dp // One icon + spacing
+                            else -> 0.dp
+                        }
+
+                        // Black footer overlay with game title
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = appInfo.name,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier
-                                    .align(alignment = Alignment.BottomEnd)
-                                    .padding(4.dp) // Padding from the outer card
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // Mid tone colour that shows up on light and dark images
-                                    .height(24.dp)
-                                    .padding(2.dp), // Padding for inner icons
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                if (isInstalled) {
-                                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                if (appInfo.isShared) {
-                                    Icon(Icons.Filled.Face4, null, tint = MaterialTheme.colorScheme.tertiary)
+                                    .align(Alignment.CenterStart)
+                                    .padding(end = iconWidth)
+                            )
+
+                            // Status icons for install status/family share
+                            if (hasIcons) {
+                                Row(
+                                    modifier = Modifier.align(alignment = Alignment.CenterEnd),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isInstalled) {
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = "Installed",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    if (appInfo.isShared) {
+                                        Icon(
+                                            Icons.Filled.Face4,
+                                            contentDescription = "Family Shared",
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
