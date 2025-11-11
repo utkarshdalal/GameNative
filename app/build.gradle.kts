@@ -208,6 +208,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.landscapist.coil)
+    implementation(libs.accompanist.swipe.refresh)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Support

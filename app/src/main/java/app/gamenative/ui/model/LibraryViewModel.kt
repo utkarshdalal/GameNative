@@ -105,6 +105,10 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(toPage)
     }
 
+    fun onRefresh() {
+        // Reset to first page and refresh the filtered list
+        onFilterApps(0)
+    }
     private fun onFilterApps(paginationPage: Int = 0) {
         // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps")

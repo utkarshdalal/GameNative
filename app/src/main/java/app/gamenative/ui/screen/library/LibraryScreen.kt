@@ -69,6 +69,7 @@ fun HomeLibraryScreen(
         onModalBottomSheet = viewModel::onModalBottomSheet,
         onIsSearching = viewModel::onIsSearching,
         onSearchQuery = viewModel::onSearchQuery,
+        onRefresh = viewModel::onRefresh,
         onClickPlay = onClickPlay,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
@@ -89,6 +90,7 @@ private fun LibraryScreenContent(
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
     onClickPlay: (Int, Boolean) -> Unit,
+    onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -120,6 +122,7 @@ private fun LibraryScreenContent(
                 onLogout = onLogout,
                 onNavigate = { appId -> selectedAppId = appId },
                 onGoOnline = onGoOnline,
+                onRefresh = onRefresh,
                 isOffline = isOffline,
             )
         } else {
@@ -190,6 +193,7 @@ private fun Preview_LibraryScreenContent() {
                 state = state.copy(modalBottomSheet = !currentState)
             },
             onClickPlay = { _, _ -> },
+            onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},
             onGoOnline = {},

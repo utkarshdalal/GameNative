@@ -4,6 +4,8 @@ agp = "8.8.0" # https://mvnrepository.com/artifact/com.android.application/com.a
 apache-compress = "1.27.1" # https://mvnrepository.com/artifact/org.apache.commons/commons-compress
 apng = "3.0.2" # https://mvnrepository.com/artifact/com.github.penfeizhou.android.animation/apng
 composeBom = "2025.01.01" # https://mvnrepository.com/artifact/androidx.compose/compose-bom
+material3Version = "1.3.1" # Minimum version for pull-to-refresh support
+accompanistSwipeRefresh = "0.34.0" # https://mvnrepository.com/artifact/com.google.accompanist/accompanist-swiperefresh
 coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
 coroutines = "1.10.1" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
 dagger-hilt = "2.55" # https://mvnrepository.com/artifact/com.google.dagger/hilt-android
@@ -42,7 +44,8 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-material-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3Version" }
+accompanist-swipe-refresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanistSwipeRefresh" }
 androidx-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "material3Adaptive" }
 androidx-material3-adaptive-nav-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite", version.ref = "material3AdaptiveNavSuite" }
 androidx-material3-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation", version.ref = "material3Adaptive" }
