@@ -1367,7 +1367,7 @@ internal fun AppScreenContent(
                                 item {
                                     Column {
                                         Text(
-                                            text = "Playtime",
+                                            text = stringResource(R.string.playtime_forever),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -1384,7 +1384,7 @@ internal fun AppScreenContent(
                                 item {
                                     Column {
                                         Text(
-                                            text = "Metacritic Score",
+                                            text = stringResource(R.string.metacritic_score),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

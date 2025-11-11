@@ -345,4 +345,8 @@
     <string name="install_anyway">Install Anyway</string>
     <string name="remove_content">Remove content?</string>
     <string name="remove_content_confirmation">Are you sure you want to remove %1$s (%2$s)?</string>
+
+    <!-- Game Information -->
+    <string name="metacritic_score">Metacritic Score</string>
+    <string name="playtime_forever">Playtime</string>
 </resources>
