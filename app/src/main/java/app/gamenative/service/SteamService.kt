@@ -1678,6 +1678,30 @@ class SteamService : Service(), IChallengeUrlChanged {
             instance?._unifiedFriends!!.getOwnedGames(friendID)
         }
 
+        /**
+         * Sync playtime data from owned games to the SteamApp database
+         */
+        suspend fun syncPlaytimeData() = withContext(Dispatchers.IO) {
+            try {
+                val steamId = userSteamId?.convertToUInt64() ?: return@withContext
+                val ownedGames = getOwnedGames(steamId)
+
+                ownedGames.forEach { game ->
+                    val existingApp = instance?.appDao?.findApp(game.appId)
+                    existingApp?.let { app ->
+                        // Only update if playtime has changed
+                        if (app.playtimeForever != game.playtimeForever) {
+                            instance?.appDao?.update(app.copy(playtimeForever = game.playtimeForever))
+                        }
+                    }
+                }
+
+                Timber.i("Synced playtime data for ${ownedGames.size} games")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to sync playtime data")
+            }
+        }
+
         suspend fun getRecentMessages(friendID: Long) = withContext(Dispatchers.IO) {
             instance?._unifiedFriends!!.getRecentMessages(friendID)
         }

@@ -66,7 +66,6 @@ class LibraryViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            // Sync playtime data from Steam
             SteamService.syncPlaytimeData()
 
             steamAppDao.getAllOwnedApps(
