@@ -61,19 +61,19 @@ object SteamUtils {
      * Converts steam time from the playtime of a friend into an approximate double representing hours.
      * @return A string representing how many hours were played, ie: 1.5 hrs
      */
-    fun formatPlayTime(time: Int): String {
-        if(time < 60){
-            return "$time minutes"
-        }
-
-        val hours = time / 60.0
-
-        return if (hours % 1 == 0.0) {
-            val hours = hours.toInt().toString()
-            "$hours hour"
-        } else {
-            String.format(Locale.getDefault(), "%.1f Hours", time / 60.0)
-        }
+    fun formatPlayTime(minutes: Int): String {
+       if (minutes < 60) {
+           val unit = if (minutes == 1) "minute" else "minutes"
+           return "$minutes $unit"
+       }
+       val wholeHours = minutes / 60
+       val remMinutes = minutes % 60
+       return if (remMinutes == 0) {
+           val unit = if (wholeHours == 1) "hour" else "hours"
+           "$wholeHours $unit"
+       } else {
+           String.format(Locale.getDefault(), "%.1f hours", minutes / 60.0)
+       }
     }
 
     // Steam strips all non-ASCII characters from usernames and passwords
