@@ -98,22 +98,19 @@ internal fun LibraryListPane(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing)
 
     // Track the state snapshot when refresh starts
-    var refreshStartState by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var refreshStartSnapshot by remember { mutableStateOf<List<LibraryItem>?>(null) }
 
     // Reset refreshing state when the list updates after a refresh
-    LaunchedEffect(state.appInfoList.size, state.totalAppsInFilter) {
-        if (isRefreshing && refreshStartState != null) {
-            val (startSize, startTotal) = refreshStartState!!
-
+    LaunchedEffect(state.appInfoList) {
+        if (isRefreshing && refreshStartSnapshot != null) {
             // Check if state has changed since refresh started
-            val hasChanged = state.appInfoList.size != startSize ||
-                    state.totalAppsInFilter != startTotal
+            val hasChanged = state.appInfoList != refreshStartSnapshot
 
             if (hasChanged) {
                 // State updated, refresh is complete
                 delay(200) // Small delay for smooth UI transition
                 isRefreshing = false
-                refreshStartState = null
+                refreshStartSnapshot = null
             }
         }
     }
@@ -124,7 +121,7 @@ internal fun LibraryListPane(
             delay(2000) // Max 2 seconds
             if (isRefreshing) {
                 isRefreshing = false
-                refreshStartState = null
+                refreshStartSnapshot = null
             }
         }
     }
@@ -274,7 +271,7 @@ internal fun LibraryListPane(
                     state = swipeRefreshState,
                     onRefresh = {
                         isRefreshing = true
-                        refreshStartState = Pair(state.appInfoList.size, state.totalAppsInFilter)
+                        refreshStartSnapshot = state.appInfoList
                         onRefresh()
                     }
                 ) {
