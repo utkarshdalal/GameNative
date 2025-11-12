@@ -32,6 +32,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -1247,9 +1248,51 @@ private fun getWineStartCommand(
     FileUtils.clear(tempDir)
 
     Timber.tag("XServerScreen").d("appLaunchInfo is $appLaunchInfo")
-    val args = if (bootToContainer || appLaunchInfo == null) {
+    
+    // Check if this is an Open Container game
+    val isOpenContainer = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.OPEN_CONTAINER
+    
+    val args = if (bootToContainer) {
+        "\"wfm.exe\""
+    } else if (isOpenContainer) {
+        // For Open Container games, we can launch even without appLaunchInfo
+        // Use the executable path from container config
+        var executablePath = container.executablePath
+        if (executablePath.isEmpty()) {
+            Timber.tag("XServerScreen").w("No executable path set for Open Container game: $appId")
+            // Fallback to wfm.exe if no executable is set
+            return "winhandler.exe \"wfm.exe\""
+        }
+        
+        // Find the A: drive (which should map to the game folder)
+        var gameFolderPath: String? = null
+        for (drive in Container.drivesIterator(container.drives)) {
+            if (drive[0] == "A") {
+                gameFolderPath = drive[1]
+                break
+            }
+        }
+        
+        if (gameFolderPath == null) {
+            Timber.tag("XServerScreen").e("Could not find A: drive for Open Container game: $appId")
+            return "winhandler.exe \"wfm.exe\""
+        }
+        
+        // Set working directory to the game folder
+        guestProgramLauncherComponent.workingDir = File(gameFolderPath)
+        Timber.tag("XServerScreen").i("Working directory is ${gameFolderPath}")
+        Timber.tag("XServerScreen").i("Final exe path is $executablePath")
+        
+        // Normalize path separators (ensure Windows-style backslashes)
+        val normalizedPath = executablePath.replace('/', '\\')
+        envVars.put("WINEPATH", "A:\\")
+        "\"A:\\${normalizedPath}\""
+    } else if (appLaunchInfo == null) {
+        // For Steam games, we need appLaunchInfo
+        Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
+        // Steam game logic (existing code)
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         var executablePath = ""
