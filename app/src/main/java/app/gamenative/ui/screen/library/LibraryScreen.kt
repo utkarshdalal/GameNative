@@ -73,6 +73,7 @@ fun HomeLibraryScreen(
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
+        onSourceToggle = viewModel::onSourceToggle,
         isOffline = isOffline,
     )
 }
@@ -92,6 +93,7 @@ private fun LibraryScreenContent(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onSourceToggle: (GameSource) -> Unit,
     isOffline: Boolean = false,
 ) {
     var selectedAppId by remember { mutableStateOf<String?>(null) }
@@ -120,6 +122,7 @@ private fun LibraryScreenContent(
                 onLogout = onLogout,
                 onNavigate = { appId -> selectedAppId = appId },
                 onGoOnline = onGoOnline,
+                onSourceToggle = onSourceToggle,
                 isOffline = isOffline,
             )
         } else {
@@ -193,6 +196,7 @@ private fun Preview_LibraryScreenContent() {
             onNavigateRoute = {},
             onLogout = {},
             onGoOnline = {},
+            onSourceToggle = {},
         )
     }
 }

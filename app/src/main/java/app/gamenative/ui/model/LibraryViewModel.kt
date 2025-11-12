@@ -74,6 +74,23 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    fun onSourceToggle(source: GameSource) {
+        val current = _state.value
+        when (source) {
+            GameSource.STEAM -> {
+                val newValue = !current.showSteamInLibrary
+                PrefManager.showSteamInLibrary = newValue
+                _state.update { it.copy(showSteamInLibrary = newValue) }
+            }
+            GameSource.OPEN_CONTAINER -> {
+                val newValue = !current.showOpenContainersInLibrary
+                PrefManager.showOpenContainersInLibrary = newValue
+                _state.update { it.copy(showOpenContainersInLibrary = newValue) }
+            }
+        }
+        onFilterApps(paginationCurrentPage)
+    }
+
     fun onSearchQuery(value: String) {
         _state.update { it.copy(searchQuery = value) }
         onFilterApps()
@@ -114,7 +131,8 @@ class LibraryViewModel @Inject constructor(
 
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
 
-            var filteredList = appList
+            // Filter Steam apps first (no pagination yet)
+            val filteredSteamApps: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
                     SteamService.familyMembers.ifEmpty {
@@ -157,40 +175,55 @@ class LibraryViewModel @Inject constructor(
                 .sortedWith(
                     // Comes from DAO in alphabetical order
                     compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
-                );
+                )
+                .toList()
+
+            // Map Steam apps to UI items
+            val steamUiItems: List<LibraryItem> = filteredSteamApps.map { item ->
+                LibraryItem(
+                    index = 0, // temporary, will be re-indexed after combining and paginating
+                    appId = "${GameSource.STEAM.name}_${item.id}",
+                    name = item.name,
+                    iconHash = item.clientIconHash,
+                    isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+                )
+            }
+
+            // Scan Open Container roots and create UI items (filtered by search query inside scanner)
+            val openContainerItems = app.gamenative.utils.OpenContainerScanner.scanAsLibraryItems(
+                query = currentState.searchQuery
+            )
+
+            // Apply App Source filters
+            val includeSteam = _state.value.showSteamInLibrary
+            val includeOpen = _state.value.showOpenContainersInLibrary
+
+            val combined = buildList<LibraryItem> {
+                if (includeSteam) addAll(steamUiItems)
+                if (includeOpen) addAll(openContainerItems)
+            }
 
             // Total count for the current filter
-            val totalFound = filteredList.count()
+            val totalFound = combined.size
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
             // Update internal pagination state
             paginationCurrentPage = paginationPage
-            lastPageInCurrentFilter = (totalFound - 1) / pageSize
+            lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
-            val pagedSequence = filteredList.take(endIndex)
-            // Map to UI model
-            val filteredListPage = pagedSequence
-                .mapIndexed { idx, item ->
-                    LibraryItem(
-                        index = idx,
-                        appId = "${GameSource.STEAM.name}_${item.id}",
-                        name = item.name,
-                        iconHash = item.clientIconHash,
-                        isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
-                    )
-                }
-                .toList()
+            val pagedList = combined.take(endIndex)
+                .mapIndexed { idx, li -> li.copy(index = idx) }
 
-            Timber.tag("LibraryViewModel").d("Filtered list size: ${totalFound}")
+            Timber.tag("LibraryViewModel").d("Filtered list size (with Open Containers): ${totalFound}")
             _state.update {
                 it.copy(
-                    appInfoList = filteredListPage,
+                    appInfoList = pagedList,
                     currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
-                    )
+                )
             }
         }
     }

@@ -18,4 +18,8 @@ data class LibraryState(
 
     val isSearching: Boolean = false,
     val searchQuery: String = "",
+
+    // App Source filters (Steam / Open Containers)
+    val showSteamInLibrary: Boolean = PrefManager.showSteamInLibrary,
+    val showOpenContainersInLibrary: Boolean = PrefManager.showOpenContainersInLibrary,
 )

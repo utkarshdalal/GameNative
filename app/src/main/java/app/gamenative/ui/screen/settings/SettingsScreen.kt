@@ -81,6 +81,7 @@ private fun SettingsScreenContent(
                 onAppTheme = onAppTheme,
                 onPaletteStyle = onPaletteStyle,
             )
+            SettingsGroupOpenContainers()
             SettingsGroupInfo()
             SettingsGroupDebug()
         }

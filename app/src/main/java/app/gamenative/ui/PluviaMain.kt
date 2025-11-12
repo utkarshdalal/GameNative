@@ -114,9 +114,9 @@ fun PluviaMain(
     var isConnecting by rememberSaveable { mutableStateOf(false) }
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
-    
+
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
-    
+
     // Check for updates on app start
     LaunchedEffect(Unit) {
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
@@ -180,9 +180,10 @@ fun PluviaMain(
                                 MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
                                     Timber.i("[IntentLaunch]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
 
-                                    // Check if the game is installed
+                                    // Check if the game is installed (Steam only)
+                                    val isOpenContainer = launchRequest.appId.startsWith("${GameSource.OPEN_CONTAINER.name}_")
                                     val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
-                                    if (!SteamService.isAppInstalled(gameId)) {
+                                    if (!isOpenContainer && !SteamService.isAppInstalled(gameId)) {
                                         val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
                                         Timber.w("[IntentLaunch]: Game not installed: $appName (${launchRequest.appId})")
 
@@ -679,7 +680,7 @@ fun PluviaMain(
                         viewModel.setLoadingDialogVisible(true)
                         viewModel.setLoadingDialogMessage("Downloading update...")
                         viewModel.setLoadingDialogProgress(0f)
-                        
+
                         val success = UpdateInstaller.downloadAndInstall(
                             context = context,
                             downloadUrl = updateInfo.downloadUrl,
@@ -688,7 +689,7 @@ fun PluviaMain(
                                 viewModel.setLoadingDialogProgress(progress)
                             }
                         )
-                        
+
                         viewModel.setLoadingDialogVisible(false)
                         if (!success) {
                             msgDialogState = MessageDialogState(

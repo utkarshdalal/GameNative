@@ -81,6 +81,7 @@ internal fun LibraryListPane(
     onSearchQuery: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
+    onSourceToggle: (GameSource) -> Unit,
     isOffline: Boolean = false,
 ) {
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
@@ -289,6 +290,9 @@ internal fun LibraryListPane(
                                     PrefManager.libraryLayout = newPaneType
                                     paneType = newPaneType
                                 },
+                                showSteam = state.showSteamInLibrary,
+                                showOpenContainers = state.showOpenContainersInLibrary,
+                                onSourceToggle = onSourceToggle,
                             )
                         },
                     )
@@ -345,6 +349,7 @@ private fun Preview_LibraryListPane() {
                 onLogout = { },
                 onNavigate = { },
                 onGoOnline = { },
+                onSourceToggle = { },
             )
         }
     }

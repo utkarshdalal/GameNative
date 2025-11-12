@@ -232,21 +232,20 @@ internal fun GameInfoBlock(
 ) {
     // For text displayed in list view, or as override if image loading fails
 
-    // Determine download and install state
-    val downloadInfo = remember(appInfo.appId) { SteamService.getAppDownloadInfo(appInfo.gameId) }
+    // Determine download and install state for Steam games only
+    val isSteam = appInfo.gameSource == GameSource.STEAM
+    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
     val downloadProgress = remember(downloadInfo) { downloadInfo?.getProgress() ?: 0f }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
-    val isInstalled = remember(appInfo.appId) {
-        SteamService.isAppInstalled(appInfo.gameId)
-    }
+    val isInstalledSteam = remember(appInfo.appId) { if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false }
 
     var appSizeOnDisk by remember { mutableStateOf("") }
 
     var hideText by remember { mutableStateOf(true) }
     var alpha = remember(Int) {1f}
 
-    LaunchedEffect(Unit) {
-        if (isInstalled) {
+    LaunchedEffect(isSteam, isInstalledSteam) {
+        if (isSteam && isInstalledSteam) {
             appSizeOnDisk = "..."
             DownloadService.getSizeOnDiskDisplay(appInfo.gameId) {  appSizeOnDisk = it }
         }
@@ -267,16 +266,23 @@ internal fun GameInfoBlock(
             modifier = Modifier.padding(top = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Status indicator: Installing / Installed / Not installed
-            val statusText = when {
-                isDownloading -> "Installing"
-                isInstalled -> "Installed"
-                else -> "Not installed"
+            // Status indicator
+            val (statusText, statusColor) = if (isSteam) {
+                val text = when {
+                    isDownloading -> "Installing"
+                    isInstalledSteam -> "Installed"
+                    else -> "Not installed"
+                }
+                val color = when {
+                    isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
+                text to color
+            } else {
+                // Open Containers are considered ready (no Steam install tracking)
+                "Ready" to MaterialTheme.colorScheme.tertiary
             }
-            val statusColor = when {
-                isDownloading || isInstalled -> MaterialTheme.colorScheme.tertiary
-                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -303,8 +309,8 @@ internal fun GameInfoBlock(
                 }
             }
 
-            // Game size on its own line for installed games
-            if (isInstalled) {
+            // Game size on its own line for installed Steam games only
+            if (isSteam && isInstalledSteam) {
                 Text(
                     text = "$appSizeOnDisk",
                     style = MaterialTheme.typography.bodyMedium,

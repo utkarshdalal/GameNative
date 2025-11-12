@@ -614,6 +614,21 @@ object PrefManager {
             setPref(ITEMS_PER_PAGE, value)
         }
 
+    // App Source filters
+    private val SHOW_STEAM_IN_LIBRARY = booleanPreferencesKey("show_steam_in_library")
+    var showSteamInLibrary: Boolean
+        get() = getPref(SHOW_STEAM_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_STEAM_IN_LIBRARY, value)
+        }
+
+    private val SHOW_OPEN_CONTAINERS_IN_LIBRARY = booleanPreferencesKey("show_open_containers_in_library")
+    var showOpenContainersInLibrary: Boolean
+        get() = getPref(SHOW_OPEN_CONTAINERS_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_OPEN_CONTAINERS_IN_LIBRARY, value)
+        }
+
     // Whether to download games only over Wi-Fi.
     private val DOWNLOAD_ON_WIFI_ONLY = booleanPreferencesKey("download_on_wifi_only")
     var downloadOnWifiOnly: Boolean
@@ -635,6 +650,17 @@ object PrefManager {
         get() = getPref(EXTERNAL_STORAGE_PATH, "")
         set(value) {
             setPref(EXTERNAL_STORAGE_PATH, value)
+        }
+
+    // Open Container roots (additional paths). Default path is provided by the app at runtime and isn't stored here.
+    private val OPEN_CONTAINER_PATHS = stringPreferencesKey("open_container_paths")
+    var openContainerPaths: Set<String>
+        get() {
+            val value = getPref(OPEN_CONTAINER_PATHS, "[]")
+            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+        }
+        set(value) {
+            setPref(OPEN_CONTAINER_PATHS, Json.encodeToString(value))
         }
 
     // Add new setting for Wine debug logging
