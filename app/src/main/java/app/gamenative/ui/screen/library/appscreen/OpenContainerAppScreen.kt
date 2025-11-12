@@ -87,17 +87,39 @@ class OpenContainerAppScreen : BaseAppScreen() {
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit
     ): List<AppMenuOption> {
-        return listOf(
+        val menuOptions = mutableListOf<AppMenuOption>()
+        
+        // Edit Container option (always available)
+        menuOptions.add(
             AppMenuOption(
                 optionType = AppOptionMenuType.EditContainer,
                 onClick = onEditContainer
-            ),
+            )
+        )
+        
+        // Since Open Container games are always "installed", show play/run options
+        val isInstalled = isInstalled(context, libraryItem)
+        if (isInstalled) {
+            menuOptions.add(
+                AppMenuOption(
+                    AppOptionMenuType.RunContainer,
+                    onClick = {
+                        onClickPlay(true)
+                    },
+                )
+            )
+        }
+        
+        menuOptions.add(
             AppMenuOption(
                 optionType = AppOptionMenuType.SubmitFeedback,
                 onClick = {
                     PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(libraryItem.appId))
                 },
-            ),
+            )
+        )
+        
+        menuOptions.add(
             AppMenuOption(
                 optionType = AppOptionMenuType.GetSupport,
                 onClick = {
@@ -105,6 +127,8 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 },
             )
         )
+        
+        return menuOptions
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {

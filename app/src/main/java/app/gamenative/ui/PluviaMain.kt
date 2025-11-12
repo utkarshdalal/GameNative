@@ -43,6 +43,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.data.PostSyncInfo
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
@@ -1037,18 +1038,26 @@ fun preLaunchApp(
             }
         } catch (_: Exception) { /* ignore persona read errors */ }
 
-        // sync save files and check no pending remote operations are running
-        val prefixToPath: (String) -> String = { prefix ->
-            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+        // Check if this is an Open Container game (skip save sync for Open Container games)
+        val isOpenContainer = appId.startsWith("${GameSource.OPEN_CONTAINER.name}_")
+        
+        // sync save files and check no pending remote operations are running (skip for Open Container games)
+        val postSyncInfo = if (isOpenContainer) {
+            // Open Container games don't use Steam Cloud saves, so skip sync
+            PostSyncInfo(SyncResult.UpToDate)
+        } else {
+            val prefixToPath: (String) -> String = { prefix ->
+                PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+            }
+            SteamService.beginLaunchApp(
+                appId = gameId,
+                prefixToPath = prefixToPath,
+                ignorePendingOperations = ignorePendingOperations,
+                preferredSave = preferredSave,
+                parentScope = this,
+                isOffline = isOffline,
+            ).await()
         }
-        val postSyncInfo = SteamService.beginLaunchApp(
-            appId = gameId,
-            prefixToPath = prefixToPath,
-            ignorePendingOperations = ignorePendingOperations,
-            preferredSave = preferredSave,
-            parentScope = this,
-            isOffline = isOffline,
-        ).await()
 
         setLoadingDialogVisible(false)
 

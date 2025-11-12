@@ -114,4 +114,43 @@ object OpenContainerScanner {
         }
         return false
     }
+
+    /**
+     * Gets the folder path for an Open Container game from its appId.
+     * The appId format is "OPEN_CONTAINER_<hashCode>" where hashCode is derived from the folder's absolute path.
+     * Returns null if the folder cannot be found.
+     */
+    fun getFolderPathFromAppId(appId: String): String? {
+        // Extract the hash from appId (format: "OPEN_CONTAINER_<hash>")
+        if (!appId.startsWith("${GameSource.OPEN_CONTAINER.name}_")) {
+            return null
+        }
+        
+        val hashStr = appId.removePrefix("${GameSource.OPEN_CONTAINER.name}_")
+        val expectedHash = try {
+            hashStr.toInt()
+        } catch (e: NumberFormatException) {
+            return null
+        }
+        
+        // Scan all roots to find the folder with matching hash
+        val roots = getAllRoots()
+        for (root in roots) {
+            val rootFile = File(root)
+            if (!rootFile.exists() || !rootFile.isDirectory) continue
+            
+            val children = rootFile.listFiles { f -> f.isDirectory } ?: continue
+            for (folder in children) {
+                if (!looksLikeGameFolder(folder)) continue
+                
+                // Calculate hash the same way as in scanAsLibraryItems
+                val folderHash = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
+                if (folderHash == expectedHash) {
+                    return folder.absolutePath
+                }
+            }
+        }
+        
+        return null
+    }
 }

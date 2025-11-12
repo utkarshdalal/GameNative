@@ -413,9 +413,16 @@ internal fun AppScreenContent(
                     // Disable install when Wi-Fi only is enabled and there's no Wi-Fi
                     val isInstall = !isInstalled
                     val installEnabled = if (isInstall) wifiAllowed && hasInternet else true
+                    // For installed games, button should always be enabled (regardless of isValidToDownload)
+                    // For games that need installation, check isValidToDownload
+                    val buttonEnabled = if (isInstalled) {
+                        installEnabled // Installed games can always be played
+                    } else {
+                        installEnabled && isValidToDownload // Only check download validity when not installed
+                    }
                     // Install or Play button
                     Button(
-                        enabled = installEnabled && isValidToDownload,
+                        enabled = buttonEnabled,
                         modifier = Modifier.weight(1f),
                         onClick = {
                             onDownloadInstallClick()
@@ -435,11 +442,12 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
-                    // Uninstall if already installed
-                    if (isInstalled) {
+                    // Uninstall if already installed and uninstall option exists in menu
+                    val uninstallOption = optionsMenu.find { it.optionType == AppOptionMenuType.Uninstall }
+                    if (isInstalled && uninstallOption != null) {
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
-                            onClick = { optionsMenu.find { it.optionType == AppOptionMenuType.Uninstall }?.onClick?.invoke() },
+                            onClick = { uninstallOption.onClick() },
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
