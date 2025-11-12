@@ -1,0 +1,21 @@
+package app.gamenative.ui.screen.library.appscreen
+
+/**
+ * Common data structure for displaying game information in the UI.
+ * This allows both Steam and Open Container games to use the same UI layout.
+ */
+data class GameDisplayInfo(
+    val name: String,
+    val developer: String,
+    val releaseDate: Long, // Unix timestamp in seconds
+    val heroImageUrl: String?,
+    val iconUrl: String?,
+    val gameId: Int, // For Steam: appId, for Open Container: extracted from appId
+    val appId: String, // Full appId including source prefix
+    val installLocation: String? = null, // Path where game is installed
+    val sizeOnDisk: String? = null, // Formatted size string
+    val sizeFromStore: String? = null, // Formatted size from store
+    val lastPlayedText: String? = null, // Formatted last played time
+    val playtimeText: String? = null, // Formatted playtime
+)
+
