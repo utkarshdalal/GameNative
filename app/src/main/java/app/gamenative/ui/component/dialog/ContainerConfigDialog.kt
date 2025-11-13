@@ -85,6 +85,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerConfigIO
+import app.gamenative.utils.ContainerConfigIO.toTempContainer
 import app.gamenative.service.SteamService
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -159,7 +160,7 @@ fun ContainerConfigDialog(
                     config = imported
                     Toast.makeText(context, "Configuration imported successfully", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(context, "Failed to import configuration", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.failed_to_import_config), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -170,51 +171,7 @@ fun ContainerConfigDialog(
         ) { uri ->
             uri?.let {
                 // Create a temporary container to export current config
-                val tempContainer = Container("temp").apply {
-                    name = config.name
-                    screenSize = config.screenSize
-                    envVars = config.envVars
-                    graphicsDriver = config.graphicsDriver
-                    graphicsDriverVersion = config.graphicsDriverVersion
-                    graphicsDriverConfig = config.graphicsDriverConfig
-                    dxWrapper = config.dxwrapper
-                    dxWrapperConfig = config.dxwrapperConfig
-                    audioDriver = config.audioDriver
-                    winComponents = config.wincomponents
-                    drives = config.drives
-                    execArgs = config.execArgs
-                    executablePath = config.executablePath
-                    installPath = config.installPath
-                    isShowFPS = config.showFPS
-                    isLaunchRealSteam = config.launchRealSteam
-                    isAllowSteamUpdates = config.allowSteamUpdates
-                    steamType = config.steamType
-                    setCPUList(config.cpuList)
-                    setCPUListWoW64(config.cpuListWoW64)
-                    isWoW64Mode = config.wow64Mode
-                    startupSelection = config.startupSelection
-                    box86Version = config.box86Version
-                    box64Version = config.box64Version
-                    box86Preset = config.box86Preset
-                    box64Preset = config.box64Preset
-                    desktopTheme = config.desktopTheme
-                    language = config.language
-                    containerVariant = config.containerVariant
-                    wineVersion = config.wineVersion
-                    emulator = config.emulator
-                    fexCoreVersion = config.fexcoreVersion
-                    dinputMapperType = config.dinputMapperType
-                    isSdlControllerAPI = config.sdlControllerAPI
-                    isDisableMouseInput = config.disableMouseInput
-                    isTouchscreenMode = config.touchscreenMode
-                    isUseDRI3 = config.useDRI3
-                    isEmulateKeyboardMouse = config.emulateKeyboardMouse
-                    isForceDlc = config.forceDlc
-                    // Set controller emulation bindings if present
-                    if (config.controllerEmulationBindings.isNotEmpty()) {
-                        putExtra("controllerEmulationBindings", config.controllerEmulationBindings)
-                    }
-                }
+                val tempContainer = config.toTempContainer()
                 
                 val success = ContainerConfigIO.exportToFile(context, tempContainer, it)
                 if (success) {
@@ -886,52 +843,14 @@ fun ContainerConfigDialog(
                                 IconButton(
                                     onClick = {
                                         // Create a temporary container to share current config
-                                        val tempContainer = Container("temp").apply {
-                                            name = config.name
-                                            screenSize = config.screenSize
-                                            envVars = config.envVars
-                                            graphicsDriver = config.graphicsDriver
-                                            graphicsDriverVersion = config.graphicsDriverVersion
-                                            graphicsDriverConfig = config.graphicsDriverConfig
-                                            dxWrapper = config.dxwrapper
-                                            dxWrapperConfig = config.dxwrapperConfig
-                                            audioDriver = config.audioDriver
-                                            winComponents = config.wincomponents
-                                            drives = config.drives
-                                            execArgs = config.execArgs
-                                            isShowFPS = config.showFPS
-                                            isLaunchRealSteam = config.launchRealSteam
-                                            isAllowSteamUpdates = config.allowSteamUpdates
-                                            steamType = config.steamType
-                                            setCPUList(config.cpuList)
-                                            setCPUListWoW64(config.cpuListWoW64)
-                                            isWoW64Mode = config.wow64Mode
-                                            startupSelection = config.startupSelection
-                                            box86Version = config.box86Version
-                                            box64Version = config.box64Version
-                                            box86Preset = config.box86Preset
-                                            box64Preset = config.box64Preset
-                                            desktopTheme = config.desktopTheme
-                                            containerVariant = config.containerVariant
-                                            wineVersion = config.wineVersion
-                                            emulator = config.emulator
-                                            fexCoreVersion = config.fexcoreVersion
-                                            dinputMapperType = config.dinputMapperType
-                                            isSdlControllerAPI = config.sdlControllerAPI
-                                            isDisableMouseInput = config.disableMouseInput
-                                            isTouchscreenMode = config.touchscreenMode
-                                            isUseDRI3 = config.useDRI3
-                                            isEmulateKeyboardMouse = config.emulateKeyboardMouse
-                                            isForceDlc = config.forceDlc
-                                            language = config.language
-                                        }
+                                        val tempContainer = config.toTempContainer()
                                         val shareIntent = ContainerConfigIO.createShareMessageIntent(tempContainer, title)
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share Config"))
+                                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_config)))
                                     },
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Share,
-                                        contentDescription = "Share Config"
+                                        contentDescription = stringResource(R.string.share_config)
                                     )
                                 }
                                 // Save button

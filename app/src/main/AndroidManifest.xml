@@ -59,7 +59,9 @@
                     android:host="config"
                     android:scheme="gamenative" />
             </intent-filter>
-            <intent-filter android:autoVerify="true">
+            <!-- TODO: Enable android:autoVerify once assetlinks.json is deployed at https://gamenative.app/.well-known/assetlinks.json -->
+            <intent-filter
+                ><!--android:autoVerify="true"-->
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />

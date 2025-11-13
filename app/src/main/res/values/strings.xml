@@ -123,4 +123,8 @@
 
     <string name="resume_download">Resume</string>
     <string name="pause_download">Pause</string>
+    
+    <!-- Container Config Import/Export/Share -->
+    <string name="failed_to_import_config">Failed to import configuration</string>
+    <string name="share_config">Share Config</string>
 </resources>
