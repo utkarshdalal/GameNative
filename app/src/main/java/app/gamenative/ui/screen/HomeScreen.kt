@@ -20,7 +20,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onChat: (Long) -> Unit,
     onClickExit: () -> Unit,
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (String, Boolean) -> Unit,
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,

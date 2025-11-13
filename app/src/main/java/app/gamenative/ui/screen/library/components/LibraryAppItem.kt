@@ -60,6 +60,7 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.OpenContainerScanner
 
 @Composable
 internal fun AppItem(
@@ -69,6 +70,7 @@ internal fun AppItem(
     paneType: PaneType = PaneType.LIST,
     onFocus: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
     var alpha by remember { mutableFloatStateOf(1f) }
 
@@ -139,10 +141,20 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
+                    val iconUrl = remember(appInfo.appId) {
+                        if (appInfo.gameSource == GameSource.OPEN_CONTAINER) {
+                            val path = OpenContainerScanner.findIconFileForOpenContainer(context, appInfo.appId)
+                            if (!path.isNullOrEmpty()) {
+                                if (path.startsWith("file://")) path else "file://$path"
+                            } else {
+                                appInfo.clientIconUrl
+                            }
+                        } else appInfo.clientIconUrl
+                    }
                     ListItemImage(
                         modifier = Modifier.size(56.dp),
                         imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        image = { appInfo.clientIconUrl }
+                        image = { iconUrl }
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }

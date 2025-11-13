@@ -469,7 +469,7 @@ object ContainerUtils {
     ): Container {
         // Determine game source
         val gameSource = extractGameSourceFromContainerId(appId)
-        
+
         // Set up container drives to include app
         val defaultDrives = PrefManager.drives
         val drives = if (gameSource == GameSource.STEAM) {
@@ -509,6 +509,23 @@ object ContainerUtils {
 
         // Create the actual container
         val container = containerManager.createContainerFuture(containerId, data).get()
+
+        // For Open Container games, pre-populate executablePath if there's exactly one valid .exe
+        if (gameSource == GameSource.OPEN_CONTAINER) {
+            try {
+                val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appId)
+                if (!gameFolderPath.isNullOrEmpty() && container.executablePath.isEmpty()) {
+                    val auto = OpenContainerScanner.findUniqueExeRelativeToFolder(gameFolderPath)
+                    if (auto != null) {
+                        Timber.i("Auto-selected Open Container exe during container creation: $auto")
+                        container.executablePath = auto
+                        container.saveData()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to auto-select exe during Open Container creation for $appId")
+            }
+        }
 
         // Initialize container with default/custom config
         val containerData = if (customConfig != null) {
@@ -627,7 +644,7 @@ object ContainerUtils {
         } else {
             createNewContainer(context, appId, appId, containerManager)
         }
-        
+
         // Ensure Open Container games have the A: drive mapped to the game folder
         val gameSource = extractGameSourceFromContainerId(appId)
         if (gameSource == GameSource.OPEN_CONTAINER) {
@@ -641,21 +658,21 @@ object ContainerUtils {
                         break
                     }
                 }
-                
+
                 // If A: drive is not mapped correctly, update it
                 if (!hasCorrectADrive) {
                     val currentDrives = container.drives
                     // Rebuild drives string, excluding existing A: drive and adding new one
                     val drivesBuilder = StringBuilder()
                     drivesBuilder.append("A:$gameFolderPath")
-                    
+
                     // Add all other drives (excluding A:)
                     for (drive in Container.drivesIterator(currentDrives)) {
                         if (drive[0] != "A") {
                             drivesBuilder.append("${drive[0]}:${drive[1]}")
                         }
                     }
-                    
+
                     val updatedDrives = drivesBuilder.toString()
                     container.drives = updatedDrives
                     container.saveData()
@@ -663,7 +680,7 @@ object ContainerUtils {
                 }
             }
         }
-        
+
         return container
     }
 
@@ -888,12 +905,12 @@ object ContainerUtils {
         } else {
             containerId
         }
-        
+
         // Split by underscores and find the last numeric part
         val parts = idWithoutSuffix.split("_")
         // The last part should be the numeric ID
         val lastPart = parts.lastOrNull() ?: throw IllegalArgumentException("Invalid container ID format: $containerId")
-        
+
         return try {
             lastPart.toInt()
         } catch (e: NumberFormatException) {

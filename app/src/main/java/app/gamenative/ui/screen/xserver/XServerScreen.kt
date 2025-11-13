@@ -494,7 +494,7 @@ fun XServerScreen(
                     val setupExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
                         Thread(r, "WineSetup-Thread").apply { isDaemon = false }
                     }
-                    
+
                     setupExecutor.submit {
                         try {
                             val containerManager = ContainerManager(context)
@@ -1248,22 +1248,18 @@ private fun getWineStartCommand(
     FileUtils.clear(tempDir)
 
     Timber.tag("XServerScreen").d("appLaunchInfo is $appLaunchInfo")
-    
+
     // Check if this is an Open Container game
     val isOpenContainer = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.OPEN_CONTAINER
-    
+
     val args = if (bootToContainer) {
         "\"wfm.exe\""
     } else if (isOpenContainer) {
         // For Open Container games, we can launch even without appLaunchInfo
-        // Use the executable path from container config
+        // Use the executable path from container config. If missing, try to auto-detect
+        // a unique .exe in the game folder (ignoring installers like "unins*").
         var executablePath = container.executablePath
-        if (executablePath.isEmpty()) {
-            Timber.tag("XServerScreen").w("No executable path set for Open Container game: $appId")
-            // Fallback to wfm.exe if no executable is set
-            return "winhandler.exe \"wfm.exe\""
-        }
-        
+
         // Find the A: drive (which should map to the game folder)
         var gameFolderPath: String? = null
         for (drive in Container.drivesIterator(container.drives)) {
@@ -1272,17 +1268,35 @@ private fun getWineStartCommand(
                 break
             }
         }
-        
+
+        if (executablePath.isEmpty()) {
+            // Attempt auto-detection only when we have the physical folder path
+            if (gameFolderPath == null) {
+                Timber.tag("XServerScreen").e("Could not find A: drive for Open Container game: $appId")
+                return "winhandler.exe \"wfm.exe\""
+            }
+            val auto = app.gamenative.utils.OpenContainerScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
+            if (auto != null) {
+                Timber.tag("XServerScreen").i("Auto-selected Open Container exe: $auto")
+                executablePath = auto
+                container.executablePath = auto
+                container.saveData()
+            } else {
+                Timber.tag("XServerScreen").w("No unique executable found for Open Container game: $appId")
+                return "winhandler.exe \"wfm.exe\""
+            }
+        }
+
         if (gameFolderPath == null) {
             Timber.tag("XServerScreen").e("Could not find A: drive for Open Container game: $appId")
             return "winhandler.exe \"wfm.exe\""
         }
-        
+
         // Set working directory to the game folder
         guestProgramLauncherComponent.workingDir = File(gameFolderPath)
         Timber.tag("XServerScreen").i("Working directory is ${gameFolderPath}")
         Timber.tag("XServerScreen").i("Final exe path is $executablePath")
-        
+
         // Normalize path separators (ensure Windows-style backslashes)
         val normalizedPath = executablePath.replace('/', '\\')
         envVars.put("WINEPATH", "A:\\")
@@ -1375,30 +1389,30 @@ private fun installRedistributables(
 ) {
     try {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-        
+
         // Get shared depots to determine if redistributables are needed
         val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
         val sharedDepots = downloadableDepots.filter { (_, depotInfo) ->
             val manifest = depotInfo.manifests["public"]
             manifest == null || manifest.gid == 0L
         }
-        
+
         if (sharedDepots.isEmpty()) {
             Timber.i("No shared depots found, skipping redistributable installation")
             return
         }
-        
+
         Timber.i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
-        
+
         // Get game directory path
         val gameDirPath = SteamService.getAppDirPath(steamAppId)
         val commonRedistDir = File(gameDirPath, "_CommonRedist")
-        
+
         if (!commonRedistDir.exists() || !commonRedistDir.isDirectory()) {
             Timber.i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}, skipping redistributable installation")
             return
         }
-        
+
         // Get the drive letter for the game directory
         val drives = container.drives
         val driveIndex = drives.indexOf(gameDirPath)
@@ -1408,7 +1422,7 @@ private fun installRedistributables(
             Timber.e("Could not locate game drive for redistributables")
             return
         }
-        
+
         // Find and install vcredist executables (only 64-bit: VC_redist.x64.exe)
         val vcredistDir = File(commonRedistDir, "vcredist")
         if (vcredistDir.exists() && vcredistDir.isDirectory()) {
@@ -1428,12 +1442,12 @@ private fun installRedistributables(
                     }
                 }
         }
-        
+
         // Find and install PhysX redistributables (.msi files starting with "PhysX")
         val physxDir = File(commonRedistDir, "PhysX")
         if (physxDir.exists() && physxDir.isDirectory()) {
             physxDir.walkTopDown()
-                .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) && 
+                .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
                          it.name.endsWith(".msi", ignoreCase = true) }
                 .forEach { msiFile ->
                     try {
@@ -1449,12 +1463,12 @@ private fun installRedistributables(
                     }
                 }
         }
-        
+
         // Find and install XNA Framework redistributables (.msi files starting with "xna")
         val xnaDir = File(commonRedistDir, "xnafx")
         if (xnaDir.exists() && xnaDir.isDirectory()) {
             xnaDir.walkTopDown()
-                .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) && 
+                .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
                          it.name.endsWith(".msi", ignoreCase = true) }
                 .forEach { msiFile ->
                     try {
@@ -1470,7 +1484,7 @@ private fun installRedistributables(
                     }
                 }
         }
-        
+
         Timber.i("Finished checking for redistributables")
     } catch (e: Exception) {
         Timber.e(e, "Error in installRedistributables: ${e.message}")
@@ -1500,7 +1514,7 @@ private fun unpackExecutableFile(
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
         }
-        
+
         // Install redistributables if shared depots are present
         try {
             installRedistributables(context, container, appId, guestProgramLauncherComponent, imageFs)

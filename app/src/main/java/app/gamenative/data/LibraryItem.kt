@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import app.gamenative.Constants
+import app.gamenative.utils.OpenContainerScanner
 
 enum class GameSource {
     STEAM,
@@ -20,10 +21,21 @@ data class LibraryItem(
     val gameSource: GameSource = GameSource.STEAM,
 ) {
     val clientIconUrl: String
-        get() = if (gameSource == GameSource.STEAM && iconHash.isNotEmpty()) {
-            Constants.Library.ICON_URL + "${gameId}/$iconHash.ico"
-        } else {
-            ""
+        get() = when (gameSource) {
+            GameSource.STEAM -> if (iconHash.isNotEmpty()) {
+                Constants.Library.ICON_URL + "${gameId}/$iconHash.ico"
+            } else {
+                ""
+            }
+            GameSource.OPEN_CONTAINER -> {
+                // Attempt to resolve a local icon from the selected/unique exe folder
+                val localPath = OpenContainerScanner.findIconFileForOpenContainer(appId)
+                if (!localPath.isNullOrEmpty()) {
+                    if (localPath.startsWith("file://")) localPath else "file://$localPath"
+                } else {
+                    ""
+                }
+            }
         }
 
     /**

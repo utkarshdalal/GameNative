@@ -3,7 +3,11 @@ package app.gamenative.ui.screen.library.appscreen
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
@@ -27,11 +31,30 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.snapshotFlow
 
 /**
  * Steam-specific implementation of BaseAppScreen
  */
 class SteamAppScreen : BaseAppScreen() {
+    companion object {
+        // Shared state for uninstall dialog - list of appIds that should show the dialog
+        private val uninstallDialogAppIds = mutableStateListOf<String>()
+        
+        fun showUninstallDialog(appId: String) {
+            if (!uninstallDialogAppIds.contains(appId)) {
+                uninstallDialogAppIds.add(appId)
+            }
+        }
+        
+        fun hideUninstallDialog(appId: String) {
+            uninstallDialogAppIds.remove(appId)
+        }
+        
+        fun shouldShowUninstallDialog(appId: String): Boolean {
+            return uninstallDialogAppIds.contains(appId)
+        }
+    }
     @Composable
     override fun getGameDisplayInfo(
         context: Context,
@@ -290,7 +313,8 @@ class SteamAppScreen : BaseAppScreen() {
                     AppMenuOption(
                         AppOptionMenuType.Uninstall,
                         onClick = {
-                            // This will be handled by dialogs
+                            // Show uninstall confirmation dialog
+                            showUninstallDialog(libraryItem.appId)
                         },
                     ),
                     AppMenuOption(
@@ -384,9 +408,80 @@ class SteamAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onDismiss: () -> Unit
     ) {
-        // Steam-specific dialogs are complex and require state management
-        // For now, we'll handle them in a simplified way
-        // The full implementation would require moving all the dialog state management here
+        val context = LocalContext.current
+        val gameId = libraryItem.gameId
+        val appInfo = remember(libraryItem.appId) {
+            SteamService.getAppInfoOf(gameId)
+        }
+        
+        // Track dialog state - observe changes to the companion object state
+        var showDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }
+        
+        // Observe state changes using snapshotFlow
+        LaunchedEffect(libraryItem.appId) {
+            snapshotFlow { shouldShowUninstallDialog(libraryItem.appId) }
+                .collect { shouldShow ->
+                    showDialog = shouldShow
+                }
+        }
+        
+        // Uninstall confirmation dialog
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    hideUninstallDialog(libraryItem.appId)
+                    showDialog = false
+                },
+                title = { Text("Uninstall Game") },
+                text = {
+                    Text(
+                        text = "Are you sure you want to uninstall ${appInfo?.name ?: libraryItem.name}? " +
+                                "This will delete all game files and cannot be undone."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            hideUninstallDialog(libraryItem.appId)
+                            showDialog = false
+                            
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val success = SteamService.deleteApp(gameId)
+                                withContext(Dispatchers.Main) {
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "${appInfo?.name ?: libraryItem.name} has been uninstalled",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        PostHog.capture(
+                                            event = "game_uninstalled",
+                                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                                        )
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to uninstall game",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Uninstall", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        hideUninstallDialog(libraryItem.appId)
+                        showDialog = false
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 

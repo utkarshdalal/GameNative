@@ -51,7 +51,7 @@ import java.util.EnumSet
 @Composable
 fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (String, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -89,7 +89,7 @@ private fun LibraryScreenContent(
     onModalBottomSheet: (Boolean) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (String, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -136,7 +136,7 @@ private fun LibraryScreenContent(
                 onBack = { selectedAppId = null },
                 onClickPlay = {
                     selectedLibraryItem?.let { libraryItem ->
-                        onClickPlay(libraryItem.gameId, it)
+                        onClickPlay(libraryItem.appId, it)
                     }
                 },
             )

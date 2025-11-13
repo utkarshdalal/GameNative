@@ -841,8 +841,7 @@ fun PluviaMain(
             ) { backStackEntry ->
                 val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
                 HomeScreen(
-                    onClickPlay = { gameId, asContainer ->
-                        val appId = "${GameSource.STEAM.name}_$gameId"
+                    onClickPlay = { appId, asContainer ->
                         viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(asContainer)
                         viewModel.setOffline(isOffline)
@@ -1038,26 +1037,29 @@ fun preLaunchApp(
             }
         } catch (_: Exception) { /* ignore persona read errors */ }
 
-        // Check if this is an Open Container game (skip save sync for Open Container games)
-        val isOpenContainer = appId.startsWith("${GameSource.OPEN_CONTAINER.name}_")
-        
-        // sync save files and check no pending remote operations are running (skip for Open Container games)
-        val postSyncInfo = if (isOpenContainer) {
-            // Open Container games don't use Steam Cloud saves, so skip sync
-            PostSyncInfo(SyncResult.UpToDate)
-        } else {
-            val prefixToPath: (String) -> String = { prefix ->
-                PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-            }
-            SteamService.beginLaunchApp(
-                appId = gameId,
-                prefixToPath = prefixToPath,
-                ignorePendingOperations = ignorePendingOperations,
-                preferredSave = preferredSave,
-                parentScope = this,
-                isOffline = isOffline,
-            ).await()
+        // Check if this is an Open Container game
+        val isOpenContainer = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.OPEN_CONTAINER
+
+        // For Open Container games, bypass Steam Cloud operations entirely and proceed to launch
+        if (isOpenContainer) {
+            Timber.i("[preLaunchApp] Open Container detected for $appId — skipping Steam Cloud sync and launching container")
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
         }
+
+        // For Steam games, sync save files and check no pending remote operations are running
+        val prefixToPath: (String) -> String = { prefix ->
+            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+        }
+        val postSyncInfo = SteamService.beginLaunchApp(
+            appId = gameId,
+            prefixToPath = prefixToPath,
+            ignorePendingOperations = ignorePendingOperations,
+            preferredSave = preferredSave,
+            parentScope = this,
+            isOffline = isOffline,
+        ).await()
 
         setLoadingDialogVisible(false)
 
