@@ -44,7 +44,7 @@ import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.SteamIconImage
+import app.gamenative.utils.SteamIconImage
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
 

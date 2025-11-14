@@ -76,7 +76,7 @@ import app.gamenative.ui.data.ChatState
 import app.gamenative.ui.internal.fakeSteamFriends
 import app.gamenative.ui.model.ChatViewModel
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.ListItemImage
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.getAvatarURL
 import kotlinx.coroutines.launch

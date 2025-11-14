@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +60,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.ListItemImage
 
 @Composable
 internal fun AppItem(
@@ -139,23 +140,37 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
+                    // Observe media changes to refresh icon immediately when user updates or resets
+                    val mediaVersion by app.gamenative.utils.MediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+                    val iconModel: Any? = remember(mediaVersion, appInfo.gameId) {
+                        app.gamenative.utils.MediaUtils.getCustomIconUri(appInfo.gameId)
+                            ?: appInfo.clientIconUrl
+                    }
                     ListItemImage(
                         modifier = Modifier.size(56.dp),
                         imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        image = { appInfo.clientIconUrl }
+                        image = { app.gamenative.utils.bustCache(iconModel, mediaVersion) }
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
-                    val imageUrl = if (paneType == PaneType.GRID_CAPSULE) {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                    // Observe media changes to refresh images immediately when user updates or resets
+                    val mediaVersion by app.gamenative.utils.MediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+
+
+                    val baseModel: Any? = if (paneType == PaneType.GRID_CAPSULE) {
+                        // Prefer custom capsule if present, otherwise Steam capsule
+                        app.gamenative.utils.MediaUtils.getCustomCapsuleUri(appInfo.gameId)
+                            ?: ("https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg")
                     } else {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                        // Prefer custom header if present, otherwise Steam header
+                        app.gamenative.utils.MediaUtils.getCustomHeaderUri(appInfo.gameId)
+                            ?: ("https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg")
                     }
 
                     ListItemImage(
                         modifier = Modifier.aspectRatio(aspectRatio),
                         imageModifier = Modifier.clip(RoundedCornerShape(3.dp)).alpha(alpha),
-                        image = { imageUrl },
+                        image = { app.gamenative.utils.bustCache(baseModel, mediaVersion) },
                         onFailure = {
                             hideText = false
                             alpha = 0.1f

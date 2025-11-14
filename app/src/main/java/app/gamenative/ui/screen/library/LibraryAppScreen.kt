@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -591,6 +592,12 @@ fun AppScreen(
             showConfigDialog = false
             ContainerUtils.applyToContainer(context, appId, it)
         },
+        mediaHeroUrl = appInfo.getHeroUrl(),
+        mediaLogoUrl = appInfo.getLogoUrl(),
+        mediaCapsuleUrl = appInfo.getCapsuleUrl(),
+        mediaHeaderUrl = appInfo.getHeaderImageUrl(),
+        mediaIconUrl = appInfo.clientIconUrl,
+        gameId = appInfo.id,
     )
 
     LoadingDialog(
@@ -1024,9 +1031,16 @@ private fun AppScreenContent(
                 .height(250.dp)
         ) {
             // Hero background image
+            // Observe media change notifications to refresh hero immediately
+            val mediaVersion by app.gamenative.utils.MediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
-                imageModel = { appInfo.getHeroUrl() },
+                imageModel = {
+                    val custom = app.gamenative.utils.MediaUtils.getCustomHeroUri(appInfo.id)
+                    val base = custom ?: appInfo.getHeroUrl()
+                    app.gamenative.utils.bustCache(base, mediaVersion)
+                },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },
                 failure = {

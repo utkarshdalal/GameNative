@@ -123,4 +123,26 @@
 
     <string name="resume_download">Resume</string>
     <string name="pause_download">Pause</string>
+    <!-- Media management strings -->
+    <string name="media_logo_title">Logo</string>
+    <string name="media_logo_hint">Recommended: up to 600×200 PNG with transparency. Will be scaled to fit.</string>
+    <string name="media_icon_title">Icon (List view)</string>
+    <string name="media_icon_hint">Recommended: Square PNG with transparency. Will be center-cropped to fit.</string>
+    <string name="media_hero_title">Hero Image</string>
+    <string name="media_hero_hint">Recommended: 920×430 JPG/PNG. Will be center-cropped to fit.</string>
+    <string name="media_capsule_title">Capsule (Grid view)</string>
+    <string name="media_capsule_hint">Recommended: 600×900 JPG/PNG. Will be center-cropped to fit.</string>
+    <string name="media_header_title">Header (List view)</string>
+    <string name="media_header_hint">Recommended: 460×215 JPG/PNG. Will be center-cropped to fit.</string>
+    <string name="media_no_logo">No logo available</string>
+    <string name="media_no_icon">No icon available</string>
+    <string name="media_no_hero">No hero image available</string>
+    <string name="media_no_capsule">No capsule image available</string>
+    <string name="media_no_header">No header image available</string>
+    <string name="media_open_specific">Open from a specific game to preview and change its media.</string>
+    <string name="media_choose_image">Choose image</string>
+    <string name="media_reset_to_default">Reset to default</string>
+    <string name="media_updated">%s updated</string>
+    <string name="media_update_failed">Failed to update %s</string>
+    <string name="media_reverted">Reverted to Steam default</string>
 </resources>
