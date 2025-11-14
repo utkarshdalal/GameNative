@@ -1,19 +1,70 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import androidx.compose.runtime.Composable
+import android.widget.Toast
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.OpenContainerScanner
 import com.winlator.container.ContainerData
+import com.winlator.container.ContainerManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Open Container-specific implementation of BaseAppScreen
  */
 class OpenContainerAppScreen : BaseAppScreen() {
+    companion object {
+        // Shared state for exe selection dialog - list of appIds that should show the dialog
+        private val exeSelectionDialogAppIds = mutableStateListOf<String>()
+        
+        fun showExeSelectionDialog(appId: String) {
+            if (!exeSelectionDialogAppIds.contains(appId)) {
+                exeSelectionDialogAppIds.add(appId)
+            }
+        }
+        
+        fun hideExeSelectionDialog(appId: String) {
+            exeSelectionDialogAppIds.remove(appId)
+        }
+        
+        fun shouldShowExeSelectionDialog(appId: String): Boolean {
+            return exeSelectionDialogAppIds.contains(appId)
+        }
+
+        // Shared state for delete dialog - list of appIds that should show the dialog
+        private val deleteDialogAppIds = mutableStateListOf<String>()
+        
+        fun showDeleteDialog(appId: String) {
+            if (!deleteDialogAppIds.contains(appId)) {
+                deleteDialogAppIds.add(appId)
+            }
+        }
+        
+        fun hideDeleteDialog(appId: String) {
+            deleteDialogAppIds.remove(appId)
+        }
+        
+        fun shouldShowDeleteDialog(appId: String): Boolean {
+            return deleteDialogAppIds.contains(appId)
+        }
+    }
     @Composable
     override fun getGameDisplayInfo(
         context: Context,
@@ -64,7 +115,23 @@ class OpenContainerAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
-        // For Open Container games, this just launches the game
+        // Check if there are multiple valid exe files and none is selected
+        val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+        if (gameFolderPath != null) {
+            val allExes = OpenContainerScanner.findAllValidExeFiles(gameFolderPath)
+            if (allExes.size > 1) {
+                // Check if container has an executable selected
+                val containerManager = ContainerManager(context)
+                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                if (container.executablePath.isEmpty()) {
+                    // Multiple exes found but none selected - show dialog
+                    showExeSelectionDialog(libraryItem.appId)
+                    return
+                }
+            }
+        }
+        
+        // Launch the game
         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
     }
 
@@ -73,62 +140,26 @@ class OpenContainerAppScreen : BaseAppScreen() {
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
-        // Not applicable for Open Container games
+        // Show delete confirmation dialog for Open Container games
+        showDeleteDialog(libraryItem.appId)
     }
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         // Not applicable for Open Container games
     }
 
-    override fun getOptionsMenu(
+    @Composable
+    override fun getSourceSpecificMenuOptions(
         context: Context,
         libraryItem: LibraryItem,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
+        isInstalled: Boolean
     ): List<AppMenuOption> {
-        val menuOptions = mutableListOf<AppMenuOption>()
-        
-        // Edit Container option (always available)
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.EditContainer,
-                onClick = onEditContainer
-            )
-        )
-        
-        // Since Open Container games are always "installed", show play/run options
-        val isInstalled = isInstalled(context, libraryItem)
-        if (isInstalled) {
-            menuOptions.add(
-                AppMenuOption(
-                    AppOptionMenuType.RunContainer,
-                    onClick = {
-                        onClickPlay(true)
-                    },
-                )
-            )
-        }
-        
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.SubmitFeedback,
-                onClick = {
-                    PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(libraryItem.appId))
-                },
-            )
-        )
-        
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.GetSupport,
-                onClick = {
-                    // This would open support link - handled by base class if needed
-                },
-            )
-        )
-        
-        return menuOptions
+        // Open Container games don't have source-specific menu options
+        // Delete button is handled via onDeleteDownloadClick and shown next to play button
+        return emptyList()
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
@@ -142,12 +173,147 @@ class OpenContainerAppScreen : BaseAppScreen() {
 
     override fun supportsContainerConfig(): Boolean = true
 
+    override fun getExportFileExtension(): String = ".game"
+
     @Composable
     override fun AdditionalDialogs(
         libraryItem: LibraryItem,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        onEditContainer: () -> Unit,
+        onBack: () -> Unit
     ) {
-        // No additional dialogs for Open Container games
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        
+        // Track exe selection dialog state
+        var showExeDialog by remember { mutableStateOf(shouldShowExeSelectionDialog(libraryItem.appId)) }
+        
+        LaunchedEffect(libraryItem.appId) {
+            snapshotFlow { shouldShowExeSelectionDialog(libraryItem.appId) }
+                .collect { shouldShow ->
+                    showExeDialog = shouldShow
+                }
+        }
+        
+        // Track delete dialog state
+        var showDeleteDialog by remember { mutableStateOf(shouldShowDeleteDialog(libraryItem.appId)) }
+        
+        LaunchedEffect(libraryItem.appId) {
+            snapshotFlow { shouldShowDeleteDialog(libraryItem.appId) }
+                .collect { shouldShow ->
+                    showDeleteDialog = shouldShow
+                }
+        }
+        
+        // Exe selection required dialog
+        if (showExeDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    hideExeSelectionDialog(libraryItem.appId)
+                },
+                title = { Text("Executable Selection Required") },
+                text = {
+                    Text(
+                        text = "This game has multiple executable files. Please select which one to use in the container settings before launching."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            hideExeSelectionDialog(libraryItem.appId)
+                            // Open container settings dialog
+                            onEditContainer()
+                        }
+                    ) {
+                        Text("Open Container Settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        hideExeSelectionDialog(libraryItem.appId)
+                    }) {
+                        Text("Close")
+                    }
+                }
+            )
+        }
+        
+        // Delete confirmation dialog
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    hideDeleteDialog(libraryItem.appId)
+                },
+                title = { Text("Delete Game") },
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete \"${libraryItem.name}\"? " +
+                                "This will permanently delete the game folder and cannot be undone."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            hideDeleteDialog(libraryItem.appId)
+                            
+                            // Delete the game folder and container
+                            scope.launch {
+                                try {
+                                    // Delete the container first (needs to be on main thread)
+                                    withContext(Dispatchers.Main) {
+                                        ContainerUtils.deleteContainer(context, libraryItem.appId)
+                                    }
+                                    
+                                    // Delete the game folder on background thread
+                                    withContext(Dispatchers.IO) {
+                                        val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+                                        if (gameFolderPath != null) {
+                                            val gameFolder = File(gameFolderPath)
+                                            if (gameFolder.exists()) {
+                                                gameFolder.deleteRecursively()
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Navigate back and show notification
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "\"${libraryItem.name}\" has been deleted",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        
+                                        // Small delay to ensure file system updates are complete
+                                        // before navigating back (list will auto-refresh when displayed)
+                                        delay(100)
+                                        
+                                        // Navigate back to game list
+                                        onBack()
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to delete game: ${e.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Delete", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        hideDeleteDialog(libraryItem.appId)
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 

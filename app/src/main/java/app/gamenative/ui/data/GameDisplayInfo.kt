@@ -1,4 +1,4 @@
-package app.gamenative.ui.screen.library.appscreen
+package app.gamenative.ui.data
 
 /**
  * Common data structure for displaying game information in the UI.

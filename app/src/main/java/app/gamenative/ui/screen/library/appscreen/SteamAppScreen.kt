@@ -1,14 +1,18 @@
 package app.gamenative.ui.screen.library.appscreen
 
+import android.Manifest
 import android.content.Context
-import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
+import androidx.core.content.ContextCompat
+import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
@@ -18,20 +22,28 @@ import app.gamenative.PluviaApp
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
+import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
+import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.xenvironment.ImageFsInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.snapshotFlow
+import timber.log.Timber
 
 /**
  * Steam-specific implementation of BaseAppScreen
@@ -53,6 +65,36 @@ class SteamAppScreen : BaseAppScreen() {
         
         fun shouldShowUninstallDialog(appId: String): Boolean {
             return uninstallDialogAppIds.contains(appId)
+        }
+
+        // Shared state for install dialog - map of gameId to MessageDialogState
+        private val installDialogStates = mutableStateMapOf<Int, MessageDialogState>()
+        
+        fun showInstallDialog(gameId: Int, state: MessageDialogState) {
+            installDialogStates[gameId] = state
+        }
+        
+        fun hideInstallDialog(gameId: Int) {
+            installDialogStates.remove(gameId)
+        }
+        
+        fun getInstallDialogState(gameId: Int): MessageDialogState? {
+            return installDialogStates[gameId]
+        }
+
+        // Shared state for update/verify operation - map of gameId to AppOptionMenuType
+        private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
+        
+        fun setPendingUpdateVerifyOperation(gameId: Int, operation: AppOptionMenuType?) {
+            if (operation != null) {
+                pendingUpdateVerifyOperations[gameId] = operation
+            } else {
+                pendingUpdateVerifyOperations.remove(gameId)
+            }
+        }
+        
+        fun getPendingUpdateVerifyOperation(gameId: Int): AppOptionMenuType? {
+            return pendingUpdateVerifyOperations[gameId]
         }
     }
     @Composable
@@ -174,8 +216,27 @@ class SteamAppScreen : BaseAppScreen() {
         return downloadInfo?.getProgress() ?: 0f
     }
 
+    override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
+        // Use Steam's more accurate check that looks for marker files
+        return SteamService.hasPartialDownload(libraryItem.gameId)
+    }
+
     override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean {
         return SteamService.isUpdatePending(libraryItem.gameId)
+    }
+
+    override fun onRunContainerClick(
+        context: Context,
+        libraryItem: LibraryItem,
+        onClickPlay: (Boolean) -> Unit
+    ) {
+        val gameId = libraryItem.gameId
+        val appInfo = SteamService.getAppInfoOf(gameId)
+        PostHog.capture(
+            event = "container_opened",
+            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+        )
+        super.onRunContainerClick(context, libraryItem, onClickPlay)
     }
 
     override fun onDownloadInstallClick(
@@ -189,17 +250,37 @@ class SteamAppScreen : BaseAppScreen() {
         val isInstalled = SteamService.isAppInstalled(gameId)
 
         if (isDownloading) {
-            // This will be handled by dialogs in AdditionalDialogs
-            // For now, just cancel
-            downloadInfo?.cancel()
+            // Show cancel download dialog
+            showInstallDialog(
+                gameId,
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.CANCEL_APP_DOWNLOAD,
+                    title = context.getString(R.string.cancel_download_prompt_title),
+                    message = "Are you sure you want to cancel the download of the app?",
+                    confirmBtnText = context.getString(R.string.yes),
+                    dismissBtnText = context.getString(R.string.no),
+                )
+            )
         } else if (SteamService.hasPartialDownload(gameId)) {
             // Resume incomplete download
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
             }
         } else if (!isInstalled) {
-            // Request permissions and show install dialog
-            // This will be handled by AdditionalDialogs
+            // Request storage permissions first, then show install dialog
+            // This will be handled by the permission launcher in AdditionalDialogs
+            showInstallDialog(
+                gameId,
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.INSTALL_APP,
+                    title = "", // Will be set after permissions are granted
+                    message = "", // Will be set after permissions are granted
+                    confirmBtnText = "", // Will be set after permissions are granted
+                    dismissBtnText = "", // Will be set after permissions are granted
+                )
+            )
         } else {
             // Already installed: launch app
             val appInfo = SteamService.getAppInfoOf(gameId)
@@ -226,7 +307,28 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
-        // This will be handled by dialogs in AdditionalDialogs
+        val gameId = libraryItem.gameId
+        val isInstalled = SteamService.isAppInstalled(gameId)
+        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
+        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        
+        if (isDownloading || SteamService.hasPartialDownload(gameId)) {
+            // Show cancel download dialog when downloading
+            showInstallDialog(
+                gameId,
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.CANCEL_APP_DOWNLOAD,
+                    title = context.getString(R.string.cancel_download_prompt_title),
+                    message = "Delete all downloaded data for this game?",
+                    confirmBtnText = context.getString(R.string.yes),
+                    dismissBtnText = context.getString(R.string.no)
+                )
+            )
+        } else if (isInstalled) {
+            // Show uninstall dialog when installed
+            showUninstallDialog(libraryItem.appId)
+        }
     }
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
@@ -235,47 +337,89 @@ class SteamAppScreen : BaseAppScreen() {
         }
     }
 
-    override fun getOptionsMenu(
+    @Composable
+    override fun getSourceSpecificMenuOptions(
         context: Context,
         libraryItem: LibraryItem,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
+        isInstalled: Boolean
     ): List<AppMenuOption> {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
-        val isInstalled = SteamService.isAppInstalled(gameId)
-
         val menuOptions = mutableListOf<AppMenuOption>()
 
-        // Edit Container option (always available)
+        // Override EditContainer to check for ImageFS installation
         menuOptions.add(
             AppMenuOption(
                 optionType = AppOptionMenuType.EditContainer,
-                onClick = onEditContainer
+                onClick = {
+                    val container = ContainerUtils.getOrCreateContainer(context, appId)
+                    val variant = container.containerVariant
+                    
+                    if (!SteamService.isImageFsInstalled(context)) {
+                        if (!SteamService.isImageFsInstallable(context, variant)) {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.INSTALL_IMAGEFS,
+                                    title = "Download & Install ImageFS",
+                                    message = "The Ubuntu image needs to be downloaded and installed before " +
+                                            "being able to edit the configuration. This operation might take " +
+                                            "a few minutes. Would you like to continue?",
+                                    confirmBtnText = "Proceed",
+                                    dismissBtnText = "Cancel",
+                                )
+                            )
+                        } else {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.INSTALL_IMAGEFS,
+                                    title = "Install ImageFS",
+                                    message = "The Ubuntu image needs to be installed before being able to edit " +
+                                            "the configuration. This operation might take a few minutes. " +
+                                            "Would you like to continue?",
+                                    confirmBtnText = "Proceed",
+                                    dismissBtnText = "Cancel",
+                                )
+                            )
+                        }
+                    } else {
+                        onEditContainer()
+                    }
+                }
             )
         )
 
         if (isInstalled) {
+            // Override ResetToDefaults to show confirmation dialog
+            menuOptions.add(
+                AppMenuOption(
+                    AppOptionMenuType.ResetToDefaults,
+                    onClick = {
+                        showInstallDialog(
+                            gameId,
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.RESET_CONTAINER_CONFIRM,
+                                title = "Reset Container",
+                                message = "This will reset your container to the default configuration.",
+                                confirmBtnText = "Continue",
+                                dismissBtnText = "Cancel",
+                            )
+                        )
+                    },
+                )
+            )
+
+            // Steam-specific options
             menuOptions.addAll(
                 listOf(
-                    AppMenuOption(
-                        AppOptionMenuType.RunContainer,
-                        onClick = {
-                            PostHog.capture(
-                                event = "container_opened",
-                                properties = mapOf("game_name" to appInfo.name)
-                            )
-                            onClickPlay(true)
-                        },
-                    ),
-                    AppMenuOption(
-                        AppOptionMenuType.ResetToDefaults,
-                        onClick = {
-                            // This will be handled by dialogs
-                        },
-                    ),
                     AppMenuOption(
                         AppOptionMenuType.ResetDrm,
                         onClick = {
@@ -287,36 +431,43 @@ class SteamAppScreen : BaseAppScreen() {
                         },
                     ),
                     AppMenuOption(
-                        optionType = AppOptionMenuType.CreateShortcut,
-                        onClick = {
-                            // This will be handled by dialogs
-                        }
-                    ),
-                    AppMenuOption(
-                        optionType = AppOptionMenuType.ExportFrontend,
-                        onClick = {
-                            // This will be handled by export launcher
-                        }
-                    ),
-                    AppMenuOption(
                         AppOptionMenuType.VerifyFiles,
                         onClick = {
-                            // This will be handled by dialogs
+                            // Show confirmation dialog before verifying
+                            setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.VerifyFiles)
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.UPDATE_VERIFY_CONFIRM,
+                                    title = "Verify Files",
+                                    message = "Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.",
+                                    confirmBtnText = "Continue",
+                                    dismissBtnText = "Cancel",
+                                )
+                            )
                         },
                     ),
                     AppMenuOption(
                         AppOptionMenuType.Update,
                         onClick = {
-                            // This will be handled by dialogs
+                            // Show confirmation dialog before updating
+                            setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.Update)
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.UPDATE_VERIFY_CONFIRM,
+                                    title = "Update",
+                                    message = "Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.",
+                                    confirmBtnText = "Continue",
+                                    dismissBtnText = "Cancel",
+                                )
+                            )
                         },
                     ),
-                    AppMenuOption(
-                        AppOptionMenuType.Uninstall,
-                        onClick = {
-                            // Show uninstall confirmation dialog
-                            showUninstallDialog(libraryItem.appId)
-                        },
-                    ),
+                    // Uninstall option removed from menu - now handled by delete button next to play button
+                    // The button uses onDeleteDownloadClick which shows the uninstall dialog
                     AppMenuOption(
                         AppOptionMenuType.ForceCloudSync,
                         onClick = {
@@ -357,28 +508,6 @@ class SteamAppScreen : BaseAppScreen() {
             )
         }
 
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.SubmitFeedback,
-                onClick = {
-                    PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(appId))
-                },
-            )
-        )
-
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.GetSupport,
-                onClick = {
-                    val browserIntent = Intent(
-                        Intent.ACTION_VIEW,
-                        ("https://discord.gg/2hKv4VfZfE").toUri(),
-                    )
-                    context.startActivity(browserIntent)
-                },
-            )
-        )
-
         return menuOptions
     }
 
@@ -403,10 +532,14 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun supportsContainerConfig(): Boolean = true
 
+    override fun getExportFileExtension(): String = ".steam"
+
     @Composable
     override fun AdditionalDialogs(
         libraryItem: LibraryItem,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        onEditContainer: () -> Unit,
+        onBack: () -> Unit
     ) {
         val context = LocalContext.current
         val gameId = libraryItem.gameId
@@ -414,23 +547,312 @@ class SteamAppScreen : BaseAppScreen() {
             SteamService.getAppInfoOf(gameId)
         }
         
-        // Track dialog state - observe changes to the companion object state
-        var showDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }
+        // Track uninstall dialog state
+        var showUninstallDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }
         
-        // Observe state changes using snapshotFlow
         LaunchedEffect(libraryItem.appId) {
             snapshotFlow { shouldShowUninstallDialog(libraryItem.appId) }
                 .collect { shouldShow ->
-                    showDialog = shouldShow
+                    showUninstallDialog = shouldShow
                 }
         }
         
+        // Track install dialog state
+        var installDialogState by remember(gameId) { 
+            mutableStateOf(getInstallDialogState(gameId) ?: MessageDialogState(false))
+        }
+        
+        LaunchedEffect(gameId) {
+            snapshotFlow { getInstallDialogState(gameId) }
+                .collect { state ->
+                    installDialogState = state ?: MessageDialogState(false)
+                }
+        }
+        
+        // Permission launcher for storage permissions
+        val permissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val writePermissionGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
+            val readPermissionGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
+            
+            if (writePermissionGranted && readPermissionGranted) {
+                // Calculate sizes and show install dialog
+                CoroutineScope(Dispatchers.IO).launch {
+                    val depots = SteamService.getDownloadableDepots(gameId)
+                    Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
+                    
+                    // How much free space is on disk
+                    val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+                    val availableSpace = StorageUtils.formatBinarySize(availableBytes)
+                    
+                    // TODO: un-hardcode "public" branch
+                    val downloadSize = StorageUtils.formatBinarySize(
+                        depots.values.sumOf {
+                            it.manifests["public"]?.download ?: 0
+                        },
+                    )
+                    val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                    val installSize = StorageUtils.formatBinarySize(installBytes)
+                    
+                    withContext(Dispatchers.Main) {
+                        if (availableBytes < installBytes) {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.NOT_ENOUGH_SPACE,
+                                    title = context.getString(R.string.not_enough_space),
+                                    message = "The app being installed needs $installSize of space but " +
+                                            "there is only $availableSpace left on this device",
+                                    confirmBtnText = context.getString(R.string.acknowledge),
+                                )
+                            )
+                        } else {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.INSTALL_APP,
+                                    title = context.getString(R.string.download_prompt_title),
+                                    message = "The app being installed has the following space requirements. Would you like to proceed?" +
+                                            "\n\n\tDownload Size: $downloadSize" +
+                                            "\n\tSize on Disk: $installSize" +
+                                            "\n\tAvailable Space: $availableSpace",
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
+                                )
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Permissions denied
+                Toast.makeText(context, "Storage permission required", Toast.LENGTH_SHORT).show()
+                hideInstallDialog(gameId)
+            }
+        }
+        
+        // Check if we need to request permissions when install dialog is shown
+        LaunchedEffect(installDialogState.visible, installDialogState.type) {
+            if (installDialogState.visible && installDialogState.type == DialogType.INSTALL_APP && 
+                installDialogState.title.isNullOrEmpty()) {
+                // Check if we have permissions
+                val writePermissionGranted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+                val readPermissionGranted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (writePermissionGranted && readPermissionGranted) {
+                    // Permissions already granted, calculate sizes and show dialog
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val depots = SteamService.getDownloadableDepots(gameId)
+                        Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
+                        
+                        // How much free space is on disk
+                        val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+                        val availableSpace = StorageUtils.formatBinarySize(availableBytes)
+                        
+                        // TODO: un-hardcode "public" branch
+                        val downloadSize = StorageUtils.formatBinarySize(
+                            depots.values.sumOf {
+                                it.manifests["public"]?.download ?: 0
+                            },
+                        )
+                        val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                        val installSize = StorageUtils.formatBinarySize(installBytes)
+                        
+                        withContext(Dispatchers.Main) {
+                            if (availableBytes < installBytes) {
+                                showInstallDialog(
+                                    gameId,
+                                    MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.NOT_ENOUGH_SPACE,
+                                        title = context.getString(R.string.not_enough_space),
+                                        message = "The app being installed needs $installSize of space but " +
+                                                "there is only $availableSpace left on this device",
+                                        confirmBtnText = context.getString(R.string.acknowledge),
+                                    )
+                                )
+                            } else {
+                                showInstallDialog(
+                                    gameId,
+                                    MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.INSTALL_APP,
+                                        title = context.getString(R.string.download_prompt_title),
+                                        message = "The app being installed has the following space requirements. Would you like to proceed?" +
+                                                "\n\n\tDownload Size: $downloadSize" +
+                                                "\n\tSize on Disk: $installSize" +
+                                                "\n\tAvailable Space: $availableSpace",
+                                        confirmBtnText = context.getString(R.string.proceed),
+                                        dismissBtnText = context.getString(R.string.cancel),
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Request permissions
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        ),
+                    )
+                }
+            }
+        }
+        
+        // Install dialog (INSTALL_APP, NOT_ENOUGH_SPACE, CANCEL_APP_DOWNLOAD)
+        if (installDialogState.visible) {
+            val onDismissRequest: (() -> Unit)? = {
+                hideInstallDialog(gameId)
+            }
+            val onDismissClick: (() -> Unit)? = {
+                hideInstallDialog(gameId)
+            }
+            val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
+                DialogType.INSTALL_APP -> {
+                    {
+                        PostHog.capture(
+                            event = "game_install_started",
+                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                        )
+                        hideInstallDialog(gameId)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            SteamService.downloadApp(gameId)
+                        }
+                    }
+                }
+                DialogType.NOT_ENOUGH_SPACE -> {
+                    {
+                        hideInstallDialog(gameId)
+                    }
+                }
+                DialogType.CANCEL_APP_DOWNLOAD -> {
+                    {
+                        PostHog.capture(
+                            event = "game_install_cancelled",
+                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                        )
+                        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
+                        downloadInfo?.cancel()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            SteamService.deleteApp(gameId)
+                            withContext(Dispatchers.Main) {
+                                hideInstallDialog(gameId)
+                            }
+                        }
+                    }
+                }
+                DialogType.UPDATE_VERIFY_CONFIRM -> {
+                    {
+                        hideInstallDialog(gameId)
+                        val operation = getPendingUpdateVerifyOperation(gameId)
+                        setPendingUpdateVerifyOperation(gameId, null)
+                        
+                        if (operation != null) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                                val downloadInfo = SteamService.downloadApp(gameId)
+                                MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                                MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                                
+                                if (operation == AppOptionMenuType.VerifyFiles) {
+                                    val prefixToPath: (String) -> String = { prefix ->
+                                        PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                                    }
+                                    SteamService.forceSyncUserFiles(
+                                        appId = gameId,
+                                        prefixToPath = prefixToPath,
+                                        overrideLocalChangeNumber = -1
+                                    ).await()
+                                }
+                                
+                                container.isNeedsUnpacking = true
+                                container.saveData()
+                            }
+                        }
+                    }
+                }
+                DialogType.RESET_CONTAINER_CONFIRM -> {
+                    {
+                        hideInstallDialog(gameId)
+                        // Reset container configuration to the app's current default settings,
+                        // but keep the existing drives mapping so the game path remains mounted.
+                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                        val defaults = ContainerUtils.getDefaultContainerData()
+                        val adjusted = defaults.copy(drives = container.drives)
+                        ContainerUtils.applyToContainer(context, libraryItem.appId, adjusted)
+                        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                DialogType.INSTALL_IMAGEFS -> {
+                    {
+                        hideInstallDialog(gameId)
+                        // Install ImageFS with loading progress
+                        // Note: This should ideally show a loading dialog, but for now we'll do it in the background
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                                val variant = container.containerVariant
+                                
+                                if (!SteamService.isImageFsInstallable(context, variant)) {
+                                    SteamService.downloadImageFs(
+                                        onDownloadProgress = { /* TODO: Update loading dialog progress */ },
+                                        this,
+                                        variant = variant,
+                                        context = context
+                                    ).await()
+                                }
+                                if (!SteamService.isImageFsInstalled(context)) {
+                                    withContext(Dispatchers.Main) {
+                                        SplitCompat.install(context)
+                                    }
+                                    ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
+                                        // TODO: Update loading dialog progress
+                                    }.get()
+                                }
+                                // After installation, trigger container edit
+                                withContext(Dispatchers.Main) {
+                                    // Trigger the container edit callback
+                                    // This will be handled by the menu option's onClick
+                                    Toast.makeText(context, "ImageFS installed. Please try editing container again.", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Failed to install ImageFS: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    }
+                }
+                else -> null
+            }
+            
+            MessageDialog(
+                visible = installDialogState.visible,
+                onDismissRequest = onDismissRequest,
+                onConfirmClick = onConfirmClick,
+                onDismissClick = onDismissClick,
+                confirmBtnText = installDialogState.confirmBtnText,
+                dismissBtnText = installDialogState.dismissBtnText,
+                title = installDialogState.title,
+                message = installDialogState.message,
+            )
+        }
+        
         // Uninstall confirmation dialog
-        if (showDialog) {
+        if (showUninstallDialog) {
             AlertDialog(
                 onDismissRequest = { 
                     hideUninstallDialog(libraryItem.appId)
-                    showDialog = false
                 },
                 title = { Text("Uninstall Game") },
                 text = {
@@ -443,7 +865,6 @@ class SteamAppScreen : BaseAppScreen() {
                     TextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
-                            showDialog = false
                             
                             CoroutineScope(Dispatchers.IO).launch {
                                 val success = SteamService.deleteApp(gameId)
@@ -475,7 +896,6 @@ class SteamAppScreen : BaseAppScreen() {
                 dismissButton = {
                     TextButton(onClick = { 
                         hideUninstallDialog(libraryItem.appId)
-                        showDialog = false
                     }) {
                         Text("Cancel")
                     }

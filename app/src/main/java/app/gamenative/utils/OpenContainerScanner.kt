@@ -168,6 +168,42 @@ object OpenContainerScanner {
     }
 
     /**
+     * Find all valid executable files in a game folder.
+     * Returns a list of relative paths to all valid .exe files (excluding uninstallers).
+     * 
+     * @param folderPath The path to the game folder
+     * @return List of relative executable paths, or empty list if folder doesn't exist
+     */
+    fun findAllValidExeFiles(folderPath: String): List<String> = findAllValidExeFiles(File(folderPath))
+
+    fun findAllValidExeFiles(folder: File): List<String> {
+        if (!folder.exists() || !folder.isDirectory) return emptyList()
+
+        fun File.isValidExe(): Boolean = this.isFile && this.name.endsWith(".exe", ignoreCase = true) &&
+                !this.name.startsWith("unins", ignoreCase = true)
+
+        val candidates = mutableListOf<String>()
+
+        // Root-level .exe files
+        folder.listFiles()?.forEach { f ->
+            if (f.isValidExe()) candidates.add(f.name)
+        }
+
+        // Check one level down
+        val subDirs = folder.listFiles { f -> f.isDirectory } ?: emptyArray()
+        for (sd in subDirs) {
+            sd.listFiles()?.forEach { f ->
+                if (f.isValidExe()) {
+                    val rel = sd.name + "/" + f.name
+                    candidates.add(rel)
+                }
+            }
+        }
+
+        return candidates.distinct()
+    }
+
+    /**
      * Returns a combined set of root paths: the default path (always included)
      * plus any user-defined additional paths from preferences.
      */

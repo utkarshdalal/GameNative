@@ -97,7 +97,7 @@ import com.winlator.xenvironment.ImageFsInstaller
 import com.winlator.fexcore.FEXCoreManager
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.appscreen.OpenContainerAppScreen
-import app.gamenative.ui.screen.library.appscreen.GameDisplayInfo
+import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -203,6 +203,7 @@ internal fun AppScreenContent(
     isValidToDownload: Boolean,
     isDownloading: Boolean,
     downloadProgress: Float,
+    hasPartialDownload: Boolean,
     isUpdatePending: Boolean,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
@@ -376,13 +377,11 @@ internal fun AppScreenContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Pause/Resume and Delete when downloading or paused
-                // Determine if there's a partial download (in-session or from ungraceful close)
-                // Note: This is Steam-specific, but we'll handle it in the base class for now
-                val isPartiallyDownloaded = (downloadProgress > 0f && downloadProgress < 1f)
+                // Use hasPartialDownload from BaseAppScreen (implemented per game source)
                 // Disable resume when Wi-Fi only is enabled and there's no Wi-Fi
-                val isResume = !isDownloading && isPartiallyDownloaded
+                val isResume = !isDownloading && hasPartialDownload
                 val pauseResumeEnabled = if (isResume) wifiAllowed else true
-                if (isDownloading || isPartiallyDownloaded) {
+                if (isDownloading || hasPartialDownload) {
                     // Pause or Resume
                     Button(
                         enabled = pauseResumeEnabled,
@@ -442,12 +441,13 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
-                    // Uninstall if already installed and uninstall option exists in menu
-                    val uninstallOption = optionsMenu.find { it.optionType == AppOptionMenuType.Uninstall }
-                    if (isInstalled && uninstallOption != null) {
+                    // Uninstall/Delete button if already installed
+                    // This is shared functionality - all game types show delete button when installed
+                    // The action is handled by onDeleteDownloadClick which is implemented per game source
+                    if (isInstalled) {
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
-                            onClick = { uninstallOption.onClick() },
+                            onClick = { onDeleteDownloadClick() },
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
@@ -860,6 +860,7 @@ private fun Preview_AppScreen() {
                 isValidToDownload = true,
                 isDownloading = isDownloading,
                 downloadProgress = .50f,
+                hasPartialDownload = false,
                 isUpdatePending = false,
                 onDownloadInstallClick = { isDownloading = !isDownloading },
                 onPauseResumeClick = { },
