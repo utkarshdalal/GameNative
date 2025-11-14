@@ -61,6 +61,8 @@ import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.OpenContainerScanner
+import java.io.File
+import android.net.Uri
 
 @Composable
 internal fun AppItem(
@@ -158,10 +160,64 @@ internal fun AppItem(
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
-                    val imageUrl = if (paneType == PaneType.GRID_CAPSULE) {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                    } else {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                    
+                    // Helper function to find SteamGridDB images for Open Container games
+                    fun findSteamGridDBImage(imageType: String): String? {
+                        if (appInfo.gameSource == GameSource.OPEN_CONTAINER) {
+                            val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appInfo.appId)
+                            gameFolderPath?.let { path ->
+                                val folder = java.io.File(path)
+                                val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                    file.name.startsWith("steamgriddb_$imageType") && 
+                                    (file.name.endsWith(".png", ignoreCase = true) || 
+                                     file.name.endsWith(".jpg", ignoreCase = true) || 
+                                     file.name.endsWith(".webp", ignoreCase = true))
+                                }
+                                return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                            }
+                        }
+                        return null
+                    }
+                    
+                    val imageUrl = remember(appInfo.appId, paneType) {
+                        if (appInfo.gameSource == GameSource.OPEN_CONTAINER) {
+                            // For Open Container games, use SteamGridDB images
+                            when (paneType) {
+                                PaneType.GRID_CAPSULE -> {
+                                    // Vertical grid for capsule
+                                    findSteamGridDBImage("grid_capsule") 
+                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                                }
+                                PaneType.GRID_HERO -> {
+                                    // Horizontal grid for hero view
+                                    findSteamGridDBImage("grid_hero") 
+                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
+                                else -> {
+                                    // For list view, use heroes endpoint (not grid_hero)
+                                    val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appInfo.appId)
+                                    val heroUrl = gameFolderPath?.let { path ->
+                                        val folder = java.io.File(path)
+                                        val heroFile = folder.listFiles()?.firstOrNull { file ->
+                                            file.name.startsWith("steamgriddb_hero") && 
+                                            !file.name.contains("grid") &&
+                                            (file.name.endsWith(".png", ignoreCase = true) || 
+                                             file.name.endsWith(".jpg", ignoreCase = true) || 
+                                             file.name.endsWith(".webp", ignoreCase = true))
+                                        }
+                                        heroFile?.let { android.net.Uri.fromFile(it).toString() }
+                                    }
+                                    heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
+                            }
+                        } else {
+                            // For Steam games, use standard Steam URLs
+                            if (paneType == PaneType.GRID_CAPSULE) {
+                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                            } else {
+                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                            }
+                        }
                     }
 
                     ListItemImage(
@@ -183,8 +239,12 @@ internal fun AppItem(
                             appInfo = appInfo,
                         )
                     } else {
-                        val isInstalled = remember(appInfo.appId) {
-                            SteamService.isAppInstalled(appInfo.gameId)
+                        val isInstalled = remember(appInfo.appId, appInfo.gameSource) {
+                            when (appInfo.gameSource) {
+                                GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                GameSource.OPEN_CONTAINER -> true // Open Container games are always considered installed
+                                else -> false
+                            }
                         }
                         // Cute floating icons for install status/family share
                         if (isInstalled || appInfo.isShared) {

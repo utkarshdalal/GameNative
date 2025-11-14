@@ -17,6 +17,7 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.OpenContainerScanner
+import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import android.net.Uri
 
 /**
  * Open Container-specific implementation of BaseAppScreen
@@ -70,20 +72,115 @@ class OpenContainerAppScreen : BaseAppScreen() {
         context: Context,
         libraryItem: LibraryItem
     ): GameDisplayInfo {
+        val gameFolderPath = remember(libraryItem.appId) {
+            OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+        }
+        
+        // Helper function to find SteamGridDB images in the game folder
+        fun findSteamGridDBImage(folder: File, imageType: String): String? {
+            return folder.listFiles()?.firstOrNull { file ->
+                file.name.startsWith("steamgriddb_$imageType") && 
+                (file.name.endsWith(".png", ignoreCase = true) || 
+                 file.name.endsWith(".jpg", ignoreCase = true) || 
+                 file.name.endsWith(".webp", ignoreCase = true))
+            }?.let { Uri.fromFile(it).toString() }
+        }
+        
+        // Check for all SteamGridDB images in the game folder
+        // Hero view uses horizontal grid (grid_hero)
+        val heroImageUrl = remember(gameFolderPath) {
+            gameFolderPath?.let { path ->
+                val folder = File(path)
+                findSteamGridDBImage(folder, "grid_hero")
+            }
+        }
+        
+        // Capsule view uses vertical grid (grid_capsule)
+        val capsuleUrl = remember(gameFolderPath) {
+            gameFolderPath?.let { path ->
+                val folder = File(path)
+                findSteamGridDBImage(folder, "grid_capsule")
+            }
+        }
+        
+        // Header view uses heroes endpoint (hero, but not grid_hero)
+        val headerUrl = remember(gameFolderPath) {
+            gameFolderPath?.let { path ->
+                val folder = File(path)
+                // Find hero image but exclude grid_hero
+                folder.listFiles()?.firstOrNull { file ->
+                    file.name.startsWith("steamgriddb_hero") && 
+                    !file.name.contains("grid") &&
+                    (file.name.endsWith(".png", ignoreCase = true) || 
+                     file.name.endsWith(".jpg", ignoreCase = true) || 
+                     file.name.endsWith(".webp", ignoreCase = true))
+                }?.let { Uri.fromFile(it).toString() }
+            }
+        }
+        
+        val logoUrl = remember(gameFolderPath) {
+            gameFolderPath?.let { path ->
+                val folder = File(path)
+                findSteamGridDBImage(folder, "logo")
+            }
+        }
+        
+        // Note: iconUrl is intentionally null - we extract icons from exe files
+        // and don't use SteamGridDB icons
+        
+        // Try to get release date from SteamGridDB metadata if available
+        var releaseDate by remember { mutableStateOf(0L) }
+        LaunchedEffect(gameFolderPath) {
+            gameFolderPath?.let { path ->
+                val folder = File(path)
+                // Check for release date file (created when images are fetched)
+                val releaseDateFile = File(folder, ".steamgriddb_release_date")
+                if (releaseDateFile.exists()) {
+                    try {
+                        val dateStr = releaseDateFile.readText().trim()
+                        if (dateStr.isNotEmpty()) {
+                            releaseDate = dateStr.toLongOrNull() ?: 0L
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+        
+        // Calculate folder size on disk (async, will update via state)
+        var sizeOnDisk by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(gameFolderPath) {
+            gameFolderPath?.let { path ->
+                withContext(Dispatchers.IO) {
+                    try {
+                        val folderSize = StorageUtils.getFolderSize(path)
+                        val formattedSize = StorageUtils.formatBinarySize(folderSize)
+                        sizeOnDisk = formattedSize
+                    } catch (e: Exception) {
+                        // Ignore errors, sizeOnDisk will remain null
+                    }
+                }
+            }
+        }
+        
         // Open Container games don't have Steam metadata, so we use basic info
         return GameDisplayInfo(
             name = libraryItem.name,
             developer = "Unknown", // Open Container games don't have developer info
-            releaseDate = 0L, // No release date available
-            heroImageUrl = null, // No hero image for Open Container games
-            iconUrl = null, // No icon URL for Open Container games
+            releaseDate = releaseDate,
+            heroImageUrl = heroImageUrl,
+            iconUrl = null, // Icons are extracted from exe files, not from SteamGridDB
             gameId = libraryItem.gameId,
             appId = libraryItem.appId,
-            installLocation = null, // Open Container games are external
-            sizeOnDisk = null, // Size not tracked for Open Container games
+            installLocation = gameFolderPath,
+            sizeOnDisk = sizeOnDisk, // Calculated folder size
             sizeFromStore = null, // No store size info
             lastPlayedText = null, // Not tracked
             playtimeText = null, // Not tracked
+            logoUrl = logoUrl,
+            capsuleUrl = capsuleUrl,
+            headerUrl = headerUrl,
         )
     }
 
@@ -316,4 +413,5 @@ class OpenContainerAppScreen : BaseAppScreen() {
         }
     }
 }
+
 

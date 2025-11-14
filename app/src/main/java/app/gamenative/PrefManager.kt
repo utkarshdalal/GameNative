@@ -645,6 +645,13 @@ object PrefManager {
             setPref(EXTERNAL_STORAGE_PATH, "")
         }
 
+    private val FETCH_STEAMGRIDDB_IMAGES = booleanPreferencesKey("fetch_steamgriddb_images")
+    var fetchSteamGridDBImages: Boolean
+        get() = getPref(FETCH_STEAMGRIDDB_IMAGES, true)
+        set(value) {
+            setPref(FETCH_STEAMGRIDDB_IMAGES, value)
+        }
+
     private val EXTERNAL_STORAGE_PATH = stringPreferencesKey("external_storage_path")
     var externalStoragePath: String
         get() = getPref(EXTERNAL_STORAGE_PATH, "")

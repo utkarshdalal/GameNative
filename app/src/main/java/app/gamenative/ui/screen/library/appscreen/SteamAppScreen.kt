@@ -224,6 +224,14 @@ class SteamAppScreen : BaseAppScreen() {
     override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean {
         return SteamService.isUpdatePending(libraryItem.gameId)
     }
+    
+    override fun getSteamInstallPath(context: Context, libraryItem: LibraryItem): String? {
+        // Only return path if game is installed
+        if (isInstalled(context, libraryItem)) {
+            return getAppDirPath(libraryItem.gameId)
+        }
+        return null
+    }
 
     override fun onRunContainerClick(
         context: Context,
@@ -399,9 +407,9 @@ class SteamAppScreen : BaseAppScreen() {
         if (isInstalled) {
             // Override ResetToDefaults to show confirmation dialog
             menuOptions.add(
-                AppMenuOption(
-                    AppOptionMenuType.ResetToDefaults,
-                    onClick = {
+                    AppMenuOption(
+                        AppOptionMenuType.ResetToDefaults,
+                        onClick = {
                         showInstallDialog(
                             gameId,
                             MessageDialogState(

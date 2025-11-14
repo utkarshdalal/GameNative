@@ -17,5 +17,8 @@ data class GameDisplayInfo(
     val sizeFromStore: String? = null, // Formatted size from store
     val lastPlayedText: String? = null, // Formatted last played time
     val playtimeText: String? = null, // Formatted playtime
+    val logoUrl: String? = null, // Logo image URL (for SteamGridDB)
+    val capsuleUrl: String? = null, // Capsule/grid image URL (for SteamGridDB)
+    val headerUrl: String? = null, // Header image URL (for SteamGridDB, can use grid as header)
 )
 

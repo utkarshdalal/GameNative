@@ -9,6 +9,10 @@ import app.gamenative.service.SteamService
 import com.winlator.container.ContainerManager
 import java.io.File
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 object OpenContainerScanner {
 
@@ -272,6 +276,25 @@ object OpenContainerScanner {
                         gameSource = GameSource.OPEN_CONTAINER,
                     )
                 )
+                
+                // Fetch SteamGridDB images on first detection (if enabled)
+                // This runs asynchronously and won't block the scan
+                if (PrefManager.fetchSteamGridDBImages) {
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        try {
+                            // Check if we've already fetched images for this game
+                            val markerFile = File(folder, ".steamgriddb_fetched")
+                            if (!markerFile.exists()) {
+                                app.gamenative.utils.SteamGridDB.fetchGameImages(folder.name, folder.absolutePath)
+                                // Create marker file to indicate we've attempted fetch
+                                markerFile.createNewFile()
+                            }
+                        } catch (e: Exception) {
+                            // Silently fail - this is a background operation
+                            timber.log.Timber.d(e, "SteamGridDB: Background fetch failed for ${folder.name}")
+                        }
+                    }
+                }
             }
         }
         return items

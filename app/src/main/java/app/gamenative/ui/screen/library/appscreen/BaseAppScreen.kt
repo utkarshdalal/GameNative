@@ -24,6 +24,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.createPinnedShortcut
 import com.winlator.container.ContainerData
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -140,6 +141,17 @@ abstract class BaseAppScreen {
      * Must be overridden by subclasses to provide source-specific extension
      */
     abstract fun getExportFileExtension(): String
+    
+    /**
+     * Get the Steam game install path (non-composable version).
+     * Returns null if not installed or not a Steam game.
+     * Override in subclasses if needed.
+     */
+    protected open fun getSteamInstallPath(context: Context, libraryItem: LibraryItem): String? {
+        // Default implementation returns null
+        // SteamAppScreen should override this
+        return null
+    }
 
     /**
      * Build common menu options that are available for all game sources
@@ -237,6 +249,56 @@ abstract class BaseAppScreen {
                 onClick = {
                     PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(appId))
                 },
+            )
+        )
+
+        // Fetch SteamGridDB Images option (always available)
+        menuOptions.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.FetchSteamGridDBImages,
+                onClick = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            // Use libraryItem.name directly (non-composable)
+                            val gameName = libraryItem.name
+                            val gameFolderPath = when {
+                                libraryItem.gameSource == app.gamenative.data.GameSource.OPEN_CONTAINER -> {
+                                    app.gamenative.utils.OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+                                }
+                                else -> {
+                                    // For Steam games, check if installed and get path
+                                    if (isInstalled(context, libraryItem)) {
+                                        getSteamInstallPath(context, libraryItem)
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+                            
+                            if (gameFolderPath != null) {
+                                // Delete marker file to force re-fetch
+                                val markerFile = File(gameFolderPath, ".steamgriddb_fetched")
+                                if (markerFile.exists()) {
+                                    markerFile.delete()
+                                }
+                                
+                                app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
+                                
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Images fetched successfully", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Game folder not found", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Failed to fetch images: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
             )
         )
 
