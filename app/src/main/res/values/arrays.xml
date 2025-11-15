@@ -200,6 +200,7 @@
     </string-array>
     <string-array name="bionic_wine_entries">
         <item>proton-9.0-arm64ec</item>
+        <item>proton-10.0-arm64ec</item>
         <item>proton-9.0-x86_64</item>
     </string-array>
     <string-array name="container_variant_entries">

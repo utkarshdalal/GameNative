@@ -575,6 +575,7 @@ fun XServerScreen(
                             )
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
+                            extractProton10Arm64ecInputDLLs(context, container) // Proton 10 ARM64EC input DLL support
                             extractGraphicsDriverFiles(
                                 context,
                                 xServerState.value.graphicsDriver,
@@ -1597,6 +1598,24 @@ private fun extractx86_64InputDlls(context: Context, container: Container) {
         val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
         Log.d("XServerDisplayActivity", "Extracting input dlls to " + wineFolder.getPath())
     } else Log.d("XServerDisplayActivity", "Wine version is not proton-9.0-x86_64, skipping input dlls extraction")
+}
+
+private fun extractProton10Arm64ecInputDLLs(context: Context, container: Container) {
+    val inputAsset = "proton10_arm64ec_input_dlls.tzst"
+    val imageFs = ImageFs.find(context)
+    val wineVersion: String? = container.getWineVersion()
+    Log.d("XServerDisplayActivity", "Proton 10 arm64ec Input DLL Extraction Verification: Container Wine version: " + wineVersion)
+
+    if (wineVersion != null && wineVersion.contains("proton-10.0-arm64ec")) {
+        val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
+        Log.d("XServerDisplayActivity", "Wine version contains proton-10.0-arm64ec. Extracting input dlls to " + wineFolder.getPath())
+        val success: Boolean = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, inputAsset, wineFolder)
+        if (!success) {
+            Log.e("XServerDisplayActivity", "Failed to extract Proton 10 arm64ec input dlls")
+        }
+    } else {
+        Log.d("XServerDisplayActivity", "Wine version is not proton-10.0-arm64ec, skipping Proton 10 input dlls extraction.")
+    }
 }
 
 private fun setupWineSystemFiles(
