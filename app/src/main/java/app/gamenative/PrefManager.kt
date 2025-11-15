@@ -637,6 +637,14 @@ object PrefManager {
             setPref(DOWNLOAD_ON_WIFI_ONLY, value)
         }
 
+    // Maximum number of concurrent downloads (8=slow, 16=medium, 24=fast, 32=blazing)
+    private val DOWNLOAD_SPEED = intPreferencesKey("download_speed")
+    var downloadSpeed: Int
+        get() = getPref(DOWNLOAD_SPEED, 24)
+        set(value) {
+            setPref(DOWNLOAD_SPEED, value)
+        }
+
     private val USE_EXTERNAL_STORAGE = booleanPreferencesKey("use_external_storage")
     var useExternalStorage: Boolean
         get() = getPref(USE_EXTERNAL_STORAGE, false)

@@ -3,7 +3,6 @@ package app.gamenative.ui.screen.xserver
 import android.app.Activity
 import android.content.Context
 import android.os.Build
-import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
@@ -34,6 +33,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
+import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
@@ -190,6 +190,7 @@ fun XServerScreen(
     // var pointerEventListener by remember { mutableStateOf<Callback<MotionEvent>?>(null) }
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+    val container = ContainerUtils.getContainer(context, appId)
     val appLaunchInfo = SteamService.getAppInfoOf(gameId)?.let { appInfo ->
         SteamService.getWindowsLaunchInfos(gameId).firstOrNull()
     }
@@ -285,7 +286,7 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
-                            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
+                            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
                         }
                     }
                 }
@@ -304,7 +305,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -345,11 +346,11 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
@@ -432,13 +433,17 @@ fun XServerScreen(
                         private fun changeFrameRatingVisibility(window: Window, property: Property?) {
                             if (frameRating == null) return
                             if (property != null) {
-                                if (frameRatingWindowId == -1 && window.attributes.isMapped() && property.nameAsString() == "_MESA_DRV") {
+                                if (frameRatingWindowId == -1 && (
+                                            property.nameAsString().contains("_UTIL_LAYER") ||
+                                            property.nameAsString().contains("_MESA_DRV") ||
+                                            container.containerVariant.equals(Container.GLIBC) && property.nameAsString().contains("_NET_WM_SURFACE"))) {
                                     frameRatingWindowId = window.id
                                     (context as? Activity)?.runOnUiThread {
                                         frameRating?.visibility = View.VISIBLE
                                     }
+                                    frameRating?.update()
                                 }
-                            } else if (window.id == frameRatingWindowId) {
+                            } else if (frameRatingWindowId != -1) {
                                 frameRatingWindowId = -1
                                 (context as? Activity)?.runOnUiThread {
                                     frameRating?.visibility = View.GONE
@@ -669,11 +674,11 @@ fun XServerScreen(
                     }
                 }
             }
+            frameRating = FrameRating(context)
+            frameRating?.setVisibility(View.GONE)
 
             if (container.isShowFPS()) {
                 Timber.i("Attempting to show FPS")
-                frameRating = FrameRating(context)
-                frameRating?.setVisibility(View.GONE)
                 frameRating?.let { frameLayout.addView(it) }
             }
 
@@ -1306,33 +1311,38 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        // Steam game logic (existing code)
-        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-        val appDirPath = SteamService.getAppDirPath(steamAppId)
-        var executablePath = ""
-        if (container.executablePath.isNotEmpty()) {
-            executablePath = container.executablePath
+        if (container.isLaunchRealSteam()) {
+            // Launch Steam with the applaunch parameter to start the game
+            "\"C:\\Program Files (x86)\\Steam\\steam.exe\" -silent -vgui -tcp " +
+                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $appId"
         } else {
-            executablePath = SteamService.getInstalledExe(steamAppId)
-            container.executablePath = executablePath
-            container.saveData()
-        }
-        val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
-        guestProgramLauncherComponent.workingDir = File(executableDir);
-        Timber.i("Working directory is ${executableDir}")
+            val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
+            var executablePath = ""
+            if (container.executablePath.isNotEmpty()) {
+                executablePath = container.executablePath
+            } else {
+                executablePath = SteamService.getInstalledExe(steamAppId)
+                container.executablePath = executablePath
+                container.saveData()
+            }
+            val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
+            guestProgramLauncherComponent.workingDir = File(executableDir);
+            Timber.i("Working directory is ${executableDir}")
 
-        Timber.i("Final exe path is " + executablePath)
-        val drives = container.drives
-        val driveIndex = drives.indexOf(appDirPath)
-        // greater than 1 since there is the drive character and the colon before the app dir path
-        val drive = if (driveIndex > 1) {
-            drives[driveIndex - 2]
-        } else {
-            Timber.e("Could not locate game drive")
-            'D'
+            Timber.i("Final exe path is " + executablePath)
+            val drives = container.drives
+            val driveIndex = drives.indexOf(appDirPath)
+            // greater than 1 since there is the drive character and the colon before the app dir path
+            val drive = if (driveIndex > 1) {
+                drives[driveIndex - 2]
+            } else {
+                Timber.e("Could not locate game drive")
+                'D'
+            }
+            envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
+            "\"$drive:/${executablePath}\""
         }
-        envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
-        "\"$drive:/${executablePath}\""
     }
 
     return "winhandler.exe $args"
@@ -1356,9 +1366,14 @@ private fun getSteamlessTarget(
     }
     return "$drive:\\${executablePath}"
 }
-private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit, navigateBack: () -> Unit) {
+private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
-    PostHog.capture(event = "game_exited")
+    PostHog.capture(event = "game_exited",
+        properties = mapOf("game_name" to appInfo?.name.toString(),
+            "session_length" to (frameRating?.sessionLengthSec ?: 0),
+            "avg_fps" to (frameRating?.avgFPS ?: 0.0),
+            "container_config" to container.containerJson)
+    )
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.isGameRunning = false
@@ -1372,6 +1387,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: ()
     PluviaApp.touchpadView = null
     // PluviaApp.touchMouse = null
     // PluviaApp.keyboard = null
+    frameRating?.writeSessionSummary()
     onExit()
     navigateBack()
 }

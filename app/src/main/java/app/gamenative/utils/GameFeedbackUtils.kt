@@ -53,8 +53,8 @@ object GameFeedbackUtils {
         try {
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
             val container = ContainerUtils.getContainer(context, appId)
-            val configJson = Json.parseToJsonElement(FileUtils.readString(container.getConfigFile()).replace("\\u0000", "").replace("\u0000", "")).jsonObject
-            Timber.d("config string is: " + FileUtils.readString(container.getConfigFile()).replace("\\u0000", "").replace("\u0000", ""))
+            val configJson = Json.parseToJsonElement(container.containerJson).jsonObject
+            Timber.d("config string is: " + container.containerJson)
             Timber.d("configJson: $configJson")
             // Get the game name from container or use a fallback
             val appInfo = SteamService.getAppInfoOf(gameId)!!

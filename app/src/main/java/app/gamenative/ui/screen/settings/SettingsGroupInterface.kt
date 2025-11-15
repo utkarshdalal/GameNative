@@ -47,7 +47,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
 import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSlider
+import androidx.compose.material3.Slider
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import kotlin.math.roundToInt
 
 @Composable
@@ -134,7 +137,7 @@ fun SettingsGroupInterface(
         var wifiOnlyDownload by rememberSaveable { mutableStateOf(PrefManager.downloadOnWifiOnly) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Download only over Wi-Fi") },
+            title = { Text(text = "Download only over Wi-Fi/LAN") },
             subtitle = { Text(text = "Prevent downloads on cellular data") },
             state = wifiOnlyDownload,
             onCheckedChange = {
@@ -142,6 +145,56 @@ fun SettingsGroupInterface(
                 PrefManager.downloadOnWifiOnly = it
             },
         )
+        
+        // Download speed setting
+        val downloadSpeedLabels = remember { listOf("Slow", "Medium", "Fast", "Blazing") }
+        val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
+        var downloadSpeedValue by rememberSaveable { 
+            mutableStateOf(
+                downloadSpeedValues.indexOf(PrefManager.downloadSpeed).takeIf { it >= 0 }?.toFloat() ?: 2f
+            )
+        }
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "Download speed",
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.size(4.dp))
+            Text(
+                text = "Higher speeds may cause increased device heat during downloads",
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Slider(
+                value = downloadSpeedValue,
+                onValueChange = { newIndex ->
+                    downloadSpeedValue = newIndex
+                    val index = newIndex.roundToInt().coerceIn(0, 3)
+                    PrefManager.downloadSpeed = downloadSpeedValues[index]
+                },
+                valueRange = 0f..3f,
+                steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
+            )
+            // Labels below slider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                downloadSpeedLabels.forEach { label ->
+                    Text(
+                        text = label,
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(60.dp)
+                    )
+                }
+            }
+        }
+        
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 

@@ -527,6 +527,7 @@ object SteamUtils {
             }
         } else {
             if (!cfgFile.exists()){
+                cfgFile.parentFile?.mkdirs()
                 Files.createFile(cfgFile.toPath())
                 cfgFile.writeText("BootStrapperInhibitAll=Enable\nBootStrapperForceSelfUpdate=False")
             }
@@ -871,6 +872,6 @@ object SteamUtils {
     }
 
     fun getSteam3AccountId(): Long? {
-        return SteamService.userSteamId?.getAccountID()?.toLong()
+        return SteamService.userSteamId?.accountID?.toLong()
     }
 }
