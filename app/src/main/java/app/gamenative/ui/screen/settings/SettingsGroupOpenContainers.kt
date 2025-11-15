@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -83,7 +85,11 @@ fun SettingsGroupOpenContainers() {
                 }
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 OutlinedTextField(
                     modifier = Modifier.weight(1f),
                     value = newPath,
@@ -91,17 +97,20 @@ fun SettingsGroupOpenContainers() {
                     label = { Text("Add path") },
                     singleLine = true,
                 )
-                Button(onClick = {
-                    val path = newPath.trim()
-                    if (path.isNotEmpty()) {
-                        val copy = paths.toMutableSet()
-                        copy.add(path)
-                        paths = copy
-                        PrefManager.openContainerPaths = copy
-                        newPath = ""
-                        // Counts will refresh via LaunchedEffect(paths)
+                Button(
+                    modifier = Modifier.heightIn(min = 56.dp),
+                    onClick = {
+                        val path = newPath.trim()
+                        if (path.isNotEmpty()) {
+                            val copy = paths.toMutableSet()
+                            copy.add(path)
+                            paths = copy
+                            PrefManager.openContainerPaths = copy
+                            newPath = ""
+                            // Counts will refresh via LaunchedEffect(paths)
+                        }
                     }
-                }) {
+                ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Text(text = "Add")
                 }
