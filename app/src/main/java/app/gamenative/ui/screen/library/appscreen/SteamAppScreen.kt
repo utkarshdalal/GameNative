@@ -225,7 +225,7 @@ class SteamAppScreen : BaseAppScreen() {
         return SteamService.isUpdatePending(libraryItem.gameId)
     }
     
-    override fun getSteamInstallPath(context: Context, libraryItem: LibraryItem): String? {
+    override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
         // Only return path if game is installed
         if (isInstalled(context, libraryItem)) {
             return getAppDirPath(libraryItem.gameId)

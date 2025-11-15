@@ -143,15 +143,11 @@ abstract class BaseAppScreen {
     abstract fun getExportFileExtension(): String
     
     /**
-     * Get the Steam game install path (non-composable version).
-     * Returns null if not installed or not a Steam game.
-     * Override in subclasses if needed.
+     * Get the game install path (non-composable version).
+     * Returns the path to the game's installation directory, or null if not installed.
+     * Must be implemented by subclasses to provide source-specific path resolution.
      */
-    protected open fun getSteamInstallPath(context: Context, libraryItem: LibraryItem): String? {
-        // Default implementation returns null
-        // SteamAppScreen should override this
-        return null
-    }
+    protected abstract fun getInstallPath(context: Context, libraryItem: LibraryItem): String?
 
     /**
      * Build common menu options that are available for all game sources
@@ -261,19 +257,7 @@ abstract class BaseAppScreen {
                         try {
                             // Use libraryItem.name directly (non-composable)
                             val gameName = libraryItem.name
-                            val gameFolderPath = when {
-                                libraryItem.gameSource == app.gamenative.data.GameSource.OPEN_CONTAINER -> {
-                                    app.gamenative.utils.OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
-                                }
-                                else -> {
-                                    // For Steam games, check if installed and get path
-                                    if (isInstalled(context, libraryItem)) {
-                                        getSteamInstallPath(context, libraryItem)
-                                    } else {
-                                        null
-                                    }
-                                }
-                            }
+                            val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
                             
                             if (gameFolderPath != null) {
                                 // Delete marker file to force re-fetch
@@ -283,6 +267,9 @@ abstract class BaseAppScreen {
                                 }
                                 
                                 app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
+                                
+                                // Call hook for post-fetch processing (e.g., icon extraction)
+                                onAfterFetchImages(context, libraryItem, gameFolderPath)
                                 
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(context, "Images fetched successfully", Toast.LENGTH_SHORT).show()
@@ -329,6 +316,27 @@ abstract class BaseAppScreen {
         onClickPlay: (Boolean) -> Unit
     ) {
         onClickPlay(true)
+    }
+
+    /**
+     * Get the game folder path for image fetching.
+     * Override this in subclasses to provide source-specific path resolution.
+     * Default implementation uses getInstallPath() if the game is installed.
+     */
+    protected open fun getGameFolderPathForImageFetch(context: Context, libraryItem: LibraryItem): String? {
+        // Check if installed and get path
+        if (isInstalled(context, libraryItem)) {
+            return getInstallPath(context, libraryItem)
+        }
+        return null
+    }
+
+    /**
+     * Hook called after images are fetched. Override in subclasses for post-processing
+     * (e.g., icon extraction for Open Container games).
+     */
+    protected open fun onAfterFetchImages(context: Context, libraryItem: LibraryItem, gameFolderPath: String) {
+        // Default: no post-processing
     }
 
     /**
