@@ -42,6 +42,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
+
     public static final byte LATEST_VERSION = 24;
 
     private static void resetContainerImgVersions(Context context) {
@@ -60,15 +61,21 @@ public abstract class ImageFsInstaller {
     }
 
     public static void installWineFromAssets(final Context context, AssetManager assetManager) {
-        String[] versions = context.getResources().getStringArray(R.array.bionic_wine_entries);
+        // Install both bionic and glibc wine versions from assets
+        String[] bionicVersions = context.getResources().getStringArray(R.array.bionic_wine_entries);
+        String[] glibcVersions = context.getResources().getStringArray(R.array.glibc_wine_entries);
         File rootDir = ImageFs.find(context).getRootDir();
-        for (String version : versions) {
-            File outFile = new File(rootDir, "/opt/" + version);
-            outFile.mkdirs();
-            TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, version + ".txz", outFile);
+
+        // Combine both arrays and extract all wine versions
+        String[][] allVersions = {bionicVersions, glibcVersions};
+        for (String[] versions : allVersions) {
+            for (String version : versions) {
+                File outFile = new File(rootDir, "/opt/" + version);
+                outFile.mkdirs();
+                TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, version + ".txz", outFile);
+            }
         }
     }
-
 
     private static Future<Boolean> installFromAssetsFuture(final Context context, AssetManager assetManager, String containerVariant, Callback<Integer> onProgress) {
         // AppUtils.keepScreenOn(context);
@@ -88,7 +95,7 @@ public abstract class ImageFsInstaller {
 
             boolean success = false;
 
-            if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
+            if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true) {
                 final long contentLength = (long) (FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
                 AtomicLong totalSizeRef = new AtomicLong();
                 Log.d("Extraction", "extracting " + imagefsFile);
@@ -103,9 +110,7 @@ public abstract class ImageFsInstaller {
                     }
                     return file;
                 });
-            }
-
-            else if (downloaded.exists()){
+            } else if (downloaded.exists()) {
                 final long contentLength = (long) (FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
                 AtomicLong totalSizeRef = new AtomicLong();
                 Log.d("Extraction", "extracting " + imagefsFile);
@@ -132,8 +137,7 @@ public abstract class ImageFsInstaller {
 
                 // Clear Steam DLL markers for all games
                 clearSteamDllMarkers(context, containerManager);
-            }
-            else {
+            } else {
                 Log.e("ImageFsInstaller", "Failed to install system files");
                 // AppUtils.showToast(context, R.string.unable_to_install_system_files);
             }
@@ -146,9 +150,9 @@ public abstract class ImageFsInstaller {
         final String ASSET_TAR = "redirect.tzst";          // ➊  add this to assets/
         File imagefs = new File(ctx.getFilesDir(), "imagefs");
         // ➋  Unpack straight into imagefs, preserving relative paths.
-        try (InputStream in  = ctx.getAssets().open(ASSET_TAR)) {
+        try (InputStream in = ctx.getAssets().open(ASSET_TAR)) {
             TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    TarCompressorUtils.Type.ZSTD, // you said .tzst
                     in, imagefs);                      // helper already exists in the project
         } catch (IOException e) {
             Log.e("ImageFsInstaller", "redirect deploy failed", e);
@@ -161,9 +165,9 @@ public abstract class ImageFsInstaller {
 
         final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
         // ➋  Unpack straight into imagefs, preserving relative paths.
-        try (InputStream in  = ctx.getAssets().open(EXTRAS_TAR)) {
+        try (InputStream in = ctx.getAssets().open(EXTRAS_TAR)) {
             TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    TarCompressorUtils.Type.ZSTD, // you said .tzst
                     in, imagefs);                      // helper already exists in the project
         } catch (IOException e) {
             Log.e("ImageFsInstaller", "extras deploy failed", e);
@@ -176,11 +180,17 @@ public abstract class ImageFsInstaller {
         chmod(new File(imagefs, "opt/mono-gecko-offline/wine-mono-9.0.0-x86.msi"));
     }
 
-    private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
+    private static void chmod(File f) {
+        if (f.exists()) {
+            FileUtils.chmod(f, 0755);
+
+        }
+    }
 
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
         return installIfNeededFuture(context, assetManager, null, null);
     }
+
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
@@ -196,7 +206,9 @@ public abstract class ImageFsInstaller {
         File[] files = optDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                if (file.getName().equals("installed-wine")) continue;
+                if (file.getName().equals("installed-wine")) {
+                    continue;
+                }
                 FileUtils.delete(file);
             }
         }
@@ -216,8 +228,9 @@ public abstract class ImageFsInstaller {
                     FileUtils.delete(file);
                 }
             }
+        } else {
+            rootDir.mkdirs();
         }
-        else rootDir.mkdirs();
     }
 
     public static void generateCompactContainerPattern(final Context context, AssetManager assetManager) {
@@ -246,7 +259,9 @@ public abstract class ImageFsInstaller {
             for (File dstFile : dstFiles) {
                 for (File srcFile : srcFiles) {
                     if (dstFile.getName().equals(srcFile.getName())) {
-                        if (FileUtils.contentEquals(srcFile, dstFile)) system32Files.add(srcFile.getName());
+                        if (FileUtils.contentEquals(srcFile, dstFile)) {
+                            system32Files.add(srcFile.getName());
+                        }
                         break;
                     }
                 }
@@ -258,7 +273,9 @@ public abstract class ImageFsInstaller {
             for (File dstFile : dstFiles) {
                 for (File srcFile : srcFiles) {
                     if (dstFile.getName().equals(srcFile.getName())) {
-                        if (FileUtils.contentEquals(srcFile, dstFile)) syswow64Files.add(srcFile.getName());
+                        if (FileUtils.contentEquals(srcFile, dstFile)) {
+                            syswow64Files.add(srcFile.getName());
+                        }
                         break;
                     }
                 }
@@ -289,16 +306,16 @@ public abstract class ImageFsInstaller {
 
                 FileUtils.delete(containerPatternDir);
                 // preloaderDialog.closeOnUiThread();
-            }
-            catch (JSONException e) {
+            } catch (JSONException e) {
                 Log.e("ImageFsInstaller", "Failed to read JSON data: " + e);
             }
         });
     }
 
     /**
-     * Clears Steam DLL markers for all containers by scanning each mapped drive path.
-     * Relies only on container drive mappings; does not call into SteamService.
+     * Clears Steam DLL markers for all containers by scanning each mapped drive
+     * path. Relies only on container drive mappings; does not call into
+     * SteamService.
      */
     private static void clearSteamDllMarkers(Context context, ContainerManager containerManager) {
         try {
