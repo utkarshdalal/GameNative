@@ -15,6 +15,7 @@ import java.io.FileOutputStream
 import java.net.URLEncoder
 import java.util.Properties
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 /**
  * Utility class for fetching game images from SteamGridDB API.
@@ -406,20 +407,6 @@ object SteamGridDB {
     }
     
     /**
-     * Save release date to a file in the game folder for later retrieval.
-     */
-    private suspend fun saveReleaseDate(gameFolder: File, releaseDate: Long) = withContext(Dispatchers.IO) {
-        if (releaseDate > 0) {
-            try {
-                val releaseDateFile = File(gameFolder, ".steamgriddb_release_date")
-                releaseDateFile.writeText(releaseDate.toString())
-            } catch (e: Exception) {
-                Timber.w(e, "SteamGridDB: Failed to save release date")
-            }
-        }
-    }
-    
-    /**
      * Fetch all images (grids, heroes, logos) for a game and save them to the game folder.
      * Also updates the release date if found.
      * @param gameName The name of the game to search for
@@ -521,9 +508,20 @@ object SteamGridDB {
             }?.absolutePath
         }
         
-        // Save release date if found
-        if (searchResult.releaseDate > 0) {
-            saveReleaseDate(gameFolder, searchResult.releaseDate)
+        // Mark as fetched in metadata and save release date if found
+        try {
+            val existing = app.gamenative.utils.GameMetadataManager.read(gameFolder)
+            val appId = existing?.appId
+                ?: abs(gameFolder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
+            
+            app.gamenative.utils.GameMetadataManager.update(
+                folder = gameFolder,
+                appId = appId,
+                steamgriddbFetched = true,
+                releaseDate = if (searchResult.releaseDate > 0) searchResult.releaseDate else null
+            )
+        } catch (e: Exception) {
+            Timber.w(e, "SteamGridDB: Failed to update metadata after fetch")
         }
         
         return@withContext ImageFetchResult(

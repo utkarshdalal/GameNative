@@ -45,6 +45,7 @@ import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.service.DownloadService
+import app.gamenative.service.SteamService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
 import app.gamenative.utils.CustomGameScanner
@@ -67,6 +68,38 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.screen.PluviaScreen
 import timber.log.Timber
 
+/**
+ * Calculates the installed games count based on the current filter state.
+ * 
+ * @param state The current library state containing filters and visibility settings
+ * @return The number of installed games, respecting current filters and source visibility
+ */
+private fun calculateInstalledCount(state: LibraryState): Int {
+    // If INSTALLED filter is active, all items in the filtered list are installed
+    if (state.appInfoSortType.contains(AppFilter.INSTALLED)) {
+        return state.totalAppsInFilter
+    }
+    
+    // Otherwise, count all installed games (respecting source visibility)
+    val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
+    
+    // Count installed Steam games
+    val steamCount = if (state.showSteamInLibrary) {
+        downloadDirectoryApps.count()
+    } else {
+        0
+    }
+    
+    // Count Custom Games (always considered "installed")
+    val customGameCount = if (state.showCustomGamesInLibrary) {
+        CustomGameScanner.scanAsLibraryItems(query = "").count()
+    } else {
+        0
+    }
+    
+    return steamCount + customGameCount
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryListPane(
@@ -88,12 +121,15 @@ internal fun LibraryListPane(
     val context = LocalContext.current
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val snackBarHost = remember { SnackbarHostState() }
-    val installedCount = remember {
-        val steamCount = DownloadService.getDownloadDirectoryApps().count()
-        
-        // Custom Games are always considered "installed" since they're external folders
-        val customGameCount = CustomGameScanner.scanAsLibraryItems(query = "").count()
-        steamCount + customGameCount
+    
+    // Calculate installed count based on current filter state
+    val installedCount = remember(
+        state.appInfoSortType, 
+        state.showSteamInLibrary, 
+        state.showCustomGamesInLibrary,
+        state.totalAppsInFilter
+    ) {
+        calculateInstalledCount(state)
     }
 
     // Responsive width for better layouts

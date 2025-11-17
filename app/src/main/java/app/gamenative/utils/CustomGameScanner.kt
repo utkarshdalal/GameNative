@@ -10,6 +10,7 @@ import java.io.File
 import kotlin.math.abs
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import org.json.JSONObject
 
 object CustomGameScanner {
 
@@ -322,9 +323,12 @@ object CustomGameScanner {
                 if (q.isNotEmpty() && !folder.name.contains(q, ignoreCase = true)) continue
                 if (!looksLikeGameFolder(folder)) continue
 
-                // Positive, stable int ID derived from absolute path
-                val idPart = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
+                // Get or generate game ID (checks .gamenative file first, then generates and stores)
+                val idPart = getOrGenerateGameId(folder)
                 val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
+                
+                // Update cache with this new entry
+                CustomGameCache.addEntry(idPart, folder.absolutePath)
 
                 items.add(
                     LibraryItem(
@@ -340,14 +344,15 @@ object CustomGameScanner {
                 // Fetch SteamGridDB images on first detection (if enabled)
                 // This runs asynchronously and won't block the scan
                 if (PrefManager.fetchSteamGridDBImages) {
+                    // Capture idPart for use in coroutine
+                    val capturedIdPart = idPart
                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                         try {
                             // Check if we've already fetched images for this game
-                            val markerFile = File(folder, ".steamgriddb_fetched")
-                            if (!markerFile.exists()) {
+                            if (!app.gamenative.utils.GameMetadataManager.isSteamGridDBFetched(folder)) {
                                 app.gamenative.utils.SteamGridDB.fetchGameImages(folder.name, folder.absolutePath)
-                                // Create marker file to indicate we've attempted fetch
-                                markerFile.createNewFile()
+                                // Mark as fetched in metadata (pass appId to ensure file exists)
+                                app.gamenative.utils.GameMetadataManager.update(folder, appId = capturedIdPart, steamgriddbFetched = true)
                             }
                         } catch (e: Exception) {
                             // Silently fail - this is a background operation
@@ -404,54 +409,141 @@ object CustomGameScanner {
     }
 
     /**
-     * Gets the folder path for a Custom Game from its appId.
-     * The appId format is "CUSTOM_GAME_<hashCode>" where hashCode is derived from the folder's absolute path.
+     * Reads the game ID from the .gamenative file in the given folder.
+     * Returns null if the file doesn't exist or doesn't contain a valid ID.
+     */
+    private fun readGameIdFromFile(folder: File): Int? {
+        return app.gamenative.utils.GameMetadataManager.getAppId(folder)
+    }
+
+    /**
+     * Writes the game ID to the .gamenative file in the given folder.
+     * Preserves other metadata fields (steamgriddbFetched, releaseDate) if they exist.
+     */
+    private fun writeGameIdToFile(folder: File, gameId: Int) {
+        // Read existing metadata to preserve other fields
+        val existing = app.gamenative.utils.GameMetadataManager.read(folder)
+        val metadata = if (existing != null) {
+            // Preserve existing metadata fields, only update appId
+            existing.copy(appId = gameId)
+        } else {
+            // Create new metadata with just the appId
+            app.gamenative.utils.GameMetadata(appId = gameId)
+        }
+        app.gamenative.utils.GameMetadataManager.write(folder, metadata)
+    }
+
+    /**
+     * Invalidates the appId cache, forcing a rebuild on next access.
+     * Call this when Custom Game paths change, after deletion, or after manual refresh.
+     */
+    fun invalidateCache() {
+        CustomGameCache.invalidate()
+    }
+
+    /**
+     * Gets or rebuilds the appId cache if needed.
+     * Cache is invalidated when Custom Game root paths change.
+     */
+    private fun getOrRebuildCache(): Map<Int, String> {
+        return CustomGameCache.getOrRebuildCache(
+            getAllRoots = { getAllRoots() },
+            looksLikeGameFolder = { folder -> looksLikeGameFolder(folder) },
+            readGameIdFromFile = { folder -> readGameIdFromFile(folder) }
+        )
+    }
+
+    /**
+     * Gets all existing Custom Game IDs by using the cache.
+     * Returns a set of IDs that are already in use.
+     */
+    private fun getAllExistingGameIds(excludeFolder: File? = null): Set<Int> {
+        val cache = getOrRebuildCache()
+        
+        // If excluding a folder, remove its ID from the set
+        if (excludeFolder != null) {
+            val excludeId = readGameIdFromFile(excludeFolder) 
+                ?: abs(excludeFolder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
+            return cache.keys.filter { it != excludeId }.toSet()
+        }
+        
+        return cache.keys.toSet()
+    }
+
+    /**
+     * Gets or generates the game ID for a folder.
+     * First checks for .gamenative file, then generates from folder name if not found.
+     * Ensures the generated ID is unique across all Custom Games.
+     * If generated, stores it in the file for future use.
+     */
+    private fun getOrGenerateGameId(folder: File): Int {
+        // First, try to read from .gamenative file
+        val storedId = readGameIdFromFile(folder)
+        if (storedId != null) {
+            return storedId
+        }
+
+        // If not found, generate from folder name (same logic as before)
+        var candidateId = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
+        
+        // Check for collisions and make it unique if needed
+        val existingIds = getAllExistingGameIds(excludeFolder = folder)
+        if (candidateId in existingIds) {
+            // ID collision detected, find a unique ID by incrementing
+            Timber.tag("CustomGameScanner").d("ID collision detected for ${folder.absolutePath}: $candidateId, finding unique ID")
+            var counter = 1
+            while (candidateId + counter in existingIds) {
+                counter++
+            }
+            candidateId = candidateId + counter
+            Timber.tag("CustomGameScanner").d("Generated unique ID: $candidateId (base was ${candidateId - counter})")
+        }
+        
+        // Store it in the file for future use
+        writeGameIdToFile(folder, candidateId)
+        
+        return candidateId
+    }
+
+    /**
+     * Gets the folder path for a Custom Game from its appId using the cache.
+     * The appId format is "CUSTOM_GAME_<id>" where id is stored in .gamenative file or derived from folder name.
      * Returns null if the folder cannot be found.
      */
     fun getFolderPathFromAppId(appId: String): String? {
-        // Extract the hash from appId (format: "CUSTOM_GAME_<hash>")
+        // Extract the ID from appId (format: "CUSTOM_GAME_<id>")
         if (!appId.startsWith("${GameSource.CUSTOM_GAME.name}_")) {
             Timber.tag("CustomGameScanner").d("appId doesn't start with CUSTOM_GAME_: $appId")
             return null
         }
 
-        val hashStr = appId.removePrefix("${GameSource.CUSTOM_GAME.name}_")
-        val expectedHash = try {
-            hashStr.toInt()
+        val idStr = appId.removePrefix("${GameSource.CUSTOM_GAME.name}_")
+        val expectedId = try {
+            idStr.toInt()
         } catch (e: NumberFormatException) {
-            Timber.tag("CustomGameScanner").d("Failed to parse hash from appId: $appId")
+            Timber.tag("CustomGameScanner").d("Failed to parse ID from appId: $appId")
             return null
         }
 
-        // Scan all roots to find the folder with matching hash
-        val roots = getAllRoots()
-        Timber.tag("CustomGameScanner").d("Looking for folder with hash $expectedHash in ${roots.size} root(s): $roots")
-        for (root in roots) {
-            val rootFile = File(root)
-            if (!rootFile.exists() || !rootFile.isDirectory) {
-                Timber.tag("CustomGameScanner").d("Root doesn't exist or isn't a directory: $root")
-                continue
-            }
-
-            val children = rootFile.listFiles { f -> f.isDirectory } ?: continue
-            Timber.tag("CustomGameScanner").d("Scanning root $root, found ${children.size} subdirectories")
-            for (folder in children) {
-                if (!looksLikeGameFolder(folder)) {
-                    Timber.tag("CustomGameScanner").d("Folder doesn't look like a game folder: ${folder.absolutePath}")
-                    continue
-                }
-
-                // Calculate hash the same way as in scanAsLibraryItems
-                val folderHash = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
-                Timber.tag("CustomGameScanner").d("Checking folder ${folder.absolutePath}, hash: $folderHash (expected: $expectedHash)")
-                if (folderHash == expectedHash) {
-                    Timber.tag("CustomGameScanner").d("Found matching folder: ${folder.absolutePath}")
-                    return folder.absolutePath
-                }
+        // Use cache for fast lookup
+        val cache = getOrRebuildCache()
+        val folderPath = cache[expectedId]
+        
+        if (folderPath != null) {
+            // Verify the folder still exists
+            val folder = File(folderPath)
+            if (folder.exists() && folder.isDirectory) {
+                return folderPath
+            } else {
+                // Folder was deleted, remove from cache and try again
+                Timber.tag("CustomGameScanner").w("Cached folder no longer exists: $folderPath, invalidating cache")
+                invalidateCache()
+                // Try one more time with fresh cache
+                return getOrRebuildCache()[expectedId]
             }
         }
 
-        Timber.tag("CustomGameScanner").w("Could not find folder for appId: $appId (expected hash: $expectedHash)")
+        Timber.tag("CustomGameScanner").w("Could not find folder for appId: $appId (expected ID: $expectedId)")
         return null
     }
 }

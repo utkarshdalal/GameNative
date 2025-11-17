@@ -260,11 +260,15 @@ abstract class BaseAppScreen {
                             val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
 
                             if (gameFolderPath != null) {
-                                // Delete marker file to force re-fetch
-                                val markerFile = File(gameFolderPath, ".steamgriddb_fetched")
-                                if (markerFile.exists()) {
-                                    markerFile.delete()
-                                }
+                                // Clear SteamGridDB fetched flag to force re-fetch
+                                val folder = File(gameFolderPath)
+                                // Extract appId from libraryItem (works for both Steam and Custom Games)
+                                val appId = libraryItem.gameId
+                                app.gamenative.utils.GameMetadataManager.update(
+                                    folder = folder,
+                                    appId = appId,
+                                    steamgriddbFetched = false
+                                )
 
                                 app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
 

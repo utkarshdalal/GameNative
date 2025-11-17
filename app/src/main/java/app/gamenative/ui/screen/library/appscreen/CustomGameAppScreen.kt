@@ -127,23 +127,14 @@ class CustomGameAppScreen : BaseAppScreen() {
         // Note: iconUrl is intentionally null - we extract icons from exe files
         // and don't use SteamGridDB icons
 
-        // Try to get release date from SteamGridDB metadata if available
+        // Try to get release date from .gamenative metadata if available
         var releaseDate by remember { mutableStateOf(0L) }
         LaunchedEffect(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
-                // Check for release date file (created when images are fetched)
-                val releaseDateFile = File(folder, ".steamgriddb_release_date")
-                if (releaseDateFile.exists()) {
-                    try {
-                        val dateStr = releaseDateFile.readText().trim()
-                        if (dateStr.isNotEmpty()) {
-                            releaseDate = dateStr.toLongOrNull() ?: 0L
-                        }
-                    } catch (e: Exception) {
-                        // Ignore
-                    }
-                }
+                // Get release date from metadata
+                val metadata = app.gamenative.utils.GameMetadataManager.read(folder)
+                releaseDate = metadata?.releaseDate ?: 0L
             }
         }
 
@@ -496,6 +487,8 @@ class CustomGameAppScreen : BaseAppScreen() {
                                                 gameFolder.deleteRecursively()
                                             }
                                         }
+                                        // Invalidate cache after deletion
+                                        CustomGameScanner.invalidateCache()
                                     }
 
                                     // Navigate back and show notification
