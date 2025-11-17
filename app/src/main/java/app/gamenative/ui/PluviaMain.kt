@@ -333,8 +333,11 @@ fun PluviaMain(
             // Log.d("PluviaMain", "Screen changed to $currentScreen, resetting some values")
             // TODO: remove this if statement once XServerScreen orientation change bug is fixed
             if (state.currentScreen != PluviaScreen.XServer) {
-                // reset system ui visibility
-                PluviaApp.events.emit(AndroidEvent.SetSystemUIVisibility(true))
+                // Hide or show status bar based on if in game or not
+                val shouldShowStatusBar = !PrefManager.hideStatusBarWhenNotInGame
+                PluviaApp.events.emit(AndroidEvent.SetSystemUIVisibility(shouldShowStatusBar))
+
+                // reset system ui visibility based on user preference
                 // TODO: add option for user to set
                 // reset available orientations
                 PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.UNSPECIFIED)))
@@ -976,6 +979,9 @@ fun preLaunchApp(
         } else {
             ContainerUtils.getOrCreateContainer(context, appId)
         }
+
+        // Clear session metadata on every launch to ensure fresh values
+        container.clearSessionMetadata()
 
         // set up Ubuntu file system
         SplitCompat.install(context)

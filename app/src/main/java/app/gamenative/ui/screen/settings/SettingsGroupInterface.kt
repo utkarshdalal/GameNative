@@ -52,6 +52,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import kotlin.math.roundToInt
+import com.winlator.core.AppUtils
+import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.LoadingDialog
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsGroupInterface(
@@ -69,6 +76,12 @@ fun SettingsGroupInterface(
 
     var openStartScreenDialog by rememberSaveable { mutableStateOf(false) }
     var startScreenOption by rememberSaveable(openStartScreenDialog) { mutableStateOf(PrefManager.startScreen) }
+
+    // Status bar hide/show confirmation dialog
+    var showStatusBarRestartDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingStatusBarValue by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var showStatusBarLoadingDialog by rememberSaveable { mutableStateOf(false) }
+    var hideStatusBar by rememberSaveable { mutableStateOf(PrefManager.hideStatusBarWhenNotInGame) }
 
     // Load Steam regions from assets
     val steamRegionsMap: Map<Int, String> = remember {
@@ -95,6 +108,20 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 openWebLinks = it
                 PrefManager.openWebLinksExternally = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = "Hide status bar when not in game") },
+            subtitle = { Text(text = "Hide Android status bar in game list, settings, etc. App will restart when changed.") },
+            state = hideStatusBar,
+            onCheckedChange = { newValue ->
+                // Update UI immediately for responsive feel
+                hideStatusBar = newValue
+                // Store the pending value and show confirmation dialog
+                pendingStatusBarValue = newValue
+                showStatusBarRestartDialog = true
             },
         )
 
@@ -275,6 +302,56 @@ fun SettingsGroupInterface(
             PrefManager.cellIdManuallySet = selectedId != 0
         },
         onDismiss = { openRegionDialog = false }
+    )
+
+    // Status bar restart confirmation dialog
+    MessageDialog(
+        visible = showStatusBarRestartDialog,
+        title = "Restart Required",
+        message = "Changing this setting requires the app to restart. Do you want to continue?",
+        confirmBtnText = "Restart",
+        dismissBtnText = "Cancel",
+        onConfirmClick = {
+            showStatusBarRestartDialog = false
+            val newValue = pendingStatusBarValue ?: return@MessageDialog
+            // Save preference and show loading dialog
+            PrefManager.hideStatusBarWhenNotInGame = newValue
+            showStatusBarLoadingDialog = true
+            pendingStatusBarValue = null
+        },
+        onDismissRequest = {
+            showStatusBarRestartDialog = false
+            // Revert toggle to original value
+            hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
+            pendingStatusBarValue = null
+        },
+        onDismissClick = {
+            showStatusBarRestartDialog = false
+            // Revert toggle to original value
+            hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
+            pendingStatusBarValue = null
+        }
+    )
+
+    // Loading dialog while saving and restarting
+    LaunchedEffect(showStatusBarLoadingDialog) {
+        if (showStatusBarLoadingDialog) {
+            // Wait a bit for the preference to be saved (DataStore operations are async)
+            delay(300)
+            // Verify the preference was saved by reading it back
+            withContext(Dispatchers.IO) {
+                // Small delay to ensure DataStore write completes
+                delay(200)
+            }
+            // Restart the app
+            AppUtils.restartApplication(context)
+        }
+    }
+
+    LoadingDialog(
+        visible = showStatusBarLoadingDialog,
+        progress = -1f, // Indeterminate progress
+        message = "Saving settings and restarting..."
     )
 }
 

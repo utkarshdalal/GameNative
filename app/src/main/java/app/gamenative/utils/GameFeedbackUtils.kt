@@ -35,6 +35,8 @@ object GameFeedbackUtils {
         val rating: Int,
         val tags: List<String> = emptyList(),
         val notes: String? = null,
+        @SerialName("avg_fps") val avgFps: Float? = null,
+        @SerialName("session_length_sec") val sessionLengthSec: Int? = null,
     )
 
 
@@ -85,8 +87,28 @@ object GameFeedbackUtils {
             val appVersion = BuildConfig.VERSION_NAME
             Timber.d("GameFeedbackUtils: App version: $appVersion")
 
+            // Retrieve session data from container metadata
+            val avgFpsStr = container.getSessionMetadata("avg_fps", "")
+            val sessionLengthSecStr = container.getSessionMetadata("session_length_sec", "")
+            val avgFps = if (avgFpsStr.isNotEmpty()) {
+                try {
+                    avgFpsStr.toFloat()
+                } catch (e: NumberFormatException) {
+                    Timber.w("GameFeedbackUtils: Failed to parse avg_fps: $avgFpsStr")
+                    null
+                }
+            } else null
+            val sessionLengthSec = if (sessionLengthSecStr.isNotEmpty()) {
+                try {
+                    sessionLengthSecStr.toInt()
+                } catch (e: NumberFormatException) {
+                    Timber.w("GameFeedbackUtils: Failed to parse session_length_sec: $sessionLengthSecStr")
+                    null
+                }
+            } else null
+
             // Log the submission
-            Timber.i("GameFeedbackUtils: Submitting game feedback: game=$gameName, device=$deviceModel, rating=$rating, tags=${tags.joinToString()}")
+            Timber.i("GameFeedbackUtils: Submitting game feedback: game=$gameName, device=$deviceModel, rating=$rating, tags=${tags.joinToString()}, avgFps=$avgFps, sessionLengthSec=$sessionLengthSec")
 
             // Submit to Supabase
             try {
@@ -101,6 +123,8 @@ object GameFeedbackUtils {
                     rating = rating,
                     tags = tags,
                     notes = notes,
+                    avgFps = avgFps,
+                    sessionLengthSec = sessionLengthSec,
                 )
                 Timber.i("GameFeedbackUtils: Game feedback submitted successfully")
                 true
@@ -131,6 +155,8 @@ object GameFeedbackUtils {
         rating: Int,
         tags: List<String> = emptyList(),
         notes: String? = null,
+        avgFps: Float? = null,
+        sessionLengthSec: Int? = null,
     ) {
         Timber.d("GameFeedbackUtils.logRun: Starting with game=$gameName, rating=$rating")
 
@@ -201,6 +227,8 @@ object GameFeedbackUtils {
                     rating = rating,
                     tags = tags,
                     notes = notes,
+                    avgFps = avgFps,
+                    sessionLengthSec = sessionLengthSec,
                 )
 
                 from("game_runs").insert(run)

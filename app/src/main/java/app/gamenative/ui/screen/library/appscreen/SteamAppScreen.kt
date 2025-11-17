@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.library.appscreen
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Environment
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
@@ -42,8 +44,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import timber.log.Timber
+import java.nio.file.Paths
+import kotlin.io.path.pathString
 
 /**
  * Steam-specific implementation of BaseAppScreen
@@ -577,6 +582,40 @@ class SteamAppScreen : BaseAppScreen() {
                 }
         }
         
+        // Migration state
+        val scope = rememberCoroutineScope()
+        var showMoveDialog by remember { mutableStateOf(false) }
+        var current by remember { mutableStateOf("") }
+        var progress by remember { mutableFloatStateOf(0f) }
+        var moved by remember { mutableIntStateOf(0) }
+        var total by remember { mutableIntStateOf(0) }
+        val oldGamesDirectory = remember { 
+            Paths.get(SteamService.defaultAppInstallPath).pathString
+        }
+        
+        // Permission launcher for game migration
+        val permissionMovingInternalLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+            onResult = { permission ->
+                scope.launch {
+                    showMoveDialog = true
+                    StorageUtils.moveGamesFromOldPath(
+                        Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam").pathString,
+                        oldGamesDirectory,
+                        onProgressUpdate = { currentFile, fileProgress, movedFiles, totalFiles ->
+                            current = currentFile
+                            progress = fileProgress
+                            moved = movedFiles
+                            total = totalFiles
+                        },
+                        onComplete = {
+                            showMoveDialog = false
+                        },
+                    )
+                }
+            },
+        )
+        
         // Permission launcher for storage permissions
         val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -908,6 +947,16 @@ class SteamAppScreen : BaseAppScreen() {
                         Text("Cancel")
                     }
                 }
+            )
+        }
+        
+        // Game migration dialog
+        if (showMoveDialog) {
+            GameMigrationDialog(
+                progress = progress,
+                currentFile = current,
+                movedFiles = moved,
+                totalFiles = total,
             )
         }
     }

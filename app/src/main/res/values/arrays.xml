@@ -77,6 +77,7 @@
     </string-array>
     <string-array name="dxvk_version_entries">
         <item>async-1.10.3</item>
+        <item>2.7.1</item>
         <item>1.10.3</item>
         <item>1.10.1</item>
         <item>1.10.9-sarek</item>
@@ -142,9 +143,9 @@
         <item>0.3.4</item>
     </string-array>
     <string-array name="fexcore_version_entries">
-        <item>2505</item>
         <item>2507</item>
         <item>2508</item>
+        <item>2511</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>

@@ -592,7 +592,7 @@ internal fun AppScreenContent(
                             ),
                             contentPadding = PaddingValues(12.dp)
                         ) {
-                            Text("Update Now", color = MaterialTheme.colorScheme.onTertiary)
+                            Text(stringResource(R.string.update_now), color = MaterialTheme.colorScheme.onTertiary)
                         }
                     }
                 }
@@ -783,7 +783,7 @@ internal fun GameMigrationDialog(
             // We don't allow dismissal during move.
         },
         icon = { Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null) },
-        title = { Text(text = "Moving Files") },
+        title = { Text(text = stringResource(R.string.moving_files)) },
         text = {
             Column(
                 modifier = Modifier

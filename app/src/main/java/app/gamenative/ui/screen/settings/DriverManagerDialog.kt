@@ -34,8 +34,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
+import app.gamenative.R
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -261,7 +263,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Driver Manager", style = MaterialTheme.typography.titleLarge) },
+        title = { Text(text = stringResource(R.string.driver_manager), style = MaterialTheme.typography.titleLarge) },
         text = {
             Column(
                 modifier = Modifier
@@ -317,7 +319,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .menuAnchor(),
-                            placeholder = { Text("Select a driver") }
+                            placeholder = { Text(stringResource(R.string.select_a_driver)) }
                         )
 
                         ExposedDropdownMenu(
@@ -346,7 +348,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 onClick = { downloadAndInstallDriver(driverManifest[selectedDriverKey]!!) },
                                 enabled = !isDownloading && !isImporting
                             ) {
-                                Text("Download")
+                                Text(stringResource(R.string.download))
                             }
 
                             if (isDownloading) {
@@ -373,7 +375,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                                 .fillMaxWidth()
                                                 .padding(top = 4.dp)
                                         ) {
-                                            Text(text = "Downloading...")
+                                            Text(text = stringResource(R.string.downloading))
                                         }
                                     }
                                 }
@@ -387,7 +389,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                         modifier = Modifier.height(24.dp),
                                         strokeWidth = 2.dp
                                     )
-                                    Text(text = "Installing...")
+                                    Text(text = stringResource(R.string.installing))
                                 }
                             }
                         }
@@ -411,7 +413,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     enabled = !isImporting && !isDownloading,
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
-                    Text("Import ZIP from device")
+                    Text(stringResource(R.string.import_zip_from_device))
                 }
 
                 if (isImporting) {
@@ -477,8 +479,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     driverToDelete?.let { id ->
                         AlertDialog(
                             onDismissRequest = { driverToDelete = null },
-                            title = { Text(text = "Confirm Delete") },
-                            text = { Text(text = "Are you sure you want to remove driver '$id'? This cannot be undone.") },
+                            title = { Text(text = stringResource(R.string.confirm_delete)) },
+                            text = { Text(text = stringResource(R.string.remove_driver_confirmation, id)) },
                             confirmButton = {
                                 TextButton(onClick = {
                                     try {
@@ -500,7 +502,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             },
                             dismissButton = {
                                 TextButton(onClick = { driverToDelete = null }) {
-                                    Text("Cancel")
+                                    Text(stringResource(R.string.cancel))
                                 }
                             },
                         )

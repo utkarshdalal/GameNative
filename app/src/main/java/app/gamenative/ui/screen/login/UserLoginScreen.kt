@@ -453,7 +453,7 @@ private fun ModernUsernamePassword(
                             )
                             .padding(24.dp) // Padding inside the border
                     ) {
-                        Text("No connection to Steam", color = Color.White)
+                        Text(stringResource(R.string.no_connection_to_steam), color = Color.White)
                         Box(contentAlignment = Alignment.Center) {
                             OutlinedButton (
                                 onClick = { onRetryConnection(context) },
@@ -465,14 +465,14 @@ private fun ModernUsernamePassword(
                                 )
                             )
                             {
-                                Text("Retry Steam Connection")
+                                Text(stringResource(R.string.retry_steam_connection))
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Box(contentAlignment = Alignment.Center) {
                             Button(onClick = { onContinueOffline() }) {
-                                Text("Continue Offline")
+                                Text(stringResource(R.string.continue_offline))
                             }
                         }
                     }

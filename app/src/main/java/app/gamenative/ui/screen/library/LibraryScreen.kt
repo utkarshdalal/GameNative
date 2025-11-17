@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -109,11 +110,18 @@ private fun LibraryScreenContent(
             onSearchQuery(currentQuery)
         }
     }
-    val safePaddingModifier =
-        if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT)
+
+    // Apply top padding differently for list vs game detail pages.
+    // On the game page we want to hide the top padding when the status bar is hidden.
+    val safePaddingModifier = if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
+        if (selectedAppId != null) {
+            // Detail (game) page: compute top padding via PaddingUtils
+            Modifier.padding(top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding())
+        } else {
+            // List page keeps safe cutout padding (for notches)
             Modifier.displayCutoutPadding()
-        else
-            Modifier
+        }
+    } else Modifier
 
     Box(
         Modifier.background(MaterialTheme.colorScheme.background)

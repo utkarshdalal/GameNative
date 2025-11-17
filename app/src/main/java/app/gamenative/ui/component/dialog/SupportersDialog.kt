@@ -30,9 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
+import app.gamenative.R
 import app.gamenative.utils.KofiSupporter
 import app.gamenative.utils.fetchKofiSupporters
 import kotlinx.coroutines.Dispatchers
@@ -67,9 +69,9 @@ fun SupportersDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
-        title = { Text("Hall of Fame") },
+        title = { Text(stringResource(R.string.hall_of_fame)) },
         text = {
             Column(
                 modifier = Modifier
@@ -235,9 +237,9 @@ fun SupportersDialogPreview() {
         AlertDialog(
             onDismissRequest = {},
             confirmButton = {
-                TextButton(onClick = {}) { Text("Close") }
+                TextButton(onClick = {}) { Text(stringResource(R.string.close)) }
             },
-            title = { Text("Hall of Fame") },
+            title = { Text(stringResource(R.string.hall_of_fame)) },
             text = {
                 Column(
                     modifier = Modifier

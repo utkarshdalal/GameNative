@@ -9,7 +9,9 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import app.gamenative.R
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -56,7 +58,7 @@ fun SettingsCPUList(
                                 onValueChange(newAffinity.joinToString(","))
                             },
                         )
-                        Text("CPU$cpu")
+                        Text(stringResource(R.string.cpu_label, cpu))
                     }
                 }
             }

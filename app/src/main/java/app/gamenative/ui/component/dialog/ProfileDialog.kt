@@ -126,20 +126,20 @@ fun ProfileDialog(
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = "Help & Support")
+                    Text(text = stringResource(R.string.help_and_support))
                 }
 
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = "Hall of Fame")
+                    Text(text = stringResource(R.string.hall_of_fame))
                 }
 
                 if(isOffline) {
                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = "Go Online")
+                        Text(text = stringResource(R.string.go_online))
                     }
                 } else {
                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
@@ -148,19 +148,19 @@ fun ProfileDialog(
                     }) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = "Go Offline")
+                        Text(text = stringResource(R.string.go_offline))
                     }
                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = "Log Out")
+                        Text(text = stringResource(R.string.log_out))
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Close")
+                Text(text = stringResource(R.string.close))
             }
         },
     )

@@ -76,6 +76,12 @@ android {
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
 
+        // Localization support - specify which languages to include
+        resourceConfigurations += listOf(
+            "en",    // English (default)
+            // TODO: Add more languages here using the ISO 639-1 locale code
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true

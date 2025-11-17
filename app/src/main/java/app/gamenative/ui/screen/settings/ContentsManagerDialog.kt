@@ -40,7 +40,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 import app.gamenative.service.SteamService
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -163,7 +165,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Contents Manager", style = MaterialTheme.typography.titleLarge) },
+        title = { Text(text = stringResource(R.string.contents_manager), style = MaterialTheme.typography.titleLarge) },
         text = {
             Column(
                 modifier = Modifier
@@ -184,7 +186,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     },
                     enabled = !isBusy,
                     modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
-                ) { Text("Import .wcp from device") }
+                ) { Text(stringResource(R.string.import_wcp_from_device)) }
 
                 if (isBusy) {
                     Row(
@@ -192,7 +194,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
                         CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
-                        Text(text = statusMessage ?: "Working...")
+                        Text(text = statusMessage ?: stringResource(R.string.working))
                     }
                 } else if (!statusMessage.isNullOrEmpty()) {
                     Text(text = statusMessage ?: "", style = MaterialTheme.typography.bodySmall)
@@ -200,7 +202,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
                 pendingProfile?.let { profile ->
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text(text = "Selected content", style = MaterialTheme.typography.titleMedium)
+                    Text(text = stringResource(R.string.selected_content), style = MaterialTheme.typography.titleMedium)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -232,12 +234,12 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             },
                             enabled = !isBusy,
                             modifier = Modifier.padding(top = 8.dp)
-                        ) { Text("Install") }
+                        ) { Text(stringResource(R.string.install)) }
                     }
                 }
 
                 Divider(modifier = Modifier.padding(vertical = 12.dp))
-                Text(text = "Installed contents", style = MaterialTheme.typography.titleMedium)
+                Text(text = stringResource(R.string.installed_contents), style = MaterialTheme.typography.titleMedium)
 
                 // Content type selector
                 ExposedDropdownMenuBox(
@@ -253,7 +255,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        placeholder = { Text("Select type") }
+                        placeholder = { Text(stringResource(R.string.select_type)) }
                     )
 
                     ExposedDropdownMenu(
@@ -324,14 +326,14 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
     )
 
     if (showUntrustedConfirm && pendingProfile != null) {
         AlertDialog(
             onDismissRequest = { showUntrustedConfirm = false },
-            title = { Text("Untrusted Files Detected") },
+            title = { Text(stringResource(R.string.untrusted_files_detected)) },
             text = {
                 Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
                     Text(
@@ -358,10 +360,10 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             isBusy = false
                         }
                     }
-                }) { Text("Install Anyway") }
+                }) { Text(stringResource(R.string.install_anyway)) }
             },
             dismissButton = {
-                TextButton(onClick = { showUntrustedConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showUntrustedConfirm = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -370,8 +372,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     deleteTarget?.let { target ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("Remove content?") },
-            text = { Text("Are you sure you want to remove ${target.verName} (${target.verCode})?") },
+            title = { Text(stringResource(R.string.remove_content)) },
+            text = { Text(stringResource(R.string.remove_content_confirmation, target.verName, target.verCode)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -380,9 +382,9 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         Toast.makeText(ctx, "Removed ${target.verName}", Toast.LENGTH_SHORT).show()
                         deleteTarget = null
                     }
-                }) { Text("Remove") }
+                }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }

@@ -262,6 +262,13 @@ object PrefManager {
             setPref(FORCE_DLC, value)
         }
 
+    private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
+    var useLegacyDRM: Boolean
+        get() = getPref(USE_LEGACY_DRM, false)
+        set(value) {
+            setPref(USE_LEGACY_DRM, value)
+        }
+
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String
         get() = getPref(CPU_LIST, Container.getFallbackCPUList())
@@ -605,6 +612,14 @@ object PrefManager {
         get() = getPref(OPEN_WEB_LINKS_EXTERNALLY, true)
         set(value) {
             setPref(OPEN_WEB_LINKS_EXTERNALLY, value)
+        }
+
+    // Whether to hide the Android status bar when not in a game (in game list, settings, etc.)
+    private val HIDE_STATUS_BAR_WHEN_NOT_IN_GAME = booleanPreferencesKey("hide_status_bar_when_not_in_game")
+    var hideStatusBarWhenNotInGame: Boolean
+        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, false)
+        set(value) {
+            setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
         }
 
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")

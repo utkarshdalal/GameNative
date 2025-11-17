@@ -13,6 +13,8 @@
     <string name="steam_2fa_device">Please enter your 2-factor auth code from your authenticator app.</string>
     <string name="steam_2fa_email">Please enter the auth code sent to the email at %s</string>
     <string name="header_img_desc">App header image</string>
+    <string name="download">Download</string>
+    <string name="install">Install</string>
     <string name="install_app">Install</string>
     <string name="delete_app">Delete</string>
     <string name="uninstall">Uninstall</string>
@@ -27,7 +29,7 @@
     <string name="proceed">Proceed</string>
     <string name="cancel">Cancel</string>
     <string name="untitled">Untitled</string>
-
+    <string name="confirm_delete">Confirm Deletion</string>
     <string name="destination_library">Library</string>
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Friends</string>
@@ -99,7 +101,7 @@
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
         <b>1</b> : Most RET will need flags, most CALLS will not<br />
         <b>2</b> : All CALL/RET will need flags (slower)
-    ]]></string>
+    ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_fastnan">Generation of -NAN like on x86</string>
     <string name="box86_64_env_var_help__dynarec_fastround">Generation of precise x86 rounding</string>
     <string name="box86_64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
@@ -109,18 +111,164 @@
         <b>1</b> : Build Dynarec block as big as possible<br />
         <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
         <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
-    ]]></string>
+    ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
         Simulation of Strong Memory model<br /><br />
         <b>0</b> : Don\'t try anything special<br />
         <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
-    ]]></string>
+    ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
     <string name="box86_64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
     <string name="box86_64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
 
     <string name="resume_download">Resume</string>
     <string name="pause_download">Pause</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">Create shortcut</string>
+    <string name="label">Label</string>
+    <string name="icon">Icon</string>
+    <string name="create">Create</string>
+    <string name="update_now">Update Now</string>
+    <string name="moving_files">Moving Files</string>
+    <string name="need_internet_to_install">Need internet to install</string>
+    <string name="install_wifi_only_enabled">Install over WiFi only enabled</string>
+    <string name="installation_progress">Installation Progress</string>
+    <string name="downloading">Downloading...</string>
+    <string name="calculating_time">Calculating...</string>
+    <string name="update_available">Update Available</string>
+    <string name="game_information">Game Information</string>
+    <string name="status">Status</string>
+    <string name="size">Size</string>
+    <string name="location">Location</string>
+    <string name="developer">Developer</string>
+    <string name="release_date">Release Date</string>
+    <string name="installed">Installed</string>
+    <string name="installing">Installing</string>
+    <string name="not_installed">Not Installed</string>
+    <string name="open">Open</string>
+    <string name="family_shared">Family Shared</string>
+    <string name="games">Games</string>
+    <string name="playtime_last_two_weeks">Playtime last 2 weeks: %s hrs</string>
+    <string name="total_playtime">Total Playtime: %s hrs</string>
+
+    <!-- Login & Connection -->
+    <string name="no_connection_to_steam">No connection to Steam</string>
+    <string name="retry_steam_connection">Retry Steam Connection</string>
+    <string name="continue_offline">Continue Offline</string>
+
+    <!-- Profile & Menu -->
+    <string name="help_and_support">Help &amp; Support</string>
+    <string name="hall_of_fame">Hall of Fame</string>
+    <string name="go_online">Go Online</string>
+    <string name="go_offline">Go Offline</string>
+    <string name="log_out">Log Out</string>
+    <string name="close">Close</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">New Environment Variable</string>
+    <string name="name">Name</string>
+    <string name="value">Value</string>
+    <string name="no_more_known_variables">No more known variables</string>
+    <string name="container_variant">Container Variant</string>
+    <string name="wine_version">Wine Version</string>
+    <string name="exec_arguments">Exec Arguments</string>
+    <string name="exec_arguments_example">Example: -dx11</string>
+    <string name="language">Language</string>
+    <string name="screen_size">Screen Size</string>
+    <string name="width">Width</string>
+    <string name="height">Height</string>
+    <string name="audio_driver">Audio Driver</string>
+    <string name="show_fps">Show FPS</string>
+    <string name="remove_driver_confirmation">Are you sure you want to remove driver "%s"? This cannot be undone</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="use_legacy_drm">Use Legacy DRM</string>
+    <string name="force_dlc">Force DLC</string>
+    <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
+    <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
+    <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
+    <string name="allow_steam_updates">Allow Steam updates</string>
+    <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
+    <string name="steam_type">Steam Type</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">Graphics Driver</string>
+    <string name="graphics_driver_version">Graphics Driver Version</string>
+    <string name="exposed_vulkan_extensions">Exposed Vulkan Extensions</string>
+    <string name="max_device_memory">Max Device Memory</string>
+    <string name="frame_synchronization">Frame Synchronization</string>
+    <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
+    <string name="vulkan_version">Vulkan Version</string>
+    <string name="image_cache_size">Image Cache Size</string>
+    <string name="dx_wrapper">DX Wrapper</string>
+    <string name="vkd3d_feature_level">VKD3D Feature Level</string>
+    <string name="use_dri3">Use DRI3</string>
+    <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">FEXCore Version</string>
+    <string name="tso_mode">TSO Mode</string>
+    <string name="x87_mode">x87 Mode</string>
+    <string name="multiblock">Multiblock</string>
+    <string name="emulator_64bit">64-bit Emulator</string>
+    <string name="emulator_32bit">32-bit Emulator</string>
+    <string name="box64_version">Box64 Version</string>
+    <string name="box64_preset">Box64 Preset</string>
+    <string name="box64_presets">Box64 Presets</string>
+    <string name="preset_name">Preset name</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">Use SDL API</string>
+    <string name="enable_xinput_api">Enable XInput API</string>
+    <string name="enable_directinput_api">Enable DirectInput API</string>
+    <string name="directinput_mapper_type">DirectInput Mapper Type</string>
+    <string name="disable_mouse_input">Disable Mouse Input</string>
+    <string name="touchscreen_mode">Touchscreen Mode</string>
+    <string name="emulate_keyboard_mouse">Emulate keyboard and mouse</string>
+    <string name="emulate_keyboard_mouse_description">Left stick = WASD, Right stick = mouse. L2 = left click, R2 = right click.</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">Renderer</string>
+    <string name="gpu_name">GPU Name</string>
+    <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
+    <string name="video_memory_size">Video Memory Size</string>
+    <string name="enable_csmt">Enable CSMT (Command Stream Multi-Thread)</string>
+    <string name="enable_strict_shader_math">Enable Strict Shader Math</string>
+    <string name="mouse_warp_override">Mouse Warp Override</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">Environment Variables</string>
+    <string name="no_environment_variables">No environment variables</string>
+    <string name="no_drives">No drives</string>
+    <string name="startup_selection">Startup Selection</string>
+    <string name="processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
+    <string name="executable_path">Executable Path</string>
+    <string name="executable_path_placeholder">e.g., path\\to\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">Allowed Orientations</string>
+    <string name="select_wine_debug_channels">Select Wine Debug Channels</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">Describe what happened</string>
+    <string name="get_support_on_discord">Get support on Discord</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">Driver Manager</string>
+    <string name="select_a_driver">Select a driver</string>
+    <string name="import_zip_from_device">Import ZIP from device</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">Contents Manager</string>
+    <string name="import_wcp_from_device">Import .wcp from device</string>
+    <string name="working">Working...</string>
+    <string name="selected_content">Selected content</string>
+    <string name="installed_contents">Installed contents</string>
+    <string name="select_type">Select type</string>
+    <string name="untrusted_files_detected">Untrusted Files Detected</string>
+    <string name="install_anyway">Install Anyway</string>
+    <string name="remove_content">Remove content?</string>
+    <string name="remove_content_confirmation">Are you sure you want to remove %1$s (%2$s)?</string>
 </resources>

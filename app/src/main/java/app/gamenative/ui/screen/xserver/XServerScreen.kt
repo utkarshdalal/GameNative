@@ -1311,37 +1311,41 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         if (container.isLaunchRealSteam()) {
             // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\Program Files (x86)\\Steam\\steam.exe\" -silent -vgui -tcp " +
-                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $appId"
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
+                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $steamAppId"
         } else {
-            val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-            val appDirPath = SteamService.getAppDirPath(steamAppId)
-            var executablePath = ""
-            if (container.executablePath.isNotEmpty()) {
-                executablePath = container.executablePath
-            } else {
-                executablePath = SteamService.getInstalledExe(steamAppId)
-                container.executablePath = executablePath
-                container.saveData()
-            }
-            val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
-            guestProgramLauncherComponent.workingDir = File(executableDir);
-            Timber.i("Working directory is ${executableDir}")
+            if (container.isUseLegacyDRM) {
+                val appDirPath = SteamService.getAppDirPath(steamAppId)
+                var executablePath = ""
+                if (container.executablePath.isNotEmpty()) {
+                    executablePath = container.executablePath
+                } else {
+                    executablePath = SteamService.getInstalledExe(steamAppId)
+                    container.executablePath = executablePath
+                    container.saveData()
+                }
+                val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
+                guestProgramLauncherComponent.workingDir = File(executableDir);
+                Timber.i("Working directory is ${executableDir}")
 
-            Timber.i("Final exe path is " + executablePath)
-            val drives = container.drives
-            val driveIndex = drives.indexOf(appDirPath)
-            // greater than 1 since there is the drive character and the colon before the app dir path
-            val drive = if (driveIndex > 1) {
-                drives[driveIndex - 2]
+                Timber.i("Final exe path is " + executablePath)
+                val drives = container.drives
+                val driveIndex = drives.indexOf(appDirPath)
+                // greater than 1 since there is the drive character and the colon before the app dir path
+                val drive = if (driveIndex > 1) {
+                    drives[driveIndex - 2]
+                } else {
+                    Timber.e("Could not locate game drive")
+                    'D'
+                }
+                envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
+                "\"$drive:/${executablePath}\""
             } else {
-                Timber.e("Could not locate game drive")
-                'D'
+                "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
             }
-            envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
-            "\"$drive:/${executablePath}\""
         }
     }
 
@@ -1374,6 +1378,14 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson)
     )
+    
+    // Store session data in container metadata
+    frameRating?.let { rating ->
+        container.putSessionMetadata("avg_fps", rating.avgFPS)
+        container.putSessionMetadata("session_length_sec", rating.sessionLengthSec.toInt())
+        container.saveData()
+    }
+    
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.isGameRunning = false

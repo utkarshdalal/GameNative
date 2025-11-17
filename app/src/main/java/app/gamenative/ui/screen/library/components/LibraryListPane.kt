@@ -66,6 +66,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import app.gamenative.data.GameSource
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.utils.PaddingUtils
 import timber.log.Timber
 
 /**
@@ -192,7 +193,7 @@ internal fun LibraryListPane(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(PaddingUtils.statusBarAwarePadding())
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
