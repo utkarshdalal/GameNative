@@ -47,6 +47,7 @@ import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.service.DownloadService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
+import app.gamenative.utils.CustomGameScanner
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -84,9 +85,16 @@ internal fun LibraryListPane(
     onSourceToggle: (GameSource) -> Unit,
     isOffline: Boolean = false,
 ) {
+    val context = LocalContext.current
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val snackBarHost = remember { SnackbarHostState() }
-    val installedCount = remember { DownloadService.getDownloadDirectoryApps().count() }
+    val installedCount = remember {
+        val steamCount = DownloadService.getDownloadDirectoryApps().count()
+        
+        // Custom Games are always considered "installed" since they're external folders
+        val customGameCount = CustomGameScanner.scanAsLibraryItems(query = "").count()
+        steamCount + customGameCount
+    }
 
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
