@@ -46,6 +46,9 @@ import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.CustomGameScanner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.EnumSet
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +63,13 @@ fun HomeLibraryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Ensure default CustomGames folder exists when the library screen loads
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            CustomGameScanner.ensureDefaultFolderExists()
+        }
+    }
 
     LibraryScreenContent(
         state = state,

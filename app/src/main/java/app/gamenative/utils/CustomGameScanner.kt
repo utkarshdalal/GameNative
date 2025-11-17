@@ -1,6 +1,13 @@
 package app.gamenative.utils
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
@@ -14,9 +21,9 @@ import org.json.JSONObject
 
 object CustomGameScanner {
 
-    // Default root path for Custom Games. Prefer the app's external storage sandbox
-    // (Android/data/<package>/CustomGames) when available; otherwise fall back to
-    // internal data directory. Always auto-create the directory.
+    // Default root path for Custom Games. Always use the app's external storage sandbox
+    // (Android/data/<package>/CustomGames) when available; fall back to internal only if external is unavailable.
+    // This ensures the folder is visible via MTP/file managers.
     val defaultRootPath: String
         get() {
             // External app sandbox (e.g., /storage/emulated/0/Android/data/<pkg>)
@@ -24,14 +31,62 @@ object CustomGameScanner {
             val externalDir = if (externalBase.isNotEmpty()) File(externalBase, "CustomGames") else null
             val internalDir = File(DownloadService.baseDataDirPath, "CustomGames")
 
-            // Choose external when the preference is set OR when it already exists (user created it)
+            // Always prefer external location (visible via MTP/file managers) when available
+            // Only fall back to internal if external is truly not available
             val target = when {
-                externalDir != null && (PrefManager.useExternalStorage || externalDir.exists()) -> externalDir
-                else -> internalDir
+                externalDir != null -> {
+                    // Always use external if available (it's visible to users via file managers)
+                    // Create parent directory if needed
+                    externalDir.parentFile?.mkdirs()
+                    externalDir
+                }
+                else -> {
+                    Timber.tag("CustomGameScanner").w("External storage not available, falling back to internal: ${internalDir.path}")
+                    internalDir
+                }
             }
-            if (!target.exists()) target.mkdirs()
+            if (!target.exists()) {
+                val created = target.mkdirs()
+                if (created) {
+                    Timber.tag("CustomGameScanner").d("Created default CustomGames folder: ${target.path}")
+                } else {
+                    Timber.tag("CustomGameScanner").w("Failed to create default CustomGames folder: ${target.path}")
+                }
+            }
+            Timber.tag("CustomGameScanner").d("Using default CustomGames path: ${target.path}")
             return target.path
         }
+
+    /**
+     * Ensures the default CustomGames folder exists by creating it if it doesn't.
+     * This should be called when the library screen loads to guarantee the folder exists
+     * even if there are no custom games yet.
+     * 
+     * This function explicitly creates the folder using the same logic as defaultRootPath
+     * to ensure it exists regardless of whether scanning happens.
+     */
+    fun ensureDefaultFolderExists() {
+        Timber.tag("CustomGameScanner").d("Ensuring default CustomGames folder exists")
+
+        try {
+            // Use the same logic as defaultRootPath to ensure consistency
+            val defaultPath = defaultRootPath
+            val folder = File(defaultPath)
+            
+            if (!folder.exists()) {
+                val created = folder.mkdirs()
+                if (created) {
+                    Timber.tag("CustomGameScanner").d("Created default CustomGames folder: $defaultPath")
+                } else {
+                    Timber.tag("CustomGameScanner").w("Failed to create default CustomGames folder: $defaultPath")
+                }
+            } else {
+                Timber.tag("CustomGameScanner").d("Default CustomGames folder already exists: $defaultPath")
+            }
+        } catch (e: Exception) {
+            Timber.tag("CustomGameScanner").e(e, "Error ensuring default CustomGames folder exists")
+        }
+    }
 
     /**
      * Attempts to locate a suitable icon file for a Custom Game.
@@ -269,6 +324,63 @@ object CustomGameScanner {
     }
 
     /**
+     * Checks if we have permission to access a given path.
+     * On Android 11+ (API 30+), this checks for MANAGE_EXTERNAL_STORAGE permission.
+     * On older versions, checks for READ_EXTERNAL_STORAGE.
+     */
+    fun hasStoragePermission(context: Context, path: String): Boolean {
+        // Check if path is outside app sandbox
+        val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") && 
+                               !path.contains(context.dataDir.path)
+        
+        if (!isOutsideSandbox) {
+            // Path is in app sandbox, no special permission needed
+            return true
+        }
+        
+        // For paths outside sandbox, check permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ requires MANAGE_EXTERNAL_STORAGE for broad access
+            return Environment.isExternalStorageManager()
+        } else {
+            // Android 10 and below use standard storage permissions
+            return ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    /**
+     * Opens the Android settings page to grant MANAGE_EXTERNAL_STORAGE permission.
+     * This is required for Android 11+ to access paths outside the app sandbox.
+     * Returns true if the intent was launched, false otherwise.
+     */
+    fun requestManageExternalStoragePermission(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = Uri.parse("package:${context.packageName}")
+                context.startActivity(intent)
+                return true
+            } catch (e: Exception) {
+                Timber.tag("CustomGameScanner").e(e, "Failed to open settings for MANAGE_EXTERNAL_STORAGE")
+                // Fallback: try generic app settings
+                try {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    intent.data = Uri.parse("package:${context.packageName}")
+                    context.startActivity(intent)
+                    return true
+                } catch (e2: Exception) {
+                    Timber.tag("CustomGameScanner").e(e2, "Failed to open app settings")
+                    return false
+                }
+            }
+        }
+        return false
+    }
+
+    /**
      * Returns a combined set of root paths: the default path (always included)
      * plus any user-defined additional paths from preferences.
      */
@@ -287,6 +399,8 @@ object CustomGameScanner {
      * scanAsLibraryItems().
      */
     fun countGamesByRoot(query: String = ""): Map<String, Int> {
+        // Ensure default root path exists (this will create it if it doesn't)
+        val defaultPath = defaultRootPath
         val q = query.trim()
         val result = mutableMapOf<String, Int>()
         for (root in getAllRoots()) {
@@ -295,7 +409,24 @@ object CustomGameScanner {
                 result[root] = 0
                 continue
             }
-            val children = rootFile.listFiles { f -> f.isDirectory } ?: emptyArray()
+            
+            val children = try {
+                rootFile.listFiles { f -> f.isDirectory }
+            } catch (e: SecurityException) {
+                Timber.tag("CustomGameScanner").w("Permission denied counting games in root: $root - ${e.message}")
+                result[root] = -1 // Use -1 to indicate permission error
+                continue
+            } catch (e: Exception) {
+                Timber.tag("CustomGameScanner").w("Error counting games in root: $root - ${e.message}")
+                result[root] = 0
+                continue
+            }
+            
+            if (children == null) {
+                result[root] = -1 // Use -1 to indicate permission error
+                continue
+            }
+            
             val count = children.count { folder ->
                 (q.isEmpty() || folder.name.contains(q, ignoreCase = true))
             }
@@ -314,14 +445,56 @@ object CustomGameScanner {
         val items = mutableListOf<LibraryItem>()
         var indexCounter = indexOffsetStart
         val q = query.trim()
+        
+        // Ensure default root path exists (this will create it if it doesn't)
+        val defaultPath = defaultRootPath
+        
         val roots = getAllRoots()
+        Timber.tag("CustomGameScanner").d("Scanning ${roots.size} root(s) for custom games: $roots")
+        
         for (root in roots) {
             val rootFile = File(root)
-            if (!rootFile.exists() || !rootFile.isDirectory) continue
-            val children = rootFile.listFiles { f -> f.isDirectory } ?: continue
+            Timber.tag("CustomGameScanner").d("Scanning root: $root (exists: ${rootFile.exists()}, isDirectory: ${rootFile.isDirectory})")
+            
+            // Ensure the directory exists, create it if it doesn't (especially for default path)
+            if (!rootFile.exists()) {
+                rootFile.mkdirs()
+            }
+            if (!rootFile.isDirectory) {
+                Timber.tag("CustomGameScanner").w("Root path is not a directory, skipping: $root")
+                continue
+            }
+            
+            val children = try {
+                rootFile.listFiles { f -> f.isDirectory }
+            } catch (e: SecurityException) {
+                Timber.tag("CustomGameScanner").w("Permission denied accessing root: $root - ${e.message}")
+                continue
+            } catch (e: Exception) {
+                Timber.tag("CustomGameScanner").w("Error accessing root: $root - ${e.message}")
+                continue
+            }
+            
+            if (children == null) {
+                Timber.tag("CustomGameScanner").w("Failed to list files in root: $root (permission denied or path doesn't exist)")
+                continue
+            }
+            if (children.isEmpty()) {
+                Timber.tag("CustomGameScanner").d("Found 0 subdirectories in $root (folder is empty or contains only files)")
+                continue
+            }
+            Timber.tag("CustomGameScanner").d("Found ${children.size} subdirectories in $root: ${children.map { it.name }}")
+            
             for (folder in children) {
                 if (q.isNotEmpty() && !folder.name.contains(q, ignoreCase = true)) continue
-                if (!looksLikeGameFolder(folder)) continue
+                
+                val looksLikeGame = looksLikeGameFolder(folder)
+                Timber.tag("CustomGameScanner").d("Checking folder: ${folder.name} (looksLikeGame: $looksLikeGame)")
+                
+                if (!looksLikeGame) {
+                    Timber.tag("CustomGameScanner").d("Folder ${folder.name} does not look like a game folder (no .exe found)")
+                    continue
+                }
 
                 // Get or generate game ID (checks .gamenative file first, then generates and stores)
                 val idPart = getOrGenerateGameId(folder)
@@ -397,14 +570,30 @@ object CustomGameScanner {
     }
 
     private fun looksLikeGameFolder(dir: File): Boolean {
-        // Check for .exe in dir or one level below
-        val inRoot = dir.listFiles()?.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) } == true
-        if (inRoot) return true
-        val subDirs = dir.listFiles { f -> f.isDirectory } ?: return false
-        for (sd in subDirs) {
-            val hasExe = sd.listFiles()?.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) } == true
-            if (hasExe) return true
+        if (!dir.exists() || !dir.isDirectory) {
+            Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.path} does not exist or is not a directory")
+            return false
         }
+        
+        // Check for .exe in dir or one level below
+        val rootFiles = dir.listFiles() ?: return false
+        val inRoot = rootFiles.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
+        if (inRoot) {
+            Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} has .exe in root")
+            return true
+        }
+        
+        val subDirs = rootFiles.filter { it.isDirectory }
+        for (sd in subDirs) {
+            val subFiles = sd.listFiles() ?: continue
+            val hasExe = subFiles.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
+            if (hasExe) {
+                Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} has .exe in subdirectory ${sd.name}")
+                return true
+            }
+        }
+        
+        Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} does not contain any .exe files")
         return false
     }
 
