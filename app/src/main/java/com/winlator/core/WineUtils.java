@@ -17,14 +17,20 @@ import java.util.Locale;
 import timber.log.Timber;
 
 public abstract class WineUtils {
+
     public static void createDosdevicesSymlinks(Container container) {
         String dosdevicesPath = (new File(container.getRootDir(), ".wine/dosdevices")).getPath();
         File[] files = (new File(dosdevicesPath)).listFiles();
-        if (files != null) for (File file : files) if (file.getName().matches("[a-z]:")) file.delete();
+        if (files != null) {
+            for (File file : files) {
+                if (file.getName().matches("[a-z]:")) {
+                    file.delete();
+                }
+            }
+        }
 
-        FileUtils.symlink("../drive_c", dosdevicesPath+"/c:");
-        FileUtils.symlink(container.getRootDir().getPath() + "/../..", dosdevicesPath+"/z:");
-
+        FileUtils.symlink("../drive_c", dosdevicesPath + "/c:");
+        FileUtils.symlink(container.getRootDir().getPath() + "/../..", dosdevicesPath + "/z:");
 
         // Auto-fix containers missing D: and E: drives
         String currentDrives = container.getDrives();
@@ -51,7 +57,7 @@ public abstract class WineUtils {
                 linkTarget.mkdirs();
                 FileUtils.chmod(linkTarget, 0771);
             }
-            FileUtils.symlink(path, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
+            FileUtils.symlink(path, dosdevicesPath + "/" + drive[0].toLowerCase(Locale.ENGLISH) + ":");
 
             // Check if this is the A: drive (game directory)
             if (drive[0].equals("A") && path.contains("/Steam/steamapps/common/")) {
@@ -119,8 +125,8 @@ public abstract class WineUtils {
 
     public static void applySystemTweaks(Context context, WineInfo wineInfo) {
         File rootDir = ImageFs.find(context).getRootDir();
-        File systemRegFile = new File(rootDir, ImageFs.WINEPREFIX+"/system.reg");
-        File userRegFile = new File(rootDir, ImageFs.WINEPREFIX+"/user.reg");
+        File systemRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/system.reg");
+        File userRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/user.reg");
         File userCacheDir = new File(rootDir, "/home/xuser/.cache");
         if (!userCacheDir.isDirectory()) {
             userCacheDir.mkdirs();
@@ -142,7 +148,7 @@ public abstract class WineUtils {
             File corefontsAddedFile = new File(userConfigDir, "corefonts.added");
             if (!corefontsAddedFile.isFile()) {
                 try {
-                    setupSystemFonts(registryEditor);
+                    setupSystemFonts(registryEditor, wineInfo);
                     FileUtils.writeString(corefontsAddedFile, String.valueOf(System.currentTimeMillis()));
                 } catch (Throwable th) {
                     registryEditor.close();
@@ -157,8 +163,12 @@ public abstract class WineUtils {
         boolean isMainWineVersion = WineInfo.isMainWineVersion(wineInfo.identifier());
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-            for (String name : direct3dLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
-            for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
+            for (String name : direct3dLibs) {
+                registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
+            }
+            for (String name : xinputLibs) {
+                registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
+            }
 
             registryEditor.removeKey("Software\\Winlator\\WFM\\ContextMenu\\7-Zip");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Open Archive", "Z:\\opt\\apps\\7-Zip\\7zFM.exe \"%FILE%\"");
@@ -168,16 +178,20 @@ public abstract class WineUtils {
             setWindowMetrics(registryEditor);
         }
 
-        File wineSystem32Dir = new File(rootDir, "/opt/wine/lib/wine/x86_64-windows");
-        File wineSysWoW64Dir = new File(rootDir, "/opt/wine/lib/wine/i386-windows");
-        File containerSystem32Dir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows/system32");
-        File containerSysWoW64Dir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows/syswow64");
+        // Use the actual wine path from WineInfo, not hardcoded /opt/wine
+        String winePath = wineInfo.path != null ? wineInfo.path : rootDir + "/opt/wine";
+        File wineSystem32Dir = new File(winePath, "lib/wine/x86_64-windows");
+        File wineSysWoW64Dir = new File(winePath, "lib/wine/i386-windows");
+        File containerSystem32Dir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/system32");
+        File containerSysWoW64Dir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/syswow64");
 
         final String[] dlnames = {"user32.dll", "shell32.dll", "dinput.dll", "dinput8.dll", "xinput1_1.dll", "xinput1_2.dll", "xinput1_3.dll", "xinput1_4.dll", "xinput9_1_0.dll", "xinputuap.dll", "winemenubuilder.exe", "explorer.exe"};
         boolean win64 = wineInfo.isWin64();
         for (String dlname : dlnames) {
             FileUtils.copy(new File(wineSysWoW64Dir, dlname), new File(win64 ? containerSysWoW64Dir : containerSystem32Dir, dlname));
-            if (win64) FileUtils.copy(new File(wineSystem32Dir, dlname), new File(containerSystem32Dir, dlname));
+            if (win64) {
+                FileUtils.copy(new File(wineSystem32Dir, dlname), new File(containerSystem32Dir, dlname));
+            }
         }
     }
 
@@ -192,11 +206,12 @@ public abstract class WineUtils {
                 String dlname = dlnames.getString(i);
                 if (useNative) {
                     registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
+                } else {
+                    registryEditor.removeValue(dllOverridesKey, dlname);
                 }
-                else registryEditor.removeValue(dllOverridesKey, dlname);
             }
+        } catch (JSONException e) {
         }
-        catch (JSONException e) {}
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String wincomponents) {
@@ -209,7 +224,9 @@ public abstract class WineUtils {
 
             for (String[] wincomponent : new KeyValueSet(wincomponents)) {
                 try {
-                    if (wincomponent[1].equals(oldWinComponentsIter.next()[1])) continue;
+                    if (wincomponent[1].equals(oldWinComponentsIter.next()[1])) {
+                        continue;
+                    }
                 } catch (StringIndexOutOfBoundsException e) {
                     Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping");
                 }
@@ -221,12 +238,12 @@ public abstract class WineUtils {
                     String dlname = dlnames.getString(i);
                     if (useNative) {
                         registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
+                    } else {
+                        registryEditor.removeValue(dllOverridesKey, dlname);
                     }
-                    else registryEditor.removeValue(dllOverridesKey, dlname);
                 }
             }
-        }
-        catch (JSONException e) {
+        } catch (JSONException e) {
             Log.e("WineUtils", "Failed to override win component dlls: " + e);
         }
     }
@@ -245,14 +262,12 @@ public abstract class WineUtils {
                     registryEditor.setStringValue(key64, "CLSID", "{E30629D1-27E5-11CE-875D-00608CB78066}");
                     registryEditor.setHexValue(key64, "FilterData", "02000000000080000100000000000000307069330200000000000000010000000000000000000000307479330000000038000000480000006175647300001000800000aa00389b710100000000001000800000aa00389b71");
                     registryEditor.setStringValue(key64, "FriendlyName", "Wave Audio Renderer");
-                }
-                else {
+                } else {
                     registryEditor.removeKey(key32);
                     registryEditor.removeKey(key64);
                 }
             }
-        }
-        else if (identifier.equals("xaudio")) {
+        } else if (identifier.equals("xaudio")) {
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
                 if (useNative) {
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{074B110F-7F58-4743-AEA5-12F1B5074ED}\\InprocServer32", null, "C:\\windows\\syswow64\\xactengine3_5.dll");
@@ -338,14 +353,12 @@ public abstract class WineUtils {
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{F5CA7B34-8055-42C0-B836-216129EB7E30}\\InprocServer32", null, "C:\\windows\\system32\\xaudio2_2.dll");
                 }
             }
-        }
-        else if (identifier.equals("wmdecoder")) {
+        } else if (identifier.equals("wmdecoder")) {
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
                 if (useNative) {
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{2EEB4ADF-4578-4D10-BCA7-BB955F56320A}\\InprocServer32", null, "C:\\windows\\system32\\wmadmod.dll");
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{82D353DF-90BD-4382-8BC2-3F6192B76E34}\\InprocServer32", null, "C:\\windows\\system32\\wmvdecod.dll");
-                }
-                else {
+                } else {
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{2EEB4ADF-4578-4D10-BCA7-BB955F56320A}\\InprocServer32", null, "C:\\windows\\system32\\winegstreamer.dll");
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{82D353DF-90BD-4382-8BC2-3F6192B76E34}\\InprocServer32", null, "C:\\windows\\system32\\winegstreamer.dll");
                 }
@@ -362,19 +375,28 @@ public abstract class WineUtils {
 
             for (String service : services) {
                 String name = service.substring(0, service.indexOf(":"));
-                int value = onlyEssential ? 4 : Character.getNumericValue(service.charAt(service.length()-1));
-                registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\"+name, "Start", value);
+                int value = onlyEssential ? 4 : Character.getNumericValue(service.charAt(service.length() - 1));
+                registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\" + name, "Start", value);
             }
         }
     }
 
-    private static void setupSystemFonts(WineRegistryEditor registryEditor) {
+    private static void setupSystemFonts(WineRegistryEditor registryEditor, WineInfo wineInfo) {
         Timber.i("Setting up fonts!");
         String[][] corefonts = {new String[]{"Andale Mono (TrueType)", "andalemo.ttf"}, new String[]{"Arial (TrueType)", "arial.ttf"}, new String[]{"Arial Black (TrueType)", "ariblk.ttf"}, new String[]{"Arial Bold (TrueType)", "arialbd.ttf"}, new String[]{"Arial Bold Italic (TrueType)", "arialbi.ttf"}, new String[]{"Arial Italic (TrueType)", "ariali.ttf"}, new String[]{"Comic Sans MS (TrueType)", "comic.ttf"}, new String[]{"Comic Sans MS Bold (TrueType)", "comicbd.ttf"}, new String[]{"Courier New (TrueType)", "cour.ttf"}, new String[]{"Courier New Bold (TrueType)", "courbd.ttf"}, new String[]{"Courier New Bold Italic (TrueType)", "courbi.ttf"}, new String[]{"Courier New Italic (TrueType)", "couri.ttf"}, new String[]{"Georgia (TrueType)", "georgia.ttf"}, new String[]{"Georgia Bold (TrueType)", "georgiab.ttf"}, new String[]{"Georgia Bold Italic (TrueType)", "georgiaz.ttf"}, new String[]{"Georgia Italic (TrueType)", "georgiai.ttf"}, new String[]{"Impact (TrueType)", "impact.ttf"}, new String[]{"Times New Roman (TrueType)", "times.ttf"}, new String[]{"Times New Roman Bold (TrueType)", "timesbd.ttf"}, new String[]{"Times New Roman Bold Italic (TrueType)", "timesbi.ttf"}, new String[]{"Times New Roman Italic (TrueType)", "timesi.ttf"}, new String[]{"Trebuchet MS (TrueType)", "trebuc.ttf"}, new String[]{"Trebuchet MS Bold (TrueType)", "trebucbd.ttf"}, new String[]{"Trebuchet MS Bold Italic (TrueType)", "trebucbi.ttf"}, new String[]{"Trebuchet MS Italic (TrueType)", "trebucit.ttf"}, new String[]{"Verdana (TrueType)", "verdana.ttf"}, new String[]{"Verdana Bold (TrueType)", "verdanab.ttf"}, new String[]{"Verdana Bold Italic (TrueType)", "verdanaz.ttf"}, new String[]{"Verdana Italic (TrueType)", "verdanai.ttf"}, new String[]{"Webdings (TrueType)", "webdings.ttf"}};
         registryEditor.setStringValues("Software\\Microsoft\\Windows\\CurrentVersion\\Fonts", corefonts);
         registryEditor.setStringValues("Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts", corefonts);
         Timber.i("Setting up corefonts! " + corefonts);
-        String[][] wineFonts = {new String[]{"Marlett (TrueType)", "Z:\\opt\\wine\\share\\wine\\fonts\\marlett.ttf"}, new String[]{"Symbol (TrueType)", "Z:\\opt\\wine\\share\\wine\\fonts\\symbol.ttf"}, new String[]{"Tahoma (TrueType)", "Z:\\opt\\wine\\share\\wine\\fonts\\tahoma.ttf"}, new String[]{"Tahoma Bold (TrueType)", "Z:\\opt\\wine\\share\\wine\\fonts\\tahomabd.ttf"}, new String[]{"Wingdings (TrueType)", "Z:\\opt\\wine\\share\\wine\\fonts\\wingding.ttf"}};
+
+        // Use actual wine path from WineInfo, not hardcoded /opt/wine
+        String wineFontPath = wineInfo.path != null ? wineInfo.path.replace("/", "\\\\") : "Z:\\\\opt\\\\wine";
+        String[][] wineFonts = {
+            new String[]{"Marlett (TrueType)", "Z:" + wineFontPath + "\\\\share\\\\wine\\\\fonts\\\\marlett.ttf"},
+            new String[]{"Symbol (TrueType)", "Z:" + wineFontPath + "\\\\share\\\\wine\\\\fonts\\\\symbol.ttf"},
+            new String[]{"Tahoma (TrueType)", "Z:" + wineFontPath + "\\\\share\\\\wine\\\\fonts\\\\tahoma.ttf"},
+            new String[]{"Tahoma Bold (TrueType)", "Z:" + wineFontPath + "\\\\share\\\\wine\\\\fonts\\\\tahomabd.ttf"},
+            new String[]{"Wingdings (TrueType)", "Z:" + wineFontPath + "\\\\share\\\\wine\\\\fonts\\\\wingding.ttf"}
+        };
         registryEditor.setStringValues("Software\\Microsoft\\Windows\\CurrentVersion\\Fonts", wineFonts);
         registryEditor.setStringValues("Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts", wineFonts);
         Timber.i("Setting up winefonts! " + wineFonts);

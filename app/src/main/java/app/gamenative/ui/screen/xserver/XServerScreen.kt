@@ -206,7 +206,7 @@ fun XServerScreen(
     var isKeyboardVisible = false
     var areControlsVisible = false
 
-    val emulateKeyboardMouse = ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse()
+    val emulateKeyboardMouse = ContainerUtils.getOrCreateContainer(context, appId).isEmulateKeyboardMouse()
 
     val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
@@ -493,7 +493,7 @@ fun XServerScreen(
                     val setupExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
                         Thread(r, "WineSetup-Thread").apply { isDaemon = false }
                     }
-                    
+
                     setupExecutor.submit {
                         try {
                             val containerManager = ContainerManager(context)
@@ -1332,30 +1332,30 @@ private fun installRedistributables(
 ) {
     try {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-        
+
         // Get shared depots to determine if redistributables are needed
         val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
         val sharedDepots = downloadableDepots.filter { (_, depotInfo) ->
             val manifest = depotInfo.manifests["public"]
             manifest == null || manifest.gid == 0L
         }
-        
+
         if (sharedDepots.isEmpty()) {
             Timber.i("No shared depots found, skipping redistributable installation")
             return
         }
-        
+
         Timber.i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
-        
+
         // Get game directory path
         val gameDirPath = SteamService.getAppDirPath(steamAppId)
         val commonRedistDir = File(gameDirPath, "_CommonRedist")
-        
+
         if (!commonRedistDir.exists() || !commonRedistDir.isDirectory()) {
             Timber.i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}, skipping redistributable installation")
             return
         }
-        
+
         // Get the drive letter for the game directory
         val drives = container.drives
         val driveIndex = drives.indexOf(gameDirPath)
@@ -1365,7 +1365,7 @@ private fun installRedistributables(
             Timber.e("Could not locate game drive for redistributables")
             return
         }
-        
+
         // Find and install vcredist executables (only 64-bit: VC_redist.x64.exe)
         val vcredistDir = File(commonRedistDir, "vcredist")
         if (vcredistDir.exists() && vcredistDir.isDirectory()) {
@@ -1385,12 +1385,12 @@ private fun installRedistributables(
                     }
                 }
         }
-        
+
         // Find and install PhysX redistributables (.msi files starting with "PhysX")
         val physxDir = File(commonRedistDir, "PhysX")
         if (physxDir.exists() && physxDir.isDirectory()) {
             physxDir.walkTopDown()
-                .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) && 
+                .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
                          it.name.endsWith(".msi", ignoreCase = true) }
                 .forEach { msiFile ->
                     try {
@@ -1406,12 +1406,12 @@ private fun installRedistributables(
                     }
                 }
         }
-        
+
         // Find and install XNA Framework redistributables (.msi files starting with "xna")
         val xnaDir = File(commonRedistDir, "xnafx")
         if (xnaDir.exists() && xnaDir.isDirectory()) {
             xnaDir.walkTopDown()
-                .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) && 
+                .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
                          it.name.endsWith(".msi", ignoreCase = true) }
                 .forEach { msiFile ->
                     try {
@@ -1427,7 +1427,7 @@ private fun installRedistributables(
                     }
                 }
         }
-        
+
         Timber.i("Finished checking for redistributables")
     } catch (e: Exception) {
         Timber.e(e, "Error in installRedistributables: ${e.message}")
@@ -1457,7 +1457,7 @@ private fun unpackExecutableFile(
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
         }
-        
+
         // Install redistributables if shared depots are present
         try {
             installRedistributables(context, container, appId, guestProgramLauncherComponent, imageFs)
