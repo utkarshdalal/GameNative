@@ -195,6 +195,7 @@
         <item>Box64</item>
     </string-array>
     <string-array name="glibc_wine_entries">
+        <item>wine-10.0-rc2-x86_64</item>
         <item>wine-9.2-x86_64</item>
     </string-array>
     <string-array name="bionic_wine_entries">

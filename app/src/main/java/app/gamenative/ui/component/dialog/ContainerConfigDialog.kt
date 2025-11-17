@@ -798,7 +798,7 @@ fun ContainerConfigDialog(
                                             }
                                         },
                                     )
-                                    // Wine version only if bionic variant
+                                    // Wine version selection based on variant
                                     if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
                                         val wineIndex = bionicWineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
                                         SettingsListDropdown(
@@ -808,6 +808,17 @@ fun ContainerConfigDialog(
                                             items = bionicWineEntries,
                                             onItemSelected = { idx ->
                                                 config = config.copy(wineVersion = bionicWineEntries[idx])
+                                            },
+                                        )
+                                    } else if (config.containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
+                                        val wineIndex = glibcWineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "Wine Version") },
+                                            value = wineIndex,
+                                            items = glibcWineEntries,
+                                            onItemSelected = { idx ->
+                                                config = config.copy(wineVersion = glibcWineEntries[idx])
                                             },
                                         )
                                     }
