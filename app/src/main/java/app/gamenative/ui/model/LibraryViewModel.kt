@@ -82,10 +82,10 @@ class LibraryViewModel @Inject constructor(
                 PrefManager.showSteamInLibrary = newValue
                 _state.update { it.copy(showSteamInLibrary = newValue) }
             }
-            GameSource.OPEN_CONTAINER -> {
-                val newValue = !current.showOpenContainersInLibrary
-                PrefManager.showOpenContainersInLibrary = newValue
-                _state.update { it.copy(showOpenContainersInLibrary = newValue) }
+            GameSource.CUSTOM_GAME -> {
+                val newValue = !current.showCustomGamesInLibrary
+                PrefManager.showCustomGamesInLibrary = newValue
+                _state.update { it.copy(showCustomGamesInLibrary = newValue) }
             }
         }
         onFilterApps(paginationCurrentPage)
@@ -189,18 +189,18 @@ class LibraryViewModel @Inject constructor(
                 )
             }
 
-            // Scan Open Container roots and create UI items (filtered by search query inside scanner)
-            val openContainerItems = app.gamenative.utils.OpenContainerScanner.scanAsLibraryItems(
+            // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
+            val customGameItems = app.gamenative.utils.CustomGameScanner.scanAsLibraryItems(
                 query = currentState.searchQuery
             )
 
             // Apply App Source filters
             val includeSteam = _state.value.showSteamInLibrary
-            val includeOpen = _state.value.showOpenContainersInLibrary
+            val includeOpen = _state.value.showCustomGamesInLibrary
 
             val combined = buildList<LibraryItem> {
                 if (includeSteam) addAll(steamUiItems)
-                if (includeOpen) addAll(openContainerItems)
+                if (includeOpen) addAll(customGameItems)
             }
 
             // Total count for the current filter
@@ -216,7 +216,7 @@ class LibraryViewModel @Inject constructor(
             val pagedList = combined.take(endIndex)
                 .mapIndexed { idx, li -> li.copy(index = idx) }
 
-            Timber.tag("LibraryViewModel").d("Filtered list size (with Open Containers): ${totalFound}")
+            Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): ${totalFound}")
             _state.update {
                 it.copy(
                     appInfoList = pagedList,

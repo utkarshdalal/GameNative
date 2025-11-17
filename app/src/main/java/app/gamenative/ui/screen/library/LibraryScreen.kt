@@ -99,12 +99,12 @@ private fun LibraryScreenContent(
     var selectedAppId by remember { mutableStateOf<String?>(null) }
 
     BackHandler(selectedAppId != null) { selectedAppId = null }
-    
+
     // Refresh list when navigating back from detail view
     LaunchedEffect(selectedAppId) {
         if (selectedAppId == null) {
             // Trigger refresh by calling onSearchQuery with current query
-            // This will call onFilterApps() which re-scans Open Container games
+            // This will call onFilterApps() which re-scans Custom Games
             val currentQuery = state.searchQuery
             onSearchQuery(currentQuery)
         }

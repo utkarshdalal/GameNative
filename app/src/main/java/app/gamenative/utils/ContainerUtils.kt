@@ -5,7 +5,7 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
-import app.gamenative.utils.OpenContainerScanner
+import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -479,8 +479,8 @@ object ContainerUtils {
             val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
             "$defaultDrives$drive:$appDirPath"
         } else {
-            // For Open Container games, find the game folder and map it to A: drive
-            val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appId)
+            // For Custom Games, find the game folder and map it to A: drive
+            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
             if (gameFolderPath != null) {
                 // Check if A: is already in defaultDrives, if not use it, otherwise use next available
                 val drive: Char = if (defaultDrives.contains("A:")) {
@@ -490,7 +490,7 @@ object ContainerUtils {
                 }
                 "$defaultDrives$drive:$gameFolderPath"
             } else {
-                Timber.w("Could not find folder path for Open Container game: $appId")
+                Timber.w("Could not find folder path for Custom Game: $appId")
                 defaultDrives
             }
         }
@@ -510,20 +510,20 @@ object ContainerUtils {
         // Create the actual container
         val container = containerManager.createContainerFuture(containerId, data).get()
 
-        // For Open Container games, pre-populate executablePath if there's exactly one valid .exe
-        if (gameSource == GameSource.OPEN_CONTAINER) {
+        // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
+        if (gameSource == GameSource.CUSTOM_GAME) {
             try {
-                val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appId)
+                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
                 if (!gameFolderPath.isNullOrEmpty() && container.executablePath.isEmpty()) {
-                    val auto = OpenContainerScanner.findUniqueExeRelativeToFolder(gameFolderPath)
+                    val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath)
                     if (auto != null) {
-                        Timber.i("Auto-selected Open Container exe during container creation: $auto")
+                        Timber.i("Auto-selected Custom Game exe during container creation: $auto")
                         container.executablePath = auto
                         container.saveData()
                     }
                 }
             } catch (e: Exception) {
-                Timber.w(e, "Failed to auto-select exe during Open Container creation for $appId")
+                Timber.w(e, "Failed to auto-select exe during Custom Game creation for $appId")
             }
         }
 
@@ -645,10 +645,10 @@ object ContainerUtils {
             createNewContainer(context, appId, appId, containerManager)
         }
 
-        // Ensure Open Container games have the A: drive mapped to the game folder
+        // Ensure Custom Games have the A: drive mapped to the game folder
         val gameSource = extractGameSourceFromContainerId(appId)
-        if (gameSource == GameSource.OPEN_CONTAINER) {
-            val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appId)
+        if (gameSource == GameSource.CUSTOM_GAME) {
+            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
             if (gameFolderPath != null) {
                 // Check if A: drive is already mapped to the correct path
                 var hasCorrectADrive = false
@@ -895,7 +895,7 @@ object ContainerUtils {
      * Extracts the game ID from a container ID string
      * Handles formats like:
      * - STEAM_123456 -> 123456
-     * - OPEN_CONTAINER_571969840 -> 571969840
+     * - CUSTOM_GAME_571969840 -> 571969840
      * - STEAM_123456(1) -> 123456
      */
     fun extractGameIdFromContainerId(containerId: String): Int {
@@ -924,7 +924,7 @@ object ContainerUtils {
     fun extractGameSourceFromContainerId(containerId: String): GameSource {
         return when {
             containerId.startsWith("STEAM_") -> GameSource.STEAM
-            containerId.startsWith("OPEN_CONTAINER_") -> GameSource.OPEN_CONTAINER
+            containerId.startsWith("CUSTOM_GAME_") -> GameSource.CUSTOM_GAME
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }

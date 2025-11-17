@@ -1254,13 +1254,13 @@ private fun getWineStartCommand(
 
     Timber.tag("XServerScreen").d("appLaunchInfo is $appLaunchInfo")
 
-    // Check if this is an Open Container game
-    val isOpenContainer = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.OPEN_CONTAINER
+    // Check if this is a Custom Game
+    val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
 
     val args = if (bootToContainer) {
         "\"wfm.exe\""
-    } else if (isOpenContainer) {
-        // For Open Container games, we can launch even without appLaunchInfo
+    } else if (isCustomGame) {
+        // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect
         // a unique .exe in the game folder (ignoring installers like "unins*").
         var executablePath = container.executablePath
@@ -1277,23 +1277,23 @@ private fun getWineStartCommand(
         if (executablePath.isEmpty()) {
             // Attempt auto-detection only when we have the physical folder path
             if (gameFolderPath == null) {
-                Timber.tag("XServerScreen").e("Could not find A: drive for Open Container game: $appId")
+                Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
                 return "winhandler.exe \"wfm.exe\""
             }
-            val auto = app.gamenative.utils.OpenContainerScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
+            val auto = app.gamenative.utils.CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
             if (auto != null) {
-                Timber.tag("XServerScreen").i("Auto-selected Open Container exe: $auto")
+                Timber.tag("XServerScreen").i("Auto-selected Custom Game exe: $auto")
                 executablePath = auto
                 container.executablePath = auto
                 container.saveData()
             } else {
-                Timber.tag("XServerScreen").w("No unique executable found for Open Container game: $appId")
+                Timber.tag("XServerScreen").w("No unique executable found for Custom Game: $appId")
                 return "winhandler.exe \"wfm.exe\""
             }
         }
 
         if (gameFolderPath == null) {
-            Timber.tag("XServerScreen").e("Could not find A: drive for Open Container game: $appId")
+            Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
             return "winhandler.exe \"wfm.exe\""
         }
 

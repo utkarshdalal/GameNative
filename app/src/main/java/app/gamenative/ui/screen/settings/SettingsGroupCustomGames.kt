@@ -19,28 +19,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
-import app.gamenative.utils.OpenContainerScanner
+import app.gamenative.utils.CustomGameScanner
 import com.alorma.compose.settings.ui.SettingsGroup
 
 @Composable
-fun SettingsGroupOpenContainers() {
-    var paths by remember { mutableStateOf(PrefManager.openContainerPaths.toMutableSet()) }
+fun SettingsGroupCustomGames() {
+    var paths by remember { mutableStateOf(PrefManager.customGamePaths.toMutableSet()) }
     var newPath by remember { mutableStateOf("") }
 
-    val defaultPath = OpenContainerScanner.defaultRootPath
+    val defaultPath = CustomGameScanner.defaultRootPath
 
     // Counts per root
-    var counts by remember { mutableStateOf(OpenContainerScanner.countGamesByRoot()) }
+    var counts by remember { mutableStateOf(CustomGameScanner.countGamesByRoot()) }
 
     // Automatically refresh counts when this section is shown and when paths change
     LaunchedEffect(Unit) {
-        counts = OpenContainerScanner.countGamesByRoot()
+        counts = CustomGameScanner.countGamesByRoot()
     }
     LaunchedEffect(paths) {
-        counts = OpenContainerScanner.countGamesByRoot()
+        counts = CustomGameScanner.countGamesByRoot()
     }
 
-    SettingsGroup(title = { Text(text = "Open Containers") }) {
+    SettingsGroup(title = { Text(text = "Custom Games") }) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(text = "Default root (always scanned):")
             Row(
@@ -75,7 +75,7 @@ fun SettingsGroupOpenContainers() {
                                 val copy = paths.toMutableSet()
                                 copy.remove(path)
                                 paths = copy
-                                PrefManager.openContainerPaths = copy
+                                PrefManager.customGamePaths = copy
                                 // Counts will refresh via LaunchedEffect(paths)
                             }) {
                                 Icon(imageVector = Icons.Default.Delete, contentDescription = "Remove")
@@ -105,7 +105,7 @@ fun SettingsGroupOpenContainers() {
                             val copy = paths.toMutableSet()
                             copy.add(path)
                             paths = copy
-                            PrefManager.openContainerPaths = copy
+                            PrefManager.customGamePaths = copy
                             newPath = ""
                             // Counts will refresh via LaunchedEffect(paths)
                         }

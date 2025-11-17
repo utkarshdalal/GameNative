@@ -1,11 +1,11 @@
 package app.gamenative.data
 
 import app.gamenative.Constants
-import app.gamenative.utils.OpenContainerScanner
+import app.gamenative.utils.CustomGameScanner
 
 enum class GameSource {
     STEAM,
-    OPEN_CONTAINER,
+    CUSTOM_GAME,
     // Add other platforms here..
 }
 
@@ -27,9 +27,9 @@ data class LibraryItem(
             } else {
                 ""
             }
-            GameSource.OPEN_CONTAINER -> {
+            GameSource.CUSTOM_GAME -> {
                 // Attempt to resolve a local icon from the selected/unique exe folder
-                val localPath = OpenContainerScanner.findIconFileForOpenContainer(appId)
+                val localPath = CustomGameScanner.findIconFileForCustomGame(appId)
                 if (!localPath.isNullOrEmpty()) {
                     if (localPath.startsWith("file://")) localPath else "file://$localPath"
                 } else {

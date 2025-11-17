@@ -5,26 +5,23 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
-import app.gamenative.service.SteamService
 import com.winlator.container.ContainerManager
 import java.io.File
 import kotlin.math.abs
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-object OpenContainerScanner {
+object CustomGameScanner {
 
-    // Default root path for Open Containers. Prefer the app's external storage sandbox
-    // (Android/data/<package>/OpenContainers) when available; otherwise fall back to
+    // Default root path for Custom Games. Prefer the app's external storage sandbox
+    // (Android/data/<package>/CustomGames) when available; otherwise fall back to
     // internal data directory. Always auto-create the directory.
     val defaultRootPath: String
         get() {
             // External app sandbox (e.g., /storage/emulated/0/Android/data/<pkg>)
             val externalBase = DownloadService.baseExternalAppDirPath
-            val externalDir = if (externalBase.isNotEmpty()) File(externalBase, "OpenContainers") else null
-            val internalDir = File(DownloadService.baseDataDirPath, "OpenContainers")
+            val externalDir = if (externalBase.isNotEmpty()) File(externalBase, "CustomGames") else null
+            val internalDir = File(DownloadService.baseDataDirPath, "CustomGames")
 
             // Choose external when the preference is set OR when it already exists (user created it)
             val target = when {
@@ -36,7 +33,7 @@ object OpenContainerScanner {
         }
 
     /**
-     * Attempts to locate a suitable icon file for an Open Container title.
+     * Attempts to locate a suitable icon file for a Custom Game.
      * Strategy (in priority order):
      * 1) If we can uniquely identify an exe, prefer an .ico that matches the exe's base name
      *    in the same directory as the exe or in the game folder root.
@@ -45,7 +42,7 @@ object OpenContainerScanner {
      *    subfolders, use that.
      * Returns the absolute file path to the .ico when found; otherwise null.
      */
-    fun findIconFileForOpenContainer(appId: String): String? {
+    fun findIconFileForCustomGame(appId: String): String? {
         val folderPath = getFolderPathFromAppId(appId) ?: return null
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) return null
@@ -74,7 +71,7 @@ object OpenContainerScanner {
     }
 
     // New: Context-aware variant that prefers the selected container executable's icon
-    fun findIconFileForOpenContainer(context: Context, appId: String): String? {
+    fun findIconFileForCustomGame(context: Context, appId: String): String? {
         val folderPath = getFolderPathFromAppId(appId) ?: return null
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) return null
@@ -90,43 +87,43 @@ object OpenContainerScanner {
                         val outIco = File(exeFile.parentFile, exeFile.nameWithoutExtension + ".extracted.ico")
                         val useCached = outIco.exists() && outIco.lastModified() >= exeFile.lastModified()
                         if (useCached) {
-                            timber.log.Timber.d("OpenContainerScanner: Found cached icon at ${outIco.absolutePath}")
+                            Timber.tag("CustomGameScanner").d("Found cached icon at ${outIco.absolutePath}")
                             return outIco.absolutePath
                         }
                         try {
                             if (ExeIconExtractor.tryExtractMainIcon(exeFile, outIco)) {
-                                timber.log.Timber.d("OpenContainerScanner: Extracted icon to ${outIco.absolutePath}")
+                                Timber.tag("CustomGameScanner").d("Extracted icon to ${outIco.absolutePath}")
                                 return outIco.absolutePath
                             }
                         } catch (e: Exception) {
-                            timber.log.Timber.d(e, "OpenContainerScanner: Failed to extract icon from ${exeFile.name}")
+                            Timber.tag("CustomGameScanner").d(e, "Failed to extract icon from ${exeFile.name}")
                         }
                     } else {
-                        timber.log.Timber.d("OpenContainerScanner: Executable file does not exist: ${exeFile.absolutePath}")
+                        Timber.tag("CustomGameScanner").d("Executable file does not exist: ${exeFile.absolutePath}")
                     }
                 } else {
-                    timber.log.Timber.d("OpenContainerScanner: Container executable path is empty")
+                    Timber.tag("CustomGameScanner").d("Container executable path is empty")
                 }
             } else {
-                timber.log.Timber.d("OpenContainerScanner: No container found for $appId")
+                Timber.tag("CustomGameScanner").d("No container found for $appId")
             }
         } catch (e: Exception) {
-            timber.log.Timber.d(e, "OpenContainerScanner: Error checking container for $appId")
+            Timber.tag("CustomGameScanner").d(e, "Error checking container for $appId")
         }
 
         // If selected exe path failed or absent, try unique exe extraction
-        val fromUnique = findIconFileForOpenContainer(appId)
+        val fromUnique = findIconFileForCustomGame(appId)
         if (!fromUnique.isNullOrEmpty()) {
-            timber.log.Timber.d("OpenContainerScanner: Found icon from unique executable: $fromUnique")
+            Timber.tag("CustomGameScanner").d("Found icon from unique executable: $fromUnique")
             return fromUnique
         }
 
         // As last resort, image heuristic
         val fromHeuristic = findNearbyImageIcon(folder, null)
         if (fromHeuristic != null) {
-            timber.log.Timber.d("OpenContainerScanner: Found icon from heuristic: $fromHeuristic")
+            Timber.tag("CustomGameScanner").d("Found icon from heuristic: $fromHeuristic")
         } else {
-            timber.log.Timber.d("OpenContainerScanner: No icon found for $appId")
+            Timber.tag("CustomGameScanner").d("No icon found for $appId")
         }
         return fromHeuristic
     }
@@ -141,33 +138,33 @@ object OpenContainerScanner {
         val subdirIcons = folder.listFiles { f -> f.isDirectory }?.flatMap { it.icoFiles() } ?: emptyList()
         val allIcons = (rootIcons + subdirIcons)
         if (allIcons.isEmpty()) {
-            timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - No icon files found in $folder")
+            Timber.tag("CustomGameScanner").d("findNearbyImageIcon - No icon files found in $folder")
             return null
         }
 
-        timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Found ${allIcons.size} icon file(s): ${allIcons.map { it.name }}")
+        Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Found ${allIcons.size} icon file(s): ${allIcons.map { it.name }}")
 
         // First priority: prefer .extracted.ico files (these are extracted from executables)
         val extractedIcons = allIcons.filter { it.name.endsWith(".extracted.ico", ignoreCase = true) }
         if (extractedIcons.isNotEmpty()) {
             // If there's exactly one extracted icon, use it
             if (extractedIcons.size == 1) {
-                timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Using single extracted icon: ${extractedIcons.first().absolutePath}")
+                Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Using single extracted icon: ${extractedIcons.first().absolutePath}")
                 return extractedIcons.first().absolutePath
             }
             // If multiple extracted icons, prefer one matching exe name if available
             val exeBase = uniqueExeRel?.substringAfterLast('/')?.substringBeforeLast('.')
             if (!exeBase.isNullOrEmpty()) {
-                val matchingExtracted = extractedIcons.firstOrNull { 
-                    it.nameWithoutExtension.replace(".extracted", "").equals(exeBase, ignoreCase = true) 
+                val matchingExtracted = extractedIcons.firstOrNull {
+                    it.nameWithoutExtension.replace(".extracted", "").equals(exeBase, ignoreCase = true)
                 }
                 if (matchingExtracted != null) {
-                    timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Using extracted icon matching exe: ${matchingExtracted.absolutePath}")
+                    Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Using extracted icon matching exe: ${matchingExtracted.absolutePath}")
                     return matchingExtracted.absolutePath
                 }
             }
             // Otherwise, use the first extracted icon
-            timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Using first extracted icon: ${extractedIcons.first().absolutePath}")
+            Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Using first extracted icon: ${extractedIcons.first().absolutePath}")
             return extractedIcons.first().absolutePath
         }
 
@@ -175,21 +172,21 @@ object OpenContainerScanner {
         if (!exeBase.isNullOrEmpty()) {
             val preferredByName = allIcons.firstOrNull { it.nameWithoutExtension.equals(exeBase, ignoreCase = true) }
             if (preferredByName != null) {
-                timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Using icon matching exe name: ${preferredByName.absolutePath}")
+                Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Using icon matching exe name: ${preferredByName.absolutePath}")
                 return preferredByName.absolutePath
             }
         }
         val containsIcon = allIcons.firstOrNull { it.name.contains("icon", ignoreCase = true) }
         if (containsIcon != null) {
-            timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Using icon with 'icon' in name: ${containsIcon.absolutePath}")
+            Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Using icon with 'icon' in name: ${containsIcon.absolutePath}")
             return containsIcon.absolutePath
         }
         val distinct = allIcons.distinctBy { it.absolutePath }
         if (distinct.size == 1) {
-            timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Using single icon: ${distinct.first().absolutePath}")
+            Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Using single icon: ${distinct.first().absolutePath}")
             return distinct.first().absolutePath
         }
-        timber.log.Timber.d("OpenContainerScanner: findNearbyImageIcon - Multiple icons found (${distinct.size}), cannot choose")
+        Timber.tag("CustomGameScanner").d("findNearbyImageIcon - Multiple icons found (${distinct.size}), cannot choose")
         return null
     }
 
@@ -237,7 +234,7 @@ object OpenContainerScanner {
     /**
      * Find all valid executable files in a game folder.
      * Returns a list of relative paths to all valid .exe files (excluding uninstallers).
-     * 
+     *
      * @param folderPath The path to the game folder
      * @return List of relative executable paths, or empty list if folder doesn't exist
      */
@@ -277,14 +274,14 @@ object OpenContainerScanner {
     fun getAllRoots(): Set<String> {
         val result = mutableSetOf<String>()
         result.add(defaultRootPath)
-        result.addAll(PrefManager.openContainerPaths)
+        result.addAll(PrefManager.customGamePaths)
         return result
     }
 
     /**
      * Count folders per root path (immediate subdirectories).
      * Note: This is used by Settings to quickly indicate how many entries are present
-     * under each Open Container path. It intentionally does NOT validate that the
+     * under each Custom Game path. It intentionally does NOT validate that the
      * folders contain executables. Library visibility still requires an .exe via
      * scanAsLibraryItems().
      */
@@ -327,19 +324,19 @@ object OpenContainerScanner {
 
                 // Positive, stable int ID derived from absolute path
                 val idPart = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
-                val appId = "${GameSource.OPEN_CONTAINER.name}_$idPart"
+                val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
 
                 items.add(
                     LibraryItem(
                         index = indexCounter++,
                         appId = appId,
                         name = folder.name,
-                        iconHash = "", // Placeholder; icons handled elsewhere (another branch)
+                        iconHash = "",
                         isShared = false,
-                        gameSource = GameSource.OPEN_CONTAINER,
+                        gameSource = GameSource.CUSTOM_GAME,
                     )
                 )
-                
+
                 // Fetch SteamGridDB images on first detection (if enabled)
                 // This runs asynchronously and won't block the scan
                 if (PrefManager.fetchSteamGridDBImages) {
@@ -354,11 +351,11 @@ object OpenContainerScanner {
                             }
                         } catch (e: Exception) {
                             // Silently fail - this is a background operation
-                            timber.log.Timber.d(e, "SteamGridDB: Background fetch failed for ${folder.name}")
+                            Timber.tag("CustomGameScanner").d(e, "SteamGridDB: Background fetch failed for ${folder.name}")
                         }
                     }
                 }
-                
+
                 // Proactively extract icon from executable on first detection
                 // This runs asynchronously and won't block the scan
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
@@ -367,7 +364,7 @@ object OpenContainerScanner {
                         val hasExtractedIcon = folder.listFiles()?.any { file ->
                             file.name.endsWith(".extracted.ico", ignoreCase = true)
                         } == true
-                        
+
                         if (!hasExtractedIcon) {
                             // Try to find unique executable and extract icon
                             val uniqueExeRel = findUniqueExeRelativeToFolder(folder)
@@ -378,7 +375,7 @@ object OpenContainerScanner {
                                     // Only extract if file doesn't exist or is outdated
                                     if (!outIco.exists() || outIco.lastModified() < exeFile.lastModified()) {
                                         if (ExeIconExtractor.tryExtractMainIcon(exeFile, outIco)) {
-                                            timber.log.Timber.d("Extracted icon for ${folder.name} from ${exeFile.name}")
+                                            Timber.tag("CustomGameScanner").d("Extracted icon for ${folder.name} from ${exeFile.name}")
                                         }
                                     }
                                 }
@@ -386,7 +383,7 @@ object OpenContainerScanner {
                         }
                     } catch (e: Exception) {
                         // Silently fail - this is a background operation
-                        timber.log.Timber.d(e, "Icon extraction failed for ${folder.name}")
+                        Timber.tag("CustomGameScanner").d(e, "Icon extraction failed for ${folder.name}")
                     }
                 }
             }
@@ -407,54 +404,54 @@ object OpenContainerScanner {
     }
 
     /**
-     * Gets the folder path for an Open Container game from its appId.
-     * The appId format is "OPEN_CONTAINER_<hashCode>" where hashCode is derived from the folder's absolute path.
+     * Gets the folder path for a Custom Game from its appId.
+     * The appId format is "CUSTOM_GAME_<hashCode>" where hashCode is derived from the folder's absolute path.
      * Returns null if the folder cannot be found.
      */
     fun getFolderPathFromAppId(appId: String): String? {
-        // Extract the hash from appId (format: "OPEN_CONTAINER_<hash>")
-        if (!appId.startsWith("${GameSource.OPEN_CONTAINER.name}_")) {
-            timber.log.Timber.d("OpenContainerScanner: appId doesn't start with OPEN_CONTAINER_: $appId")
+        // Extract the hash from appId (format: "CUSTOM_GAME_<hash>")
+        if (!appId.startsWith("${GameSource.CUSTOM_GAME.name}_")) {
+            Timber.tag("CustomGameScanner").d("appId doesn't start with CUSTOM_GAME_: $appId")
             return null
         }
 
-        val hashStr = appId.removePrefix("${GameSource.OPEN_CONTAINER.name}_")
+        val hashStr = appId.removePrefix("${GameSource.CUSTOM_GAME.name}_")
         val expectedHash = try {
             hashStr.toInt()
         } catch (e: NumberFormatException) {
-            timber.log.Timber.d("OpenContainerScanner: Failed to parse hash from appId: $appId")
+            Timber.tag("CustomGameScanner").d("Failed to parse hash from appId: $appId")
             return null
         }
 
         // Scan all roots to find the folder with matching hash
         val roots = getAllRoots()
-        timber.log.Timber.d("OpenContainerScanner: Looking for folder with hash $expectedHash in ${roots.size} root(s): $roots")
+        Timber.tag("CustomGameScanner").d("Looking for folder with hash $expectedHash in ${roots.size} root(s): $roots")
         for (root in roots) {
             val rootFile = File(root)
             if (!rootFile.exists() || !rootFile.isDirectory) {
-                timber.log.Timber.d("OpenContainerScanner: Root doesn't exist or isn't a directory: $root")
+                Timber.tag("CustomGameScanner").d("Root doesn't exist or isn't a directory: $root")
                 continue
             }
 
             val children = rootFile.listFiles { f -> f.isDirectory } ?: continue
-            timber.log.Timber.d("OpenContainerScanner: Scanning root $root, found ${children.size} subdirectories")
+            Timber.tag("CustomGameScanner").d("Scanning root $root, found ${children.size} subdirectories")
             for (folder in children) {
                 if (!looksLikeGameFolder(folder)) {
-                    timber.log.Timber.d("OpenContainerScanner: Folder doesn't look like a game folder: ${folder.absolutePath}")
+                    Timber.tag("CustomGameScanner").d("Folder doesn't look like a game folder: ${folder.absolutePath}")
                     continue
                 }
 
                 // Calculate hash the same way as in scanAsLibraryItems
                 val folderHash = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
-                timber.log.Timber.d("OpenContainerScanner: Checking folder ${folder.absolutePath}, hash: $folderHash (expected: $expectedHash)")
+                Timber.tag("CustomGameScanner").d("Checking folder ${folder.absolutePath}, hash: $folderHash (expected: $expectedHash)")
                 if (folderHash == expectedHash) {
-                    timber.log.Timber.d("OpenContainerScanner: Found matching folder: ${folder.absolutePath}")
+                    Timber.tag("CustomGameScanner").d("Found matching folder: ${folder.absolutePath}")
                     return folder.absolutePath
                 }
             }
         }
 
-        timber.log.Timber.w("OpenContainerScanner: Could not find folder for appId: $appId (expected hash: $expectedHash)")
+        Timber.tag("CustomGameScanner").w("Could not find folder for appId: $appId (expected hash: $expectedHash)")
         return null
     }
 }

@@ -17,7 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gamenative.ui.icons.OpenContainer
+import app.gamenative.ui.icons.CustomGame
 import app.gamenative.ui.icons.Steam
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -38,7 +38,7 @@ fun LibraryBottomSheet(
     currentView: PaneType,
     onViewChanged: (PaneType) -> Unit,
     showSteam: Boolean,
-    showOpenContainers: Boolean,
+    showCustomGames: Boolean,
     onSourceToggle: (app.gamenative.data.GameSource) -> Unit,
 ) {
     Column(
@@ -95,10 +95,10 @@ fun LibraryBottomSheet(
                 leadingIcon = { Icon(imageVector = Icons.Filled.Steam, contentDescription = null) },
             )
             FlowFilterChip(
-                onClick = { onSourceToggle(GameSource.OPEN_CONTAINER) },
-                label = { Text(text = "Open Containers") },
-                selected = showOpenContainers,
-                leadingIcon = { Icon(imageVector = Icons.Filled.OpenContainer, contentDescription = null) },
+                onClick = { onSourceToggle(GameSource.CUSTOM_GAME) },
+                label = { Text(text = "Custom Games") },
+                selected = showCustomGames,
+                leadingIcon = { Icon(imageVector = Icons.Filled.CustomGame, contentDescription = null) },
             )
         }
 
@@ -149,7 +149,7 @@ private fun Preview_LibraryBottomSheet() {
                 currentView = PaneType.LIST,
                 onViewChanged = { },
                 showSteam = true,
-                showOpenContainers = true,
+                showCustomGames = true,
                 onSourceToggle = { },
             )
         }

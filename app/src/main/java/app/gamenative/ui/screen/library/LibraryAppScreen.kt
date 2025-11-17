@@ -96,7 +96,7 @@ import com.winlator.container.ContainerData
 import com.winlator.xenvironment.ImageFsInstaller
 import com.winlator.fexcore.FEXCoreManager
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
-import app.gamenative.ui.screen.library.appscreen.OpenContainerAppScreen
+import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
 import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -183,7 +183,7 @@ fun AppScreen(
     val screenModel = remember(libraryItem.gameSource) {
         when (libraryItem.gameSource) {
             app.gamenative.data.GameSource.STEAM -> SteamAppScreen()
-            app.gamenative.data.GameSource.OPEN_CONTAINER -> OpenContainerAppScreen()
+            app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
         }
     }
 

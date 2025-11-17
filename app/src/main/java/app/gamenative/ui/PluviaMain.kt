@@ -182,9 +182,9 @@ fun PluviaMain(
                                     Timber.i("[IntentLaunch]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
 
                                     // Check if the game is installed (Steam only)
-                                    val isOpenContainer = launchRequest.appId.startsWith("${GameSource.OPEN_CONTAINER.name}_")
+                                    val isCustomGame = launchRequest.appId.startsWith("${GameSource.CUSTOM_GAME.name}_")
                                     val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
-                                    if (!isOpenContainer && !SteamService.isAppInstalled(gameId)) {
+                                    if (!isCustomGame && !SteamService.isAppInstalled(gameId)) {
                                         val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
                                         Timber.w("[IntentLaunch]: Game not installed: $appName (${launchRequest.appId})")
 
@@ -1037,12 +1037,12 @@ fun preLaunchApp(
             }
         } catch (_: Exception) { /* ignore persona read errors */ }
 
-        // Check if this is an Open Container game
-        val isOpenContainer = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.OPEN_CONTAINER
+        // Check if this is an Custom Games
+        val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
 
-        // For Open Container games, bypass Steam Cloud operations entirely and proceed to launch
-        if (isOpenContainer) {
-            Timber.i("[preLaunchApp] Open Container detected for $appId — skipping Steam Cloud sync and launching container")
+        // For Custom Games, bypass Steam Cloud operations entirely and proceed to launch
+        if (isCustomGame) {
+            Timber.i("[preLaunchApp] Custom Game detected for $appId — skipping Steam Cloud sync and launching container")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

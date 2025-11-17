@@ -291,7 +291,7 @@ internal fun LibraryListPane(
                                     paneType = newPaneType
                                 },
                                 showSteam = state.showSteamInLibrary,
-                                showOpenContainers = state.showOpenContainersInLibrary,
+                                showCustomGames = state.showCustomGamesInLibrary,
                                 onSourceToggle = onSourceToggle,
                             )
                         },

@@ -14,13 +14,11 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
-import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.OpenContainerScanner
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -30,40 +28,40 @@ import android.net.Uri
 import timber.log.Timber
 
 /**
- * Open Container-specific implementation of BaseAppScreen
+ * Custom Game-specific implementation of BaseAppScreen
  */
-class OpenContainerAppScreen : BaseAppScreen() {
+class CustomGameAppScreen : BaseAppScreen() {
     companion object {
         // Shared state for exe selection dialog - list of appIds that should show the dialog
         private val exeSelectionDialogAppIds = mutableStateListOf<String>()
-        
+
         fun showExeSelectionDialog(appId: String) {
             if (!exeSelectionDialogAppIds.contains(appId)) {
                 exeSelectionDialogAppIds.add(appId)
             }
         }
-        
+
         fun hideExeSelectionDialog(appId: String) {
             exeSelectionDialogAppIds.remove(appId)
         }
-        
+
         fun shouldShowExeSelectionDialog(appId: String): Boolean {
             return exeSelectionDialogAppIds.contains(appId)
         }
 
         // Shared state for delete dialog - list of appIds that should show the dialog
         private val deleteDialogAppIds = mutableStateListOf<String>()
-        
+
         fun showDeleteDialog(appId: String) {
             if (!deleteDialogAppIds.contains(appId)) {
                 deleteDialogAppIds.add(appId)
             }
         }
-        
+
         fun hideDeleteDialog(appId: String) {
             deleteDialogAppIds.remove(appId)
         }
-        
+
         fun shouldShowDeleteDialog(appId: String): Boolean {
             return deleteDialogAppIds.contains(appId)
         }
@@ -74,19 +72,19 @@ class OpenContainerAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem
     ): GameDisplayInfo {
         val gameFolderPath = remember(libraryItem.appId) {
-            OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+            CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
         }
-        
+
         // Helper function to find SteamGridDB images in the game folder
         fun findSteamGridDBImage(folder: File, imageType: String): String? {
             return folder.listFiles()?.firstOrNull { file ->
-                file.name.startsWith("steamgriddb_$imageType") && 
-                (file.name.endsWith(".png", ignoreCase = true) || 
-                 file.name.endsWith(".jpg", ignoreCase = true) || 
+                file.name.startsWith("steamgriddb_$imageType") &&
+                (file.name.endsWith(".png", ignoreCase = true) ||
+                 file.name.endsWith(".jpg", ignoreCase = true) ||
                  file.name.endsWith(".webp", ignoreCase = true))
             }?.let { Uri.fromFile(it).toString() }
         }
-        
+
         // Check for all SteamGridDB images in the game folder
         // Hero view uses horizontal grid (grid_hero)
         val heroImageUrl = remember(gameFolderPath) {
@@ -95,7 +93,7 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 findSteamGridDBImage(folder, "grid_hero")
             }
         }
-        
+
         // Capsule view uses vertical grid (grid_capsule)
         val capsuleUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
@@ -103,32 +101,32 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 findSteamGridDBImage(folder, "grid_capsule")
             }
         }
-        
+
         // Header view uses heroes endpoint (hero, but not grid_hero)
         val headerUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 // Find hero image but exclude grid_hero
                 folder.listFiles()?.firstOrNull { file ->
-                    file.name.startsWith("steamgriddb_hero") && 
+                    file.name.startsWith("steamgriddb_hero") &&
                     !file.name.contains("grid") &&
-                    (file.name.endsWith(".png", ignoreCase = true) || 
-                     file.name.endsWith(".jpg", ignoreCase = true) || 
+                    (file.name.endsWith(".png", ignoreCase = true) ||
+                     file.name.endsWith(".jpg", ignoreCase = true) ||
                      file.name.endsWith(".webp", ignoreCase = true))
                 }?.let { Uri.fromFile(it).toString() }
             }
         }
-        
+
         val logoUrl = remember(gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "logo")
             }
         }
-        
+
         // Note: iconUrl is intentionally null - we extract icons from exe files
         // and don't use SteamGridDB icons
-        
+
         // Try to get release date from SteamGridDB metadata if available
         var releaseDate by remember { mutableStateOf(0L) }
         LaunchedEffect(gameFolderPath) {
@@ -148,7 +146,7 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 }
             }
         }
-        
+
         // Calculate folder size on disk (async, will update via state)
         var sizeOnDisk by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(gameFolderPath) {
@@ -164,11 +162,11 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 }
             }
         }
-        
-        // Open Container games don't have Steam metadata, so we use basic info
+
+        // Custom Games don't have Steam metadata, so we use basic info
         return GameDisplayInfo(
             name = libraryItem.name,
-            developer = "Unknown", // Open Container games don't have developer info
+            developer = "Unknown", // Custom Games don't have developer info
             releaseDate = releaseDate,
             heroImageUrl = heroImageUrl,
             iconUrl = null, // Icons are extracted from exe files, not from SteamGridDB
@@ -186,17 +184,17 @@ class OpenContainerAppScreen : BaseAppScreen() {
     }
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
-        // Open Container games are always considered "installed" since they're external
+        // Custom Games are always considered "installed" since they're external
         return true
     }
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean {
-        // Open Container games cannot be downloaded through the app
+        // Custom Games cannot be downloaded through the app
         return false
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        // Open Container games don't have downloads
+        // Custom Games don't have downloads
         return false
     }
 
@@ -214,9 +212,9 @@ class OpenContainerAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit
     ) {
         // Check if there are multiple valid exe files and none is selected
-        val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
         if (gameFolderPath != null) {
-            val allExes = OpenContainerScanner.findAllValidExeFiles(gameFolderPath)
+            val allExes = CustomGameScanner.findAllValidExeFiles(gameFolderPath)
             if (allExes.size > 1) {
                 // Check if container has an executable selected
                 val containerManager = ContainerManager(context)
@@ -228,62 +226,62 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 }
             }
         }
-        
+
         // Launch the game
         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
     }
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
-        // Not applicable for Open Container games
+        // Not applicable for Custom Games
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
-        // Show delete confirmation dialog for Open Container games
+        // Show delete confirmation dialog for Custom Games
         showDeleteDialog(libraryItem.appId)
     }
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
-        // Not applicable for Open Container games
+        // Not applicable for Custom Games
     }
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
-        // Open Container games are always "installed" (they're external folders)
-        return OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+        // Custom Games are always "installed" (they're external folders)
+        return CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
     }
 
     override fun getGameFolderPathForImageFetch(context: Context, libraryItem: LibraryItem): String? {
-        // For Open Container games, the install path is the same as the folder path
+        // For Custom Games, the install path is the same as the folder path
         val path = getInstallPath(context, libraryItem)
-        Timber.tag("OpenContainerAppScreen").d("getGameFolderPathForImageFetch - appId: ${libraryItem.appId}, path: ${path ?: "null"}")
+        Timber.tag("CustomGameAppScreen").d("getGameFolderPathForImageFetch - appId: ${libraryItem.appId}, path: ${path ?: "null"}")
         return path
     }
 
     override fun onAfterFetchImages(context: Context, libraryItem: LibraryItem, gameFolderPath: String) {
         // Extract icon from executable after fetching images
-        Timber.tag("OpenContainerAppScreen").d("onAfterFetchImages called - appId: ${libraryItem.appId}, gameFolderPath: $gameFolderPath")
-        
+        Timber.tag("CustomGameAppScreen").d("onAfterFetchImages called - appId: ${libraryItem.appId}, gameFolderPath: $gameFolderPath")
+
         // Verify the path was resolved correctly, but use gameFolderPath as fallback
         val resolvedPath = getInstallPath(context, libraryItem)
-        Timber.tag("OpenContainerAppScreen").d("Resolved install path: ${resolvedPath ?: "null"}")
-        
+        Timber.tag("CustomGameAppScreen").d("Resolved install path: ${resolvedPath ?: "null"}")
+
         // Use resolvedPath if available, otherwise fall back to gameFolderPath (which was validated by caller)
         val actualGameFolderPath = resolvedPath ?: gameFolderPath
         if (resolvedPath != gameFolderPath && resolvedPath != null) {
-            Timber.tag("OpenContainerAppScreen").w("Path mismatch! gameFolderPath: $gameFolderPath, resolvedPath: $resolvedPath, using: $actualGameFolderPath")
+            Timber.tag("CustomGameAppScreen").w("Path mismatch! gameFolderPath: $gameFolderPath, resolvedPath: $resolvedPath, using: $actualGameFolderPath")
         } else if (resolvedPath == null) {
-            Timber.tag("OpenContainerAppScreen").w("Could not resolve install path, using provided gameFolderPath: $gameFolderPath")
+            Timber.tag("CustomGameAppScreen").w("Could not resolve install path, using provided gameFolderPath: $gameFolderPath")
         }
-        
+
         val gameFolder = java.io.File(actualGameFolderPath)
         if (gameFolder.exists() && gameFolder.isDirectory) {
-            Timber.tag("OpenContainerAppScreen").i("Extracting icon from executable after fetching images")
+            Timber.tag("CustomGameAppScreen").i("Extracting icon from executable after fetching images")
             try {
                 // Check if icon already exists by using the same method the UI uses
-                val existingIconPath = OpenContainerScanner.findIconFileForOpenContainer(context, libraryItem.appId)
+                val existingIconPath = CustomGameScanner.findIconFileForCustomGame(context, libraryItem.appId)
                 val hasExtractedIcon = existingIconPath != null && existingIconPath.endsWith(".extracted.ico", ignoreCase = true)
-                
-                Timber.tag("OpenContainerAppScreen").d("Icon check - existingIconPath: ${existingIconPath ?: "null"}, hasExtractedIcon: $hasExtractedIcon")
-                
+
+                Timber.tag("CustomGameAppScreen").d("Icon check - existingIconPath: ${existingIconPath ?: "null"}, hasExtractedIcon: $hasExtractedIcon")
+
                 // Also check if there's an extracted icon file anywhere in the folder (recursive search)
                 fun findExtractedIconRecursive(dir: File): File? {
                     dir.listFiles()?.forEach { file ->
@@ -297,79 +295,79 @@ class OpenContainerAppScreen : BaseAppScreen() {
                     return null
                 }
                 val extractedIconFile = findExtractedIconRecursive(gameFolder)
-                Timber.tag("OpenContainerAppScreen").d("Recursive search found extracted icon: ${extractedIconFile?.absolutePath ?: "null"}")
-                
-                // If findIconFileForOpenContainer didn't find an extracted icon, but one exists, we should still try to extract
+                Timber.tag("CustomGameAppScreen").d("Recursive search found extracted icon: ${extractedIconFile?.absolutePath ?: "null"}")
+
+                // If findIconFileForCustomGame didn't find an extracted icon, but one exists, we should still try to extract
                 // (maybe the container path isn't set or the icon is in a different location)
                 val shouldExtract = !hasExtractedIcon || (extractedIconFile != null && existingIconPath != extractedIconFile.absolutePath)
-                
+
                 if (shouldExtract) {
                     // First, try using the container's selected executable if available
                     val containerManager = com.winlator.container.ContainerManager(context)
                     val hasContainer = containerManager.hasContainer(libraryItem.appId)
-                    Timber.tag("OpenContainerAppScreen").d("Container exists: $hasContainer")
-                    
+                    Timber.tag("CustomGameAppScreen").d("Container exists: $hasContainer")
+
                     if (hasContainer) {
                         val container = containerManager.getContainerById(libraryItem.appId)
                         val relExe = container.executablePath
-                        Timber.tag("OpenContainerAppScreen").d("Container executable path: ${relExe ?: "null"}")
-                        
+                        Timber.tag("CustomGameAppScreen").d("Container executable path: ${relExe ?: "null"}")
+
                         if (!relExe.isNullOrEmpty()) {
                             val exeFile = java.io.File(gameFolder, relExe.replace('/', java.io.File.separatorChar))
-                            Timber.tag("OpenContainerAppScreen").d("Checking executable file: ${exeFile.absolutePath}, exists: ${exeFile.exists()}")
-                            
+                            Timber.tag("CustomGameAppScreen").d("Checking executable file: ${exeFile.absolutePath}, exists: ${exeFile.exists()}")
+
                             if (exeFile.exists()) {
                                 val outIco = java.io.File(exeFile.parentFile, exeFile.nameWithoutExtension + ".extracted.ico")
-                                Timber.tag("OpenContainerAppScreen").d("Attempting to extract icon to: ${outIco.absolutePath}")
+                                Timber.tag("CustomGameAppScreen").d("Attempting to extract icon to: ${outIco.absolutePath}")
                                 val extracted = app.gamenative.utils.ExeIconExtractor.tryExtractMainIcon(exeFile, outIco)
-                                Timber.tag("OpenContainerAppScreen").d("Icon extraction result: $extracted")
-                                
+                                Timber.tag("CustomGameAppScreen").d("Icon extraction result: $extracted")
+
                                 if (extracted) {
-                                    Timber.tag("OpenContainerAppScreen").d("Extracted icon from selected executable: ${exeFile.name}")
+                                    Timber.tag("CustomGameAppScreen").d("Extracted icon from selected executable: ${exeFile.name}")
                                 } else {
-                                    Timber.tag("OpenContainerAppScreen").w("Failed to extract icon from selected executable: ${exeFile.name}")
+                                    Timber.tag("CustomGameAppScreen").w("Failed to extract icon from selected executable: ${exeFile.name}")
                                 }
                             }
                         }
                     }
-                    
+
                     // If that didn't work, try finding a unique executable
-                    val uniqueExeRel = OpenContainerScanner.findUniqueExeRelativeToFolder(gameFolder)
-                    Timber.tag("OpenContainerAppScreen").d("Unique executable found: ${uniqueExeRel ?: "null"}")
-                    
+                    val uniqueExeRel = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolder)
+                    Timber.tag("CustomGameAppScreen").d("Unique executable found: ${uniqueExeRel ?: "null"}")
+
                     if (!uniqueExeRel.isNullOrEmpty()) {
                         val exeFile = java.io.File(gameFolder, uniqueExeRel.replace('/', java.io.File.separatorChar))
-                        Timber.tag("OpenContainerAppScreen").d("Checking unique executable file: ${exeFile.absolutePath}, exists: ${exeFile.exists()}")
-                        
+                        Timber.tag("CustomGameAppScreen").d("Checking unique executable file: ${exeFile.absolutePath}, exists: ${exeFile.exists()}")
+
                         if (exeFile.exists()) {
                             val outIco = java.io.File(exeFile.parentFile, exeFile.nameWithoutExtension + ".extracted.ico")
                             // Only extract if we haven't already extracted from the selected exe
                             if (!outIco.exists()) {
-                                Timber.tag("OpenContainerAppScreen").d("Attempting to extract icon to: ${outIco.absolutePath}")
+                                Timber.tag("CustomGameAppScreen").d("Attempting to extract icon to: ${outIco.absolutePath}")
                                 val extracted = app.gamenative.utils.ExeIconExtractor.tryExtractMainIcon(exeFile, outIco)
-                                Timber.tag("OpenContainerAppScreen").d("Icon extraction result: $extracted")
-                                
+                                Timber.tag("CustomGameAppScreen").d("Icon extraction result: $extracted")
+
                                 if (extracted) {
-                                    Timber.tag("OpenContainerAppScreen").d("Extracted icon from unique executable: ${exeFile.name}")
+                                    Timber.tag("CustomGameAppScreen").d("Extracted icon from unique executable: ${exeFile.name}")
                                 } else {
-                                    Timber.tag("OpenContainerAppScreen").w("Failed to extract icon from unique executable: ${exeFile.name}")
+                                    Timber.tag("CustomGameAppScreen").w("Failed to extract icon from unique executable: ${exeFile.name}")
                                 }
                             } else {
-                                Timber.tag("OpenContainerAppScreen").d("Icon file already exists: ${outIco.absolutePath}")
+                                Timber.tag("CustomGameAppScreen").d("Icon file already exists: ${outIco.absolutePath}")
                             }
                         }
                     } else {
-                        Timber.tag("OpenContainerAppScreen").w("No unique executable found in folder: $gameFolderPath")
+                        Timber.tag("CustomGameAppScreen").w("No unique executable found in folder: $gameFolderPath")
                     }
                 } else {
-                    Timber.tag("OpenContainerAppScreen").d("Icon already exists, skipping extraction")
+                    Timber.tag("CustomGameAppScreen").d("Icon already exists, skipping extraction")
                 }
             } catch (e: Exception) {
-                Timber.tag("OpenContainerAppScreen").e(e, "Failed to extract icon from executable")
+                Timber.tag("CustomGameAppScreen").e(e, "Failed to extract icon from executable")
                 // Silently continue - icon extraction is optional
             }
         } else {
-            Timber.tag("OpenContainerAppScreen").e("Game folder does not exist: $gameFolderPath")
+            Timber.tag("CustomGameAppScreen").e("Game folder does not exist: $gameFolderPath")
         }
     }
 
@@ -382,7 +380,7 @@ class OpenContainerAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
         isInstalled: Boolean
     ): List<AppMenuOption> {
-        // Open Container games don't have source-specific menu options
+        // Custom Games don't have source-specific menu options
         // Delete button is handled via onDeleteDownloadClick and shown next to play button
         return emptyList()
     }
@@ -409,31 +407,31 @@ class OpenContainerAppScreen : BaseAppScreen() {
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
-        
+
         // Track exe selection dialog state
         var showExeDialog by remember { mutableStateOf(shouldShowExeSelectionDialog(libraryItem.appId)) }
-        
+
         LaunchedEffect(libraryItem.appId) {
             snapshotFlow { shouldShowExeSelectionDialog(libraryItem.appId) }
                 .collect { shouldShow ->
                     showExeDialog = shouldShow
                 }
         }
-        
+
         // Track delete dialog state
         var showDeleteDialog by remember { mutableStateOf(shouldShowDeleteDialog(libraryItem.appId)) }
-        
+
         LaunchedEffect(libraryItem.appId) {
             snapshotFlow { shouldShowDeleteDialog(libraryItem.appId) }
                 .collect { shouldShow ->
                     showDeleteDialog = shouldShow
                 }
         }
-        
+
         // Exe selection required dialog
         if (showExeDialog) {
             AlertDialog(
-                onDismissRequest = { 
+                onDismissRequest = {
                     hideExeSelectionDialog(libraryItem.appId)
                 },
                 title = { Text("Executable Selection Required") },
@@ -450,11 +448,11 @@ class OpenContainerAppScreen : BaseAppScreen() {
                             onEditContainer()
                         }
                     ) {
-                        Text("Open Container Settings")
+                        Text("Custom Game Settings")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         hideExeSelectionDialog(libraryItem.appId)
                     }) {
                         Text("Close")
@@ -462,11 +460,11 @@ class OpenContainerAppScreen : BaseAppScreen() {
                 }
             )
         }
-        
+
         // Delete confirmation dialog
         if (showDeleteDialog) {
             AlertDialog(
-                onDismissRequest = { 
+                onDismissRequest = {
                     hideDeleteDialog(libraryItem.appId)
                 },
                 title = { Text("Delete Game") },
@@ -480,7 +478,7 @@ class OpenContainerAppScreen : BaseAppScreen() {
                     TextButton(
                         onClick = {
                             hideDeleteDialog(libraryItem.appId)
-                            
+
                             // Delete the game folder and container
                             scope.launch {
                                 try {
@@ -488,10 +486,10 @@ class OpenContainerAppScreen : BaseAppScreen() {
                                     withContext(Dispatchers.Main) {
                                         ContainerUtils.deleteContainer(context, libraryItem.appId)
                                     }
-                                    
+
                                     // Delete the game folder on background thread
                                     withContext(Dispatchers.IO) {
-                                        val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(libraryItem.appId)
+                                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
                                         if (gameFolderPath != null) {
                                             val gameFolder = File(gameFolderPath)
                                             if (gameFolder.exists()) {
@@ -499,7 +497,7 @@ class OpenContainerAppScreen : BaseAppScreen() {
                                             }
                                         }
                                     }
-                                    
+
                                     // Navigate back and show notification
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
@@ -507,11 +505,11 @@ class OpenContainerAppScreen : BaseAppScreen() {
                                             "\"${libraryItem.name}\" has been deleted",
                                             Toast.LENGTH_SHORT
                                         ).show()
-                                        
+
                                         // Small delay to ensure file system updates are complete
                                         // before navigating back (list will auto-refresh when displayed)
                                         delay(100)
-                                        
+
                                         // Navigate back to game list
                                         onBack()
                                     }
@@ -531,7 +529,7 @@ class OpenContainerAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         hideDeleteDialog(libraryItem.appId)
                     }) {
                         Text("Cancel")

@@ -60,7 +60,7 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
-import app.gamenative.utils.OpenContainerScanner
+import app.gamenative.utils.CustomGameScanner
 import java.io.File
 import android.net.Uri
 
@@ -144,8 +144,8 @@ internal fun AppItem(
             ) {
                 if (paneType == PaneType.LIST) {
                     val iconUrl = remember(appInfo.appId) {
-                        if (appInfo.gameSource == GameSource.OPEN_CONTAINER) {
-                            val path = OpenContainerScanner.findIconFileForOpenContainer(context, appInfo.appId)
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
                             if (!path.isNullOrEmpty()) {
                                 if (path.startsWith("file://")) path else "file://$path"
                             } else {
@@ -160,17 +160,17 @@ internal fun AppItem(
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
-                    
-                    // Helper function to find SteamGridDB images for Open Container games
+
+                    // Helper function to find SteamGridDB images for Custom Games
                     fun findSteamGridDBImage(imageType: String): String? {
-                        if (appInfo.gameSource == GameSource.OPEN_CONTAINER) {
-                            val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appInfo.appId)
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                             gameFolderPath?.let { path ->
                                 val folder = java.io.File(path)
                                 val imageFile = folder.listFiles()?.firstOrNull { file ->
-                                    file.name.startsWith("steamgriddb_$imageType") && 
-                                    (file.name.endsWith(".png", ignoreCase = true) || 
-                                     file.name.endsWith(".jpg", ignoreCase = true) || 
+                                    file.name.startsWith("steamgriddb_$imageType") &&
+                                    (file.name.endsWith(".png", ignoreCase = true) ||
+                                     file.name.endsWith(".jpg", ignoreCase = true) ||
                                      file.name.endsWith(".webp", ignoreCase = true))
                                 }
                                 return imageFile?.let { android.net.Uri.fromFile(it).toString() }
@@ -178,31 +178,31 @@ internal fun AppItem(
                         }
                         return null
                     }
-                    
+
                     val imageUrl = remember(appInfo.appId, paneType) {
-                        if (appInfo.gameSource == GameSource.OPEN_CONTAINER) {
-                            // For Open Container games, use SteamGridDB images
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            // For Custom Games, use SteamGridDB images
                             when (paneType) {
                                 PaneType.GRID_CAPSULE -> {
                                     // Vertical grid for capsule
-                                    findSteamGridDBImage("grid_capsule") 
+                                    findSteamGridDBImage("grid_capsule")
                                         ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
                                 }
                                 PaneType.GRID_HERO -> {
                                     // Horizontal grid for hero view
-                                    findSteamGridDBImage("grid_hero") 
+                                    findSteamGridDBImage("grid_hero")
                                         ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
                                 }
                                 else -> {
                                     // For list view, use heroes endpoint (not grid_hero)
-                                    val gameFolderPath = OpenContainerScanner.getFolderPathFromAppId(appInfo.appId)
+                                    val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                                     val heroUrl = gameFolderPath?.let { path ->
                                         val folder = java.io.File(path)
                                         val heroFile = folder.listFiles()?.firstOrNull { file ->
-                                            file.name.startsWith("steamgriddb_hero") && 
+                                            file.name.startsWith("steamgriddb_hero") &&
                                             !file.name.contains("grid") &&
-                                            (file.name.endsWith(".png", ignoreCase = true) || 
-                                             file.name.endsWith(".jpg", ignoreCase = true) || 
+                                            (file.name.endsWith(".png", ignoreCase = true) ||
+                                             file.name.endsWith(".jpg", ignoreCase = true) ||
                                              file.name.endsWith(".webp", ignoreCase = true))
                                         }
                                         heroFile?.let { android.net.Uri.fromFile(it).toString() }
@@ -242,7 +242,7 @@ internal fun AppItem(
                         val isInstalled = remember(appInfo.appId, appInfo.gameSource) {
                             when (appInfo.gameSource) {
                                 GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
-                                GameSource.OPEN_CONTAINER -> true // Open Container games are always considered installed
+                                GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
                                 else -> false
                             }
                         }
@@ -351,7 +351,7 @@ internal fun GameInfoBlock(
                 }
                 text to color
             } else {
-                // Open Containers are considered ready (no Steam install tracking)
+                // Custom Games are considered ready (no Steam install tracking)
                 "Ready" to MaterialTheme.colorScheme.tertiary
             }
 

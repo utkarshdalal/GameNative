@@ -141,7 +141,7 @@ abstract class BaseAppScreen {
      * Must be overridden by subclasses to provide source-specific extension
      */
     abstract fun getExportFileExtension(): String
-    
+
     /**
      * Get the game install path (non-composable version).
      * Returns the path to the game's installation directory, or null if not installed.
@@ -258,19 +258,19 @@ abstract class BaseAppScreen {
                             // Use libraryItem.name directly (non-composable)
                             val gameName = libraryItem.name
                             val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
-                            
+
                             if (gameFolderPath != null) {
                                 // Delete marker file to force re-fetch
                                 val markerFile = File(gameFolderPath, ".steamgriddb_fetched")
                                 if (markerFile.exists()) {
                                     markerFile.delete()
                                 }
-                                
+
                                 app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
-                                
+
                                 // Call hook for post-fetch processing (e.g., icon extraction)
                                 onAfterFetchImages(context, libraryItem, gameFolderPath)
-                                
+
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(context, "Images fetched successfully", Toast.LENGTH_SHORT).show()
                                 }
@@ -333,7 +333,7 @@ abstract class BaseAppScreen {
 
     /**
      * Hook called after images are fetched. Override in subclasses for post-processing
-     * (e.g., icon extraction for Open Container games).
+     * (e.g., icon extraction for Custom Games).
      */
     protected open fun onAfterFetchImages(context: Context, libraryItem: LibraryItem, gameFolderPath: String) {
         // Default: no post-processing
@@ -394,24 +394,24 @@ abstract class BaseAppScreen {
     ) {
         val context = LocalContext.current
         val displayInfo = getGameDisplayInfo(context, libraryItem)
-        
+
         // Use composable state for values that change over time
-        var isInstalledState by remember(libraryItem.appId) { 
-            mutableStateOf(isInstalled(context, libraryItem)) 
+        var isInstalledState by remember(libraryItem.appId) {
+            mutableStateOf(isInstalled(context, libraryItem))
         }
-        var isValidToDownloadState by remember(libraryItem.appId) { 
-            mutableStateOf(isValidToDownload(context, libraryItem)) 
+        var isValidToDownloadState by remember(libraryItem.appId) {
+            mutableStateOf(isValidToDownload(context, libraryItem))
         }
-        var isDownloadingState by remember(libraryItem.appId) { 
-            mutableStateOf(isDownloading(context, libraryItem)) 
+        var isDownloadingState by remember(libraryItem.appId) {
+            mutableStateOf(isDownloading(context, libraryItem))
         }
-        var downloadProgressState by remember(libraryItem.appId) { 
-            mutableFloatStateOf(getDownloadProgress(context, libraryItem)) 
+        var downloadProgressState by remember(libraryItem.appId) {
+            mutableFloatStateOf(getDownloadProgress(context, libraryItem))
         }
-        var isUpdatePendingState by remember(libraryItem.appId) { 
+        var isUpdatePendingState by remember(libraryItem.appId) {
             mutableStateOf(false) // Initialize to false, will be updated in LaunchedEffect
         }
-        
+
         // Update download progress periodically if downloading
         LaunchedEffect(isDownloadingState, libraryItem.appId) {
             if (isDownloadingState) {
@@ -428,7 +428,7 @@ abstract class BaseAppScreen {
                 }
             }
         }
-        
+
         // Also check periodically if we should start monitoring (in case download starts externally)
         LaunchedEffect(libraryItem.appId) {
             while (true) {
@@ -441,7 +441,7 @@ abstract class BaseAppScreen {
                 delay(500) // Check every 500ms
             }
         }
-        
+
         // Update other states periodically
         LaunchedEffect(libraryItem.appId) {
             while (true) {
@@ -453,11 +453,11 @@ abstract class BaseAppScreen {
             }
         }
 
-        var showConfigDialog by androidx.compose.runtime.remember { 
-            androidx.compose.runtime.mutableStateOf(false) 
+        var showConfigDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
         }
-        var containerData by androidx.compose.runtime.remember { 
-            androidx.compose.runtime.mutableStateOf(ContainerData()) 
+        var containerData by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(ContainerData())
         }
 
         val onEditContainer: () -> Unit = {
@@ -489,10 +489,10 @@ abstract class BaseAppScreen {
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, exportFrontendLauncher)
 
         // Calculate hasPartialDownload state
-        var hasPartialDownloadState by remember(libraryItem.appId) { 
-            mutableStateOf(hasPartialDownload(context, libraryItem)) 
+        var hasPartialDownloadState by remember(libraryItem.appId) {
+            mutableStateOf(hasPartialDownload(context, libraryItem))
         }
-        
+
         // Update hasPartialDownload periodically
         LaunchedEffect(libraryItem.appId) {
             while (true) {
@@ -510,7 +510,7 @@ abstract class BaseAppScreen {
             downloadProgress = downloadProgressState,
             hasPartialDownload = hasPartialDownloadState,
             isUpdatePending = isUpdatePendingState,
-            onDownloadInstallClick = { 
+            onDownloadInstallClick = {
                 onDownloadInstallClick(context, libraryItem, onClickPlay)
                 // Refresh state after action - use a small delay to allow async operations to start
                 CoroutineScope(Dispatchers.Main).launch {
@@ -521,7 +521,7 @@ abstract class BaseAppScreen {
                     hasPartialDownloadState = hasPartialDownload(context, libraryItem)
                 }
             },
-            onPauseResumeClick = { 
+            onPauseResumeClick = {
                 onPauseResumeClick(context, libraryItem)
                 // Refresh state after action - use a small delay to allow async operations to start
                 CoroutineScope(Dispatchers.Main).launch {
@@ -532,7 +532,7 @@ abstract class BaseAppScreen {
                 }
             },
             onDeleteDownloadClick = { onDeleteDownloadClick(context, libraryItem) },
-            onUpdateClick = { 
+            onUpdateClick = {
                 onUpdateClick(context, libraryItem)
                 isDownloadingState = isDownloading(context, libraryItem)
             },

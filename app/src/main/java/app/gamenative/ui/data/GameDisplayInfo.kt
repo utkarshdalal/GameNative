@@ -2,7 +2,7 @@ package app.gamenative.ui.data
 
 /**
  * Common data structure for displaying game information in the UI.
- * This allows both Steam and Open Container games to use the same UI layout.
+ * This allows both Steam and Custom Games to use the same UI layout.
  */
 data class GameDisplayInfo(
     val name: String,
@@ -10,7 +10,7 @@ data class GameDisplayInfo(
     val releaseDate: Long, // Unix timestamp in seconds
     val heroImageUrl: String?,
     val iconUrl: String?,
-    val gameId: Int, // For Steam: appId, for Open Container: extracted from appId
+    val gameId: Int, // For Steam: appId, for Custom Game: extracted from appId
     val appId: String, // Full appId including source prefix
     val installLocation: String? = null, // Path where game is installed
     val sizeOnDisk: String? = null, // Formatted size string
