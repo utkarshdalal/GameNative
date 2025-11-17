@@ -477,6 +477,157 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.orEmpty()
         }
 
+        /**
+         * Start download of a single DLC depot for an app.
+         * Returns true if the download job was started.
+         */
+        fun enableDlc(appId: Int, depotId: Int): Boolean {
+            return try {
+                val di = downloadApp(appId, listOf(depotId), "public")
+                di != null
+            } catch (t: Throwable) {
+                Timber.e(t, "Failed to start DLC download")
+                false
+            }
+        }
+
+        /**
+         * Disable DLC in the stored AppInfo record. This removes the depot id from
+         * the `downloadedDepots` and removes the dlc app id from `dlc_depots`.
+         * Note: this does not delete files from disk.
+         */
+        fun disableDlc(appId: Int, depotId: Int, dlcAppId: Int): Boolean {
+            return try {
+                runBlocking(Dispatchers.IO) {
+                    val ai = instance?.appInfoDao?.getInstalledDepots(appId)
+                    if (ai != null) {
+                        val newDownloaded = ai.downloadedDepots.filterNot { it == depotId }
+                        val newDlc = ai.dlcDepots.filterNot { it == dlcAppId }
+                        val updated = AppInfo(
+                            id = ai.id,
+                            isDownloaded = newDownloaded.isNotEmpty(),
+                            downloadedDepots = newDownloaded,
+                            dlcDepots = newDlc,
+                        )
+                        instance?.appInfoDao?.insert(updated)
+                        true
+                    } else {
+                        false
+                    }
+                }
+                .also {
+                    // After disabling DLC in DB, trigger a full rebuild/redownload to ensure files match
+                    try {
+                        instance?.scope?.launch {
+                            rebuildApp(appId)
+                        }
+                    } catch (t: Throwable) {
+                        Timber.w(t, "Failed to schedule rebuild after disabling DLC for $appId")
+                    }
+                }
+            } catch (t: Throwable) {
+                Timber.e(t, "Failed to disable DLC")
+                false
+            }
+        }
+
+        /**
+         * Removes the install folder and starts a fresh download of all currently
+         * downloadable depots for the app (including owned DLC). This enforces a
+         * complete rebuild/redownload whenever DLC configuration changes.
+         */
+        fun rebuildApp(appId: Int): Boolean {
+            return try {
+                // Respect Wi-Fi-only setting
+                if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
+                    instance?.notificationHelper?.notify("Not connected to Wi-Fi")
+                    return false
+                }
+
+                val depotIds = getDownloadableDepots(appId).keys.toList()
+                if (depotIds.isEmpty()) return false
+
+                // Delete the existing install directory so we get a clean rebuild
+                try {
+                    val appDir = File(getAppDirPath(appId))
+                    if (appDir.exists()) {
+                        MarkerUtils.removeMarker(appDir.path, Marker.DOWNLOAD_COMPLETE_MARKER)
+                        appDir.deleteRecursively()
+                    }
+                } catch (t: Throwable) {
+                    Timber.w(t, "Failed to delete install dir for rebuild of $appId")
+                }
+
+                val di = downloadApp(appId, depotIds, "public")
+                di != null
+            } catch (t: Throwable) {
+                Timber.e(t, "Failed to rebuild app $appId")
+                false
+            }
+        }
+
+        /**
+         * Update stored AppInfo selection (downloadedDepots and dlcDepots) for the app.
+         * Returns true on success.
+         */
+        fun setAppSelection(appId: Int, downloadedDepots: List<Int>, dlcDepots: List<Int>): Boolean {
+            return try {
+                runBlocking(Dispatchers.IO) {
+                    val ai = instance?.appInfoDao?.getInstalledDepots(appId)
+                    val updated = if (ai != null) {
+                        AppInfo(
+                            id = ai.id,
+                            isDownloaded = downloadedDepots.isNotEmpty(),
+                            downloadedDepots = downloadedDepots,
+                            dlcDepots = dlcDepots,
+                        )
+                    } else {
+                        AppInfo(
+                            id = appId,
+                            isDownloaded = downloadedDepots.isNotEmpty(),
+                            downloadedDepots = downloadedDepots,
+                            dlcDepots = dlcDepots,
+                        )
+                    }
+                    instance?.appInfoDao?.insert(updated)
+                }
+                true
+            } catch (t: Throwable) {
+                Timber.e(t, "Failed to set app selection for $appId")
+                false
+            }
+        }
+
+        /**
+         * Rebuild the app by deleting install directory and downloading the provided depot list.
+         */
+        fun rebuildAppWithDepots(appId: Int, depotIds: List<Int>): Boolean {
+            return try {
+                if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
+                    instance?.notificationHelper?.notify("Not connected to Wi-Fi")
+                    return false
+                }
+
+                if (depotIds.isEmpty()) return false
+
+                try {
+                    val appDir = File(getAppDirPath(appId))
+                    if (appDir.exists()) {
+                        MarkerUtils.removeMarker(appDir.path, Marker.DOWNLOAD_COMPLETE_MARKER)
+                        appDir.deleteRecursively()
+                    }
+                } catch (t: Throwable) {
+                    Timber.w(t, "Failed to delete install dir for rebuildWithDepots of $appId")
+                }
+
+                val di = downloadApp(appId, depotIds, "public")
+                di != null
+            } catch (t: Throwable) {
+                Timber.e(t, "Failed to rebuild app $appId with depots")
+                false
+            }
+        }
+
         suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {
             val client      = instance?.steamClient ?: return emptyMap()
             val accountId   = client.steamID?.accountID?.toInt() ?: return emptyMap()
@@ -582,6 +733,110 @@ class SteamService : Service(), IChallengeUrlChanged {
                     true
                 }
                 .associate { it.toPair() }
+        }
+
+        /**
+         * Debug variant of getDownloadableDepots that returns the included depots
+         * and a list of human-readable reasons for depots that were excluded.
+         * Useful for diagnostics when cached appinfo/depots appear to be missing DLC.
+         */
+        fun getDownloadableDepotsDebug(appId: Int): Pair<Map<Int, DepotInfo>, List<String>> {
+            val appInfo = getAppInfoOf(appId) ?: return Pair(emptyMap(), listOf("No cached SteamApp info available"))
+            val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val preferredLanguage = PrefManager.containerLanguage
+
+            val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
+
+            val included = mutableMapOf<Int, DepotInfo>()
+            val reasons = mutableListOf<String>()
+
+            for ((depotId, depot) in appInfo.depots) {
+                if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty()) {
+                    reasons.add("Depot $depotId: excluded (encrypted-only manifests)")
+                    continue
+                }
+
+                if (depot.manifests.isEmpty() && !depot.sharedInstall) {
+                    reasons.add("Depot $depotId: excluded (no manifests and not sharedInstall)")
+                    continue
+                }
+
+                if (!(depot.osList.contains(OS.windows) || (!depot.osList.contains(OS.linux) && !depot.osList.contains(OS.macos)))) {
+                    reasons.add("Depot $depotId: excluded (unsupported OS: ${depot.osList})")
+                    continue
+                }
+
+                val archOk = when (depot.osArch) {
+                    OSArch.Arch64, OSArch.Unknown -> true
+                    OSArch.Arch32 -> !has64Bit
+                    else -> false
+                }
+                if (!archOk) {
+                    reasons.add("Depot $depotId: excluded (arch=${depot.osArch} has64Bit=$has64Bit)")
+                    continue
+                }
+
+                if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.depotId)) {
+                    reasons.add("Depot $depotId: excluded (DLC marked but not present in ownedDlc map)")
+                    continue
+                }
+
+                if (depot.language.isNotEmpty() && depot.language != preferredLanguage) {
+                    reasons.add("Depot $depotId: excluded (language='${depot.language}' != preferred='${preferredLanguage}')")
+                    continue
+                }
+
+                included[depotId] = depot
+            }
+
+            return Pair(included, reasons)
+        }
+
+        /**
+         * Return depots that were excluded by the strict filters but are potentially
+         * relevant if the only reason they were excluded is OS/arch/language.
+         * Returns a map depotId -> reason.
+         */
+        fun getPotentialDownloadableDepots(appId: Int): Map<Int, Pair<DepotInfo, String>> {
+            val appInfo = getAppInfoOf(appId) ?: return emptyMap()
+            val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val preferredLanguage = PrefManager.containerLanguage
+
+            val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
+
+            val potentials = mutableMapOf<Int, Pair<DepotInfo, String>>()
+
+            for ((depotId, depot) in appInfo.depots) {
+                // Skip depots that clearly have no downloadable content
+                if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty()) continue
+                if (depot.manifests.isEmpty() && !depot.sharedInstall) continue
+
+                // If the depot was excluded only for OS/arch/language reasons, include it as potential
+                // Check ownership first: if depot is marked DLC and not owned, skip – ownership is authoritative
+                if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.depotId)) continue
+
+                // OS check
+                val osOk = (depot.osList.contains(OS.windows) || (!depot.osList.contains(OS.linux) && !depot.osList.contains(OS.macos)))
+                // Arch check
+                val archOk = when (depot.osArch) {
+                    OSArch.Arch64, OSArch.Unknown -> true
+                    OSArch.Arch32 -> !has64Bit
+                    else -> false
+                }
+                // Language check
+                val langOk = depot.language.isEmpty() || depot.language == preferredLanguage
+
+                // If any of OS/arch/lang is false but ownership/manifests are OK, treat as potential
+                if (!osOk || !archOk || !langOk) {
+                    val reasons = mutableListOf<String>()
+                    if (!osOk) reasons.add("unsupported OS: ${depot.osList}")
+                    if (!archOk) reasons.add("arch=${depot.osArch} has64Bit=$has64Bit")
+                    if (!langOk) reasons.add("language='${depot.language}' != preferred='${preferredLanguage}'")
+                    potentials[depotId] = Pair(depot, reasons.joinToString("; "))
+                }
+            }
+
+            return potentials
         }
 
         fun getAppDirName(app: SteamApp?): String {
