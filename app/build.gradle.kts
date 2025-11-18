@@ -78,6 +78,7 @@ android {
         // Localization support - specify which languages to include
         resourceConfigurations += listOf(
             "en",    // English (default)
+            "da",    // Danish
             // TODO: Add more languages here using the ISO 639-1 locale code
         )
 
