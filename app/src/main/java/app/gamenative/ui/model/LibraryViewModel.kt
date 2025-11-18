@@ -167,6 +167,7 @@ class LibraryViewModel @Inject constructor(
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
 
             // Filter Steam apps first (no pagination yet)
+            val downloadDirectorySet = downloadDirectoryApps.toHashSet()
             val filteredSteamApps: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
@@ -207,16 +208,26 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
+                .sortedWith(
+                    compareByDescending<SteamApp> {
+                        downloadDirectorySet.contains(SteamService.getAppDirName(it))
+                    }.thenBy { it.name.lowercase() }
+                )
                 .toList()
 
             // Map Steam apps to UI items
-            val steamUiItems: List<LibraryItem> = filteredSteamApps.map { item ->
-                LibraryItem(
-                    index = 0, // temporary, will be re-indexed after combining and paginating
-                    appId = "${GameSource.STEAM.name}_${item.id}",
-                    name = item.name,
-                    iconHash = item.clientIconHash,
-                    isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+            data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
+            val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
+                val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
+                LibraryEntry(
+                    item = LibraryItem(
+                        index = 0, // temporary, will be re-indexed after combining and paginating
+                        appId = "${GameSource.STEAM.name}_${item.id}",
+                        name = item.name,
+                        iconHash = item.clientIconHash,
+                        isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+                    ),
+                    isInstalled = isInstalled,
                 )
             }
 
@@ -224,26 +235,22 @@ class LibraryViewModel @Inject constructor(
             val customGameItems = CustomGameScanner.scanAsLibraryItems(
                 query = currentState.searchQuery
             )
+            val customEntries = customGameItems.map { LibraryEntry(it, true) }
 
             // Apply App Source filters
             val includeSteam = _state.value.showSteamInLibrary
             val includeOpen = _state.value.showCustomGamesInLibrary
 
             // Combine both lists
-            val combined = buildList<LibraryItem> {
-                if (includeSteam) addAll(steamUiItems)
-                if (includeOpen) addAll(customGameItems)
+            val combined = buildList<LibraryEntry> {
+                if (includeSteam) addAll(steamEntries)
+                if (includeOpen) addAll(customEntries)
             }.sortedWith(
                 // Always sort by installed status first (installed games at top), then alphabetically within each group
-                compareBy<LibraryItem> { item ->
-                    val isInstalled = when (item.gameSource) {
-                        GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
-                        GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
-                    }
-                    // Return 0 for installed, 1 for not installed (so installed comes first)
-                    if (isInstalled) 0 else 1
-                }.thenBy { it.name.lowercase() } // Alphabetical sorting within installed and uninstalled groups
-            )
+                compareBy<LibraryEntry> { entry ->
+                    if (entry.isInstalled) 0 else 1
+                }.thenBy { it.item.name.lowercase() } // Alphabetical sorting within installed and uninstalled groups
+            ).mapIndexed { idx, entry -> entry.item.copy(index = idx) }
 
             // Total count for the current filter
             val totalFound = combined.size
@@ -256,7 +263,6 @@ class LibraryViewModel @Inject constructor(
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
             val pagedList = combined.take(endIndex)
-                .mapIndexed { idx, li -> li.copy(index = idx) }
 
             Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): ${totalFound}")
             _state.update {
