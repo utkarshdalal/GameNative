@@ -175,6 +175,8 @@ internal fun LibraryListPane(
         }
     }
 
+    val headerTopPadding = PaddingUtils.statusBarAwarePadding().calculateTopPadding()
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHost) }
     ) { paddingValues ->
@@ -187,7 +189,8 @@ internal fun LibraryListPane(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(PaddingUtils.statusBarAwarePadding())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = headerTopPadding)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
