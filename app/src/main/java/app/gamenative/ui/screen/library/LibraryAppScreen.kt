@@ -687,14 +687,14 @@ internal fun AppScreenContent(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     // Show size from displayInfo
-                                            Text(
+                                    Text(
                                         text = when {
                                             isInstalled && displayInfo.sizeOnDisk != null -> displayInfo.sizeOnDisk
                                             !isInstalled && displayInfo.sizeFromStore != null -> displayInfo.sizeFromStore
                                             else -> "Unknown"
                                         },
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                            )
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                    )
                                 }
                             }
 

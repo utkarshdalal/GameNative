@@ -343,7 +343,7 @@ public class Container {
     }
 
     public String getCPUList() {
-        return getCPUList(false);
+        return getCPUList(true);
     }
 
     public String getCPUList(boolean allowFallback) {
@@ -355,7 +355,7 @@ public class Container {
     }
 
     public String getCPUListWoW64() {
-        return getCPUListWoW64(false);
+        return getCPUListWoW64(true);
     }
 
     public String getCPUListWoW64(boolean allowFallback) {

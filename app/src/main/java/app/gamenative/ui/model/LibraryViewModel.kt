@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
+import app.gamenative.PluviaApp
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.data.GameSource
@@ -15,6 +16,7 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
+import app.gamenative.events.AndroidEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.EnumSet
 import javax.inject.Inject
@@ -39,6 +41,10 @@ class LibraryViewModel @Inject constructor(
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
+    private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
     // How many items loaded on one page of results
     private var paginationCurrentPage: Int = 0;
     private var lastPageInCurrentFilter: Int = 0;
@@ -61,6 +67,13 @@ class LibraryViewModel @Inject constructor(
                 }
             }
         }
+
+        PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+    }
+
+    override fun onCleared() {
+        PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        super.onCleared()
     }
 
     fun onModalBottomSheet(value: Boolean) {

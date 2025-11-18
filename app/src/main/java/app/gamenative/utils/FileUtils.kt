@@ -90,6 +90,7 @@ object FileUtils {
      * @param action The action to perform on each file
      */
     fun walkThroughPath(rootPath: Path, maxDepth: Int = 0, action: (Path) -> Unit) {
+        if (!Files.exists(rootPath) || !Files.isDirectory(rootPath)) return
         Files.list(rootPath).forEach {
             action(it)
             if (maxDepth != 0 && it.exists() && it.isDirectory()) {

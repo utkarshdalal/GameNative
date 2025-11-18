@@ -10,6 +10,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
+import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineRegistryEditor
@@ -206,26 +207,6 @@ object SteamUtils {
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
 
-        // Create ColdClientLoader.ini file
-        val gameName = getAppDirName(getAppInfoOf(steamAppId))
-        val executablePath = container.executablePath.replace("/", "\\")
-        val exePath = "steamapps\\common\\$gameName\\$executablePath"
-        val exeCommandLine = container.execArgs
-        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
-        iniFile.parentFile?.mkdirs()
-        iniFile.writeText("""
-            [SteamClient]
-
-            Exe=$exePath
-            ExeRunDir=
-            ExeCommandLine=$exeCommandLine
-            AppId=$steamAppId
-
-            # path to the steamclient dlls, both must be set, absolute paths or relative to the loader directory
-            SteamClientDll=steamclient.dll
-            SteamClient64Dll=steamclient64.dll
-        """.trimIndent())
-
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
             return
         }
@@ -242,6 +223,32 @@ object SteamUtils {
         ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+    }
+
+    internal fun writeColdClientIni(steamAppId: Int, container: Container) {
+        val gameName = getAppDirName(getAppInfoOf(steamAppId))
+        val executablePath = container.executablePath.replace("/", "\\")
+        val exePath = "steamapps\\common\\$gameName\\$executablePath"
+        val exeCommandLine = container.execArgs
+        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
+        iniFile.parentFile?.mkdirs()
+        iniFile.writeText(
+            """
+                [SteamClient]
+
+                Exe=$exePath
+                ExeRunDir=
+                ExeCommandLine=$exeCommandLine
+                AppId=$steamAppId
+
+                # path to the steamclient dlls, both must be set, absolute paths or relative to the loader directory
+                SteamClientDll=steamclient.dll
+                SteamClient64Dll=steamclient64.dll
+
+                [Injection]
+                IgnoreLoaderArchDifference=1
+            """.trimIndent(),
+        )
     }
 
     private fun autoLoginUserChanges(imageFs: ImageFs) {

@@ -5,11 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.NetworkRequest
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.IBinder
+import android.widget.Toast
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
+import app.gamenative.R
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
@@ -691,53 +693,26 @@ class SteamService : Service(), IChallengeUrlChanged {
                 })?.executable ?: ""
             }
 
-            // Create a temporary DepotDownloader instance for fetching manifests
-            val depotDownloader = runBlocking {
-                try {
-                    DepotDownloader(steamClient, instance!!.licenses, false, androidEmulation = true, maxDownloads = PrefManager.downloadSpeed)
-                } catch (e: Exception) {
-                    Timber.w(e, "Failed to create DepotDownloader for manifest fetching")
-                    null
+            for (depot in depots) {
+                val mi = depot.manifests["public"] ?: continue
+                if (mi.size > largestDepotSize) largestDepotSize = mi.size
+
+                // Check cache first
+                val man = DepotManifest.loadFromFile("${getAppDirPath(appId)}/.DepotDownloader/${depot.depotId}_${mi.gid}.manifest")
+
+                Timber.d("Using manifest for depot ${depot.depotId}  size=${mi.size}")
+
+                /* 1️⃣ exact launch entry that isn't a stub */
+                man?.files?.firstOrNull { f ->
+                    f.fileName.lowercase() in launchTargets && !f.isStub()
+                }?.let {
+                    Timber.i("Picked via launch entry: ${it.fileName}")
+                    return it.fileName.replace('\\','/').toString()
                 }
-            }
 
-            if (depotDownloader == null) {
-                Timber.w("Cannot fetch manifests: failed to create DepotDownloader")
-                // Fallback to last resort
-                return (getAppInfoOf(appId)?.let { appInfo ->
-                    getWindowsLaunchInfos(appId).firstOrNull()
-                })?.executable ?: ""
-            }
-
-            try {
-                for (depot in depots) {
-                    val mi = depot.manifests["public"] ?: continue
-                    if (mi.size > largestDepotSize) largestDepotSize = mi.size
-
-                    // Check cache first
-                    val man = DepotManifest.loadFromFile("${getAppDirPath(appId)}/.DepotDownloader/${depot.depotId}_${mi.gid}.manifest")
-
-                    Timber.d("Using manifest for depot ${depot.depotId}  size=${mi.size}")
-
-                    /* 1️⃣ exact launch entry that isn't a stub */
-                    man?.files?.firstOrNull { f ->
-                        f.fileName.lowercase() in launchTargets && !f.isStub()
-                    }?.let {
-                        Timber.i("Picked via launch entry: ${it.fileName}")
-                        return it.fileName.replace('\\','/').toString()
-                    }
-
-                    /* collect for later */
-                    man?.files?.filter { isExecutable(it.flags) || it.fileName.endsWith(".exe", true) }
-                        ?.forEach { flagged += it to mi.size }
-                }
-            } finally {
-                // Clean up DepotDownloader
-                try {
-                    depotDownloader.close()
-                } catch (e: Exception) {
-                    Timber.w(e, "Error closing DepotDownloader")
-                }
+                /* collect for later */
+                man?.files?.filter { isExecutable(it.flags) || it.fileName.endsWith(".exe", true) }
+                    ?.forEach { flagged += it to mi.size }
             }
 
             Timber.i("Flagged executable candidates: ${flagged.map { it.first.fileName }}")
@@ -1076,6 +1051,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Handle completion: add marker, update database
                 val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
                 MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
                 runBlocking {
                     instance?.appInfoDao?.insert(
                         AppInfo(
@@ -1092,6 +1068,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
                 Timber.e(error, "Item ${item.appId} failed to download")
+                downloadJobs.remove(appId)
+                instance?.let { service ->
+                    service.scope.launch(Dispatchers.Main) {
+                        Toast.makeText(
+                            service.applicationContext,
+                            service.getString(R.string.download_failed_try_again),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
 
             override fun onStatusUpdate(message: String) {

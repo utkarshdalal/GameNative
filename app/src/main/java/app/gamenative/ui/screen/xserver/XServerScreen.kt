@@ -39,6 +39,8 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.SteamUtils.writeColdClientIni
 import com.posthog.PostHog
 import com.winlator.alsaserver.ALSAClient
 import com.winlator.container.Container
@@ -152,23 +154,21 @@ fun XServerScreen(
     var taskAffinityMask = 0
     var taskAffinityMaskWoW64 = 0
 
+    val container = remember(appId) {
+        ContainerUtils.getContainer(context, appId)
+    }
+
     val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
-        if (ContainerUtils.hasContainer(context, appId)) {
-            val container = ContainerUtils.getContainer(context, appId)
-            // Emulation wiring moved to InputControlsView init block
-            mutableStateOf(
-                XServerState(
-                    graphicsDriver = container.graphicsDriver,
-                    graphicsDriverVersion = container.graphicsDriverVersion,
-                    audioDriver = container.audioDriver,
-                    dxwrapper = container.dxWrapper,
-                    dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig),
-                    screenSize = container.screenSize,
-                ),
-            )
-        } else {
-            mutableStateOf(XServerState())
-        }
+        mutableStateOf(
+            XServerState(
+                graphicsDriver = container.graphicsDriver,
+                graphicsDriverVersion = container.graphicsDriverVersion,
+                audioDriver = container.audioDriver,
+                dxwrapper = container.dxWrapper,
+                dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig),
+                screenSize = container.screenSize,
+            ),
+        )
     }
 
     // val xServer by remember {
@@ -190,7 +190,6 @@ fun XServerScreen(
     // var pointerEventListener by remember { mutableStateOf<Callback<MotionEvent>?>(null) }
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-    val container = ContainerUtils.getContainer(context, appId)
     val appLaunchInfo = SteamService.getAppInfoOf(gameId)?.let { appInfo ->
         SteamService.getWindowsLaunchInfos(gameId).firstOrNull()
     }
@@ -208,7 +207,7 @@ fun XServerScreen(
     var isKeyboardVisible = false
     var areControlsVisible = false
 
-    val emulateKeyboardMouse = ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse()
+    val emulateKeyboardMouse = container.isEmulateKeyboardMouse()
 
     val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
@@ -260,7 +259,6 @@ fun XServerScreen(
                                 PostHog.capture(event = "onscreen_controller_enabled")
                                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                                 if (profiles.isNotEmpty()) {
-                                    val container = ContainerUtils.getContainer(context, appId)
                                     val targetProfile = if (container.isEmulateKeyboardMouse()) {
                                         val profileName = container.id.toString()
                                         profiles.firstOrNull { it.name == profileName }
@@ -294,7 +292,7 @@ fun XServerScreen(
         ).show()
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(container) {
         registerBackAction(gameBack)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
@@ -302,7 +300,7 @@ fun XServerScreen(
         }   // reset when screen leaves
     }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, container) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
@@ -426,8 +424,6 @@ fun XServerScreen(
                     // TODO: make 'force fullscreen' be an option of the app being launched
                     appLaunchInfo?.let { renderer.forceFullscreenWMClass = Paths.get(it.executable).name }
                 }
-                val container = ContainerUtils.getContainer(context, appId)
-
                 getxServer().windowManager.addOnWindowModificationListener(
                     object : WindowManager.OnWindowModificationListener {
                         private fun changeFrameRatingVisibility(window: Window, property: Property?) {
@@ -503,7 +499,6 @@ fun XServerScreen(
                     setupExecutor.submit {
                         try {
                             val containerManager = ContainerManager(context)
-                            val container = ContainerUtils.getContainer(context, appId)
                             // Configure WinHandler with container's input API settings
                             val handler = getxServer().winHandler
                             if (container.inputType !in 0..3) {
@@ -630,7 +625,6 @@ fun XServerScreen(
                 val profiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                 PrefManager.init(context)
                 if (profiles.isNotEmpty()) {
-                    val container = ContainerUtils.getContainer(context, appId)
                     val targetProfile = if (container.isEmulateKeyboardMouse()) {
                         val profileName = container.id.toString()
                         profiles.firstOrNull { it.name == profileName }
@@ -652,8 +646,6 @@ fun XServerScreen(
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)
             hideInputControls()
-            val container = ContainerUtils.getContainer(context, appId)
-
             // If emulation is enabled, select the per-container profile (named by container id)
             if (container.isEmulateKeyboardMouse()) {
                 val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
@@ -1317,16 +1309,16 @@ private fun getWineStartCommand(
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
                     "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $steamAppId"
         } else {
+            var executablePath = ""
+            if (container.executablePath.isNotEmpty()) {
+                executablePath = container.executablePath
+            } else {
+                executablePath = SteamService.getInstalledExe(steamAppId)
+                container.executablePath = executablePath
+                container.saveData()
+            }
             if (container.isUseLegacyDRM) {
                 val appDirPath = SteamService.getAppDirPath(steamAppId)
-                var executablePath = ""
-                if (container.executablePath.isNotEmpty()) {
-                    executablePath = container.executablePath
-                } else {
-                    executablePath = SteamService.getInstalledExe(steamAppId)
-                    container.executablePath = executablePath
-                    container.saveData()
-                }
                 val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
                 guestProgramLauncherComponent.workingDir = File(executableDir);
                 Timber.i("Working directory is ${executableDir}")
@@ -1344,6 +1336,8 @@ private fun getWineStartCommand(
                 envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
                 "\"$drive:/${executablePath}\""
             } else {
+                // Create ColdClientLoader.ini file
+                SteamUtils.writeColdClientIni(steamAppId, container)
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
             }
         }
@@ -1378,14 +1372,14 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson)
     )
-    
+
     // Store session data in container metadata
     frameRating?.let { rating ->
         container.putSessionMetadata("avg_fps", rating.avgFPS)
         container.putSessionMetadata("session_length_sec", rating.sessionLengthSec.toInt())
         container.saveData()
     }
-    
+
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.isGameRunning = false
