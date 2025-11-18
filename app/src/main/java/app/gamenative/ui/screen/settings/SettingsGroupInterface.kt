@@ -26,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import app.gamenative.R
 import app.gamenative.PrefManager
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.dialog.SingleChoiceDialog
@@ -43,7 +44,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.R
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
@@ -114,11 +114,11 @@ fun SettingsGroupInterface(
         steamRegionsList.indexOfFirst { it.first == PrefManager.cellId }.takeIf { it >= 0 } ?: 0
     ) }
 
-    SettingsGroup(title = { Text(text = "Interface") }) {
+    SettingsGroup(title = { Text(text = stringResource(R.string.settings_interface_title)) }) {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Open web links externally") },
-            subtitle = { Text(text = "Links open with your main web browser") },
+            title = { Text(text = stringResource(R.string.settings_interface_external_links_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_external_links_subtitle)) },
             state = openWebLinks,
             onCheckedChange = {
                 openWebLinks = it
@@ -128,8 +128,8 @@ fun SettingsGroupInterface(
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Hide status bar when not in game") },
-            subtitle = { Text(text = "Hide Android status bar in game list, settings, etc. App will restart when changed.") },
+            title = { Text(text = stringResource(R.string.settings_interface_hide_statusbar_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_hide_statusbar_subtitle)) },
             state = hideStatusBar,
             onCheckedChange = { newValue ->
                 // Update UI immediately for responsive feel
@@ -151,7 +151,7 @@ fun SettingsGroupInterface(
         // Unified visual icon picker (affects app and notification icons)
         var selectedVariant by rememberSaveable { mutableStateOf(if (PrefManager.useAltLauncherIcon || PrefManager.useAltNotificationIcon) 1 else 0) }
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(text = "Icon style")
+            Text(text = stringResource(R.string.settings_interface_icon_style))
             Spacer(modifier = Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 IconVariantCard(
@@ -183,12 +183,12 @@ fun SettingsGroupInterface(
     }
 
     // Downloads settings
-    SettingsGroup(title = { Text(text = "Downloads") }) {
+    SettingsGroup(title = { Text(text = stringResource(R.string.settings_downloads_title)) }) {
         var wifiOnlyDownload by rememberSaveable { mutableStateOf(PrefManager.downloadOnWifiOnly) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Download only over Wi-Fi") },
-            subtitle = { Text(text = "Prevent downloads on cellular data") },
+            title = { Text(text = stringResource(R.string.settings_interface_wifi_only_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_wifi_only_subtitle)) },
             state = wifiOnlyDownload,
             onCheckedChange = {
                 wifiOnlyDownload = it
@@ -266,12 +266,12 @@ fun SettingsGroupInterface(
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             enabled  = dirs.isNotEmpty(),
-            title = { Text(text = "Write to external storage") },
+            title = { Text(text = stringResource(R.string.settings_interface_external_storage_title)) },
             subtitle = {
                 if (dirs.isEmpty())
-                    Text("No external storage detected")
+                    Text(stringResource(R.string.settings_interface_no_external_storage))
                 else
-                    Text("Save games to external storage")
+                    Text(stringResource(R.string.settings_interface_external_storage_subtitle))
             },
             state = useExternalStorage,
             onCheckedChange = {
@@ -291,7 +291,7 @@ fun SettingsGroupInterface(
                 )
             }
             SettingsListDropdown(
-                title = { Text(text = "Storage volume") },
+                title = { Text(text = stringResource(R.string.settings_interface_storage_volume_title)) },
                 items = labels,
                 value = selectedIndex,
                 onItemSelected = { idx ->
@@ -304,7 +304,7 @@ fun SettingsGroupInterface(
         // Steam download server selection
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Steam Download Server") },
+            title = { Text(text = stringResource(R.string.settings_interface_download_server_title)) },
             subtitle = { Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: "Default") },
             onClick = { openRegionDialog = true }
         )
@@ -314,8 +314,8 @@ fun SettingsGroupInterface(
     SingleChoiceDialog(
         openDialog = openRegionDialog,
         icon = Icons.Default.Map,
-        iconDescription = "Steam Download Server",
-        title = "Steam Download Server",
+        iconDescription = stringResource(R.string.settings_interface_download_server_title),
+        title = stringResource(R.string.settings_interface_download_server_title),
         items = steamRegionsList.map { it.second },
         currentItem = selectedRegionIndex,
         onSelected = { index ->
@@ -330,10 +330,10 @@ fun SettingsGroupInterface(
     // Status bar restart confirmation dialog
     MessageDialog(
         visible = showStatusBarRestartDialog,
-        title = "Restart Required",
-        message = "Changing this setting requires the app to restart. Do you want to continue?",
-        confirmBtnText = "Restart",
-        dismissBtnText = "Cancel",
+        title = stringResource(R.string.settings_interface_restart_required_title),
+        message = stringResource(R.string.settings_language_restart_message),
+        confirmBtnText = stringResource(R.string.settings_language_restart_confirm),
+        dismissBtnText = stringResource(R.string.cancel),
         onConfirmClick = {
             showStatusBarRestartDialog = false
             val newValue = pendingStatusBarValue ?: return@MessageDialog

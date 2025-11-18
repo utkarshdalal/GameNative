@@ -280,4 +280,66 @@
     <string name="settings_language_restart_message">Changing the language requires the app to restart. Do you want to continue?</string>
     <string name="settings_language_restart_confirm">Restart</string>
     <string name="settings_language_changing">Changing language and restarting...</string>
+
+    <!-- Settings: Emulation Group -->
+    <string name="settings_emulation_title">Emulation</string>
+    <string name="settings_emulation_orientations_title">Allowed Orientations</string>
+    <string name="settings_emulation_orientations_subtitle">Choose which orientations can be rotated to when in-game</string>
+    <string name="settings_emulation_default_config_title">Modify Default Config</string>
+    <string name="settings_emulation_default_config_subtitle">The initial container settings for each game (does not affect already installed games)</string>
+    <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
+    <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
+    <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
+    <string name="settings_emulation_driver_manager_title">Driver Manager</string>
+    <string name="settings_emulation_driver_manager_subtitle">Install or remove custom graphics driver packages</string>
+    <string name="settings_emulation_contents_manager_title">Contents Manager</string>
+    <string name="settings_emulation_contents_manager_subtitle">Install additional components (.wcp)</string>
+
+    <!-- Settings: Debug Group -->
+    <string name="settings_debug_title">Debug</string>
+    <string name="settings_debug_wine_channels_title">Select Wine Debug Channels</string>
+    <string name="settings_debug_wine_logs_title">Enable Wine Debug Logs</string>
+    <string name="settings_debug_wine_logs_subtitle">Write Wine debug output to file</string>
+    <string name="settings_debug_box_logs_title">Enable Box86/64 Logs</string>
+    <string name="settings_debug_box_logs_subtitle">Write Box86 &amp; Box64 debug output to file</string>
+    <string name="settings_debug_view_crash_title">View latest crash</string>
+    <string name="settings_debug_view_log_title">View game debug log</string>
+    <string name="settings_debug_clear_prefs_title">Clear Preferences</string>
+    <string name="settings_debug_clear_prefs_subtitle">[Closes App] Logs out the client and wipes local preference data.</string>
+    <string name="settings_debug_clear_db_title">Clear Local Database</string>
+    <string name="settings_debug_clear_db_subtitle">[Closes app] May help fix issues with library items or messages.</string>
+    <string name="settings_debug_clear_cache_title">Clear Image Cache</string>
+    <string name="settings_debug_clear_cache_subtitle">Remove all images that were loaded.</string>
+
+    <!-- Settings: Info Group -->
+    <string name="settings_info_title">Info</string>
+    <string name="settings_info_send_tip_title">Send tip</string>
+    <string name="settings_info_send_tip_subtitle">Contribute to ongoing development</string>
+    <string name="settings_info_ask_tip_title">Ask for tip on startup</string>
+    <string name="settings_info_ask_tip_subtitle">Stops the tip message from appearing</string>
+    <string name="settings_info_source_title">Source code</string>
+    <string name="settings_info_source_subtitle">View the source code of this project</string>
+    <string name="settings_info_libraries_title">Libraries Used</string>
+    <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
+    <string name="settings_info_privacy_title">Privacy Policy</string>
+    <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+
+    <!-- Settings: Interface Group -->
+    <string name="settings_interface_title">Interface</string>
+    <string name="settings_interface_external_links_title">Open web links externally</string>
+    <string name="settings_interface_external_links_subtitle">Links open with your main web browser</string>
+    <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
+    <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
+    <string name="settings_interface_icon_style">Icon style</string>
+    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi</string>
+    <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
+    <string name="settings_interface_external_storage_title">Write to external storage</string>
+    <string name="settings_interface_no_external_storage">No external storage detected</string>
+    <string name="settings_interface_external_storage_subtitle">Save games to external storage</string>
+    <string name="settings_interface_storage_volume_title">Storage volume</string>
+    <string name="settings_interface_download_server_title">Steam Download Server</string>
+    <string name="settings_interface_restart_required_title">Restart Required</string>
+
+    <!-- Settings: Downloads Group -->
+    <string name="settings_downloads_title">Downloads</string>
 </resources>
