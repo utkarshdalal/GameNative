@@ -80,7 +80,6 @@ android {
             "en",    // English (default)
             "da",    // Danish
             "pt",    // Portugese
-            "uk"     // Ukranian
             // TODO: Add more languages here using the ISO 639-1 locale code
         )
 
