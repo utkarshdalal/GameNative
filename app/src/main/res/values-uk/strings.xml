@@ -105,14 +105,14 @@
     <string name="box86_64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
     <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
         Dynarec building BigBlock<br /><br />
-        <b>0</b> : Don\'t try to build block as big as possible<br />
+        <b>0</b> : Don&apos;t try to build block as big as possible<br />
         <b>1</b> : Build Dynarec block as big as possible<br />
         <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
         <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
         Simulation of Strong Memory model<br /><br />
-        <b>0</b> : Don\'t try anything special<br />
+        <b>0</b> : Don&apos;t try anything special<br />
         <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
@@ -153,7 +153,7 @@
     <string name="total_playtime">Всього награно: %s годин</string>
 
     <!-- Login & Connection -->
-    <string name="no_connection_to_steam">Немає з\'єднання зі Steam</string>
+    <string name="no_connection_to_steam">Немає з&apos;єднання зі Steam</string>
     <string name="retry_steam_connection">Спробувати</string>
     <string name="continue_offline">Продовжити офлайн</string>
 
@@ -195,7 +195,7 @@
     <string name="graphics_driver">Графічний драйвер</string>
     <string name="graphics_driver_version">Версія графічного драйвера</string>
     <string name="exposed_vulkan_extensions">Відкриті розширення Vulkan</string>
-    <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
+    <string name="max_device_memory">Максимальна пам&apos;ять пристрою</string>
     <string name="frame_synchronization">Синхронізація кадрів</string>
     <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan версія</string>
@@ -231,7 +231,7 @@
     <string name="renderer">Renderer</string>
     <string name="gpu_name">Назва GPU</string>
     <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
-    <string name="video_memory_size">Розмір відеопам\'яті</string>
+    <string name="video_memory_size">Розмір відеопам&apos;яті</string>
     <string name="enable_csmt">Enable CSMT (Command Stream Multi-Thread)</string>
     <string name="enable_strict_shader_math">Enable Strict Shader Math</string>
     <string name="mouse_warp_override">Mouse Warp Override</string>
