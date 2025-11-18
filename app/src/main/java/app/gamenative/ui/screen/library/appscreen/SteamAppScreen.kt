@@ -50,6 +50,41 @@ import timber.log.Timber
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
+private data class InstallSizeInfo(
+    val downloadSize: String,
+    val installSize: String,
+    val availableSpace: String,
+    val installBytes: Long,
+    val availableBytes: Long,
+)
+
+private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
+    val message = "The app being installed has the following space requirements. Would you like to proceed?" +
+        "\n\n\tDownload Size: ${info.downloadSize}" +
+        "\n\tSize on Disk: ${info.installSize}" +
+        "\n\tAvailable Space: ${info.availableSpace}"
+    return MessageDialogState(
+        visible = true,
+        type = DialogType.INSTALL_APP,
+        title = context.getString(R.string.download_prompt_title),
+        message = message,
+        confirmBtnText = context.getString(R.string.proceed),
+        dismissBtnText = context.getString(R.string.cancel),
+    )
+}
+
+private fun buildNotEnoughSpaceState(context: Context, info: InstallSizeInfo): MessageDialogState {
+    val message = "The app being installed needs ${info.installSize} of space but " +
+        "there is only ${info.availableSpace} left on this device"
+    return MessageDialogState(
+        visible = true,
+        type = DialogType.NOT_ENOUGH_SPACE,
+        title = context.getString(R.string.not_enough_space),
+        message = message,
+        confirmBtnText = context.getString(R.string.acknowledge),
+    )
+}
+
 /**
  * Steam-specific implementation of BaseAppScreen
  */
@@ -294,11 +329,10 @@ class SteamAppScreen : BaseAppScreen() {
                 gameId,
                 MessageDialogState(
                     visible = true,
-                    type = DialogType.INSTALL_APP,
-                    title = "", // Will be set after permissions are granted
-                    message = "", // Will be set after permissions are granted
-                    confirmBtnText = "", // Will be set after permissions are granted
-                    dismissBtnText = "", // Will be set after permissions are granted
+                    type = DialogType.INSTALL_APP_PENDING,
+                    title = context.getString(R.string.download_prompt_title),
+                    message = context.getString(R.string.calculating_space_requirements),
+                    dismissBtnText = context.getString(R.string.cancel),
                 )
             )
         } else {
@@ -599,6 +633,19 @@ class SteamAppScreen : BaseAppScreen() {
         val oldGamesDirectory = remember { 
             Paths.get(SteamService.defaultAppInstallPath).pathString
         }
+        val initialStoragePermissionGranted = remember {
+            val writePermissionGranted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+            val readPermissionGranted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+            writePermissionGranted && readPermissionGranted
+        }
+        var hasStoragePermission by remember { mutableStateOf(initialStoragePermissionGranted) }
+        var installSizeInfo by remember(gameId) { mutableStateOf<InstallSizeInfo?>(null) }
         
         // Permission launcher for game migration
         val permissionMovingInternalLauncher = rememberLauncherForActivityResult(
@@ -629,137 +676,63 @@ class SteamAppScreen : BaseAppScreen() {
         ) { permissions ->
             val writePermissionGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
             val readPermissionGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
-            
-            if (writePermissionGranted && readPermissionGranted) {
-                // Calculate sizes and show install dialog
-                CoroutineScope(Dispatchers.IO).launch {
-                    val depots = SteamService.getDownloadableDepots(gameId)
-                    Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
-                    
-                    // How much free space is on disk
-                    val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
-                    val availableSpace = StorageUtils.formatBinarySize(availableBytes)
-                    
-                    // TODO: un-hardcode "public" branch
-                    val downloadSize = StorageUtils.formatBinarySize(
-                        depots.values.sumOf {
-                            it.manifests["public"]?.download ?: 0
-                        },
-                    )
-                    val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
-                    val installSize = StorageUtils.formatBinarySize(installBytes)
-                    
-                    withContext(Dispatchers.Main) {
-                        if (availableBytes < installBytes) {
-                            showInstallDialog(
-                                gameId,
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.NOT_ENOUGH_SPACE,
-                                    title = context.getString(R.string.not_enough_space),
-                                    message = "The app being installed needs $installSize of space but " +
-                                            "there is only $availableSpace left on this device",
-                                    confirmBtnText = context.getString(R.string.acknowledge),
-                                )
-                            )
-                        } else {
-                            showInstallDialog(
-                                gameId,
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_APP,
-                                    title = context.getString(R.string.download_prompt_title),
-                                    message = "The app being installed has the following space requirements. Would you like to proceed?" +
-                                            "\n\n\tDownload Size: $downloadSize" +
-                                            "\n\tSize on Disk: $installSize" +
-                                            "\n\tAvailable Space: $availableSpace",
-                                    confirmBtnText = context.getString(R.string.proceed),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                )
-                            )
-                        }
-                    }
-                }
-            } else {
+            val granted = writePermissionGranted && readPermissionGranted
+            hasStoragePermission = granted
+            if (!granted) {
                 // Permissions denied
                 Toast.makeText(context, "Storage permission required", Toast.LENGTH_SHORT).show()
                 hideInstallDialog(gameId)
             }
         }
-        
-        // Check if we need to request permissions when install dialog is shown
-        LaunchedEffect(installDialogState.visible, installDialogState.type) {
-            if (installDialogState.visible && installDialogState.type == DialogType.INSTALL_APP && 
-                installDialogState.title.isNullOrEmpty()) {
-                // Check if we have permissions
-                val writePermissionGranted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED
-                val readPermissionGranted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED
-                
-                if (writePermissionGranted && readPermissionGranted) {
-                    // Permissions already granted, calculate sizes and show dialog
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val depots = SteamService.getDownloadableDepots(gameId)
-                        Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
-                        
-                        // How much free space is on disk
-                        val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
-                        val availableSpace = StorageUtils.formatBinarySize(availableBytes)
-                        
-                        // TODO: un-hardcode "public" branch
-                        val downloadSize = StorageUtils.formatBinarySize(
-                            depots.values.sumOf {
-                                it.manifests["public"]?.download ?: 0
-                            },
-                        )
-                        val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
-                        val installSize = StorageUtils.formatBinarySize(installBytes)
-                        
-                        withContext(Dispatchers.Main) {
-                            if (availableBytes < installBytes) {
-                                showInstallDialog(
-                                    gameId,
-                                    MessageDialogState(
-                                        visible = true,
-                                        type = DialogType.NOT_ENOUGH_SPACE,
-                                        title = context.getString(R.string.not_enough_space),
-                                        message = "The app being installed needs $installSize of space but " +
-                                                "there is only $availableSpace left on this device",
-                                        confirmBtnText = context.getString(R.string.acknowledge),
-                                    )
-                                )
-                            } else {
-                                showInstallDialog(
-                                    gameId,
-                                    MessageDialogState(
-                                        visible = true,
-                                        type = DialogType.INSTALL_APP,
-                                        title = context.getString(R.string.download_prompt_title),
-                                        message = "The app being installed has the following space requirements. Would you like to proceed?" +
-                                                "\n\n\tDownload Size: $downloadSize" +
-                                                "\n\tSize on Disk: $installSize" +
-                                                "\n\tAvailable Space: $availableSpace",
-                                        confirmBtnText = context.getString(R.string.proceed),
-                                        dismissBtnText = context.getString(R.string.cancel),
-                                    )
-                                )
-                            }
-                        }
+
+        LaunchedEffect(gameId, hasStoragePermission) {
+            if (!hasStoragePermission) {
+                installSizeInfo = null
+                return@LaunchedEffect
+            }
+            try {
+                val info = withContext(Dispatchers.IO) {
+                    val depots = SteamService.getDownloadableDepots(gameId)
+                    Timber.i("There are ${depots.size} depots belonging to ${libraryItem.appId}")
+                    val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+                    val downloadBytes = depots.values.sumOf {
+                        it.manifests["public"]?.download ?: 0
                     }
-                } else {
-                    // Request permissions
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.READ_EXTERNAL_STORAGE,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        ),
+                    val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                    InstallSizeInfo(
+                        downloadSize = StorageUtils.formatBinarySize(downloadBytes),
+                        installSize = StorageUtils.formatBinarySize(installBytes),
+                        availableSpace = StorageUtils.formatBinarySize(availableBytes),
+                        installBytes = installBytes,
+                        availableBytes = availableBytes,
                     )
                 }
+                installSizeInfo = info
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to calculate install sizes for gameId=$gameId")
+                installSizeInfo = null
+            }
+        }
+
+        LaunchedEffect(installDialogState.visible, installDialogState.type, hasStoragePermission, installSizeInfo) {
+            if (!installDialogState.visible) return@LaunchedEffect
+            if (installDialogState.type != DialogType.INSTALL_APP_PENDING) return@LaunchedEffect
+
+            if (!hasStoragePermission) {
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ),
+                )
+            } else {
+                val info = installSizeInfo ?: return@LaunchedEffect
+                val state = if (info.availableBytes < info.installBytes) {
+                    buildNotEnoughSpaceState(context, info)
+                } else {
+                    buildInstallPromptState(context, info)
+                }
+                showInstallDialog(gameId, state)
             }
         }
         
@@ -772,6 +745,7 @@ class SteamAppScreen : BaseAppScreen() {
                 hideInstallDialog(gameId)
             }
             val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
+                DialogType.INSTALL_APP_PENDING -> null
                 DialogType.INSTALL_APP -> {
                     {
                         PostHog.capture(
@@ -891,9 +865,7 @@ class SteamAppScreen : BaseAppScreen() {
             }
             
             MessageDialog(
-                // Don't show dialog if it's INSTALL_APP type and content isn't ready yet
-                visible = installDialogState.visible && 
-                    !(installDialogState.type == DialogType.INSTALL_APP && installDialogState.title.isNullOrEmpty()),
+                visible = installDialogState.visible,
                 onDismissRequest = onDismissRequest,
                 onConfirmClick = onConfirmClick,
                 onDismissClick = onDismissClick,

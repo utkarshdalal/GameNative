@@ -20,6 +20,7 @@
     <string name="uninstall">Uninstall</string>
     <string name="run_app">Play</string>
     <string name="download_prompt_title">Install App</string>
+    <string name="calculating_space_requirements">Calculating space requirements...</string>
     <string name="delete_prompt_title">Delete App</string>
     <string name="cancel_download_prompt_title">Cancel Download</string>
     <string name="acknowledge">OK</string>
