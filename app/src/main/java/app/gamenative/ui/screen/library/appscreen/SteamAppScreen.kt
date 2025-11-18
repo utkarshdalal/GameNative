@@ -151,11 +151,18 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Get size from store
-        val sizeFromStore = remember(gameId) {
+        // Get size from store (async, will update via state)
+        var sizeFromStore by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(isInstalled, gameId) {
             if (!isInstalled) {
-                DownloadService.getSizeFromStoreDisplay(gameId)
-            } else null
+                // Load size from store asynchronously to avoid blocking UI
+                withContext(Dispatchers.IO) {
+                    val size = DownloadService.getSizeFromStoreDisplay(gameId)
+                    sizeFromStore = size
+                }
+            } else {
+                sizeFromStore = null
+            }
         }
 
         // Get last played text
