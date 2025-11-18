@@ -281,6 +281,7 @@ internal fun LibraryListPane(
             ) {
                 // Track skeleton overlay alpha (fade out when games are loaded)
                 // Show skeleton overlay when loading OR when list is empty (initial state)
+                // But hide if final count is 0 (no games match filters)
                 var shouldShowSkeletonOverlay by remember { 
                     mutableStateOf(true) // Start visible
                 }
@@ -293,13 +294,19 @@ internal fun LibraryListPane(
                 )
                 
                 // Update skeleton overlay visibility based on loading state and games
-                LaunchedEffect(state.isLoading, state.appInfoList.size) {
-                    if (state.isLoading || state.appInfoList.isEmpty()) {
-                        // Still loading or no games yet, show skeleton overlay
+                LaunchedEffect(state.isLoading, state.appInfoList.size, state.totalAppsInFilter) {
+                    // Hide skeleton loaders if final count is 0 (no games match filters)
+                    if (state.totalAppsInFilter == 0 && !state.isLoading) {
+                        shouldShowSkeletonOverlay = false
+                    } else if (state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter > 0) {
+                        // Still loading and we expect games, show skeleton overlay
                         shouldShowSkeletonOverlay = true
                     } else if (state.appInfoList.isNotEmpty() && !state.isLoading) {
                         // Games are loaded and loading is complete, start fading out skeleton overlay
                         delay(100) // Small delay to let games render and fade in
+                        shouldShowSkeletonOverlay = false
+                    } else if (!state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter == 0) {
+                        // Loading complete but no games (filters exclude everything), hide skeletons
                         shouldShowSkeletonOverlay = false
                     }
                 }

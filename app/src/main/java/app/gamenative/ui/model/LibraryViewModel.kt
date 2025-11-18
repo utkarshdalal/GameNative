@@ -253,9 +253,14 @@ class LibraryViewModel @Inject constructor(
             }
 
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
-            val customGameItems = CustomGameScanner.scanAsLibraryItems(
-                query = currentState.searchQuery
-            )
+            // Only include custom games if GAME filter is selected
+            val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
+                CustomGameScanner.scanAsLibraryItems(
+                    query = currentState.searchQuery
+                )
+            } else {
+                emptyList()
+            }
             val customEntries = customGameItems.map { LibraryEntry(it, true) }
 
             // Save game counts for skeleton loaders (only when not searching, to get accurate counts)

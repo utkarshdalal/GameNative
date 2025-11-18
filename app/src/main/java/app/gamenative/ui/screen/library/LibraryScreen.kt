@@ -23,11 +23,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
@@ -42,6 +45,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -133,6 +143,10 @@ private fun LibraryScreenContent(
     val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    
+    // Dialog state for add custom game prompt
+    var showAddCustomGameDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
 
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -149,6 +163,15 @@ private fun LibraryScreenContent(
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         },
     )
+    
+    // Handle opening folder picker (with dialog check)
+    val onAddCustomGameClick = {
+        if (PrefManager.showAddCustomGameDialog) {
+            showAddCustomGameDialog = true
+        } else {
+            folderPicker.launchPicker()
+        }
+    }
 
     BackHandler(selectedAppId != null) { selectedAppId = null }
 
@@ -236,7 +259,7 @@ private fun LibraryScreenContent(
                 }
 
                 FloatingActionButton(
-                    onClick = { folderPicker.launchPicker() },
+                    onClick = onAddCustomGameClick,
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
                 ) {
@@ -246,6 +269,56 @@ private fun LibraryScreenContent(
                     )
                 }
             }
+        }
+        
+        // Add custom game dialog
+        if (showAddCustomGameDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddCustomGameDialog = false },
+                title = { Text("Add Custom Game") },
+                text = {
+                    Column {
+                        Text(
+                            text = "Please select the folder containing the game files you want to add as a custom game.",
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = dontShowAgain,
+                                onCheckedChange = { dontShowAgain = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Don't show this dialog again",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (dontShowAgain) {
+                                PrefManager.showAddCustomGameDialog = false
+                            }
+                            showAddCustomGameDialog = false
+                            folderPicker.launchPicker()
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAddCustomGameDialog = false }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
