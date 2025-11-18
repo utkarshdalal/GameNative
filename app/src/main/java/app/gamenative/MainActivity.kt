@@ -113,8 +113,11 @@ class MainActivity : ComponentActivity() {
     private var orientationSensorListener: OrientationEventListener? = null
 
     override fun attachBaseContext(newBase: Context) {
+        // Initialize PrefManager to read language setting
+        PrefManager.init(newBase)
+
         // Apply the saved language preference before creating the activity
-        val languageCode = PrefManager.getString("app_language", "")
+        val languageCode = PrefManager.appLanguage
         val context = LocaleHelper.applyLanguage(newBase, languageCode)
         super.attachBaseContext(context)
     }
