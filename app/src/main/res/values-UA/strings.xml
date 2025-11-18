@@ -268,4 +268,12 @@
     <string name="install_anyway">Всеодно інсталювати</string>
     <string name="remove_content">Видалити вміст?</string>
     <string name="remove_content_confirmation">Ви впевнені, що хочете вилалити %1$s (%2$s)?</string>
+
+    <!-- Settings NOTE: THESE ARE G-TRANSLATED. PLEASE VERIFY BEFORE MERGE -->
+    <string name="settings_language">Мова</string>
+    <string name="settings_select_language">Обрати мову</string>
+    <string name="settings_language_restart_title">Потрібен перезапуск</string>
+    <string name="settings_language_restart_message">Зміна мови вимагає перезапуску застосунку. Ви бажаєте продовжити?</string>
+    <string name="settings_language_restart_confirm">Перезапустити</string>
+    <string name="settings_language_changing">Зміна мови та перезапуск...</string>
 </resources>
