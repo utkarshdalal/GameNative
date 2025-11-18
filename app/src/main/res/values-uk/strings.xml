@@ -100,9 +100,9 @@
         <b>1</b> : Most RET will need flags, most CALLS will not<br />
         <b>2</b> : All CALL/RET will need flags (slower)
     ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_fastnan">Generation of -NAN like on x86</string>
-    <string name="box86_64_env_var_help__dynarec_fastround">Generation of precise x86 rounding</string>
-    <string name="box86_64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">Створення -NAN як на x86</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">Створення точного округлення x86</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">Використовувати Float/Double для x87 емуляції</string>
     <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
         Dynarec building BigBlock<br /><br />
         <b>0</b> : Don\'t try to build block as big as possible<br />
@@ -117,9 +117,9 @@
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
     ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
-    <string name="box86_64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
-    <string name="box86_64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+    <string name="box86_64_env_var_help__dynarec_forward">Визначає максимально допустиме значeння forward, при побудові Block</string>
+    <string name="box86_64_env_var_help__dynarec_callret">Оптимізація опкодів CALL/RET</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Визначає, чи буде чекати Dynarec на FillBlock</string>
 
     <string name="resume_download">Продовжити</string>
     <string name="pause_download">Пауза</string>
@@ -145,7 +145,7 @@
     <string name="release_date">Дата виходу</string>
     <string name="installed">Інстальовано</string>
     <string name="installing">Інсталяція</string>
-    <string name="not_installed">Не інстальовано//Not Installed</string>
+    <string name="not_installed">Не інстальовано</string>
     <string name="open">Відкрити</string>
     <string name="family_shared">Сімейна бібліотека</string>
     <string name="games">Ігри</string>
@@ -158,10 +158,10 @@
     <string name="continue_offline">Продовжити офлайн</string>
 
     <!-- Profile & Menu -->
-    <string name="help_and_support">Допомога &amp; Підтримка//Help &amp; Support</string>
+    <string name="help_and_support">Допомога &amp; Підтримка</string>
     <string name="hall_of_fame">Зал слави</string>
     <string name="go_online">Увійти в мережу</string>
-    <string name="go_offline">Перейти в режим офлайн гри</string>
+    <string name="go_offline">Вийти з мережі</string>
     <string name="log_out">Вийти з акаунта</string>
     <string name="close">Закрити</string>
 
@@ -201,7 +201,7 @@
     <string name="vulkan_version">Vulkan версія</string>
     <string name="image_cache_size">Розмір кешу</string>
     <string name="dx_wrapper">DX Wrapper</string>
-    <string name="vkd3d_feature_level">VKD3D Feature Level</string>
+    <string name="vkd3d_feature_level">Рівень функцій VKD3D</string>
     <string name="use_dri3">Використовувати DRI3</string>
     <string name="use_dri3_description">Вимкнення цього параметра може виправити графічні проблеми на деяких пристроях</string>
 
@@ -218,23 +218,23 @@
     <string name="preset_name">Назва пресету</string>
 
     <!-- Container Configuration: Input -->
-    <string name="use_sdl_api">Use SDL API</string>
-    <string name="enable_xinput_api">Enable XInput API</string>
-    <string name="enable_directinput_api">Enable DirectInput API</string>
-    <string name="directinput_mapper_type">DirectInput Mapper Type</string>
+    <string name="use_sdl_api">Використовувати SDL API</string>
+    <string name="enable_xinput_api">Увімкнути XInput API</string>
+    <string name="enable_directinput_api">Увімкнути DirectInput API</string>
+    <string name="directinput_mapper_type">Тип мапера DirectInput</string>
     <string name="disable_mouse_input">Вимкнути введення мишею</string>
     <string name="touchscreen_mode">Режим сенсорного екрану</string>
     <string name="emulate_keyboard_mouse">Емуляці клавіатури та миші</string>
     <string name="emulate_keyboard_mouse_description">Лівий стік = WASD, Правий стік = Миша. L2 = ЛКМ, R2 = ПКМ.</string>
 
     <!-- Container Configuration: Rendering -->
-    <string name="renderer">Renderer</string>
+    <string name="renderer">Рушій візуалізації</string>
     <string name="gpu_name">Назва GPU</string>
-    <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
+    <string name="offscreen_rendering_mode">Режим позаекранного рендерингу</string>
     <string name="video_memory_size">Розмір відеопам'яті</string>
-    <string name="enable_csmt">Enable CSMT (Command Stream Multi-Thread)</string>
-    <string name="enable_strict_shader_math">Enable Strict Shader Math</string>
-    <string name="mouse_warp_override">Mouse Warp Override</string>
+    <string name="enable_csmt">Увімкнути CSMT (Command Stream Multi-Thread)</string>
+    <string name="enable_strict_shader_math">Увімкнути сувору математику шейдерів</string>
+    <string name="mouse_warp_override">Примусове позиціонування курсора</string>
 
     <!-- Container Configuration: Management -->
     <string name="environment_variables">Змінні середовища</string>
