@@ -34,6 +34,21 @@
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Friends</string>
 
+    <!-- Custom Games -->
+    <string name="custom_games_title">Custom Games</string>
+    <string name="custom_games_no_paths">No paths added</string>
+    <string name="custom_games_grant_permission">Grant Permission</string>
+    <string name="custom_games_manual_subtitle">Added from Library</string>
+    <string name="custom_games_no_manual_entries">No manually added games yet.</string>
+    <string name="custom_games_remove_path_title">Remove Path</string>
+    <string name="custom_games_remove_path_message">Remove this path from scanning? The folder contents will stay on disk.</string>
+    <string name="custom_games_remove_path_content_desc">Remove path</string>
+    <string name="custom_games_path_removed_toast">Path removed from list. Content has not been deleted.</string>
+    <string name="custom_games_remove_manual_title">Remove Manual Game</string>
+    <string name="custom_games_remove_manual_message">Remove this manually added folder from your library? This does not delete files on disk.</string>
+    <string name="custom_games_remove_manual_content_desc">Remove manual folder</string>
+    <string name="custom_games_manual_removed_toast">Manual folder removed from library.</string>
+
     <!--Winlator-->
     <string name="disabled">Disabled</string>
     <string name="copy">Copy</string>

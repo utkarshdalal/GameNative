@@ -2,10 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
-import android.os.Environment
-import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,91 +35,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.ui.components.requestPermissionsForPath
+import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.utils.CustomGameScanner
 import com.alorma.compose.settings.ui.SettingsGroup
-
-/**
- * Converts a document tree URI to a file path.
- * Returns null if conversion fails.
- */
-fun getPathFromTreeUri(uri: Uri?): String? {
-    if (uri == null) return null
-    
-    return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val docId = DocumentsContract.getTreeDocumentId(uri)
-            
-            // Handle primary storage (internal storage)
-            if (docId.startsWith("primary:")) {
-                val path = docId.substringAfter(":")
-                val externalStorage = Environment.getExternalStorageDirectory()
-                return if (path.isEmpty()) {
-                    externalStorage.path
-                } else {
-                    "${externalStorage.path}/$path"
-                }
-            }
-            
-            // Handle other storage volumes (e.g., SD cards, USB drives)
-            if (docId.contains(":")) {
-                val parts = docId.split(":", limit = 2)
-                if (parts.size == 2) {
-                    val volumeId = parts[0]
-                    val path = parts[1]
-                    // Common mount points for external storage
-                    // Try /storage/volumeId first (most common)
-                    val possiblePath = if (path.isEmpty()) {
-                        "/storage/$volumeId"
-                    } else {
-                        "/storage/$volumeId/$path"
-                    }
-                    // Verify the path exists (basic check)
-                    val file = java.io.File(possiblePath)
-                    if (file.exists() || file.parentFile?.exists() == true) {
-                        return possiblePath
-                    }
-                    // Fallback: return the constructed path anyway
-                    return possiblePath
-                }
-            }
-            
-            // If docId doesn't contain ":", it might be a direct path
-            if (!docId.contains(":")) {
-                return docId
-            }
-        }
-        
-        // Fallback: try to extract from URI path
-        uri.path?.let { path ->
-            if (path.startsWith("/tree/")) {
-                val docId = path.substringAfter("/tree/")
-                if (docId.startsWith("primary:")) {
-                    val filePath = docId.substringAfter(":")
-                    val externalStorage = Environment.getExternalStorageDirectory()
-                    return if (filePath.isEmpty()) {
-                        externalStorage.path
-                    } else {
-                        "${externalStorage.path}/$filePath"
-                    }
-                }
-            }
-            // Last resort: return the path as-is
-            path
-        }
-    } catch (e: Exception) {
-        null
-    }
-}
 
 @Composable
 fun SettingsGroupCustomGames() {
     val context = LocalContext.current
     var paths by remember { mutableStateOf(PrefManager.customGamePaths.toMutableSet()) }
     var pathToDelete by remember { mutableStateOf<String?>(null) }
+    var manualFolders by remember { mutableStateOf(PrefManager.customGameManualFolders.toMutableSet()) }
+    var manualFolderToDelete by remember { mutableStateOf<String?>(null) }
 
     // Counts per root
     var counts by remember { mutableStateOf(CustomGameScanner.countGamesByRoot()) }
@@ -134,61 +64,30 @@ fun SettingsGroupCustomGames() {
         // Refresh counts after permission is granted
         counts = CustomGameScanner.countGamesByRoot()
     }
-    
-    // Function to request permissions for a path
-    fun requestPermissionsForPath(path: String) {
-        val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") && 
-                               !path.contains(context.dataDir.path)
-        
-        if (!isOutsideSandbox) {
-            // Path is in app sandbox, no permission needed
-            return
-        }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ requires MANAGE_EXTERNAL_STORAGE
-            CustomGameScanner.requestManageExternalStoragePermission(context)
-        } else {
-            // Android 10 and below use standard storage permissions
-            val permissions = arrayOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
-            storagePermissionLauncher.launch(permissions)
-        }
-    }
-    
-    // Folder picker launcher
-    val folderPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        uri?.let { selectedUri ->
-            val path = getPathFromTreeUri(selectedUri)
-            if (path != null) {
-                val copy = paths.toMutableSet()
-                copy.add(path)
-                paths = copy
-                PrefManager.customGamePaths = copy
-                // Invalidate cache so new path is scanned
-                CustomGameScanner.invalidateCache()
-                // Counts will refresh via LaunchedEffect(paths)
-                
-                // Check if we need to request permissions for this path
-                if (!CustomGameScanner.hasStoragePermission(context, path)) {
-                    requestPermissionsForPath(path)
-                }
-            } else {
-                Toast.makeText(
-                    context,
-                    "Failed to get path from selected folder",
-                    Toast.LENGTH_SHORT
-                ).show()
+    val folderPicker = rememberCustomGameFolderPicker(
+        onPathSelected = { path ->
+            val copy = paths.toMutableSet()
+            copy.add(path)
+            paths = copy
+            PrefManager.customGamePaths = copy
+            CustomGameScanner.invalidateCache()
+
+            if (!CustomGameScanner.hasStoragePermission(context, path)) {
+                requestPermissionsForPath(context, path, storagePermissionLauncher)
             }
-        }
-    }
+        },
+        onFailure = { message ->
+            Toast.makeText(
+                context,
+                message,
+                Toast.LENGTH_SHORT,
+            ).show()
+        },
+    )
 
     val lifecycleOwner = LocalLifecycleOwner.current
-    
+
     // Save paths to preferences if default path was added
     LaunchedEffect(paths) {
         // Only save if paths have changed from what's in preferences
@@ -197,7 +96,14 @@ fun SettingsGroupCustomGames() {
             PrefManager.customGamePaths = paths
         }
     }
-    
+
+    LaunchedEffect(manualFolders) {
+        val currentPrefs = PrefManager.customGameManualFolders
+        if (manualFolders != currentPrefs) {
+            PrefManager.customGameManualFolders = manualFolders
+        }
+    }
+
     // Automatically refresh counts when this section is shown and when paths change
     LaunchedEffect(Unit) {
         counts = CustomGameScanner.countGamesByRoot()
@@ -205,7 +111,7 @@ fun SettingsGroupCustomGames() {
     LaunchedEffect(paths) {
         counts = CustomGameScanner.countGamesByRoot()
     }
-    
+
     // Refresh counts when the app resumes (e.g., user returns from settings after granting permission)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -219,16 +125,16 @@ fun SettingsGroupCustomGames() {
         }
     }
 
-    SettingsGroup(title = { Text(text = "Custom Games") }) {
+    SettingsGroup(title = { Text(text = stringResource(id = R.string.custom_games_title)) }) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             // Paths list (includes default path)
             if (paths.isEmpty()) {
-                Text(text = "No paths added")
+                Text(text = stringResource(id = R.string.custom_games_no_paths))
             } else {
                 paths.forEach { path ->
                     val count = counts[path] ?: 0
                     val hasPermission = CustomGameScanner.hasStoragePermission(context, path)
-                    
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -279,9 +185,9 @@ fun SettingsGroupCustomGames() {
                             ) {
                                 if (count == -1 && !hasPermission) {
                                     OutlinedButton(
-                                        onClick = { requestPermissionsForPath(path) }
+                                        onClick = { requestPermissionsForPath(context, path, storagePermissionLauncher) }
                                     ) {
-                                        Text("Grant Permission")
+                                        Text(text = stringResource(id = R.string.custom_games_grant_permission))
                                     }
                                 }
                                 IconButton(
@@ -289,7 +195,7 @@ fun SettingsGroupCustomGames() {
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Remove",
+                                        contentDescription = stringResource(id = R.string.custom_games_remove_path_content_desc),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -298,14 +204,68 @@ fun SettingsGroupCustomGames() {
                     }
                 }
             }
-            
+
+            Spacer(modifier = Modifier.padding(vertical = 8.dp))
+
+            if (manualFolders.isEmpty()) {
+                Text(
+                    text = stringResource(id = R.string.custom_games_no_manual_entries),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                manualFolders.forEach { folder ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = folder,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.padding(vertical = 4.dp))
+                                Text(
+                                    text = stringResource(id = R.string.custom_games_manual_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(onClick = { manualFolderToDelete = folder }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = stringResource(id = R.string.custom_games_remove_manual_content_desc),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Confirmation dialog for path deletion
             pathToDelete?.let { path ->
                 AlertDialog(
                     onDismissRequest = { pathToDelete = null },
-                    title = { Text("Remove Path") },
+                    title = { Text(text = stringResource(id = R.string.custom_games_remove_path_title)) },
                     text = {
-                        Text("Are you sure you want to remove this path from the list? The path will be removed from scanning, but the content will not be deleted.")
+                        Text(text = stringResource(id = R.string.custom_games_remove_path_message))
                     },
                     confirmButton = {
                         TextButton(
@@ -317,29 +277,71 @@ fun SettingsGroupCustomGames() {
                                 // Invalidate cache so removed path is no longer scanned
                                 CustomGameScanner.invalidateCache()
                                 // Counts will refresh via LaunchedEffect(paths)
-                                
+
                                 Toast.makeText(
                                     context,
-                                    "Path removed from list. Content has not been deleted.",
+                                    context.getString(R.string.custom_games_path_removed_toast),
                                     Toast.LENGTH_LONG
                                 ).show()
-                                
+
                                 pathToDelete = null
                             }
                         ) {
-                            Text("Remove", color = MaterialTheme.colorScheme.error)
+                            Text(
+                                text = stringResource(id = R.string.remove),
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { pathToDelete = null }) {
-                            Text("Cancel")
+                            Text(text = stringResource(id = R.string.cancel))
+                        }
+                    }
+                )
+            }
+
+            manualFolderToDelete?.let { path ->
+                AlertDialog(
+                    onDismissRequest = { manualFolderToDelete = null },
+                    title = { Text(text = stringResource(id = R.string.custom_games_remove_manual_title)) },
+                    text = {
+                        Text(text = stringResource(id = R.string.custom_games_remove_manual_message))
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val copy = manualFolders.toMutableSet()
+                                copy.remove(path)
+                                manualFolders = copy
+                                PrefManager.customGameManualFolders = copy
+                                CustomGameScanner.invalidateCache()
+
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.custom_games_manual_removed_toast),
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                manualFolderToDelete = null
+                            }
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.remove),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { manualFolderToDelete = null }) {
+                            Text(text = stringResource(id = R.string.cancel))
                         }
                     }
                 )
             }
 
             Spacer(modifier = Modifier.padding(vertical = 8.dp))
-            
+
             // Full-width Add Path button
             Button(
                 modifier = Modifier
@@ -355,7 +357,7 @@ fun SettingsGroupCustomGames() {
                             context,
                             Manifest.permission.READ_EXTERNAL_STORAGE
                         ) == PackageManager.PERMISSION_GRANTED
-                        
+
                         if (!hasReadPermission) {
                             // Request permissions first
                             val permissions = arrayOf(
@@ -366,9 +368,9 @@ fun SettingsGroupCustomGames() {
                             return@Button
                         }
                     }
-                    
+
                     // Open folder picker
-                    folderPickerLauncher.launch(null)
+                    folderPicker.launchPicker()
                 }
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = null)

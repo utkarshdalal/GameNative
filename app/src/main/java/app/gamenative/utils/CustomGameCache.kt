@@ -12,6 +12,7 @@ internal object CustomGameCache {
     // Cache: appId (Int) -> folder path (String)
     private var appIdCache: Map<Int, String>? = null
     private var cacheRoots: Set<String>? = null
+    private var cacheManualFolders: Set<String>? = null
 
     /**
      * Builds the appId cache by scanning all Custom Game folders.
@@ -19,6 +20,7 @@ internal object CustomGameCache {
      */
     fun buildCache(
         getAllRoots: () -> Set<String>,
+        getManualFolders: () -> Set<String>,
         looksLikeGameFolder: (File) -> Boolean,
         readGameIdFromFile: (File) -> Int?
     ): Map<Int, String> {
@@ -41,6 +43,18 @@ internal object CustomGameCache {
             }
         }
         
+        val manualFolders = getManualFolders()
+        for (path in manualFolders) {
+            val folder = File(path)
+            if (!folder.exists() || !folder.isDirectory) continue
+            if (!looksLikeGameFolder(folder)) continue
+
+            val folderId = readGameIdFromFile(folder)
+                ?: abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
+
+            cache[folderId] = folder.absolutePath
+        }
+
         Timber.tag("CustomGameCache").d("Built appId cache with ${cache.size} entries")
         return cache
     }
@@ -51,16 +65,20 @@ internal object CustomGameCache {
      */
     fun getOrRebuildCache(
         getAllRoots: () -> Set<String>,
+        getManualFolders: () -> Set<String>,
         looksLikeGameFolder: (File) -> Boolean,
         readGameIdFromFile: (File) -> Int?
     ): Map<Int, String> {
         val currentRoots = getAllRoots()
+        val currentManualFolders = getManualFolders()
         val cachedRoots = cacheRoots
+        val cachedManual = cacheManualFolders
         
         // Rebuild if roots changed or cache is null
-        if (appIdCache == null || cachedRoots != currentRoots) {
-            appIdCache = buildCache(getAllRoots, looksLikeGameFolder, readGameIdFromFile)
+        if (appIdCache == null || cachedRoots != currentRoots || cachedManual != currentManualFolders) {
+            appIdCache = buildCache(getAllRoots, getManualFolders, looksLikeGameFolder, readGameIdFromFile)
             cacheRoots = currentRoots
+            cacheManualFolders = currentManualFolders
         }
         
         return appIdCache!!
@@ -73,6 +91,7 @@ internal object CustomGameCache {
     fun invalidate() {
         appIdCache = null
         cacheRoots = null
+        cacheManualFolders = null
         Timber.tag("CustomGameCache").d("AppId cache invalidated")
     }
 

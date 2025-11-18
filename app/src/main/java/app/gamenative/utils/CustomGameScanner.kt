@@ -506,9 +506,6 @@ object CustomGameScanner {
                 // Get or generate game ID (checks .gamenative file first, then generates and stores)
                 val idPart = getOrGenerateGameId(folder)
                 val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
-                
-                // Update cache with this new entry
-                CustomGameCache.addEntry(idPart, folder.absolutePath)
 
                 items.add(
                     LibraryItem(
@@ -521,59 +518,92 @@ object CustomGameScanner {
                     )
                 )
 
-                // Fetch SteamGridDB images on first detection (if enabled)
-                // This runs asynchronously and won't block the scan
-                if (PrefManager.fetchSteamGridDBImages) {
-                    // Capture idPart for use in coroutine
-                    val capturedIdPart = idPart
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                        try {
-                            // Check if we've already fetched images for this game
-                            if (!app.gamenative.utils.GameMetadataManager.isSteamGridDBFetched(folder)) {
-                                app.gamenative.utils.SteamGridDB.fetchGameImages(folder.name, folder.absolutePath)
-                                // Mark as fetched in metadata (pass appId to ensure file exists)
-                                app.gamenative.utils.GameMetadataManager.update(folder, appId = capturedIdPart, steamgriddbFetched = true)
-                            }
-                        } catch (e: Exception) {
-                            // Silently fail - this is a background operation
-                            Timber.tag("CustomGameScanner").d(e, "SteamGridDB: Background fetch failed for ${folder.name}")
-                        }
-                    }
-                }
+                handleCustomGameDetection(folder, appId, idPart)
+            }
+        }
 
-                // Proactively extract icon from executable on first detection
-                // This runs asynchronously and won't block the scan
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    try {
-                        // Check if icon already exists
-                        val hasExtractedIcon = folder.listFiles()?.any { file ->
-                            file.name.endsWith(".extracted.ico", ignoreCase = true)
-                        } == true
-
-                        if (!hasExtractedIcon) {
-                            // Try to find unique executable and extract icon
-                            val uniqueExeRel = findUniqueExeRelativeToFolder(folder)
-                            if (!uniqueExeRel.isNullOrEmpty()) {
-                                val exeFile = File(folder, uniqueExeRel.replace('/', File.separatorChar))
-                                if (exeFile.exists()) {
-                                    val outIco = File(exeFile.parentFile, exeFile.nameWithoutExtension + ".extracted.ico")
-                                    // Only extract if file doesn't exist or is outdated
-                                    if (!outIco.exists() || outIco.lastModified() < exeFile.lastModified()) {
-                                        if (ExeIconExtractor.tryExtractMainIcon(exeFile, outIco)) {
-                                            Timber.tag("CustomGameScanner").d("Extracted icon for ${folder.name} from ${exeFile.name}")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        // Silently fail - this is a background operation
-                        Timber.tag("CustomGameScanner").d(e, "Icon extraction failed for ${folder.name}")
-                    }
+        val manualFolders = PrefManager.customGameManualFolders
+        if (manualFolders.isNotEmpty()) {
+            val existingAppIds = items.mapTo(mutableSetOf()) { it.appId }
+            for (manualPath in manualFolders) {
+                val manualItem = createLibraryItemFromFolder(manualPath)
+                if (manualItem != null && existingAppIds.add(manualItem.appId)) {
+                    items.add(manualItem.copy(index = indexCounter++))
                 }
             }
         }
+
         return items
+    }
+
+    private fun handleCustomGameDetection(folder: File, appId: String, idPart: Int) {
+        CustomGameCache.addEntry(idPart, folder.absolutePath)
+
+        if (PrefManager.fetchSteamGridDBImages) {
+            val capturedIdPart = idPart
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                try {
+                    if (!app.gamenative.utils.GameMetadataManager.isSteamGridDBFetched(folder)) {
+                        app.gamenative.utils.SteamGridDB.fetchGameImages(folder.name, folder.absolutePath)
+                        app.gamenative.utils.GameMetadataManager.update(folder, appId = capturedIdPart, steamgriddbFetched = true)
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("CustomGameScanner").d(e, "SteamGridDB: Background fetch failed for ${folder.name}")
+                }
+            }
+        }
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val hasExtractedIcon = folder.listFiles()?.any { file ->
+                    file.name.endsWith(".extracted.ico", ignoreCase = true)
+                } == true
+
+                if (!hasExtractedIcon) {
+                    val uniqueExeRel = findUniqueExeRelativeToFolder(folder)
+                    if (!uniqueExeRel.isNullOrEmpty()) {
+                        val exeFile = File(folder, uniqueExeRel.replace('/', File.separatorChar))
+                        if (exeFile.exists()) {
+                            val outIco = File(exeFile.parentFile, exeFile.nameWithoutExtension + ".extracted.ico")
+                            if (!outIco.exists() || outIco.lastModified() < exeFile.lastModified()) {
+                                if (ExeIconExtractor.tryExtractMainIcon(exeFile, outIco)) {
+                                    Timber.tag("CustomGameScanner").d("Extracted icon for ${folder.name} from ${exeFile.name}")
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("CustomGameScanner").d(e, "Icon extraction failed for ${folder.name}")
+            }
+        }
+    }
+
+    fun createLibraryItemFromFolder(folderPath: String): LibraryItem? {
+        val folder = File(folderPath)
+        if (!folder.exists() || !folder.isDirectory) {
+            Timber.tag("CustomGameScanner").w("Folder does not exist or is not a directory: $folderPath")
+            return null
+        }
+
+        if (!looksLikeGameFolder(folder)) {
+            Timber.tag("CustomGameScanner").w("Folder is not a valid custom game (missing .exe): $folderPath")
+            return null
+        }
+
+        val idPart = getOrGenerateGameId(folder)
+        val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
+
+        handleCustomGameDetection(folder, appId, idPart)
+
+        return LibraryItem(
+            index = 0,
+            appId = appId,
+            name = folder.name,
+            iconHash = "",
+            isShared = false,
+            gameSource = GameSource.CUSTOM_GAME,
+        )
     }
 
     private fun looksLikeGameFolder(dir: File): Boolean {
@@ -644,6 +674,7 @@ object CustomGameScanner {
     private fun getOrRebuildCache(): Map<Int, String> {
         return CustomGameCache.getOrRebuildCache(
             getAllRoots = { getAllRoots() },
+            getManualFolders = { PrefManager.customGameManualFolders },
             looksLikeGameFolder = { folder -> looksLikeGameFolder(folder) },
             readGameIdFromFile = { folder -> readGameIdFromFile(folder) }
         )

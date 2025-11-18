@@ -1,18 +1,30 @@
 package app.gamenative.ui.screen.library
 
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
@@ -25,10 +37,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +61,8 @@ import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.components.rememberCustomGameFolderPicker
+import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -85,6 +102,7 @@ fun HomeLibraryScreen(
         onLogout = onLogout,
         onGoOnline = onGoOnline,
         onSourceToggle = viewModel::onSourceToggle,
+        onAddCustomGameFolder = viewModel::addCustomGameFolder,
         isOffline = isOffline,
     )
 }
@@ -105,9 +123,28 @@ private fun LibraryScreenContent(
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
+    onAddCustomGameFolder: (String) -> Unit,
     isOffline: Boolean = false,
 ) {
+    val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { }
+
+    val folderPicker = rememberCustomGameFolderPicker(
+        onPathSelected = { path ->
+            if (!CustomGameScanner.hasStoragePermission(context, path)) {
+                requestPermissionsForPath(context, path, storagePermissionLauncher)
+            }
+            onAddCustomGameFolder(path)
+        },
+        onFailure = { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        },
+    )
 
     BackHandler(selectedAppId != null) { selectedAppId = null }
 
@@ -169,6 +206,37 @@ private fun LibraryScreenContent(
                 },
             )
         }
+
+        if (selectedAppId == null) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (!state.isSearching) {
+                    ExtendedFloatingActionButton(
+                        text = { Text(text = "Filters") },
+                        icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
+                        expanded = filterFabExpanded,
+                        onClick = { onModalBottomSheet(true) },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+
+                FloatingActionButton(
+                    onClick = { folderPicker.launchPicker() },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add custom game",
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -225,6 +293,7 @@ private fun Preview_LibraryScreenContent() {
             onLogout = {},
             onGoOnline = {},
             onSourceToggle = {},
+            onAddCustomGameFolder = {},
         )
     }
 }

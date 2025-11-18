@@ -17,7 +17,9 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.events.AndroidEvent
+import app.gamenative.utils.CustomGameScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
 import java.util.EnumSet
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -135,6 +137,26 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(toPage)
     }
 
+    fun addCustomGameFolder(path: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val normalizedPath = File(path).absolutePath
+            val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
+            if (libraryItem == null) {
+                Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
+                return@launch
+            }
+
+            val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
+            if (!manualFolders.contains(normalizedPath)) {
+                manualFolders.add(normalizedPath)
+                PrefManager.customGameManualFolders = manualFolders
+            }
+
+            CustomGameScanner.invalidateCache()
+            onFilterApps(paginationCurrentPage)
+        }
+    }
+
     private fun onFilterApps(paginationPage: Int = 0) {
         // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps")
@@ -203,7 +225,7 @@ class LibraryViewModel @Inject constructor(
             }
 
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
-            val customGameItems = app.gamenative.utils.CustomGameScanner.scanAsLibraryItems(
+            val customGameItems = CustomGameScanner.scanAsLibraryItems(
                 query = currentState.searchQuery
             )
 

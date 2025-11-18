@@ -12,11 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -27,7 +23,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,7 +115,6 @@ internal fun LibraryListPane(
     isOffline: Boolean = false,
 ) {
     val context = LocalContext.current
-    val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val snackBarHost = remember { SnackbarHostState() }
     
     // Calculate installed count based on current filter state
@@ -305,21 +299,6 @@ internal fun LibraryListPane(
                             }
                         }
                     }
-                }
-
-                // Filter FAB - always show
-                if (!state.isSearching) {
-                    ExtendedFloatingActionButton(
-                        text = { Text(text = "Filters") },
-                        expanded = expandedFab,
-                        icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
-                        onClick = { onModalBottomSheet(true) },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(24.dp)
-                    )
                 }
 
                 if (state.modalBottomSheet) {
