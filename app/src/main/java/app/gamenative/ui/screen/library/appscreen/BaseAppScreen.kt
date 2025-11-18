@@ -6,11 +6,13 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
@@ -27,9 +29,9 @@ import com.winlator.container.ContainerData
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
 
 /**
  * Abstract base class for AppScreen implementations.
@@ -416,45 +418,33 @@ abstract class BaseAppScreen {
             mutableStateOf(false) // Initialize to false, will be updated in LaunchedEffect
         }
 
-        // Update download progress periodically if downloading
-        LaunchedEffect(isDownloadingState, libraryItem.appId) {
-            if (isDownloadingState) {
-                // Start monitoring immediately
-                while (true) {
-                    downloadProgressState = getDownloadProgress(context, libraryItem)
-                    val currentIsDownloading = isDownloading(context, libraryItem)
-                    if (!currentIsDownloading) {
-                        isDownloadingState = false
-                        break
-                    }
-                    isDownloadingState = currentIsDownloading
-                    delay(500) // Update every 500ms
-                }
-            }
+        // Calculate hasPartialDownload state
+        var hasPartialDownloadState by remember(libraryItem.appId) {
+            mutableStateOf(hasPartialDownload(context, libraryItem))
         }
 
-        // Also check periodically if we should start monitoring (in case download starts externally)
-        LaunchedEffect(libraryItem.appId) {
-            while (true) {
-                val currentIsDownloading = isDownloading(context, libraryItem)
-                if (currentIsDownloading && !isDownloadingState) {
-                    // Download started, update state to trigger LaunchedEffect
-                    isDownloadingState = true
-                    downloadProgressState = getDownloadProgress(context, libraryItem)
-                }
-                delay(500) // Check every 500ms
-            }
-        }
+        val uiScope = rememberCoroutineScope()
 
-        // Update other states periodically
-        LaunchedEffect(libraryItem.appId) {
-            while (true) {
-                isInstalledState = isInstalled(context, libraryItem)
-                isValidToDownloadState = isValidToDownload(context, libraryItem)
-                // Use suspend version if available, otherwise use regular method
+        suspend fun performStateRefresh(includeUpdatePending: Boolean) {
+            isInstalledState = isInstalled(context, libraryItem)
+            isValidToDownloadState = isValidToDownload(context, libraryItem)
+            val currentlyDownloading = isDownloading(context, libraryItem)
+            isDownloadingState = currentlyDownloading
+            downloadProgressState = getDownloadProgress(context, libraryItem)
+            hasPartialDownloadState = hasPartialDownload(context, libraryItem)
+            if (includeUpdatePending) {
                 isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
-                delay(2000) // Update every 2 seconds
             }
+        }
+
+        fun requestStateRefresh(includeUpdatePending: Boolean) {
+            uiScope.launch {
+                performStateRefresh(includeUpdatePending)
+            }
+        }
+
+        LaunchedEffect(libraryItem.appId) {
+            performStateRefresh(true)
         }
 
         var showConfigDialog by androidx.compose.runtime.remember {
@@ -492,16 +482,22 @@ abstract class BaseAppScreen {
 
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, exportFrontendLauncher)
 
-        // Calculate hasPartialDownload state
-        var hasPartialDownloadState by remember(libraryItem.appId) {
-            mutableStateOf(hasPartialDownload(context, libraryItem))
-        }
-
-        // Update hasPartialDownload periodically
-        LaunchedEffect(libraryItem.appId) {
-            while (true) {
-                hasPartialDownloadState = hasPartialDownload(context, libraryItem)
-                delay(2000) // Update every 2 seconds
+        DisposableEffect(libraryItem.appId) {
+            val dispose = observeGameState(
+                context = context,
+                libraryItem = libraryItem,
+                onStateChanged = { requestStateRefresh(true) },
+                onProgressChanged = { progress ->
+                    uiScope.launch {
+                        downloadProgressState = progress
+                    }
+                },
+                onHasPartialDownloadChanged = { hasPartial ->
+                    hasPartialDownloadState = hasPartial
+                }
+            )
+            onDispose {
+                dispose?.invoke()
             }
         }
 
@@ -516,29 +512,24 @@ abstract class BaseAppScreen {
             isUpdatePending = isUpdatePendingState,
             onDownloadInstallClick = {
                 onDownloadInstallClick(context, libraryItem, onClickPlay)
-                // Refresh state after action - use a small delay to allow async operations to start
-                CoroutineScope(Dispatchers.Main).launch {
-                    delay(100) // Small delay to allow download to start
-                    isInstalledState = isInstalled(context, libraryItem)
-                    isDownloadingState = isDownloading(context, libraryItem)
-                    downloadProgressState = getDownloadProgress(context, libraryItem)
-                    hasPartialDownloadState = hasPartialDownload(context, libraryItem)
+                uiScope.launch {
+                    delay(100)
+                    performStateRefresh(true)
                 }
             },
             onPauseResumeClick = {
                 onPauseResumeClick(context, libraryItem)
-                // Refresh state after action - use a small delay to allow async operations to start
-                CoroutineScope(Dispatchers.Main).launch {
-                    delay(100) // Small delay to allow download state to update
-                    isDownloadingState = isDownloading(context, libraryItem)
-                    downloadProgressState = getDownloadProgress(context, libraryItem)
-                    hasPartialDownloadState = hasPartialDownload(context, libraryItem)
+                uiScope.launch {
+                    delay(100)
+                    performStateRefresh(false)
                 }
             },
             onDeleteDownloadClick = { onDeleteDownloadClick(context, libraryItem) },
             onUpdateClick = {
                 onUpdateClick(context, libraryItem)
-                isDownloadingState = isDownloading(context, libraryItem)
+                uiScope.launch {
+                    performStateRefresh(true)
+                }
             },
             onBack = onBack,
             optionsMenu = optionsMenu.toTypedArray(),
@@ -565,6 +556,20 @@ abstract class BaseAppScreen {
      * Check if container configuration editing is supported
      */
     abstract fun supportsContainerConfig(): Boolean
+
+    /**
+     * Observe download/install state changes for this app.
+     * Return a lambda that will be invoked to clean up observers.
+     */
+    protected open fun observeGameState(
+        context: Context,
+        libraryItem: LibraryItem,
+        onStateChanged: () -> Unit,
+        onProgressChanged: (Float) -> Unit,
+        onHasPartialDownloadChanged: ((Boolean) -> Unit)? = null
+    ): (() -> Unit)? {
+        return null
+    }
 
     /**
      * Get additional dialogs to show (e.g., loading, message dialogs).

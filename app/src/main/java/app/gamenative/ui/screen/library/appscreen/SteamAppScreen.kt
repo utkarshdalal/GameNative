@@ -92,39 +92,39 @@ class SteamAppScreen : BaseAppScreen() {
     companion object {
         // Shared state for uninstall dialog - list of appIds that should show the dialog
         private val uninstallDialogAppIds = mutableStateListOf<String>()
-        
+
         fun showUninstallDialog(appId: String) {
             if (!uninstallDialogAppIds.contains(appId)) {
                 uninstallDialogAppIds.add(appId)
             }
         }
-        
+
         fun hideUninstallDialog(appId: String) {
             uninstallDialogAppIds.remove(appId)
         }
-        
+
         fun shouldShowUninstallDialog(appId: String): Boolean {
             return uninstallDialogAppIds.contains(appId)
         }
 
         // Shared state for install dialog - map of gameId to MessageDialogState
         private val installDialogStates = mutableStateMapOf<Int, MessageDialogState>()
-        
+
         fun showInstallDialog(gameId: Int, state: MessageDialogState) {
             installDialogStates[gameId] = state
         }
-        
+
         fun hideInstallDialog(gameId: Int) {
             installDialogStates.remove(gameId)
         }
-        
+
         fun getInstallDialogState(gameId: Int): MessageDialogState? {
             return installDialogStates[gameId]
         }
 
         // Shared state for update/verify operation - map of gameId to AppOptionMenuType
         private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
-        
+
         fun setPendingUpdateVerifyOperation(gameId: Int, operation: AppOptionMenuType?) {
             if (operation != null) {
                 pendingUpdateVerifyOperations[gameId] = operation
@@ -132,7 +132,7 @@ class SteamAppScreen : BaseAppScreen() {
                 pendingUpdateVerifyOperations.remove(gameId)
             }
         }
-        
+
         fun getPendingUpdateVerifyOperation(gameId: Int): AppOptionMenuType? {
             return pendingUpdateVerifyOperations[gameId]
         }
@@ -155,8 +155,20 @@ class SteamAppScreen : BaseAppScreen() {
             appId = libraryItem.appId,
         )
 
-        val isInstalled = remember(libraryItem.appId) {
-            SteamService.isAppInstalled(gameId)
+        var isInstalled by remember(libraryItem.appId) {
+            mutableStateOf(SteamService.isAppInstalled(gameId))
+        }
+
+        DisposableEffect(gameId) {
+            val listener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
+                if (event.appId == gameId) {
+                    isInstalled = SteamService.isAppInstalled(gameId)
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(listener)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(listener)
+            }
         }
 
         // Get hero image URL
@@ -183,6 +195,8 @@ class SteamAppScreen : BaseAppScreen() {
                 DownloadService.getSizeOnDiskDisplay(gameId) {
                     sizeOnDisk = it
                 }
+            } else {
+                sizeOnDisk = null
             }
         }
 
@@ -268,10 +282,76 @@ class SteamAppScreen : BaseAppScreen() {
         return SteamService.hasPartialDownload(libraryItem.gameId)
     }
 
+    override fun observeGameState(
+        context: Context,
+        libraryItem: LibraryItem,
+        onStateChanged: () -> Unit,
+        onProgressChanged: (Float) -> Unit,
+        onHasPartialDownloadChanged: ((Boolean) -> Unit)?
+    ): (() -> Unit)? {
+        val appId = libraryItem.gameId
+        val disposables = mutableListOf<() -> Unit>()
+
+        var progressDisposer = attachDownloadProgressListener(appId, onProgressChanged)
+
+        val installListener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
+            if (event.appId == appId) {
+                onStateChanged()
+            }
+        }
+        PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+        disposables += { PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
+
+        val downloadStatusListener: (AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
+            if (event.appId == appId) {
+                if (event.isDownloading) {
+                    progressDisposer?.invoke()
+                    progressDisposer = attachDownloadProgressListener(appId, onProgressChanged)
+                    onHasPartialDownloadChanged?.invoke(true)
+                } else {
+                    progressDisposer?.invoke()
+                    progressDisposer = null
+                    if (SteamService.isAppInstalled(appId)) {
+                        onHasPartialDownloadChanged?.invoke(false)
+                    }
+                }
+                onStateChanged()
+            }
+        }
+        PluviaApp.events.on<AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener)
+        disposables += { PluviaApp.events.off<AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener) }
+
+        val connectivityListener: (AndroidEvent.DownloadPausedDueToConnectivity) -> Unit = { event ->
+            if (event.appId == appId) {
+                onStateChanged()
+            }
+        }
+        PluviaApp.events.on<AndroidEvent.DownloadPausedDueToConnectivity, Unit>(connectivityListener)
+        disposables += { PluviaApp.events.off<AndroidEvent.DownloadPausedDueToConnectivity, Unit>(connectivityListener) }
+
+        return {
+            progressDisposer?.invoke()
+            disposables.forEach { it() }
+        }
+    }
+
+    private fun attachDownloadProgressListener(
+        appId: Int,
+        onProgressChanged: (Float) -> Unit
+    ): (() -> Unit)? {
+        val downloadInfo = SteamService.getAppDownloadInfo(appId) ?: return null
+        val listener: (Float) -> Unit = { progress ->
+            onProgressChanged(progress)
+        }
+        downloadInfo.addProgressListener(listener)
+        onProgressChanged(downloadInfo.getProgress())
+        return { downloadInfo.removeProgressListener(listener) }
+    }
+
     override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean {
         return SteamService.isUpdatePending(libraryItem.gameId)
     }
-    
+
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
         // Only return path if game is installed
         if (isInstalled(context, libraryItem)) {
@@ -365,7 +445,7 @@ class SteamAppScreen : BaseAppScreen() {
         val isInstalled = SteamService.isAppInstalled(gameId)
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
         val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
-        
+
         if (isDownloading || SteamService.hasPartialDownload(gameId)) {
             // Show cancel download dialog when downloading
             showInstallDialog(
@@ -412,7 +492,7 @@ class SteamAppScreen : BaseAppScreen() {
                 onClick = {
                     val container = ContainerUtils.getOrCreateContainer(context, appId)
                     val variant = container.containerVariant
-                    
+
                     if (!SteamService.isImageFsInstalled(context)) {
                         if (!SteamService.isImageFsInstallable(context, variant)) {
                             showInstallDialog(
@@ -600,29 +680,29 @@ class SteamAppScreen : BaseAppScreen() {
         val appInfo = remember(libraryItem.appId) {
             SteamService.getAppInfoOf(gameId)
         }
-        
+
         // Track uninstall dialog state
         var showUninstallDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }
-        
+
         LaunchedEffect(libraryItem.appId) {
             snapshotFlow { shouldShowUninstallDialog(libraryItem.appId) }
                 .collect { shouldShow ->
                     showUninstallDialog = shouldShow
                 }
         }
-        
+
         // Track install dialog state
-        var installDialogState by remember(gameId) { 
+        var installDialogState by remember(gameId) {
             mutableStateOf(getInstallDialogState(gameId) ?: MessageDialogState(false))
         }
-        
+
         LaunchedEffect(gameId) {
             snapshotFlow { getInstallDialogState(gameId) }
                 .collect { state ->
                     installDialogState = state ?: MessageDialogState(false)
                 }
         }
-        
+
         // Migration state
         val scope = rememberCoroutineScope()
         var showMoveDialog by remember { mutableStateOf(false) }
@@ -630,7 +710,7 @@ class SteamAppScreen : BaseAppScreen() {
         var progress by remember { mutableFloatStateOf(0f) }
         var moved by remember { mutableIntStateOf(0) }
         var total by remember { mutableIntStateOf(0) }
-        val oldGamesDirectory = remember { 
+        val oldGamesDirectory = remember {
             Paths.get(SteamService.defaultAppInstallPath).pathString
         }
         val initialStoragePermissionGranted = remember {
@@ -646,7 +726,7 @@ class SteamAppScreen : BaseAppScreen() {
         }
         var hasStoragePermission by remember { mutableStateOf(initialStoragePermissionGranted) }
         var installSizeInfo by remember(gameId) { mutableStateOf<InstallSizeInfo?>(null) }
-        
+
         // Permission launcher for game migration
         val permissionMovingInternalLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -669,7 +749,7 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             },
         )
-        
+
         // Permission launcher for storage permissions
         val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -735,7 +815,7 @@ class SteamAppScreen : BaseAppScreen() {
                 showInstallDialog(gameId, state)
             }
         }
-        
+
         // Install dialog (INSTALL_APP, NOT_ENOUGH_SPACE, CANCEL_APP_DOWNLOAD)
         if (installDialogState.visible) {
             val onDismissRequest: (() -> Unit)? = {
@@ -784,14 +864,14 @@ class SteamAppScreen : BaseAppScreen() {
                         hideInstallDialog(gameId)
                         val operation = getPendingUpdateVerifyOperation(gameId)
                         setPendingUpdateVerifyOperation(gameId, null)
-                        
+
                         if (operation != null) {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
                                 val downloadInfo = SteamService.downloadApp(gameId)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                                
+
                                 if (operation == AppOptionMenuType.VerifyFiles) {
                                     val prefixToPath: (String) -> String = { prefix ->
                                         PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
@@ -802,7 +882,7 @@ class SteamAppScreen : BaseAppScreen() {
                                         overrideLocalChangeNumber = -1
                                     ).await()
                                 }
-                                
+
                                 container.isNeedsUnpacking = true
                                 container.saveData()
                             }
@@ -830,7 +910,7 @@ class SteamAppScreen : BaseAppScreen() {
                             try {
                                 val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
                                 val variant = container.containerVariant
-                                
+
                                 if (!SteamService.isImageFsInstallable(context, variant)) {
                                     SteamService.downloadImageFs(
                                         onDownloadProgress = { /* TODO: Update loading dialog progress */ },
@@ -863,7 +943,7 @@ class SteamAppScreen : BaseAppScreen() {
                 }
                 else -> null
             }
-            
+
             MessageDialog(
                 visible = installDialogState.visible,
                 onDismissRequest = onDismissRequest,
@@ -875,11 +955,11 @@ class SteamAppScreen : BaseAppScreen() {
                 message = installDialogState.message,
             )
         }
-        
+
         // Uninstall confirmation dialog
         if (showUninstallDialog) {
             AlertDialog(
-                onDismissRequest = { 
+                onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
                 title = { Text("Uninstall Game") },
@@ -893,10 +973,11 @@ class SteamAppScreen : BaseAppScreen() {
                     TextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
-                            
+
                             CoroutineScope(Dispatchers.IO).launch {
                                 val success = SteamService.deleteApp(gameId)
                                 withContext(Dispatchers.Main) {
+                                    ContainerUtils.deleteContainer(context, "STEAM_${gameId}")
                                     if (success) {
                                         Toast.makeText(
                                             context,
@@ -922,7 +1003,7 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         hideUninstallDialog(libraryItem.appId)
                     }) {
                         Text("Cancel")
@@ -930,7 +1011,7 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             )
         }
-        
+
         // Game migration dialog
         if (showMoveDialog) {
             GameMigrationDialog(
