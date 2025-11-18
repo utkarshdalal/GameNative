@@ -342,4 +342,17 @@
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>
+
+    <!-- Login Screen -->
+    <string name="login_app_name">GameNative</string>
+    <string name="login_privacy_policy">Privacy Policy</string>
+    <string name="login_welcome_back">Welcome Back</string>
+    <string name="login_subtitle">Sign in to access your Steam library</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_remember_session">Remember session</string>
+    <string name="login_sign_in">Sign In</string>
+    <string name="login_qr_failed">QR Code Failed</string>
+    <string name="login_retry_qr">Retry QR Code</string>
+    <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>
 </resources>
