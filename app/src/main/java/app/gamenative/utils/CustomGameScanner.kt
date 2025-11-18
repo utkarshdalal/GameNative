@@ -381,14 +381,13 @@ object CustomGameScanner {
     }
 
     /**
-     * Returns a combined set of root paths: the default path (always included)
-     * plus any user-defined additional paths from preferences.
+     * Returns the set of root paths from preferences.
+     * The default path is pre-added to preferences but can be removed by the user.
      */
     fun getAllRoots(): Set<String> {
-        val result = mutableSetOf<String>()
-        result.add(defaultRootPath)
-        result.addAll(PrefManager.customGamePaths)
-        return result
+        // Return paths from preferences, which includes the default path
+        // (unless the user has removed it)
+        return PrefManager.customGamePaths
     }
 
     /**
@@ -399,11 +398,16 @@ object CustomGameScanner {
      * scanAsLibraryItems().
      */
     fun countGamesByRoot(query: String = ""): Map<String, Int> {
-        // Ensure default root path exists (this will create it if it doesn't)
-        val defaultPath = defaultRootPath
         val q = query.trim()
         val result = mutableMapOf<String, Int>()
-        for (root in getAllRoots()) {
+        val roots = getAllRoots()
+        
+        // Handle empty roots gracefully
+        if (roots.isEmpty()) {
+            return result
+        }
+        
+        for (root in roots) {
             val rootFile = File(root)
             if (!rootFile.exists() || !rootFile.isDirectory) {
                 result[root] = 0
@@ -446,11 +450,14 @@ object CustomGameScanner {
         var indexCounter = indexOffsetStart
         val q = query.trim()
         
-        // Ensure default root path exists (this will create it if it doesn't)
-        val defaultPath = defaultRootPath
-        
         val roots = getAllRoots()
         Timber.tag("CustomGameScanner").d("Scanning ${roots.size} root(s) for custom games: $roots")
+        
+        // Handle empty roots gracefully
+        if (roots.isEmpty()) {
+            Timber.tag("CustomGameScanner").d("No custom game paths configured, returning empty list")
+            return items
+        }
         
         for (root in roots) {
             val rootFile = File(root)
