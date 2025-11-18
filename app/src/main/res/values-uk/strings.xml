@@ -1,0 +1,279 @@
+<resources>
+    <string name="app_name">GameNative</string>
+    <string name="login_user">Вхід користувача</string>
+    <string name="login_2fa">Двух-факторна автентифікація</string>
+    <string name="home">Головна</string>
+    <string name="settings">Налаштування</string>
+    <string name="login_qr">Вхід за допомогою QR-коду</string>
+    <string name="app_library">Біблотека</string>
+    <string name="app_downloads">Завантаження</string>
+    <string name="unknown_app">Невідомий застосунок</string>
+    <string name="steam_2fa_incorrect">Невірний код, спробуйте знову.</string>
+    <string name="steam_2fa_confirmation">Підтвердіть вхід, за допомогою мобільного застосунку Steam…</string>
+    <string name="steam_2fa_device">Введіть код двух-факторної автентифікації.</string>
+    <string name="steam_2fa_email">Введіть код відправлений на пошту: %s</string>
+    <string name="header_img_desc">Зображення заголовка застосунку</string>
+    <string name="install_app">Інсталювати</string>
+    <string name="delete_app">Видалити</string>
+    <string name="uninstall">Деінсталювати</string>
+    <string name="run_app">Грати</string>
+    <string name="download_prompt_title">Інсталювати застосунок</string>
+    <string name="delete_prompt_title">Деінсталювати застосунок</string>
+    <string name="cancel_download_prompt_title">Скасувати завантаження</string>
+    <string name="acknowledge">ОК</string>
+    <string name="yes">Так</string>
+    <string name="no">Ні</string>
+    <string name="not_enough_space">Недостатньо місця</string>
+    <string name="proceed">Продовжити</string>
+    <string name="cancel">Скасувати</string>
+    <string name="untitled">Без назви</string>
+    <string name="confirm_delete">Підтвердити і видалити</string>
+    <string name="destination_library">Бібліотека</string>
+    <string name="destination_downloads">Завантаження</string>
+    <string name="destination_friends">Друзі</string>
+
+    <!--Winlator-->
+    <string name="disabled">Вимкнений</string>
+    <string name="copy">Скопіювати</string>
+    <string name="stability">Стабільність</string>
+    <string name="compatibility">Сумісність</string>
+    <string name="intermediate">Середнє значення</string>
+    <string name="performance">Продуктивність</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="title_ubuntufs">Ubuntu FS</string>
+
+    <!-- Winlator: Win Components -->
+    <string name="direct3d">Direct3D</string>
+    <string name="directsound">DirectSound</string>
+    <string name="directmusic">DirectMusic</string>
+    <string name="directplay">DirectPlay</string>
+    <string name="directshow">DirectShow</string>
+    <string name="directx">DirectX</string>
+    <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="wmdecoder">Windows Media Decoder</string>
+    <string name="opengl">OpenGL</string>
+    <string name="dxvk_version">DXVK версія</string>
+    <string name="run">Запустити</string>
+    <string name="edit">Змінити</string>
+    <string name="remove">Видалити</string>
+    <string name="add">Додати</string>
+    <string name="ok">Ок</string>
+    <string name="storage_info">Інформація про сховище</string>
+    <string name="duplicate">Створити копію</string>
+    <string name="reconfigure">Переналаштувати</string>
+    <string name="content_info">Інформація вмісту</string>
+    <string name="game_not_installed_title">Гра не інстальована</string>
+    <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
+    <string name="save_container_settings_title">Зберегти налаштування контейнеру?</string>
+    <string name="save_container_settings_message">Тимчасові налаштування були застосовані для цього запуску. Зберегти їх?</string>
+    <string name="sync_error_title">Помилка синхронізації</string>
+    <string name="save">Зберегти</string>
+    <string name="discard">Скасувати зміни</string>
+    <string name="shortcuts">Ярлики</string>
+    <string name="containers">Контейнери</string>
+    <string name="box64_rc_file">Box64 RCFile</string>
+    <string name="contents">Вміст</string>
+    <string name="about">Про програму</string>
+    <string name="open_file">Відкрити файл</string>
+    <string name="download_file">Завантажити файл</string>
+    <string name="processor_affinity">Спорідненість процесора</string>
+    <string name="bring_to_front">Перенести на передній план</string>
+    <string name="end_process">Завершити процес</string>
+    <string name="new_file">Новий файл</string>
+    <string name="add_to_home_screen">Додати на головний екран</string>
+    <string name="toggle_fullscreen">Перемикання повноекранного режиму</string>
+    <string name="toggle_orientation">Перемикання орієнтації екрану</string>
+    <string name="task_manager">Диспетчер завдань</string>
+    <string name="magnifier">Лупа</string>
+    <string name="logs">Журнали</string>
+    <string name="exit_game">Вийти</string>
+    <string name="exit">Вийти з гри</string>
+    <string name="keyboard">Клавіатура</string>
+    <string name="input_controls">Екранний контролер</string>
+    <string name="touchpad_help">Довідка сенсорної панелі</string>
+
+
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
+        Handling of flags on CALL/RET opcodes<br /><br />
+        <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
+        <b>1</b> : Most RET will need flags, most CALLS will not<br />
+        <b>2</b> : All CALL/RET will need flags (slower)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">Generation of -NAN like on x86</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">Generation of precise x86 rounding</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
+        Dynarec building BigBlock<br /><br />
+        <b>0</b> : Don\'t try to build block as big as possible<br />
+        <b>1</b> : Build Dynarec block as big as possible<br />
+        <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
+        <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
+        Simulation of Strong Memory model<br /><br />
+        <b>0</b> : Don\'t try anything special<br />
+        <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
+        <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
+        <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
+    <string name="box86_64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+
+    <string name="resume_download">Продовжити</string>
+    <string name="pause_download">Пауза</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">Створити ярлик</string>
+    <string name="label">Позначка</string>
+    <string name="icon">Значок</string>
+    <string name="create">Створити</string>
+    <string name="update_now">Оновити зараз</string>
+    <string name="moving_files">Переміщення файлів</string>
+    <string name="need_internet_to_install">Необхідна мережа для інсталяції</string>
+    <string name="install_wifi_only_enabled">Інсталювати тільки через WiFi</string>
+    <string name="installation_progress">Прогрес інсталювання</string>
+    <string name="downloading">Завантаження...</string>
+    <string name="calculating_time">Розрахунок...</string>
+    <string name="update_available">Доступне оновлення</string>
+    <string name="game_information">Інформація про гру</string>
+    <string name="status">Статус</string>
+    <string name="size">Розмір</string>
+    <string name="location">Місце</string>
+    <string name="developer">Видавець</string>
+    <string name="release_date">Дата виходу</string>
+    <string name="installed">Інстальовано</string>
+    <string name="installing">Інсталяція</string>
+    <string name="not_installed">Не інстальовано//Not Installed</string>
+    <string name="open">Відкрити</string>
+    <string name="family_shared">Сімейна бібліотека</string>
+    <string name="games">Ігри</string>
+    <string name="playtime_last_two_weeks">Награно за останні два тижні: %s годин</string>
+    <string name="total_playtime">Всього награно: %s годин</string>
+
+    <!-- Login & Connection -->
+    <string name="no_connection_to_steam">Немає з\'єднання зі Steam</string>
+    <string name="retry_steam_connection">Спробувати</string>
+    <string name="continue_offline">Продовжити офлайн</string>
+
+    <!-- Profile & Menu -->
+    <string name="help_and_support">Допомога &amp; Підтримка//Help &amp; Support</string>
+    <string name="hall_of_fame">Зал слави</string>
+    <string name="go_online">Увійти в мережу</string>
+    <string name="go_offline">Перейти в режим офлайн гри</string>
+    <string name="log_out">Вийти з акаунта</string>
+    <string name="close">Закрити</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">Нова змінна середовища</string>
+    <string name="name">Назва</string>
+    <string name="value">Значення</string>
+    <string name="no_more_known_variables">Більше немає відомих змінних</string>
+    <string name="container_variant">Варіант контейнеру</string>
+    <string name="wine_version">Wine Версія</string>
+    <string name="exec_arguments">Параметри запуску</string>
+    <string name="exec_arguments_example">Наприклад: -dx11</string>
+    <string name="language">Мова</string>
+    <string name="screen_size">Розмір екрану</string>
+    <string name="width">Довжина</string>
+    <string name="height">Висота</string>
+    <string name="audio_driver">Аудіо драйвер</string>
+    <string name="show_fps">Показати FPS</string>
+    <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер "%s"? Цю дію не можна скасувати.</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="force_dlc">Примусити DLC</string>
+    <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
+    <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
+    <string name="launch_steam_client_description">Зменшує продуктивність та сповілнює запуск\nДозволяє онлайн гру а також вирішує проблему DRM та контролеру\nПрацює не для всіх ігор</string>
+    <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
+    <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
+    <string name="steam_type">Версія Steam</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">Графічний драйвер</string>
+    <string name="graphics_driver_version">Версія графічного драйвера</string>
+    <string name="exposed_vulkan_extensions">Відкриті розширення Vulkan</string>
+    <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
+    <string name="frame_synchronization">Синхронізація кадрів</string>
+    <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
+    <string name="vulkan_version">Vulkan версія</string>
+    <string name="image_cache_size">Розмір кешу</string>
+    <string name="dx_wrapper">DX Wrapper</string>
+    <string name="vkd3d_feature_level">VKD3D Feature Level</string>
+    <string name="use_dri3">Використовувати DRI3</string>
+    <string name="use_dri3_description">Вимкнення цього параметра може виправити графічні проблеми на деяких пристроях</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">FEXCore версія</string>
+    <string name="tso_mode">TSO режим</string>
+    <string name="x87_mode">x87 режим</string>
+    <string name="multiblock">Multiblock</string>
+    <string name="emulator_64bit">64-bit Емулятор</string>
+    <string name="emulator_32bit">32-bit Емулятор</string>
+    <string name="box64_version">Box64 Версія</string>
+    <string name="box64_preset">Box64 пресет</string>
+    <string name="box64_presets">Box64 пресет</string>
+    <string name="preset_name">Назва пресету</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">Use SDL API</string>
+    <string name="enable_xinput_api">Enable XInput API</string>
+    <string name="enable_directinput_api">Enable DirectInput API</string>
+    <string name="directinput_mapper_type">DirectInput Mapper Type</string>
+    <string name="disable_mouse_input">Вимкнути введення мишею</string>
+    <string name="touchscreen_mode">Режим сенсорного екрану</string>
+    <string name="emulate_keyboard_mouse">Емуляці клавіатури та миші</string>
+    <string name="emulate_keyboard_mouse_description">Лівий стік = WASD, Правий стік = Миша. L2 = ЛКМ, R2 = ПКМ.</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">Renderer</string>
+    <string name="gpu_name">Назва GPU</string>
+    <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
+    <string name="video_memory_size">Розмір відеопам\'яті</string>
+    <string name="enable_csmt">Enable CSMT (Command Stream Multi-Thread)</string>
+    <string name="enable_strict_shader_math">Enable Strict Shader Math</string>
+    <string name="mouse_warp_override">Mouse Warp Override</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">Змінні середовища</string>
+    <string name="no_environment_variables">Немає змінних середовища</string>
+    <string name="no_drives">Немає дисків</string>
+    <string name="startup_selection">Налаштування при запуску</string>
+    <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
+    <string name="executable_path">Шлях .exe файлу</string>
+    <string name="executable_path_placeholder">Наприклад path\\\\to\\\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">Дозволені орієнтації екрану</string>
+    <string name="select_wine_debug_channels">Обрати канали налагодження Wine</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">Опишіть, що сталось</string>
+    <string name="get_support_on_discord">Отримати допомогу в Discord</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">Менеджер драйверів</string>
+    <string name="select_a_driver">Обрати драйвер</string>
+    <string name="import_zip_from_device">Імпортувати ZIP-файл з пристрою</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">Менеджер вмісту</string>
+    <string name="import_wcp_from_device">Імпортувати .wcp з пристрою</string>
+    <string name="working">Виконання...</string>
+    <string name="selected_content">Обранний вміст</string>
+    <string name="installed_contents">Інстальований вміст</string>
+    <string name="select_type">Обрати тип файлу</string>
+    <string name="untrusted_files_detected">Помічено ненадійні файли</string>
+    <string name="install_anyway">Всеодно інсталювати</string>
+    <string name="remove_content">Видалити вміст?</string>
+    <string name="remove_content_confirmation">Ви впевнені, що хочете вилалити %1$s (%2$s)?</string>
+
+    <!-- Settings NOTE: THESE ARE G-TRANSLATED. PLEASE VERIFY BEFORE MERGE -->
+    <string name="settings_language">Мова</string>
+    <string name="settings_select_language">Обрати мову</string>
+    <string name="settings_language_restart_title">Потрібен перезапуск</string>
+    <string name="settings_language_restart_message">Зміна мови вимагає перезапуску застосунку. Ви бажаєте продовжити?</string>
+    <string name="settings_language_restart_confirm">Перезапустити</string>
+    <string name="settings_language_changing">Зміна мови та перезапуск...</string>
+</resources>
