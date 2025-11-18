@@ -478,4 +478,102 @@
     <string name="container_config_tab_drives">Drives</string>
     <string name="container_config_tab_advanced">Advanced</string>
     <string name="container_config_vkd3d_version">VKD3D Version</string>
+    <string name="container_config_executable_path">Executable Path</string>
+    <string name="container_config_executable_path_placeholder">e.g., path\\to\\exe</string>
+
+    <!-- Libraries Dialog -->
+    <string name="libraries_title">Libraries Used</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+
+    <!-- Supporters Dialog -->
+    <string name="supporters_art_credits">Art Credits</string>
+    <string name="supporters_app_icon">App Icon: Hachi</string>
+    <string name="supporters_alt_icon">Alternate App Icon: rhapsody_mdr</string>
+    <string name="supporters_loading">Loading supporters…</string>
+    <string name="supporters_members">Members</string>
+    <string name="supporters_supporters">Supporters</string>
+    <string name="supporters_none">No supporters yet.</string>
+    <string name="supporters_anonymous">Anonymous</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_preview_warning">Chatting is still an early feature.\nPlease report any issues in the project repo.</string>
+    <string name="chat_no_history">No chat history</string>
+    <string name="chat_send_message">Send a message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_emoticons">Emoticons</string>
+    <string name="chat_stickers">Stickers</string>
+
+    <!-- Library Components -->
+    <string name="library_open">Open</string>
+    <string name="library_installed">Installed</string>
+    <string name="library_installing">Installing</string>
+    <string name="library_not_installed">Not installed</string>
+    <string name="library_family_shared">Family Shared</string>
+    <string name="library_app_type">App Type</string>
+    <string name="library_app_status">App Status</string>
+    <string name="library_layout">Layout</string>
+    <string name="library_layout_list">List</string>
+    <string name="library_layout_capsule">Capsule</string>
+    <string name="library_layout_hero">Hero</string>
+    <string name="library_search_placeholder">Search your games…</string>
+    <string name="library_search_description">Search</string>
+    <string name="library_search_clear">Clear search</string>
+    <string name="library_no_items">No items listed with selection</string>
+    <string name="library_filters">Filters</string>
+    <string name="library_game_count">%1$d games • %2$d installed</string>
+
+    <!-- Two Factor Auth -->
+    <string name="two_factor_login">Login</string>
+    <string name="two_factor_verification_code">Verification Code</string>
+    <string name="two_factor_enter_code">Enter 5-character code</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_validating">Validating content…</string>
+    <string name="contents_error_badtar">File cannot be recognized</string>
+    <string name="contents_error_noprofile">Profile not found in content</string>
+    <string name="contents_error_badprofile">Profile cannot be recognized</string>
+    <string name="contents_error_exist">Content already exists</string>
+    <string name="contents_error_missingfiles">Content is incomplete</string>
+    <string name="contents_error_untrustprofile">Content cannot be trusted</string>
+    <string name="contents_error_nospace">Not enough space</string>
+    <string name="contents_error_generic">Unable to install content</string>
+    <string name="contents_untrusted_files">This content includes files outside the trusted set.</string>
+    <string name="contents_install_components">Install additional components (.wcp: tar.xz/zst)</string>
+    <string name="contents_type">Type</string>
+    <string name="contents_version">Version</string>
+    <string name="contents_code">Code</string>
+    <string name="contents_description">Description</string>
+    <string name="contents_all_trusted">All files are trusted. Ready to install.</string>
+    <string name="contents_no_installed">No installed content for this type.</string>
+    <string name="contents_delete">Delete</string>
+    <string name="contents_review_confirm">This content includes files outside the trusted set. Review and confirm to proceed.</string>
+    <string name="contents_removed">Removed %1$s</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_error_manifest">Failed to load driver manifest: %1$d</string>
+    <string name="driver_error_loading">Error loading driver manifest: %1$s</string>
+    <string name="driver_timeout">Connection timed out. Please check your network and try again.</string>
+    <string name="driver_network_error">Network error: %1$s</string>
+
+    <!-- Settings Interface -->
+    <string name="settings_theme_default">Default</string>
+    <string name="settings_theme_alternate">Alternate</string>
+    <string name="settings_download_slow">Slow</string>
+    <string name="settings_download_medium">Medium</string>
+    <string name="settings_download_fast">Fast</string>
+    <string name="settings_download_blazing">Blazing</string>
+    <string name="settings_download_speed">Download speed</string>
+    <string name="settings_download_heat_warning">Higher speeds may cause increased device heat during downloads</string>
+    <string name="settings_region_default">Default</string>
+    <string name="settings_saving_restarting">Saving settings and restarting…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+
+    <!-- Contents Install Finish -->
+    <string name="contents_install_success">Content installed successfully</string>
+    <string name="contents_install_failed">Failed to install content</string>
+    <string name="contents_install_error">Installation error: %1$s</string>
 </resources>
+
+

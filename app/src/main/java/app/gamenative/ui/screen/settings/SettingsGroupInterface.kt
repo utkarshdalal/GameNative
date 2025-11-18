@@ -155,7 +155,7 @@ fun SettingsGroupInterface(
             Spacer(modifier = Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 IconVariantCard(
-                    label = "Default",
+                    label = stringResource(R.string.settings_theme_default),
                     launcherIconRes = R.mipmap.ic_launcher,
                     notificationIconRes = R.drawable.ic_notification,
                     selected = selectedVariant == 0,
@@ -167,7 +167,7 @@ fun SettingsGroupInterface(
                     },
                 )
                 IconVariantCard(
-                    label = "Alternate",
+                    label = stringResource(R.string.settings_theme_alternate),
                     launcherIconRes = R.mipmap.ic_launcher_alt,
                     notificationIconRes = R.drawable.ic_notification_alt,
                     selected = selectedVariant == 1,
@@ -197,7 +197,12 @@ fun SettingsGroupInterface(
         )
 
         // Download speed setting
-        val downloadSpeedLabels = remember { listOf("Slow", "Medium", "Fast", "Blazing") }
+        val downloadSpeedLabels = listOf(
+            stringResource(R.string.settings_download_slow),
+            stringResource(R.string.settings_download_medium),
+            stringResource(R.string.settings_download_fast),
+            stringResource(R.string.settings_download_blazing)
+        )
         val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
         var downloadSpeedValue by rememberSaveable {
             mutableStateOf(
@@ -208,12 +213,12 @@ fun SettingsGroupInterface(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "Download speed",
+                text = stringResource(R.string.settings_download_speed),
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.size(4.dp))
             Text(
-                text = "Higher speeds may cause increased device heat during downloads",
+                text = stringResource(R.string.settings_download_heat_warning),
                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -305,7 +310,7 @@ fun SettingsGroupInterface(
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_download_server_title)) },
-            subtitle = { Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: "Default") },
+            subtitle = { Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default)) },
             onClick = { openRegionDialog = true }
         )
     }
@@ -374,7 +379,7 @@ fun SettingsGroupInterface(
     LoadingDialog(
         visible = showStatusBarLoadingDialog,
         progress = -1f, // Indeterminate progress
-        message = "Saving settings and restarting..."
+        message = context.getString(R.string.settings_saving_restarting)
     )
 
     // Language selection dialog

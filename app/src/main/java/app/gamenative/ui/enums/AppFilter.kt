@@ -19,32 +19,32 @@ enum class AppFilter(
 ) {
     INSTALLED(
         code = 0x01,
-        displayText = stringResource(R.string.app_filter_installed),
+        displayText = "Installed",
         icon = Icons.Default.InstallMobile,
     ),
     GAME(
         code = 0x02,
-        displayText = stringResource(R.string.app_filter_game),
+        displayText = "Game",
         icon = Icons.Default.VideogameAsset,
     ),
     APPLICATION(
         code = 0x04,
-        displayText = stringResource(R.string.app_filter_application),
+        displayText = "Application",
         icon = Icons.Default.Computer,
     ),
     TOOL(
         code = 0x08,
-        displayText = stringResource(R.string.app_filter_tool),
+        displayText = "Tool",
         icon = Icons.Default.Build,
     ),
     DEMO(
         code = 0x10,
-        displayText = stringResource(R.string.app_filter_demo),
+        displayText = "Demo",
         icon = Icons.Default.AvTimer,
     ),
     SHARED(
         code = 0x20,
-        displayText = stringResource(R.string.app_filter_family),
+        displayText = "Family Sharing",
         icon = Icons.Default.Diversity3,
     ),
     // ALPHABETIC(

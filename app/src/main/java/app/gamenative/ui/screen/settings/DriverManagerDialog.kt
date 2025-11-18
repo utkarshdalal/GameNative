@@ -153,14 +153,14 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Timber.d("DriverManagerDialog: Manifest loaded with ${manifest.size} entries")
                 } else {
                     withContext(Dispatchers.Main) {
-                        manifestError = "Failed to load driver manifest: ${response.code}"
+                        manifestError = ctx.getString(R.string.driver_error_manifest, response.code)
                         isLoadingManifest = false
                     }
                     Timber.w("DriverManagerDialog: Failed to load manifest HTTP=${response.code}")
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    manifestError = "Error loading driver manifest: ${e.message}"
+                    manifestError = ctx.getString(R.string.driver_error_loading, e.message ?: "")
                     isLoadingManifest = false
                 }
                 Timber.e(e, "DriverManagerDialog: Error loading driver manifest")
@@ -233,15 +233,15 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     destFile.delete()
                 }
             } catch (e: SocketTimeoutException) {
-                val errorMessage = "Connection timed out. Please check your network and try again."
+                val errorMessage = ctx.getString(R.string.driver_timeout)
                 lastMessage = errorMessage
                 Toast.makeText(ctx, errorMessage, Toast.LENGTH_SHORT).show()
                 Timber.e(e, "DriverManagerDialog: Download timeout")
             } catch (e: IOException) {
                 val errorMessage = if (e.message?.contains("timeout", ignoreCase = true) == true) {
-                    "Connection timed out. Please check your network and try again."
+                    ctx.getString(R.string.driver_timeout)
                 } else {
-                    "Network error: ${e.message}"
+                    ctx.getString(R.string.driver_network_error, e.message ?: "")
                 }
                 lastMessage = errorMessage
                 Toast.makeText(ctx, errorMessage, Toast.LENGTH_SHORT).show()

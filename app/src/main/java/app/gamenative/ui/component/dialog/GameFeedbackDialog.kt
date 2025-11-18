@@ -83,7 +83,7 @@ fun GameFeedbackDialog(
 
                     // Tags Selection
                     Text(
-                        text = stringResource(R.strings.game_feedback_issues_question),
+                        text = stringResource(R.string.game_feedback_issues_question),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .align(Alignment.Start)

@@ -214,7 +214,7 @@ internal fun AppItem(
                                     if (isInstalled) {
                                         Icon(
                                             Icons.Filled.Check,
-                                            contentDescription = "Installed",
+                                            contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_installed),
                                             tint = Color.White,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -222,7 +222,7 @@ internal fun AppItem(
                                     if (appInfo.isShared) {
                                         Icon(
                                             Icons.Filled.Face4,
-                                            contentDescription = "Family Shared",
+                                            contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_family_shared),
                                             tint = MaterialTheme.colorScheme.tertiary,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -250,7 +250,7 @@ internal fun AppItem(
                     modifier = Modifier.height(40.dp)
                 ) {
                     Text(
-                        text = "Open",
+                        text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_open),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -305,9 +305,9 @@ internal fun GameInfoBlock(
         ) {
             // Status indicator: Installing / Installed / Not installed
             val statusText = when {
-                isDownloading -> "Installing"
-                isInstalled -> "Installed"
-                else -> "Not installed"
+                isDownloading -> androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_installing)
+                isInstalled -> androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_installed)
+                else -> androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_not_installed)
             }
             val statusColor = when {
                 isDownloading || isInstalled -> MaterialTheme.colorScheme.tertiary
@@ -351,7 +351,7 @@ internal fun GameInfoBlock(
             // Family share indicator on its own line if needed
             if (appInfo.isShared) {
                 Text(
-                    text = "Family Shared",
+                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_family_shared),
                     style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
                     color = MaterialTheme.colorScheme.tertiary
                 )

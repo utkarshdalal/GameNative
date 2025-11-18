@@ -40,7 +40,7 @@ fun LibraryBottomSheet(
             .fillMaxWidth()
             .padding(horizontal = 32.dp),
     ) {
-        Text(text = "App Type", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.library_app_type), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow(
            verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -60,7 +60,7 @@ fun LibraryBottomSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "App Status", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.library_app_status), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow {
             AppFilter.entries.forEach { appFilter ->
@@ -77,26 +77,26 @@ fun LibraryBottomSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Layout", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.library_layout), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow (
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             FlowFilterChip(
                 onClick = { onViewChanged(PaneType.LIST) },
-                label = { Text(text = "List") },
+                label = { Text(text = stringResource(R.string.library_layout_list)) },
                 selected = (currentView == PaneType.LIST),
                 leadingIcon = { Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = null) },
             )
             FlowFilterChip(
                 onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
-                label = { Text(text = "Capsule") },
+                label = { Text(text = stringResource(R.string.library_layout_capsule)) },
                 selected = (currentView == PaneType.GRID_CAPSULE),
                 leadingIcon = { Icon(imageVector = Icons.Default.PhotoAlbum, contentDescription = null) },
             )
             FlowFilterChip(
                 onClick = { onViewChanged(PaneType.GRID_HERO) },
-                label = { Text(text = "Hero") },
+                label = { Text(text = stringResource(R.string.library_layout_hero)) },
                 selected = (currentView == PaneType.GRID_HERO),
                 leadingIcon = { Icon(imageVector = Icons.Default.PhotoSizeSelectActual, contentDescription = null) },
             )

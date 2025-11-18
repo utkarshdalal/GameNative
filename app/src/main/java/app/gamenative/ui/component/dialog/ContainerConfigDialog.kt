@@ -1824,8 +1824,8 @@ private fun ExecutablePathDropdown(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            label = { Text("Executable Path") },
-            placeholder = { Text("e.g., path\\to\\exe") },
+            label = { Text(stringResource(R.string.container_config_executable_path)) },
+            placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
