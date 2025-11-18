@@ -977,8 +977,11 @@ class SteamAppScreen : BaseAppScreen() {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val success = SteamService.deleteApp(gameId)
                                 withContext(Dispatchers.Main) {
-                                    ContainerUtils.deleteContainer(context, "STEAM_${gameId}")
+                                    ContainerUtils.deleteContainer(context, libraryItem.appId)
+                                }
+                                withContext(Dispatchers.Main) {
                                     if (success) {
+                                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                                         Toast.makeText(
                                             context,
                                             "${appInfo?.name ?: libraryItem.name} has been uninstalled",
