@@ -50,8 +50,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+import kotlinx.coroutines.delay
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
 import app.gamenative.PrefManager
@@ -63,6 +72,9 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.PaddingUtils
 import timber.log.Timber
+
+// Minimum time in milliseconds to show skeleton loaders - used to test the transition from skeletons to actual games
+private const val MINIMUM_LOAD_TIME_MS = 0L
 
 /**
  * Calculates the installed games count based on the current filter state.
@@ -267,38 +279,122 @@ internal fun LibraryListPane(
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                LazyVerticalGrid(
-                    columns = columnType,
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(
-                        start = 20.dp,
-                        end = 20.dp,
-                        bottom = 72.dp
-                    ),
-                ) {
-                    items(items = state.appInfoList, key = { it.index }) { item ->
-                        if (item.index > 0 && paneType == PaneType.LIST) {
-                            // Dividers in list view
-                            HorizontalDivider()
-                        }
-                        AppItem(
-                            appInfo = item,
-                            onClick = { onNavigate(item.appId) },
-                            paneType = paneType,
-                            onFocus = { targetOfScroll = item.index },
-                        )
+                // Track skeleton overlay alpha (fade out when games are loaded)
+                // Show skeleton overlay when loading OR when list is empty (initial state)
+                var shouldShowSkeletonOverlay by remember { 
+                    mutableStateOf(true) // Start visible
+                }
+                
+                // Fade out skeleton overlay when games appear
+                val skeletonAlpha by animateFloatAsState(
+                    targetValue = if (shouldShowSkeletonOverlay) 1f else 0f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "skeletonFadeOut"
+                )
+                
+                // Update skeleton overlay visibility based on loading state and games
+                LaunchedEffect(state.isLoading, state.appInfoList.size) {
+                    if (state.isLoading || state.appInfoList.isEmpty()) {
+                        // Still loading or no games yet, show skeleton overlay
+                        shouldShowSkeletonOverlay = true
+                    } else if (state.appInfoList.isNotEmpty() && !state.isLoading) {
+                        // Games are loaded and loading is complete, start fading out skeleton overlay
+                        delay(100) // Small delay to let games render and fade in
+                        shouldShowSkeletonOverlay = false
                     }
-                    if (state.appInfoList.size < state.totalAppsInFilter) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
+                }
+                
+                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary) {
+                    val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
+                    val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
+                    val total = customCount + steamCount
+                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, Total: $total")
+                    // Show at least a few skeletons, but not more than a reasonable amount
+                    if (total == 0) 6 else minOf(total, 20)
+                }
+                
+                // Show actual games (base layer)
+                if (state.appInfoList.isNotEmpty()) {
+                    LazyVerticalGrid(
+                        columns = columnType,
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(
+                            start = 20.dp,
+                            end = 20.dp,
+                            bottom = 72.dp
+                        ),
+                    ) {
+                        items(items = state.appInfoList, key = { it.index }) { item ->
+                            // Fade-in animation for items
+                            var isVisible by remember(item.index) { mutableStateOf(false) }
+                            val alpha by animateFloatAsState(
+                                targetValue = if (isVisible) 1f else 0f,
+                                animationSpec = tween(durationMillis = 300),
+                                label = "fadeIn"
+                            )
+                            
+                            LaunchedEffect(item.index) {
+                                isVisible = true
+                            }
+                            
+                            Box(modifier = Modifier.alpha(alpha)) {
+                                if (item.index > 0 && paneType == PaneType.LIST) {
+                                    // Dividers in list view
+                                    HorizontalDivider()
+                                }
+                                AppItem(
+                                    appInfo = item,
+                                    onClick = { onNavigate(item.appId) },
+                                    paneType = paneType,
+                                    onFocus = { targetOfScroll = item.index },
+                                )
+                            }
+                        }
+                        if (state.appInfoList.size < state.totalAppsInFilter) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Skeleton loaders as overlay (fades out when games are loaded)
+                // Use a separate non-interactive state so it doesn't interfere with scrolling
+                val skeletonListState = remember { LazyGridState() }
+                if (skeletonAlpha > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(skeletonAlpha)
+                            .pointerInteropFilter { false } // Non-interactive - allows touch events to pass through
+                    ) {
+                        LazyVerticalGrid(
+                            columns = columnType,
+                            state = skeletonListState,
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(
+                                start = 20.dp,
+                                end = 20.dp,
+                                bottom = 72.dp
+                            ),
+                        ) {
+                            items(totalSkeletonCount) { index ->
+                                if (index > 0 && paneType == PaneType.LIST) {
+                                    HorizontalDivider()
+                                }
+                                GameSkeletonLoader(
+                                    paneType = paneType,
+                                )
                             }
                         }
                     }
