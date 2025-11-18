@@ -891,7 +891,9 @@ class SteamAppScreen : BaseAppScreen() {
             }
             
             MessageDialog(
-                visible = installDialogState.visible,
+                // Don't show dialog if it's INSTALL_APP type and content isn't ready yet
+                visible = installDialogState.visible && 
+                    !(installDialogState.type == DialogType.INSTALL_APP && installDialogState.title.isNullOrEmpty()),
                 onDismissRequest = onDismissRequest,
                 onConfirmClick = onConfirmClick,
                 onDismissClick = onDismissClick,
