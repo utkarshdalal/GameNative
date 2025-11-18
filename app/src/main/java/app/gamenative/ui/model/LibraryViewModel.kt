@@ -207,10 +207,6 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
-                .sortedWith(
-                    // Comes from DAO in alphabetical order
-                    compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
-                )
                 .toList()
 
             // Map Steam apps to UI items
@@ -233,10 +229,27 @@ class LibraryViewModel @Inject constructor(
             val includeSteam = _state.value.showSteamInLibrary
             val includeOpen = _state.value.showCustomGamesInLibrary
 
+            // Combine both lists
             val combined = buildList<LibraryItem> {
                 if (includeSteam) addAll(steamUiItems)
                 if (includeOpen) addAll(customGameItems)
-            }
+            }.sortedWith(
+                // Sort combined list: if INSTALLED filter is active, sort by installed status first, then alphabetically
+                // Otherwise, sort alphabetically by name
+                if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
+                    // Within each group, sort alphabetically
+                    compareBy<LibraryItem> { item ->
+                        val isInstalled = when (item.gameSource) {
+                            GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
+                            GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
+                        }
+                        if (isInstalled) 0 else 1
+                    }.thenBy { it.name.lowercase() }
+                } else {
+                    // Just sort alphabetically by name
+                    compareBy { it.name.lowercase() }
+                }
+            )
 
             // Total count for the current filter
             val totalFound = combined.size

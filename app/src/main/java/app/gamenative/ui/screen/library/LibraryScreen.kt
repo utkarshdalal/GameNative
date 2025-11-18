@@ -9,10 +9,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
@@ -45,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
@@ -162,8 +166,14 @@ private fun LibraryScreenContent(
     // On the game page we want to hide the top padding when the status bar is hidden.
     val safePaddingModifier = if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
         if (selectedAppId != null) {
-            // Detail (game) page: compute top padding via PaddingUtils
-            Modifier.padding(top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding())
+            // Detail (game) page: use actual status bar height when status bar is visible,
+            // or 0.dp when status bar is hidden
+            val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
+                0.dp
+            } else {
+                WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            }
+            Modifier.padding(top = topPadding)
         } else {
             // List page keeps safe cutout padding (for notches)
             Modifier.displayCutoutPadding()
