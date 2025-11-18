@@ -1,0 +1,271 @@
+<resources>
+    <string name="app_name">GameNative</string>
+    <string name="login_user">Login do Usuário</string>
+    <string name="login_2fa">Dois Fatores</string>
+    <string name="home">Home</string>
+    <string name="settings">Configurações</string>
+    <string name="login_qr">QR Login</string>
+    <string name="app_library">Biblioteca</string>
+    <string name="app_downloads">Downloads</string>
+    <string name="unknown_app">App Desconhecido</string>
+    <string name="steam_2fa_incorrect">O Código anterior está incorreto, por favor tente denovo.</string>
+    <string name="steam_2fa_confirmation">Use o Aplicativo do Steam Mobile para logar-se...</string>
+    <string name="steam_2fa_device">Por favor entre com o código de 2 Fatores do seu aplicativo autenticador.</string>
+    <string name="steam_2fa_email">Por favor entre com o código de autenticação enviado para o email em %s</string>
+    <string name="header_img_desc">Imagem de cabeçalho do App</string>
+    <string name="install_app">Instalar</string>
+    <string name="delete_app">Deletar</string>
+    <string name="uninstall">Desinstalar</string>
+    <string name="run_app">Jogar</string>
+    <string name="download_prompt_title">Instalar App</string>
+    <string name="delete_prompt_title">Deletar App</string>
+    <string name="cancel_download_prompt_title">Cancelar Download</string>
+    <string name="acknowledge">OK</string>
+    <string name="yes">Sim</string>
+    <string name="no">Não</string>
+    <string name="not_enough_space">Sem espaço suficiente</string>
+    <string name="proceed">Continuar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="untitled">Sem Título</string>
+    <string name="confirm_delete">Confirmar Deleção</string>
+    <string name="destination_library">Biblioteca</string>
+    <string name="destination_downloads">Downloads</string>
+    <string name="destination_friends">Amigos</string>
+
+    <!--Winlator-->
+    <string name="disabled">Desabilitado</string>
+    <string name="copy">Copiar</string>
+    <string name="stability">Estabilidade</string>
+    <string name="compatibility">Compatibilidade</string>
+    <string name="intermediate">Intermediário</string>
+    <string name="performance">Desempenho</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="title_ubuntufs">Ubuntu FS</string>
+
+    <!-- Winlator: Win Components -->
+    <string name="direct3d">Direct3D</string>
+    <string name="directsound">DirectSound</string>
+    <string name="directmusic">DirectMusic</string>
+    <string name="directplay">DirectPlay</string>
+    <string name="directshow">DirectShow</string>
+    <string name="directx">DirectX</string>
+    <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="wmdecoder">Windows Media Decoder</string>
+    <string name="opengl">OpenGL</string>
+    <string name="dxvk_version">DXVK Version</string>
+    <string name="run">Rodar</string>
+    <string name="edit">Editar</string>
+    <string name="remove">Remover</string>
+    <string name="add">Adicionar</string>
+    <string name="ok">Ok</string>
+    <string name="storage_info">Info de armazenamento</string>
+    <string name="duplicate">Duplicar</string>
+    <string name="reconfigure">Reconfigurar</string>
+    <string name="content_info">Info de Conteúdo</string>
+    <string name="game_not_installed_title">Jogo Não instalado</string>
+    <string name="game_not_installed_message">%s não está instalado. Por favor instale o jogo primeiro antes de iniciar.</string>
+    <string name="save_container_settings_title">Salvar configuração do contêiner?</string>
+    <string name="save_container_settings_message">Foram aplicadas alterações temporárias na configuração do contêiner para esta inicialização. Deseja salvá-las??</string>
+    <string name="sync_error_title">Erro de Sincronização</string>
+    <string name="save">Salvar</string>
+    <string name="discard">Descartar</string>
+    <string name="shortcuts">Atalhos</string>
+    <string name="containers">Contêiner</string>
+    <string name="box64_rc_file">Box64 RCFile</string>
+    <string name="contents">Conteúdos</string>
+    <string name="about">Sobre</string>
+    <string name="open_file">Abrir Arquivo</string>
+    <string name="download_file">Download de Arquivo</string>
+    <string name="processor_affinity">Afinidade do Processador</string>
+    <string name="bring_to_front">Trazer para Frente</string>
+    <string name="end_process">Encerrar Processo</string>
+    <string name="new_file">Novo Arquivo</string>
+    <string name="add_to_home_screen">Adicionar para tela Inicial</string>
+    <string name="toggle_fullscreen">Alternar Tela Cheia</string>
+    <string name="toggle_orientation">Alternar Orientação</string>
+    <string name="task_manager">Gerenciador de tarefas</string>
+    <string name="magnifier">Lupa</string>
+    <string name="logs">Logs</string>
+    <string name="exit_game">Sair</string>
+    <string name="exit">Sair do Jogo</string>
+    <string name="keyboard">Teclado</string>
+    <string name="input_controls">Controle On-screen</string>
+    <string name="touchpad_help">Ajuda Touchpad</string>
+
+
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
+        Tratamento das flags em opcodes CALL/RET<br /><br />
+        <b>0</b> : Trata CALL/RET como se nunca precisassem de flags (mais rápido, instável)<br />
+        <b>1</b> : A maioria dos RET precisará de flags, a maioria dos CALLs não<br />
+        <b>2</b> : Todos CALL/RET precisarão de flags (mais lento)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">Geração de -NAN como no x86</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">Geração do arredondamento preciso do x86</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">Uso de Float/Double para emulação x87</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
+        Construção de BigBlock pelo Dynarec<br /><br />
+        <b>0</b> : Não tenta construir o bloco o maior possível<br />
+        <b>1</b> : Constrói o bloco Dynarec o maior possível<br />
+        <b>2</b> : Constrói bloco Dynarec maior (continua quando o bloco se sobrepõe, mas somente para blocos na memória elf)<br />
+        <b>3</b> : Constrói bloco Dynarec maior (continua quando o bloco se sobrepõe, para todos os tipos de memória)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
+        Simulação do modelo de memória forte<br /><br />
+        <b>0</b> : Não tenta nada especial<br />
+        <b>1</b> : Habilita algumas barreiras de memória ao escrever na memória (em alguns opcodes MOV)<br />
+        <b>2</b> : Tudo do 1 mais uma barreira de memória em toda escrita usando MOV<br />
+        <b>3</b> : Tudo do 2 mais barreira de memória na leitura e em alguns opcodes SSE/SSE2
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_forward">Define o valor máximo de forward permitido ao construir Block</string>
+    <string name="box86_64_env_var_help__dynarec_callret">Otimização dos opcodes CALL/RET</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Define se o Dynarec aguardará ou não o FillBlock ficar pronto</string>
+
+    <string name="resume_download">Retomar</string>
+    <string name="pause_download">Pausar</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">Criar atalho</string>
+    <string name="label">Rótulo</string>
+    <string name="icon">Ícone</string>
+    <string name="create">Criar</string>
+    <string name="update_now">Atualizar agora</string>
+    <string name="moving_files">Movendo arquivos</string>
+    <string name="need_internet_to_install">É necessário conexão com a internet para instalar</string>
+    <string name="install_wifi_only_enabled">Instalação somente via Wi-Fi habilitada</string>
+    <string name="installation_progress">Progresso da instalação</string>
+    <string name="downloading">Baixando...</string>
+    <string name="calculating_time">Calculando...</string>
+    <string name="update_available">Atualização disponível</string>
+    <string name="game_information">Informações do jogo</string>
+    <string name="status">Status</string>
+    <string name="size">Tamanho</string>
+    <string name="location">Localização</string>
+    <string name="developer">Desenvolvedor</string>
+    <string name="release_date">Data de lançamento</string>
+    <string name="installed">Instalado</string>
+    <string name="installing">Instalando</string>
+    <string name="not_installed">Não instalado</string>
+    <string name="open">Abrir</string>
+    <string name="family_shared">Compartilhado na família</string>
+    <string name="games">Jogos</string>
+    <string name="playtime_last_two_weeks">Tempo de jogo nas últimas 2 semanas: %s h</string>
+    <string name="total_playtime">Tempo total de jogo: %s h</string>
+
+    <!-- Login & Connection -->
+    <string name="no_connection_to_steam">Sem conexão com o Steam</string>
+    <string name="retry_steam_connection">Tentar reconectar ao Steam</string>
+    <string name="continue_offline">Continuar offline</string>
+
+    <!-- Profile & Menu -->
+    <string name="help_and_support">Ajuda e Suporte</string>
+    <string name="hall_of_fame">Hall da Fama</string>
+    <string name="go_online">Ir online</string>
+    <string name="go_offline">Ir offline</string>
+    <string name="log_out">Sair</string>
+    <string name="close">Fechar</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">Nova Variável de Ambiente</string>
+    <string name="name">Nome</string>
+    <string name="value">Valor</string>
+    <string name="no_more_known_variables">Sem mais variáveis conhecidas</string>
+    <string name="container_variant">Variante do Contêiner</string>
+    <string name="wine_version">Versão do Wine</string>
+    <string name="exec_arguments">Argumentos de execução</string>
+    <string name="exec_arguments_example">Exemplo: -dx11</string>
+    <string name="language">Idioma</string>
+    <string name="screen_size">Tamanho da Tela</string>
+    <string name="width">Largura</string>
+    <string name="height">Altura</string>
+    <string name="audio_driver">Driver de Áudio</string>
+    <string name="show_fps">Mostrar FPS</string>
+    <string name="remove_driver_confirmation">Tem certeza de que deseja remover o driver "%s"? Isso não pode ser desfeito</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="force_dlc">Forçar DLC</string>
+    <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
+    <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
+    <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
+    <string name="allow_steam_updates">Permitir atualizações do Steam</string>
+    <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>
+    <string name="steam_type">Tipo de Steam</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">Driver Gráfico</string>
+    <string name="graphics_driver_version">Versão do Driver Gráfico</string>
+    <string name="exposed_vulkan_extensions">Extensões Vulkan Expostas</string>
+    <string name="max_device_memory">Memória Máxima do Dispositivo</string>
+    <string name="frame_synchronization">Sincronização de Quadros</string>
+    <string name="use_adrenotools_turnip">Usar Adrenotools Turnip</string>
+    <string name="vulkan_version">Versão do Vulkan</string>
+    <string name="image_cache_size">Tamanho do Cache de Imagens</string>
+    <string name="dx_wrapper">DX Wrapper</string>
+    <string name="vkd3d_feature_level">Nível de recurso do VKD3D</string>
+    <string name="use_dri3">Usar DRI3</string>
+    <string name="use_dri3_description">Desabilitar pode corrigir glitches gráficos em alguns dispositivos</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">Versão do FEXCore</string>
+    <string name="tso_mode">Modo TSO</string>
+    <string name="x87_mode">Modo x87</string>
+    <string name="multiblock">Multiblock</string>
+    <string name="emulator_64bit">Emulador 64-bit</string>
+    <string name="emulator_32bit">Emulador 32-bit</string>
+    <string name="box64_version">Versão do Box64</string>
+    <string name="box64_preset">Predefinição do Box64</string>
+    <string name="box64_presets">Predefinições do Box64</string>
+    <string name="preset_name">Nome da predefinição</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">Usar API SDL</string>
+    <string name="enable_xinput_api">Habilitar API XInput</string>
+    <string name="enable_directinput_api">Habilitar API DirectInput</string>
+    <string name="directinput_mapper_type">Tipo de mapeador DirectInput</string>
+    <string name="disable_mouse_input">Desabilitar entrada do mouse</string>
+    <string name="touchscreen_mode">Modo Touchscreen</string>
+    <string name="emulate_keyboard_mouse">Emular teclado e mouse</string>
+    <string name="emulate_keyboard_mouse_description">Left stick = WASD, Right stick = mouse. L2 = left click, R2 = right click.</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">Renderizador</string>
+    <string name="gpu_name">Nome da GPU</string>
+    <string name="offscreen_rendering_mode">Modo de Renderização Offscreen</string>
+    <string name="video_memory_size">Tamanho da Memória de Vídeo</string>
+    <string name="enable_csmt">Habilitar CSMT (Command Stream Multi-Thread)</string>
+    <string name="enable_strict_shader_math">Habilitar operações matemáticas estritas de shader</string>
+    <string name="mouse_warp_override">Substituir warp do mouse</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">Variáveis de Ambiente</string>
+    <string name="no_environment_variables">Sem variáveis de ambiente</string>
+    <string name="no_drives">Sem drives</string>
+    <string name="startup_selection">Seleção de Inicialização</string>
+    <string name="processor_affinity_32bit">Afinidade de processador (apps 32-bit)</string>
+    <string name="executable_path">Caminho Executável</string>
+    <string name="executable_path_placeholder">ex.: caminho\\\\para\\\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">Orientações Permitidas</string>
+    <string name="select_wine_debug_channels">Selecionar Canais de Debug do Wine</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">Descreva o que aconteceu</string>
+    <string name="get_support_on_discord">Obtenha suporte no Discord</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">Gerenciador de Drivers</string>
+    <string name="select_a_driver">Selecione um driver</string>
+    <string name="import_zip_from_device">Importar ZIP do dispositivo</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">Gerenciador de Conteúdos</string>
+    <string name="import_wcp_from_device">Importar .wcp do dispositivo</string>
+    <string name="working">Processando...</string>
+    <string name="selected_content">Conteúdo selecionado</string>
+    <string name="installed_contents">Conteúdos instalados</string>
+    <string name="select_type">Selecione o tipo</string>
+    <string name="untrusted_files_detected">Arquivos não confiáveis detectados</string>
+    <string name="install_anyway">Instalar mesmo assim</string>
+    <string name="remove_content">Remover conteúdo?</string>
+    <string name="remove_content_confirmation">Tem certeza de que deseja remover %1$s (%2$s)?</string>
+</resources>
