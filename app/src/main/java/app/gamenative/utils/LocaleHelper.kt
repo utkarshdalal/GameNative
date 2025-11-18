@@ -17,6 +17,7 @@ object LocaleHelper {
      */
     val SUPPORTED_LANGUAGES = linkedMapOf(
         "" to "System Default",
+        "da" to "Dansk (Danish)",
         "en" to "English",
         "pt" to "Português (Portuguese)",
         "uk" to "Українська (Ukrainian)"
