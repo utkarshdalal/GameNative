@@ -199,21 +199,15 @@ class LibraryViewModel @Inject constructor(
                 if (includeSteam) addAll(steamUiItems)
                 if (includeOpen) addAll(customGameItems)
             }.sortedWith(
-                // Sort combined list: if INSTALLED filter is active, sort by installed status first, then alphabetically
-                // Otherwise, sort alphabetically by name
-                if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
-                    // Within each group, sort alphabetically
-                    compareBy<LibraryItem> { item ->
-                        val isInstalled = when (item.gameSource) {
-                            GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
-                            GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
-                        }
-                        if (isInstalled) 0 else 1
-                    }.thenBy { it.name.lowercase() }
-                } else {
-                    // Just sort alphabetically by name
-                    compareBy { it.name.lowercase() }
-                }
+                // Always sort by installed status first (installed games at top), then alphabetically within each group
+                compareBy<LibraryItem> { item ->
+                    val isInstalled = when (item.gameSource) {
+                        GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
+                        GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
+                    }
+                    // Return 0 for installed, 1 for not installed (so installed comes first)
+                    if (isInstalled) 0 else 1
+                }.thenBy { it.name.lowercase() } // Alphabetical sorting within installed and uninstalled groups
             )
 
             // Total count for the current filter
