@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.enums.AppType
+import app.gamenative.R
 import java.util.EnumSet
 
 enum class AppFilter(
@@ -18,32 +19,32 @@ enum class AppFilter(
 ) {
     INSTALLED(
         code = 0x01,
-        displayText = "Installed",
+        displayText = stringResource(R.string.app_filter_installed),
         icon = Icons.Default.InstallMobile,
     ),
     GAME(
         code = 0x02,
-        displayText = "Game",
+        displayText = stringResource(R.string.app_filter_game),
         icon = Icons.Default.VideogameAsset,
     ),
     APPLICATION(
         code = 0x04,
-        displayText = "Application",
+        displayText = stringResource(R.string.app_filter_application),
         icon = Icons.Default.Computer,
     ),
     TOOL(
         code = 0x08,
-        displayText = "Tool",
+        displayText = stringResource(R.string.app_filter_tool),
         icon = Icons.Default.Build,
     ),
     DEMO(
         code = 0x10,
-        displayText = "Demo",
+        displayText = stringResource(R.string.app_filter_demo),
         icon = Icons.Default.AvTimer,
     ),
     SHARED(
         code = 0x20,
-        displayText = "Family",
+        displayText = stringResource(R.string.app_filter_family),
         icon = Icons.Default.Diversity3,
     ),
     // ALPHABETIC(

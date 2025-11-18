@@ -377,8 +377,7 @@ fun AppScreen(
                         visible = true,
                         type = DialogType.NOT_ENOUGH_SPACE,
                         title = context.getString(R.string.not_enough_space),
-                        message = "The app being installed needs $installSize of space but " +
-                                "there is only $availableSpace left on this device",
+                        message = context.getString(R.string.library_not_enough_space_message, installSize, availableSpace),
                         confirmBtnText = context.getString(R.string.acknowledge),
                     )
                 } else {
@@ -386,17 +385,14 @@ fun AppScreen(
                         visible = true,
                         type = DialogType.INSTALL_APP,
                         title = context.getString(R.string.download_prompt_title),
-                        message = "The app being installed has the following space requirements. Would you like to proceed?" +
-                                "\n\n\tDownload Size: $downloadSize" +
-                                "\n\tSize on Disk: $installSize" +
-                                "\n\tAvailable Space: $availableSpace",
+                        message = context.getString(R.string.library_download_prompt_message, downloadSize, installSize, availableSpace),
                         confirmBtnText = context.getString(R.string.proceed),
                         dismissBtnText = context.getString(R.string.cancel),
                     )
                 }
             } else {
                 // Snack bar this?
-                Toast.makeText(context, "Storage permission required", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.library_storage_permission_required), Toast.LENGTH_SHORT).show()
             }
         },
     )
@@ -413,12 +409,12 @@ fun AppScreen(
                         outputStream.write(content.toByteArray(Charsets.UTF_8))
                         outputStream.flush()
                     }
-                    Toast.makeText(context, "Exported", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.library_exported), Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.library_failed_to_export, e.message ?: ""), Toast.LENGTH_LONG).show()
                 }
             } else {
-                Toast.makeText(context, "Export cancelled", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.library_export_cancelled), Toast.LENGTH_SHORT).show()
             }
         },
     )
@@ -585,7 +581,7 @@ fun AppScreen(
 
     ContainerConfigDialog(
         visible = showConfigDialog,
-        title = "${appInfo.name} Config",
+        title = stringResource(R.string.library_config_title, appInfo.name),
         initialConfig = containerData,
         onDismissRequest = { showConfigDialog = false },
         onSave = {
@@ -632,11 +628,11 @@ fun AppScreen(
                         try {
                             createPinnedShortcut(context.applicationContext, gameId, shortcutLabel, appInfo.iconUrl)
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.library_shortcut_created), Toast.LENGTH_SHORT).show()
                             }
                         } catch (t: Throwable) {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Failed to create shortcut: ${t.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, context.getString(R.string.library_failed_to_create_shortcut, t.message ?: ""), Toast.LENGTH_LONG).show()
                             }
                         }
                         showCreateShortcutDialog = false
@@ -665,7 +661,7 @@ fun AppScreen(
                         visible = true,
                         type = DialogType.CANCEL_APP_DOWNLOAD,
                         title = context.getString(R.string.cancel_download_prompt_title),
-                        message = "Are you sure you want to cancel the download of the app?",
+                        message = context.getString(R.string.library_cancel_download_message),
                         confirmBtnText = context.getString(R.string.yes),
                         dismissBtnText = context.getString(R.string.no),
                     )
@@ -703,7 +699,7 @@ fun AppScreen(
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = "Delete all downloaded data for this game?",
+                    message = context.getString(R.string.library_delete_download_message),
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no)
                 )
@@ -721,23 +717,19 @@ fun AppScreen(
                                 msgDialogState = MessageDialogState(
                                     visible = true,
                                     type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Download & Install ImageFS",
-                                    message = "The Ubuntu image needs to be downloaded and installed before " +
-                                        "being able to edit the configuration. This operation might take " +
-                                        "a few minutes. Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
+                                    title = context.getString(R.string.library_download_install_imagefs_title),
+                                    message = context.getString(R.string.library_download_install_imagefs_message),
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 )
                             } else {
                                 msgDialogState = MessageDialogState(
                                     visible = true,
                                     type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Install ImageFS",
-                                    message = "The Ubuntu image needs to be installed before being able to edit " +
-                                        "the configuration. This operation might take a few minutes. " +
-                                        "Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
+                                    title = context.getString(R.string.library_install_imagefs_title),
+                                    message = context.getString(R.string.library_install_imagefs_message),
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 )
                             }
                         } else {
@@ -765,10 +757,10 @@ fun AppScreen(
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.RESET_CONTAINER_CONFIRM,
-                                        title = "Reset Container",
-                                        message = "This will reset your container to the default configuration.",
-                                        confirmBtnText = "Continue",
-                                        dismissBtnText = "Cancel",
+                                        title = context.getString(R.string.library_reset_container_title),
+                                        message = context.getString(R.string.library_reset_container_message),
+                                        confirmBtnText = context.getString(R.string.continue_action),
+                                        dismissBtnText = context.getString(R.string.cancel),
                                     )
                                 },
                             ),
@@ -800,10 +792,10 @@ fun AppScreen(
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.UPDATE_VERIFY_CONFIRM,
-                                        title = "Verify Files",
-                                        message = "Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.",
-                                        confirmBtnText = "Continue",
-                                        dismissBtnText = "Cancel",
+                                        title = context.getString(R.string.library_verify_files_title),
+                                        message = context.getString(R.string.library_verify_files_message),
+                                        confirmBtnText = context.getString(R.string.continue_action),
+                                        dismissBtnText = context.getString(R.string.cancel),
                                     )
                                 },
                             ),
@@ -814,10 +806,10 @@ fun AppScreen(
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.UPDATE_VERIFY_CONFIRM,
-                                        title = "Update",
-                                        message = "Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.",
-                                        confirmBtnText = "Continue",
-                                        dismissBtnText = "Cancel",
+                                        title = context.getString(R.string.library_update_title),
+                                        message = context.getString(R.string.library_update_message),
+                                        confirmBtnText = context.getString(R.string.continue_action),
+                                        dismissBtnText = context.getString(R.string.cancel),
                                     )
                                 },
                             ),
@@ -860,7 +852,7 @@ fun AppScreen(
                                         visible = true,
                                         type = DialogType.DELETE_APP,
                                         title = context.getString(R.string.delete_prompt_title),
-                                        message = "Are you sure you want to delete this app?",
+                                        message = context.getString(R.string.library_delete_app_message),
                                         confirmBtnText = context.getString(R.string.delete_app),
                                         dismissBtnText = context.getString(R.string.cancel),
                                     )
@@ -891,13 +883,13 @@ fun AppScreen(
                                         scope.launch(Dispatchers.Main) {
                                             when (syncResult.syncResult) {
                                                 SyncResult.Success -> {
-                                                    Toast.makeText(context, "Cloud sync completed successfully", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.library_cloud_sync_success), Toast.LENGTH_SHORT).show()
                                                 }
                                                 SyncResult.UpToDate -> {
-                                                    Toast.makeText(context, "Save files are already up to date", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.library_cloud_sync_up_to_date), Toast.LENGTH_SHORT).show()
                                                 }
                                                 else -> {
-                                                    Toast.makeText(context, "Cloud sync failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.library_cloud_sync_failed, syncResult.syncResult.toString()), Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         }
@@ -1201,8 +1193,8 @@ private fun AppScreenContent(
                     ) {
                         val text = when {
                             isInstalled -> stringResource(R.string.run_app)
-                            !hasInternet -> "Need internet to install"
-                            !wifiConnected && PrefManager.downloadOnWifiOnly -> "Install over Wi-Fi/LAN only enabled"
+                            !hasInternet -> stringResource(R.string.library_need_internet)
+                            !wifiConnected && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
                             else -> stringResource(R.string.install_app)
                         }
                         Text(
@@ -1262,7 +1254,7 @@ private fun AppScreenContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Installation Progress",
+                            text = stringResource(R.string.installation_progress),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
@@ -1292,7 +1284,7 @@ private fun AppScreenContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Downloading...",
+                            text = stringResource(R.string.downloading),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1340,7 +1332,7 @@ private fun AppScreenContent(
                                 Text("↑", color = MaterialTheme.colorScheme.onTertiary, fontSize = 14.sp)
                             }
                             Text(
-                                "Update Available",
+                                stringResource(R.string.update_available),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.tertiary
                             )
@@ -1388,7 +1380,7 @@ private fun AppScreenContent(
 
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
-                            text = "Game Information",
+                            text = stringResource(R.string.game_information),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -1404,7 +1396,7 @@ private fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Status",
+                                        text = stringResource(R.string.status),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1429,9 +1421,9 @@ private fun AppScreenContent(
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
                                                 text = when {
-                                                    isInstalled -> "Installed"
-                                                    isDownloading -> "Installing"
-                                                    else -> "Not Installed"
+                                                    isInstalled -> stringResource(R.string.installed)
+                                                    isDownloading -> stringResource(R.string.installing)
+                                                    else -> stringResource(R.string.not_installed)
                                                 },
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                                 color = MaterialTheme.colorScheme.tertiary
@@ -1445,7 +1437,7 @@ private fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Size",
+                                        text = stringResource(R.string.size),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1476,7 +1468,7 @@ private fun AppScreenContent(
 
                                     Column {
                                         Text(
-                                            text = "Location",
+                                            text = stringResource(R.string.location),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -1501,7 +1493,7 @@ private fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Developer",
+                                        text = stringResource(R.string.developer),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1517,7 +1509,7 @@ private fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Release Date",
+                                        text = stringResource(R.string.release_date),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1560,7 +1552,7 @@ internal fun GameMigrationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "File ${movedFiles + 1} of $totalFiles",
+                    text = stringResource(R.string.library_file_count, movedFiles + 1, totalFiles),
                     style = MaterialTheme.typography.bodyLarge,
                 )
 

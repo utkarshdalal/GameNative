@@ -155,10 +155,25 @@
     <string name="playtime_last_two_weeks">Playtime last 2 weeks: %s hrs</string>
     <string name="total_playtime">Total Playtime: %s hrs</string>
 
+
+    <!-- App Filter -->
+    <string name="app_filter_installed">Installed</string>
+    <string name="app_filter_game">Game</string>
+    <string name="app_filter_application">Application</string>
+    <string name="app_filter_tool">Tool</string>
+    <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_family">Family</string>
+
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">No connection to Steam</string>
     <string name="retry_steam_connection">Retry Steam Connection</string>
     <string name="continue_offline">Continue Offline</string>
+
+
+    <!--Game Feedback Dialog -->
+    <string name="game_feedback_game_run">How did the game run?</string>
+    <string name="game_feedback_issues_question">Select any issues you encountered:</string>
+
 
     <!-- Profile & Menu -->
     <string name="help_and_support">Help &amp; Support</string>
@@ -355,4 +370,112 @@
     <string name="login_qr_failed">QR Code Failed</string>
     <string name="login_retry_qr">Retry QR Code</string>
     <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>
+
+    <!-- Generic/Reusable strings -->
+    <string name="continue_action">Continue</string>
+    <string name="settings_text">Settings</string>
+
+
+    <!-- Connecting to Servers Screen -->
+    <string name="connect_to_remote_server">Connecting to remote servers...</string>
+
+    <!-- LibraryAppScreen: Dialogs -->
+    <string name="library_not_enough_space_message">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
+    <string name="library_download_prompt_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="library_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
+    <string name="library_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="library_delete_app_message">Are you sure you want to delete this app?</string>
+    <string name="library_download_install_imagefs_title">Download &amp; Install ImageFS</string>
+    <string name="library_download_install_imagefs_message">The Ubuntu image needs to be downloaded and installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
+    <string name="library_install_imagefs_title">Install ImageFS</string>
+    <string name="library_install_imagefs_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
+    <string name="library_reset_container_title">Reset Container</string>
+    <string name="library_reset_container_message">This will reset your container to the default configuration.</string>
+    <string name="library_verify_files_title">Verify Files</string>
+    <string name="library_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
+    <string name="library_update_title">Update</string>
+    <string name="library_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
+    <string name="library_config_title">%s Config</string>
+
+    <!-- LibraryAppScreen: Toast Messages -->
+    <string name="library_storage_permission_required">Storage permission required</string>
+    <string name="library_exported">Exported</string>
+    <string name="library_failed_to_export">Failed to export: %s</string>
+    <string name="library_export_cancelled">Export cancelled</string>
+    <string name="library_shortcut_created">Shortcut created</string>
+    <string name="library_failed_to_create_shortcut">Failed to create shortcut: %s</string>
+    <string name="library_cloud_sync_success">Cloud sync completed successfully</string>
+    <string name="library_cloud_sync_up_to_date">Save files are already up to date</string>
+    <string name="library_cloud_sync_failed">Cloud sync failed: %s</string>
+
+    <!-- LibraryAppScreen: UI Labels -->
+    <string name="library_need_internet">Need internet to install</string>
+    <string name="library_wifi_only_enabled">Install over Wi-Fi/LAN only enabled</string>
+    <string name="library_file_count">File %1$d of %2$d</string>
+
+    <!-- PluviaMain: Update & App Info -->
+    <string name="main_update_available_title">Update Available</string>
+    <string name="main_update_available_message">A new version (%1$s) is available!%2$s</string>
+    <string name="main_update_button">Update</string>
+    <string name="main_later_button">Later</string>
+    <string name="main_update_failed_title">Update Failed</string>
+    <string name="main_update_failed_message">Failed to download or install the update. Please try again later.</string>
+
+    <!-- PluviaMain: Crash & Support -->
+    <string name="main_recent_crash_title">Recent Crash</string>
+    <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
+    <string name="main_thank_you_title">Thank you for using GameNative!</string>
+    <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
+    <string name="main_join_kofi">Join on Ko-fi</string>
+    <string name="main_share">Share</string>
+    <string name="main_discord_support_title">Did the game work?</string>
+    <string name="main_discord_support_message">Join the Discord to get support to fix your game or improve performance.</string>
+    <string name="main_open_discord">Open Discord</string>
+
+    <!-- PluviaMain: Game Launch -->
+    <string name="main_downloading_steam">Downloading Steam...</string>
+    <string name="main_installing_glibc">Installing glibc components...</string>
+    <string name="main_installing_bionic">Installing Bionic components...</string>
+    <string name="main_loading">Loading...</string>
+
+    <!-- PluviaMain: Session Conflicts -->
+    <string name="main_app_running_title">App Running</string>
+    <string name="main_app_running_message">You are logged in on another device already playing %s. \nYou can still play this game, but that will disconnect the other session from Steam.</string>
+    <string name="main_app_running_other_device">You are logged in on another device (%1$s) already playing %2$s (%3$s), and that save is not yet in the cloud. \nYou can still play this game, but that will disconnect the other session from Steam and may create a save conflict when that session progress is synced</string>
+    <string name="main_play_anyway">Play anyway</string>
+
+    <!-- PluviaMain: Save Conflicts -->
+    <string name="main_save_conflict_title">Save Conflict</string>
+    <string name="main_save_conflict_message">There is a new remote save and a new local save, which would you like to keep?\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s</string>
+    <string name="main_keep_local">Keep local</string>
+    <string name="main_keep_remote">Keep remote</string>
+
+    <!-- PluviaMain: Sync Errors -->
+    <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>
+    <string name="main_sync_in_progress">Sync is currently in progress. Please try again in a moment.</string>
+    <string name="main_sync_failed">Failed to sync save files: %s.</string>
+
+    <!-- PluviaMain: Pending Operations -->
+    <string name="main_upload_in_progress_title">Upload in Progress</string>
+    <string name="main_upload_in_progress_message">You played %1$s on the device %2$s (%3$s) and the save of that session is still uploading.\nTry again later.</string>
+    <string name="main_pending_upload_title">Pending Upload</string>
+    <string name="main_pending_upload_message">You played %1$s on the device %2$s (%3$s), and that save is not yet in the cloud. (upload not started)\nYou can still play this game, but that may create a conflict when your previous game progress successfully uploads.</string>
+    <string name="main_app_session_suspended">App session suspended. Please restart app.</string>
+    <string name="main_pending_operation_none">Received pending remote operations whose operation was \'none\'. Please restart app.</string>
+    <string name="main_multiple_pending_operations">Multiple pending remote operations, try again later. Please restart app.</string>
+
+    <!-- Container Config Dialog -->
+    <string name="container_config_title">Configure Container</string>
+    <string name="container_config_unsaved_changes_title">Unsaved Changes</string>
+    <string name="container_config_unsaved_changes_message">Are you sure you\'d like to discard your changes?</string>
+    <string name="container_config_tab_general">General</string>
+    <string name="container_config_tab_graphics">Graphics</string>
+    <string name="container_config_tab_emulation">Emulation</string>
+    <string name="container_config_tab_controller">Controller</string>
+    <string name="container_config_tab_wine">Wine</string>
+    <string name="container_config_tab_win_components">Win Components</string>
+    <string name="container_config_tab_environment">Environment</string>
+    <string name="container_config_tab_drives">Drives</string>
+    <string name="container_config_tab_advanced">Advanced</string>
+    <string name="container_config_vkd3d_version">VKD3D Version</string>
 </resources>

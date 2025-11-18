@@ -535,10 +535,10 @@ fun ContainerConfigDialog(
             if (initialConfig != config) {
                 dismissDialogState = MessageDialogState(
                     visible = true,
-                    title = "Unsaved Changes",
-                    message = "Are you sure you'd like to discard your changes?",
-                    confirmBtnText = "Discard",
-                    dismissBtnText = "Cancel",
+                    title = context.getString(R.string.container_config_unsaved_changes_title),
+                    message = context.getString(R.string.container_config_unsaved_changes_message),
+                    confirmBtnText = context.getString(R.string.discard),
+                    dismissBtnText = context.getString(R.string.cancel),
                 )
             } else {
                 onDismissRequest()
@@ -693,7 +693,17 @@ fun ContainerConfigDialog(
                     },
                 ) { paddingValues ->
                     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-                    val tabs = listOf("General", "Graphics", "Emulation", "Controller", "Wine", "Win Components", "Environment", "Drives", "Advanced")
+                    val tabs = listOf(
+                        stringResource(R.string.container_config_tab_general),
+                        stringResource(R.string.container_config_tab_graphics),
+                        stringResource(R.string.container_config_tab_emulation),
+                        stringResource(R.string.container_config_tab_controller),
+                        stringResource(R.string.container_config_tab_wine),
+                        stringResource(R.string.container_config_tab_win_components),
+                        stringResource(R.string.container_config_tab_environment),
+                        stringResource(R.string.container_config_tab_drives),
+                        stringResource(R.string.container_config_tab_advanced)
+                    )
                     Column(
                         modifier = Modifier
                             .padding(
@@ -1223,7 +1233,7 @@ fun ContainerConfigDialog(
                                 run {
                                     val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
                                     if (isVKD3D) {
-                                        val label = "VKD3D Version"
+                                        val label = stringResource(R.string.container_config_vkd3d_version)
                                         val availableVersions = vkd3dVersions
                                         val selectedVersion =
                                             KeyValueSet(config.dxwrapperConfig).get("vkd3dVersion").ifEmpty { vkd3dForcedVersion() }
@@ -1778,7 +1788,7 @@ private fun Preview_ContainerConfigDialog() {
         ContainerConfigDialog(
             visible = true,
             default = false,
-            title = "Configure Container",
+            title = stringResource(R.string.container_config_title),
             initialConfig = previewConfig,
             onDismissRequest = {},
             onSave = {},
