@@ -206,7 +206,7 @@
     <string name="add_custom_game_content_desc">Add custom game</string>
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
-    <string name="add_custom_game_dont_show_again">Don&apos;t show this dialog again</string>
+    <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
