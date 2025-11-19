@@ -57,12 +57,8 @@ class LibraryViewModel @Inject constructor(
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
-    private var initialLoadStartTime: Long? = null
 
     init {
-        // Track when initial loading starts
-        initialLoadStartTime = System.currentTimeMillis()
-
         viewModelScope.launch(Dispatchers.IO) {
             steamAppDao.getAllOwnedApps(
                 // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
@@ -170,7 +166,6 @@ class LibraryViewModel @Inject constructor(
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
         viewModelScope.launch {
             // Set loading state when starting to filter
-            val loadStartTime = initialLoadStartTime ?: System.currentTimeMillis()
             _state.update { it.copy(isLoading = true) }
 
             // On first load, if Steam games haven't arrived yet, don't process - wait for them
@@ -299,7 +294,6 @@ class LibraryViewModel @Inject constructor(
 
             if (isFirstLoad) {
                 isFirstLoad = false
-                initialLoadStartTime = null
             }
 
             _state.update {
