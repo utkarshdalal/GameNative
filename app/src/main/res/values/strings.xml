@@ -144,6 +144,12 @@
     <string name="input_controls">On-screen Controller</string>
     <string name="touchpad_help">Touchpad Help</string>
 
+    <!-- Toast -->
+    <string name="toast_failed_log_save">Failed to save logcat to destination</string>
+
+    <!-- Settings -->
+    <string name="settings_save_logcat_subtitle">Saves a snapshot of the logcat only for this app\'s PID</string>
+    <string name="settings_save_logcat_title">Save logcat</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
