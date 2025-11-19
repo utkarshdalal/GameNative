@@ -73,12 +73,9 @@ import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.PaddingUtils
 import timber.log.Timber
 
-// Minimum time in milliseconds to show skeleton loaders - used to test the transition from skeletons to actual games
-private const val MINIMUM_LOAD_TIME_MS = 0L
-
 /**
  * Calculates the installed games count based on the current filter state.
- * 
+ *
  * @param state The current library state containing filters and visibility settings
  * @return The number of installed games, respecting current filters and source visibility
  */
@@ -87,24 +84,24 @@ private fun calculateInstalledCount(state: LibraryState): Int {
     if (state.appInfoSortType.contains(AppFilter.INSTALLED)) {
         return state.totalAppsInFilter
     }
-    
+
     // Otherwise, count all installed games (respecting source visibility)
     val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
-    
+
     // Count installed Steam games
     val steamCount = if (state.showSteamInLibrary) {
         downloadDirectoryApps.count()
     } else {
         0
     }
-    
+
     // Count Custom Games (always considered "installed")
     val customGameCount = if (state.showCustomGamesInLibrary) {
         CustomGameScanner.scanAsLibraryItems(query = "").count()
     } else {
         0
     }
-    
+
     return steamCount + customGameCount
 }
 
@@ -128,11 +125,11 @@ internal fun LibraryListPane(
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
-    
+
     // Calculate installed count based on current filter state
     val installedCount = remember(
-        state.appInfoSortType, 
-        state.showSteamInLibrary, 
+        state.appInfoSortType,
+        state.showSteamInLibrary,
         state.showCustomGamesInLibrary,
         state.totalAppsInFilter
     ) {
@@ -142,9 +139,14 @@ internal fun LibraryListPane(
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
 
-    // List view is always 1 column
-    var columnType: GridCells by remember { mutableStateOf(GridCells.Fixed(1)) }
     var paneType: PaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    val columnType = remember(paneType) {
+        when (paneType) {
+            PaneType.GRID_HERO -> GridCells.Adaptive(minSize = 200.dp)
+            PaneType.GRID_CAPSULE -> GridCells.Adaptive(minSize = 150.dp)
+            else -> GridCells.Fixed(1)
+        }
+    }
 
     // Infinite scroll: load next page when scrolled to bottom
     LaunchedEffect(listState, state.appInfoList.size) {
@@ -171,13 +173,6 @@ internal fun LibraryListPane(
             PrefManager.libraryLayout = paneType
         }
 
-        // How many columns does this view need? 1 for list, or adaptive which can handle rotating the device
-        columnType = GridCells.Fixed(1)
-        if (paneType == PaneType.GRID_HERO) {
-            columnType = GridCells.Adaptive(minSize = 200.dp)
-        } else if (paneType == PaneType.GRID_CAPSULE) {
-            columnType = GridCells.Adaptive(minSize = 150.dp)
-        }
     }
 
     var targetOfScroll by remember { mutableIntStateOf(-1) }
@@ -282,17 +277,17 @@ internal fun LibraryListPane(
                 // Track skeleton overlay alpha (fade out when games are loaded)
                 // Show skeleton overlay when loading OR when list is empty (initial state)
                 // But hide if final count is 0 (no games match filters)
-                var shouldShowSkeletonOverlay by remember { 
+                var shouldShowSkeletonOverlay by remember {
                     mutableStateOf(true) // Start visible
                 }
-                
+
                 // Fade out skeleton overlay when games appear
                 val skeletonAlpha by animateFloatAsState(
                     targetValue = if (shouldShowSkeletonOverlay) 1f else 0f,
                     animationSpec = tween(durationMillis = 300),
                     label = "skeletonFadeOut"
                 )
-                
+
                 // Update skeleton overlay visibility based on loading state and games
                 LaunchedEffect(state.isLoading, state.appInfoList.size, state.totalAppsInFilter) {
                     // Hide skeleton loaders if final count is 0 (no games match filters)
@@ -310,7 +305,7 @@ internal fun LibraryListPane(
                         shouldShowSkeletonOverlay = false
                     }
                 }
-                
+
                 val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary) {
                     val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
                     val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
@@ -319,7 +314,7 @@ internal fun LibraryListPane(
                     // Show at least a few skeletons, but not more than a reasonable amount
                     if (total == 0) 6 else minOf(total, 20)
                 }
-                
+
                 // Show actual games (base layer)
                 if (state.appInfoList.isNotEmpty()) {
                     LazyVerticalGrid(
@@ -341,11 +336,11 @@ internal fun LibraryListPane(
                                 animationSpec = tween(durationMillis = 300),
                                 label = "fadeIn"
                             )
-                            
+
                             LaunchedEffect(item.index) {
                                 isVisible = true
                             }
-                            
+
                             Box(modifier = Modifier.alpha(alpha)) {
                                 if (item.index > 0 && paneType == PaneType.LIST) {
                                     // Dividers in list view
@@ -373,7 +368,7 @@ internal fun LibraryListPane(
                         }
                     }
                 }
-                
+
                 // Skeleton loaders as overlay (fades out when games are loaded)
                 // Use a separate non-interactive state so it doesn't interfere with scrolling
                 val skeletonListState = remember { LazyGridState() }

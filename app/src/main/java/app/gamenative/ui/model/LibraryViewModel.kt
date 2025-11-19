@@ -33,9 +33,6 @@ import timber.log.Timber
 import kotlin.math.max
 import kotlin.math.min
 
-// Minimum time in milliseconds to show skeleton loaders (useful for testing and ensuring smooth UX)
-private const val MINIMUM_LOAD_TIME_MS = 5000L
-
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
@@ -57,7 +54,7 @@ class LibraryViewModel @Inject constructor(
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
-    
+
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
     private var initialLoadStartTime: Long? = null
@@ -65,7 +62,7 @@ class LibraryViewModel @Inject constructor(
     init {
         // Track when initial loading starts
         initialLoadStartTime = System.currentTimeMillis()
-        
+
         viewModelScope.launch(Dispatchers.IO) {
             steamAppDao.getAllOwnedApps(
                 // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
@@ -175,13 +172,13 @@ class LibraryViewModel @Inject constructor(
             // Set loading state when starting to filter
             val loadStartTime = initialLoadStartTime ?: System.currentTimeMillis()
             _state.update { it.copy(isLoading = true) }
-            
+
             // On first load, if Steam games haven't arrived yet, don't process - wait for them
             if (isFirstLoad && appList.isEmpty()) {
                 Timber.tag("LibraryViewModel").d("First load but Steam games not ready yet, keeping loading state")
                 return@launch
             }
-            
+
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
@@ -299,25 +296,12 @@ class LibraryViewModel @Inject constructor(
             val pagedList = combined.take(endIndex)
 
             Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): ${totalFound}")
-            
-            // Ensure minimum load time has elapsed (only on first load)
-            // This ensures skeletons show for the full duration on initial load
-            // Skip if MINIMUM_LOAD_TIME_MS is zero
-            if (isFirstLoad && MINIMUM_LOAD_TIME_MS > 0) {
-                val elapsedTime = System.currentTimeMillis() - loadStartTime
-                val remainingTime = MINIMUM_LOAD_TIME_MS - elapsedTime
-                if (remainingTime > 0) {
-                    Timber.tag("LibraryViewModel").d("Applying minimum load time: ${remainingTime}ms remaining (elapsed: ${elapsedTime}ms)")
-                    delay(remainingTime)
-                }
-                isFirstLoad = false
-                initialLoadStartTime = null // Clear after first load
-            } else if (isFirstLoad) {
-                // MINIMUM_LOAD_TIME_MS is zero, skip delay
+
+            if (isFirstLoad) {
                 isFirstLoad = false
                 initialLoadStartTime = null
             }
-            
+
             _state.update {
                 it.copy(
                     appInfoList = pagedList,
