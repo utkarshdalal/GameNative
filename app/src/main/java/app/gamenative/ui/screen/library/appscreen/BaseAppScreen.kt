@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
+import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
@@ -215,11 +216,22 @@ abstract class BaseAppScreen {
                                     iconUrl = iconUrl
                                 )
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.base_app_shortcut_created),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Failed to create shortcut: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.base_app_shortcut_failed,
+                                            e.message ?: ""
+                                        ),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         }
@@ -278,16 +290,31 @@ abstract class BaseAppScreen {
                                 onAfterFetchImages(context, libraryItem, gameFolderPath)
 
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Images fetched successfully", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.base_app_images_fetched),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             } else {
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Game folder not found", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.base_app_game_folder_not_found),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Failed to fetch images: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(
+                                        R.string.base_app_images_fetch_failed,
+                                        e.message ?: ""
+                                    ),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }
@@ -470,12 +497,27 @@ abstract class BaseAppScreen {
                             outputStream.write(content.toByteArray(Charsets.UTF_8))
                             outputStream.flush()
                         }
-                        Toast.makeText(context, "Exported", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.base_app_exported),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     } catch (e: Exception) {
-                        Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.base_app_export_failed,
+                                e.message ?: ""
+                            ),
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 } else {
-                    Toast.makeText(context, "Export cancelled", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.base_app_export_cancelled),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             },
         )

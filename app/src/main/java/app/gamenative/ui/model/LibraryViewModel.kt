@@ -165,7 +165,6 @@ class LibraryViewModel @Inject constructor(
         // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
         viewModelScope.launch {
-            // Set loading state when starting to filter
             _state.update { it.copy(isLoading = true) }
 
             // On first load, if Steam games haven't arrived yet, don't process - wait for them

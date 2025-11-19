@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.stringResource
+import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
@@ -425,11 +427,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                 onDismissRequest = {
                     hideExeSelectionDialog(libraryItem.appId)
                 },
-                title = { Text("Executable Selection Required") },
+                title = { Text(stringResource(R.string.custom_game_exe_selection_title)) },
                 text = {
-                    Text(
-                        text = "This game has multiple executable files. Please select which one to use in the container settings before launching."
-                    )
+                    Text(text = stringResource(R.string.custom_game_exe_selection_message))
                 },
                 confirmButton = {
                     TextButton(
@@ -439,14 +439,14 @@ class CustomGameAppScreen : BaseAppScreen() {
                             onEditContainer()
                         }
                     ) {
-                        Text("Custom Game Settings")
+                        Text(stringResource(R.string.custom_game_settings))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         hideExeSelectionDialog(libraryItem.appId)
                     }) {
-                        Text("Close")
+                        Text(stringResource(R.string.close))
                     }
                 }
             )
@@ -458,12 +458,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                 onDismissRequest = {
                     hideDeleteDialog(libraryItem.appId)
                 },
-                title = { Text("Delete Game") },
+                title = { Text(stringResource(R.string.custom_game_delete_title)) },
                 text = {
-                    Text(
-                        text = "Are you sure you want to delete \"${libraryItem.name}\"? " +
-                                "This will permanently delete the game folder and cannot be undone."
-                    )
+                    Text(text = stringResource(R.string.custom_game_delete_message))
                 },
                 confirmButton = {
                     TextButton(

@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
@@ -59,10 +60,12 @@ private data class InstallSizeInfo(
 )
 
 private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
-    val message = "The app being installed has the following space requirements. Would you like to proceed?" +
-        "\n\n\tDownload Size: ${info.downloadSize}" +
-        "\n\tSize on Disk: ${info.installSize}" +
-        "\n\tAvailable Space: ${info.availableSpace}"
+    val message = context.getString(
+        R.string.steam_install_space_prompt,
+        info.downloadSize,
+        info.installSize,
+        info.availableSpace
+    )
     return MessageDialogState(
         visible = true,
         type = DialogType.INSTALL_APP,
@@ -74,8 +77,11 @@ private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): Me
 }
 
 private fun buildNotEnoughSpaceState(context: Context, info: InstallSizeInfo): MessageDialogState {
-    val message = "The app being installed needs ${info.installSize} of space but " +
-        "there is only ${info.availableSpace} left on this device"
+    val message = context.getString(
+        R.string.steam_install_not_enough_space,
+        info.installSize,
+        info.availableSpace
+    )
     return MessageDialogState(
         visible = true,
         type = DialogType.NOT_ENOUGH_SPACE,
@@ -392,7 +398,7 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = "Are you sure you want to cancel the download of the app?",
+                    message = context.getString(R.string.steam_cancel_download_message),
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 )
@@ -454,7 +460,7 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = "Delete all downloaded data for this game?",
+                    message = context.getString(R.string.steam_delete_download_message),
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no)
                 )
@@ -500,12 +506,10 @@ class SteamAppScreen : BaseAppScreen() {
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Download & Install ImageFS",
-                                    message = "The Ubuntu image needs to be downloaded and installed before " +
-                                            "being able to edit the configuration. This operation might take " +
-                                            "a few minutes. Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
+                                    title = context.getString(R.string.steam_imagefs_download_install_title),
+                                    message = context.getString(R.string.steam_imagefs_download_install_message),
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 )
                             )
                         } else {
@@ -514,12 +518,10 @@ class SteamAppScreen : BaseAppScreen() {
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Install ImageFS",
-                                    message = "The Ubuntu image needs to be installed before being able to edit " +
-                                            "the configuration. This operation might take a few minutes. " +
-                                            "Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
+                                    title = context.getString(R.string.steam_imagefs_install_title),
+                                    message = context.getString(R.string.steam_imagefs_install_message),
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 )
                             )
                         }
@@ -541,8 +543,8 @@ class SteamAppScreen : BaseAppScreen() {
                             MessageDialogState(
                                 visible = true,
                                 type = DialogType.RESET_CONTAINER_CONFIRM,
-                                title = "Reset Container",
-                                message = "This will reset your container to the default configuration.",
+                            title = context.getString(R.string.steam_reset_container_title),
+                            message = context.getString(R.string.steam_reset_container_message),
                                 confirmBtnText = "Continue",
                                 dismissBtnText = "Cancel",
                             )
@@ -574,8 +576,8 @@ class SteamAppScreen : BaseAppScreen() {
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.UPDATE_VERIFY_CONFIRM,
-                                    title = "Verify Files",
-                                    message = "Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.",
+                                    title = context.getString(R.string.steam_verify_files_title),
+                                    message = context.getString(R.string.steam_verify_files_message),
                                     confirmBtnText = "Continue",
                                     dismissBtnText = "Cancel",
                                 )
@@ -592,8 +594,8 @@ class SteamAppScreen : BaseAppScreen() {
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.UPDATE_VERIFY_CONFIRM,
-                                    title = "Update",
-                                    message = "Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.",
+                                    title = context.getString(R.string.steam_update_title),
+                                    message = context.getString(R.string.steam_update_message),
                                     confirmBtnText = "Continue",
                                     dismissBtnText = "Cancel",
                                 )
@@ -625,13 +627,28 @@ class SteamAppScreen : BaseAppScreen() {
                                 withContext(Dispatchers.Main) {
                                     when (syncResult.syncResult) {
                                         SyncResult.Success -> {
-                                            Toast.makeText(context, "Cloud sync completed successfully", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.steam_cloud_sync_success),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                         SyncResult.UpToDate -> {
-                                            Toast.makeText(context, "Save files are already up to date", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.steam_cloud_sync_up_to_date),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                         else -> {
-                                            Toast.makeText(context, "Cloud sync failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(
+                                                    R.string.steam_cloud_sync_failed,
+                                                    syncResult.syncResult
+                                                ),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 }
@@ -760,7 +777,11 @@ class SteamAppScreen : BaseAppScreen() {
             hasStoragePermission = granted
             if (!granted) {
                 // Permissions denied
-                Toast.makeText(context, "Storage permission required", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.steam_storage_permission_required),
+                    Toast.LENGTH_SHORT
+                ).show()
                 hideInstallDialog(gameId)
             }
         }
@@ -898,7 +919,11 @@ class SteamAppScreen : BaseAppScreen() {
                         val defaults = ContainerUtils.getDefaultContainerData()
                         val adjusted = defaults.copy(drives = container.drives)
                         ContainerUtils.applyToContainer(context, libraryItem.appId, adjusted)
-                        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.steam_container_reset_success),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
                 DialogType.INSTALL_IMAGEFS -> {
@@ -931,11 +956,22 @@ class SteamAppScreen : BaseAppScreen() {
                                 withContext(Dispatchers.Main) {
                                     // Trigger the container edit callback
                                     // This will be handled by the menu option's onClick
-                                    Toast.makeText(context, "ImageFS installed. Please try editing container again.", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.steam_imagefs_installed),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Failed to install ImageFS: ${e.message}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.steam_imagefs_install_failed,
+                                            e.message ?: ""
+                                        ),
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 }
                             }
                         }
@@ -962,7 +998,7 @@ class SteamAppScreen : BaseAppScreen() {
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
-                title = { Text("Uninstall Game") },
+                title = { Text(stringResource(R.string.steam_uninstall_game_title)) },
                 text = {
                     Text(
                         text = "Are you sure you want to uninstall ${appInfo?.name ?: libraryItem.name}? " +

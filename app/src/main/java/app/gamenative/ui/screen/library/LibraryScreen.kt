@@ -58,10 +58,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
@@ -265,7 +267,7 @@ private fun LibraryScreenContent(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Add custom game",
+                        contentDescription = stringResource(R.string.add_custom_game_content_desc),
                     )
                 }
             }
@@ -275,11 +277,11 @@ private fun LibraryScreenContent(
         if (showAddCustomGameDialog) {
             AlertDialog(
                 onDismissRequest = { showAddCustomGameDialog = false },
-                title = { Text("Add Custom Game") },
+                title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
                 text = {
                     Column {
                         Text(
-                            text = "Please select the folder containing the game files you want to add as a custom game.",
+                            text = stringResource(R.string.add_custom_game_dialog_message),
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Row(
@@ -292,7 +294,7 @@ private fun LibraryScreenContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Don't show this dialog again",
+                                text = stringResource(R.string.add_custom_game_dont_show_again),
                                 modifier = Modifier.weight(1f)
                             )
                         }

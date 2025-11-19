@@ -164,12 +164,12 @@ fun SettingsGroupCustomGames() {
                                 Text(
                                     text = when {
                                         count == -1 -> if (hasPermission) {
-                                            "⚠ Cannot access (check if path exists)"
+                                            stringResource(R.string.custom_games_cannot_access)
                                         } else {
-                                            "⚠ Permission denied"
+                                            stringResource(R.string.custom_games_permission_denied)
                                         }
-                                        count == 0 -> "0 folders found"
-                                        else -> "$count folders found"
+                                        count == 0 -> stringResource(R.string.custom_games_zero_folders)
+                                        else -> stringResource(R.string.custom_games_folders_found, count)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (count == -1) {
@@ -379,7 +379,7 @@ fun SettingsGroupCustomGames() {
             }
 
             Text(
-                text = "Folders in these paths are scanned for .exe files and listed as custom games.",
+                text = stringResource(R.string.custom_games_scan_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 8.dp)

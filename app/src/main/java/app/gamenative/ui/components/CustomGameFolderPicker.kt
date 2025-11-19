@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import app.gamenative.R
 import app.gamenative.utils.CustomGameScanner
 
 /**
@@ -128,7 +129,7 @@ fun rememberCustomGameFolderPicker(
         if (path != null) {
             onPathSelected(path)
         } else {
-            onFailure("Failed to resolve folder path")
+            onFailure(context.getString(R.string.custom_game_folder_picker_error))
         }
     }
 
