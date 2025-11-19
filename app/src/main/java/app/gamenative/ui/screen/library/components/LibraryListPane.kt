@@ -74,7 +74,7 @@ import app.gamenative.utils.PaddingUtils
 import timber.log.Timber
 
 // Minimum time in milliseconds to show skeleton loaders - used to test the transition from skeletons to actual games
-private const val MINIMUM_LOAD_TIME_MS = 1L
+private const val MINIMUM_LOAD_TIME_MS = 0L
 
 /**
  * Calculates the installed games count based on the current filter state.
