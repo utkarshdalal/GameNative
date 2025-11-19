@@ -23,6 +23,7 @@ import java.io.File
 import java.util.EnumSet
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,12 +33,15 @@ import timber.log.Timber
 import kotlin.math.max
 import kotlin.math.min
 
+// Minimum time in milliseconds to show skeleton loaders (useful for testing and ensuring smooth UX)
+private const val MINIMUM_LOAD_TIME_MS = 5000L
+
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(LibraryState())
+    private val _state = MutableStateFlow(LibraryState(isLoading = true))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
     // Keep the library scroll state. This will last longer as the VM will stay alive.
@@ -53,8 +57,15 @@ class LibraryViewModel @Inject constructor(
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
+    
+    // Track if this is the first load to apply minimum load time
+    private var isFirstLoad = true
+    private var initialLoadStartTime: Long? = null
 
     init {
+        // Track when initial loading starts
+        initialLoadStartTime = System.currentTimeMillis()
+        
         viewModelScope.launch(Dispatchers.IO) {
             steamAppDao.getAllOwnedApps(
                 // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
@@ -159,8 +170,18 @@ class LibraryViewModel @Inject constructor(
 
     private fun onFilterApps(paginationPage: Int = 0) {
         // May be filtering 1000+ apps - in future should paginate at the point of DAO request
-        Timber.tag("LibraryViewModel").d("onFilterApps")
+        Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
         viewModelScope.launch {
+            // Set loading state when starting to filter
+            val loadStartTime = initialLoadStartTime ?: System.currentTimeMillis()
+            _state.update { it.copy(isLoading = true) }
+            
+            // On first load, if Steam games haven't arrived yet, don't process - wait for them
+            if (isFirstLoad && appList.isEmpty()) {
+                Timber.tag("LibraryViewModel").d("First load but Steam games not ready yet, keeping loading state")
+                return@launch
+            }
+            
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
@@ -232,10 +253,23 @@ class LibraryViewModel @Inject constructor(
             }
 
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
-            val customGameItems = CustomGameScanner.scanAsLibraryItems(
-                query = currentState.searchQuery
-            )
+            // Only include custom games if GAME filter is selected
+            val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
+                CustomGameScanner.scanAsLibraryItems(
+                    query = currentState.searchQuery
+                )
+            } else {
+                emptyList()
+            }
             val customEntries = customGameItems.map { LibraryEntry(it, true) }
+
+            // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
+            // This needs to happen before filtering by source, so we save the total counts
+            if (currentState.searchQuery.isEmpty()) {
+                PrefManager.customGamesCount = customGameItems.size
+                PrefManager.steamGamesCount = filteredSteamApps.size
+                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}")
+            }
 
             // Apply App Source filters
             val includeSteam = _state.value.showSteamInLibrary
@@ -265,12 +299,32 @@ class LibraryViewModel @Inject constructor(
             val pagedList = combined.take(endIndex)
 
             Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): ${totalFound}")
+            
+            // Ensure minimum load time has elapsed (only on first load)
+            // This ensures skeletons show for the full duration on initial load
+            // Skip if MINIMUM_LOAD_TIME_MS is zero
+            if (isFirstLoad && MINIMUM_LOAD_TIME_MS > 0) {
+                val elapsedTime = System.currentTimeMillis() - loadStartTime
+                val remainingTime = MINIMUM_LOAD_TIME_MS - elapsedTime
+                if (remainingTime > 0) {
+                    Timber.tag("LibraryViewModel").d("Applying minimum load time: ${remainingTime}ms remaining (elapsed: ${elapsedTime}ms)")
+                    delay(remainingTime)
+                }
+                isFirstLoad = false
+                initialLoadStartTime = null // Clear after first load
+            } else if (isFirstLoad) {
+                // MINIMUM_LOAD_TIME_MS is zero, skip delay
+                isFirstLoad = false
+                initialLoadStartTime = null
+            }
+            
             _state.update {
                 it.copy(
                     appInfoList = pagedList,
                     currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
+                    isLoading = false, // Loading complete
                 )
             }
         }

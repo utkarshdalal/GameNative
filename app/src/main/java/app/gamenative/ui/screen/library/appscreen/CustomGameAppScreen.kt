@@ -387,7 +387,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
     override fun supportsContainerConfig(): Boolean = true
 
-    override fun getExportFileExtension(): String = ".game"
+    override fun getExportFileExtension(): String = ".steam"
 
     @Composable
     override fun AdditionalDialogs(

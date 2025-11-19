@@ -644,6 +644,29 @@ object PrefManager {
             setPref(SHOW_CUSTOM_GAMES_IN_LIBRARY, value)
         }
 
+    // Game counts for skeleton loaders
+    private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
+    var customGamesCount: Int
+        get() = getPref(CUSTOM_GAMES_COUNT, 0)
+        set(value) {
+            setPref(CUSTOM_GAMES_COUNT, value)
+        }
+
+    private val STEAM_GAMES_COUNT = intPreferencesKey("steam_games_count")
+    var steamGamesCount: Int
+        get() = getPref(STEAM_GAMES_COUNT, 0)
+        set(value) {
+            setPref(STEAM_GAMES_COUNT, value)
+        }
+
+    // Show dialog when adding custom game folder
+    private val SHOW_ADD_CUSTOM_GAME_DIALOG = booleanPreferencesKey("show_add_custom_game_dialog")
+    var showAddCustomGameDialog: Boolean
+        get() = getPref(SHOW_ADD_CUSTOM_GAME_DIALOG, true)
+        set(value) {
+            setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
+        }
+
     // Whether to download games only over Wi-Fi.
     private val DOWNLOAD_ON_WIFI_ONLY = booleanPreferencesKey("download_on_wifi_only")
     var downloadOnWifiOnly: Boolean
