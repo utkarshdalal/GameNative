@@ -19,7 +19,7 @@ object LocaleHelper {
         "" to "System Default",
         "da" to "Dansk (Danish)",
         "en" to "English",
-        "pt" to "Português (Portuguese)"
+        "pt-BR" to "Português Brasileiro (Brazilian Portuguese)"
     )
 
     /**

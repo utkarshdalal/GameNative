@@ -77,10 +77,10 @@ android {
 
         // Localization support - specify which languages to include
         resourceConfigurations += listOf(
-            "en",    // English (default)
-            "da",    // Danish
-            "pt",    // Portugese
-            // TODO: Add more languages here using the ISO 639-1 locale code
+            "en",      // English (default)
+            "da",      // Danish
+            "pt-rBR",  // Portuguese (Brazilian)
+            // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
