@@ -167,12 +167,6 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
-            // On first load, if Steam games haven't arrived yet, don't process - wait for them
-            if (isFirstLoad && appList.isEmpty()) {
-                Timber.tag("LibraryViewModel").d("First load but Steam games not ready yet, keeping loading state")
-                return@launch
-            }
-
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 

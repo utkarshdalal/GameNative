@@ -453,72 +453,69 @@ object CustomGameScanner {
         val roots = getAllRoots()
         Timber.tag("CustomGameScanner").d("Scanning ${roots.size} root(s) for custom games: $roots")
         
-        // Handle empty roots gracefully
-        if (roots.isEmpty()) {
-            Timber.tag("CustomGameScanner").d("No custom game paths configured, returning empty list")
-            return items
-        }
-        
-        for (root in roots) {
-            val rootFile = File(root)
-            Timber.tag("CustomGameScanner").d("Scanning root: $root (exists: ${rootFile.exists()}, isDirectory: ${rootFile.isDirectory})")
-            
-            // Ensure the directory exists, create it if it doesn't (especially for default path)
-            if (!rootFile.exists()) {
-                rootFile.mkdirs()
-            }
-            if (!rootFile.isDirectory) {
-                Timber.tag("CustomGameScanner").w("Root path is not a directory, skipping: $root")
-                continue
-            }
-            
-            val children = try {
-                rootFile.listFiles { f -> f.isDirectory }
-            } catch (e: SecurityException) {
-                Timber.tag("CustomGameScanner").w("Permission denied accessing root: $root - ${e.message}")
-                continue
-            } catch (e: Exception) {
-                Timber.tag("CustomGameScanner").w("Error accessing root: $root - ${e.message}")
-                continue
-            }
-            
-            if (children == null) {
-                Timber.tag("CustomGameScanner").w("Failed to list files in root: $root (permission denied or path doesn't exist)")
-                continue
-            }
-            if (children.isEmpty()) {
-                Timber.tag("CustomGameScanner").d("Found 0 subdirectories in $root (folder is empty or contains only files)")
-                continue
-            }
-            Timber.tag("CustomGameScanner").d("Found ${children.size} subdirectories in $root: ${children.map { it.name }}")
-            
-            for (folder in children) {
-                if (q.isNotEmpty() && !folder.name.contains(q, ignoreCase = true)) continue
+        // Scan root paths if they exist
+        if (roots.isNotEmpty()) {
+            for (root in roots) {
+                val rootFile = File(root)
+                Timber.tag("CustomGameScanner").d("Scanning root: $root (exists: ${rootFile.exists()}, isDirectory: ${rootFile.isDirectory})")
                 
-                val looksLikeGame = looksLikeGameFolder(folder)
-                Timber.tag("CustomGameScanner").d("Checking folder: ${folder.name} (looksLikeGame: $looksLikeGame)")
-                
-                if (!looksLikeGame) {
-                    Timber.tag("CustomGameScanner").d("Folder ${folder.name} does not look like a game folder (no .exe found)")
+                // Ensure the directory exists, create it if it doesn't (especially for default path)
+                if (!rootFile.exists()) {
+                    rootFile.mkdirs()
+                }
+                if (!rootFile.isDirectory) {
+                    Timber.tag("CustomGameScanner").w("Root path is not a directory, skipping: $root")
                     continue
                 }
+                
+                val children = try {
+                    rootFile.listFiles { f -> f.isDirectory }
+                } catch (e: SecurityException) {
+                    Timber.tag("CustomGameScanner").w("Permission denied accessing root: $root - ${e.message}")
+                    continue
+                } catch (e: Exception) {
+                    Timber.tag("CustomGameScanner").w("Error accessing root: $root - ${e.message}")
+                    continue
+                }
+                
+                if (children == null) {
+                    Timber.tag("CustomGameScanner").w("Failed to list files in root: $root (permission denied or path doesn't exist)")
+                    continue
+                }
+                if (children.isEmpty()) {
+                    Timber.tag("CustomGameScanner").d("Found 0 subdirectories in $root (folder is empty or contains only files)")
+                    continue
+                }
+                Timber.tag("CustomGameScanner").d("Found ${children.size} subdirectories in $root: ${children.map { it.name }}")
+                
+                for (folder in children) {
+                    if (q.isNotEmpty() && !folder.name.contains(q, ignoreCase = true)) continue
+                    
+                    val looksLikeGame = looksLikeGameFolder(folder)
+                    Timber.tag("CustomGameScanner").d("Checking folder: ${folder.name} (looksLikeGame: $looksLikeGame)")
+                    
+                    if (!looksLikeGame) {
+                        Timber.tag("CustomGameScanner").d("Folder ${folder.name} does not look like a game folder (no .exe found)")
+                        continue
+                    }
 
-                // Get or generate game ID (checks .gamenative file first, then generates and stores)
-                val idPart = getOrGenerateGameId(folder)
-                val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
+                    // Get or generate game ID (checks .gamenative file first, then generates and stores)
+                    val idPart = getOrGenerateGameId(folder)
+                    val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
 
-                items.add(
-                    LibraryItem(
-                        index = indexCounter++,
-                        appId = appId,
-                        name = folder.name,
-                        iconHash = "",
-                        isShared = false,
-                        gameSource = GameSource.CUSTOM_GAME,
+                    items.add(
+                        LibraryItem(
+                            index = indexCounter++,
+                            appId = appId,
+                            name = folder.name,
+                            iconHash = "",
+                            isShared = false,
+                            gameSource = GameSource.CUSTOM_GAME,
+                        )
                     )
-                )
 
-                handleCustomGameDetection(folder, appId, idPart)
+                    handleCustomGameDetection(folder, appId, idPart)
+                }
             }
         }
 
