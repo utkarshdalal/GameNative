@@ -73,6 +73,7 @@ internal fun AppItem(
     onClick: () -> Unit,
     paneType: PaneType = PaneType.LIST,
     onFocus: () -> Unit = {},
+    imageRefreshCounter: Long = 0L,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -81,6 +82,14 @@ internal fun AppItem(
     LaunchedEffect(paneType) {
         hideText = true
         alpha = 1f
+    }
+    
+    // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
+    LaunchedEffect(imageRefreshCounter) {
+        if (paneType != PaneType.LIST) {
+            hideText = true
+            alpha = 1f
+        }
     }
 
     // True when selected, e.g. with controller
@@ -181,7 +190,7 @@ internal fun AppItem(
                         return null
                     }
 
-                    val imageUrl = remember(appInfo.appId, paneType) {
+                    val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
                         if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
                             // For Custom Games, use SteamGridDB images
                             when (paneType) {
@@ -219,6 +228,14 @@ internal fun AppItem(
                             } else {
                                 "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
                             }
+                        }
+                    }
+                    
+                    // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
+                    LaunchedEffect(imageUrl) {
+                        if (paneType != PaneType.LIST) {
+                            hideText = true
+                            alpha = 1f
                         }
                     }
 

@@ -286,6 +286,9 @@ abstract class BaseAppScreen {
 
                                 app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
 
+                                // Emit event to notify UI that images have been fetched
+                                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+
                                 // Call hook for post-fetch processing (e.g., icon extraction)
                                 onAfterFetchImages(context, libraryItem, gameFolderPath)
 
