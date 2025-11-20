@@ -19,5 +19,8 @@ interface AndroidEvent<T> : Event<T> {
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
     data object HideLaunchingOverlay : AndroidEvent<Unit>
     data class SetBootingSplashText(val text: String) : AndroidEvent<Unit>
+    data class DownloadPausedDueToConnectivity(val appId: Int) : AndroidEvent<Unit>
+    data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
+    data class LibraryInstallStatusChanged(val appId: Int) : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

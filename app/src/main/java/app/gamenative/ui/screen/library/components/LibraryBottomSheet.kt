@@ -17,6 +17,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import app.gamenative.ui.icons.CustomGame
+import app.gamenative.ui.icons.Steam
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.FlowFilterChip
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.data.GameSource
 import app.gamenative.ui.theme.PluviaTheme
 import java.util.EnumSet
 
@@ -34,6 +37,9 @@ fun LibraryBottomSheet(
     onFilterChanged: (AppFilter) -> Unit,
     currentView: PaneType,
     onViewChanged: (PaneType) -> Unit,
+    showSteam: Boolean,
+    showCustomGames: Boolean,
+    onSourceToggle: (app.gamenative.data.GameSource) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -73,6 +79,27 @@ fun LibraryBottomSheet(
                     )
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "App Source", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FlowFilterChip(
+                onClick = { onSourceToggle(GameSource.STEAM) },
+                label = { Text(text = "Steam") },
+                selected = showSteam,
+                leadingIcon = { Icon(imageVector = Icons.Filled.Steam, contentDescription = null) },
+            )
+            FlowFilterChip(
+                onClick = { onSourceToggle(GameSource.CUSTOM_GAME) },
+                label = { Text(text = "Custom Games") },
+                selected = showCustomGames,
+                leadingIcon = { Icon(imageVector = Icons.Filled.CustomGame, contentDescription = null) },
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -121,6 +148,9 @@ private fun Preview_LibraryBottomSheet() {
                 onFilterChanged = { },
                 currentView = PaneType.LIST,
                 onViewChanged = { },
+                showSteam = true,
+                showCustomGames = true,
+                onSourceToggle = { },
             )
         }
     }

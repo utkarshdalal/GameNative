@@ -18,10 +18,18 @@ object DownloadService {
         private set(value) {
             field = value
         }
+    // Base path to the app-specific external storage directory (Android/data/<package>)
+    var baseExternalAppDirPath: String = ""
+        private set(value) {
+            field = value
+        }
 
     fun populateDownloadService(context: Context) {
         baseDataDirPath = context.dataDir.path
         baseCacheDirPath = context.cacheDir.path
+        // Prefer the parent of external files dir (Android/data/<package>) so we can create siblings of /files
+        val extFiles = context.getExternalFilesDir(null)
+        baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
     }
 
     fun getDownloadDirectoryApps (): MutableList<String> {

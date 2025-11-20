@@ -1,0 +1,98 @@
+name: Create tagged prerelease
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure Keystore
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE" | base64 --decode > app/keystores/keystore
+          echo "storeFile=keystores/keystore" >> app/keystores/keystore.properties
+          echo "keyAlias=$KEYSTORE_KEY_ALIAS" >> app/keystores/keystore.properties
+          echo "storePassword=$KEYSTORE_STORE_PASSWORD" >> app/keystores/keystore.properties
+          echo "keyPassword=$KEYSTORE_KEY_PASSWORD" >> app/keystores/keystore.properties
+
+      - name: Inject credentials
+        run: |
+          cat <<EOF > local.properties
+          POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+          EOF
+
+      - name: Build with Gradle
+        run: ./gradlew :app:bundleRelease-signed
+
+      - name: Extract APK from Bundle
+        run: |
+          java -jar tools/bundletool-all-1.17.2.jar build-apks \
+            --bundle=app/build/outputs/bundle/release-signed/app-release-signed.aab \
+            --output=app-release-signed.apks \
+            --mode=universal \
+            --ks=app/keystores/keystore \
+            --ks-pass=pass:${{ secrets.KEYSTORE_STORE_PASSWORD }} \
+            --ks-key-alias=${{ secrets.KEYSTORE_KEY_ALIAS }} \
+            --key-pass=pass:${{ secrets.KEYSTORE_KEY_PASSWORD }}
+
+          unzip app-release-signed.apks universal.apk
+
+      - name: Upload APK for next job
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-apk
+          path: universal.apk
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: universal-apk
+          path: ./
+
+      - name: Rename APK
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          mv universal.apk "gamenative-$TAG.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: true
+          generate_release_notes: true
+          files: gamenative-${{ github.ref_name }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

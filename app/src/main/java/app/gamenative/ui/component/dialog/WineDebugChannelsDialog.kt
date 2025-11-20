@@ -12,8 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 
 @Composable
 fun WineDebugChannelsDialog(
@@ -30,7 +32,7 @@ fun WineDebugChannelsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Select Wine Debug Channels") },
+        title = { Text(text = stringResource(R.string.select_wine_debug_channels)) },
         text = {
             Column(
                 modifier = Modifier
@@ -64,13 +66,13 @@ fun WineDebugChannelsDialog(
         },
         confirmButton = {
             TextButton(onClick = { onSave(selectedChannels.toList()) }) {
-                Text(text = "Save")
+                Text(text = stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.cancel))
             }
         }
     )
-} 
+}

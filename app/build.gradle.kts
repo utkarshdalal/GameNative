@@ -62,6 +62,7 @@ android {
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
         buildConfigField("String", "SUPABASE_URL",  "\"${secret("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_KEY",  "\"${secret("SUPABASE_KEY")}\"")
+        buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -74,6 +75,12 @@ android {
         ndk {
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
+
+        // Localization support - specify which languages to include
+        resourceConfigurations += listOf(
+            "en",    // English (default)
+            // TODO: Add more languages here using the ISO 639-1 locale code
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -187,12 +194,22 @@ dependencies {
     // JavaSteaml
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.6.1-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-tf:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-dota2:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-depotdownloader:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-deadlock:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-cs:1.8.0-SNAPSHOT"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {
             isChanging = version?.contains("SNAPSHOT") ?: false
         }
+        implementation("in.dragonbra:javasteam-tf:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-dota2:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-depotdownloader:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-deadlock:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-cs:1.8.0-SNAPSHOT")
     }
     implementation(libs.spongycastle)
 

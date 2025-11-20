@@ -249,7 +249,11 @@ class MainViewModel @Inject constructor(
                 if (container.isLaunchRealSteam()) {
                     SteamUtils.restoreSteamApi(context, appId)
                 } else {
-                    SteamUtils.replaceSteamApi(context, appId)
+                    if (container.isUseLegacyDRM) {
+                        SteamUtils.replaceSteamApi(context, appId)
+                    } else {
+                        SteamUtils.replaceSteamclientDll(context, appId)
+                    }
                 }
             }
 

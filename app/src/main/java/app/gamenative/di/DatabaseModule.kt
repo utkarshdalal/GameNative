@@ -5,6 +5,7 @@ import androidx.room.Room
 import app.gamenative.db.DATABASE_NAME
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.db.dao.CachedLicenseDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -57,4 +58,8 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideAppInfoDao(db: PluviaDatabase): AppInfoDao = db.appInfoDao()
+
+    @Provides
+    @Singleton
+    fun provideCachedLicenseDao(db: PluviaDatabase): CachedLicenseDao = db.cachedLicenseDao()
 }

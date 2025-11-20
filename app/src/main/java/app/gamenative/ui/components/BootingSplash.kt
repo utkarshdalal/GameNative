@@ -57,6 +57,7 @@ fun BootingSplash(
             "Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don't support Turnip is currently limited.",
             "Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.",
             "Tip: If you are getting a black screen when launching a game, try Open Container and launching the game from A: drive.",
+            "Tip: You can add different locations for Custom Games in the settings.",
             "Tip: Turn off \"Show FPS\" to get rid of the mesa overlay.",
             "Tip: Install packages in A:\\_CommonRedist if your game doesn't launch.",
             "Tip: You can enable or disable the onscreen controller with your device's back key.",

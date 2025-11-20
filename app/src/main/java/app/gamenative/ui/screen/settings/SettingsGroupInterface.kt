@@ -47,8 +47,18 @@ import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
 import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSlider
+import androidx.compose.material3.Slider
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import kotlin.math.roundToInt
+import com.winlator.core.AppUtils
+import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.LoadingDialog
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsGroupInterface(
@@ -66,6 +76,12 @@ fun SettingsGroupInterface(
 
     var openStartScreenDialog by rememberSaveable { mutableStateOf(false) }
     var startScreenOption by rememberSaveable(openStartScreenDialog) { mutableStateOf(PrefManager.startScreen) }
+
+    // Status bar hide/show confirmation dialog
+    var showStatusBarRestartDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingStatusBarValue by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var showStatusBarLoadingDialog by rememberSaveable { mutableStateOf(false) }
+    var hideStatusBar by rememberSaveable { mutableStateOf(PrefManager.hideStatusBarWhenNotInGame) }
 
     // Load Steam regions from assets
     val steamRegionsMap: Map<Int, String> = remember {
@@ -92,6 +108,20 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 openWebLinks = it
                 PrefManager.openWebLinksExternally = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = "Hide status bar when not in game") },
+            subtitle = { Text(text = "Hide Android status bar in game list, settings, etc. App will restart when changed.") },
+            state = hideStatusBar,
+            onCheckedChange = { newValue ->
+                // Update UI immediately for responsive feel
+                hideStatusBar = newValue
+                // Store the pending value and show confirmation dialog
+                pendingStatusBarValue = newValue
+                showStatusBarRestartDialog = true
             },
         )
 
@@ -134,7 +164,7 @@ fun SettingsGroupInterface(
         var wifiOnlyDownload by rememberSaveable { mutableStateOf(PrefManager.downloadOnWifiOnly) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Download only over Wi-Fi") },
+            title = { Text(text = "Download only over Wi-Fi/LAN") },
             subtitle = { Text(text = "Prevent downloads on cellular data") },
             state = wifiOnlyDownload,
             onCheckedChange = {
@@ -142,6 +172,56 @@ fun SettingsGroupInterface(
                 PrefManager.downloadOnWifiOnly = it
             },
         )
+        
+        // Download speed setting
+        val downloadSpeedLabels = remember { listOf("Slow", "Medium", "Fast", "Blazing") }
+        val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
+        var downloadSpeedValue by rememberSaveable { 
+            mutableStateOf(
+                downloadSpeedValues.indexOf(PrefManager.downloadSpeed).takeIf { it >= 0 }?.toFloat() ?: 2f
+            )
+        }
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "Download speed",
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.size(4.dp))
+            Text(
+                text = "Higher speeds may cause increased device heat during downloads",
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Slider(
+                value = downloadSpeedValue,
+                onValueChange = { newIndex ->
+                    downloadSpeedValue = newIndex
+                    val index = newIndex.roundToInt().coerceIn(0, 3)
+                    PrefManager.downloadSpeed = downloadSpeedValues[index]
+                },
+                valueRange = 0f..3f,
+                steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
+            )
+            // Labels below slider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                downloadSpeedLabels.forEach { label ->
+                    Text(
+                        text = label,
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(60.dp)
+                    )
+                }
+            }
+        }
+        
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 
@@ -222,6 +302,56 @@ fun SettingsGroupInterface(
             PrefManager.cellIdManuallySet = selectedId != 0
         },
         onDismiss = { openRegionDialog = false }
+    )
+
+    // Status bar restart confirmation dialog
+    MessageDialog(
+        visible = showStatusBarRestartDialog,
+        title = "Restart Required",
+        message = "Changing this setting requires the app to restart. Do you want to continue?",
+        confirmBtnText = "Restart",
+        dismissBtnText = "Cancel",
+        onConfirmClick = {
+            showStatusBarRestartDialog = false
+            val newValue = pendingStatusBarValue ?: return@MessageDialog
+            // Save preference and show loading dialog
+            PrefManager.hideStatusBarWhenNotInGame = newValue
+            showStatusBarLoadingDialog = true
+            pendingStatusBarValue = null
+        },
+        onDismissRequest = {
+            showStatusBarRestartDialog = false
+            // Revert toggle to original value
+            hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
+            pendingStatusBarValue = null
+        },
+        onDismissClick = {
+            showStatusBarRestartDialog = false
+            // Revert toggle to original value
+            hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
+            pendingStatusBarValue = null
+        }
+    )
+
+    // Loading dialog while saving and restarting
+    LaunchedEffect(showStatusBarLoadingDialog) {
+        if (showStatusBarLoadingDialog) {
+            // Wait a bit for the preference to be saved (DataStore operations are async)
+            delay(300)
+            // Verify the preference was saved by reading it back
+            withContext(Dispatchers.IO) {
+                // Small delay to ensure DataStore write completes
+                delay(200)
+            }
+            // Restart the app
+            AppUtils.restartApplication(context)
+        }
+    }
+
+    LoadingDialog(
+        visible = showStatusBarLoadingDialog,
+        progress = -1f, // Indeterminate progress
+        message = "Saving settings and restarting..."
     )
 }
 

@@ -15,6 +15,7 @@ import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.FileUtils;
+import com.winlator.core.GPUInformation;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
@@ -246,7 +247,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         ImageFs imageFs = ImageFs.find(context);
         envVars.put("BOX64_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX64_DYNAREC", "1");
-        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
 
         if (enableLogs) {
             envVars.put("BOX64_LOG", "1");
@@ -254,6 +254,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         }
 
         envVars.putAll(Box86_64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
+        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
+        String renderer = GPUInformation.getRenderer(context);
+        if (renderer.contains("Mali"))
+            envVars.put("BOX64_MMAP32", "0");
         envVars.put("BOX64_X11GLX", "1");
         File box64RCFile = new File(imageFs.getRootDir(), "/etc/config.box64rc");
         envVars.put("BOX64_RCFILE", box64RCFile.getPath());

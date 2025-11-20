@@ -225,6 +225,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
 
+        String renderer = GPUInformation.getRenderer(context);
+
+        if (renderer.contains("Mali"))
+            envVars.put("BOX64_MMAP32", "0");
+
         if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
             envVars.put("WRAPPER_DISABLE_PLACED", "1");
 

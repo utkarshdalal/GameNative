@@ -21,6 +21,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     APP_SESSION_SUSPENDED,
 
     INSTALL_APP,
+    INSTALL_APP_PENDING,
     NOT_ENOUGH_SPACE,
     CANCEL_APP_DOWNLOAD,
     DELETE_APP,

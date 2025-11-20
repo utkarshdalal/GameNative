@@ -5,6 +5,7 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
+import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -94,6 +95,7 @@ object ContainerUtils {
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
+            useLegacyDRM = PrefManager.useLegacyDRM,
             wineVersion = PrefManager.wineVersion,
 			emulator = PrefManager.emulator,
 			fexcoreVersion = PrefManager.fexcoreVersion,
@@ -161,6 +163,7 @@ object ContainerUtils {
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
+        PrefManager.useLegacyDRM = containerData.useLegacyDRM
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -240,6 +243,7 @@ object ContainerUtils {
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
             forceDlc = container.isForceDlc,
+            useLegacyDRM = container.isUseLegacyDRM(),
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -332,6 +336,7 @@ object ContainerUtils {
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
         container.setForceDlc(containerData.forceDlc)
+        container.setUseLegacyDRM(containerData.useLegacyDRM)
         try {
             val bindingsStr = containerData.controllerEmulationBindings
             if (bindingsStr.isNotEmpty()) {
@@ -466,12 +471,33 @@ object ContainerUtils {
         containerManager: ContainerManager,
         customConfig: ContainerData? = null,
     ): Container {
+        // Determine game source
+        val gameSource = extractGameSourceFromContainerId(appId)
+
         // Set up container drives to include app
         val defaultDrives = PrefManager.drives
-        val gameId = extractGameIdFromContainerId(appId)
-        val appDirPath = SteamService.getAppDirPath(gameId)
-        val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
-        val drives = "$defaultDrives$drive:$appDirPath"
+        val drives = if (gameSource == GameSource.STEAM) {
+            // For Steam games, set up the app directory path
+            val gameId = extractGameIdFromContainerId(appId)
+            val appDirPath = SteamService.getAppDirPath(gameId)
+            val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
+            "$defaultDrives$drive:$appDirPath"
+        } else {
+            // For Custom Games, find the game folder and map it to A: drive
+            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+            if (gameFolderPath != null) {
+                // Check if A: is already in defaultDrives, if not use it, otherwise use next available
+                val drive: Char = if (defaultDrives.contains("A:")) {
+                    Container.getNextAvailableDriveLetter(defaultDrives)
+                } else {
+                    'A'
+                }
+                "$defaultDrives$drive:$gameFolderPath"
+            } else {
+                Timber.w("Could not find folder path for Custom Game: $appId")
+                defaultDrives
+            }
+        }
         Timber.d("Prepared container drives: $drives")
 
         // Prepare container data with default DX wrapper to start
@@ -487,6 +513,23 @@ object ContainerUtils {
 
         // Create the actual container
         val container = containerManager.createContainerFuture(containerId, data).get()
+
+        // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
+        if (gameSource == GameSource.CUSTOM_GAME) {
+            try {
+                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+                if (!gameFolderPath.isNullOrEmpty() && container.executablePath.isEmpty()) {
+                    val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath)
+                    if (auto != null) {
+                        Timber.i("Auto-selected Custom Game exe during container creation: $auto")
+                        container.executablePath = auto
+                        container.saveData()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to auto-select exe during Custom Game creation for $appId")
+            }
+        }
 
         // Initialize container with default/custom config
         val containerData = if (customConfig != null) {
@@ -550,42 +593,45 @@ object ContainerUtils {
             return container
         }
 
-        // No custom config, so determine the DX wrapper synchronously
-        runBlocking {
-            try {
-                Timber.i("Fetching DirectX version synchronously for app $appId")
+        // No custom config, so determine the DX wrapper synchronously (only for Steam games)
+        if (gameSource == GameSource.STEAM) {
+            runBlocking {
+                try {
+                    Timber.i("Fetching DirectX version synchronously for app $appId")
 
-                // Create CompletableDeferred to wait for result
-                val deferred = kotlinx.coroutines.CompletableDeferred<Int>()
+                    val gameId = extractGameIdFromContainerId(appId)
+                    // Create CompletableDeferred to wait for result
+                    val deferred = kotlinx.coroutines.CompletableDeferred<Int>()
 
-                // Start the async fetch but wait for it to complete
-                SteamUtils.fetchDirect3DMajor(gameId) { dxVersion ->
-                    deferred.complete(dxVersion)
-                }
+                    // Start the async fetch but wait for it to complete
+                    SteamUtils.fetchDirect3DMajor(gameId) { dxVersion ->
+                        deferred.complete(dxVersion)
+                    }
 
-                // Wait for the result with a timeout
-                val dxVersion = try {
-                    withTimeout(10000) { deferred.await() }
+                    // Wait for the result with a timeout
+                    val dxVersion = try {
+                        withTimeout(10000) { deferred.await() }
+                    } catch (e: Exception) {
+                        Timber.w(e, "Timeout waiting for DirectX version")
+                        -1 // Default on timeout
+                    }
+
+                    // Set wrapper based on DirectX version
+                    val newDxWrapper = when {
+                        dxVersion == 12 -> "vkd3d"
+                        dxVersion in 1..8 -> "wined3d"
+                        else -> containerData.dxwrapper // Keep existing for DX10/11 or errors
+                    }
+
+                    // Update the wrapper if needed
+                    if (newDxWrapper != containerData.dxwrapper) {
+                        Timber.i("Setting DX wrapper for app $appId to $newDxWrapper (DirectX version: $dxVersion)")
+                        containerData.dxwrapper = newDxWrapper
+                    }
                 } catch (e: Exception) {
-                    Timber.w(e, "Timeout waiting for DirectX version")
-                    -1 // Default on timeout
+                    Timber.w(e, "Error determining DirectX version: ${e.message}")
+                    // Continue with default wrapper on error
                 }
-
-                // Set wrapper based on DirectX version
-                val newDxWrapper = when {
-                    dxVersion == 12 -> "vkd3d"
-                    dxVersion in 1..8 -> "wined3d"
-                    else -> containerData.dxwrapper // Keep existing for DX10/11 or errors
-                }
-
-                // Update the wrapper if needed
-                if (newDxWrapper != containerData.dxwrapper) {
-                    Timber.i("Setting DX wrapper for app $appId to $newDxWrapper (DirectX version: $dxVersion)")
-                    containerData.dxwrapper = newDxWrapper
-                }
-            } catch (e: Exception) {
-                Timber.w(e, "Error determining DirectX version: ${e.message}")
-                // Continue with default wrapper on error
             }
         }
 
@@ -597,11 +643,49 @@ object ContainerUtils {
     fun getOrCreateContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
 
-        return if (containerManager.hasContainer(appId)) {
+        val container = if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
         } else {
             createNewContainer(context, appId, appId, containerManager)
         }
+
+        // Ensure Custom Games have the A: drive mapped to the game folder
+        val gameSource = extractGameSourceFromContainerId(appId)
+        if (gameSource == GameSource.CUSTOM_GAME) {
+            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+            if (gameFolderPath != null) {
+                // Check if A: drive is already mapped to the correct path
+                var hasCorrectADrive = false
+                for (drive in Container.drivesIterator(container.drives)) {
+                    if (drive[0] == "A" && drive[1] == gameFolderPath) {
+                        hasCorrectADrive = true
+                        break
+                    }
+                }
+
+                // If A: drive is not mapped correctly, update it
+                if (!hasCorrectADrive) {
+                    val currentDrives = container.drives
+                    // Rebuild drives string, excluding existing A: drive and adding new one
+                    val drivesBuilder = StringBuilder()
+                    drivesBuilder.append("A:$gameFolderPath")
+
+                    // Add all other drives (excluding A:)
+                    for (drive in Container.drivesIterator(currentDrives)) {
+                        if (drive[0] != "A") {
+                            drivesBuilder.append("${drive[0]}:${drive[1]}")
+                        }
+                    }
+
+                    val updatedDrives = drivesBuilder.toString()
+                    container.drives = updatedDrives
+                    container.saveData()
+                    Timber.d("Updated container drives to include A: drive mapping: $updatedDrives")
+                }
+            }
+        }
+
+        return container
     }
 
     fun getOrCreateContainerWithOverride(context: Context, appId: String): Container {
@@ -813,15 +897,28 @@ object ContainerUtils {
 
     /**
      * Extracts the game ID from a container ID string
-     * Splits on the first underscore and takes the numeric part, handling duplicate suffixes like (1), (2)
+     * Handles formats like:
+     * - STEAM_123456 -> 123456
+     * - CUSTOM_GAME_571969840 -> 571969840
+     * - STEAM_123456(1) -> 123456
      */
     fun extractGameIdFromContainerId(containerId: String): Int {
-        val afterUnderscore = containerId.split("_", limit = 2)[1]
         // Remove duplicate suffix like (1), (2) if present
-        return if (afterUnderscore.contains("(")) {
-            afterUnderscore.substringBefore("(").toInt()
+        val idWithoutSuffix = if (containerId.contains("(")) {
+            containerId.substringBefore("(")
         } else {
-            afterUnderscore.toInt()
+            containerId
+        }
+
+        // Split by underscores and find the last numeric part
+        val parts = idWithoutSuffix.split("_")
+        // The last part should be the numeric ID
+        val lastPart = parts.lastOrNull() ?: throw IllegalArgumentException("Invalid container ID format: $containerId")
+
+        return try {
+            lastPart.toInt()
+        } catch (e: NumberFormatException) {
+            throw IllegalArgumentException("Could not extract game ID from container ID: $containerId", e)
         }
     }
 
@@ -831,6 +928,7 @@ object ContainerUtils {
     fun extractGameSourceFromContainerId(containerId: String): GameSource {
         return when {
             containerId.startsWith("STEAM_") -> GameSource.STEAM
+            containerId.startsWith("CUSTOM_GAME_") -> GameSource.CUSTOM_GAME
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }

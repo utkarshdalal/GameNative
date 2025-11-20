@@ -16,6 +16,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import app.gamenative.CrashHandler
 import coil.annotation.ExperimentalCoilApi
 import coil.imageLoader
 import app.gamenative.service.SteamService
@@ -26,6 +28,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.winlator.PrefManager as WinlatorPrefManager
 import java.io.File
@@ -95,6 +98,22 @@ fun SettingsGroupDebug() {
         }
     }
 
+    /* Save log cat */
+    val saveLogCat = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain"),
+    ) { resultUri ->
+        try {
+            resultUri?.let {
+                val logs = CrashHandler.getAppLogs(1000)
+                context.contentResolver.openOutputStream(resultUri)?.use { outputStream ->
+                    outputStream.write(logs.toByteArray())
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, context.getString(R.string.toast_failed_log_save), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     CrashLogDialog(
         visible = showLogcatDialog && latestCrashFile != null,
         fileName = latestCrashFile?.name ?: "No Filename",
@@ -137,6 +156,12 @@ fun SettingsGroupDebug() {
     }
 
     SettingsGroup(title = { Text(text = "Debug") }) {
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.settings_save_logcat_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_save_logcat_subtitle)) },
+            onClick = { saveLogCat.launch("app_logs_${CrashHandler.timestamp}.txt") },
+        )
         // Link to open channel selector
         SettingsMenuLink(
             colors = settingsTileColors(),

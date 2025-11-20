@@ -1,2 +1,0 @@
-*.txz filter=lfs diff=lfs merge=lfs -text
-tools/bundletool-all-1.17.2.jar filter=lfs diff=lfs merge=lfs -text
