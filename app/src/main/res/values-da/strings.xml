@@ -571,4 +571,80 @@
 
     <!-- TODO: Manual review - Container Configuration: Steam Integration (missing) -->
     <string name="use_legacy_drm">Brug ældre DRM</string>
+
+    <!-- TODO: Manual review - Library Status -->
+    <string name="library_status_ready">Klar</string>
+
+    <!-- TODO: Manual review - New strings from latest pull -->
+    <!-- Steam-specific dialogs -->
+    <string name="steam_install_space_prompt">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
+    <string name="steam_install_not_enough_space">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
+    <string name="steam_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
+    <string name="steam_delete_download_message">Slet alle downloadede data for dette spil?</string>
+    <string name="steam_imagefs_download_install_title">Download &amp; installér ImageFS</string>
+    <string name="steam_imagefs_download_install_message">Ubuntu-billedet skal downloades og installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="steam_imagefs_install_title">Installér ImageFS</string>
+    <string name="steam_imagefs_install_message">Ubuntu-billedet skal installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="steam_reset_container_title">Nulstil container</string>
+    <string name="steam_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
+    <string name="steam_verify_files_title">Verificér filer</string>
+    <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_update_title">Opdatering</string>
+    <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_cloud_sync_success">Sky-synkronisering fuldført</string>
+    <string name="steam_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
+    <string name="steam_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
+    <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
+    <string name="steam_container_reset_success">Container nulstillet til standard</string>
+    <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
+    <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
+    <string name="steam_uninstall_game_title">Afinstallér spil</string>
+
+    <!-- Custom Games -->
+    <string name="custom_games_title">Tilpassede spil</string>
+    <string name="custom_games_no_paths">Ingen stier tilføjet</string>
+    <string name="custom_games_grant_permission">Giv tilladelse</string>
+    <string name="custom_games_manual_subtitle">Tilføjet fra bibliotek</string>
+    <string name="custom_games_no_manual_entries">Ingen manuelt tilføjede spil endnu.</string>
+    <string name="custom_games_remove_path_title">Fjern sti</string>
+    <string name="custom_games_remove_path_message">Fjern denne sti fra scanning? Mappeindholdet bliver på disken.</string>
+    <string name="custom_games_remove_path_content_desc">Fjern sti</string>
+    <string name="custom_games_path_removed_toast">Sti fjernet fra listen. Indhold er ikke blevet slettet.</string>
+    <string name="custom_games_remove_manual_title">Fjern manuelt spil</string>
+    <string name="custom_games_remove_manual_message">Fjern denne manuelt tilføjede mappe fra dit bibliotek? Dette sletter ikke filer på disken.</string>
+    <string name="custom_games_remove_manual_content_desc">Fjern manuel mappe</string>
+    <string name="custom_games_manual_removed_toast">Manuel mappe fjernet fra bibliotek.</string>
+    <string name="custom_games_cannot_access">⚠ Kan ikke få adgang (tjek om stien eksisterer)</string>
+    <string name="custom_games_permission_denied">⚠ Tilladelse nægtet</string>
+    <string name="custom_games_zero_folders">0 mapper fundet</string>
+    <string name="custom_games_folders_found">%d mapper fundet</string>
+    <string name="custom_games_scan_description">Mapper i disse stier scannes for .exe-filer og vises som tilpassede spil.</string>
+    <string name="custom_game_folder_picker_error">Kunne ikke løse mappesti</string>
+    <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
+    <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn venligst tilpassede spilindstillinger for at vælge hvilken der skal startes.</string>
+    <string name="custom_game_settings">Tilpassede spilindstillinger</string>
+    <string name="custom_game_delete_title">Slet spil</string>
+    <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
+
+    <!-- Toast messages -->
+    <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
+
+    <!-- Settings additions -->
+    <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
+    <string name="settings_save_logcat_title">Gem logcat</string>
+
+    <!-- Misc additions -->
+    <string name="calculating_space_requirements">Beregner pladskrav...</string>
+    <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
+    <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
+    <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
+    <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
+    <string name="base_app_shortcut_created">Genvej oprettet</string>
+    <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
+    <string name="base_app_images_fetched">Billeder hentet</string>
+    <string name="base_app_game_folder_not_found">Spilmappe ikke fundet</string>
+    <string name="base_app_images_fetch_failed">Kunne ikke hente billeder: %s</string>
+    <string name="base_app_exported">Eksporteret</string>
+    <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
+    <string name="base_app_export_cancelled">Eksport annulleret</string>
 </resources>

@@ -641,6 +641,9 @@
     <string name="contents_install_success">Content installed successfully</string>
     <string name="contents_install_failed">Failed to install content</string>
     <string name="contents_install_error">Installation error: %1$s</string>
+
+    <!-- Library Status -->
+    <string name="library_status_ready">Ready</string>
 </resources>
 
 

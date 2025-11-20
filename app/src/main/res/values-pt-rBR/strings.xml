@@ -572,4 +572,80 @@
 
     <!-- TODO: Revisão manual - Container Configuration: Steam Integration (faltando) -->
     <string name="use_legacy_drm">Usar DRM legado</string>
+
+    <!-- TODO: Revisão manual - Library Status -->
+    <string name="library_status_ready">Pronto</string>
+
+    <!-- TODO: Revisão manual - Novas strings do último pull -->
+    <!-- Diálogos específicos do Steam -->
+    <string name="steam_install_space_prompt">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tTamanho no disco: %2$s\n\tEspaço disponível: %3$s</string>
+    <string name="steam_install_not_enough_space">O aplicativo sendo instalado precisa de %1$s de espaço, mas há apenas %2$s restante neste dispositivo</string>
+    <string name="steam_cancel_download_message">Tem certeza de que deseja cancelar o download do aplicativo?</string>
+    <string name="steam_delete_download_message">Excluir todos os dados baixados para este jogo?</string>
+    <string name="steam_imagefs_download_install_title">Baixar &amp; instalar ImageFS</string>
+    <string name="steam_imagefs_download_install_message">A imagem do Ubuntu precisa ser baixada e instalada antes de poder editar a configuração. Esta operação pode levar alguns minutos. Deseja continuar?</string>
+    <string name="steam_imagefs_install_title">Instalar ImageFS</string>
+    <string name="steam_imagefs_install_message">A imagem do Ubuntu precisa ser instalada antes de poder editar a configuração. Esta operação pode levar alguns minutos. Deseja continuar?</string>
+    <string name="steam_reset_container_title">Redefinir contêiner</string>
+    <string name="steam_reset_container_message">Isso redefinirá seu contêiner para a configuração padrão.</string>
+    <string name="steam_verify_files_title">Verificar arquivos</string>
+    <string name="steam_verify_files_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de verificar, caso contrário, eles podem ser sobrescritos.</string>
+    <string name="steam_update_title">Atualização</string>
+    <string name="steam_update_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de atualizar, caso contrário, eles podem ser sobrescritos.</string>
+    <string name="steam_cloud_sync_success">Sincronização na nuvem concluída com sucesso</string>
+    <string name="steam_cloud_sync_up_to_date">Os arquivos de save já estão atualizados</string>
+    <string name="steam_cloud_sync_failed">Sincronização na nuvem falhou: %s</string>
+    <string name="steam_storage_permission_required">Permissão de armazenamento necessária</string>
+    <string name="steam_container_reset_success">Contêiner redefinido para padrões</string>
+    <string name="steam_imagefs_installed">ImageFS instalado. Por favor, tente editar o contêiner novamente.</string>
+    <string name="steam_imagefs_install_failed">Falha ao instalar ImageFS: %s</string>
+    <string name="steam_uninstall_game_title">Desinstalar jogo</string>
+
+    <!-- Jogos personalizados -->
+    <string name="custom_games_title">Jogos personalizados</string>
+    <string name="custom_games_no_paths">Nenhum caminho adicionado</string>
+    <string name="custom_games_grant_permission">Conceder permissão</string>
+    <string name="custom_games_manual_subtitle">Adicionado da biblioteca</string>
+    <string name="custom_games_no_manual_entries">Nenhum jogo adicionado manualmente ainda.</string>
+    <string name="custom_games_remove_path_title">Remover caminho</string>
+    <string name="custom_games_remove_path_message">Remover este caminho da varredura? O conteúdo da pasta permanecerá no disco.</string>
+    <string name="custom_games_remove_path_content_desc">Remover caminho</string>
+    <string name="custom_games_path_removed_toast">Caminho removido da lista. O conteúdo não foi excluído.</string>
+    <string name="custom_games_remove_manual_title">Remover jogo manual</string>
+    <string name="custom_games_remove_manual_message">Remover esta pasta adicionada manualmente da sua biblioteca? Isso não exclui arquivos no disco.</string>
+    <string name="custom_games_remove_manual_content_desc">Remover pasta manual</string>
+    <string name="custom_games_manual_removed_toast">Pasta manual removida da biblioteca.</string>
+    <string name="custom_games_cannot_access">⚠ Não é possível acessar (verifique se o caminho existe)</string>
+    <string name="custom_games_permission_denied">⚠ Permissão negada</string>
+    <string name="custom_games_zero_folders">0 pastas encontradas</string>
+    <string name="custom_games_folders_found">%d pastas encontradas</string>
+    <string name="custom_games_scan_description">As pastas nesses caminhos são verificadas em busca de arquivos .exe e listadas como jogos personalizados.</string>
+    <string name="custom_game_folder_picker_error">Falha ao resolver o caminho da pasta</string>
+    <string name="custom_game_exe_selection_title">Seleção de executável necessária</string>
+    <string name="custom_game_exe_selection_message">Este jogo tem vários executáveis. Por favor, abra as Configurações de jogo personalizado para selecionar qual iniciar.</string>
+    <string name="custom_game_settings">Configurações de jogo personalizado</string>
+    <string name="custom_game_delete_title">Excluir jogo</string>
+    <string name="custom_game_delete_message">Tem certeza de que deseja excluir este jogo? Isso removerá os arquivos do jogo e todos os dados associados.</string>
+
+    <!-- Mensagens Toast -->
+    <string name="toast_failed_log_save">Falha ao salvar logcat no destino</string>
+
+    <!-- Adições de configurações -->
+    <string name="settings_save_logcat_subtitle">Salva um snapshot do logcat apenas para o PID deste aplicativo</string>
+    <string name="settings_save_logcat_title">Salvar logcat</string>
+
+    <!-- Adições diversas -->
+    <string name="calculating_space_requirements">Calculando requisitos de espaço...</string>
+    <string name="add_custom_game_content_desc">Adicionar jogo personalizado</string>
+    <string name="add_custom_game_dialog_title">Adicionar jogo personalizado</string>
+    <string name="add_custom_game_dialog_message">Por favor, selecione a pasta contendo os arquivos do jogo que você deseja adicionar como um jogo personalizado.</string>
+    <string name="add_custom_game_dont_show_again">Não mostrar este diálogo novamente</string>
+    <string name="base_app_shortcut_created">Atalho criado</string>
+    <string name="base_app_shortcut_failed">Falha ao criar atalho: %s</string>
+    <string name="base_app_images_fetched">Imagens obtidas com sucesso</string>
+    <string name="base_app_game_folder_not_found">Pasta do jogo não encontrada</string>
+    <string name="base_app_images_fetch_failed">Falha ao obter imagens: %s</string>
+    <string name="base_app_exported">Exportado</string>
+    <string name="base_app_export_failed">Falha ao exportar: %s</string>
+    <string name="base_app_export_cancelled">Exportação cancelada</string>
 </resources>
