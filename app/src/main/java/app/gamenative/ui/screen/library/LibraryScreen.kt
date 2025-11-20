@@ -1,18 +1,36 @@
 package app.gamenative.ui.screen.library
 
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
@@ -25,14 +43,27 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
@@ -46,13 +77,18 @@ import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.components.rememberCustomGameFolderPicker
+import app.gamenative.ui.components.requestPermissionsForPath
+import app.gamenative.utils.CustomGameScanner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.EnumSet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (String, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -60,6 +96,13 @@ fun HomeLibraryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Ensure default CustomGames folder exists when the library screen loads
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            CustomGameScanner.ensureDefaultFolderExists()
+        }
+    }
 
     LibraryScreenContent(
         state = state,
@@ -74,6 +117,8 @@ fun HomeLibraryScreen(
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
+        onSourceToggle = viewModel::onSourceToggle,
+        onAddCustomGameFolder = viewModel::addCustomGameFolder,
         isOffline = isOffline,
     )
 }
@@ -89,21 +134,71 @@ private fun LibraryScreenContent(
     onModalBottomSheet: (Boolean) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
-    onClickPlay: (Int, Boolean) -> Unit,
+    onClickPlay: (String, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onSourceToggle: (GameSource) -> Unit,
+    onAddCustomGameFolder: (String) -> Unit,
     isOffline: Boolean = false,
 ) {
+    val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    
+    // Dialog state for add custom game prompt
+    var showAddCustomGameDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
+
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { }
+
+    val folderPicker = rememberCustomGameFolderPicker(
+        onPathSelected = { path ->
+            if (!CustomGameScanner.hasStoragePermission(context, path)) {
+                requestPermissionsForPath(context, path, storagePermissionLauncher)
+            }
+            onAddCustomGameFolder(path)
+        },
+        onFailure = { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        },
+    )
+    
+    // Handle opening folder picker (with dialog check)
+    val onAddCustomGameClick = {
+        if (PrefManager.showAddCustomGameDialog) {
+            showAddCustomGameDialog = true
+        } else {
+            folderPicker.launchPicker()
+        }
+    }
 
     BackHandler(selectedAppId != null) { selectedAppId = null }
+
+    // Refresh list when navigating back from detail view
+    LaunchedEffect(selectedAppId) {
+        if (selectedAppId == null) {
+            // Trigger refresh by calling onSearchQuery with current query
+            // This will call onFilterApps() which re-scans Custom Games
+            val currentQuery = state.searchQuery
+            onSearchQuery(currentQuery)
+        }
+    }
+
     // Apply top padding differently for list vs game detail pages.
     // On the game page we want to hide the top padding when the status bar is hidden.
     val safePaddingModifier = if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
         if (selectedAppId != null) {
-            // Detail (game) page: compute top padding via PaddingUtils
-            Modifier.padding(top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding())
+            // Detail (game) page: use actual status bar height when status bar is visible,
+            // or 0.dp when status bar is hidden
+            val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
+                0.dp
+            } else {
+                WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            }
+            Modifier.padding(top = topPadding)
         } else {
             // List page keeps safe cutout padding (for notches)
             Modifier.displayCutoutPadding()
@@ -127,6 +222,7 @@ private fun LibraryScreenContent(
                 onLogout = onLogout,
                 onNavigate = { appId -> selectedAppId = appId },
                 onGoOnline = onGoOnline,
+                onSourceToggle = onSourceToggle,
                 isOffline = isOffline,
             )
         } else {
@@ -140,9 +236,90 @@ private fun LibraryScreenContent(
                 onBack = { selectedAppId = null },
                 onClickPlay = {
                     selectedLibraryItem?.let { libraryItem ->
-                        onClickPlay(libraryItem.gameId, it)
+                        onClickPlay(libraryItem.appId, it)
                     }
                 },
+            )
+        }
+
+        if (selectedAppId == null) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (!state.isSearching) {
+                    ExtendedFloatingActionButton(
+                        text = { Text(text = "Filters") },
+                        icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
+                        expanded = filterFabExpanded,
+                        onClick = { onModalBottomSheet(true) },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+
+                FloatingActionButton(
+                    onClick = onAddCustomGameClick,
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.add_custom_game_content_desc),
+                    )
+                }
+            }
+        }
+        
+        // Add custom game dialog
+        if (showAddCustomGameDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddCustomGameDialog = false },
+                title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
+                text = {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.add_custom_game_dialog_message),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = dontShowAgain,
+                                onCheckedChange = { dontShowAgain = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.add_custom_game_dont_show_again),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (dontShowAgain) {
+                                PrefManager.showAddCustomGameDialog = false
+                            }
+                            showAddCustomGameDialog = false
+                            folderPicker.launchPicker()
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAddCustomGameDialog = false }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }
@@ -200,6 +377,8 @@ private fun Preview_LibraryScreenContent() {
             onNavigateRoute = {},
             onLogout = {},
             onGoOnline = {},
+            onSourceToggle = {},
+            onAddCustomGameFolder = {},
         )
     }
 }

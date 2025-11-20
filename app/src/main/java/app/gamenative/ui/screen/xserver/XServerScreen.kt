@@ -31,6 +31,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
@@ -1244,7 +1245,62 @@ private fun getWineStartCommand(
     FileUtils.clear(tempDir)
 
     Timber.tag("XServerScreen").d("appLaunchInfo is $appLaunchInfo")
-    val args = if (bootToContainer || appLaunchInfo == null) {
+
+    // Check if this is a Custom Game
+    val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+
+    val args = if (bootToContainer) {
+        "\"wfm.exe\""
+    } else if (isCustomGame) {
+        // For Custom Games, we can launch even without appLaunchInfo
+        // Use the executable path from container config. If missing, try to auto-detect
+        // a unique .exe in the game folder (ignoring installers like "unins*").
+        var executablePath = container.executablePath
+
+        // Find the A: drive (which should map to the game folder)
+        var gameFolderPath: String? = null
+        for (drive in Container.drivesIterator(container.drives)) {
+            if (drive[0] == "A") {
+                gameFolderPath = drive[1]
+                break
+            }
+        }
+
+        if (executablePath.isEmpty()) {
+            // Attempt auto-detection only when we have the physical folder path
+            if (gameFolderPath == null) {
+                Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
+                return "winhandler.exe \"wfm.exe\""
+            }
+            val auto = app.gamenative.utils.CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
+            if (auto != null) {
+                Timber.tag("XServerScreen").i("Auto-selected Custom Game exe: $auto")
+                executablePath = auto
+                container.executablePath = auto
+                container.saveData()
+            } else {
+                Timber.tag("XServerScreen").w("No unique executable found for Custom Game: $appId")
+                return "winhandler.exe \"wfm.exe\""
+            }
+        }
+
+        if (gameFolderPath == null) {
+            Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
+            return "winhandler.exe \"wfm.exe\""
+        }
+
+        // Set working directory to the game folder
+        guestProgramLauncherComponent.workingDir = File(gameFolderPath)
+        Timber.tag("XServerScreen").i("Working directory is ${gameFolderPath}")
+        Timber.tag("XServerScreen").i("Final exe path is $executablePath")
+
+        // Normalize path separators (ensure Windows-style backslashes)
+        val normalizedPath = executablePath.replace('/', '\\')
+        envVars.put("WINEPATH", "A:\\")
+        "\"A:\\${normalizedPath}\""
+    } else if (appLaunchInfo == null) {
+        // For Steam games, we need appLaunchInfo
+        Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)

@@ -12,6 +12,28 @@
     <string name="steam_2fa_confirmation">Use the Steam Mobile App to confirm your sign in…</string>
     <string name="steam_2fa_device">Please enter your 2-factor auth code from your authenticator app.</string>
     <string name="steam_2fa_email">Please enter the auth code sent to the email at %s</string>
+    <string name="steam_install_space_prompt">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="steam_install_not_enough_space">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
+    <string name="steam_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
+    <string name="steam_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="steam_imagefs_download_install_title">Download &amp; Install ImageFS</string>
+    <string name="steam_imagefs_download_install_message">The Ubuntu image needs to be downloaded and installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
+    <string name="steam_imagefs_install_title">Install ImageFS</string>
+    <string name="steam_imagefs_install_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
+    <string name="steam_reset_container_title">Reset Container</string>
+    <string name="steam_reset_container_message">This will reset your container to the default configuration.</string>
+    <string name="steam_verify_files_title">Verify Files</string>
+    <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
+    <string name="steam_update_title">Update</string>
+    <string name="steam_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
+    <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
+    <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
+    <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
+    <string name="steam_storage_permission_required">Storage permission required</string>
+    <string name="steam_container_reset_success">Container reset to defaults</string>
+    <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
+    <string name="steam_imagefs_install_failed">Failed to install ImageFS: %s</string>
+    <string name="steam_uninstall_game_title">Uninstall Game</string>
     <string name="header_img_desc">App header image</string>
     <string name="download">Download</string>
     <string name="install">Install</string>
@@ -20,6 +42,7 @@
     <string name="uninstall">Uninstall</string>
     <string name="run_app">Play</string>
     <string name="download_prompt_title">Install App</string>
+    <string name="calculating_space_requirements">Calculating space requirements...</string>
     <string name="delete_prompt_title">Delete App</string>
     <string name="cancel_download_prompt_title">Cancel Download</string>
     <string name="acknowledge">OK</string>
@@ -33,6 +56,32 @@
     <string name="destination_library">Library</string>
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Friends</string>
+
+    <!-- Custom Games -->
+    <string name="custom_games_title">Custom Games</string>
+    <string name="custom_games_no_paths">No paths added</string>
+    <string name="custom_games_grant_permission">Grant Permission</string>
+    <string name="custom_games_manual_subtitle">Added from Library</string>
+    <string name="custom_games_no_manual_entries">No manually added games yet.</string>
+    <string name="custom_games_remove_path_title">Remove Path</string>
+    <string name="custom_games_remove_path_message">Remove this path from scanning? The folder contents will stay on disk.</string>
+    <string name="custom_games_remove_path_content_desc">Remove path</string>
+    <string name="custom_games_path_removed_toast">Path removed from list. Content has not been deleted.</string>
+    <string name="custom_games_remove_manual_title">Remove Manual Game</string>
+    <string name="custom_games_remove_manual_message">Remove this manually added folder from your library? This does not delete files on disk.</string>
+    <string name="custom_games_remove_manual_content_desc">Remove manual folder</string>
+    <string name="custom_games_manual_removed_toast">Manual folder removed from library.</string>
+    <string name="custom_games_cannot_access">⚠ Cannot access (check if path exists)</string>
+    <string name="custom_games_permission_denied">⚠ Permission denied</string>
+    <string name="custom_games_zero_folders">0 folders found</string>
+    <string name="custom_games_folders_found">%d folders found</string>
+    <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games.</string>
+    <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
+    <string name="custom_game_exe_selection_title">Executable Selection Required</string>
+    <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
+    <string name="custom_game_settings">Custom Game Settings</string>
+    <string name="custom_game_delete_title">Delete Game</string>
+    <string name="custom_game_delete_message">Are you sure you want to delete this game? This will remove the game files and all associated data.</string>
 
     <!--Winlator-->
     <string name="disabled">Disabled</string>
@@ -95,6 +144,12 @@
     <string name="input_controls">On-screen Controller</string>
     <string name="touchpad_help">Touchpad Help</string>
 
+    <!-- Toast -->
+    <string name="toast_failed_log_save">Failed to save logcat to destination</string>
+
+    <!-- Settings -->
+    <string name="settings_save_logcat_subtitle">Saves a snapshot of the logcat only for this app\'s PID</string>
+    <string name="settings_save_logcat_title">Save logcat</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
@@ -154,6 +209,18 @@
     <string name="games">Games</string>
     <string name="playtime_last_two_weeks">Playtime last 2 weeks: %s hrs</string>
     <string name="total_playtime">Total Playtime: %s hrs</string>
+    <string name="add_custom_game_content_desc">Add custom game</string>
+    <string name="add_custom_game_dialog_title">Add Custom Game</string>
+    <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
+    <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
+    <string name="base_app_shortcut_created">Shortcut created</string>
+    <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
+    <string name="base_app_images_fetched">Images fetched successfully</string>
+    <string name="base_app_game_folder_not_found">Game folder not found</string>
+    <string name="base_app_images_fetch_failed">Failed to fetch images: %s</string>
+    <string name="base_app_exported">Exported</string>
+    <string name="base_app_export_failed">Failed to export: %s</string>
+    <string name="base_app_export_cancelled">Export cancelled</string>
 
 
     <!-- App Filter -->

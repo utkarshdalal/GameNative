@@ -283,6 +283,21 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
+        private fun notifyDownloadStarted(appId: Int) {
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
+        }
+
+        private fun notifyDownloadStopped(appId: Int) {
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, false))
+        }
+
+        private fun removeDownloadJob(appId: Int) {
+            val removed = downloadJobs.remove(appId)
+            if (removed != null) {
+                notifyDownloadStopped(appId)
+            }
+        }
+
         /** Returns true if there is an incomplete download on disk (no complete marker). */
         fun hasPartialDownload(appId: Int): Boolean {
             val dirPath = getAppDirPath(appId)
@@ -769,7 +784,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun downloadApp(appId: Int): DownloadInfo? {
             // Enforce Wi-Fi-only downloads
             if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
-                instance?.notificationHelper?.notify("Not connected to Wi-Fi")
+                instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
                 return null
             }
             return getAppInfoOf(appId)?.let { appInfo ->
@@ -922,7 +937,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.d("Attempting to download " + appId + " with depotIds " + depotIds)
             // Enforce Wi-Fi-only downloads
             if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
-                instance?.notificationHelper?.notify("Not connected to Wi-Fi")
+                instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
                 return null
             }
             if (downloadJobs.contains(appId)) return getAppDownloadInfo(appId)
@@ -971,7 +986,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
                 sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
 
-                di.setDownloadJob(instance!!.scope.launch {
+                val downloadJob = instance!!.scope.launch {
                     try {
                         // Get licenses from database
                         val licenses = getLicensesFromDb()
@@ -984,8 +999,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val depotDownloader = DepotDownloader(
                             instance!!.steamClient!!,
                             licenses,
-                            false,
-                            androidEmulation = true
+                            debug = false,
+                            androidEmulation = true,
                         )
 
                         // Create listener
@@ -1020,12 +1035,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                             di.setWeight(idx, 0)
                             di.setProgress(1f, idx)
                         }
-                        downloadJobs.remove(appId)
+                        removeDownloadJob(appId)
                     }
-                })
+                }
+                downloadJob.invokeOnCompletion { throwable ->
+                    if (throwable is kotlinx.coroutines.CancellationException) {
+                        removeDownloadJob(appId)
+                    }
+                }
+                di.setDownloadJob(downloadJob)
             }
 
             downloadJobs[appId] = info
+            notifyDownloadStarted(appId)
             return info
         }
 
@@ -1063,12 +1085,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                     )
                 }
                 MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
-                downloadJobs.remove(appId)
+                removeDownloadJob(appId)
             }
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
                 Timber.e(error, "Item ${item.appId} failed to download")
-                downloadJobs.remove(appId)
+                removeDownloadJob(appId)
                 instance?.let { service ->
                     service.scope.launch(Dispatchers.Main) {
                         Toast.makeText(
@@ -1833,7 +1855,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
         isWifiConnected = capabilities?.run {
             hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                    hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
         } == true
         // Register callback for Wi-Fi connectivity
         networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -1855,8 +1877,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.d("Cancelling job")
                         info.cancel()
                         PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId))
+                        removeDownloadJob(appId)
                     }
-                    downloadJobs.clear()
                     notificationHelper.notify("Download paused – waiting for Wi-Fi/LAN")
                 }
             }
@@ -1903,6 +1925,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 it.withCellID(PrefManager.cellId)
                 it.withServerListProvider(FileServerListProvider(File(serverListPath)))
                 it.withConnectionTimeout(60000L)
+                it.withHttpClient(
+                    OkHttpClient.Builder()
+                        .connectTimeout(10, TimeUnit.SECONDS)   // Time to establish connection
+                        .readTimeout(60, TimeUnit.SECONDS)      // Max inactivity between reads
+                        .writeTimeout(30, TimeUnit.SECONDS)     // Time for writes
+                        .build(),
+                )
             }
 
             // create our steam client instance

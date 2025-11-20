@@ -629,6 +629,44 @@ object PrefManager {
             setPref(ITEMS_PER_PAGE, value)
         }
 
+    // App Source filters
+    private val SHOW_STEAM_IN_LIBRARY = booleanPreferencesKey("show_steam_in_library")
+    var showSteamInLibrary: Boolean
+        get() = getPref(SHOW_STEAM_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_STEAM_IN_LIBRARY, value)
+        }
+
+    private val SHOW_CUSTOM_GAMES_IN_LIBRARY = booleanPreferencesKey("show_custom_games_in_library")
+    var showCustomGamesInLibrary: Boolean
+        get() = getPref(SHOW_CUSTOM_GAMES_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_CUSTOM_GAMES_IN_LIBRARY, value)
+        }
+
+    // Game counts for skeleton loaders
+    private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
+    var customGamesCount: Int
+        get() = getPref(CUSTOM_GAMES_COUNT, 0)
+        set(value) {
+            setPref(CUSTOM_GAMES_COUNT, value)
+        }
+
+    private val STEAM_GAMES_COUNT = intPreferencesKey("steam_games_count")
+    var steamGamesCount: Int
+        get() = getPref(STEAM_GAMES_COUNT, 0)
+        set(value) {
+            setPref(STEAM_GAMES_COUNT, value)
+        }
+
+    // Show dialog when adding custom game folder
+    private val SHOW_ADD_CUSTOM_GAME_DIALOG = booleanPreferencesKey("show_add_custom_game_dialog")
+    var showAddCustomGameDialog: Boolean
+        get() = getPref(SHOW_ADD_CUSTOM_GAME_DIALOG, true)
+        set(value) {
+            setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
+        }
+
     // Whether to download games only over Wi-Fi.
     private val DOWNLOAD_ON_WIFI_ONLY = booleanPreferencesKey("download_on_wifi_only")
     var downloadOnWifiOnly: Boolean
@@ -653,11 +691,39 @@ object PrefManager {
             setPref(EXTERNAL_STORAGE_PATH, "")
         }
 
+    private val FETCH_STEAMGRIDDB_IMAGES = booleanPreferencesKey("fetch_steamgriddb_images")
+    var fetchSteamGridDBImages: Boolean
+        get() = getPref(FETCH_STEAMGRIDDB_IMAGES, true)
+        set(value) {
+            setPref(FETCH_STEAMGRIDDB_IMAGES, value)
+        }
+
     private val EXTERNAL_STORAGE_PATH = stringPreferencesKey("external_storage_path")
     var externalStoragePath: String
         get() = getPref(EXTERNAL_STORAGE_PATH, "")
         set(value) {
             setPref(EXTERNAL_STORAGE_PATH, value)
+        }
+
+    // Custom Games root (additional paths). Default path is provided by the app at runtime and isn't stored here.
+    private val CUSTOM_GAME_PATHS = stringPreferencesKey("custom_game_paths")
+    var customGamePaths: Set<String>
+        get() {
+            val value = getPref(CUSTOM_GAME_PATHS, "[]")
+            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+        }
+        set(value) {
+            setPref(CUSTOM_GAME_PATHS, Json.encodeToString(value))
+        }
+
+    private val CUSTOM_GAME_MANUAL_FOLDERS = stringPreferencesKey("custom_game_manual_folders")
+    var customGameManualFolders: Set<String>
+        get() {
+            val value = getPref(CUSTOM_GAME_MANUAL_FOLDERS, "[]")
+            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+        }
+        set(value) {
+            setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
     // Add new setting for Wine debug logging

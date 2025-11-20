@@ -83,6 +83,7 @@ private fun SettingsScreenContent(
                 onAppTheme = onAppTheme,
                 onPaletteStyle = onPaletteStyle,
             )
+            SettingsGroupCustomGames()
             SettingsGroupInfo()
             SettingsGroupDebug()
         }
