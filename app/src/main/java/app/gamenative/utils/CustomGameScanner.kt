@@ -93,19 +93,31 @@ object CustomGameScanner {
     /**
      * Attempts to locate a suitable icon file for a Custom Game.
      * Strategy (in priority order):
-     * 1) If we can uniquely identify an exe, prefer an .ico that matches the exe's base name
-     *    in the same directory as the exe or in the game folder root.
-     * 2) Otherwise, prefer an .ico whose filename contains "icon".
-     * 3) Otherwise, if there is exactly one .ico across the folder root or its immediate
+     * 1) Check for SteamGridDB logo files (steamgriddb_logo.png/jpg/webp)
+     * 2) If we can uniquely identify an exe, try extracting embedded icon(s)
+     * 3) Otherwise, prefer an .ico whose filename contains "icon".
+     * 4) Otherwise, if there is exactly one .ico across the folder root or its immediate
      *    subfolders, use that.
-     * Returns the absolute file path to the .ico when found; otherwise null.
+     * Returns the absolute file path to the icon when found; otherwise null.
      */
     fun findIconFileForCustomGame(appId: String): String? {
         val folderPath = getFolderPathFromAppId(appId) ?: return null
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) return null
 
-        // 1) If we can uniquely identify an exe, try extracting embedded icon(s)
+        // 1) First priority: Check for SteamGridDB logo files
+        val steamGridLogo = folder.listFiles()?.firstOrNull { file ->
+            file.name.startsWith("steamgriddb_logo") &&
+            (file.name.endsWith(".png", ignoreCase = true) ||
+             file.name.endsWith(".jpg", ignoreCase = true) ||
+             file.name.endsWith(".webp", ignoreCase = true))
+        }
+        if (steamGridLogo != null) {
+            Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
+            return steamGridLogo.absolutePath
+        }
+
+        // 2) If we can uniquely identify an exe, try extracting embedded icon(s)
         val uniqueExeRel = findUniqueExeRelativeToFolder(folder)
         if (!uniqueExeRel.isNullOrEmpty()) {
             val exeFile = File(folder, uniqueExeRel.replace('/', File.separatorChar))
@@ -134,6 +146,19 @@ object CustomGameScanner {
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) return null
 
+        // 1) First priority: Check for SteamGridDB logo files
+        val steamGridLogo = folder.listFiles()?.firstOrNull { file ->
+            file.name.startsWith("steamgriddb_logo") &&
+            (file.name.endsWith(".png", ignoreCase = true) ||
+             file.name.endsWith(".jpg", ignoreCase = true) ||
+             file.name.endsWith(".webp", ignoreCase = true))
+        }
+        if (steamGridLogo != null) {
+            Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
+            return steamGridLogo.absolutePath
+        }
+
+        // 2) Try extracting from the selected container executable
         try {
             val cm = ContainerManager(context)
             if (cm.hasContainer(appId)) {
@@ -169,14 +194,14 @@ object CustomGameScanner {
             Timber.tag("CustomGameScanner").d(e, "Error checking container for $appId")
         }
 
-        // If selected exe path failed or absent, try unique exe extraction
+        // 3) If selected exe path failed or absent, try unique exe extraction
         val fromUnique = findIconFileForCustomGame(appId)
         if (!fromUnique.isNullOrEmpty()) {
             Timber.tag("CustomGameScanner").d("Found icon from unique executable: $fromUnique")
             return fromUnique
         }
 
-        // As last resort, image heuristic
+        // 4) As last resort, image heuristic
         val fromHeuristic = findNearbyImageIcon(folder, null)
         if (fromHeuristic != null) {
             Timber.tag("CustomGameScanner").d("Found icon from heuristic: $fromHeuristic")

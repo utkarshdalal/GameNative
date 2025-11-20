@@ -906,6 +906,7 @@ fun PluviaMain(
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
                             isOffline = isOffline,
+                            skipExeCheck = asContainer, // Skip exe check when opening container
                         )
                     },
                     onClickExit = {
@@ -1012,6 +1013,7 @@ fun preLaunchApp(
     onSuccess: KFunction2<Context, String, Unit>,
     retryCount: Int = 0,
     isOffline: Boolean = false,
+    skipExeCheck: Boolean = false,
 ) {
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
@@ -1031,6 +1033,72 @@ fun preLaunchApp(
 
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
+
+        // Check if this is a Custom Game and validate executable selection before installing components
+        // Skip the check if booting to container (Open Container menu option)
+        val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+        
+        if (isCustomGame && !skipExeCheck) {
+            Timber.tag("preLaunchApp").i("Custom Game detected for $appId — checking executable selection")
+            
+            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+            if (gameFolderPath != null) {
+                val allExes = CustomGameScanner.findAllValidExeFiles(gameFolderPath)
+                
+                // If there are multiple exes, check if one is selected
+                if (allExes.size > 1) {
+                    if (container.executablePath.isEmpty()) {
+                        // Multiple exes found but none selected - show dialog
+                        Timber.tag("preLaunchApp").w("Multiple executables found but none selected for $appId")
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_FAIL,
+                                title = context.getString(R.string.custom_game_exe_selection_title),
+                                message = context.getString(R.string.custom_game_exe_selection_message),
+                                dismissBtnText = context.getString(R.string.close),
+                            )
+                        )
+                        return@launch
+                    }
+                } else if (allExes.size == 1 && container.executablePath.isEmpty()) {
+                    // Only one exe found and none selected - auto-select it
+                    val autoExe = allExes.first()
+                    Timber.tag("preLaunchApp").i("Auto-selecting single executable: $autoExe for $appId")
+                    container.executablePath = autoExe
+                    container.saveData()
+                } else if (allExes.isEmpty() && container.executablePath.isEmpty()) {
+                    // No exes found and none selected - show error
+                    Timber.tag("preLaunchApp").w("No executables found for $appId")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.custom_game_exe_selection_title),
+                            message = "No executable files found in the game folder. Please ensure the game folder contains at least one .exe file.",
+                            dismissBtnText = context.getString(R.string.close),
+                        )
+                    )
+                    return@launch
+                }
+            } else {
+                // Game folder not found
+                Timber.tag("preLaunchApp").w("Game folder not found for $appId")
+                setLoadingDialogVisible(false)
+                setMessageDialogState(
+                    MessageDialogState(
+                        visible = true,
+                        type = DialogType.SYNC_FAIL,
+                        title = context.getString(R.string.game_not_installed_title),
+                        message = "Game folder not found. The custom game may have been moved or deleted.",
+                        dismissBtnText = context.getString(R.string.close),
+                    )
+                )
+                return@launch
+            }
+        }
 
         // set up Ubuntu file system
         SplitCompat.install(context)
@@ -1092,12 +1160,9 @@ fun preLaunchApp(
             }
         } catch (_: Exception) { /* ignore persona read errors */ }
 
-        // Check if this is an Custom Games
-        val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
-
         // For Custom Games, bypass Steam Cloud operations entirely and proceed to launch
         if (isCustomGame) {
-            Timber.i("[preLaunchApp] Custom Game detected for $appId — skipping Steam Cloud sync and launching container")
+            Timber.tag("preLaunchApp").i("Custom Game detected for $appId — skipping Steam Cloud sync and launching container")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch
