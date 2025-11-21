@@ -1002,7 +1002,7 @@ class SteamAppScreen : BaseAppScreen() {
                 text = {
                     Text(
                         text = "Are you sure you want to uninstall ${appInfo?.name ?: libraryItem.name}? " +
-                                "This will delete all game files and cannot be undone."
+                                "This will delete ALL game files from your device and GameNative. This action cannot be undone."
                     )
                 },
                 confirmButton = {

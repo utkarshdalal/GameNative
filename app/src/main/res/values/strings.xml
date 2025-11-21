@@ -81,7 +81,7 @@
     <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
-    <string name="custom_game_delete_message">Are you sure you want to delete this game? This will remove the game files and all associated data.</string>
+    <string name="custom_game_delete_message">Are you sure you want to delete this game? This will remove ALL the game files and all associated data.\nThis action cannot be undone.</string>
 
     <!--Winlator-->
     <string name="disabled">Disabled</string>

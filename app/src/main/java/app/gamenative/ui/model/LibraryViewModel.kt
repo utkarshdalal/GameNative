@@ -48,6 +48,12 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    private val onCustomGameImagesFetched: (AndroidEvent.CustomGameImagesFetched) -> Unit = {
+        // Increment refresh counter and refresh the library list to pick up newly fetched images
+        _state.update { it.copy(imageRefreshCounter = it.imageRefreshCounter + 1) }
+        onFilterApps(paginationCurrentPage)
+    }
+
     // How many items loaded on one page of results
     private var paginationCurrentPage: Int = 0;
     private var lastPageInCurrentFilter: Int = 0;
@@ -75,10 +81,12 @@ class LibraryViewModel @Inject constructor(
         }
 
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
     }
 
     override fun onCleared() {
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         super.onCleared()
     }
 

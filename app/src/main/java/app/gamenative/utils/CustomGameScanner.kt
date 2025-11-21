@@ -8,9 +8,11 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
 import com.winlator.container.ContainerManager
 import java.io.File
@@ -61,7 +63,7 @@ object CustomGameScanner {
      * Ensures the default CustomGames folder exists by creating it if it doesn't.
      * This should be called when the library screen loads to guarantee the folder exists
      * even if there are no custom games yet.
-     * 
+     *
      * This function explicitly creates the folder using the same logic as defaultRootPath
      * to ensure it exists regardless of whether scanning happens.
      */
@@ -72,7 +74,7 @@ object CustomGameScanner {
             // Use the same logic as defaultRootPath to ensure consistency
             val defaultPath = defaultRootPath
             val folder = File(defaultPath)
-            
+
             if (!folder.exists()) {
                 val created = folder.mkdirs()
                 if (created) {
@@ -91,19 +93,31 @@ object CustomGameScanner {
     /**
      * Attempts to locate a suitable icon file for a Custom Game.
      * Strategy (in priority order):
-     * 1) If we can uniquely identify an exe, prefer an .ico that matches the exe's base name
-     *    in the same directory as the exe or in the game folder root.
-     * 2) Otherwise, prefer an .ico whose filename contains "icon".
-     * 3) Otherwise, if there is exactly one .ico across the folder root or its immediate
+     * 1) Check for SteamGridDB logo files (steamgriddb_logo.png/jpg/webp)
+     * 2) If we can uniquely identify an exe, try extracting embedded icon(s)
+     * 3) Otherwise, prefer an .ico whose filename contains "icon".
+     * 4) Otherwise, if there is exactly one .ico across the folder root or its immediate
      *    subfolders, use that.
-     * Returns the absolute file path to the .ico when found; otherwise null.
+     * Returns the absolute file path to the icon when found; otherwise null.
      */
     fun findIconFileForCustomGame(appId: String): String? {
         val folderPath = getFolderPathFromAppId(appId) ?: return null
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) return null
 
-        // 1) If we can uniquely identify an exe, try extracting embedded icon(s)
+        // 1) First priority: Check for SteamGridDB logo files
+        val steamGridLogo = folder.listFiles()?.firstOrNull { file ->
+            file.name.startsWith("steamgriddb_logo") &&
+            (file.name.endsWith(".png", ignoreCase = true) ||
+             file.name.endsWith(".jpg", ignoreCase = true) ||
+             file.name.endsWith(".webp", ignoreCase = true))
+        }
+        if (steamGridLogo != null) {
+            Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
+            return steamGridLogo.absolutePath
+        }
+
+        // 2) If we can uniquely identify an exe, try extracting embedded icon(s)
         val uniqueExeRel = findUniqueExeRelativeToFolder(folder)
         if (!uniqueExeRel.isNullOrEmpty()) {
             val exeFile = File(folder, uniqueExeRel.replace('/', File.separatorChar))
@@ -132,6 +146,19 @@ object CustomGameScanner {
         val folder = File(folderPath)
         if (!folder.exists() || !folder.isDirectory) return null
 
+        // 1) First priority: Check for SteamGridDB logo files
+        val steamGridLogo = folder.listFiles()?.firstOrNull { file ->
+            file.name.startsWith("steamgriddb_logo") &&
+            (file.name.endsWith(".png", ignoreCase = true) ||
+             file.name.endsWith(".jpg", ignoreCase = true) ||
+             file.name.endsWith(".webp", ignoreCase = true))
+        }
+        if (steamGridLogo != null) {
+            Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
+            return steamGridLogo.absolutePath
+        }
+
+        // 2) Try extracting from the selected container executable
         try {
             val cm = ContainerManager(context)
             if (cm.hasContainer(appId)) {
@@ -167,14 +194,14 @@ object CustomGameScanner {
             Timber.tag("CustomGameScanner").d(e, "Error checking container for $appId")
         }
 
-        // If selected exe path failed or absent, try unique exe extraction
+        // 3) If selected exe path failed or absent, try unique exe extraction
         val fromUnique = findIconFileForCustomGame(appId)
         if (!fromUnique.isNullOrEmpty()) {
             Timber.tag("CustomGameScanner").d("Found icon from unique executable: $fromUnique")
             return fromUnique
         }
 
-        // As last resort, image heuristic
+        // 4) As last resort, image heuristic
         val fromHeuristic = findNearbyImageIcon(folder, null)
         if (fromHeuristic != null) {
             Timber.tag("CustomGameScanner").d("Found icon from heuristic: $fromHeuristic")
@@ -330,14 +357,14 @@ object CustomGameScanner {
      */
     fun hasStoragePermission(context: Context, path: String): Boolean {
         // Check if path is outside app sandbox
-        val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") && 
+        val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") &&
                                !path.contains(context.dataDir.path)
-        
+
         if (!isOutsideSandbox) {
             // Path is in app sandbox, no special permission needed
             return true
         }
-        
+
         // For paths outside sandbox, check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11+ requires MANAGE_EXTERNAL_STORAGE for broad access
@@ -401,19 +428,19 @@ object CustomGameScanner {
         val q = query.trim()
         val result = mutableMapOf<String, Int>()
         val roots = getAllRoots()
-        
+
         // Handle empty roots gracefully
         if (roots.isEmpty()) {
             return result
         }
-        
+
         for (root in roots) {
             val rootFile = File(root)
             if (!rootFile.exists() || !rootFile.isDirectory) {
                 result[root] = 0
                 continue
             }
-            
+
             val children = try {
                 rootFile.listFiles { f -> f.isDirectory }
             } catch (e: SecurityException) {
@@ -425,12 +452,12 @@ object CustomGameScanner {
                 result[root] = 0
                 continue
             }
-            
+
             if (children == null) {
                 result[root] = -1 // Use -1 to indicate permission error
                 continue
             }
-            
+
             val count = children.count { folder ->
                 (q.isEmpty() || folder.name.contains(q, ignoreCase = true))
             }
@@ -449,16 +476,16 @@ object CustomGameScanner {
         val items = mutableListOf<LibraryItem>()
         var indexCounter = indexOffsetStart
         val q = query.trim()
-        
+
         val roots = getAllRoots()
         Timber.tag("CustomGameScanner").d("Scanning ${roots.size} root(s) for custom games: $roots")
-        
+
         // Scan root paths if they exist
         if (roots.isNotEmpty()) {
             for (root in roots) {
                 val rootFile = File(root)
                 Timber.tag("CustomGameScanner").d("Scanning root: $root (exists: ${rootFile.exists()}, isDirectory: ${rootFile.isDirectory})")
-                
+
                 // Ensure the directory exists, create it if it doesn't (especially for default path)
                 if (!rootFile.exists()) {
                     rootFile.mkdirs()
@@ -467,7 +494,7 @@ object CustomGameScanner {
                     Timber.tag("CustomGameScanner").w("Root path is not a directory, skipping: $root")
                     continue
                 }
-                
+
                 val children = try {
                     rootFile.listFiles { f -> f.isDirectory }
                 } catch (e: SecurityException) {
@@ -477,7 +504,7 @@ object CustomGameScanner {
                     Timber.tag("CustomGameScanner").w("Error accessing root: $root - ${e.message}")
                     continue
                 }
-                
+
                 if (children == null) {
                     Timber.tag("CustomGameScanner").w("Failed to list files in root: $root (permission denied or path doesn't exist)")
                     continue
@@ -487,13 +514,13 @@ object CustomGameScanner {
                     continue
                 }
                 Timber.tag("CustomGameScanner").d("Found ${children.size} subdirectories in $root: ${children.map { it.name }}")
-                
+
                 for (folder in children) {
                     if (q.isNotEmpty() && !folder.name.contains(q, ignoreCase = true)) continue
-                    
+
                     val looksLikeGame = looksLikeGameFolder(folder)
                     Timber.tag("CustomGameScanner").d("Checking folder: ${folder.name} (looksLikeGame: $looksLikeGame)")
-                    
+
                     if (!looksLikeGame) {
                         Timber.tag("CustomGameScanner").d("Folder ${folder.name} does not look like a game folder (no .exe found)")
                         continue
@@ -540,12 +567,31 @@ object CustomGameScanner {
             val capturedIdPart = idPart
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                 try {
-                    if (!app.gamenative.utils.GameMetadataManager.isSteamGridDBFetched(folder)) {
+                    // Check if images actually exist in the folder, not just the metadata flag
+                    // This ensures we fetch images on first discovery even if metadata is inconsistent
+                    val hasImages = folder.listFiles()?.any { file ->
+                        file.name.startsWith("steamgriddb_") &&
+                        (file.name.endsWith(".png", ignoreCase = true) ||
+                         file.name.endsWith(".jpg", ignoreCase = true) ||
+                         file.name.endsWith(".webp", ignoreCase = true))
+                    } == true
+                    
+                    val metadataSaysFetched = app.gamenative.utils.GameMetadataManager.isSteamGridDBFetched(folder)
+                    
+                    // Fetch if metadata says not fetched OR if images don't actually exist
+                    if (!metadataSaysFetched || !hasImages) {
+                        Timber.tag("CustomGameScanner").d("Fetching images for ${folder.name} (metadataFetched=$metadataSaysFetched, hasImages=$hasImages)")
                         app.gamenative.utils.SteamGridDB.fetchGameImages(folder.name, folder.absolutePath)
                         app.gamenative.utils.GameMetadataManager.update(folder, appId = capturedIdPart, steamgriddbFetched = true)
+                        
+                        // Emit event to notify UI that images have been fetched
+                        val fullAppId = "${GameSource.CUSTOM_GAME.name}_$capturedIdPart"
+                        PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(fullAppId))
+                    } else {
+                        Timber.tag("CustomGameScanner").d("Skipping image fetch for ${folder.name} - already fetched")
                     }
                 } catch (e: Exception) {
-                    Timber.tag("CustomGameScanner").d(e, "SteamGridDB: Background fetch failed for ${folder.name}")
+                    Timber.tag("CustomGameScanner").d(e, "Background fetch failed for ${folder.name}")
                 }
             }
         }
@@ -608,7 +654,7 @@ object CustomGameScanner {
             Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.path} does not exist or is not a directory")
             return false
         }
-        
+
         // Check for .exe in dir or one level below
         val rootFiles = dir.listFiles() ?: return false
         val inRoot = rootFiles.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
@@ -616,7 +662,7 @@ object CustomGameScanner {
             Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} has .exe in root")
             return true
         }
-        
+
         val subDirs = rootFiles.filter { it.isDirectory }
         for (sd in subDirs) {
             val subFiles = sd.listFiles() ?: continue
@@ -626,7 +672,7 @@ object CustomGameScanner {
                 return true
             }
         }
-        
+
         Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} does not contain any .exe files")
         return false
     }
@@ -683,14 +729,14 @@ object CustomGameScanner {
      */
     private fun getAllExistingGameIds(excludeFolder: File? = null): Set<Int> {
         val cache = getOrRebuildCache()
-        
+
         // If excluding a folder, remove its ID from the set
         if (excludeFolder != null) {
-            val excludeId = readGameIdFromFile(excludeFolder) 
+            val excludeId = readGameIdFromFile(excludeFolder)
                 ?: abs(excludeFolder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
             return cache.keys.filter { it != excludeId }.toSet()
         }
-        
+
         return cache.keys.toSet()
     }
 
@@ -709,7 +755,7 @@ object CustomGameScanner {
 
         // If not found, generate from folder name (same logic as before)
         var candidateId = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
-        
+
         // Check for collisions and make it unique if needed
         val existingIds = getAllExistingGameIds(excludeFolder = folder)
         if (candidateId in existingIds) {
@@ -722,11 +768,36 @@ object CustomGameScanner {
             candidateId = candidateId + counter
             Timber.tag("CustomGameScanner").d("Generated unique ID: $candidateId (base was ${candidateId - counter})")
         }
-        
+
         // Store it in the file for future use
         writeGameIdToFile(folder, candidateId)
-        
+
         return candidateId
+    }
+
+    /**
+     * Finds a custom game by its numeric ID (regardless of appId format).
+     * Returns the folder path if found, null otherwise.
+     */
+    fun findCustomGameById(gameId: Int): String? {
+        val cache = getOrRebuildCache()
+        val folderPath = cache[gameId]
+
+        if (folderPath != null) {
+            // Verify the folder still exists
+            val folder = File(folderPath)
+            if (folder.exists() && folder.isDirectory) {
+                return folderPath
+            } else {
+                // Folder was deleted, remove from cache and try again
+                Timber.tag("CustomGameScanner").w("Cached folder no longer exists: $folderPath, invalidating cache")
+                invalidateCache()
+                // Try one more time with fresh cache
+                return getOrRebuildCache()[gameId]
+            }
+        }
+
+        return null
     }
 
     /**
@@ -749,25 +820,6 @@ object CustomGameScanner {
             return null
         }
 
-        // Use cache for fast lookup
-        val cache = getOrRebuildCache()
-        val folderPath = cache[expectedId]
-        
-        if (folderPath != null) {
-            // Verify the folder still exists
-            val folder = File(folderPath)
-            if (folder.exists() && folder.isDirectory) {
-                return folderPath
-            } else {
-                // Folder was deleted, remove from cache and try again
-                Timber.tag("CustomGameScanner").w("Cached folder no longer exists: $folderPath, invalidating cache")
-                invalidateCache()
-                // Try one more time with fresh cache
-                return getOrRebuildCache()[expectedId]
-            }
-        }
-
-        Timber.tag("CustomGameScanner").w("Could not find folder for appId: $appId (expected ID: $expectedId)")
-        return null
+        return findCustomGameById(expectedId)
     }
 }

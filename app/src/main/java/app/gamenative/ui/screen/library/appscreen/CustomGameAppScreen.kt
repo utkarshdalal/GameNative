@@ -204,23 +204,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
-        // Check if there are multiple valid exe files and none is selected
-        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
-        if (gameFolderPath != null) {
-            val allExes = CustomGameScanner.findAllValidExeFiles(gameFolderPath)
-            if (allExes.size > 1) {
-                // Check if container has an executable selected
-                val containerManager = ContainerManager(context)
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                if (container.executablePath.isEmpty()) {
-                    // Multiple exes found but none selected - show dialog
-                    showExeSelectionDialog(libraryItem.appId)
-                    return
-                }
-            }
-        }
-
-        // Launch the game
+        // Launch the game - executable check is now done in preLaunchApp
         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
     }
 

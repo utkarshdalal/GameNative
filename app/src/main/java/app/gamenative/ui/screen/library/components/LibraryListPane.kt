@@ -351,6 +351,7 @@ internal fun LibraryListPane(
                                     onClick = { onNavigate(item.appId) },
                                     paneType = paneType,
                                     onFocus = { targetOfScroll = item.index },
+                                    imageRefreshCounter = state.imageRefreshCounter,
                                 )
                             }
                         }

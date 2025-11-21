@@ -73,7 +73,19 @@ fun SettingsGroupCustomGames() {
             PrefManager.customGamePaths = copy
             CustomGameScanner.invalidateCache()
 
-            if (!CustomGameScanner.hasStoragePermission(context, path)) {
+            // When a folder is selected via OpenDocumentTree, the user has already granted
+            // URI permissions for that specific folder. We should verify we can access it
+            // rather than checking for broad storage permissions.
+            val folder = java.io.File(path)
+            val canAccess = try {
+                folder.exists() && (folder.isDirectory && folder.canRead())
+            } catch (e: Exception) {
+                false
+            }
+            
+            // Only request permissions if we can't access the folder AND it's outside the sandbox
+            // (folders selected via OpenDocumentTree should already be accessible)
+            if (!canAccess && !CustomGameScanner.hasStoragePermission(context, path)) {
                 requestPermissionsForPath(context, path, storagePermissionLauncher)
             }
         },
