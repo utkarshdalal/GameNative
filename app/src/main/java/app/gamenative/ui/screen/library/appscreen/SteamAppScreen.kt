@@ -237,7 +237,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Get playtime text from Steam app data (only for Steam games)
         val playtimeText = if (appInfo.playtimeForever > 0) {
-            SteamUtils.formatPlayTime(appInfo.playtimeForever) + " hrs"
+            SteamUtils.formatPlayTime(appInfo.playtimeForever)
         } else {
             null
         }
