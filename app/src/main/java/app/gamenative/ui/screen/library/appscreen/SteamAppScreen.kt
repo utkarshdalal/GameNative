@@ -235,25 +235,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Sync playtime data from Steam for this specific game
-        LaunchedEffect(gameId) {
-            withContext(Dispatchers.IO) {
-                try {
-                    val steamId = SteamService.userSteamId?.convertToUInt64()
-                    if (steamId != null) {
-                        val ownedGames = SteamService.getOwnedGames(steamId)
-                        val game = ownedGames.firstOrNull { it.appId == gameId }
-                        if (game != null && appInfo.playtimeForever != game.playtimeForever) {
-                            // Update the database with fresh playtime data
-                            SteamService.instance?.appDao?.update(appInfo.copy(playtimeForever = game.playtimeForever))
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to sync playtime for game $gameId")
-                }
-            }
-        }
-
         // Get playtime text from Steam app data (only for Steam games)
         val playtimeText = if (appInfo.playtimeForever > 0) {
             SteamUtils.formatPlayTime(appInfo.playtimeForever)
