@@ -2232,7 +2232,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val oneHour = 60 * 60 * 1000L
 
                     if (now - lastSync > oneHour) {
-                        delay(10000)
+                        // 8 Seconds is a good amount of time to wait before grabbing.
+                        delay(8000)
                         syncPlaytimeData()
                         PrefManager.lastPlaytimeSync = System.currentTimeMillis()
                     }
