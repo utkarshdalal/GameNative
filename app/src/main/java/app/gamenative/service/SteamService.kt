@@ -267,6 +267,10 @@ class SteamService : Service(), IChallengeUrlChanged {
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
 
+        // Caches an app list for storage. Will update
+        private data class PlaytimeCache(val forever: Int, val twoWeeks: Int)
+        private var cachedPlaytimeData: Map<Int, PlaytimeCache> = emptyMap()
+
         /**
          * Default timeout to use when making requests
          */
@@ -2088,6 +2092,12 @@ class SteamService : Service(), IChallengeUrlChanged {
         isStopping = false
         retryAttempt = 0
 
+        // Flush playtime cache on session end
+        if (cachedPlaytimeData.isNotEmpty()) {
+            Timber.i("Flushing playtime cache (${cachedPlaytimeData.size} entries) on session end")
+            cachedPlaytimeData = emptyMap()
+        }
+
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
         PluviaApp.events.clearAllListenersOf<SteamEvent<Any>>()
     }
@@ -2468,6 +2478,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
             }
         }
+
+        // Fetch and cache playtime data for PICS processing
+        fetchAndCachePlaytimeData()
     }
 
     override fun onChanged(qrAuthSession: QrAuthSession?) {
@@ -2479,6 +2492,30 @@ class SteamService : Service(), IChallengeUrlChanged {
             val event = SteamEvent.QrChallengeReceived(qr.challengeUrl)
             PluviaApp.events.emit(event)
         } ?: run { Timber.w("QR challenge url was null") }
+    }
+
+    /**
+     * Fetches owned games data and caches playtime values for use in PICS processing.
+     * This is called once per login session in onLicenseList.
+     */
+    private fun fetchAndCachePlaytimeData() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                Timber.i("Fetching owned games data")
+                val steamId = userSteamId?.convertToUInt64() ?: return@launch
+                val ownedGames = getOwnedGames(steamId)
+                Timber.i("Fetched ${ownedGames.size} owned games")
+
+                // Cache only playtime values (minimal memory footprint)
+                cachedPlaytimeData = ownedGames.associate {
+                    it.appId to PlaytimeCache(it.playtimeForever, it.playtimeTwoWeeks)
+                }
+
+                Timber.i("Cached playtime data for ${cachedPlaytimeData.size} games")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to fetch owned games data")
+            }
+        }
     }
     // endregion
 
@@ -2657,6 +2694,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                             val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
                             val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
                             val ownerAccountId = packageFromDb?.ownerAccountId ?: emptyList()
+                            // Add the Playtime to the SteamApp from cache
+                            val playtimeCache = cachedPlaytimeData[app.id]
+                            val playtimeForever = playtimeCache?.forever ?: appFromDb?.playtimeForever ?: 0
+                            val playtimeTwoWeeks = playtimeCache?.twoWeeks ?: appFromDb?.playtimeTwoWeeks ?: 0
 
                             // Apps with -1 for the ownerAccountId should be added.
                             //  This can help with friend game names.
@@ -2670,6 +2711,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     receivedPICS = true,
                                     lastChangeNumber = app.changeNumber,
                                     licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
+                                    playtimeForever = playtimeForever,
+                                    playtimeTwoWeeks = playtimeTwoWeeks,
                                 )
                             } else {
                                 null

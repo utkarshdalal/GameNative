@@ -73,6 +73,8 @@ data class SteamApp(
     val controllerSupport: ControllerSupport = ControllerSupport.none,
     @ColumnInfo("playtime_forever")
     val playtimeForever: Int = 0, // playtime in minutes
+    @ColumnInfo("playtime_two_weeks")
+    val playtimeTwoWeeks: Int = 0, // playtime in last 2 weeks (minutes)
 
     // Extended
     @ColumnInfo("demo_of_app_id")
