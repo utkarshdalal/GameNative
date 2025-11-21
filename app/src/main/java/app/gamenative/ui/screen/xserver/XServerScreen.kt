@@ -39,6 +39,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.SteamUtils.writeColdClientIni
 import com.posthog.PostHog
@@ -1272,7 +1273,7 @@ private fun getWineStartCommand(
                 Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
                 return "winhandler.exe \"wfm.exe\""
             }
-            val auto = app.gamenative.utils.CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
+            val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
             if (auto != null) {
                 Timber.tag("XServerScreen").i("Auto-selected Custom Game exe: $auto")
                 executablePath = auto
@@ -1290,9 +1291,8 @@ private fun getWineStartCommand(
         }
 
         // Set working directory to the game folder
-        guestProgramLauncherComponent.workingDir = File(gameFolderPath)
-        Timber.tag("XServerScreen").i("Working directory is ${gameFolderPath}")
-        Timber.tag("XServerScreen").i("Final exe path is $executablePath")
+        val executableDir = gameFolderPath + "/" + executablePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir)
 
         // Normalize path separators (ensure Windows-style backslashes)
         val normalizedPath = executablePath.replace('/', '\\')
