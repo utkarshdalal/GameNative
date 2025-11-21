@@ -34,6 +34,11 @@
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
     <string name="steam_imagefs_install_failed">Failed to install ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Uninstall Game</string>
+    <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="steam_uninstall_success">%1$s has been uninstalled</string>
+    <string name="steam_uninstall_failed">Failed to uninstall game</string>
+    <string name="steam_never">Never</string>
+    <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>
     <string name="download">Download</string>
     <string name="install">Install</string>
@@ -81,7 +86,8 @@
     <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
-    <string name="custom_game_delete_message">Are you sure you want to delete this game? This will remove ALL the game files and all associated data.\nThis action cannot be undone.</string>
+    <string name="custom_game_delete_message">You can remove this game\'s path from the app settings page.</string>
+    <string name="custom_game_unknown_developer">Unknown</string>
 
     <!--Winlator-->
     <string name="disabled">Disabled</string>

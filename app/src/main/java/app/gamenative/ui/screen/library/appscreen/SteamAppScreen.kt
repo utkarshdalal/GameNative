@@ -228,10 +228,10 @@ class SteamAppScreen : BaseAppScreen() {
                 if (file.exists()) {
                     SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
                 } else {
-                    "Never"
+                    context.getString(R.string.steam_never)
                 }
             } else {
-                "Never"
+                context.getString(R.string.steam_never)
             }
         }
 
@@ -545,8 +545,8 @@ class SteamAppScreen : BaseAppScreen() {
                                 type = DialogType.RESET_CONTAINER_CONFIRM,
                             title = context.getString(R.string.steam_reset_container_title),
                             message = context.getString(R.string.steam_reset_container_message),
-                                confirmBtnText = "Continue",
-                                dismissBtnText = "Cancel",
+                                confirmBtnText = context.getString(R.string.steam_continue),
+                                dismissBtnText = context.getString(R.string.cancel),
                             )
                         )
                     },
@@ -578,8 +578,8 @@ class SteamAppScreen : BaseAppScreen() {
                                     type = DialogType.UPDATE_VERIFY_CONFIRM,
                                     title = context.getString(R.string.steam_verify_files_title),
                                     message = context.getString(R.string.steam_verify_files_message),
-                                    confirmBtnText = "Continue",
-                                    dismissBtnText = "Cancel",
+                                    confirmBtnText = context.getString(R.string.steam_continue),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 )
                             )
                         },
@@ -596,8 +596,8 @@ class SteamAppScreen : BaseAppScreen() {
                                     type = DialogType.UPDATE_VERIFY_CONFIRM,
                                     title = context.getString(R.string.steam_update_title),
                                     message = context.getString(R.string.steam_update_message),
-                                    confirmBtnText = "Continue",
-                                    dismissBtnText = "Cancel",
+                                    confirmBtnText = context.getString(R.string.steam_continue),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 )
                             )
                         },
@@ -1001,8 +1001,10 @@ class SteamAppScreen : BaseAppScreen() {
                 title = { Text(stringResource(R.string.steam_uninstall_game_title)) },
                 text = {
                     Text(
-                        text = "Are you sure you want to uninstall ${appInfo?.name ?: libraryItem.name}? " +
-                                "This will delete ALL game files from your device and GameNative. This action cannot be undone."
+                        text = stringResource(
+                            R.string.steam_uninstall_confirmation_message,
+                            appInfo?.name ?: libraryItem.name
+                        )
                     )
                 },
                 confirmButton = {
@@ -1020,7 +1022,10 @@ class SteamAppScreen : BaseAppScreen() {
                                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                                         Toast.makeText(
                                             context,
-                                            "${appInfo?.name ?: libraryItem.name} has been uninstalled",
+                                            context.getString(
+                                                R.string.steam_uninstall_success,
+                                                appInfo?.name ?: libraryItem.name
+                                            ),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                         PostHog.capture(
@@ -1030,7 +1035,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            "Failed to uninstall game",
+                                            context.getString(R.string.steam_uninstall_failed),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -1038,14 +1043,14 @@ class SteamAppScreen : BaseAppScreen() {
                             }
                         }
                     ) {
-                        Text("Uninstall", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.uninstall), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         hideUninstallDialog(libraryItem.appId)
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
