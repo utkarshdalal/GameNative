@@ -121,6 +121,14 @@ object PrefManager {
             setPref(LAST_PICS_CHANGE_NUMBER, value)
         }
 
+    // Allows us to grab the last playtime and only sync every-so-often.
+    private val LAST_PLAYTIME_SYNC = longPreferencesKey("last_playtime_sync")
+    var lastPlaytimeSync: Long
+        get() = getPref(LAST_PLAYTIME_SYNC, 0L)
+        set(value) {
+            setPref(LAST_PLAYTIME_SYNC, value)
+        }
+
     /* Container Default Settings */
     private val SCREEN_SIZE = stringPreferencesKey("screen_size")
     var screenSize: String

@@ -1678,6 +1678,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             instance?._unifiedFriends!!.getOwnedGames(friendID)
         }
 
+        suspend fun syncPlaytimeData() = withContext(Dispatchers.IO) {
+            try {
+                val steamId = userSteamId?.convertToUInt64() ?: return@withContext
+                val ownedGames = getOwnedGames(steamId)
+
+                ownedGames.forEach { game ->
+                    val existingApp = instance?.appDao?.findApp(game.appId)
+                    existingApp?.let { app ->
+                        // Only update if playtime has changed
+                        if (app.playtimeForever != game.playtimeForever) {
+                            instance?.appDao?.update(app.copy(playtimeForever = game.playtimeForever))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to sync playtime data")
+            }
+        }
+
         suspend fun getRecentMessages(friendID: Long) = withContext(Dispatchers.IO) {
             instance?._unifiedFriends!!.getRecentMessages(friendID)
         }
@@ -2204,6 +2223,20 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 picsChangesCheckerJob = continuousPICSChangesChecker()
                 picsGetProductInfoJob = continuousPICSGetProductInfo()
+
+                // Sync playtime data periodically (only if it's been more than 1 hour since last sync)
+                // Explicitly runs on IO dispatcher to guarantee no UI blocking
+                scope.launch(Dispatchers.IO) {
+                    val lastSync = PrefManager.lastPlaytimeSync
+                    val now = System.currentTimeMillis()
+                    val oneHour = 60 * 60 * 1000L
+
+                    if (now - lastSync > oneHour) {
+                        delay(10000)
+                        syncPlaytimeData()
+                        PrefManager.lastPlaytimeSync = System.currentTimeMillis()
+                    }
+                }
 
                 if (false) {
                     // No social features are implemented at present
