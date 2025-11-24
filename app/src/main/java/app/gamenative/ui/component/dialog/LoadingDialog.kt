@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,15 +43,18 @@ fun LoadingDialog(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
+                        if (progress < 0) {
+                            // Show spinner for indeterminate progress
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                         Text(message)
-                        Spacer(modifier = Modifier.height(16.dp))
                         if (progress >= 0) {
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(min(100, (progress * 100.0).roundToInt()).toString() + "%")
                             LinearProgressIndicator(
                                 progress = { progress },
                             )
-                        } else {
-                            LinearProgressIndicator()
                         }
                     }
                 }

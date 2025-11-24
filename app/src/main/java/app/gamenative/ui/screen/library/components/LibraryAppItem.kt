@@ -41,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -63,8 +64,9 @@ import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
-import java.io.File
-import android.net.Uri
+import app.gamenative.utils.GameImageUtils
+
+var steamAssetsUrl = "https://shared.steamstatic.com/store_item_assets/steam/apps/"
 
 @Composable
 internal fun AppItem(
@@ -83,7 +85,7 @@ internal fun AppItem(
         hideText = true
         alpha = 1f
     }
-    
+
     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
     LaunchedEffect(imageRefreshCounter) {
         if (paneType != PaneType.LIST) {
@@ -154,85 +156,58 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
-                    val iconUrl = remember(appInfo.appId) {
-                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-                            val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
-                            if (!path.isNullOrEmpty()) {
-                                if (path.startsWith("file://")) path else "file://$path"
-                            } else {
-                                appInfo.clientIconUrl
-                            }
-                        } else appInfo.clientIconUrl
+                    // Observe media changes to refresh icon immediately when user updates or resets
+                    val mediaVersion by app.gamenative.utils.CustomMediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+                    val iconModel: Any? = remember(mediaVersion, appInfo.gameId) {
+                        app.gamenative.utils.CustomMediaUtils.getCustomIconUri(appInfo.gameId)
+                            ?: if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                                val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
+                                if (!path.isNullOrEmpty()) {
+                                    if (path.startsWith("file://")) path else "file://$path"
+                                } else {
+                                    appInfo.clientIconUrl
+                                }
+                            } else appInfo.clientIconUrl
                     }
                     ListItemImage(
                         modifier = Modifier.size(56.dp),
                         imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        image = { iconUrl }
+                        image = { app.gamenative.utils.bustCache(iconModel, mediaVersion) }
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
+                    // Observe media changes to refresh images immediately when user updates or resets
+                    val mediaVersion by app.gamenative.utils.CustomMediaUtils.mediaVersionFlow.collectAsState(initial = 0)
 
-                    // Helper function to find SteamGridDB images for Custom Games
-                    fun findSteamGridDBImage(imageType: String): String? {
-                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-                            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
-                            gameFolderPath?.let { path ->
-                                val folder = java.io.File(path)
-                                val imageFile = folder.listFiles()?.firstOrNull { file ->
-                                    file.name.startsWith("steamgriddb_$imageType") &&
-                                    (file.name.endsWith(".png", ignoreCase = true) ||
-                                     file.name.endsWith(".jpg", ignoreCase = true) ||
-                                     file.name.endsWith(".webp", ignoreCase = true))
-                                }
-                                return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                    val baseModel: Any? = remember(mediaVersion, appInfo, paneType, imageRefreshCounter) {
+                        when (paneType) {
+                            PaneType.GRID_CAPSULE -> {
+                                GameImageUtils.getGameImage(
+                                    libraryItem = appInfo,
+                                    imageType = "grid_capsule",
+                                    steamUrl = "$steamAssetsUrl${appInfo.gameId}/library_600x900.jpg"
+                                )
                             }
-                        }
-                        return null
-                    }
-
-                    val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
-                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-                            // For Custom Games, use SteamGridDB images
-                            when (paneType) {
-                                PaneType.GRID_CAPSULE -> {
-                                    // Vertical grid for capsule
-                                    findSteamGridDBImage("grid_capsule")
-                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                                }
-                                PaneType.GRID_HERO -> {
-                                    // Horizontal grid for hero view
-                                    findSteamGridDBImage("grid_hero")
-                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
-                                }
-                                else -> {
-                                    // For list view, use heroes endpoint (not grid_hero)
-                                    val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
-                                    val heroUrl = gameFolderPath?.let { path ->
-                                        val folder = java.io.File(path)
-                                        val heroFile = folder.listFiles()?.firstOrNull { file ->
-                                            file.name.startsWith("steamgriddb_hero") &&
-                                            !file.name.contains("grid") &&
-                                            (file.name.endsWith(".png", ignoreCase = true) ||
-                                             file.name.endsWith(".jpg", ignoreCase = true) ||
-                                             file.name.endsWith(".webp", ignoreCase = true))
-                                        }
-                                        heroFile?.let { android.net.Uri.fromFile(it).toString() }
-                                    }
-                                    heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
-                                }
+                            PaneType.GRID_HERO -> {
+                                GameImageUtils.getGameImage(
+                                    libraryItem = appInfo,
+                                    imageType = "grid_hero",
+                                    steamUrl = "$steamAssetsUrl${appInfo.gameId}/header.jpg"
+                                )
                             }
-                        } else {
-                            // For Steam games, use standard Steam URLs
-                            if (paneType == PaneType.GRID_CAPSULE) {
-                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                            } else {
-                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                            else -> {
+                                // LIST view uses header images
+                                GameImageUtils.getGameImage(
+                                    libraryItem = appInfo,
+                                    imageType = "header",
+                                    steamUrl = "$steamAssetsUrl${appInfo.gameId}/header.jpg"
+                                )
                             }
                         }
                     }
-                    
+
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
-                    LaunchedEffect(imageUrl) {
+                    LaunchedEffect(baseModel) {
                         if (paneType != PaneType.LIST) {
                             hideText = true
                             alpha = 1f
@@ -242,7 +217,7 @@ internal fun AppItem(
                     ListItemImage(
                         modifier = Modifier.aspectRatio(aspectRatio),
                         imageModifier = Modifier.clip(RoundedCornerShape(3.dp)).alpha(alpha),
-                        image = { imageUrl },
+                        image = { app.gamenative.utils.bustCache(baseModel, mediaVersion) },
                         onFailure = {
                             hideText = false
                             alpha = 0.1f

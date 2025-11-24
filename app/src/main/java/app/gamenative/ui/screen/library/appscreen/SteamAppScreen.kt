@@ -32,6 +32,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.GameImageUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.SteamUtils
@@ -177,14 +178,48 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Get hero image URL
-        val heroImageUrl = remember(appInfo.id) {
-            appInfo.getHeroUrl()
+        // Observe media changes to refresh images when custom media is updated
+        val mediaVersion by app.gamenative.utils.CustomMediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+
+        // Use centralized function to get images with proper priority: Custom media -> SteamGridDB -> Steam URLs
+        val heroImageUrl = remember(mediaVersion, libraryItem) {
+            GameImageUtils.getGameImage(
+                libraryItem = libraryItem,
+                imageType = "grid_hero",
+                steamUrl = appInfo.getHeroUrl()
+            )
         }
 
-        // Get icon URL
-        val iconUrl = remember(appInfo.id) {
-            appInfo.iconUrl
+        val iconUrl = remember(mediaVersion, libraryItem) {
+            GameImageUtils.getGameImage(
+                libraryItem = libraryItem,
+                imageType = "icon",
+                steamUrl = appInfo.iconUrl
+            )
+        }
+
+        val logoUrl = remember(mediaVersion, libraryItem) {
+            GameImageUtils.getGameImage(
+                libraryItem = libraryItem,
+                imageType = "logo",
+                steamUrl = appInfo.getLogoUrl() ?: appInfo.logoUrl
+            )
+        }
+
+        val capsuleUrl = remember(mediaVersion, libraryItem) {
+            GameImageUtils.getGameImage(
+                libraryItem = libraryItem,
+                imageType = "grid_capsule",
+                steamUrl = appInfo.getCapsuleUrl()
+            )
+        }
+
+        val headerUrl = remember(mediaVersion, libraryItem) {
+            GameImageUtils.getGameImage(
+                libraryItem = libraryItem,
+                imageType = "header",
+                steamUrl = appInfo.getHeaderImageUrl()
+            )
         }
 
         // Get install location
@@ -261,6 +296,9 @@ class SteamAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = lastPlayedText,
             playtimeText = playtimeText,
+            logoUrl = logoUrl,
+            capsuleUrl = capsuleUrl,
+            headerUrl = headerUrl,
         )
     }
 
