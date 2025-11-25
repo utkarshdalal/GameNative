@@ -552,7 +552,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
     private fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val defaults = WineUtils.getDefault(context).copy(drives = container.drives)
+        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives) // Overrides the drives so we don't wipe them
 
         Log.d("CustomGameAppScreen", "Resetting container for ${libraryItem.name}")
         Log.d("CustomGameAppScreen", "Preserving drives: ${container.drives}")
