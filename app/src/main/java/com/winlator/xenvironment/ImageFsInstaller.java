@@ -55,6 +55,7 @@ public abstract class ImageFsInstaller {
 
             container.putExtra("imgVersion", null);
             container.putExtra("dxwrapper", null);
+            container.putExtra("appVersion", null);
             container.saveData();
         }
     }

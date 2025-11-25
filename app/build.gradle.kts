@@ -159,6 +159,11 @@ android {
             useLegacyPackaging = true
         }
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
     dynamicFeatures += setOf(":ubuntufs")
 
     kotlinter {
@@ -252,6 +257,10 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.androidx.ui.test.junit4)
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.+")

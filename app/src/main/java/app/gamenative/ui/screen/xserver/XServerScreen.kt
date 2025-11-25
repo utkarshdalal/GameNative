@@ -41,7 +41,6 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.SteamUtils
-import app.gamenative.utils.SteamUtils.writeColdClientIni
 import com.posthog.PostHog
 import com.winlator.alsaserver.ALSAClient
 import com.winlator.container.Container
@@ -152,6 +151,7 @@ fun XServerScreen(
     var containerVariantChanged = false
     var frameRating by remember { mutableStateOf<FrameRating?>(null) }
     var frameRatingWindowId = -1
+    var vkbasaltConfig = ""
     var taskAffinityMask = 0
     var taskAffinityMaskWoW64 = 0
 
@@ -561,6 +561,14 @@ fun XServerScreen(
                                 null
                             }
 
+                            val sharpnessEffect: String = container.getExtra("sharpnessEffect", "None")
+                            if (sharpnessEffect != "None") {
+                                val sharpnessLevel = container.getExtra("sharpnessLevel", "100").toDouble()
+                                val sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toDouble()
+                                vkbasaltConfig =
+                                    "effects=" + sharpnessEffect.lowercase(Locale.getDefault()) + ";" + "casSharpness=" + sharpnessLevel / 100 + ";" + "dlsSharpness=" + sharpnessLevel / 100 + ";" + "dlsDenoise=" + sharpnessDenoise / 100 + ";" + "enableOnLaunch=True"
+                            }
+
                             Timber.i("Doing things once")
                             val envVars = EnvVars()
 
@@ -585,6 +593,7 @@ fun XServerScreen(
                                 container,
                                 envVars,
                                 firstTimeBoot,
+                                vkbasaltConfig,
                             )
                             changeWineAudioDriver(xServerState.value.audioDriver, container, ImageFs.find(context))
                             setImagefsContainerVariant(context, container)
@@ -643,6 +652,8 @@ fun XServerScreen(
             PluviaApp.inputControlsView = icView
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
+
+
 
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)
@@ -1366,11 +1377,14 @@ private fun getSteamlessTarget(
 }
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
-    PostHog.capture(event = "game_exited",
-        properties = mapOf("game_name" to appInfo?.name.toString(),
+    PostHog.capture(
+        event = "game_exited",
+        properties = mapOf(
+            "game_name" to appInfo?.name.toString(),
             "session_length" to (frameRating?.sessionLengthSec ?: 0),
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
-            "container_config" to container.containerJson)
+            "container_config" to container.containerJson,
+        ),
     )
 
     // Store session data in container metadata
@@ -2069,6 +2083,7 @@ private fun extractGraphicsDriverFiles(
     container: Container,
     envVars: EnvVars,
     firstTimeBoot: Boolean,
+    vkbasaltConfig: String,
 ) {
     if (container.containerVariant.equals(Container.GLIBC)) {
         // Get the configured driver version or use default
@@ -2304,23 +2319,51 @@ private fun extractGraphicsDriverFiles(
             val adrenotoolsManager: AdrenotoolsManager = AdrenotoolsManager(context)
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId)
         }
+
+        var vulkanVersion = graphicsDriverConfig.get("vulkanVersion")
+        val detectedVkVersion = GPUInformation.getVulkanVersion(adrenoToolsDriverId, context)
+        val vulkanVersionPatch = detectedVkVersion.split(".").getOrNull(2) ?: "0"
+
+        vulkanVersion = vulkanVersion + "." + vulkanVersionPatch
+        envVars.put("WRAPPER_VK_VERSION", vulkanVersion)
+
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
-        if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0) envVars.put("UTIL_LAYER_VMEM_MAX_SIZE", maxDeviceMemory)
+        if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0)
+            envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory)
 
-        val frameSync: String? = graphicsDriverConfig.get("frameSync", "Normal")
-        if (frameSync == "Always" && useDRI3) {
-            envVars.put("MESA_VK_WSI_DEBUG", "forcesync")
-        } else if (frameSync == "Never") {
-            envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", "1")
+        val presentMode = graphicsDriverConfig.get("presentMode")
+        if (presentMode.contains("immediate")) {
+            envVars.put("WRAPPER_MAX_IMAGE_COUNT", "1")
         }
-        envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox")
-//        if (!vkbasaltConfig.isEmpty()) {
-//            envVars.put("ENABLE_VKBASALT", "1")
-//            envVars.put("VKBASALT_CONFIG", vkbasaltConfig)
-//        }
+        envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode)
+
+        val resourceType = graphicsDriverConfig.get("resourceType")
+        envVars.put("WRAPPER_RESOURCE_TYPE", resourceType)
+
+        val syncFrame = graphicsDriverConfig.get("syncFrame")
+        if (syncFrame == "1") envVars.put("MESA_VK_WSI_DEBUG", "forcesync")
+
+        val disablePresentWait = graphicsDriverConfig.get("disablePresentWait")
+        envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait)
+
+        val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
+        when (bcnEmulation) {
+            "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3")
+            "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2")
+            "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0")
+            else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
+        }
+
+        val bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache")
+        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
+
+        if (!vkbasaltConfig.isEmpty()) {
+            envVars.put("ENABLE_VKBASALT", "1")
+            envVars.put("VKBASALT_CONFIG", vkbasaltConfig)
+        }
     }
 }
 

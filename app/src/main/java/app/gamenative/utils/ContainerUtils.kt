@@ -114,6 +114,9 @@ object ContainerUtils {
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
+            sharpnessEffect = PrefManager.sharpnessEffect,
+            sharpnessLevel = PrefManager.sharpnessLevel,
+            sharpnessDenoise = PrefManager.sharpnessDenoise,
         )
     }
 
@@ -164,6 +167,9 @@ object ContainerUtils {
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
+        PrefManager.sharpnessEffect = containerData.sharpnessEffect
+        PrefManager.sharpnessLevel = containerData.sharpnessLevel
+        PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -258,6 +264,9 @@ object ContainerUtils {
             useDRI3 = container.isUseDRI3(),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
+            sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
+            sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
+            sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
         )
     }
 
@@ -337,6 +346,9 @@ object ContainerUtils {
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
+        container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
+        container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
+        container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         try {
             val bindingsStr = containerData.controllerEmulationBindings
             if (bindingsStr.isNotEmpty()) {
