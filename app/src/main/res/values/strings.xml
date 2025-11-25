@@ -367,6 +367,10 @@
     <string name="wine_proton_remove_message">Are you sure you want to remove %1$s %2$s (%3$d)? Containers using this version will no longer work.</string>
     <string name="wine_proton_removed_toast">Removed %s</string>
     <string name="wine_proton_remove_failed">Failed to remove: %s</string>
+    <string name="cancel_import_title">Cancel Import?</string>
+    <string name="cancel_import_message">An import is currently in progress. Cancelling will discard all extracted files and you will need to start the import again.\n\nAre you sure you want to cancel?</string>
+    <string name="cancel_import_confirm">Yes, Cancel Import</string>
+    <string name="cancel_import_keep">No, Keep Import</string>
 
     <!-- Wine/Proton Manager - Status Messages -->
     <string name="wine_proton_extracting">Extracting and validating package (this may take 2-3 minutes for large files)...</string>

@@ -99,6 +99,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     var pendingProfile by remember { mutableStateOf<ContentProfile?>(null) }
     val untrustedFiles = remember { mutableStateListOf<ContentProfile.ContentFile>() }
     var showUntrustedConfirm by remember { mutableStateOf(false) }
+    var showCancelImportConfirm by remember { mutableStateOf(false) }
 
     val mgr = remember(ctx) { ContentsManager(ctx) }
 
@@ -185,9 +186,13 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     // Cleanup on dialog dismiss
     androidx.compose.runtime.DisposableEffect(Unit) {
         onDispose {
-            // Reset importing flag when dialog closes
-            // Import operations continue in background if in progress
+            // Always reset importing flag when dialog closes
             SteamService.isImporting = false
+            // Only cancel import without confirmation on dispose (dialog already closing)
+            // The confirmation happens in the main dialog's dismiss handler
+            if (pendingProfile == null) {
+                mgr.cancelImport()
+            }
         }
     }
 
@@ -300,16 +305,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
                 statusMessage = ctx.getString(R.string.wine_proton_not_wine_or_proton, profile.type)
                 isStatusSuccess = false
-
-                // Clean up extracted files from tmp directory
-                try {
-                    withContext(Dispatchers.IO) {
-                        ContentsManager.cleanTmpDir(ctx)
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("WineProtonManagerDialog").e(e, "Error cleaning tmp dir")
-                }
-
                 Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
                 isBusy = false
                 SteamService.isImporting = false
@@ -320,16 +315,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             if (profile.type != detectedType) {
                 statusMessage = ctx.getString(R.string.wine_proton_type_mismatch, detectedType, profile.type)
                 isStatusSuccess = false
-
-                // Clean up extracted files from tmp directory
-                try {
-                    withContext(Dispatchers.IO) {
-                        ContentsManager.cleanTmpDir(ctx)
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("WineProtonManagerDialog").e(e, "Error cleaning tmp dir")
-                }
-
                 Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
                 isBusy = false
                 SteamService.isImporting = false
@@ -501,13 +486,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 // Validate it's Wine or Proton and matches detected type
                 if (profile.type != ContentProfile.ContentType.CONTENT_TYPE_WINE &&
                     profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
-                    // Clean up extracted files from tmp directory
-                    try {
-                        ContentsManager.cleanTmpDir(ctx)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to clean tmp dir")
-                    }
-
                     val errorMsg = ctx.getString(R.string.wine_proton_not_wine_or_proton, profile.type)
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
@@ -518,13 +496,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }
 
                 if (profile.type != detectedType) {
-                    // Clean up extracted files from tmp directory
-                    try {
-                        ContentsManager.cleanTmpDir(ctx)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to clean tmp dir")
-                    }
-
                     val errorMsg = ctx.getString(R.string.wine_proton_type_mismatch, detectedType, profile.type)
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
@@ -931,7 +902,14 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            TextButton(onClick = {
+                // If import in progress, show confirmation dialog
+                if (pendingProfile != null) {
+                    showCancelImportConfirm = true
+                } else {
+                    onDismiss()
+                }
+            }) { Text(stringResource(R.string.close)) }
         }
     )
 
@@ -975,8 +953,9 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = {
+                    // Show confirmation before cancelling import
                     showUntrustedConfirm = false
-                    pendingProfile = null
+                    showCancelImportConfirm = true
                 }) { Text(stringResource(R.string.cancel)) }
             }
         )
@@ -1015,6 +994,37 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+    
+    // Cancel import confirmation
+    if (showCancelImportConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelImportConfirm = false },
+            title = { Text(stringResource(R.string.cancel_import_title)) },
+            text = { Text(stringResource(R.string.cancel_import_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCancelImportConfirm = false
+                    pendingProfile = null
+                    statusMessage = null
+                    isStatusSuccess = false
+                    mgr.cancelImport()
+                    // If we're cancelling from the main dialog, also close it
+                    if (!showUntrustedConfirm) {
+                        onDismiss()
+                    }
+                }) { Text(stringResource(R.string.cancel_import_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showCancelImportConfirm = false
+                    // If cancelled from untrusted dialog, show it again
+                    if (pendingProfile != null) {
+                        showUntrustedConfirm = true
+                    }
+                }) { Text(stringResource(R.string.cancel_import_keep)) }
             }
         )
     }
