@@ -264,16 +264,22 @@ public class ContentsManager {
                 contentFile.target = contentFileJSONObject.getString(ContentProfile.MARK_FILE_TARGET);
                 fileList.add(contentFile);
             }
-            if (typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_WINE.toString())) {
-                JSONObject wineJSONObject = profileJSONObject.getJSONObject(ContentProfile.MARK_WINE);
-                profile.wineLibPath = wineJSONObject.getString(ContentProfile.MARK_WINE_LIBPATH);
-                profile.wineBinPath = wineJSONObject.getString(ContentProfile.MARK_WINE_BINPATH);
-                profile.winePrefixPack = wineJSONObject.getString(ContentProfile.MARK_WINE_PREFIX_PACK);
-            } else if (typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_PROTON.toString())) {
-                JSONObject protonJSONObject = profileJSONObject.getJSONObject(ContentProfile.MARK_PROTON);
-                profile.wineLibPath = protonJSONObject.getString(ContentProfile.MARK_PROTON_LIBPATH);
-                profile.wineBinPath = protonJSONObject.getString(ContentProfile.MARK_PROTON_BINPATH);
-                profile.winePrefixPack = protonJSONObject.getString(ContentProfile.MARK_PROTON_PREFIX_PACK);
+            // Both Wine and Proton can use either "wine" or "proton" key in profile.json
+            if (typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_WINE.toString())
+                    || typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_PROTON.toString())) {
+                // Try "proton" key first, then fall back to "wine" key for compatibility
+                JSONObject wineJSONObject = null;
+                if (profileJSONObject.has(ContentProfile.MARK_PROTON)) {
+                    wineJSONObject = profileJSONObject.getJSONObject(ContentProfile.MARK_PROTON);
+                } else if (profileJSONObject.has(ContentProfile.MARK_WINE)) {
+                    wineJSONObject = profileJSONObject.getJSONObject(ContentProfile.MARK_WINE);
+                }
+                
+                if (wineJSONObject != null) {
+                    profile.wineLibPath = wineJSONObject.getString(ContentProfile.MARK_WINE_LIBPATH);
+                    profile.wineBinPath = wineJSONObject.getString(ContentProfile.MARK_WINE_BINPATH);
+                    profile.winePrefixPack = wineJSONObject.getString(ContentProfile.MARK_WINE_PREFIX_PACK);
+                }
             }
 
             profile.type = ContentProfile.ContentType.getTypeByName(typeName);
