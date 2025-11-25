@@ -87,6 +87,8 @@
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
     <string name="custom_game_delete_message">Are you sure you want to uninstall %1$s?</string>
+    <string name="custom_game_deleted">\"%1$s\" has been deleted</string>
+    <string name="custom_game_delete_failed">Failed to delete game: %1$s</string>
     <string name="custom_game_unknown_developer">Unknown</string>
 
     <!--Winlator-->

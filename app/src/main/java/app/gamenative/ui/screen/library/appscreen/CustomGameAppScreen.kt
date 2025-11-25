@@ -362,7 +362,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             context,
-                                            "\"${libraryItem.name}\" has been deleted",
+                                            context.getString(R.string.custom_game_deleted, libraryItem.name),
                                             Toast.LENGTH_SHORT
                                         ).show()
 
@@ -377,7 +377,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             context,
-                                            "Failed to delete game: ${e.message}",
+                                            context.getString(R.string.custom_game_delete_failed, e.message ?: ""),
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
@@ -385,14 +385,14 @@ class CustomGameAppScreen : BaseAppScreen() {
                             }
                         }
                     ) {
-                        Text("Delete", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.delete_app), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         hideDeleteDialog(libraryItem.appId)
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )

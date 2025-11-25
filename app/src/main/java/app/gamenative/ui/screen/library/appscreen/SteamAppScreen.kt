@@ -44,6 +44,7 @@ import com.winlator.fexcore.FEXCoreManager
 import com.winlator.xenvironment.ImageFsInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
@@ -1070,6 +1071,13 @@ class SteamAppScreen : BaseAppScreen() {
                                             event = "game_uninstalled",
                                             properties = mapOf("game_name" to (appInfo?.name ?: ""))
                                         )
+                                        
+                                        // Small delay to ensure file system updates are complete
+                                        // before navigating back (list will auto-refresh when displayed)
+                                        delay(250)
+                                        
+                                        // Navigate back to game list
+                                        onBack()
                                     } else {
                                         Toast.makeText(
                                             context,
