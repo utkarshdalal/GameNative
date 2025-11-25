@@ -28,6 +28,17 @@ public abstract class GraphicsContextRequests {
         if (!valueMask.isEmpty()) client.xServer.graphicsContextManager.updateGraphicsContext(graphicsContext, valueMask, inputStream);
     }
 
+    public static void copyGC(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
+        int srcGCId = inputStream.readInt();
+        int dstGCId = inputStream.readInt();
+        Bitmask valueMask = new Bitmask(inputStream.readInt());
+        GraphicsContext srcGC = client.xServer.graphicsContextManager.getGraphicsContext(srcGCId);
+        GraphicsContext dstGC = client.xServer.graphicsContextManager.getGraphicsContext(dstGCId);
+        if (srcGC == null) throw new BadGraphicsContext(srcGCId);
+        if (dstGC == null) throw new BadGraphicsContext(dstGCId);
+        if (!valueMask.isEmpty()) client.xServer.graphicsContextManager.copyGraphicsContext(srcGC, dstGC, valueMask);
+    }
+
     public static void changeGC(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
         int gcId = inputStream.readInt();
         Bitmask valueMask = new Bitmask(inputStream.readInt());

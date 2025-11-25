@@ -18,6 +18,11 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 public abstract class GPUInformation {
+
+    static {
+        System.loadLibrary("extras");
+    }
+
     private static ArrayMap<String, String> loadGPUInformation(Context context) {
         final Thread thread = Thread.currentThread();
         final ArrayMap<String, String> gpuInfo = new ArrayMap<>();
@@ -126,4 +131,21 @@ public abstract class GPUInformation {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         return r.contains("adreno") && r.matches(".*\\b(710|720|732)\\b.*");
     }
+
+
+    public static boolean isAdrenoGPU(Context context) {
+        return getRenderer(null, context).toLowerCase().contains("adreno");
+    }
+
+    public static boolean isDriverSupported(String driverName, Context context) {
+        if (!isAdrenoGPU(context) && !driverName.equals("System"))
+            return false;
+
+        String renderer = getRenderer(driverName, context);
+
+        return !renderer.toLowerCase().contains("unknown");
+    }
+    public native static String getVulkanVersion(String driverName, Context context);
+    public native static String getRenderer(String driverName, Context context);
+    public native static String[] enumerateExtensions(String driverName, Context context);
 }

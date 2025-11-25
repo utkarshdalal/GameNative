@@ -157,6 +157,27 @@ object PrefManager {
             setPref(GRAPHICS_DRIVER_CONFIG, value)
         }
 
+    private val SHARPNESS_EFFECT = stringPreferencesKey("sharpness_effect")
+    var sharpnessEffect: String
+        get() = getPref(SHARPNESS_EFFECT, "None")
+        set(value) {
+            setPref(SHARPNESS_EFFECT, value)
+        }
+
+    private val SHARPNESS_LEVEL = intPreferencesKey("sharpness_level")
+    var sharpnessLevel: Int
+        get() = getPref(SHARPNESS_LEVEL, 100)
+        set(value) {
+            setPref(SHARPNESS_LEVEL, value.coerceIn(0, 100))
+        }
+
+    private val SHARPNESS_DENOISE = intPreferencesKey("sharpness_denoise")
+    var sharpnessDenoise: Int
+        get() = getPref(SHARPNESS_DENOISE, 100)
+        set(value) {
+            setPref(SHARPNESS_DENOISE, value.coerceIn(0, 100))
+        }
+
     private val CONTAINER_VARIANT = stringPreferencesKey("container_variant")
     var containerVariant: String
         get() = getPref(CONTAINER_VARIANT, Container.DEFAULT_VARIANT)
