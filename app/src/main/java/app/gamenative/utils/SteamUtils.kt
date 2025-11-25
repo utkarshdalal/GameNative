@@ -909,38 +909,29 @@ object SteamUtils {
             override fun onFailure(call: Call, e: IOException) = callback(-1)
 
             override fun onResponse(call: Call, res: Response) {
-                try {
-                    res.use {
-                        val body = it.body?.string()
-                            ?: throw IllegalStateException("Response body is null")
-                        Timber.i("[DX Fetch] Raw fbody fetchDirect3DMajor for body=%s", body)
+                res.use {
+                    val body = it.body?.string() ?: run { callback(-1); return }
+                    Timber.i("[DX Fetch] Raw fbody etchDirect3DMajor for body=%s", body)
+                    val arr = JSONObject(body)
+                        .optJSONArray("cargoquery") ?: run { callback(-1); return }
 
-                        val jsonObject = JSONObject(body)
+                    // There should be at most one row; take the first.
+                    val raw = arr.optJSONObject(0)
+                        ?.optJSONObject("title")
+                        ?.optString("Direct3D versions")
+                        ?.trim() ?: ""
 
-                        val arr = jsonObject.optJSONArray("cargoquery")
-                            ?: throw IllegalStateException("Missing cargoquery array in response")
+                    Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
 
-                        // There should be at most one row; take the first.
-                        val raw = arr.optJSONObject(0)
-                            ?.optJSONObject("title")
-                            ?.optString("Direct3D versions")
-                            ?.trim() ?: ""
+                    // Extract highest DX major number present.
+                    val dx = Regex("\\b(9|10|11|12)\\b")
+                        .findAll(raw)
+                        .map { it.value.toInt() }
+                        .maxOrNull() ?: -1
 
-                        Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
+                    Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
 
-                        // Extract highest DX major number present.
-                        val dx = Regex("\\b(9|10|11|12)\\b")
-                            .findAll(raw)
-                            .map { it.value.toInt() }
-                            .maxOrNull() ?: -1
-
-                        Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
-
-                        callback(dx)
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "[DX Fetch] Error in fetchDirect3DMajor")
-                    callback(-1)
+                    callback(dx)
                 }
             }
         })
