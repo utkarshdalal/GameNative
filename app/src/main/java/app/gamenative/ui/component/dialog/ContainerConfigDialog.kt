@@ -206,16 +206,7 @@ fun ContainerConfigDialog(
                     return list.filter { it.remoteUrl == null }.map { profile ->
                         val entry = ContentsManager.getEntryName(profile)
                         val firstDash = entry.indexOf('-')
-                        val lastDash = entry.lastIndexOf('-')
-                        // Strip type prefix and version code suffix
-                        // Format: "Type-verName-verCode" -> "verName"
-                        if (firstDash >= 0 && lastDash > firstDash) {
-                            entry.substring(firstDash + 1, lastDash)
-                        } else if (firstDash >= 0) {
-                            entry.substring(firstDash + 1)
-                        } else {
-                            entry
-                        }
+                         if (firstDash >= 0 && firstDash + 1 < entry.length) entry.substring(firstDash + 1) else entry
                     }
                 }
 
