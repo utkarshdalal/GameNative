@@ -549,46 +549,6 @@ class CustomGameAppScreen : BaseAppScreen() {
             )
         }
     }
-
-    private fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives) // Overrides the drives so we don't wipe them
-
-        Log.d("CustomGameAppScreen", "Resetting container for ${libraryItem.name}")
-        Log.d("CustomGameAppScreen", "Preserving drives: ${container.drives}")
-        Log.d("CustomGameAppScreen", "Before reset - Container drives: ${container.drives}")
-
-        ContainerUtils.applyToContainer(context, libraryItem.appId, ContainerUtils.toContainerData(defaults))
-
-        val updatedContainer = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        Log.d("CustomGameAppScreen", "After reset - Container drives: ${updatedContainer.drives}")
-
-        Toast.makeText(context, "Container reset to defaults (drives preserved)", Toast.LENGTH_SHORT).show()
-    }
-
-    @Composable
-    private fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { androidx.compose.material3.Text("Reset Container?") },
-            text = {
-                androidx.compose.material3.Text(
-                    "This will reset the container to default settings while preserving your drive mappings. " +
-                            "Any custom Wine settings or installed components will be lost."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onConfirm) {
-                    Text("Reset", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
 
 

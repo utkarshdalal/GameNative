@@ -488,7 +488,7 @@ class SteamAppScreen : BaseAppScreen() {
     ): AppMenuOption {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
-        
+
         return AppMenuOption(
             optionType = AppOptionMenuType.EditContainer,
             onClick = {
@@ -537,22 +537,21 @@ class SteamAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem
     ): AppMenuOption {
         val gameId = libraryItem.gameId
-        
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false }
+            )
+        }
+
         return AppMenuOption(
             AppOptionMenuType.ResetToDefaults,
-            onClick = {
-                showInstallDialog(
-                    gameId,
-                    MessageDialogState(
-                        visible = true,
-                        type = DialogType.RESET_CONTAINER_CONFIRM,
-                        title = context.getString(R.string.steam_reset_container_title),
-                        message = context.getString(R.string.steam_reset_container_message),
-                        confirmBtnText = context.getString(R.string.steam_continue),
-                        dismissBtnText = context.getString(R.string.cancel),
-                    )
-                )
-            }
+            onClick = { showResetConfirmDialog = true }
         )
     }
 
@@ -571,7 +570,7 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
-        
+
         if (!isInstalled) {
             return emptyList()
         }
@@ -926,22 +925,6 @@ class SteamAppScreen : BaseAppScreen() {
                                 container.saveData()
                             }
                         }
-                    }
-                }
-                DialogType.RESET_CONTAINER_CONFIRM -> {
-                    {
-                        hideInstallDialog(gameId)
-                        // Reset container configuration to the app's current default settings,
-                        // but keep the existing drives mapping so the game path remains mounted.
-                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                        val defaults = ContainerUtils.getDefaultContainerData()
-                        val adjusted = defaults.copy(drives = container.drives)
-                        ContainerUtils.applyToContainer(context, libraryItem.appId, adjusted)
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.steam_container_reset_success),
-                            Toast.LENGTH_SHORT
-                        ).show()
                     }
                 }
                 DialogType.INSTALL_IMAGEFS -> {

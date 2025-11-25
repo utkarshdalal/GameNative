@@ -5,6 +5,11 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ActivityResultLauncher
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +21,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
+import app.gamenative.utils.SteamGridDB
+import app.gamenative.utils.GameMetadataManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -192,7 +199,7 @@ abstract class BaseAppScreen {
     protected open fun getExportContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-        exportFrontendLauncher: androidx.activity.result.ActivityResultLauncher<String>
+        exportFrontendLauncher: ActivityResultLauncher<String>
     ): AppMenuOption? {
         val gameId = getGameId(libraryItem)
         val gameName = getGameName(context, libraryItem)
@@ -291,13 +298,13 @@ abstract class BaseAppScreen {
                         if (gameFolderPath != null) {
                             val folder = File(gameFolderPath)
                             val appId = libraryItem.gameId
-                            app.gamenative.utils.GameMetadataManager.update(
+                            GameMetadataManager.update(
                                 folder = folder,
                                 appId = appId,
                                 steamgriddbFetched = false
                             )
 
-                            app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
+                            SteamGridDB.fetchGameImages(gameName, gameFolderPath)
                             PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
                             onAfterFetchImages(context, libraryItem, gameFolderPath)
 
@@ -382,6 +389,47 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Reset container to default settings while preserving drive mappings.
+     * This is common behavior for all game sources.
+     */
+    protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
+        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+
+        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+
+        Toast.makeText(context, "Container reset to defaults (drives preserved)", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Common reset confirmation dialog for all game sources.
+     */
+    @Composable
+    protected fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(context.getString(R.string.base_app_reset_container_title)) },
+            text = {
+                Text(context.getString(R.string.base_app_reset_container_message))
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(
+                        text = context.getString(R.string.base_app_reset_container_confirm),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(context.getString(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    /**
      * Get the options menu items specific to this game source
      */
     @Composable
@@ -391,7 +439,7 @@ abstract class BaseAppScreen {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
-        exportFrontendLauncher: androidx.activity.result.ActivityResultLauncher<String>
+        exportFrontendLauncher: ActivityResultLauncher<String>
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
