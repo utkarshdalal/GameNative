@@ -28,8 +28,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import android.net.Uri
-import android.util.Log
-import com.winlator.core.WineUtils
 import app.gamenative.ui.enums.AppOptionMenuType
 import timber.log.Timber
 
