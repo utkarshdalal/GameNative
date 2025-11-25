@@ -22,19 +22,18 @@ import java.util.List;
 import java.util.Map;
 
 public class ContentsManager {
-
     public static final String PROFILE_NAME = "profile.json";
     public static final String REMOTE_PROFILES_URL = "https://raw.githubusercontent.com/longjunyu2/winlator/main/content/metadata.json";
     public static final String[] TURNIP_TRUST_FILES = {"${libdir}/libvulkan_freedreno.so", "${libdir}/libvulkan.so.1",
-        "${sharedir}/vulkan/icd.d/freedreno_icd.aarch64.json", "${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
+            "${sharedir}/vulkan/icd.d/freedreno_icd.aarch64.json", "${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
     public static final String[] VORTEK_TRUST_FILES = {"${libdir}/libvulkan_vortek.so", "${libdir}/libvulkan_freedreno.so",
-        "${sharedir}/vulkan/icd.d/vortek_icd.aarch64.json"};
+            "${sharedir}/vulkan/icd.d/vortek_icd.aarch64.json"};
     public static final String[] VIRGL_TRUST_FILES = {"${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
     public static final String[] DXVK_TRUST_FILES = {"${system32}/d3d8.dll", "${system32}/d3d9.dll", "${system32}/d3d10.dll", "${system32}/d3d10_1.dll",
-        "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
-        "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
+            "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
+            "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
     public static final String[] VKD3D_TRUST_FILES = {"${system32}/d3d12core.dll", "${system32}/d3d12.dll",
-        "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
+            "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
     public static final String[] BOX64_TRUST_FILES = {"${localbin}/box64", "${bindir}/box64"};
     public static final String[] WOWBOX64_TRUST_FILES = {"${system32}/wowbox64.dll"};
     public static final String[] FEXCORE_TRUST_FILES = {"${system32}/libwow64fex.dll", "${system32}/libarm64ecfex.dll"};
@@ -80,15 +79,11 @@ public class ContentsManager {
 
     private ArrayList<ContentProfile> remoteProfiles;
 
-    // Guard flag to prevent tmp directory cleanup during active imports
-    private volatile boolean isImportInProgress = false;
-
     public ContentsManager(Context context) {
         this.context = context;
     }
 
     public interface OnInstallFinishedCallback {
-
         void onFailed(InstallFailedReason reason, Exception e);
 
         void onSucceed(ContentProfile profile);
@@ -167,15 +162,7 @@ public class ContentsManager {
     }
 
     public void extraContentFile(Uri uri, OnInstallFinishedCallback callback) {
-        // Only clean tmp dir if no import is in progress
-        if (!isImportInProgress) {
-            cleanTmpDir(context);
-        } else {
-            Log.w("ContentsManager", "⚠️ Import already in progress, skipping tmp cleanup to preserve pending files");
-        }
-
-        // Set import flag at the start
-        isImportInProgress = true;
+        cleanTmpDir(context);
 
         File file = getTmpDir(context);
 
@@ -190,7 +177,6 @@ public class ContentsManager {
             ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
         }
         if (!ret) {
-            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
             return;
         }
@@ -201,7 +187,6 @@ public class ContentsManager {
         File proFile = new File(file, PROFILE_NAME);
         if (!proFile.exists()) {
             Log.e("ContentsManager", "profile.json not found");
-            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_NOPROFILE, null);
             return;
         }
@@ -209,7 +194,6 @@ public class ContentsManager {
         ContentProfile profile = readProfile(proFile);
         if (profile == null) {
             Log.e("ContentsManager", "Failed to parse profile.json");
-            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_BADPROFILE, null);
             return;
         }
@@ -220,14 +204,12 @@ public class ContentsManager {
         for (ContentProfile.ContentFile contentFile : profile.fileList) {
             File tmpFile = new File(file, contentFile.source);
             if (!tmpFile.exists() || !tmpFile.isFile() || !isSubPath(file.getAbsolutePath(), tmpFile.getAbsolutePath())) {
-                isImportInProgress = false;
                 callback.onFailed(InstallFailedReason.ERROR_MISSINGFILES, null);
                 return;
             }
 
             String realPath = getPathFromTemplate(contentFile.target);
             if (!isSubPath(imagefsPath, realPath) || isSubPath(ContentsManager.getContentDir(context).getAbsolutePath(), realPath) || realPath.contains("dosdevices")) {
-                isImportInProgress = false;
                 callback.onFailed(InstallFailedReason.ERROR_UNTRUSTPROFILE, null);
                 return;
             }
@@ -239,7 +221,6 @@ public class ContentsManager {
             File cp = new File(file, profile.winePrefixPack);
 
             if (!bin.exists() || !bin.isDirectory() || !lib.exists() || !lib.isDirectory() || !cp.exists() || !cp.isFile()) {
-                isImportInProgress = false;
                 callback.onFailed(InstallFailedReason.ERROR_MISSINGFILES, null);
                 return;
             }
@@ -258,19 +239,16 @@ public class ContentsManager {
 
         File installPath = getInstallDir(context, profile);
         if (installPath.exists()) {
-            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_EXIST, null);
             return;
         }
 
         if (!installPath.mkdirs()) {
-            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_UNKNOWN, null);
             return;
         }
 
         if (!getTmpDir(context).renameTo(installPath)) {
-            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_UNKNOWN, null);
             return;
         }
@@ -284,11 +262,6 @@ public class ContentsManager {
                 setExecutablePermissionsRecursive(binDir);
             }
         }
-
-        // Installation complete, clear import flag and clean tmp
-        isImportInProgress = false;
-        cleanTmpDir(context);
-        Log.d("ContentsManager", "✓ Installation complete, tmp directory cleaned");
 
         callback.onSucceed(profile);
     }
@@ -350,9 +323,8 @@ public class ContentsManager {
     }
 
     public List<ContentProfile> getProfiles(ContentProfile.ContentType type) {
-        if (profilesMap != null) {
+        if (profilesMap != null)
             return profilesMap.get(type);
-        }
         return null;
     }
 
@@ -409,16 +381,11 @@ public class ContentsManager {
     }
 
     /**
-     * Cancels any pending import and cleans up the tmp directory. This should
-     * be called when the user dismisses the import dialog or when the app needs
-     * to abort an in-progress import.
+     * Cleans up the tmp directory. This should be called when the user
+     * dismisses the import dialog to remove any extracted files.
      */
     public void cancelImport() {
-        if (isImportInProgress) {
-            Log.w("ContentsManager", "⚠️ Cancelling import in progress");
-            isImportInProgress = false;
-            cleanTmpDir(context);
-        }
+        cleanTmpDir(context);
     }
 
     /**
