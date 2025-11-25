@@ -35,13 +35,13 @@
         <item>turnip25.1.0</item>
         <item>turnip25.3.0_R3_Auto</item>
         <item>turnip25.3.0_R6_Gmem</item>
+        <item>25.3.0_R11</item>
+        <item>26.0.0_R4</item>
     </string-array>
     <string-array name="turnip_version_entries">
         <item>25.3.0</item>
         <item>25.0.0</item>
         <item>24.1.0</item>
-        <item>25.3.0_R11</item>
-        <item>26.0.0_R4</item>
     </string-array>
     <string-array name="virgl_version_entries">
         <item>23.1.9</item>
