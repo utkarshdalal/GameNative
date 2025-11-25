@@ -28,6 +28,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import android.net.Uri
+import android.util.Log
+import com.winlator.core.WineUtils
+import app.gamenative.ui.enums.AppOptionMenuType
 import timber.log.Timber
 
 /**
@@ -378,8 +381,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
 
         return AppMenuOption(
-            label = "Reset Container",
-            type = AppOptionMenuType.ResetToDefaults,
+            optionType = AppOptionMenuType.ResetToDefaults,
             onClick = { showResetConfirmDialog = true }
         )
     }
@@ -560,8 +562,6 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         val updatedContainer = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
         Log.d("CustomGameAppScreen", "After reset - Container drives: ${updatedContainer.drives}")
-
-        containerDataState.value = ContainerUtils.toContainerData(updatedContainer)
 
         Toast.makeText(context, "Container reset to defaults (drives preserved)", Toast.LENGTH_SHORT).show()
     }

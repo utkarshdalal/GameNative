@@ -195,10 +195,13 @@ abstract class BaseAppScreen {
         exportFrontendLauncher: androidx.activity.result.ActivityResultLauncher<String>
     ): AppMenuOption? {
         val gameId = getGameId(libraryItem)
+        val gameName = getGameName(context, libraryItem)
+        val extension = getExportFileExtension()
         return AppMenuOption(
-            optionType = AppOptionMenuType.Export,
+            optionType = AppOptionMenuType.ExportFrontend,
             onClick = {
-                onExportContainerClick(context, libraryItem.appId, gameId, exportFrontendLauncher)
+                val suggested = "${gameName}${extension}"
+                exportFrontendLauncher.launch(suggested)
             }
         )
     }
