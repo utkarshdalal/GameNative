@@ -80,6 +80,9 @@ public class ContentsManager {
 
     private ArrayList<ContentProfile> remoteProfiles;
 
+    // Guard flag to prevent tmp directory cleanup during active imports
+    private volatile boolean isImportInProgress = false;
+
     public ContentsManager(Context context) {
         this.context = context;
     }
@@ -115,6 +118,7 @@ public class ContentsManager {
     }
 
     public void syncContents() {
+        Log.d("ContentsManager", "🔄 syncContents called - scanning installed profiles");
         profilesMap = new HashMap<>();
         for (ContentProfile.ContentType type : ContentProfile.ContentType.values()) {
             LinkedList<ContentProfile> profiles = new LinkedList<>();
@@ -127,11 +131,18 @@ public class ContentsManager {
                     File proFile = new File(file, PROFILE_NAME);
                     if (proFile.exists() && proFile.isFile()) {
                         ContentProfile profile = readProfile(proFile);
-                        if (profile != null) {
+                        if (profile != null && profile.type == type) {
+                            Log.d("ContentsManager", "   ✅ Added profile: type=" + profile.type + ", verName=" + profile.verName + ", verCode=" + profile.verCode);
                             profiles.add(profile);
+                        } else if (profile != null) {
+                            Log.w("ContentsManager", "   ⚠️ Type mismatch: profile.type=" + profile.type + " but scanning type=" + type + " (verName=" + profile.verName + ")");
+                        } else {
+                            Log.w("ContentsManager", "   ⚠️ Failed to read profile from: " + proFile.getAbsolutePath());
                         }
                     }
                 }
+            } else {
+                Log.d("ContentsManager", "   No directories found (or directory doesn't exist)");
             }
 
             if (remoteProfiles != null) {
@@ -150,46 +161,78 @@ public class ContentsManager {
                     }
                 }
             }
+            Log.d("ContentsManager", "   Total profiles for type " + type + ": " + profiles.size());
         }
+        Log.d("ContentsManager", "🔄 syncContents complete");
     }
 
     public void extraContentFile(Uri uri, OnInstallFinishedCallback callback) {
-        cleanTmpDir(context);
+        // Only clean tmp dir if no import is in progress
+        if (!isImportInProgress) {
+            cleanTmpDir(context);
+        } else {
+            Log.w("ContentsManager", "⚠️ Import already in progress, skipping tmp cleanup to preserve pending files");
+        }
+
+        // Set import flag at the start
+        isImportInProgress = true;
 
         File file = getTmpDir(context);
 
+        Log.d("ContentsManager", "Starting extraction to: " + file.getAbsolutePath());
+        long startTime = System.currentTimeMillis();
+
         boolean ret;
+        Log.d("ContentsManager", "Attempting XZ extraction...");
         ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file);
         if (!ret) {
+            Log.d("ContentsManager", "XZ failed, attempting ZSTD extraction...");
             ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
         }
         if (!ret) {
+            isImportInProgress = false;
+            cleanTmpDir(context);
             callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
             return;
         }
 
+        long extractTime = System.currentTimeMillis() - startTime;
+        Log.d("ContentsManager", "Extraction completed in " + extractTime + "ms, validating...");
+
         File proFile = new File(file, PROFILE_NAME);
         if (!proFile.exists()) {
+            Log.e("ContentsManager", "profile.json not found");
+            isImportInProgress = false;
+            cleanTmpDir(context);
             callback.onFailed(InstallFailedReason.ERROR_NOPROFILE, null);
             return;
         }
 
         ContentProfile profile = readProfile(proFile);
         if (profile == null) {
+            Log.e("ContentsManager", "Failed to parse profile.json");
+            isImportInProgress = false;
+            cleanTmpDir(context);
             callback.onFailed(InstallFailedReason.ERROR_BADPROFILE, null);
             return;
         }
+
+        Log.d("ContentsManager", "Profile parsed: type=" + profile.type + ", version=" + profile.verName);
 
         String imagefsPath = context.getFilesDir().getAbsolutePath() + "/imagefs";
         for (ContentProfile.ContentFile contentFile : profile.fileList) {
             File tmpFile = new File(file, contentFile.source);
             if (!tmpFile.exists() || !tmpFile.isFile() || !isSubPath(file.getAbsolutePath(), tmpFile.getAbsolutePath())) {
+                isImportInProgress = false;
+                cleanTmpDir(context);
                 callback.onFailed(InstallFailedReason.ERROR_MISSINGFILES, null);
                 return;
             }
 
             String realPath = getPathFromTemplate(contentFile.target);
             if (!isSubPath(imagefsPath, realPath) || isSubPath(ContentsManager.getContentDir(context).getAbsolutePath(), realPath) || realPath.contains("dosdevices")) {
+                isImportInProgress = false;
+                cleanTmpDir(context);
                 callback.onFailed(InstallFailedReason.ERROR_UNTRUSTPROFILE, null);
                 return;
             }
@@ -201,6 +244,8 @@ public class ContentsManager {
             File cp = new File(file, profile.winePrefixPack);
 
             if (!bin.exists() || !bin.isDirectory() || !lib.exists() || !lib.isDirectory() || !cp.exists() || !cp.isFile()) {
+                isImportInProgress = false;
+                cleanTmpDir(context);
                 callback.onFailed(InstallFailedReason.ERROR_MISSINGFILES, null);
                 return;
             }
@@ -219,16 +264,19 @@ public class ContentsManager {
 
         File installPath = getInstallDir(context, profile);
         if (installPath.exists()) {
+            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_EXIST, null);
             return;
         }
 
         if (!installPath.mkdirs()) {
+            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_UNKNOWN, null);
             return;
         }
 
         if (!getTmpDir(context).renameTo(installPath)) {
+            isImportInProgress = false;
             callback.onFailed(InstallFailedReason.ERROR_UNKNOWN, null);
             return;
         }
@@ -242,6 +290,11 @@ public class ContentsManager {
                 setExecutablePermissionsRecursive(binDir);
             }
         }
+
+        // Installation complete, clear import flag and clean tmp
+        isImportInProgress = false;
+        cleanTmpDir(context);
+        Log.d("ContentsManager", "✓ Installation complete, tmp directory cleaned");
 
         callback.onSucceed(profile);
     }
@@ -274,7 +327,7 @@ public class ContentsManager {
                 } else if (profileJSONObject.has(ContentProfile.MARK_WINE)) {
                     wineJSONObject = profileJSONObject.getJSONObject(ContentProfile.MARK_WINE);
                 }
-                
+
                 if (wineJSONObject != null) {
                     profile.wineLibPath = wineJSONObject.getString(ContentProfile.MARK_WINE_LIBPATH);
                     profile.wineBinPath = wineJSONObject.getString(ContentProfile.MARK_WINE_BINPATH);
@@ -359,6 +412,19 @@ public class ContentsManager {
         File file = getTmpDir(context);
         FileUtils.delete(file);
         file.mkdirs();
+    }
+
+    /**
+     * Cancels any pending import and cleans up the tmp directory. This should
+     * be called when the user dismisses the import dialog or when the app needs
+     * to abort an in-progress import.
+     */
+    public void cancelImport() {
+        if (isImportInProgress) {
+            Log.w("ContentsManager", "⚠️ Cancelling import in progress");
+            isImportInProgress = false;
+            cleanTmpDir(context);
+        }
     }
 
     /**
@@ -472,23 +538,53 @@ public class ContentsManager {
     }
 
     public ContentProfile getProfileByEntryName(String entryName) {
-        int firstDashIndex = entryName.indexOf('-');
+        Log.d("ContentsManager", "🔍 getProfileByEntryName called with: '" + entryName + "'");
         int lastDashIndex = entryName.lastIndexOf('-');
 
         try {
-            String typeName = entryName.substring(0, firstDashIndex);
-            String versionName = entryName.substring(firstDashIndex + 1, lastDashIndex);
+            // Extract version code (everything after last dash)
             String versionCode = entryName.substring(lastDashIndex + 1);
+            // Everything before last dash is the full version name (including type prefix if present)
+            String fullVersionName = entryName.substring(0, lastDashIndex);
 
-            ContentProfile.ContentType type = ContentProfile.ContentType.getTypeByName(typeName);
+            Log.d("ContentsManager", "   Parsed: fullVersionName='" + fullVersionName + "', versionCode='" + versionCode + "'");
+
+            // Try to determine type from the full version name (supports prefixed builds like "GE-Proton")
+            ContentProfile.ContentType type = null;
+            String lowerVersionName = fullVersionName.toLowerCase();
+            if (lowerVersionName.contains("proton")) {
+                type = ContentProfile.ContentType.CONTENT_TYPE_PROTON;
+            } else if (lowerVersionName.contains("wine")) {
+                type = ContentProfile.ContentType.CONTENT_TYPE_WINE;
+            } else {
+                // Try other types
+                int firstDash = fullVersionName.indexOf('-');
+                if (firstDash > 0) {
+                    String possibleType = fullVersionName.substring(0, firstDash);
+                    type = ContentProfile.ContentType.getTypeByName(possibleType);
+                }
+            }
+
+            Log.d("ContentsManager", "   Detected ContentType: " + type);
+
             if (type != null && profilesMap.get(type) != null) {
-                for (ContentProfile profile : profilesMap.get(type)) {
-                    if (versionName.equals(profile.verName) && Integer.parseInt(versionCode) == profile.verCode) {
+                List<ContentProfile> profiles = profilesMap.get(type);
+                Log.d("ContentsManager", "   Found " + profiles.size() + " profiles of type " + type);
+
+                for (ContentProfile profile : profiles) {
+                    Log.d("ContentsManager", "   Checking profile: verName='" + profile.verName + "', verCode=" + profile.verCode);
+                    // Match against the full version name (profile.verName already has type prefix from readProfile)
+                    if (fullVersionName.equalsIgnoreCase(profile.verName) && Integer.parseInt(versionCode) == profile.verCode) {
+                        Log.d("ContentsManager", "   ✅ MATCH FOUND!");
                         return profile;
                     }
                 }
+                Log.d("ContentsManager", "   ❌ No matching profile found in primary lookup");
+            } else {
+                Log.d("ContentsManager", "   ❌ Type is null or no profiles for this type");
             }
         } catch (Exception e) {
+            Log.d("ContentsManager", "   ❌ Exception in primary lookup: " + e.getMessage());
         }
 
         // Fallback: Try Wine and Proton lists if entry name doesn't have type prefix

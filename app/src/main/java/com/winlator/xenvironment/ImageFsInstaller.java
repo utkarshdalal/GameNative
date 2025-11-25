@@ -42,7 +42,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
-    public static final byte LATEST_VERSION = 25;
+
+    public static final byte LATEST_VERSION = 24;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -55,7 +56,6 @@ public abstract class ImageFsInstaller {
 
             container.putExtra("imgVersion", null);
             container.putExtra("dxwrapper", null);
-            container.putExtra("appVersion", null);
             container.saveData();
         }
     }
@@ -69,7 +69,6 @@ public abstract class ImageFsInstaller {
             TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, version + ".txz", outFile);
         }
     }
-
 
     private static Future<Boolean> installFromAssetsFuture(final Context context, AssetManager assetManager, String containerVariant, Callback<Integer> onProgress) {
         // AppUtils.keepScreenOn(context);
@@ -89,7 +88,7 @@ public abstract class ImageFsInstaller {
 
             boolean success = false;
 
-            if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
+            if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true) {
                 final long contentLength = (long) (FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
                 AtomicLong totalSizeRef = new AtomicLong();
                 Log.d("Extraction", "extracting " + imagefsFile);
@@ -104,9 +103,7 @@ public abstract class ImageFsInstaller {
                     }
                     return file;
                 });
-            }
-
-            else if (downloaded.exists()){
+            } else if (downloaded.exists()) {
                 final long contentLength = (long) (FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
                 AtomicLong totalSizeRef = new AtomicLong();
                 Log.d("Extraction", "extracting " + imagefsFile);
@@ -133,8 +130,7 @@ public abstract class ImageFsInstaller {
 
                 // Clear Steam DLL markers for all games
                 clearSteamDllMarkers(context, containerManager);
-            }
-            else {
+            } else {
                 Log.e("ImageFsInstaller", "Failed to install system files");
                 // AppUtils.showToast(context, R.string.unable_to_install_system_files);
             }
@@ -147,9 +143,9 @@ public abstract class ImageFsInstaller {
         final String ASSET_TAR = "redirect.tzst";          // ➊  add this to assets/
         File imagefs = new File(ctx.getFilesDir(), "imagefs");
         // ➋  Unpack straight into imagefs, preserving relative paths.
-        try (InputStream in  = ctx.getAssets().open(ASSET_TAR)) {
+        try (InputStream in = ctx.getAssets().open(ASSET_TAR)) {
             TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    TarCompressorUtils.Type.ZSTD, // you said .tzst
                     in, imagefs);                      // helper already exists in the project
         } catch (IOException e) {
             Log.e("ImageFsInstaller", "redirect deploy failed", e);
@@ -162,9 +158,9 @@ public abstract class ImageFsInstaller {
 
         final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
         // ➋  Unpack straight into imagefs, preserving relative paths.
-        try (InputStream in  = ctx.getAssets().open(EXTRAS_TAR)) {
+        try (InputStream in = ctx.getAssets().open(EXTRAS_TAR)) {
             TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    TarCompressorUtils.Type.ZSTD, // you said .tzst
                     in, imagefs);                      // helper already exists in the project
         } catch (IOException e) {
             Log.e("ImageFsInstaller", "extras deploy failed", e);
@@ -177,11 +173,17 @@ public abstract class ImageFsInstaller {
         chmod(new File(imagefs, "opt/mono-gecko-offline/wine-mono-9.0.0-x86.msi"));
     }
 
-    private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
+    private static void chmod(File f) {
+        if (f.exists()) {
+            FileUtils.chmod(f, 0755);
+
+        }
+    }
 
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
         return installIfNeededFuture(context, assetManager, null, null);
     }
+
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
@@ -194,10 +196,29 @@ public abstract class ImageFsInstaller {
     }
 
     private static void clearOptDir(File optDir) {
+        if (!optDir.exists() || !optDir.isDirectory()) {
+            return;
+        }
+
         File[] files = optDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                if (file.getName().equals("installed-wine")) continue;
+                String fileName = file.getName();
+                String lowerName = fileName.toLowerCase();
+
+                // Preserve Wine/Proton installations (they work with both bionic and glibc)
+                // Directory format: {type}-{version}-{code} where type is "wine" or "proton"
+                // Examples: wine-10.0-1, proton-ge-10-25-1, wine-staging-9.0-2
+                if (lowerName.startsWith("wine-") || lowerName.startsWith("proton-")) {
+                    Log.d("ImageFsInstaller", "Preserving Wine/Proton installation: " + fileName);
+                    continue;
+                }
+                // Also preserve installed-wine directory (legacy support)
+                if (fileName.equals("installed-wine")) {
+                    Log.d("ImageFsInstaller", "Preserving legacy installed-wine directory");
+                    continue;
+                }
+                Log.d("ImageFsInstaller", "Removing from opt: " + fileName);
                 FileUtils.delete(file);
             }
         }
@@ -210,15 +231,25 @@ public abstract class ImageFsInstaller {
                 for (File file : files) {
                     if (file.isDirectory()) {
                         String name = file.getName();
+                        // Preserve home directory (user data)
                         if (name.equals("home")) {
+                            Log.d("ImageFsInstaller", "Preserving directory during clearRootDir: home");
+                            continue;
+                        }
+                        // Preserve opt directory but clear its contents selectively
+                        if (name.equals("opt")) {
+                            Log.d("ImageFsInstaller", "Selectively clearing opt directory");
+                            clearOptDir(file);
                             continue;
                         }
                     }
+                    Log.d("ImageFsInstaller", "Deleting during clearRootDir: " + file.getName());
                     FileUtils.delete(file);
                 }
             }
+        } else {
+            rootDir.mkdirs();
         }
-        else rootDir.mkdirs();
     }
 
     public static void generateCompactContainerPattern(final Context context, AssetManager assetManager) {
@@ -247,7 +278,9 @@ public abstract class ImageFsInstaller {
             for (File dstFile : dstFiles) {
                 for (File srcFile : srcFiles) {
                     if (dstFile.getName().equals(srcFile.getName())) {
-                        if (FileUtils.contentEquals(srcFile, dstFile)) system32Files.add(srcFile.getName());
+                        if (FileUtils.contentEquals(srcFile, dstFile)) {
+                            system32Files.add(srcFile.getName());
+                        }
                         break;
                     }
                 }
@@ -259,7 +292,9 @@ public abstract class ImageFsInstaller {
             for (File dstFile : dstFiles) {
                 for (File srcFile : srcFiles) {
                     if (dstFile.getName().equals(srcFile.getName())) {
-                        if (FileUtils.contentEquals(srcFile, dstFile)) syswow64Files.add(srcFile.getName());
+                        if (FileUtils.contentEquals(srcFile, dstFile)) {
+                            syswow64Files.add(srcFile.getName());
+                        }
                         break;
                     }
                 }
@@ -290,16 +325,16 @@ public abstract class ImageFsInstaller {
 
                 FileUtils.delete(containerPatternDir);
                 // preloaderDialog.closeOnUiThread();
-            }
-            catch (JSONException e) {
+            } catch (JSONException e) {
                 Log.e("ImageFsInstaller", "Failed to read JSON data: " + e);
             }
         });
     }
 
     /**
-     * Clears Steam DLL markers for all containers by scanning each mapped drive path.
-     * Relies only on container drive mappings; does not call into SteamService.
+     * Clears Steam DLL markers for all containers by scanning each mapped drive
+     * path. Relies only on container drive mappings; does not call into
+     * SteamService.
      */
     private static void clearSteamDllMarkers(Context context, ContainerManager containerManager) {
         try {
