@@ -154,9 +154,13 @@ fun XServerScreen(
     var vkbasaltConfig = ""
     var taskAffinityMask = 0
     var taskAffinityMaskWoW64 = 0
+    
+    val container = remember(appId) {
+        ContainerUtils.getContainer(context, appId)
+    }
 
     val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
-        if (ContainerUtils.hasContainer(context, appId)) {
+    if (ContainerUtils.hasContainer(context, appId)) {
             val container = ContainerUtils.getContainer(context, appId)
             mutableStateOf(
                 XServerState(
@@ -172,11 +176,6 @@ fun XServerScreen(
             mutableStateOf(XServerState())
         }
     }
-    
-    val container = remember(appId) {
-        ContainerUtils.getContainer(context, appId)
-    }
-
     // val xServer by remember {
     //     val result = mutableStateOf(XServer(ScreenInfo(xServerState.value.screenSize)))
     //     Log.d("XServerScreen", "Remembering xServer as $result")
