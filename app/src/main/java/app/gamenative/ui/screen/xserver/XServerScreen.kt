@@ -160,21 +160,16 @@ fun XServerScreen(
     }
 
     val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
-    if (ContainerUtils.hasContainer(context, appId)) {
-            val container = ContainerUtils.getContainer(context, appId)
-            mutableStateOf(
-                XServerState(
-                    graphicsDriver = container.graphicsDriver,
-                    graphicsDriverVersion = container.graphicsDriverVersion,
-                    audioDriver = container.audioDriver,
-                    dxwrapper = container.dxWrapper,
-                    dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig),
-                    screenSize = container.screenSize,
-                ),
-            )
-        } else {
-            mutableStateOf(XServerState())
-        }
+        mutableStateOf(
+            XServerState(
+                graphicsDriver = container.graphicsDriver,
+                graphicsDriverVersion = container.graphicsDriverVersion,
+                audioDriver = container.audioDriver,
+                dxwrapper = container.dxWrapper,
+                dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig),
+                screenSize = container.screenSize,
+            ),
+        )
     }
     // val xServer by remember {
     //     val result = mutableStateOf(XServer(ScreenInfo(xServerState.value.screenSize)))
