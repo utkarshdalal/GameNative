@@ -18,12 +18,14 @@ import java.util.regex.Pattern;
 import app.gamenative.R;
 
 public class WineInfo implements Parcelable {
+
     public static final WineInfo MAIN_WINE_VERSION = new WineInfo("wine", "9.2", "x86_64");
-    private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
+    private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9]+(?:\\.[0-9]+)*)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
     public final String version;
     public final String type;
     public String subversion;
     public final String path;
+    public String libPath; // Path to lib directory from profile.json (e.g., "lib" or "lib/wine")
     private String arch;
 
     public WineInfo(String type, String version, String arch) {
@@ -32,6 +34,7 @@ public class WineInfo implements Parcelable {
         this.subversion = null;
         this.arch = arch;
         this.path = null;
+        this.libPath = null;
     }
 
     public WineInfo(String type, String version, String subversion, String arch, String path) {
@@ -40,6 +43,7 @@ public class WineInfo implements Parcelable {
         this.subversion = subversion != null && !subversion.isEmpty() ? subversion : null;
         this.arch = arch;
         this.path = path;
+        this.libPath = null;
     }
 
     public WineInfo(String type, String version, String arch, String path) {
@@ -47,6 +51,7 @@ public class WineInfo implements Parcelable {
         this.version = version;
         this.arch = arch;
         this.path = path;
+        this.libPath = null;
     }
 
     private WineInfo(Parcel in) {
@@ -55,6 +60,7 @@ public class WineInfo implements Parcelable {
         subversion = in.readString();
         arch = in.readString();
         path = in.readString();
+        libPath = in.readString();
     }
 
     public String getArch() {
@@ -69,14 +75,16 @@ public class WineInfo implements Parcelable {
         return arch.equals("x86_64") || arch.equals("arm64ec");
     }
 
-    public boolean isArm64EC() { return arch.equals("arm64ec"); }
+    public boolean isArm64EC() {
+        return arch.equals("arm64ec");
+    }
 
     public boolean isMainWineVersion() {
         WineInfo other = WineInfo.MAIN_WINE_VERSION;
 
-        boolean pathMatches =
-                (path == null && other.path == null) ||
-                        (path != null && path.equals(other.path));
+        boolean pathMatches
+                = (path == null && other.path == null)
+                || (path != null && path.equals(other.path));
 
         return type.equals(other.type)
                 && version.equals(other.version)
@@ -94,28 +102,31 @@ public class WineInfo implements Parcelable {
             FileUtils.chmod(wineBinFile, 0771);
             FileUtils.chmod(winePreloaderBinFile, 0771);
             return wow64Mode ? "wine" : "wine64";
+        } else {
+            return (new File(path, "/bin/wine64")).isFile() ? "wine64" : "wine";
         }
-        else return (new File(path, "/bin/wine64")).isFile() ? "wine64" : "wine";
     }
 
     public String identifier() {
-        if (type.equals("proton"))
-            return "proton-" + fullVersion() + "-"+ arch;
-        else
+        if (type.equals("proton")) {
+            return "proton-" + fullVersion() + "-" + arch;
+        } else {
             return "wine-" + fullVersion() + "-" + arch;
+        }
     }
 
     public String fullVersion() {
-        return version+(subversion != null ? "-"+subversion : "");
+        return version + (subversion != null ? "-" + subversion : "");
     }
 
     @NonNull
     @Override
     public String toString() {
-        if (type.equals("proton"))
-            return "Proton "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
-        else
-            return "Wine "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        if (type.equals("proton")) {
+            return "Proton " + fullVersion() + (this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        } else {
+            return "Wine " + fullVersion() + (this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        }
     }
 
     @Override
@@ -140,6 +151,7 @@ public class WineInfo implements Parcelable {
         dest.writeString(subversion);
         dest.writeString(arch);
         dest.writeString(path);
+        dest.writeString(libPath);
     }
 
     @NonNull
@@ -147,16 +159,26 @@ public class WineInfo implements Parcelable {
         ImageFs imageFs = ImageFs.find(context);
         String path = "";
 
-        Log.d("WineInfo", "Creating WineInfo from identifier " + identifier);
+        Log.d("WineInfo", "========================================");
+        Log.d("WineInfo", "Creating WineInfo from identifier: '" + identifier + "'");
+        Log.d("WineInfo", "========================================");
 
-        if (identifier.equals(MAIN_WINE_VERSION.identifier())) return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
-
-        ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier);
-
-        if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
-            identifier = identifier.substring(0, identifier.length() - 2).toLowerCase();
+        if (identifier.equals(MAIN_WINE_VERSION.identifier())) {
+            Log.d("WineInfo", "Using MAIN_WINE_VERSION");
+            return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
         }
 
+        // Try to lookup with version code appended (identifier might be missing -0 at the end)
+        Log.d("WineInfo", "Trying lookup with: '" + identifier + "-0'");
+        ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier + "-0");
+
+        // Fallback to identifier as-is if not found
+        if (wineProfile == null) {
+            Log.d("WineInfo", "First lookup failed, trying: '" + identifier + "'");
+            wineProfile = contentsManager.getProfileByEntryName(identifier);
+        }
+
+        Log.d("WineInfo", "Wine profile lookup result: " + (wineProfile != null ? "FOUND" : "NULL"));
         Matcher matcher = pattern.matcher(identifier);
 
         if (matcher.find()) {
@@ -168,15 +190,26 @@ public class WineInfo implements Parcelable {
                 }
             }
 
-            if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON))
-                path = contentsManager.getInstallDir(context, wineProfile).getPath();
+            if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
+                path = ContentsManager.getInstallDir(context, wineProfile).getPath();
+                Log.d("WineInfo", "Wine path for wineinfo: " + path);
+                
+                // Create WineInfo and set libPath from profile
+                WineInfo wineInfo = new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), path);
+                wineInfo.libPath = wineProfile.wineLibPath;
+                Log.d("WineInfo", "Wine libPath from profile: " + wineInfo.libPath);
+                return wineInfo;
+            } else {
+                Log.d("WineInfo", "Wine path for wineinfo is null - wineProfile not found or not Wine/Proton type");
+            }
 
             return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), path);
+        } else {
+            return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
         }
-        else return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
     }
 
     public static boolean isMainWineVersion(String wineVersion) {
-        return wineVersion == null ||wineVersion.equals(MAIN_WINE_VERSION.identifier());
+        return wineVersion == null || wineVersion.equals(MAIN_WINE_VERSION.identifier());
     }
 }

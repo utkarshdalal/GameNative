@@ -22,18 +22,19 @@ import java.util.List;
 import java.util.Map;
 
 public class ContentsManager {
+
     public static final String PROFILE_NAME = "profile.json";
     public static final String REMOTE_PROFILES_URL = "https://raw.githubusercontent.com/longjunyu2/winlator/main/content/metadata.json";
     public static final String[] TURNIP_TRUST_FILES = {"${libdir}/libvulkan_freedreno.so", "${libdir}/libvulkan.so.1",
-            "${sharedir}/vulkan/icd.d/freedreno_icd.aarch64.json", "${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
+        "${sharedir}/vulkan/icd.d/freedreno_icd.aarch64.json", "${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
     public static final String[] VORTEK_TRUST_FILES = {"${libdir}/libvulkan_vortek.so", "${libdir}/libvulkan_freedreno.so",
-            "${sharedir}/vulkan/icd.d/vortek_icd.aarch64.json"};
+        "${sharedir}/vulkan/icd.d/vortek_icd.aarch64.json"};
     public static final String[] VIRGL_TRUST_FILES = {"${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
     public static final String[] DXVK_TRUST_FILES = {"${system32}/d3d8.dll", "${system32}/d3d9.dll", "${system32}/d3d10.dll", "${system32}/d3d10_1.dll",
-            "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
-            "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
+        "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
+        "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
     public static final String[] VKD3D_TRUST_FILES = {"${system32}/d3d12core.dll", "${system32}/d3d12.dll",
-            "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
+        "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
     public static final String[] BOX64_TRUST_FILES = {"${localbin}/box64", "${bindir}/box64"};
     public static final String[] WOWBOX64_TRUST_FILES = {"${system32}/wowbox64.dll"};
     public static final String[] FEXCORE_TRUST_FILES = {"${system32}/libwow64fex.dll", "${system32}/libarm64ecfex.dll"};
@@ -84,6 +85,7 @@ public class ContentsManager {
     }
 
     public interface OnInstallFinishedCallback {
+
         void onFailed(InstallFailedReason reason, Exception e);
 
         void onSucceed(ContentProfile profile);
@@ -125,8 +127,9 @@ public class ContentsManager {
                     File proFile = new File(file, PROFILE_NAME);
                     if (proFile.exists() && proFile.isFile()) {
                         ContentProfile profile = readProfile(proFile);
-                        if (profile != null)
+                        if (profile != null) {
                             profiles.add(profile);
+                        }
                     }
                 }
             }
@@ -157,8 +160,9 @@ public class ContentsManager {
 
         boolean ret;
         ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file);
-        if (!ret)
+        if (!ret) {
             ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
+        }
         if (!ret) {
             callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
             return;
@@ -191,7 +195,7 @@ public class ContentsManager {
             }
         }
 
-        if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+        if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
             File bin = new File(file, profile.wineBinPath);
             File lib = new File(file, profile.wineLibPath);
             File cp = new File(file, profile.winePrefixPack);
@@ -206,6 +210,13 @@ public class ContentsManager {
     }
 
     public void finishInstallContent(ContentProfile profile, OnInstallFinishedCallback callback) {
+        // Check if a version with this name already exists and find next available version code
+        int nextVerCode = findNextAvailableVersionCode(profile.verName, profile.type);
+        if (nextVerCode > 0) {
+            // A version with this name exists, use incremented version code
+            profile.verCode = nextVerCode;
+        }
+
         File installPath = getInstallDir(context, profile);
         if (installPath.exists()) {
             callback.onFailed(InstallFailedReason.ERROR_EXIST, null);
@@ -219,6 +230,17 @@ public class ContentsManager {
 
         if (!getTmpDir(context).renameTo(installPath)) {
             callback.onFailed(InstallFailedReason.ERROR_UNKNOWN, null);
+            return;
+        }
+
+        // For Wine/Proton, set executable permissions on binaries
+        if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE
+                || profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
+            File binDir = new File(installPath, profile.wineBinPath);
+            if (binDir.exists() && binDir.isDirectory()) {
+                Log.d("ContentsManager", "Setting executable permissions for Wine/Proton binaries in: " + binDir.getPath());
+                setExecutablePermissionsRecursive(binDir);
+            }
         }
 
         callback.onSucceed(profile);
@@ -247,10 +269,24 @@ public class ContentsManager {
                 profile.wineLibPath = wineJSONObject.getString(ContentProfile.MARK_WINE_LIBPATH);
                 profile.wineBinPath = wineJSONObject.getString(ContentProfile.MARK_WINE_BINPATH);
                 profile.winePrefixPack = wineJSONObject.getString(ContentProfile.MARK_WINE_PREFIX_PACK);
+            } else if (typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_PROTON.toString())) {
+                JSONObject protonJSONObject = profileJSONObject.getJSONObject(ContentProfile.MARK_PROTON);
+                profile.wineLibPath = protonJSONObject.getString(ContentProfile.MARK_PROTON_LIBPATH);
+                profile.wineBinPath = protonJSONObject.getString(ContentProfile.MARK_PROTON_BINPATH);
+                profile.winePrefixPack = protonJSONObject.getString(ContentProfile.MARK_PROTON_PREFIX_PACK);
             }
 
             profile.type = ContentProfile.ContentType.getTypeByName(typeName);
-            profile.verName = verName;
+
+            // For Wine/Proton, ensure type is included in version name
+            if ((typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_WINE.toString())
+                    || typeName.equals(ContentProfile.ContentType.CONTENT_TYPE_PROTON.toString()))
+                    && !verName.toLowerCase().startsWith(typeName.toLowerCase())) {
+                profile.verName = typeName.toLowerCase() + "-" + verName;
+            } else {
+                profile.verName = verName;
+            }
+
             profile.verCode = verCode;
             profile.desc = desc;
             profile.fileList = fileList;
@@ -261,9 +297,30 @@ public class ContentsManager {
     }
 
     public List<ContentProfile> getProfiles(ContentProfile.ContentType type) {
-        if (profilesMap != null)
+        if (profilesMap != null) {
             return profilesMap.get(type);
+        }
         return null;
+    }
+
+    /**
+     * Find the next available version code for a given version name and type.
+     * Returns 0 if no existing version found, otherwise returns max + 1.
+     */
+    private int findNextAvailableVersionCode(String verName, ContentProfile.ContentType type) {
+        List<ContentProfile> profiles = getProfiles(type);
+        if (profiles == null || profiles.isEmpty()) {
+            return 0;
+        }
+
+        int maxVerCode = -1;
+        for (ContentProfile profile : profiles) {
+            if (profile.verName.equals(verName) && profile.verCode > maxVerCode) {
+                maxVerCode = profile.verCode;
+            }
+        }
+
+        return maxVerCode + 1;
     }
 
     public static File getInstallDir(Context context, ContentProfile profile) {
@@ -275,6 +332,12 @@ public class ContentsManager {
     }
 
     public static File getContentTypeDir(Context context, ContentProfile.ContentType type) {
+        // Wine/Proton must be installed inside imagefs/opt/ to run inside proot environment
+        // This is required for ARM64EC Wine to handle mmap(PROT_EXEC) calls properly
+        if (type == ContentProfile.ContentType.CONTENT_TYPE_WINE
+                || type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
+            return new File(context.getFilesDir(), "imagefs/opt");
+        }
         return new File(getContentDir(context), type.toString());
     }
 
@@ -292,13 +355,39 @@ public class ContentsManager {
         file.mkdirs();
     }
 
+    /**
+     * Recursively sets executable permissions (0755) on all files in a
+     * directory. This is needed for Wine/Proton binaries to run on Android.
+     */
+    private void setExecutablePermissionsRecursive(File dir) {
+        if (!dir.exists()) {
+            return;
+        }
+
+        File[] files = dir.listFiles();
+        if (files == null) {
+            return;
+        }
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                setExecutablePermissionsRecursive(file);
+            } else if (file.isFile()) {
+                // Set executable permissions on all files in bin/ directory
+                FileUtils.chmod(file, 0755);
+                Log.d("ContentsManager", "Set chmod 0755 on: " + file.getName());
+            }
+        }
+    }
+
     public List<ContentProfile.ContentFile> getUnTrustedContentFiles(ContentProfile profile) {
         createTrustedFilesMap();
         List<ContentProfile.ContentFile> files = new ArrayList<>();
         for (ContentProfile.ContentFile contentFile : profile.fileList) {
             if (!trustedFilesMap.get(profile.type).contains(
-                    Paths.get(getPathFromTemplate(contentFile.target)).toAbsolutePath().normalize().toString()))
+                    Paths.get(getPathFromTemplate(contentFile.target)).toAbsolutePath().normalize().toString())) {
                 files.add(contentFile);
+            }
         }
         return files;
     }
@@ -329,18 +418,28 @@ public class ContentsManager {
                 trustedFilesMap.put(type, pathList);
 
                 String[] paths = switch (type) {
-                    case CONTENT_TYPE_TURNIP -> TURNIP_TRUST_FILES;
-                    case CONTENT_TYPE_VORTEK -> VORTEK_TRUST_FILES;
-                    case CONTENT_TYPE_VIRGL -> VIRGL_TRUST_FILES;
-                    case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
-                    case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
-                    case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
-                    case CONTENT_TYPE_WOWBOX64 -> WOWBOX64_TRUST_FILES;
-                    case CONTENT_TYPE_FEXCORE -> FEXCORE_TRUST_FILES;
-                    default -> new String[0];
+                    case CONTENT_TYPE_TURNIP ->
+                        TURNIP_TRUST_FILES;
+                    case CONTENT_TYPE_VORTEK ->
+                        VORTEK_TRUST_FILES;
+                    case CONTENT_TYPE_VIRGL ->
+                        VIRGL_TRUST_FILES;
+                    case CONTENT_TYPE_DXVK ->
+                        DXVK_TRUST_FILES;
+                    case CONTENT_TYPE_VKD3D ->
+                        VKD3D_TRUST_FILES;
+                    case CONTENT_TYPE_BOX64 ->
+                        BOX64_TRUST_FILES;
+                    case CONTENT_TYPE_WOWBOX64 ->
+                        WOWBOX64_TRUST_FILES;
+                    case CONTENT_TYPE_FEXCORE ->
+                        FEXCORE_TRUST_FILES;
+                    default ->
+                        new String[0];
                 };
-                for (String path : paths)
+                for (String path : paths) {
                     pathList.add(Paths.get(getPathFromTemplate(path)).toAbsolutePath().normalize().toString());
+                }
             }
         }
     }
@@ -375,9 +474,43 @@ public class ContentsManager {
             String versionName = entryName.substring(firstDashIndex + 1, lastDashIndex);
             String versionCode = entryName.substring(lastDashIndex + 1);
 
-            for (ContentProfile profile : profilesMap.get(ContentProfile.ContentType.getTypeByName(typeName))) {
-                if (versionName.equals(profile.verName) && Integer.parseInt(versionCode) == profile.verCode)
-                    return profile;
+            ContentProfile.ContentType type = ContentProfile.ContentType.getTypeByName(typeName);
+            if (type != null && profilesMap.get(type) != null) {
+                for (ContentProfile profile : profilesMap.get(type)) {
+                    if (versionName.equals(profile.verName) && Integer.parseInt(versionCode) == profile.verCode) {
+                        return profile;
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+
+        // Fallback: Try Wine and Proton lists if entry name doesn't have type prefix
+        // This handles legacy identifiers like "proton-10-arm64ec-0"
+        try {
+            int lastDash = entryName.lastIndexOf('-');
+            if (lastDash > 0) {
+                String verName = entryName.substring(0, lastDash);
+                String verCodeStr = entryName.substring(lastDash + 1);
+                int verCode = Integer.parseInt(verCodeStr);
+
+                // Check Wine list
+                if (profilesMap.get(ContentProfile.ContentType.CONTENT_TYPE_WINE) != null) {
+                    for (ContentProfile profile : profilesMap.get(ContentProfile.ContentType.CONTENT_TYPE_WINE)) {
+                        if (verName.equals(profile.verName) && verCode == profile.verCode) {
+                            return profile;
+                        }
+                    }
+                }
+
+                // Check Proton list
+                if (profilesMap.get(ContentProfile.ContentType.CONTENT_TYPE_PROTON) != null) {
+                    for (ContentProfile profile : profilesMap.get(ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
+                        if (verName.equals(profile.verName) && verCode == profile.verCode) {
+                            return profile;
+                        }
+                    }
+                }
             }
         } catch (Exception e) {
         }

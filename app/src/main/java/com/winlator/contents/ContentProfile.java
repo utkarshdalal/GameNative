@@ -16,6 +16,10 @@ public class ContentProfile {
     public static final String MARK_WINE_BINPATH = "binPath";
     public static final String MARK_WINE_LIBPATH = "libPath";
     public static final String MARK_WINE_PREFIX_PACK = "prefixPack";
+    public static final String MARK_PROTON = "proton";
+    public static final String MARK_PROTON_BINPATH = "binPath";
+    public static final String MARK_PROTON_LIBPATH = "libPath";
+    public static final String MARK_PROTON_PREFIX_PACK = "prefixPack";
 
     public enum ContentType {
         CONTENT_TYPE_WINE("Wine"),

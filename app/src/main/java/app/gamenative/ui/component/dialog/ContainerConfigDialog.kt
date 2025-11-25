@@ -172,8 +172,10 @@ fun ContainerConfigDialog(
         val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
         val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
         val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
-        val bionicWineEntries = stringArrayResource(R.array.bionic_wine_entries).toList()
-        val glibcWineEntries = stringArrayResource(R.array.glibc_wine_entries).toList()
+        val bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList()
+        val glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList()
+        var bionicWineEntries by remember { mutableStateOf(bionicWineEntriesBase) }
+        var glibcWineEntries by remember { mutableStateOf(glibcWineEntriesBase) }
         val emulatorEntries = stringArrayResource(R.array.emulator_entries).toList()
         val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
         val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
@@ -204,7 +206,16 @@ fun ContainerConfigDialog(
                     return list.filter { it.remoteUrl == null }.map { profile ->
                         val entry = ContentsManager.getEntryName(profile)
                         val firstDash = entry.indexOf('-')
-                        if (firstDash >= 0 && firstDash + 1 < entry.length) entry.substring(firstDash + 1) else entry
+                        val lastDash = entry.lastIndexOf('-')
+                        // Strip type prefix and version code suffix
+                        // Format: "Type-verName-verCode" -> "verName"
+                        if (firstDash >= 0 && lastDash > firstDash) {
+                            entry.substring(firstDash + 1, lastDash)
+                        } else if (firstDash >= 0) {
+                            entry.substring(firstDash + 1)
+                        } else {
+                            entry
+                        }
                     }
                 }
 
@@ -213,6 +224,13 @@ fun ContainerConfigDialog(
                 box64BionicVersions = (box64BionicVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64))).distinct()
                 wowBox64Versions = (wowBox64Versions + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64))).distinct()
                 fexcoreVersions = (fexcoreVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE))).distinct()
+
+                // Load custom Wine/Proton versions from imported content
+                // All custom Wine/Proton are bionic-only
+                val customWine = profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE))
+                val customProton = profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON))
+                bionicWineEntries = (bionicWineEntriesBase + customProton + customWine).distinct()
+                // Keep glibc list as base only (no custom versions)
             } catch (_: Exception) {}
             versionsLoaded = true
         }
