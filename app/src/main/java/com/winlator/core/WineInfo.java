@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import app.gamenative.R;
 
 public class WineInfo implements Parcelable {
-
     public static final WineInfo MAIN_WINE_VERSION = new WineInfo("wine", "9.2", "x86_64");
     private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
     public final String version;
@@ -75,16 +74,14 @@ public class WineInfo implements Parcelable {
         return arch.equals("x86_64") || arch.equals("arm64ec");
     }
 
-    public boolean isArm64EC() {
-        return arch.equals("arm64ec");
-    }
+    public boolean isArm64EC() { return arch.equals("arm64ec"); }
 
     public boolean isMainWineVersion() {
         WineInfo other = WineInfo.MAIN_WINE_VERSION;
 
-        boolean pathMatches
-                = (path == null && other.path == null)
-                || (path != null && path.equals(other.path));
+        boolean pathMatches =
+                (path == null && other.path == null) ||
+                        (path != null && path.equals(other.path));
 
         return type.equals(other.type)
                 && version.equals(other.version)
@@ -102,31 +99,28 @@ public class WineInfo implements Parcelable {
             FileUtils.chmod(wineBinFile, 0771);
             FileUtils.chmod(winePreloaderBinFile, 0771);
             return wow64Mode ? "wine" : "wine64";
-        } else {
-            return (new File(path, "/bin/wine64")).isFile() ? "wine64" : "wine";
         }
+        else return (new File(path, "/bin/wine64")).isFile() ? "wine64" : "wine";
     }
 
     public String identifier() {
-        if (type.equals("proton")) {
-            return "proton-" + fullVersion() + "-" + arch;
-        } else {
+        if (type.equals("proton"))
+            return "proton-" + fullVersion() + "-"+ arch;
+        else
             return "wine-" + fullVersion() + "-" + arch;
-        }
     }
 
     public String fullVersion() {
-        return version + (subversion != null ? "-" + subversion : "");
+        return version+(subversion != null ? "-"+subversion : "");
     }
 
     @NonNull
     @Override
     public String toString() {
-        if (type.equals("proton")) {
-            return "Proton " + fullVersion() + (this == MAIN_WINE_VERSION ? " (Custom)" : "");
-        } else {
-            return "Wine " + fullVersion() + (this == MAIN_WINE_VERSION ? " (Custom)" : "");
-        }
+        if (type.equals("proton"))
+            return "Proton "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        else
+            return "Wine "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
     }
 
     @Override
