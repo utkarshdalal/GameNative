@@ -633,12 +633,24 @@ class SteamAppScreen : BaseAppScreen() {
                         properties = mapOf("game_name" to appInfo.name)
                     )
                     CoroutineScope(Dispatchers.IO).launch {
+                        val steamId = SteamService.userSteamId
+                        if (steamId == null) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.steam_not_logged_in),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            return@launch
+                        }
+
                         val containerManager = ContainerManager(context)
                         val container = ContainerUtils.getOrCreateContainer(context, appId)
                         containerManager.activateContainer(container)
 
                         val prefixToPath: (String) -> String = { prefix ->
-                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
                         }
                         val syncResult = SteamService.forceSyncUserFiles(
                             appId = gameId,
@@ -911,14 +923,25 @@ class SteamAppScreen : BaseAppScreen() {
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
 
                                 if (operation == AppOptionMenuType.VerifyFiles) {
-                                    val prefixToPath: (String) -> String = { prefix ->
-                                        PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                                    val steamId = SteamService.userSteamId
+                                    if (steamId != null) {
+                                        val prefixToPath: (String) -> String = { prefix ->
+                                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                                        }
+                                        SteamService.forceSyncUserFiles(
+                                            appId = gameId,
+                                            prefixToPath = prefixToPath,
+                                            overrideLocalChangeNumber = -1
+                                        ).await()
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.steam_not_logged_in),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
                                     }
-                                    SteamService.forceSyncUserFiles(
-                                        appId = gameId,
-                                        prefixToPath = prefixToPath,
-                                        overrideLocalChangeNumber = -1
-                                    ).await()
                                 }
 
                                 container.isNeedsUnpacking = true
