@@ -477,6 +477,88 @@ class SteamAppScreen : BaseAppScreen() {
         }
     }
 
+    /**
+     * Override Edit Container to check for ImageFS installation first
+     */
+    @Composable
+    override fun getEditContainerOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onEditContainer: () -> Unit
+    ): AppMenuOption {
+        val gameId = libraryItem.gameId
+        val appId = libraryItem.appId
+        
+        return AppMenuOption(
+            optionType = AppOptionMenuType.EditContainer,
+            onClick = {
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
+                val variant = container.containerVariant
+
+                if (!SteamService.isImageFsInstalled(context)) {
+                    if (!SteamService.isImageFsInstallable(context, variant)) {
+                        showInstallDialog(
+                            gameId,
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.INSTALL_IMAGEFS,
+                                title = context.getString(R.string.steam_imagefs_download_install_title),
+                                message = context.getString(R.string.steam_imagefs_download_install_message),
+                                confirmBtnText = context.getString(R.string.proceed),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            )
+                        )
+                    } else {
+                        showInstallDialog(
+                            gameId,
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.INSTALL_IMAGEFS,
+                                title = context.getString(R.string.steam_imagefs_install_title),
+                                message = context.getString(R.string.steam_imagefs_install_message),
+                                confirmBtnText = context.getString(R.string.proceed),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            )
+                        )
+                    }
+                } else {
+                    onEditContainer()
+                }
+            }
+        )
+    }
+
+    /**
+     * Override Reset Container to show confirmation dialog
+     */
+    @Composable
+    override fun getResetContainerOption(
+        context: Context,
+        libraryItem: LibraryItem
+    ): AppMenuOption {
+        val gameId = libraryItem.gameId
+        
+        return AppMenuOption(
+            AppOptionMenuType.ResetToDefaults,
+            onClick = {
+                showInstallDialog(
+                    gameId,
+                    MessageDialogState(
+                        visible = true,
+                        type = DialogType.RESET_CONTAINER_CONFIRM,
+                        title = context.getString(R.string.steam_reset_container_title),
+                        message = context.getString(R.string.steam_reset_container_message),
+                        confirmBtnText = context.getString(R.string.steam_continue),
+                        dismissBtnText = context.getString(R.string.cancel),
+                    )
+                )
+            }
+        )
+    }
+
+    /**
+     * Add Steam-specific menu options (Reset DRM, Verify Files, Update)
+     */
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -489,177 +571,113 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
-        val menuOptions = mutableListOf<AppMenuOption>()
+        
+        if (!isInstalled) {
+            return emptyList()
+        }
 
-        // Override EditContainer to check for ImageFS installation
-        menuOptions.add(
+        // Steam-specific options (only when installed)
+        return listOf(
             AppMenuOption(
-                optionType = AppOptionMenuType.EditContainer,
+                AppOptionMenuType.ResetDrm,
                 onClick = {
                     val container = ContainerUtils.getOrCreateContainer(context, appId)
-                    val variant = container.containerVariant
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                    container.isNeedsUnpacking = true
+                    container.saveData()
+                },
+            ),
+            AppMenuOption(
+                AppOptionMenuType.VerifyFiles,
+                onClick = {
+                    // Show confirmation dialog before verifying
+                    setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.VerifyFiles)
+                    showInstallDialog(
+                        gameId,
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.UPDATE_VERIFY_CONFIRM,
+                            title = context.getString(R.string.steam_verify_files_title),
+                            message = context.getString(R.string.steam_verify_files_message),
+                            confirmBtnText = context.getString(R.string.steam_continue),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        )
+                    )
+                },
+            ),
+            AppMenuOption(
+                AppOptionMenuType.Update,
+                onClick = {
+                    // Show confirmation dialog before updating
+                    setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.Update)
+                    showInstallDialog(
+                        gameId,
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.UPDATE_VERIFY_CONFIRM,
+                            title = context.getString(R.string.steam_update_title),
+                            message = context.getString(R.string.steam_update_message),
+                            confirmBtnText = context.getString(R.string.steam_continue),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        )
+                    )
+                },
+            ),
+            // Uninstall option removed from menu - now handled by delete button next to play button
+            // The button uses onDeleteDownloadClick which shows the uninstall dialog
+            AppMenuOption(
+                AppOptionMenuType.ForceCloudSync,
+                onClick = {
+                    PostHog.capture(
+                        event = "cloud_sync_forced",
+                        properties = mapOf("game_name" to appInfo.name)
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val containerManager = ContainerManager(context)
+                        val container = ContainerUtils.getOrCreateContainer(context, appId)
+                        containerManager.activateContainer(container)
 
-                    if (!SteamService.isImageFsInstalled(context)) {
-                        if (!SteamService.isImageFsInstallable(context, variant)) {
-                            showInstallDialog(
-                                gameId,
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_IMAGEFS,
-                                    title = context.getString(R.string.steam_imagefs_download_install_title),
-                                    message = context.getString(R.string.steam_imagefs_download_install_message),
-                                    confirmBtnText = context.getString(R.string.proceed),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                )
-                            )
-                        } else {
-                            showInstallDialog(
-                                gameId,
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_IMAGEFS,
-                                    title = context.getString(R.string.steam_imagefs_install_title),
-                                    message = context.getString(R.string.steam_imagefs_install_message),
-                                    confirmBtnText = context.getString(R.string.proceed),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                )
-                            )
+                        val prefixToPath: (String) -> String = { prefix ->
+                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
                         }
-                    } else {
-                        onEditContainer()
+                        val syncResult = SteamService.forceSyncUserFiles(
+                            appId = gameId,
+                            prefixToPath = prefixToPath
+                        ).await()
+
+                        withContext(Dispatchers.Main) {
+                            when (syncResult.syncResult) {
+                                SyncResult.Success -> {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.steam_cloud_sync_success),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                SyncResult.UpToDate -> {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.steam_cloud_sync_up_to_date),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                else -> {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.steam_cloud_sync_failed,
+                                            syncResult.syncResult
+                                        ),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }
                     }
                 }
             )
         )
-
-        if (isInstalled) {
-            // Override ResetToDefaults to show confirmation dialog
-            menuOptions.add(
-                    AppMenuOption(
-                        AppOptionMenuType.ResetToDefaults,
-                        onClick = {
-                        showInstallDialog(
-                            gameId,
-                            MessageDialogState(
-                                visible = true,
-                                type = DialogType.RESET_CONTAINER_CONFIRM,
-                            title = context.getString(R.string.steam_reset_container_title),
-                            message = context.getString(R.string.steam_reset_container_message),
-                                confirmBtnText = context.getString(R.string.steam_continue),
-                                dismissBtnText = context.getString(R.string.cancel),
-                            )
-                        )
-                    },
-                )
-            )
-
-            // Steam-specific options
-            menuOptions.addAll(
-                listOf(
-                    AppMenuOption(
-                        AppOptionMenuType.ResetDrm,
-                        onClick = {
-                            val container = ContainerUtils.getOrCreateContainer(context, appId)
-                            MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
-                            MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                            container.isNeedsUnpacking = true
-                            container.saveData()
-                        },
-                    ),
-                    AppMenuOption(
-                        AppOptionMenuType.VerifyFiles,
-                        onClick = {
-                            // Show confirmation dialog before verifying
-                            setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.VerifyFiles)
-                            showInstallDialog(
-                                gameId,
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.UPDATE_VERIFY_CONFIRM,
-                                    title = context.getString(R.string.steam_verify_files_title),
-                                    message = context.getString(R.string.steam_verify_files_message),
-                                    confirmBtnText = context.getString(R.string.steam_continue),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                )
-                            )
-                        },
-                    ),
-                    AppMenuOption(
-                        AppOptionMenuType.Update,
-                        onClick = {
-                            // Show confirmation dialog before updating
-                            setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.Update)
-                            showInstallDialog(
-                                gameId,
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.UPDATE_VERIFY_CONFIRM,
-                                    title = context.getString(R.string.steam_update_title),
-                                    message = context.getString(R.string.steam_update_message),
-                                    confirmBtnText = context.getString(R.string.steam_continue),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                )
-                            )
-                        },
-                    ),
-                    // Uninstall option removed from menu - now handled by delete button next to play button
-                    // The button uses onDeleteDownloadClick which shows the uninstall dialog
-                    AppMenuOption(
-                        AppOptionMenuType.ForceCloudSync,
-                        onClick = {
-                            PostHog.capture(
-                                event = "cloud_sync_forced",
-                                properties = mapOf("game_name" to appInfo.name)
-                            )
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val containerManager = ContainerManager(context)
-                                val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                containerManager.activateContainer(container)
-
-                                val prefixToPath: (String) -> String = { prefix ->
-                                    PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                                }
-                                val syncResult = SteamService.forceSyncUserFiles(
-                                    appId = gameId,
-                                    prefixToPath = prefixToPath
-                                ).await()
-
-                                withContext(Dispatchers.Main) {
-                                    when (syncResult.syncResult) {
-                                        SyncResult.Success -> {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.steam_cloud_sync_success),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        SyncResult.UpToDate -> {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.steam_cloud_sync_up_to_date),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        else -> {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(
-                                                    R.string.steam_cloud_sync_failed,
-                                                    syncResult.syncResult
-                                                ),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                    ),
-                )
-            )
-        }
-
-        return menuOptions
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {

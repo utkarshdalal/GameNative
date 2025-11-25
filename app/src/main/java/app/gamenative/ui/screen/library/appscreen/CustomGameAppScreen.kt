@@ -357,6 +357,36 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
     }
 
+    /**
+     * Override Reset Container to show confirmation dialog and preserve drives
+     */
+    @Composable
+    override fun getResetContainerOption(
+        context: Context,
+        libraryItem: LibraryItem
+    ): AppMenuOption {
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false }
+            )
+        }
+
+        return AppMenuOption(
+            label = "Reset Container",
+            type = AppOptionMenuType.ResetToDefaults,
+            onClick = { showResetConfirmDialog = true }
+        )
+    }
+
+    /**
+     * Custom games don't have source-specific menu options beyond what's inherited
+     */
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -366,8 +396,6 @@ class CustomGameAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
         isInstalled: Boolean
     ): List<AppMenuOption> {
-        // Custom Games don't have source-specific menu options
-        // Delete button is handled via onDeleteDownloadClick and shown next to play button
         return emptyList()
     }
 
@@ -519,6 +547,50 @@ class CustomGameAppScreen : BaseAppScreen() {
             )
         }
     }
+
+    private fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
+        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val defaults = WineUtils.getDefault(context).copy(drives = container.drives)
+
+        Log.d("CustomGameAppScreen", "Resetting container for ${libraryItem.name}")
+        Log.d("CustomGameAppScreen", "Preserving drives: ${container.drives}")
+        Log.d("CustomGameAppScreen", "Before reset - Container drives: ${container.drives}")
+
+        ContainerUtils.applyToContainer(context, libraryItem.appId, ContainerUtils.toContainerData(defaults))
+
+        val updatedContainer = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        Log.d("CustomGameAppScreen", "After reset - Container drives: ${updatedContainer.drives}")
+
+        containerDataState.value = ContainerUtils.toContainerData(updatedContainer)
+
+        Toast.makeText(context, "Container reset to defaults (drives preserved)", Toast.LENGTH_SHORT).show()
+    }
+
+    @Composable
+    private fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { androidx.compose.material3.Text("Reset Container?") },
+            text = {
+                androidx.compose.material3.Text(
+                    "This will reset the container to default settings while preserving your drive mappings. " +
+                            "Any custom Wine settings or installed components will be lost."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text("Reset", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
+
+
 
 
