@@ -398,7 +398,7 @@ abstract class BaseAppScreen {
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
 
-        Toast.makeText(context, "Container reset to defaults (drives preserved)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
     }
 
     /**
@@ -411,7 +411,7 @@ abstract class BaseAppScreen {
             onDismissRequest = onDismiss,
             title = { Text(context.getString(R.string.base_app_reset_container_title)) },
             text = {
-                Text(context.getString(R.string.base_app_reset_container_message))
+                Text(context.getString(R.string.steam_reset_container_message))
             },
             confirmButton = {
                 TextButton(onClick = onConfirm) {
