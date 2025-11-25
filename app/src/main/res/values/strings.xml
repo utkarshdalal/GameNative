@@ -32,6 +32,7 @@
     <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
     <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
+    <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
     <string name="steam_container_reset_success">Container reset to defaults</string>
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
