@@ -22,8 +22,6 @@
     <string name="steam_imagefs_install_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="steam_reset_container_title">Reset Container</string>
     <string name="steam_reset_container_message">This will reset your container to the default configuration.</string>
-    <string name="base_app_reset_container_title">Reset Container?</string>
-    <string name="base_app_reset_container_confirm">Reset</string>
     <string name="steam_verify_files_title">Verify Files</string>
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
     <string name="steam_update_title">Update</string>
@@ -31,17 +29,11 @@
     <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
     <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
-    <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
     <string name="steam_container_reset_success">Container reset to defaults</string>
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
     <string name="steam_imagefs_install_failed">Failed to install ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Uninstall Game</string>
-    <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
-    <string name="steam_uninstall_success">%1$s has been uninstalled</string>
-    <string name="steam_uninstall_failed">Failed to uninstall game</string>
-    <string name="steam_never">Never</string>
-    <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>
     <string name="download">Download</string>
     <string name="install">Install</string>
@@ -83,14 +75,13 @@
     <string name="custom_games_permission_denied">⚠ Permission denied</string>
     <string name="custom_games_zero_folders">0 folders found</string>
     <string name="custom_games_folders_found">%d folders found</string>
-    <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games. This may slow down the app startup time.</string>
+    <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games.</string>
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
     <string name="custom_game_exe_selection_title">Executable Selection Required</string>
     <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
-    <string name="custom_game_delete_message">Are you sure you want to uninstall %1$s?</string>
-    <string name="custom_game_unknown_developer">Unknown</string>
+    <string name="custom_game_delete_message">Are you sure you want to delete this game? This will remove the game files and all associated data.</string>
 
     <!--Winlator-->
     <string name="disabled">Disabled</string>
@@ -183,62 +174,9 @@
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
     ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
-        Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
-        <b>0</b> : Use regular safe barriers<br />
-        <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
-    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
-        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
-        <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
-    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
-    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
-        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
-        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
-        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
-    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
-    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
-        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
-        <b>0</b> : Ignore x86 PAUSE instruction.<br />
-        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
-        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
-        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
-    ]]></string>
-    <string name="box86_64_env_var_help__avx"><![CDATA[
-        AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
-        <b>0</b> : Disable AVX extension<br />
-        <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
-        <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
-    ]]></string>
-    <string name="box86_64_env_var_help__maxcpu">Maximum number of CPUs presented to programs by box64</string>
-    <string name="box86_64_env_var_help__unityplayer">Detect UnityPlayer.dll and apply strongmem settings</string>
-    <string name="box86_64_env_var_help__mmap32">Force every memory allocation in 32bit address spaces</string>
     <string name="box86_64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
     <string name="box86_64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
     <string name="box86_64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
-    <string name="fexcore_env_var_help__tsoenabled">Enables TSO IR ops (required for multithreaded apps).</string>
-    <string name="fexcore_env_var_help__vectortsoenabled">Makes vector load/stores atomic when TSO is enabled.</string>
-    <string name="fexcore_env_var_help__halfbarriertsoenabled">Uses half-barrier atomics for unaligned loads/stores under TSO.</string>
-    <string name="fexcore_env_var_help__memcpysettsoenabled">Makes REP MOVS / REP STOS atomic under TSO.</string>
-    <string name="fexcore_env_var_help__multiblock">Enables multiblock code compilation. Can cause longer JIT compilation and stutter.</string>
-    <string name="fexcore_env_var_help__hostfeatures">Controls CPU feature forcing.</string>
-    <string name="fexcore_env_var_help__smalltscscale">Scales TSC on low-frequency systems.</string>
-    <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
-    <string name="fexcore_env_var_help__volatilemetadata">Uses volatile metadata from PE files for TSO when available.</string>
-    <string name="fexcore_env_var_help__monohacks">Special SMC + JIT block hacks for Mono detection.</string>
-    <string name="fexcore_env_var_help__hidehypervisorbit">Hides CPUID hypervisor bit (useful for apps that crash with it).</string>
-    <string name="fexcore_env_var_help__disablel2cache">Disables FEXCore JIT L2 cache lookup, saving memory but introducing stutters.</string>
-    <string name="fexcore_env_var_help__dynamicl1cache">Switches FEXCore JIT L1 cache to be dynamically sized, saving memory but introducing stutters.</string>
-    <string name="fexcore_env_var_help__x87reducedprecision">Emulates X87 floating point using 64-bit precision. This reduces emulation accuracy and may result in rendering bugs.</string>
-    <string name="fexcore_env_var_help__maxinst">Maximum instruction budget per translation block. Higher values can improve performance but may reduce stability.</string>
 
     <string name="resume_download">Resume</string>
     <string name="pause_download">Pause</string>
@@ -329,6 +267,7 @@
     <string name="graphics_driver_version">Graphics Driver Version</string>
     <string name="exposed_vulkan_extensions">Exposed Vulkan Extensions</string>
     <string name="max_device_memory">Max Device Memory</string>
+    <string name="frame_synchronization">Frame Synchronization</string>
     <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
@@ -336,20 +275,9 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
-    <string name="sync_frame">Sync Every Frame</string>
-    <string name="disable_present_wait">Disable KHR_present_wait</string>
-    <string name="present_modes">Present Modes</string>
-    <string name="resource_type">Memory Resource Type</string>
-    <string name="bcn_emulation">BCn Emulation</string>
-    <string name="bcn_emulation_type">BCn Emulation Type</string>
-    <string name="bcn_emulation_cache">BCn Emulation Cache</string>
-    <string name="sharpness_effect">Sharpness Boost</string>
-    <string name="sharpness_level">Sharpness Level</string>
-    <string name="sharpness_denoise">Sharpness Denoise</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">FEXCore Version</string>
-    <string name="fexcore_preset">FEXCore Preset</string>
     <string name="tso_mode">TSO Mode</string>
     <string name="x87_mode">x87 Mode</string>
     <string name="multiblock">Multiblock</string>
@@ -358,8 +286,6 @@
     <string name="box64_version">Box64 Version</string>
     <string name="box64_preset">Box64 Preset</string>
     <string name="box64_presets">Box64 Presets</string>
-    <string name="fexcore_presets">FEXCore Presets</string>
-    <string name="fexcore_presets_description">View, modify, and create FEXCore presets</string>
     <string name="preset_name">Preset name</string>
 
     <!-- Container Configuration: Input -->
@@ -443,22 +369,29 @@
     <string name="wine_proton_remove_failed">Failed to remove: %s</string>
 
     <!-- Wine/Proton Manager - Status Messages -->
-    <string name="wine_proton_extracting">Extracting package...</string>
-    <string name="wine_proton_validating">Validating package...</string>
-    <string name="wine_proton_installing">Installing Wine/Proton...</string>
-    <string name="wine_proton_success">Successfully installed %s</string>
-    <string name="wine_proton_filename_error">Error: Filename must start with \'wine\' or \'proton\'</string>
-    <string name="wine_proton_file_empty">Error: Selected file is empty</string>
-    <string name="wine_proton_cannot_open">Error: Cannot open selected file</string>
-    <string name="wine_proton_error_badtar">Error: Invalid archive format</string>
-    <string name="wine_proton_error_noprofile">Error: Missing profile.json</string>
-    <string name="wine_proton_error_badprofile">Error: Invalid profile.json format</string>
-    <string name="wine_proton_error_exist">Error: This version is already installed</string>
-    <string name="wine_proton_error_missingfiles">Error: Package is missing required files (bin/, lib/, or prefixPack.txz)</string>
-    <string name="wine_proton_error_untrustprofile">Error: Package contains files outside trusted paths</string>
-    <string name="wine_proton_error_nospace">Error: Insufficient storage space</string>
-    <string name="wine_proton_error_unknown">Error: Unknown error occurred</string>
-    <string name="wine_proton_error_unable_install">Error: Unable to install package</string>
-    <string name="wine_proton_glibc_rejection">Glibc Wine/Proton packages are not supported. Please use Bionic-compatible versions only.</string>
-
+    <string name="wine_proton_extracting">Extracting and validating package (this may take 2-3 minutes for large files)...</string>
+    <string name="wine_proton_filename_error">Filename must begin with \'wine\' or \'proton\' (case-insensitive)</string>
+    <string name="wine_proton_file_empty">File is empty or cannot be read</string>
+    <string name="wine_proton_cannot_open">Cannot open file</string>
+    <string name="wine_proton_failed_file_picker">Failed to open file picker: %s</string>
+    <string name="wine_proton_error_badtar">File cannot be recognized as valid archive</string>
+    <string name="wine_proton_error_noprofile">profile.json not found in package</string>
+    <string name="wine_proton_error_badprofile">profile.json is invalid</string>
+    <string name="wine_proton_error_exist">This Wine/Proton version already exists</string>
+    <string name="wine_proton_error_missingfiles">Package is missing required files (bin/, lib/, or prefixPack.txz)</string>
+    <string name="wine_proton_error_untrustprofile">Package cannot be trusted</string>
+    <string name="wine_proton_error_nospace">Not enough storage space</string>
+    <string name="wine_proton_error_unknown">Unknown error occurred</string>
+    <string name="wine_proton_error_unable_install">Unable to install Wine/Proton package</string>
+    <string name="wine_proton_not_wine_or_proton">Package is not Wine or Proton (type: %s)</string>
+    <string name="wine_proton_type_mismatch">Filename indicates %1$s but package contains %2$s</string>
+    <string name="wine_proton_untrusted_files_detected">This package includes files outside the trusted set.</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton version already exists</string>
+    <string name="wine_proton_install_failed">Failed to install: %s</string>
+    <string name="wine_proton_install_error">Installation error: %s</string>
+    <string name="wine_proton_install_success">%1$s %2$s installed successfully</string>
+    <string name="wine_proton_glibc_incompatible">This Wine/Proton build requires GLIBC containers and is not compatible with GameNative. Please use ARM64/bionic builds only.</string>
+    <string name="wine_proton_containers_in_use">Containers using this version:</string>
+    <string name="wine_proton_no_containers_warning">No containers are currently using this version.</string>
+    <string name="wine_proton_containers_will_break">These containers will no longer work if you proceed:</string>
 </resources>
