@@ -527,9 +527,22 @@ public class ContentsManager {
     }
 
     public void removeContent(ContentProfile profile) {
-        if (profilesMap.get(profile.type).contains(profile)) {
-            FileUtils.delete(getInstallDir(context, profile));
-            profilesMap.get(profile.type).remove(profile);
+        File installDir = getInstallDir(context, profile);
+        List<ContentProfile> profiles = profilesMap.get(profile.type);
+        // Find matching profile by verName and verCode (not by reference equality)
+        ContentProfile matchingProfile = null;
+        if (profiles != null) {
+            for (ContentProfile p : profiles) {
+                if (p.verName.equals(profile.verName) && p.verCode == profile.verCode) {
+                    matchingProfile = p;
+                    break;
+                }
+            }
+        }
+
+        if (matchingProfile != null) {
+            FileUtils.delete(installDir);
+            profiles.remove(matchingProfile);
             syncContents();
         }
     }
