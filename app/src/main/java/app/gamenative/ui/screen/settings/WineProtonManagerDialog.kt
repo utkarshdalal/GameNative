@@ -99,7 +99,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     var pendingProfile by remember { mutableStateOf<ContentProfile?>(null) }
     val untrustedFiles = remember { mutableStateListOf<ContentProfile.ContentFile>() }
     var showUntrustedConfirm by remember { mutableStateOf(false) }
-    var showCancelImportConfirm by remember { mutableStateOf(false) }
 
     val mgr = remember(ctx) { ContentsManager(ctx) }
 
@@ -161,11 +160,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         onDispose {
             // Always reset importing flag when dialog closes
             SteamService.isImporting = false
-            // Only cancel import without confirmation on dispose (dialog already closing)
-            // The confirmation happens in the main dialog's dismiss handler
-            if (pendingProfile == null) {
-                mgr.cancelImport()
-            }
         }
     }
 
@@ -875,14 +869,9 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = {
-                // If import in progress, show confirmation dialog
-                if (pendingProfile != null) {
-                    showCancelImportConfirm = true
-                } else {
-                    onDismiss()
-                }
-            }) { Text(stringResource(R.string.close)) }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.close))
+            }
         }
     )
 
@@ -926,9 +915,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = {
-                    // Show confirmation before cancelling import
                     showUntrustedConfirm = false
-                    showCancelImportConfirm = true
+                    pendingProfile = null
+                    statusMessage = null
+                    isStatusSuccess = false
                 }) { Text(stringResource(R.string.cancel)) }
             }
         )
@@ -967,37 +957,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
-            }
-        )
-    }
-
-    // Cancel import confirmation
-    if (showCancelImportConfirm) {
-        AlertDialog(
-            onDismissRequest = { showCancelImportConfirm = false },
-            title = { Text(stringResource(R.string.cancel_import_title)) },
-            text = { Text(stringResource(R.string.cancel_import_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showCancelImportConfirm = false
-                    pendingProfile = null
-                    statusMessage = null
-                    isStatusSuccess = false
-                    mgr.cancelImport()
-                    // If we're cancelling from the main dialog, also close it
-                    if (!showUntrustedConfirm) {
-                        onDismiss()
-                    }
-                }) { Text(stringResource(R.string.cancel_import_confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showCancelImportConfirm = false
-                    // If cancelled from untrusted dialog, show it again
-                    if (pendingProfile != null) {
-                        showUntrustedConfirm = true
-                    }
-                }) { Text(stringResource(R.string.cancel_import_keep)) }
             }
         )
     }
