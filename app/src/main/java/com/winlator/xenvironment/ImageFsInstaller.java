@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
 
-    public static final byte LATEST_VERSION = 24;
+    public static final byte LATEST_VERSION = 25;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -174,10 +174,7 @@ public abstract class ImageFsInstaller {
     }
 
     private static void chmod(File f) {
-        if (f.exists()) {
-            FileUtils.chmod(f, 0755);
-    
-        }}
+        if (f.exists()) { FileUtils.chmod(f, 0755); }}
 
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
         return installIfNeededFuture(context, assetManager, null, null);

@@ -79,13 +79,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return this.wineInfo;
     }
 
-    public Container getContainer() {
-        return this.container;
-    }
-
-    public void setContainer(Container container) {
-        this.container = container;
-    }
+    public Container getContainer() { return this.container; }
+    public void setContainer(Container container) { this.container = container; }
 
     public BionicProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
         this.contentsManager = contentsManager;
@@ -94,9 +89,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private Runnable preUnpack;
 
-    public void setPreUnpack(Runnable r) {
-        this.preUnpack = r;
-    }
+    public void setPreUnpack(Runnable r) { this.preUnpack = r; }
 
     @Override
     public void start() {
@@ -300,16 +293,16 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
             String wineDllPath;
             String wineLibPath;
-            
+
             // Use libPath from profile.json if available, otherwise default to "lib"
-            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty()) 
-                ? wineInfo.libPath 
+            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty())
+                ? wineInfo.libPath
                 : "lib";
-            
+
             Log.d("BionicProgramLauncherComponent", "wineInfo.libPath = " + wineInfo.libPath + ", using: " + libPathFromProfile);
-            
+
             if (isCustomWineInImagefs) {
-                // Wine in imagefs - For Bionic mode, Wine's internal hardcoded paths need 
+                // Wine in imagefs - For Bionic mode, Wine's internal hardcoded paths need
                 // WINEDLLPATH to be RELATIVE to the working directory (imagefs root)
                 // because Wine resolves paths relative to where it's executed from
                 String relativePath = wineInfo.path.replace(rootDir.getPath() + "/", "");
@@ -332,7 +325,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + wineDllPath + ":" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
                 Log.d("BionicProgramLauncherComponent", "Custom Wine outside imagefs: wineDllPath=" + wineDllPath);
             }
-            
+
             envVars.put("WINEDLLPATH", wineDllPath);
             // In Bionic mode with custom Wine, use absolute path for WINELOADER (no PRoot path translation)
             envVars.put("WINELOADER", winePath + "/wine");
@@ -387,7 +380,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         ld_preload += ":" + evshimPath;
-        
+
         // Only use libredirect for default Wine - custom Wine uses absolute paths and doesn't need path redirection
         if (wineInfo.path == null || wineInfo.path.isEmpty()) {
             ld_preload += ":" + replacePath;
@@ -609,12 +602,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
             String wineDllPath;
             String wineLibPath;
-            
+
             // Use libPath from profile.json if available, otherwise default to "lib"
-            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty()) 
-                ? wineInfo.libPath 
+            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty())
+                ? wineInfo.libPath
                 : "lib";
-            
+
             if (isCustomWineInImagefs) {
                 // Wine in imagefs - use relative paths
                 String imagefsPath = rootDir.getPath();
@@ -632,7 +625,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     wineLibPath = wineInfo.path + "/" + libPathFromProfile;
                 }
             }
-            
+
             envVars.put("WINEDLLPATH", wineDllPath);
             envVars.put("WINELOADER", winePathForEnv + "/wine");
             envVars.put("WINESERVER", winePathForEnv + "/wineserver");
