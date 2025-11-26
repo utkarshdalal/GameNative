@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import android.net.Uri
+import app.gamenative.ui.enums.AppOptionMenuType
 import timber.log.Timber
 
 /**
@@ -236,6 +237,35 @@ class CustomGameAppScreen : BaseAppScreen() {
         CustomGameScanner.extractIconFromExecutable(context, libraryItem.appId)
     }
 
+    /**
+     * Override Reset Container to show confirmation dialog and preserve drives
+     */
+    @Composable
+    override fun getResetContainerOption(
+        context: Context,
+        libraryItem: LibraryItem
+    ): AppMenuOption {
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false }
+            )
+        }
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ResetToDefaults,
+            onClick = { showResetConfirmDialog = true }
+        )
+    }
+
+    /**
+     * Custom games don't have source-specific menu options beyond what's inherited
+     */
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -245,8 +275,6 @@ class CustomGameAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
         isInstalled: Boolean
     ): List<AppMenuOption> {
-        // Custom Games don't have source-specific menu options
-        // Delete button is handled via onDeleteDownloadClick and shown next to play button
         return emptyList()
     }
 
@@ -399,5 +427,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
     }
 }
+
+
 
 

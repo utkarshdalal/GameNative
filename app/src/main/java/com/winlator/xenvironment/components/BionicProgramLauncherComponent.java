@@ -31,6 +31,8 @@ import com.winlator.core.GPUInformation;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
+import com.winlator.fexcore.FEXCorePreset;
+import com.winlator.fexcore.FEXCorePresetManager;
 import com.winlator.sysvshm.SysVSHMConnectionHandler;
 import com.winlator.sysvshm.SysVSHMRequestHandler;
 import com.winlator.sysvshm.SysVSharedMemory;
@@ -59,6 +61,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private WineInfo wineInfo;
     private String box64Version = DefaultVersion.BOX64;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
@@ -163,6 +166,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.box64Preset = box64Preset;
     }
 
+    public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
     public File getWorkingDir() {
         return workingDir;
     }
@@ -224,6 +229,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.put("EVSHIM_SHM_ID", 1);
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
+        envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
 
         String renderer = GPUInformation.getRenderer(context);
 

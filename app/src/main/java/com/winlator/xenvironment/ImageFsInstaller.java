@@ -42,7 +42,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
-    public static final byte LATEST_VERSION = 24;
+    public static final byte LATEST_VERSION = 25;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -55,6 +55,7 @@ public abstract class ImageFsInstaller {
 
             container.putExtra("imgVersion", null);
             container.putExtra("dxwrapper", null);
+            container.putExtra("appVersion", null);
             container.saveData();
         }
     }
