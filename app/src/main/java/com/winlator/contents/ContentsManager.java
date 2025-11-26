@@ -129,17 +129,12 @@ public class ContentsManager {
                         boolean isWineProtonMatch = (profile != null && profile.type == type) ||
                                 (profile != null && type == ContentProfile.ContentType.CONTENT_TYPE_WINE && profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) ||
                                 (profile != null && type == ContentProfile.ContentType.CONTENT_TYPE_PROTON && profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE);
-
                         if (isWineProtonMatch) {
-                            Log.d("ContentsManager", "   ✅ Added profile: type=" + profile.type + ", verName=" + profile.verName + ", verCode=" + profile.verCode);
                             profiles.add(profile);
-                        } else if (profile != null) {
-                            Log.w("ContentsManager", "   ⚠️ Type mismatch: profile.type=" + profile.type + " but scanning type=" + type + " (verName=" + profile.verName + ")");
-                        } else {
-                            Log.w("ContentsManager", "   ⚠️ Failed to read profile from: " + proFile.getAbsolutePath());
                         }
                     }
                 }
+                Log.d("ContentsManager", "Profiles Found: %s", profiles);
             } else {
                 Log.d("ContentsManager", "   No directories found (or directory doesn't exist)");
             }
