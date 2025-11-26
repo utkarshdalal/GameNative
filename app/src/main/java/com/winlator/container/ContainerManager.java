@@ -334,6 +334,32 @@ public class ContainerManager {
         }
     }
 
+    /**
+     * Extracts the Wine prefix pack from a custom Wine installation.
+     * Checks for prefixPack.tzst or prefixPack.txz and uses the appropriate decompression algorithm.
+     *
+     * @param wineInstallPath Path to the Wine installation root directory
+     * @param destinationDir Directory where the prefix should be extracted
+     * @return true if extraction succeeded, false otherwise
+     */
+    private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
+        if (wineInstallPath == null || wineInstallPath.isEmpty()) {
+            return false;
+        }
+
+        File tzstFile = new File(wineInstallPath, "prefixPack.tzst");
+        if (tzstFile.exists()) {
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
+        }
+
+        File txzFile = new File(wineInstallPath, "prefixPack.txz");
+        if (txzFile.exists()) {
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
+        }
+
+        return false;
+    }
+
     public boolean extractContainerPatternFile(String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {
         WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, wineVersion);
         if (WineInfo.isMainWineVersion(wineVersion)) {
@@ -366,8 +392,7 @@ public class ContainerManager {
             Log.d("Extraction", "exctracting " + containerPattern);
             boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
             if (!result) {
-                File containerPatternFile = new File(wineInfo.path + "/prefixPack.txz");
-                result = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, containerPatternFile, containerDir);
+                result = extractPrefixPack(wineInfo.path, containerDir);
             }
 
             if (result) {

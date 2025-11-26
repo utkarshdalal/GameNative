@@ -131,6 +131,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
+    // Grab Wine Versions based on the manifest and populate the Options
     LaunchedEffect(open) {
         if (open) {
             manifestError = null
@@ -139,46 +140,18 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 withContext(Dispatchers.IO) { mgr.syncContents() }
             } catch (_: Exception) {}
             refreshInstalled()
-
-            // Fetch the Wine/Proton manifest
             scope.launch(Dispatchers.IO) {
-
-                try {
-                    val manifestUrl = "https://downloads.gamenative.app/component-manifest.json"
-                    val request = Request.Builder()
-                        .url(manifestUrl)
-                        .build()
-
-                    val response = Net.http.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val jsonString = response.body?.string() ?: "{}"
-                        val jsonObject = Json.decodeFromString<JsonObject>(jsonString)
-
-                        // Filter for Wine/Proton entries only
-                        val manifest = jsonObject.entries
-                            .filter { it.key.startsWith("wine", ignoreCase = true) ||
-                                     it.key.startsWith("proton", ignoreCase = true) }
-                            .associate { it.key to it.value.toString().removeSurrounding("\"") }
-
-                        withContext(Dispatchers.Main) {
-                            wineProtonManifest = manifest
-                            isLoadingManifest = false
-                            manifestError = null
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            manifestError = "Failed to load manifest: ${response.code}"
-                            isLoadingManifest = false
-                        }
-                        Timber.w("WineProtonManagerDialog: Failed to load manifest HTTP=${response.code}")
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        manifestError = "Error loading manifest: ${e.message}"
+                loadWineProtonManifest(
+                    onSuccess = { manifest ->
+                        wineProtonManifest = manifest
+                        isLoadingManifest = false
+                        manifestError = null
+                    },
+                    onError = { error ->
+                        manifestError = error
                         isLoadingManifest = false
                     }
-                    Timber.e(e, "WineProtonManagerDialog: Error loading manifest")
-                }
+                )
             }
         }
     }
@@ -997,7 +970,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             }
         )
     }
-    
+
     // Cancel import confirmation
     if (showCancelImportConfirm) {
         AlertDialog(
@@ -1097,6 +1070,47 @@ private suspend fun performFinishInstall(
     Timber.tag("WineProtonManagerDialog").d("📦 performFinishInstall complete: success=${result.second}, message='${result.first}'")
     onDone(result.first, result.second)
     Toast.makeText(context, result.first, Toast.LENGTH_SHORT).show()
+}
+
+/**
+ * Loads the Wine/Proton manifest from the remote server.
+ * Filters entries to only include Wine and Proton packages.
+ */
+private suspend fun loadWineProtonManifest(
+    onSuccess: suspend (Map<String, String>) -> Unit,
+    onError: suspend (String) -> Unit
+) {
+    try {
+        val manifestUrl = "https://downloads.gamenative.app/component-manifest.json"
+        val request = Request.Builder()
+            .url(manifestUrl)
+            .build()
+
+        val response = Net.http.newCall(request).execute()
+        if (response.isSuccessful) {
+            val jsonString = response.body?.string() ?: "{}"
+            val jsonObject = Json.decodeFromString<JsonObject>(jsonString)
+
+            val manifest = jsonObject.entries
+                .filter { it.key.startsWith("wine", ignoreCase = true) ||
+                         it.key.startsWith("proton", ignoreCase = true) }
+                .associate { it.key to it.value.toString().removeSurrounding("\"") }
+
+            withContext(Dispatchers.Main) {
+                onSuccess(manifest)
+            }
+        } else {
+            withContext(Dispatchers.Main) {
+                onError("Failed to load manifest: ${response.code}")
+            }
+            Timber.w("WineProtonManagerDialog: Failed to load manifest HTTP=${response.code}")
+        }
+    } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+            onError("Error loading manifest: ${e.message}")
+        }
+        Timber.e(e, "WineProtonManagerDialog: Error loading manifest")
+    }
 }
 
 /**
