@@ -176,9 +176,7 @@ public abstract class TarCompressorUtils {
                 String entryName = entry.getName();
                 String fileName = new File(entryName).getName();
                 if(isMacPrefixFile(entryName, fileName))
-                if (fileName.startsWith("._") || entryName.contains("__MACOSX/")) {
                     continue;
-                }
 
                 File file = new File(destination, entryName);
 
