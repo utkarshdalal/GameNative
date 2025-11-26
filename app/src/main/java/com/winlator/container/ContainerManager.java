@@ -173,6 +173,7 @@ public class ContainerManager {
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
             if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+                Log.w("Container Manager", "Fialed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
             }
@@ -275,6 +276,38 @@ public class ContainerManager {
         return null;
     }
 
+    /**
+     * Extracts the Wine prefix pack from a custom Wine installation.
+     * Checks for prefixPack.tzst or prefixPack.txz and uses the appropriate decompression algorithm.
+     *
+     * @param wineInstallPath Path to the Wine installation root directory
+     * @param destinationDir Directory where the prefix should be extracted
+     * @return true if extraction succeeded, false otherwise
+     */
+    private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
+        if (wineInstallPath == null || wineInstallPath.isEmpty()) {
+            Log.d("ContainerManager", "wineInstallPath is null or empty, returning false");
+            return false;
+        }
+
+        File tzstFile = new File(wineInstallPath, "prefixPack.tzst");
+        if (tzstFile.exists()) {
+            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
+            Log.d("ContainerManager", "ZSTD extraction result: " + result);
+            return result;
+        }
+
+        File txzFile = new File(wineInstallPath, "prefixPack.txz");
+        if (txzFile.exists()) {
+            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
+            Log.d("ContainerManager", "XZ extraction result: " + result);
+            return result;
+        }
+
+        Log.d("ContainerManager", "No prefixPack found, returning false");
+        return false;
+    }
+
     private void deleteCommonDlls(String dstName,
                                   JSONObject commonDlls,
                                   File containerDir) throws JSONException {
@@ -366,8 +399,7 @@ public class ContainerManager {
             Log.d("Extraction", "exctracting " + containerPattern);
             boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
             if (!result) {
-                File containerPatternFile = new File(wineInfo.path + "/prefixPack.txz");
-                result = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, containerPatternFile, containerDir);
+                result = extractPrefixPack(wineInfo.path, containerDir);
             }
 
             if (result) {

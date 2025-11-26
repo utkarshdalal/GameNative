@@ -172,8 +172,10 @@ fun ContainerConfigDialog(
         val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
         val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
         val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
-        val bionicWineEntries = stringArrayResource(R.array.bionic_wine_entries).toList()
-        val glibcWineEntries = stringArrayResource(R.array.glibc_wine_entries).toList()
+        val bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList()
+        val glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList()
+        var bionicWineEntries by remember { mutableStateOf(bionicWineEntriesBase) }
+        var glibcWineEntries by remember { mutableStateOf(glibcWineEntriesBase) }
         val emulatorEntries = stringArrayResource(R.array.emulator_entries).toList()
         val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
         val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
@@ -213,6 +215,9 @@ fun ContainerConfigDialog(
                 box64BionicVersions = (box64BionicVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64))).distinct()
                 wowBox64Versions = (wowBox64Versions + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64))).distinct()
                 fexcoreVersions = (fexcoreVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE))).distinct()
+                val customWine = profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE))
+                val customProton = profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON))
+                bionicWineEntries = (bionicWineEntriesBase + customProton + customWine).distinct()
             } catch (_: Exception) {}
             versionsLoaded = true
         }

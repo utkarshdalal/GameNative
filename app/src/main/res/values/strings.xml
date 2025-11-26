@@ -413,4 +413,63 @@
     <string name="install_anyway">Install Anyway</string>
     <string name="remove_content">Remove content?</string>
     <string name="remove_content_confirmation">Are you sure you want to remove %1$s (%2$s)?</string>
+
+    <!-- Wine/Proton Manager -->
+    <string name="wine_proton_manager">Wine/Proton Manager</string>
+    <string name="wine_proton_bionic_notice_header">Bionic Images Only</string>
+    <string name="wine_proton_info_description">Import custom Wine or Proton versions for Bionic containers. Filename must begin with \'wine\' or \'proton\' (case-insensitive). Packages must include bin/, lib/, and prefixPack.txz. All imports are bionic-compatible only.</string>
+    <string name="win_proton_example">For example: "proton-10.0-ARM64ec.wcp"</string>
+    <string name="wine_proton_import_package">Import Wine/Proton Package</string>
+    <string name="wine_proton_select_file_description">Select a .wcp file (with filename starting with \'wine\' or \'proton\')</string>
+    <string name="wine_proton_import_wcp_button">Import .wcp Package</string>
+    <string name="wine_proton_processing">Processing...</string>
+    <string name="wine_proton_package_details">Package Details</string>
+    <string name="wine_proton_type">Type</string>
+    <string name="wine_proton_version">Version</string>
+    <string name="wine_proton_version_code">Version Code</string>
+    <string name="wine_proton_bin_path">Bin Path</string>
+    <string name="wine_proton_lib_path">Lib Path</string>
+    <string name="wine_proton_description">Description</string>
+    <string name="wine_proton_all_files_trusted">✓ All files are trusted. Ready to install.</string>
+    <string name="wine_proton_install_package">Install Package</string>
+    <string name="wine_proton_installed_versions">Installed Wine/Proton Versions</string>
+    <string name="wine_proton_no_versions_found">No installed Wine or Proton versions found.</string>
+    <string name="wine_proton_delete_content_desc">Delete</string>
+    <string name="wine_proton_untrusted_files_message">This package includes files outside the trusted set. Review and confirm to proceed with installation.</string>
+    <string name="wine_proton_untrusted_files_label">Untrusted files:</string>
+    <string name="wine_proton_remove_title">Remove Wine/Proton Version</string>
+    <string name="wine_proton_remove_message">Are you sure you want to remove %1$s %2$s (%3$d)? Containers using this version will no longer work.</string>
+    <string name="wine_proton_removed_toast">Removed %s</string>
+    <string name="wine_proton_remove_failed">Failed to remove: %s</string>
+    <string name="cancel_import_title">Cancel Import?</string>
+    <string name="cancel_import_message">An import is currently in progress. Cancelling will discard all extracted files and you will need to start the import again.\n\nAre you sure you want to cancel?</string>
+    <string name="cancel_import_confirm">Yes, Cancel Import</string>
+    <string name="cancel_import_keep">No, Keep Import</string>
+
+    <!-- Wine/Proton Manager - Status Messages -->
+    <string name="wine_proton_extracting">Extracting and validating package (this may take 2-3 minutes for large files)...</string>
+    <string name="wine_proton_filename_error">Filename must begin with \'wine\' or \'proton\' (case-insensitive)</string>
+    <string name="wine_proton_file_empty">File is empty or cannot be read</string>
+    <string name="wine_proton_cannot_open">Cannot open file</string>
+    <string name="wine_proton_failed_file_picker">Failed to open file picker: %s</string>
+    <string name="wine_proton_error_badtar">File cannot be recognized as valid archive</string>
+    <string name="wine_proton_error_noprofile">profile.json not found in package</string>
+    <string name="wine_proton_error_badprofile">profile.json is invalid</string>
+    <string name="wine_proton_error_exist">This Wine/Proton version already exists</string>
+    <string name="wine_proton_error_missingfiles">Package is missing required files (bin/, lib/, or prefixPack.txz)</string>
+    <string name="wine_proton_error_untrustprofile">Package cannot be trusted</string>
+    <string name="wine_proton_error_nospace">Not enough storage space</string>
+    <string name="wine_proton_error_unknown">Unknown error occurred</string>
+    <string name="wine_proton_error_unable_install">Unable to install Wine/Proton package</string>
+    <string name="wine_proton_not_wine_or_proton">Package is not Wine or Proton (type: %s)</string>
+    <string name="wine_proton_type_mismatch">Filename indicates %1$s but package contains %2$s</string>
+    <string name="wine_proton_untrusted_files_detected">This package includes files outside the trusted set.</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton version already exists</string>
+    <string name="wine_proton_install_failed">Failed to install: %s</string>
+    <string name="wine_proton_install_error">Installation error: %s</string>
+    <string name="wine_proton_install_success">%1$s %2$s installed successfully</string>
+    <string name="wine_proton_glibc_incompatible">This Wine/Proton build requires GLIBC containers and is not compatible with GameNative. Please use ARM64/bionic builds only.</string>
+    <string name="wine_proton_containers_in_use">Containers using this version:</string>
+    <string name="wine_proton_no_containers_warning">No containers are currently using this version.</string>
+    <string name="wine_proton_containers_will_break">These containers will no longer work if you proceed:</string>
 </resources>
