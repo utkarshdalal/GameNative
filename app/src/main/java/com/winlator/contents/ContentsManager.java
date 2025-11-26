@@ -364,26 +364,47 @@ public class ContentsManager {
 
         // If libPath is already "lib/wine", we need to restructure
         if (libPath.equals("lib/wine")) {
-            File tempWineDir = new File(installPath, "wine_temp");
+            // Use timestamp to avoid conflicts with existing temp directories
+            File tempWineDir = new File(installPath, "wine_temp_" + System.currentTimeMillis());
             if (actualLibDir.exists()) {
+                // Check if temp dir already exists (shouldn't happen with timestamp)
+                if (tempWineDir.exists()) {
+                    Log.w("ContentsManager", "Temp directory already exists, cleaning it up");
+                    FileUtils.delete(tempWineDir);
+                }
+
                 // Move lib/wine -> wine_temp
                 if (!actualLibDir.renameTo(tempWineDir)) {
-                    Log.e("ContentsManager", "Failed to rename lib/wine to temp");
+                    Log.e("ContentsManager", "Failed to rename lib/wine to temp, aborting normalization");
                     return;
                 }
+
                 // Recreate lib/wine and move contents back
-                if (expectedWineLibDir.mkdirs()) {
-                    File[] wineContents = tempWineDir.listFiles();
-                    if (wineContents != null) {
-                        for (File item : wineContents) {
-                            File dest = new File(expectedWineLibDir, item.getName());
-                            if (!item.renameTo(dest)) {
-                                Log.e("ContentsManager", "Failed to move " + item.getName());
-                            }
+                if (!expectedWineLibDir.mkdirs()) {
+                    Log.e("ContentsManager", "Failed to create lib/wine directory, attempting rollback");
+                    // Try to restore original state
+                    if (!tempWineDir.renameTo(actualLibDir)) {
+                        Log.e("ContentsManager", "CRITICAL: Failed to rollback, manual intervention may be needed");
+                    }
+                    return;
+                }
+
+                File[] wineContents = tempWineDir.listFiles();
+                if (wineContents != null) {
+                    boolean allMoved = true;
+                    for (File item : wineContents) {
+                        File dest = new File(expectedWineLibDir, item.getName());
+                        if (!item.renameTo(dest)) {
+                            Log.e("ContentsManager", "Failed to move " + item.getName());
+                            allMoved = false;
                         }
                     }
-                    tempWineDir.delete();
-                    Log.d("ContentsManager", "Restructured lib/wine -> lib/wine/");
+                    if (!allMoved) {
+                        Log.w("ContentsManager", "Some files failed to move during restructuring");
+                    }
+                }
+                if (tempWineDir.exists()) {
+                    FileUtils.delete(tempWineDir);
                 }
             }
         }
