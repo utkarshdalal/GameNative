@@ -67,6 +67,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
+import timber.log.Timber
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -205,6 +206,8 @@ fun ContainerConfigDialog(
                     if (list == null) return emptyList()
                     return list.filter { it.remoteUrl == null }.map { profile ->
                         val entry = ContentsManager.getEntryName(profile)
+
+                        Timber.tag("REFACTOR").d("profilesToDisplay: %s", entry)
                         val firstDash = entry.indexOf('-')
                         if (firstDash >= 0 && firstDash + 1 < entry.length) entry.substring(firstDash + 1) else entry
                     }
@@ -2061,17 +2064,17 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
         // Find the A: drive path from container drives
         val aDrivePath = getADrivePath(drives)
         if (aDrivePath == null) {
-            timber.log.Timber.w("No A: drive found in container drives")
+            Timber.w("No A: drive found in container drives")
             return emptyList()
         }
 
         val aDir = java.io.File(aDrivePath)
         if (!aDir.exists() || !aDir.isDirectory) {
-            timber.log.Timber.w("A: drive path does not exist or is not a directory: $aDrivePath")
+            Timber.w("A: drive path does not exist or is not a directory: $aDrivePath")
             return emptyList()
         }
 
-        timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
+        Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
         // Recursively scan for .exe files using walkTopDown
         aDir.walkTopDown().forEach { file ->
@@ -2094,10 +2097,10 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
             }
         }
 
-        timber.log.Timber.d("Found ${executables.size} executables in A: drive")
+        Timber.d("Found ${executables.size} executables in A: drive")
 
     } catch (e: Exception) {
-        timber.log.Timber.e(e, "Error scanning A: drive for executables")
+        Timber.e(e, "Error scanning A: drive for executables")
     }
 
     return executables
