@@ -253,9 +253,12 @@ public class ContentsManager {
             return;
         }
 
-        // For Wine/Proton, set executable permissions on binaries
+        // For Wine/Proton, normalize directory structure and set executable permissions
         if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE
                 || profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
+            // Normalize lib directory structure: ensure lib/wine/ subdirectory exists
+            normalizeWineLibraryStructure(installPath, profile);
+
             File binDir = new File(installPath, profile.wineBinPath);
             if (binDir.exists() && binDir.isDirectory()) {
                 Log.d("ContentsManager", "Setting executable permissions for Wine/Proton binaries in: " + binDir.getPath());
@@ -386,6 +389,98 @@ public class ContentsManager {
      */
     public void cancelImport() {
         cleanTmpDir(context);
+    }
+
+    /**
+     * Normalizes Wine/Proton library structure to ensure consistent layout.
+     * All Wine/Proton installations should have lib/wine/ subdirectory structure
+     * regardless of what the profile.json specifies.
+     *
+     * Expected structure after normalization:
+     * - bin/ (executables)
+     * - lib/ (shared libraries)
+     *   └── wine/ (Wine DLLs by architecture)
+     *       ├── i386-windows/
+     *       ├── x86_64-windows/
+     *       └── aarch64-windows/ (for arm64ec)
+     */
+    private void normalizeWineLibraryStructure(File installPath, ContentProfile profile) {
+        String libPath = profile.wineLibPath != null ? profile.wineLibPath : "lib";
+        File actualLibDir = new File(installPath, libPath);
+        File expectedLibDir = new File(installPath, "lib");
+        File expectedWineLibDir = new File(expectedLibDir, "wine");
+
+        Log.d("ContentsManager", "Normalizing Wine library structure for: " + installPath.getName());
+        Log.d("ContentsManager", "Profile libPath: " + libPath);
+
+        // If libPath is already "lib/wine", we need to restructure
+        if (libPath.equals("lib/wine")) {
+            File tempWineDir = new File(installPath, "wine_temp");
+            if (actualLibDir.exists()) {
+                // Move lib/wine -> wine_temp
+                if (!actualLibDir.renameTo(tempWineDir)) {
+                    Log.e("ContentsManager", "Failed to rename lib/wine to temp");
+                    return;
+                }
+                // Recreate lib/wine and move contents back
+                if (expectedWineLibDir.mkdirs()) {
+                    File[] wineContents = tempWineDir.listFiles();
+                    if (wineContents != null) {
+                        for (File item : wineContents) {
+                            File dest = new File(expectedWineLibDir, item.getName());
+                            if (!item.renameTo(dest)) {
+                                Log.e("ContentsManager", "Failed to move " + item.getName());
+                            }
+                        }
+                    }
+                    tempWineDir.delete();
+                    Log.d("ContentsManager", "Restructured lib/wine -> lib/wine/");
+                }
+            }
+        }
+        // If libPath is "lib" and wine subdirs exist directly in lib/, move them
+        else if (libPath.equals("lib")) {
+            if (!actualLibDir.exists()) {
+                Log.w("ContentsManager", "lib directory does not exist");
+                return;
+            }
+
+            // Check if wine architecture directories exist directly in lib/
+            File[] archDirs = actualLibDir.listFiles(file ->
+                file.isDirectory() && (
+                    file.getName().equals("i386-windows") ||
+                    file.getName().equals("x86_64-windows") ||
+                    file.getName().equals("aarch64-windows") ||
+                    file.getName().equals("i386-unix") ||
+                    file.getName().equals("x86_64-unix") ||
+                    file.getName().equals("aarch64-unix")
+                )
+            );
+
+            if (archDirs != null && archDirs.length > 0) {
+                Log.d("ContentsManager", "Found " + archDirs.length + " architecture directories in lib/, moving to lib/wine/");
+
+                // Create lib/wine subdirectory
+                if (!expectedWineLibDir.exists() && !expectedWineLibDir.mkdirs()) {
+                    Log.e("ContentsManager", "Failed to create lib/wine directory");
+                    return;
+                }
+
+                // Move each architecture directory into lib/wine/
+                for (File archDir : archDirs) {
+                    File dest = new File(expectedWineLibDir, archDir.getName());
+                    if (archDir.renameTo(dest)) {
+                        Log.d("ContentsManager", "Moved " + archDir.getName() + " to lib/wine/");
+                    } else {
+                        Log.e("ContentsManager", "Failed to move " + archDir.getName());
+                    }
+                }
+            } else {
+                Log.d("ContentsManager", "No architecture directories found in lib/, structure already normalized or using different layout");
+            }
+        }
+
+        Log.d("ContentsManager", "Wine library structure normalization complete");
     }
 
     /**

@@ -24,7 +24,6 @@ public class WineInfo implements Parcelable {
     public final String type;
     public String subversion;
     public final String path;
-    public String libPath; // Path to lib directory from profile.json (e.g., "lib" or "lib/wine")
     private String arch;
 
     public WineInfo(String type, String version, String arch) {
@@ -33,7 +32,6 @@ public class WineInfo implements Parcelable {
         this.subversion = null;
         this.arch = arch;
         this.path = null;
-        this.libPath = null;
     }
 
     public WineInfo(String type, String version, String subversion, String arch, String path) {
@@ -42,7 +40,6 @@ public class WineInfo implements Parcelable {
         this.subversion = subversion != null && !subversion.isEmpty() ? subversion : null;
         this.arch = arch;
         this.path = path;
-        this.libPath = null;
     }
 
     public WineInfo(String type, String version, String arch, String path) {
@@ -50,7 +47,6 @@ public class WineInfo implements Parcelable {
         this.version = version;
         this.arch = arch;
         this.path = path;
-        this.libPath = null;
     }
 
     private WineInfo(Parcel in) {
@@ -59,7 +55,6 @@ public class WineInfo implements Parcelable {
         subversion = in.readString();
         arch = in.readString();
         path = in.readString();
-        libPath = in.readString();
     }
 
     public String getArch() {
@@ -145,7 +140,6 @@ public class WineInfo implements Parcelable {
         dest.writeString(subversion);
         dest.writeString(arch);
         dest.writeString(path);
-        dest.writeString(libPath);
     }
 
     @NonNull
@@ -153,9 +147,7 @@ public class WineInfo implements Parcelable {
         ImageFs imageFs = ImageFs.find(context);
         String path = "";
 
-        Log.d("WineInfo", "========================================");
         Log.d("WineInfo", "Creating WineInfo from identifier: '" + identifier + "'");
-        Log.d("WineInfo", "========================================");
 
         if (identifier.equals(MAIN_WINE_VERSION.identifier())) {
             Log.d("WineInfo", "Using MAIN_WINE_VERSION");
@@ -187,12 +179,7 @@ public class WineInfo implements Parcelable {
             if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
                 path = ContentsManager.getInstallDir(context, wineProfile).getPath();
                 Log.d("WineInfo", "Wine path for wineinfo: " + path);
-                
-                // Create WineInfo and set libPath from profile
-                WineInfo wineInfo = new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), path);
-                wineInfo.libPath = wineProfile.wineLibPath;
-                Log.d("WineInfo", "Wine libPath from profile: " + wineInfo.libPath);
-                return wineInfo;
+                return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), path);
             } else {
                 Log.d("WineInfo", "Wine path for wineinfo is null - wineProfile not found or not Wine/Proton type");
             }

@@ -265,9 +265,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         // Set LD_LIBRARY_PATH for custom Wine or default
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
-            // Custom Wine/Proton: All installations have lib/ and lib/wine/ at their root
-            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty()) ? wineInfo.libPath : "lib";
-            String wineLibPath = wineInfo.path + "/" + libPathFromProfile;
+            // Custom Wine/Proton: All installations have normalized lib/wine/ structure
+            String wineLibPath = wineInfo.path + "/lib";
             String wineDllPath = wineLibPath + "/wine";
 
             envVars.put("WINEDLLPATH", wineDllPath);
@@ -537,17 +536,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             String wineDllPath;
             String wineLibPath;
 
-            // Use libPath from profile.json if available, otherwise default to "lib"
-            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty())
-                ? wineInfo.libPath
-                : "lib";
-
+            // All Wine/Proton installations now have normalized lib/wine/ structure
             if (isCustomWineInImagefs) {
                 // Wine in imagefs - use relative paths
                 String imagefsPath = rootDir.getPath();
                 String relativePath = wineInfo.path.substring(imagefsPath.length());
-                wineDllPath = relativePath + "/" + libPathFromProfile + "/wine";
-                wineLibPath = relativePath + "/" + libPathFromProfile;
+                wineDllPath = relativePath + "/lib/wine";
+                wineLibPath = relativePath + "/lib";
             } else {
                 // Wine outside imagefs - use absolute paths
                 File optWineDir = new File(wineInfo.path, "opt/wine/lib/wine");
@@ -555,8 +550,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     wineDllPath = wineInfo.path + "/opt/wine/lib/wine";
                     wineLibPath = wineInfo.path + "/opt/wine/lib";
                 } else {
-                    wineDllPath = wineInfo.path + "/" + libPathFromProfile + "/wine";
-                    wineLibPath = wineInfo.path + "/" + libPathFromProfile;
+                    wineDllPath = wineInfo.path + "/lib/wine";
+                    wineLibPath = wineInfo.path + "/lib";
                 }
             }
 
