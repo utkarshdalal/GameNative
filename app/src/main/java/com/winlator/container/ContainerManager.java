@@ -286,7 +286,6 @@ public class ContainerManager {
      */
     private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
         if (wineInstallPath == null || wineInstallPath.isEmpty()) {
-            Log.d("ContainerManager", "wineInstallPath is null or empty, returning false");
             return false;
         }
 
