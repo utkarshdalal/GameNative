@@ -134,7 +134,6 @@ public class ContentsManager {
                         }
                     }
                 }
-                Log.d("ContentsManager", "Profiles Found: %s", profiles);
             } else {
                 Log.d("ContentsManager", "   No directories found (or directory doesn't exist)");
             }
@@ -166,9 +165,8 @@ public class ContentsManager {
 
         boolean ret;
         ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file);
-        if (!ret) {
+        if (!ret)
             ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
-        }
         if (!ret) {
             callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
             return;
