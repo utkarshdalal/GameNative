@@ -173,7 +173,7 @@ public class ContainerManager {
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
             if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
-                Log.w("Container Manager", "Fialed to extract container pattern, deleting container directory...");
+                Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
             }

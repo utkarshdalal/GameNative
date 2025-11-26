@@ -197,7 +197,6 @@ public abstract class ImageFsInstaller {
         File[] files = optDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                if (file.getName().equals("installed-wine")) continue;
                 String fileName = file.getName();
                 String lowerName = fileName.toLowerCase();
 
