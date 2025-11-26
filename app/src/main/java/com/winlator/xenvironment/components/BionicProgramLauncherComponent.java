@@ -54,7 +54,6 @@ import app.gamenative.events.AndroidEvent;
 import app.gamenative.service.SteamService;
 
 public class BionicProgramLauncherComponent extends GuestProgramLauncherComponent {
-
     private String guestExecutable;
     private static int pid = -1;
     private String[] bindingPaths;
@@ -74,7 +73,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
     }
-
     public WineInfo getWineInfo() {
         return this.wineInfo;
     }
@@ -88,20 +86,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     private Runnable preUnpack;
-
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
-
     @Override
     public void start() {
         synchronized (lock) {
-            if (wineInfo.isArm64EC()) {
+            if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
-            }else {
+            else
                 extractBox64Files();
-            }
-            if (preUnpack != null) {
-                preUnpack.run();
-            }
+            if (preUnpack != null) preUnpack.run();
             PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
@@ -204,7 +197,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
                 raf.setLength(64);
             } catch (IOException e) {
-                Log.e("EVSHIM_HOST", "Failed to create mem file for player index " + i, e);
+                Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
             }
         }
         Context context = environment.getContext();
@@ -217,9 +210,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         boolean shareAndroidClipboard = PrefManager.getBoolean("share_android_clipboard", false);
         boolean enablePebLogs = PrefManager.getBoolean("enable_peb_logs", false);
 
-        if (openWithAndroidBrowser) {
+
+        if (openWithAndroidBrowser)
             envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
-        }
         if (shareAndroidClipboard) {
             envVars.put("WINE_FROM_ANDROID_CLIPBOARD", "1");
             envVars.put("WINE_TO_ANDROID_CLIPBOARD", "1");
@@ -240,13 +233,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String renderer = GPUInformation.getRenderer(context);
 
-        if (renderer.contains("Mali")) {
+        if (renderer.contains("Mali"))
             envVars.put("BOX64_MMAP32", "0");
-        }
 
-        if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC()) {
+        if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
             envVars.put("WRAPPER_DISABLE_PLACED", "1");
-        }
 
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
@@ -254,8 +245,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
         envVars.put("DISPLAY", ":0");
 
-        // All Wine installations (built-in and imported) have the same structure: bin/, lib/, share/
-        // Custom Wine path points to the Wine installation root, default uses imageFs.getWinePath()
         String winePath = (wineInfo.path != null && !wineInfo.path.isEmpty()) ? wineInfo.path + "/bin" : imageFs.getWinePath() + "/bin";
 
         Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
@@ -263,12 +252,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
 
-        // Set LD_LIBRARY_PATH for custom Wine or default
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
-            // Custom Wine/Proton: All installations have normalized lib/wine/ structure
             String wineLibPath = wineInfo.path + "/lib";
             String wineDllPath = wineLibPath + "/wine";
-
             envVars.put("WINEDLLPATH", wineDllPath);
             envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + wineDllPath + ":" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         }
@@ -316,8 +302,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
 
         ld_preload += ":" + evshimPath;
-        // Only use libredirect for default Wine - custom Wine uses absolute paths and doesn't need path redirection
-        if (wineInfo.path == null || wineInfo.path.isEmpty()) ld_preload += ":" + replacePath;
+        ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
@@ -327,7 +312,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
 //            ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
 //        }
+
         //String nativeDir = context.getApplicationInfo().nativeLibraryDir; // e.g. /data/app/…/lib/arm64
+
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
@@ -340,11 +327,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String overriddenCommand = envVars.get("GUEST_PROGRAM_LAUNCHER_COMMAND");
         if (!overriddenCommand.isEmpty()) {
             String[] parts = overriddenCommand.split(";");
-            for (String part : parts) {
+            for (String part : parts)
                 command += part + " ";
-            }
             command = command.trim();
-        } else {
+        }
+        else {
             command = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), guestExecutable);
         }
 
@@ -360,9 +347,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             }
             if (!environment.isWinetricksRunning()) {
                 SteamService.setGameRunning(false);
-                if (terminationCallback != null) {
+                if (terminationCallback != null)
                     terminationCallback.call(status);
-                }
             }
         });
     }
@@ -372,14 +358,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String command;
         if (wineInfo.isArm64EC()) {
             command = winePath + "/" + guestExecutable;
-            if (emulator.toLowerCase().equals("fexcore")) {
+            if (emulator.toLowerCase().equals("fexcore"))
                 envVars.put("HODLL", "libwow64fex.dll");
-            }else {
+            else
                 envVars.put("HODLL", "wowbox64.dll");
-            }
-        } else {
-            command = binDir + "/box64 " + guestExecutable;
         }
+        else
+            command = binDir + "/box64 " + guestExecutable;
         return command;
     }
 
@@ -426,30 +411,26 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (!wowbox64Version.equals(container.getExtra("box64Version")) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
-            if (profile != null) {
+            if (profile != null)
                 contentsManager.applyContent(profile);
-            }else {
+            else
                 Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
-            }
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
             container.putExtra("box64Version", wowbox64Version);
             containerDataChanged = true;
         }
 
         if (!fexcoreVersion.equals(container.getExtra("fexcoreVersion")) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
-            if (profile != null) {
+            if (profile != null)
                 contentsManager.applyContent(profile);
-            }else {
+            else
                 Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
-            }
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
             container.putExtra("fexcoreVersion", fexcoreVersion);
             containerDataChanged = true;
         }
-        if (containerDataChanged) {
-            container.saveData();
-        }
+        if (containerDataChanged) container.saveData();
     }
 
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
@@ -471,17 +452,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public void suspendProcess() {
         synchronized (lock) {
-            if (pid != -1) {
-                ProcessHelper.suspendProcess(pid);
-            }
+            if (pid != -1) ProcessHelper.suspendProcess(pid);
         }
     }
 
     public void resumeProcess() {
         synchronized (lock) {
-            if (pid != -1) {
-                ProcessHelper.resumeProcess(pid);
-            }
+            if (pid != -1) ProcessHelper.resumeProcess(pid);
         }
     }
 
@@ -498,72 +475,32 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
 
-        // Use custom Wine/Proton path if available, otherwise use default
-        String winePath;  // Absolute Android path for command execution
-        String winePathForEnv;  // Relative path for environment variables (libredirect)
-        boolean isCustomWineInImagefs = false;
+        String winePath;
+        String winePathForEnv;
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
-            // Check if custom Wine is inside imagefs (starts with imagefs path)
-            String imagefsPath = rootDir.getPath();
-            if (wineInfo.path.startsWith(imagefsPath)) {
-                // Custom Wine is in imagefs
-                isCustomWineInImagefs = true;
-                String relativePath = wineInfo.path.substring(imagefsPath.length());
-                winePath = wineInfo.path + "/bin";  // Absolute for command
-                winePathForEnv = relativePath + "/bin";  // Relative for PATH env var
-            } else {
-                // Custom Wine outside imagefs (legacy) - use absolute path
-                File optWineDir = new File(wineInfo.path, "opt/wine/bin");
-                if (optWineDir.exists()) {
-                    winePath = wineInfo.path + "/opt/wine/bin";
-                    winePathForEnv = winePath;
-                } else {
-                    winePath = wineInfo.path + "/bin";
-                    winePathForEnv = winePath;
-                }
-            }
-        } else {
+            String relativePath = wineInfo.path.substring(rootDir.getPath().length());
+            winePath = wineInfo.path + "/bin";
+            winePathForEnv = relativePath + "/bin";
+        }
+        else {
             winePath = imageFs.getWinePath() + "/bin";
             winePathForEnv = winePath;
         }
 
-        Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath + " (custom: " + (wineInfo.path != null) + ")");
+        Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
         envVars.put("PATH", winePathForEnv + ":" + rootDir.getPath() + "/usr/bin");
 
-        // For custom Wine/Proton, set WINEDLLPATH and other Wine-specific paths
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
-            String wineDllPath;
-            String wineLibPath;
-
-            // All Wine/Proton installations now have normalized lib/wine/ structure
-            if (isCustomWineInImagefs) {
-                // Wine in imagefs - use relative paths
-                String imagefsPath = rootDir.getPath();
-                String relativePath = wineInfo.path.substring(imagefsPath.length());
-                wineDllPath = relativePath + "/lib/wine";
-                wineLibPath = relativePath + "/lib";
-            } else {
-                // Wine outside imagefs - use absolute paths
-                File optWineDir = new File(wineInfo.path, "opt/wine/lib/wine");
-                if (optWineDir.exists()) {
-                    wineDllPath = wineInfo.path + "/opt/wine/lib/wine";
-                    wineLibPath = wineInfo.path + "/opt/wine/lib";
-                } else {
-                    wineDllPath = wineInfo.path + "/lib/wine";
-                    wineLibPath = wineInfo.path + "/lib";
-                }
-            }
-
+            String relativePath = wineInfo.path.substring(rootDir.getPath().length());
+            String wineDllPath = relativePath + "/lib/wine";
+            String wineLibPath = relativePath + "/lib";
             envVars.put("WINEDLLPATH", wineDllPath);
             envVars.put("WINELOADER", winePathForEnv + "/wine");
             envVars.put("WINESERVER", winePathForEnv + "/wineserver");
-            // Add both lib and lib/wine to LD_LIBRARY_PATH for Wine to find its DLLs
             envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + wineDllPath + ":" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
-            Log.d("BionicProgramLauncherComponent", "WINEDLLPATH set to: " + wineDllPath);
-        } else {
-            envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         }
+        else envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
@@ -574,18 +511,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
-        if (new File(sysvPath).exists()) {
-            ld_preload += sysvPath;
-        }
+        if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
         ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
         String emulator = container.getEmulator();
-        if (this.envVars != null) {
-            envVars.putAll(this.envVars);
-        }
+        if (this.envVars != null) envVars.putAll(this.envVars);
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 
         File box64File = new File(rootDir, "/usr/bin/box64");
