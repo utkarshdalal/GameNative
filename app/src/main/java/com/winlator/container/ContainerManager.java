@@ -292,16 +292,12 @@ public class ContainerManager {
 
         File tzstFile = new File(wineInstallPath, "prefixPack.tzst");
         if (tzstFile.exists()) {
-            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
-            Log.d("ContainerManager", "ZSTD extraction result: " + result);
-            return result;
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
         }
 
         File txzFile = new File(wineInstallPath, "prefixPack.txz");
         if (txzFile.exists()) {
-            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
-            Log.d("ContainerManager", "XZ extraction result: " + result);
-            return result;
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
         }
 
         Log.d("ContainerManager", "No prefixPack found, returning false");
