@@ -203,12 +203,13 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 val latch = CountDownLatch(1)
                 try {
                     // Validate file exists and is readable
-+                    val canOpen = ctx.contentResolver.openInputStream(uri)?.use { true } ?: false
-+                    if (!canOpen) {
-                         err = Exception(ctx.getString(R.string.wine_proton_cannot_open))
-                         latch.countDown()
-                         return@withContext Triple(profile, failReason, err)
-                     }
+                    ctx.contentResolver.openInputStream(uri)?.use { stream ->
+                        if (stream.available() == 0) {
+                            err = Exception(ctx.getString(R.string.wine_proton_file_empty))
+                            latch.countDown()
+                            return@withContext Triple(profile, failReason, err)
+                        }
+                    } ?: run {
                         err = Exception(ctx.getString(R.string.wine_proton_cannot_open))
                         latch.countDown()
                         return@withContext Triple(profile, failReason, err)
@@ -217,7 +218,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     val startTime = System.currentTimeMillis()
 
                     mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
                             failReason = reason
                             err = e
                             latch.countDown()
@@ -401,7 +402,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     val latch = CountDownLatch(1)
                     try {
                         mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
                                 failReason = reason
                                 err = e
                                 latch.countDown()
@@ -987,7 +988,7 @@ private suspend fun performFinishInstall(
         val latch = CountDownLatch(1)
         try {
             mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
                     Timber.tag("WineProtonManagerDialog").e(e, "   ❌ finishInstallContent FAILED: $reason")
                     message = when (reason) {
                         ContentsManager.InstallFailedReason.ERROR_EXIST -> context.getString(R.string.wine_proton_version_already_exists)
