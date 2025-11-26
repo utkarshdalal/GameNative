@@ -254,88 +254,26 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
         envVars.put("DISPLAY", ":0");
 
-        // Use custom Wine/Proton path if available, otherwise use default
-        String winePath;  // Absolute Android path for command execution
-        String winePathForEnv;  // Relative path for environment variables (libredirect)
-        boolean isCustomWineInImagefs = false;
+        // All Wine installations (built-in and imported) have the same structure: bin/, lib/, share/
+        // Custom Wine path points to the Wine installation root, default uses imageFs.getWinePath()
+        String winePath = (wineInfo.path != null && !wineInfo.path.isEmpty()) ? wineInfo.path + "/bin" : imageFs.getWinePath() + "/bin";
+
+        Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
+
+        envVars.put("PATH", winePath + ":" +
+                rootDir.getPath() + "/usr/bin");
+
+        // Set LD_LIBRARY_PATH for custom Wine or default
         if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
-            // Check if custom Wine is inside imagefs (starts with imagefs path)
-            String imagefsPath = rootDir.getPath();
-            if (wineInfo.path.startsWith(imagefsPath)) {
-                // Custom Wine is in imagefs
-                isCustomWineInImagefs = true;
-                String relativePath = wineInfo.path.substring(imagefsPath.length());
-                winePath = wineInfo.path + "/bin";  // Absolute for command
-                winePathForEnv = relativePath + "/bin";  // Relative for PATH env var
-            } else {
-                // Custom Wine outside imagefs (legacy) - use absolute path
-                File optWineDir = new File(wineInfo.path, "opt/wine/bin");
-                if (optWineDir.exists()) {
-                    winePath = wineInfo.path + "/opt/wine/bin";
-                    winePathForEnv = winePath;
-                } else {
-                    winePath = wineInfo.path + "/bin";
-                    winePathForEnv = winePath;
-                }
-            }
-        } else {
-            winePath = imageFs.getWinePath() + "/bin";
-            winePathForEnv = winePath;
-        }
-
-        Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath + " (custom: " + (wineInfo.path != null) + ", inImagefs: " + isCustomWineInImagefs + ")");
-
-        // In Bionic mode with custom Wine, use absolute path in PATH since there's no libredirect
-        String pathForEnv = (wineInfo.path != null && !wineInfo.path.isEmpty()) ? winePath : winePathForEnv;
-        envVars.put("PATH", pathForEnv + ":" + rootDir.getPath() + "/usr/bin");
-
-        // For custom Wine/Proton, set WINEDLLPATH and other Wine-specific paths
-        if (wineInfo.path != null && !wineInfo.path.isEmpty()) {
-            String wineDllPath;
-            String wineLibPath;
-
-            // Use libPath from profile.json if available, otherwise default to "lib"
-            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty())
-                ? wineInfo.libPath
-                : "lib";
-
-            Log.d("BionicProgramLauncherComponent", "wineInfo.libPath = " + wineInfo.libPath + ", using: " + libPathFromProfile);
-
-            if (isCustomWineInImagefs) {
-                // Wine in imagefs - For Bionic mode, Wine's internal hardcoded paths need
-                // WINEDLLPATH to be RELATIVE to the working directory (imagefs root)
-                // because Wine resolves paths relative to where it's executed from
-                String relativePath = wineInfo.path.replace(rootDir.getPath() + "/", "");
-                wineDllPath = relativePath + "/" + libPathFromProfile + "/wine";
-                wineLibPath = relativePath + "/" + libPathFromProfile;
-                // But LD_LIBRARY_PATH still needs absolute paths for the dynamic linker
-                envVars.put("LD_LIBRARY_PATH", wineInfo.path + "/" + libPathFromProfile + ":" + wineInfo.path + "/" + libPathFromProfile + "/wine:" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
-                Log.d("BionicProgramLauncherComponent", "Custom Wine in imagefs (Bionic): WINEDLLPATH=" + wineDllPath + " (relative), LD_LIBRARY_PATH includes absolute paths");
-            } else {
-                // Wine outside imagefs - use absolute paths
-                File optWineDir = new File(wineInfo.path, "opt/wine/lib/wine");
-                if (optWineDir.exists()) {
-                    wineDllPath = wineInfo.path + "/opt/wine/lib/wine";
-                    wineLibPath = wineInfo.path + "/opt/wine/lib";
-                } else {
-                    wineDllPath = wineInfo.path + "/" + libPathFromProfile + "/wine";
-                    wineLibPath = wineInfo.path + "/" + libPathFromProfile;
-                }
-                // For Wine outside imagefs, LD_LIBRARY_PATH uses absolute paths
-                envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + wineDllPath + ":" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
-                Log.d("BionicProgramLauncherComponent", "Custom Wine outside imagefs: wineDllPath=" + wineDllPath);
-            }
+            // Custom Wine/Proton: All installations have lib/ and lib/wine/ at their root
+            String libPathFromProfile = (wineInfo.libPath != null && !wineInfo.libPath.isEmpty()) ? wineInfo.libPath : "lib";
+            String wineLibPath = wineInfo.path + "/" + libPathFromProfile;
+            String wineDllPath = wineLibPath + "/wine";
 
             envVars.put("WINEDLLPATH", wineDllPath);
-            // In Bionic mode with custom Wine, use absolute path for WINELOADER (no PRoot path translation)
-            envVars.put("WINELOADER", winePath + "/wine");
-            envVars.put("WINESERVER", winePath + "/wineserver");
-            Log.d("BionicProgramLauncherComponent", "WINEDLLPATH set to: " + wineDllPath);
-            Log.d("BionicProgramLauncherComponent", "WINELOADER set to: " + winePath + "/wine");
-            Log.d("BionicProgramLauncherComponent", "LD_LIBRARY_PATH set");
-        } else {
-            envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+            envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + wineDllPath + ":" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         }
+        else envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
@@ -375,16 +313,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
-        if (new File(sysvPath).exists()) {
-            ld_preload += sysvPath;
-        }
+        if (new File(sysvPath).exists()) ld_preload += sysvPath;
+
 
         ld_preload += ":" + evshimPath;
-
         // Only use libredirect for default Wine - custom Wine uses absolute paths and doesn't need path redirection
-        if (wineInfo.path == null || wineInfo.path.isEmpty()) {
-            ld_preload += ":" + replacePath;
-        }
+        if (wineInfo.path == null || wineInfo.path.isEmpty()) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
