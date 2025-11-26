@@ -172,7 +172,9 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+            boolean extractResult = extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null);
+            if (!extractResult) {
+                Log.e("ContainerManager", "Failed to extract container pattern, deleting container directory");
                 FileUtils.delete(containerDir);
                 return null;
             }
@@ -343,20 +345,30 @@ public class ContainerManager {
      * @return true if extraction succeeded, false otherwise
      */
     private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
+        Log.d("ContainerManager", "extractPrefixPack called with wineInstallPath: " + wineInstallPath + ", destinationDir: " + destinationDir);
+
         if (wineInstallPath == null || wineInstallPath.isEmpty()) {
+            Log.d("ContainerManager", "wineInstallPath is null or empty, returning false");
             return false;
         }
 
         File tzstFile = new File(wineInstallPath, "prefixPack.tzst");
+        Log.d("ContainerManager", "Checking for tzst file: " + tzstFile.getAbsolutePath() + ", exists: " + tzstFile.exists());
         if (tzstFile.exists()) {
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
+            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
+            Log.d("ContainerManager", "ZSTD extraction result: " + result);
+            return result;
         }
 
         File txzFile = new File(wineInstallPath, "prefixPack.txz");
+        Log.d("ContainerManager", "Checking for txz file: " + txzFile.getAbsolutePath() + ", exists: " + txzFile.exists());
         if (txzFile.exists()) {
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
+            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
+            Log.d("ContainerManager", "XZ extraction result: " + result);
+            return result;
         }
 
+        Log.d("ContainerManager", "No prefixPack found, returning false");
         return false;
     }
 

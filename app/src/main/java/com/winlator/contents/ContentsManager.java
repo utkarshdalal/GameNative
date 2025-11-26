@@ -126,7 +126,12 @@ public class ContentsManager {
                     File proFile = new File(file, PROFILE_NAME);
                     if (proFile.exists() && proFile.isFile()) {
                         ContentProfile profile = readProfile(proFile);
-                        if (profile != null && profile.type == type) {
+                        // Wine and Proton are functionally equivalent - accept both when scanning either type
+                        boolean isWineProtonMatch = (profile != null && profile.type == type) ||
+                                (profile != null && type == ContentProfile.ContentType.CONTENT_TYPE_WINE && profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON) ||
+                                (profile != null && type == ContentProfile.ContentType.CONTENT_TYPE_PROTON && profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE);
+
+                        if (isWineProtonMatch) {
                             Log.d("ContentsManager", "   ✅ Added profile: type=" + profile.type + ", verName=" + profile.verName + ", verCode=" + profile.verCode);
                             profiles.add(profile);
                         } else if (profile != null) {
@@ -230,15 +235,10 @@ public class ContentsManager {
     }
 
     public void finishInstallContent(ContentProfile profile, OnInstallFinishedCallback callback) {
-        // Check if a version with this name already exists and find next available version code
-        int nextVerCode = findNextAvailableVersionCode(profile.verName, profile.type);
-        if (nextVerCode > 0) {
-            // A version with this name exists, use incremented version code
-            profile.verCode = nextVerCode;
-        }
-
+        // Reject if a version with this name already exists (no version code incrementation)
         File installPath = getInstallDir(context, profile);
         if (installPath.exists()) {
+            Log.w("ContentsManager", "Installation rejected: " + profile.verName + " already exists at " + installPath);
             callback.onFailed(InstallFailedReason.ERROR_EXIST, null);
             return;
         }
@@ -352,7 +352,8 @@ public class ContentsManager {
     }
 
     public static File getInstallDir(Context context, ContentProfile profile) {
-        return new File(getContentTypeDir(context, profile.type), profile.verName + "-" + profile.verCode);
+        // Use version name only, no version code suffix
+        return new File(getContentTypeDir(context, profile.type), profile.verName);
     }
 
     public static File getContentDir(Context context) {
@@ -595,52 +596,46 @@ public class ContentsManager {
 
     public ContentProfile getProfileByEntryName(String entryName) {
         Log.d("ContentsManager", "🔍 getProfileByEntryName called with: '" + entryName + "'");
-        int lastDashIndex = entryName.lastIndexOf('-');
 
-        try {
-            // Extract version code (everything after last dash)
-            String versionCode = entryName.substring(lastDashIndex + 1);
-            // Everything before last dash is the full version name (including type prefix if present)
-            String fullVersionName = entryName.substring(0, lastDashIndex);
+        // Initialize profilesMap if needed (first call before syncContents)
+        if (profilesMap == null) {
+            Log.d("ContentsManager", "   profilesMap is null, calling syncContents()");
+            syncContents();
+        }
 
-            Log.d("ContentsManager", "   Parsed: fullVersionName='" + fullVersionName + "', versionCode='" + versionCode + "'");
+        // Try to determine type from the entry name (supports prefixed builds like "GE-Proton")
+        ContentProfile.ContentType type = null;
+        String lowerVersionName = entryName.toLowerCase();
+        if (lowerVersionName.contains("proton")) {
+            type = ContentProfile.ContentType.CONTENT_TYPE_PROTON;
+        } else if (lowerVersionName.contains("wine")) {
+            type = ContentProfile.ContentType.CONTENT_TYPE_WINE;
+        } else {
+            // Try other types
+            int firstDash = entryName.indexOf('-');
+            if (firstDash > 0) {
+                String possibleType = entryName.substring(0, firstDash);
+                type = ContentProfile.ContentType.getTypeByName(possibleType);
+            }
+        }
 
-            // Try to determine type from the full version name (supports prefixed builds like "GE-Proton")
-            ContentProfile.ContentType type = null;
-            String lowerVersionName = fullVersionName.toLowerCase();
-            if (lowerVersionName.contains("proton")) {
-                type = ContentProfile.ContentType.CONTENT_TYPE_PROTON;
-            } else if (lowerVersionName.contains("wine")) {
-                type = ContentProfile.ContentType.CONTENT_TYPE_WINE;
-            } else {
-                // Try other types
-                int firstDash = fullVersionName.indexOf('-');
-                if (firstDash > 0) {
-                    String possibleType = fullVersionName.substring(0, firstDash);
-                    type = ContentProfile.ContentType.getTypeByName(possibleType);
+        Log.d("ContentsManager", "   Detected ContentType: " + type);
+
+        if (type != null && profilesMap.get(type) != null) {
+            List<ContentProfile> profiles = profilesMap.get(type);
+            Log.d("ContentsManager", "   Found " + profiles.size() + " profiles of type " + type);
+
+            for (ContentProfile profile : profiles) {
+                Log.d("ContentsManager", "   Checking profile: verName='" + profile.verName + "'");
+                // Match against version name directly (no version code)
+                if (entryName.equalsIgnoreCase(profile.verName)) {
+                    Log.d("ContentsManager", "   ✅ MATCH FOUND!");
+                    return profile;
                 }
             }
-
-            Log.d("ContentsManager", "   Detected ContentType: " + type);
-
-            if (type != null && profilesMap.get(type) != null) {
-                List<ContentProfile> profiles = profilesMap.get(type);
-                Log.d("ContentsManager", "   Found " + profiles.size() + " profiles of type " + type);
-
-                for (ContentProfile profile : profiles) {
-                    Log.d("ContentsManager", "   Checking profile: verName='" + profile.verName + "', verCode=" + profile.verCode);
-                    // Match against the full version name (profile.verName already has type prefix from readProfile)
-                    if (fullVersionName.equalsIgnoreCase(profile.verName) && Integer.parseInt(versionCode) == profile.verCode) {
-                        Log.d("ContentsManager", "   ✅ MATCH FOUND!");
-                        return profile;
-                    }
-                }
-                Log.d("ContentsManager", "   ❌ No matching profile found in primary lookup");
-            } else {
-                Log.d("ContentsManager", "   ❌ Type is null or no profiles for this type");
-            }
-        } catch (Exception e) {
-            Log.d("ContentsManager", "   ❌ Exception in primary lookup: " + e.getMessage());
+            Log.d("ContentsManager", "   ❌ No matching profile found");
+        } else {
+            Log.d("ContentsManager", "   ❌ Type is null or no profiles for this type");
         }
 
         // Fallback: Try Wine and Proton lists if entry name doesn't have type prefix

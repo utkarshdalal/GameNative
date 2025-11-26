@@ -19,7 +19,7 @@ import app.gamenative.R;
 
 public class WineInfo implements Parcelable {
     public static final WineInfo MAIN_WINE_VERSION = new WineInfo("wine", "9.2", "x86_64");
-    private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
+    private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9\\.]+)(?:\\-([0-9\\.]+))?\\-(x86|x86_64|arm64ec)(?:\\-([0-9]+))?$");
     public final String version;
     public final String type;
     public String subversion;
@@ -154,15 +154,9 @@ public class WineInfo implements Parcelable {
             return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
         }
 
-        // Try to lookup with version code appended (identifier might be missing -0 at the end)
-        Log.d("WineInfo", "Trying lookup with: '" + identifier + "-0'");
-        ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier + "-0");
-
-        // Fallback to identifier as-is if not found
-        if (wineProfile == null) {
-            Log.d("WineInfo", "First lookup failed, trying: '" + identifier + "'");
-            wineProfile = contentsManager.getProfileByEntryName(identifier);
-        }
+        // Lookup Wine/Proton profile by version name (no version code suffix)
+        Log.d("WineInfo", "Looking up profile by name: '" + identifier + "'");
+        ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier);
 
         Log.d("WineInfo", "Wine profile lookup result: " + (wineProfile != null ? "FOUND" : "NULL"));
         Matcher matcher = pattern.matcher(identifier);
@@ -179,6 +173,7 @@ public class WineInfo implements Parcelable {
             if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
                 path = ContentsManager.getInstallDir(context, wineProfile).getPath();
                 Log.d("WineInfo", "Wine path for wineinfo: " + path);
+                Log.d("WineInfo", "Regex groups: type=" + matcher.group(1) + ", version=" + matcher.group(2) + ", subversion=" + matcher.group(3) + ", arch=" + matcher.group(4) + ", versionCode=" + matcher.group(5));
                 return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), path);
             } else {
                 Log.d("WineInfo", "Wine path for wineinfo is null - wineProfile not found or not Wine/Proton type");

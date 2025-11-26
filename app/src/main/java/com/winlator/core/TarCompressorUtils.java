@@ -164,6 +164,10 @@ public abstract class TarCompressorUtils {
         }
     }
 
+    private static boolean isMacPrefixFile(String entryName, String fileName) {
+        return fileName.startsWith("._") || entryName.contains("__MACOSX/");
+    }
+
     private static boolean extract(Type type, InputStream source, File destination, OnExtractFileListener onExtractFileListener) {
         if (source == null) return false;
         try (InputStream inStream = getCompressorInputStream(type, source);
@@ -171,7 +175,16 @@ public abstract class TarCompressorUtils {
             TarArchiveEntry entry;
             while ((entry = (TarArchiveEntry)tar.getNextEntry()) != null) {
                 if (!tar.canReadEntryData(entry)) continue;
-                File file = new File(destination, entry.getName());
+
+                // Skip macOS metadata files (._{filename}) and __MACOSX directories
+                String entryName = entry.getName();
+                String fileName = new File(entryName).getName();
+                if(isMacPrefixFile(entryName, fileName))
+                if (fileName.startsWith("._") || entryName.contains("__MACOSX/")) {
+                    continue;
+                }
+
+                File file = new File(destination, entryName);
 
                 if (onExtractFileListener != null) {
                     file = onExtractFileListener.onExtractFile(file, entry.getSize());
