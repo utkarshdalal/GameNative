@@ -1259,6 +1259,18 @@ private fun getWineStartCommand(
 
     // Check if this is a Custom Game
     val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+    val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+
+    if (!isCustomGame) {
+        if (container.executablePath.isEmpty()){
+            container.executablePath = SteamService.getInstalledExe(steamAppId)
+            container.saveData()
+        }
+        if (!container.isUseLegacyDRM){
+            // Create ColdClientLoader.ini file
+            SteamUtils.writeColdClientIni(steamAppId, container)
+        }
+    }
 
     val args = if (bootToContainer) {
         "\"wfm.exe\""
@@ -1313,7 +1325,6 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         if (container.isLaunchRealSteam()) {
             // Launch Steam with the applaunch parameter to start the game
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
@@ -1346,8 +1357,6 @@ private fun getWineStartCommand(
                 envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
                 "\"$drive:/${executablePath}\""
             } else {
-                // Create ColdClientLoader.ini file
-                SteamUtils.writeColdClientIni(steamAppId, container)
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
             }
         }
