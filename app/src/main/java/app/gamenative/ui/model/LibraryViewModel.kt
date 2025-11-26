@@ -222,6 +222,13 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
+                .filter { item ->
+                    if (currentState.appInfoSortType.contains(AppFilter.CONTROLLER_SUPPORT)) {
+                        item.controllerSupport != app.gamenative.enums.ControllerSupport.none || !gameSource
+                    } else {
+                        true
+                    }
+                }
                 .sortedWith(
                     compareByDescending<SteamApp> {
                         downloadDirectorySet.contains(SteamService.getAppDirName(it))
@@ -240,6 +247,7 @@ class LibraryViewModel @Inject constructor(
                         name = item.name,
                         iconHash = item.clientIconHash,
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+                        controllerSupport = item.controllerSupport,
                     ),
                     isInstalled = isInstalled,
                 )

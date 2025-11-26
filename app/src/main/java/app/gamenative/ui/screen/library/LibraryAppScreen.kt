@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -295,6 +296,28 @@ internal fun AppScreenContent(
                     )
             ) {
                 BackButton(onClick = onBack)
+            }
+
+            // Controller support icon (top right, next to settings)
+            if (displayInfo.controllerSupport != app.gamenative.enums.ControllerSupport.none) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(top = 20.dp, end = 76.dp)
+                        .size(28.dp)
+                        .background(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SportsEsports,
+                        contentDescription = "Controller Support",
+                        tint = Color.White,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             // Settings/options button (top right)
@@ -854,6 +877,7 @@ private fun Preview_AppScreen() {
         sizeFromStore = null,
         lastPlayedText = null,
         playtimeText = null,
+        controllerSupport = fakeApp.controllerSupport,
     )
     PluviaTheme {
         Surface {

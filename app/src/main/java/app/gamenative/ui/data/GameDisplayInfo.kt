@@ -1,5 +1,7 @@
 package app.gamenative.ui.data
 
+import app.gamenative.enums.ControllerSupport
+
 /**
  * Common data structure for displaying game information in the UI.
  * This allows both Steam and Custom Games to use the same UI layout.
@@ -20,5 +22,6 @@ data class GameDisplayInfo(
     val logoUrl: String? = null, // Logo image URL (for SteamGridDB)
     val capsuleUrl: String? = null, // Capsule/grid image URL (for SteamGridDB)
     val headerUrl: String? = null, // Header image URL (for SteamGridDB, can use grid as header)
+    val controllerSupport: ControllerSupport = ControllerSupport.none,
 )
 

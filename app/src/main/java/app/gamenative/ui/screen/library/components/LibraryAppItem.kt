@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -83,7 +85,7 @@ internal fun AppItem(
         hideText = true
         alpha = 1f
     }
-    
+
     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
     LaunchedEffect(imageRefreshCounter) {
         if (paneType != PaneType.LIST) {
@@ -230,7 +232,7 @@ internal fun AppItem(
                             }
                         }
                     }
-                    
+
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
                     LaunchedEffect(imageUrl) {
                         if (paneType != PaneType.LIST) {
@@ -248,6 +250,28 @@ internal fun AppItem(
                             alpha = 0.1f
                         }
                     )
+
+                    // Controller support icon (top-right corner)
+                    if (hideText && appInfo.controllerSupport != app.gamenative.enums.ControllerSupport.none) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(6.dp)
+                                .size(20.dp)
+                                .background(
+                                    color = Color.Black.copy(alpha = 0.7f),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .padding(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.SportsEsports,
+                                contentDescription = "Controller Support",
+                                tint = Color.White,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
 
                     // Only display text if the image loading has failed
                     if (! hideText) {

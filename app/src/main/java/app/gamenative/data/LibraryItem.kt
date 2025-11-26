@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import app.gamenative.Constants
+import app.gamenative.enums.ControllerSupport
 import app.gamenative.utils.CustomGameScanner
 
 enum class GameSource {
@@ -19,6 +20,7 @@ data class LibraryItem(
     val iconHash: String = "",
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
+    val controllerSupport: ControllerSupport = ControllerSupport.none,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

@@ -261,6 +261,7 @@ class SteamAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = lastPlayedText,
             playtimeText = playtimeText,
+            controllerSupport = appInfo.controllerSupport,
         )
     }
 

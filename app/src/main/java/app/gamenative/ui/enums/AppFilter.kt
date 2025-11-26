@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Diversity3
 import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.enums.AppType
@@ -45,6 +46,11 @@ enum class AppFilter(
         code = 0x20,
         displayText = "Family",
         icon = Icons.Default.Diversity3,
+    ),
+    CONTROLLER_SUPPORT(
+        code = 0x40,
+        displayText = "Controller Support",
+        icon = Icons.Default.SportsEsports,
     ),
     // ALPHABETIC(
     //     code = 0x20,
