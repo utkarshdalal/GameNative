@@ -3,6 +3,7 @@ package com.winlator.core;
 import android.content.Context;
 import android.content.SharedPreferences;
 import androidx.collection.ArrayMap;
+import android.util.Log;
 import dalvik.annotation.optimization.CriticalNative;
 import java.util.Locale;
 import java.util.Objects;
@@ -25,6 +26,18 @@ public abstract class GPUHelper {
 
     static {
         System.loadLibrary("winlator_11");
+    }
+
+    public static int vkVersionPatch(){
+        try {
+            return vkGetApiVersion() & 0xFFF;
+        } catch (UnsatisfiedLinkError e) {
+            Log.e("GPUHelper", "Failed to load Vulkan library", e);
+            return 0; // Fallback if library not loaded
+        } catch (Exception e) {
+            Log.e("GPUHelper", "Failed to get Vulkan version patch", e);
+            return 0; // Fallback for any other error
+        }
     }
 
     public static int vkMakeVersion(String value) {

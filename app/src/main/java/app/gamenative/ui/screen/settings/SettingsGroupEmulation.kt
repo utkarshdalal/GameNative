@@ -64,6 +64,11 @@ fun SettingsGroupEmulation() {
             app.gamenative.ui.screen.settings.ContentsManagerDialog(open = showContentsManager, onDismiss = { showContentsManager = false })
         }
 
+        var showWineProtonManager by rememberSaveable { mutableStateOf(false) }
+        if (showWineProtonManager) {
+            app.gamenative.ui.screen.settings.WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
+        }
+
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = "Allowed Orientations") },
@@ -99,6 +104,12 @@ fun SettingsGroupEmulation() {
             title = { Text(text = "Contents Manager") },
             subtitle = { Text(text = "Install additional components (.wcp)") },
             onClick = { showContentsManager = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = "Wine/Proton Manager") },
+            subtitle = { Text(text = "Import custom Wine/Proton versions (Bionic only)") },
+            onClick = { showWineProtonManager = true },
         )
     }
 }

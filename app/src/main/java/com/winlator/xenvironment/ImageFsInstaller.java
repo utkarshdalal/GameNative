@@ -197,7 +197,18 @@ public abstract class ImageFsInstaller {
         File[] files = optDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                if (file.getName().equals("installed-wine")) continue;
+                String fileName = file.getName();
+                String lowerName = fileName.toLowerCase();
+
+                // Preserve Wine/Proton installation imports
+                // Examples: wine-10.0-1, proton-ge-10-25-1, wine-9.0-2
+                if (lowerName.startsWith("wine-") || lowerName.startsWith("proton-")) {
+                    Log.d("ImageFsInstaller", "Preserving Wine/Proton installation: " + fileName);
+                    continue;
+                }
+
+                if (fileName.equals("installed-wine")) continue;
+
                 FileUtils.delete(file);
             }
         }

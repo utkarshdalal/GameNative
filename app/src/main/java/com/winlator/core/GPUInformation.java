@@ -145,6 +145,8 @@ public abstract class GPUInformation {
 
         return !renderer.toLowerCase().contains("unknown");
     }
+
+    // This method appears to crash on several devices
     public native static String getVulkanVersion(String driverName, Context context);
     public native static String getRenderer(String driverName, Context context);
     public native static String[] enumerateExtensions(String driverName, Context context);
