@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.AirplaneTicket
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
@@ -124,33 +126,41 @@ fun ProfileDialog(
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = "Help & Support")
+                    Text(text = stringResource(R.string.help_and_support))
                 }
 
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = "Hall of Fame")
+                    Text(text = stringResource(R.string.hall_of_fame))
                 }
 
                 if(isOffline) {
                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = "Go Online")
+                        Text(text = stringResource(R.string.go_online))
                     }
                 } else {
+                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        SteamService.stop()
+                        onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
+                    }) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
+                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Text(text = stringResource(R.string.go_offline))
+                    }
                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = "Log Out")
+                        Text(text = stringResource(R.string.log_out))
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Close")
+                Text(text = stringResource(R.string.close))
             }
         },
     )

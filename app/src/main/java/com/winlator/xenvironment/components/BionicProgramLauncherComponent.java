@@ -31,6 +31,8 @@ import com.winlator.core.GPUInformation;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
+import com.winlator.fexcore.FEXCorePreset;
+import com.winlator.fexcore.FEXCorePresetManager;
 import com.winlator.sysvshm.SysVSHMConnectionHandler;
 import com.winlator.sysvshm.SysVSHMRequestHandler;
 import com.winlator.sysvshm.SysVSharedMemory;
@@ -47,6 +49,8 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import app.gamenative.PluviaApp;
+import app.gamenative.events.AndroidEvent;
 import app.gamenative.service.SteamService;
 
 public class BionicProgramLauncherComponent extends GuestProgramLauncherComponent {
@@ -57,6 +61,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private WineInfo wineInfo;
     private String box64Version = DefaultVersion.BOX64;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
@@ -90,6 +95,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             else
                 extractBox64Files();
             if (preUnpack != null) preUnpack.run();
+            PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setGameRunning(true);
@@ -160,6 +166,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.box64Preset = box64Preset;
     }
 
+    public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
     public File getWorkingDir() {
         return workingDir;
     }
@@ -221,6 +229,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.put("EVSHIM_SHM_ID", 1);
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
+        envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
+
+        String renderer = GPUInformation.getRenderer(context);
+
+        if (renderer.contains("Mali"))
+            envVars.put("BOX64_MMAP32", "0");
 
         if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
             envVars.put("WRAPPER_DISABLE_PLACED", "1");

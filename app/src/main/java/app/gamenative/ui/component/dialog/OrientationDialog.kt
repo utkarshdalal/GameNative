@@ -17,8 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.theme.PluviaTheme
 import java.util.EnumSet
@@ -56,7 +58,7 @@ fun OrientationDialog(
             )
         },
         title = {
-            Text(text = "Allowed Orientations")
+            Text(text = stringResource(R.string.allowed_orientations))
         },
         text = {
             Column {
@@ -79,7 +81,7 @@ fun OrientationDialog(
         },
         confirmButton = {
             TextButton(onClick = onClose, enabled = currentSettings.isNotEmpty()) {
-                Text(text = "Close")
+                Text(text = stringResource(R.string.close))
             }
         },
     )

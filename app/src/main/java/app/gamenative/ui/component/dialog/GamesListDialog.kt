@@ -30,12 +30,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.Constants
+import app.gamenative.R
 import app.gamenative.data.OwnedGames
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.theme.PluviaTheme
@@ -61,7 +63,7 @@ fun GamesListDialog(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         CenterAlignedTopAppBar(
-                            title = { Text(text = "Games") },
+                            title = { Text(text = stringResource(R.string.games)) },
                             navigationIcon = {
                                 IconButton(
                                     onClick = onDismissRequest,
@@ -77,9 +79,7 @@ fun GamesListDialog(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(
-                                top = WindowInsets.statusBars
-                                    .asPaddingValues()
-                                    .calculateTopPadding() + paddingValues.calculateTopPadding(),
+                                top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 24.dp + paddingValues.calculateBottomPadding(),
                                 start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                                 end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
@@ -106,10 +106,10 @@ fun GamesListDialog(
                                         CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodySmall) {
                                             if (item.playtimeTwoWeeks > 10) {
                                                 val twoWeeks = SteamUtils.formatPlayTime(item.playtimeTwoWeeks)
-                                                Text(text = "Playtime last 2 weeks: $twoWeeks hrs")
+                                                Text(text = stringResource(R.string.playtime_last_two_weeks, twoWeeks))
                                             }
                                             val total = SteamUtils.formatPlayTime(item.playtimeForever)
-                                            Text(text = "Total Playtime: $total hrs")
+                                            Text(text = stringResource(R.string.total_playtime, total))
                                         }
                                     }
                                 },

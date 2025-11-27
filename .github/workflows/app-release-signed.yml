@@ -9,6 +9,7 @@ on:
       - 'keyvalues/**'
       - 'media/**'
       - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,8 +18,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        lfs: true
     - name: set up Java 17
       uses: actions/setup-java@v4
       with:
@@ -37,22 +36,104 @@ jobs:
         KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
         KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
       run: |
+        mkdir -p app/keystores
         echo "$KEYSTORE" | base64 --decode > app/keystores/keystore
         echo "storeFile=keystores/keystore" >> app/keystores/keystore.properties
         echo "keyAlias=$KEYSTORE_KEY_ALIAS" >> app/keystores/keystore.properties
         echo "storePassword=$KEYSTORE_STORE_PASSWORD" >> app/keystores/keystore.properties
         echo "keyPassword=$KEYSTORE_KEY_PASSWORD" >> app/keystores/keystore.properties
 
+    - name: Configure Production Keystore
+      env:
+        PROD_KEYSTORE: ${{ secrets.PROD_KEYSTORE }}
+        PROD_KEYSTORE_KEY_ALIAS: ${{ secrets.PROD_KEYSTORE_KEY_ALIAS }}
+        PROD_KEYSTORE_KEY_PASSWORD: ${{ secrets.PROD_KEYSTORE_KEY_PASSWORD }}
+        PROD_KEYSTORE_STORE_PASSWORD: ${{ secrets.PROD_KEYSTORE_STORE_PASSWORD }}
+      run: |
+        mkdir -p app/keystores
+        echo "$PROD_KEYSTORE" | base64 --decode > app/keystores/prod.keystore
+        cat <<EOF > app/keystores/prod-keystore.properties
+        keyAlias=$PROD_KEYSTORE_KEY_ALIAS
+        keyPassword=$PROD_KEYSTORE_KEY_PASSWORD
+        storePassword=$PROD_KEYSTORE_STORE_PASSWORD
+        EOF
+
+    - name: Inject credentials
+      run: |
+        cat <<EOF > local.properties
+        POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
+        POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+        EOF
+
+    - name: Install Android SDK Build Tools
+      run: |
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        if [ ! -x "$SDKMANAGER" ]; then
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+        fi
+        yes | "$SDKMANAGER" --install "build-tools;34.0.0"
+
     - name: Build with Gradle
-      run: ./gradlew :app:bundleRelease-signed
+      run: ./gradlew :app:bundleRelease
 
     - name: Extract APK from Bundle
       run: |
-        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app/build/outputs/bundle/release-signed/app-release-signed.aab --output=app-release-signed.apks --mode=universal --ks='app/keystores/keystore' --ks-pass='pass:${{ secrets.KEYSTORE_STORE_PASSWORD }}' --ks-key-alias='${{ secrets.KEYSTORE_KEY_ALIAS }}' --key-pass='pass:${{ secrets.KEYSTORE_KEY_PASSWORD }}'
-        unzip app-release-signed.apks
+        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app/build/outputs/bundle/release/app-release.aab --output=app-release.apks --mode=universal
+        unzip -o app-release.apks universal.apk
+
+    - name: Copy lineage file
+      run: |
+        mkdir -p app/keystores
+        cp prod-debug.lineage app/keystores/prod-debug.lineage
+
+    - name: Dual sign universal APK
+      env:
+        DEBUG_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+        DEBUG_KEY_PASS: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        DEBUG_STORE_PASS: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+        PROD_ALIAS: ${{ secrets.PROD_KEYSTORE_KEY_ALIAS }}
+        PROD_KEY_PASS: ${{ secrets.PROD_KEYSTORE_KEY_PASSWORD }}
+        PROD_STORE_PASS: ${{ secrets.PROD_KEYSTORE_STORE_PASSWORD }}
+      run: |
+        BUILD_TOOLS_DIR="${ANDROID_HOME}/build-tools/34.0.0"
+        if [ ! -d "$BUILD_TOOLS_DIR" ]; then
+          BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
+        fi
+        "${BUILD_TOOLS_DIR}/apksigner" sign \
+          --lineage app/keystores/prod-debug.lineage \
+          --ks app/keystores/keystore \
+          --ks-key-alias "$DEBUG_ALIAS" \
+          --ks-pass pass:$DEBUG_STORE_PASS \
+          --key-pass pass:$DEBUG_KEY_PASS \
+          --next-signer --ks app/keystores/prod.keystore \
+          --ks-key-alias "$PROD_ALIAS" \
+          --ks-pass pass:$PROD_STORE_PASS \
+          --key-pass pass:$PROD_KEY_PASS \
+          --out universal-signed.apk \
+          universal.apk
+        mv universal-signed.apk universal.apk
 
     - name: Upload Artifact
+      id: upload_app
       uses: actions/upload-artifact@v4
       with:
         name: app-release-signed
         path: ${{ github.workspace }}/universal.apk
+
+    - name: Build changelog text
+      id: changelog
+      run: |
+        text=$(jq -r '.commits[] | "• " + (.message | split("\n")[0]) + " (" + .id[0:7] + ")"' "$GITHUB_EVENT_PATH")
+        echo 'log<<EOF' >>"$GITHUB_OUTPUT"
+        echo "$text" >>"$GITHUB_OUTPUT"
+        echo 'EOF' >>"$GITHUB_OUTPUT"
+
+    - name: Post to Discord
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        artifact_url='${{ steps.upload_app.outputs.artifact-url }}'
+        payload='{"content":"**New Android build**\nDownload: '"$artifact_url"'\n\nChanges:\n'"${{ steps.changelog.outputs.log }}"'"}'
+        curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

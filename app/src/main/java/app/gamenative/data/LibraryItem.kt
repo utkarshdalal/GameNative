@@ -1,9 +1,11 @@
 package app.gamenative.data
 
 import app.gamenative.Constants
+import app.gamenative.utils.CustomGameScanner
 
 enum class GameSource {
     STEAM,
+    CUSTOM_GAME,
     // Add other platforms here..
 }
 
@@ -19,8 +21,23 @@ data class LibraryItem(
     val gameSource: GameSource = GameSource.STEAM,
 ) {
     val clientIconUrl: String
-        get() = Constants.Library.ICON_URL + "${gameId}/$iconHash.ico"
-    
+        get() = when (gameSource) {
+            GameSource.STEAM -> if (iconHash.isNotEmpty()) {
+                Constants.Library.ICON_URL + "${gameId}/$iconHash.ico"
+            } else {
+                ""
+            }
+            GameSource.CUSTOM_GAME -> {
+                // Attempt to resolve a local icon from the selected/unique exe folder
+                val localPath = CustomGameScanner.findIconFileForCustomGame(appId)
+                if (!localPath.isNullOrEmpty()) {
+                    if (localPath.startsWith("file://")) localPath else "file://$localPath"
+                } else {
+                    ""
+                }
+            }
+        }
+
     /**
      * Helper property to get the game ID as an integer
      * Extracts the numeric part by removing the gameSource prefix

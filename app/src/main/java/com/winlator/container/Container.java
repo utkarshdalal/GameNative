@@ -10,6 +10,7 @@ import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
+import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
 
@@ -25,14 +26,15 @@ public class Container {
         THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
     }
 
-    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60";
+    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
-    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1";
-    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "version=" + DefaultVersion.WRAPPER + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";adrenotoolsTurnip=1" + ";frameSync=Normal";
+    public static final String DEFAULT_DDRAWRAPPER = "none";
+    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
+    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=software" + ",bcnEmulationCache=0";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
@@ -81,10 +83,12 @@ public class Container {
     private String box86Preset = Box86_64Preset.PERFORMANCE;
     private String box64Preset = Box86_64Preset.PERFORMANCE;
     private String fexcoreVersion = DefaultVersion.FEXCORE;
+    private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
     private String emulator = DEFAULT_EMULATOR;
     private File rootDir;
     private String installPath = "";
     private JSONObject extraData;
+    private JSONObject sessionMetadata;
     private int rcfileId = 0;
     private String midiSoundFont = "";
     private int inputType = WinHandler.PreferredInputApi.BOTH.ordinal();
@@ -120,6 +124,8 @@ public class Container {
     private boolean gstreamerWorkaround = false;
 
     private boolean forceDlc = false;
+
+    private boolean useLegacyDRM = false;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -340,7 +346,7 @@ public class Container {
     }
 
     public String getCPUList() {
-        return getCPUList(false);
+        return getCPUList(true);
     }
 
     public String getCPUList(boolean allowFallback) {
@@ -352,7 +358,7 @@ public class Container {
     }
 
     public String getCPUListWoW64() {
-        return getCPUListWoW64(false);
+        return getCPUListWoW64(true);
     }
 
     public String getCPUListWoW64(boolean allowFallback) {
@@ -398,6 +404,10 @@ public class Container {
     public String getFEXCoreVersion() { return this.fexcoreVersion; }
 
     public void setFEXCoreVersion(String version) { this.fexcoreVersion = version; }
+
+    public void setFEXCorePreset(String preset) { this.fexcorePreset = preset; }
+
+    public String getFEXCorePreset() { return fexcorePreset; }
 
     public File getRootDir() {
         return rootDir;
@@ -459,6 +469,36 @@ public class Container {
         catch (JSONException e) {
             Log.e("Container", "Failed to put extra: " + e);
         }
+    }
+
+    public String getSessionMetadata(String name) {
+        return getSessionMetadata(name, "");
+    }
+
+    public String getSessionMetadata(String name, String fallback) {
+        try {
+            return sessionMetadata != null && sessionMetadata.has(name) ? sessionMetadata.getString(name) : fallback;
+        }
+        catch (JSONException e) {
+            return fallback;
+        }
+    }
+
+    public void putSessionMetadata(String name, Object value) {
+        if (sessionMetadata == null) sessionMetadata = new JSONObject();
+        try {
+            if (value != null) {
+                sessionMetadata.put(name, value);
+            }
+            else sessionMetadata.remove(name);
+        }
+        catch (JSONException e) {
+            Log.e("Container", "Failed to put session metadata: " + e);
+        }
+    }
+
+    public void clearSessionMetadata() {
+        sessionMetadata = null;
     }
 
     public String getWineVersion() {
@@ -593,8 +633,10 @@ public class Container {
             data.put("box64Version", box64Version);
             data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
+            data.put("fexcorePreset", fexcorePreset);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
+            data.put("sessionMetadata", sessionMetadata);
             data.put("rcfileId", rcfileId);
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
@@ -624,6 +666,9 @@ public class Container {
 
             // Force DLC setting
             data.put("forceDlc", forceDlc);
+
+            // Use Legacy DRM setting
+            data.put("useLegacyDRM", useLegacyDRM);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -712,6 +757,15 @@ public class Container {
                     setExtraData(extraData);
                     break;
                 }
+                case "sessionMetadata" : {
+                    try {
+                        JSONObject sessionMetadata = data.getJSONObject(key);
+                        this.sessionMetadata = sessionMetadata;
+                    } catch (JSONException e) {
+                        this.sessionMetadata = null;
+                    }
+                    break;
+                }
                 case "wineVersion" :
                     setWineVersion(data.getString(key));
                     break;
@@ -729,6 +783,9 @@ public class Container {
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
+                    break;
+                case "fexcorePreset":
+                    setFEXCorePreset(data.getString(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
@@ -786,6 +843,9 @@ public class Container {
                     break;
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
+                    break;
+                case "useLegacyDRM":
+                    this.useLegacyDRM = data.getBoolean(key);
                     break;
             }
         }
@@ -885,12 +945,29 @@ public class Container {
         this.forceDlc = forceDlc;
     }
 
+    public boolean isUseLegacyDRM() {
+        return useLegacyDRM;
+    }
+
+    public void setUseLegacyDRM(boolean useLegacyDRM) {
+        this.useLegacyDRM = useLegacyDRM;
+    }
+
     public JSONObject getControllerEmulationBindings() {
         return controllerEmulationBindings;
     }
 
     public void setControllerEmulationBindings(JSONObject bindings) {
         this.controllerEmulationBindings = bindings;
+    }
+
+    public String getContainerJson() {
+        String content = FileUtils.readString(getConfigFile());
+        if (content == null) {
+            Log.e("Container", "Failed to read container config file");
+            return "{}";
+            }
+        return content.replace("\\u0000", "").replace("\u0000", "");
     }
 
     public static String getFallbackCPUList() {
@@ -901,11 +978,10 @@ public class Container {
     }
 
     public static String getFallbackCPUListWoW64() {
-//        String cpuList = "";
-//        int numProcessors = Runtime.getRuntime().availableProcessors();
-//        for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
-//        return cpuList;
-        return getFallbackCPUList();
+        String cpuList = "";
+        int numProcessors = Runtime.getRuntime().availableProcessors();
+        for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
+        return cpuList;
     }
 
     // Disable external mouse input

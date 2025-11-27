@@ -6,8 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import app.gamenative.R
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
@@ -42,6 +45,13 @@ fun SettingsGroupEmulation() {
             visible = showBox64PresetsDialog,
             onDismissRequest = { showBox64PresetsDialog = false },
         )
+        var showFexcorePresetsDialog by rememberSaveable { mutableStateOf(false) }
+        if (showFexcorePresetsDialog) {
+            FEXCorePresetsDialog(
+                visible = showFexcorePresetsDialog,
+                onDismissRequest = { showFexcorePresetsDialog = false },
+            )
+        }
 
         var showDriverManager by rememberSaveable { mutableStateOf(false) }
         if (showDriverManager) {
@@ -52,6 +62,11 @@ fun SettingsGroupEmulation() {
         var showContentsManager by rememberSaveable { mutableStateOf(false) }
         if (showContentsManager) {
             app.gamenative.ui.screen.settings.ContentsManagerDialog(open = showContentsManager, onDismiss = { showContentsManager = false })
+        }
+
+        var showWineProtonManager by rememberSaveable { mutableStateOf(false) }
+        if (showWineProtonManager) {
+            app.gamenative.ui.screen.settings.WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
         }
 
         SettingsMenuLink(
@@ -74,6 +89,12 @@ fun SettingsGroupEmulation() {
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.fexcore_presets)) },
+            subtitle = { Text(text = stringResource(R.string.fexcore_presets_description)) },
+            onClick = { showFexcorePresetsDialog = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
             title = { Text(text = "Driver Manager") },
             subtitle = { Text(text = "Install or remove custom graphics driver packages") },
             onClick = { showDriverManager = true },
@@ -83,6 +104,12 @@ fun SettingsGroupEmulation() {
             title = { Text(text = "Contents Manager") },
             subtitle = { Text(text = "Install additional components (.wcp)") },
             onClick = { showContentsManager = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = "Wine/Proton Manager") },
+            subtitle = { Text(text = "Import custom Wine/Proton versions (Bionic only)") },
+            onClick = { showWineProtonManager = true },
         )
     }
 }

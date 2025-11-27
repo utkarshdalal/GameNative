@@ -18,4 +18,15 @@ data class LibraryState(
 
     val isSearching: Boolean = false,
     val searchQuery: String = "",
+
+    // App Source filters (Steam / Custom Games)
+    val showSteamInLibrary: Boolean = PrefManager.showSteamInLibrary,
+    val showCustomGamesInLibrary: Boolean = PrefManager.showCustomGamesInLibrary,
+    
+    // Loading state for skeleton loaders
+    val isLoading: Boolean = false,
+    
+    // Refresh counter that increments when custom game images are fetched
+    // Used to trigger UI recomposition to show newly downloaded images
+    val imageRefreshCounter: Long = 0,
 )

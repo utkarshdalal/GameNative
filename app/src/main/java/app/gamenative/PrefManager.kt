@@ -157,6 +157,27 @@ object PrefManager {
             setPref(GRAPHICS_DRIVER_CONFIG, value)
         }
 
+    private val SHARPNESS_EFFECT = stringPreferencesKey("sharpness_effect")
+    var sharpnessEffect: String
+        get() = getPref(SHARPNESS_EFFECT, "None")
+        set(value) {
+            setPref(SHARPNESS_EFFECT, value)
+        }
+
+    private val SHARPNESS_LEVEL = intPreferencesKey("sharpness_level")
+    var sharpnessLevel: Int
+        get() = getPref(SHARPNESS_LEVEL, 100)
+        set(value) {
+            setPref(SHARPNESS_LEVEL, value.coerceIn(0, 100))
+        }
+
+    private val SHARPNESS_DENOISE = intPreferencesKey("sharpness_denoise")
+    var sharpnessDenoise: Int
+        get() = getPref(SHARPNESS_DENOISE, 100)
+        set(value) {
+            setPref(SHARPNESS_DENOISE, value.coerceIn(0, 100))
+        }
+
     private val CONTAINER_VARIANT = stringPreferencesKey("container_variant")
     var containerVariant: String
         get() = getPref(CONTAINER_VARIANT, Container.DEFAULT_VARIANT)
@@ -260,6 +281,13 @@ object PrefManager {
         get() = getPref(FORCE_DLC, false)
         set(value) {
             setPref(FORCE_DLC, value)
+        }
+
+    private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
+    var useLegacyDRM: Boolean
+        get() = getPref(USE_LEGACY_DRM, false)
+        set(value) {
+            setPref(USE_LEGACY_DRM, value)
         }
 
     private val CPU_LIST = stringPreferencesKey("cpu_list")
@@ -607,11 +635,57 @@ object PrefManager {
             setPref(OPEN_WEB_LINKS_EXTERNALLY, value)
         }
 
+    // Whether to hide the Android status bar when not in a game (in game list, settings, etc.)
+    private val HIDE_STATUS_BAR_WHEN_NOT_IN_GAME = booleanPreferencesKey("hide_status_bar_when_not_in_game")
+    var hideStatusBarWhenNotInGame: Boolean
+        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, false)
+        set(value) {
+            setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)
         set(value) {
             setPref(ITEMS_PER_PAGE, value)
+        }
+
+    // App Source filters
+    private val SHOW_STEAM_IN_LIBRARY = booleanPreferencesKey("show_steam_in_library")
+    var showSteamInLibrary: Boolean
+        get() = getPref(SHOW_STEAM_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_STEAM_IN_LIBRARY, value)
+        }
+
+    private val SHOW_CUSTOM_GAMES_IN_LIBRARY = booleanPreferencesKey("show_custom_games_in_library")
+    var showCustomGamesInLibrary: Boolean
+        get() = getPref(SHOW_CUSTOM_GAMES_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_CUSTOM_GAMES_IN_LIBRARY, value)
+        }
+
+    // Game counts for skeleton loaders
+    private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
+    var customGamesCount: Int
+        get() = getPref(CUSTOM_GAMES_COUNT, 0)
+        set(value) {
+            setPref(CUSTOM_GAMES_COUNT, value)
+        }
+
+    private val STEAM_GAMES_COUNT = intPreferencesKey("steam_games_count")
+    var steamGamesCount: Int
+        get() = getPref(STEAM_GAMES_COUNT, 0)
+        set(value) {
+            setPref(STEAM_GAMES_COUNT, value)
+        }
+
+    // Show dialog when adding custom game folder
+    private val SHOW_ADD_CUSTOM_GAME_DIALOG = booleanPreferencesKey("show_add_custom_game_dialog")
+    var showAddCustomGameDialog: Boolean
+        get() = getPref(SHOW_ADD_CUSTOM_GAME_DIALOG, true)
+        set(value) {
+            setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
         }
 
     // Whether to download games only over Wi-Fi.
@@ -622,6 +696,14 @@ object PrefManager {
             setPref(DOWNLOAD_ON_WIFI_ONLY, value)
         }
 
+    // Maximum number of concurrent downloads (8=slow, 16=medium, 24=fast, 32=blazing)
+    private val DOWNLOAD_SPEED = intPreferencesKey("download_speed")
+    var downloadSpeed: Int
+        get() = getPref(DOWNLOAD_SPEED, 24)
+        set(value) {
+            setPref(DOWNLOAD_SPEED, value)
+        }
+
     private val USE_EXTERNAL_STORAGE = booleanPreferencesKey("use_external_storage")
     var useExternalStorage: Boolean
         get() = getPref(USE_EXTERNAL_STORAGE, false)
@@ -630,11 +712,39 @@ object PrefManager {
             setPref(EXTERNAL_STORAGE_PATH, "")
         }
 
+    private val FETCH_STEAMGRIDDB_IMAGES = booleanPreferencesKey("fetch_steamgriddb_images")
+    var fetchSteamGridDBImages: Boolean
+        get() = getPref(FETCH_STEAMGRIDDB_IMAGES, true)
+        set(value) {
+            setPref(FETCH_STEAMGRIDDB_IMAGES, value)
+        }
+
     private val EXTERNAL_STORAGE_PATH = stringPreferencesKey("external_storage_path")
     var externalStoragePath: String
         get() = getPref(EXTERNAL_STORAGE_PATH, "")
         set(value) {
             setPref(EXTERNAL_STORAGE_PATH, value)
+        }
+
+    // Custom Games root (additional paths). Default path is provided by the app at runtime and isn't stored here.
+    private val CUSTOM_GAME_PATHS = stringPreferencesKey("custom_game_paths")
+    var customGamePaths: Set<String>
+        get() {
+            val value = getPref(CUSTOM_GAME_PATHS, "[]")
+            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+        }
+        set(value) {
+            setPref(CUSTOM_GAME_PATHS, Json.encodeToString(value))
+        }
+
+    private val CUSTOM_GAME_MANUAL_FOLDERS = stringPreferencesKey("custom_game_manual_folders")
+    var customGameManualFolders: Set<String>
+        get() {
+            val value = getPref(CUSTOM_GAME_MANUAL_FOLDERS, "[]")
+            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+        }
+        set(value) {
+            setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
     // Add new setting for Wine debug logging

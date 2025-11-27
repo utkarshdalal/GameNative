@@ -71,4 +71,18 @@ class EventDispatcher {
             resultAggregator?.let { it(results) }
         }
     }
+
+    // Java-friendly version that doesn't use reified generics
+    @Suppress("UNCHECKED_CAST")
+    fun emitJava(event: Event<*>): Any? {
+        val eventClass = event::class
+        return listeners[eventClass]?.let { eventListeners ->
+            val results = eventListeners.toList().map { eventListener ->
+                eventListener.second.listener(event)
+            }.toTypedArray()
+            // Remove one-time listeners after execution
+            eventListeners.removeIf { it.second.once }
+            results.firstOrNull()
+        }
+    }
 }

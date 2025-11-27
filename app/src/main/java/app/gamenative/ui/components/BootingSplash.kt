@@ -31,6 +31,7 @@ import kotlin.random.Random
 @Composable
 fun BootingSplash(
     visible: Boolean = true,
+    text: String = "Booting...",
     onBootCompleted: () -> Unit = {}
 ) {
     // Tailwind-style “animate-pulse”: opacity 0.3 → 0.5 → 0.3
@@ -49,7 +50,14 @@ fun BootingSplash(
         listOf(
             "Booting may take a few minutes on first launch",
             "Tip: You can view the game files by pressing \"Open Container\" in the game settings.",
-            "Tip: Try the Adreno or Snapdragon 8 Elite drivers if you are on a compatible device.",
+            "Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.",
+            "Tip: If you are getting a DirectX error, make sure you are using DXVK 1.10.3-async and leegao-wrapper on Bionic.",
+            "Tip: Try the Direct3D test in the Start Menu after clicking Open Container to check if your device is working correctly.",
+            "Tip: Use DXVK for DirectX 8/9/10/11 games, VKD3D for DirectX 12 games and VirGL + WineD3D for OpenGL games.",
+            "Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don't support Turnip is currently limited.",
+            "Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.",
+            "Tip: If you are getting a black screen when launching a game, try Open Container and launching the game from A: drive.",
+            "Tip: You can add different locations for Custom Games in the settings.",
             "Tip: Turn off \"Show FPS\" to get rid of the mesa overlay.",
             "Tip: Install packages in A:\\_CommonRedist if your game doesn't launch.",
             "Tip: You can enable or disable the onscreen controller with your device's back key.",
@@ -57,11 +65,12 @@ fun BootingSplash(
             "Tip: You can tap with two fingers inside the container to right click.",
             "Tip: If you are using the onscreen controller, you can disable the mouse to prevent accidental touches.",
             "Tip: Report issues on Discord so we can fix them.",
-            "Tip: Use the Vortek driver if you are on a non-Adreno GPU.",
+            "Tip: Use the Vortek driver in glibc or wrapper-leegao in Bionic if you are on a non-Adreno GPU.",
             "Tip: Lower resolution and use box64 in performance mode to boost FPS.",
             "Tip: If the game is crashing after loading, increase the video memory.",
-            "Tip: If you are seeing visual glitches, try setting environment variables MESA_VK_WSI_DEBUG to sw and MESA_VK_WSI_PRESENT_MODE to immediate.",
+            "Tip: If you are seeing visual glitches, disable DRI3.",
             "Tip: You can enable touchscreen mode.",
+
         )
     }
 
@@ -70,7 +79,7 @@ fun BootingSplash(
 
     LaunchedEffect(visible, tips) {
         while (visible && tips.isNotEmpty()) {
-            delay(4000)
+            delay(10000)
             tipIndex = (tipIndex + 1) % tips.size
         }
     }
@@ -120,7 +129,7 @@ fun BootingSplash(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Booting...",
+                    text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -129,18 +138,25 @@ fun BootingSplash(
 
                 if (tips.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    Crossfade(
-                        targetState = tipIndex,
-                        animationSpec = tween(durationMillis = 600),
-                        label = "tipCrossfade"
-                    ) { idx ->
-                        Text(
-                            text = tips[idx],
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Crossfade(
+                            targetState = tipIndex,
+                            animationSpec = tween(durationMillis = 600),
+                            label = "tipCrossfade"
+                        ) { idx ->
+                            Text(
+                                text = tips[idx],
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                            )
+                        }
                     }
                 }
             }

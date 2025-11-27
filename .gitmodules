@@ -1,0 +1,3 @@
+[submodule "app/src/main/cpp/extras/adrenotools"]
+	path = app/src/main/cpp/extras/adrenotools
+	url = https://github.com/Pipetto-crypto/libadrenotools.git

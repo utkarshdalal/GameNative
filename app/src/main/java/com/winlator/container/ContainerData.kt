@@ -76,6 +76,10 @@ data class ContainerData(
     /** Button->Binding name map (JSON string) for emulation UI persistence **/
     val controllerEmulationBindings: String = "",
     val forceDlc: Boolean = false,
+    val useLegacyDRM: Boolean = false,
+    val sharpnessEffect: String = "None",
+    val sharpnessLevel: Int = 100,
+    val sharpnessDenoise: Int = 100,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -126,6 +130,10 @@ data class ContainerData(
                     "emulateKeyboardMouse" to state.emulateKeyboardMouse,
                     "controllerEmulationBindings" to state.controllerEmulationBindings,
                     "forceDlc" to state.forceDlc,
+                    "useLegacyDRM" to state.useLegacyDRM,
+                    "sharpnessEffect" to state.sharpnessEffect,
+                    "sharpnessLevel" to state.sharpnessLevel,
+                    "sharpnessDenoise" to state.sharpnessDenoise,
                 )
             },
             restore = { savedMap ->
@@ -175,6 +183,10 @@ data class ContainerData(
                     emulateKeyboardMouse = (savedMap["emulateKeyboardMouse"] as? Boolean) ?: false,
                     controllerEmulationBindings = (savedMap["controllerEmulationBindings"] as? String) ?: "",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,
+                    useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
+                    sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
+                    sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
+                    sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                 )
             },
         )

@@ -6,8 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
@@ -42,7 +44,7 @@ fun ConnectingServersScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(modifier = Modifier.padding(vertical = 16.dp), onClick = onContinueOffline) {
-                Text("Continue Offline")
+                Text(stringResource(R.string.continue_offline))
             }
         }
     }

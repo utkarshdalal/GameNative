@@ -95,6 +95,9 @@ import app.gamenative.utils.SteamUtils
 import com.winlator.container.ContainerData
 import com.winlator.xenvironment.ImageFsInstaller
 import com.winlator.fexcore.FEXCoreManager
+import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
+import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
+import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -176,689 +179,32 @@ fun AppScreen(
     onClickPlay: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    val gameId = libraryItem.gameId
-    val appId = libraryItem.appId
-
-    val appInfo by remember(appId) {
-        mutableStateOf(SteamService.getAppInfoOf(gameId)!!)
-    }
-
-    var downloadInfo by remember(appId) {
-        mutableStateOf(SteamService.getAppDownloadInfo(gameId))
-    }
-    var downloadProgress by remember(appId) {
-        mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f)
-    }
-    var isInstalled by remember(appId) {
-        mutableStateOf(SteamService.isAppInstalled(gameId))
-    }
-
-    val isValidToDownload by remember(appId) {
-        mutableStateOf(appInfo.branches.isNotEmpty() && appInfo.depots.isNotEmpty())
-    }
-
-    val isDownloading: () -> Boolean = { downloadInfo != null && downloadProgress < 1f }
-
-    var loadingDialogVisible by rememberSaveable { mutableStateOf(false) }
-    var loadingProgress by rememberSaveable { mutableFloatStateOf(0f) }
-
-    var msgDialogState by rememberSaveable(stateSaver = MessageDialogState.Saver) {
-        mutableStateOf(MessageDialogState(false))
-    }
-
-    var showConfigDialog by rememberSaveable { mutableStateOf(false) }
-
-    var containerData by rememberSaveable(stateSaver = ContainerData.Saver) {
-        mutableStateOf(ContainerData())
-    }
-
-    val showEditConfigDialog: () -> Unit = {
-        val container = ContainerUtils.getOrCreateContainer(context, appId)
-        containerData = ContainerUtils.toContainerData(container)
-        // Seed FEXCore UI fields from actual per-container config file so values show up when editing
-        try {
-            val fex = FEXCoreManager.readFEXCoreSettings(context, container)
-            containerData = containerData.copy(
-                fexcoreTSOMode = fex[0],
-                fexcoreX87Mode = fex[1],
-                fexcoreMultiBlock = fex[2],
-            )
-        } catch (_: Throwable) { }
-        showConfigDialog = true
-    }
-
-    DisposableEffect(downloadInfo) {
-        val onDownloadProgress: (Float) -> Unit = {
-            if (it >= 1f) {
-                isInstalled = SteamService.isAppInstalled(gameId)
-                downloadInfo = null
-                isInstalled = true
-                MarkerUtils.addMarker(getAppDirPath(gameId), Marker.DOWNLOAD_COMPLETE_MARKER)
-            }
-            downloadProgress = it
-        }
-
-        downloadInfo?.addProgressListener(onDownloadProgress)
-
-        onDispose {
-            downloadInfo?.removeProgressListener(onDownloadProgress)
+    // Get the appropriate screen model based on game source
+    val screenModel = remember(libraryItem.gameSource) {
+        when (libraryItem.gameSource) {
+            app.gamenative.data.GameSource.STEAM -> SteamAppScreen()
+            app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
         }
     }
 
-    LaunchedEffect(appId) {
-        Timber.d("Selected app $appId")
-    }
-
-    val oldGamesDirectory by remember {
-        val path = Paths.get(context.dataDir.path, "Steam")
-        mutableStateOf(path)
-    }
-    var showMoveDialog by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }
-    var current by remember { mutableStateOf("") }
-    var total by remember { mutableIntStateOf(0) }
-    var moved by remember { mutableIntStateOf(0) }
-
-    val permissionMovingExternalLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permission ->
-            scope.launch {
-                showMoveDialog = true
-                StorageUtils.moveGamesFromOldPath(
-                    oldGamesDirectory.pathString,
-                    Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam").pathString,
-                    onProgressUpdate = { currentFile, fileProgress, movedFiles, totalFiles ->
-                        current = currentFile
-                        progress = fileProgress
-                        moved = movedFiles
-                        total = totalFiles
-                    },
-                    onComplete = {
-                        showMoveDialog = false
-                    },
-                )
-            }
-        },
+    // Render the content using the model
+    screenModel.Content(
+        libraryItem = libraryItem,
+        onClickPlay = onClickPlay,
+        onBack = onBack,
     )
-
-    val permissionMovingInternalLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permission ->
-            scope.launch {
-                showMoveDialog = true
-                StorageUtils.moveGamesFromOldPath(
-                    Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam").pathString,
-                    oldGamesDirectory.pathString,
-                    onProgressUpdate = { currentFile, fileProgress, movedFiles, totalFiles ->
-                        current = currentFile
-                        progress = fileProgress
-                        moved = movedFiles
-                        total = totalFiles
-                    },
-                    onComplete = {
-                        showMoveDialog = false
-                    },
-                )
-            }
-        },
-    )
-
-    if (showMoveDialog) {
-        GameMigrationDialog(
-            progress = progress,
-            currentFile = current,
-            movedFiles = moved,
-            totalFiles = total,
-        )
-    }
-
-
-
-    val windowWidth = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
-
-    /** Storage Permission **/
-    var hasStoragePermission by remember(appId) {
-        val result = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        ) == PackageManager.PERMISSION_GRANTED
-
-        mutableStateOf(result)
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions ->
-            val writePermissionGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
-            val readPermissionGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
-
-            if (writePermissionGranted && readPermissionGranted) {
-                hasStoragePermission = true
-
-                val depots = SteamService.getDownloadableDepots(gameId)
-                Timber.i("There are ${depots.size} depots belonging to $appId")
-                // How much free space is on disk
-                val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
-                val availableSpace = StorageUtils.formatBinarySize(availableBytes)
-                // TODO: un-hardcode "public" branch
-                val downloadSize = StorageUtils.formatBinarySize(
-                    depots.values.sumOf {
-                        it.manifests["public"]?.download ?: 0
-                    },
-                )
-                val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0 }
-                val installSize = StorageUtils.formatBinarySize(installBytes)
-                if (availableBytes < installBytes) {
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.NOT_ENOUGH_SPACE,
-                        title = context.getString(R.string.not_enough_space),
-                        message = "The app being installed needs $installSize of space but " +
-                                "there is only $availableSpace left on this device",
-                        confirmBtnText = context.getString(R.string.acknowledge),
-                    )
-                } else {
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.INSTALL_APP,
-                        title = context.getString(R.string.download_prompt_title),
-                        message = "The app being installed has the following space requirements. Would you like to proceed?" +
-                                "\n\n\tDownload Size: $downloadSize" +
-                                "\n\tSize on Disk: $installSize" +
-                                "\n\tAvailable Space: $availableSpace",
-                        confirmBtnText = context.getString(R.string.proceed),
-                        dismissBtnText = context.getString(R.string.cancel),
-                    )
-                }
-            } else {
-                // Snack bar this?
-                Toast.makeText(context, "Storage permission required", Toast.LENGTH_SHORT).show()
-            }
-        },
-    )
-
-
-    /** Export for Frontend (CreateDocument) **/
-    val exportFrontendLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
-        onResult = { uri ->
-            if (uri != null) {
-                try {
-                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                        val content = appInfo.id.toString()
-                        outputStream.write(content.toByteArray(Charsets.UTF_8))
-                        outputStream.flush()
-                    }
-                    Toast.makeText(context, "Exported", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            } else {
-                Toast.makeText(context, "Export cancelled", Toast.LENGTH_SHORT).show()
-            }
-        },
-    )
-
-
-    val onDismissRequest: (() -> Unit)?
-    val onDismissClick: (() -> Unit)?
-    val onConfirmClick: (() -> Unit)?
-    when (msgDialogState.type) {
-        DialogType.CANCEL_APP_DOWNLOAD -> {
-            onConfirmClick = {
-                PostHog.capture(event = "game_install_cancelled",
-                    properties = mapOf(
-                        "game_name" to appInfo.name
-                    ))
-                downloadInfo?.cancel()
-                SteamService.deleteApp(gameId)
-                downloadInfo = null
-                downloadProgress = 0f
-                isInstalled = SteamService.isAppInstalled(gameId)
-                msgDialogState = MessageDialogState(false)
-            }
-            onDismissRequest = { msgDialogState = MessageDialogState(false) }
-            onDismissClick = { msgDialogState = MessageDialogState(false) }
-        }
-
-        DialogType.NOT_ENOUGH_SPACE -> {
-            onDismissRequest = { msgDialogState = MessageDialogState(false) }
-            onConfirmClick = { msgDialogState = MessageDialogState(false) }
-            onDismissClick = null
-        }
-
-        DialogType.INSTALL_APP -> {
-            onDismissRequest = { msgDialogState = MessageDialogState(false) }
-            onConfirmClick = {
-                PostHog.capture(event = "game_install_started",
-                    properties = mapOf(
-                        "game_name" to appInfo.name
-                    ))
-                CoroutineScope(Dispatchers.IO).launch {
-                    downloadInfo = SteamService.downloadApp(gameId)
-                    downloadProgress = 0f
-                    msgDialogState = MessageDialogState(false)
-                }
-            }
-            onDismissClick = { msgDialogState = MessageDialogState(false) }
-        }
-
-        DialogType.DELETE_APP -> {
-            onConfirmClick = {
-                // Delete the Steam app data
-                SteamService.deleteApp(gameId)
-                // Also delete the associated container so it will be recreated on next launch
-                ContainerUtils.deleteContainer(context, appId)
-                msgDialogState = MessageDialogState(false)
-
-                isInstalled = SteamService.isAppInstalled(gameId)
-            }
-            onDismissRequest = { msgDialogState = MessageDialogState(false) }
-            onDismissClick = { msgDialogState = MessageDialogState(false) }
-        }
-
-        DialogType.INSTALL_IMAGEFS -> {
-            onDismissRequest = { msgDialogState = MessageDialogState(false) }
-            onDismissClick = { msgDialogState = MessageDialogState(false) }
-            onConfirmClick = {
-                loadingDialogVisible = true
-                msgDialogState = MessageDialogState(false)
-                CoroutineScope(Dispatchers.IO).launch {
-                    if (!SteamService.isImageFsInstallable(context, "")) {
-                        SteamService.downloadImageFs(
-                            onDownloadProgress = { loadingProgress = it },
-                            this,
-                            "",
-                            context
-                        ).await()
-                    }
-                    if (!SteamService.isImageFsInstalled(context)) {
-                        SplitCompat.install(context)
-                        ImageFsInstaller.installIfNeededFuture(context, context.assets, null) {
-                            // Log.d("XServerScreen", "$progress")
-                            loadingProgress = it / 100f
-                        }.get()
-                    }
-                    loadingDialogVisible = false
-                    showEditConfigDialog()
-                }
-            }
-        }
-
-        else -> {
-            onDismissRequest = null
-            onDismissClick = null
-            onConfirmClick = null
-        }
-    }
-
-    MessageDialog(
-        visible = msgDialogState.visible,
-        onDismissRequest = onDismissRequest,
-        onConfirmClick = onConfirmClick,
-        confirmBtnText = msgDialogState.confirmBtnText,
-        onDismissClick = onDismissClick,
-        dismissBtnText = msgDialogState.dismissBtnText,
-        icon = msgDialogState.type.icon,
-        title = msgDialogState.title,
-        message = msgDialogState.message,
-    )
-
-    ContainerConfigDialog(
-        visible = showConfigDialog,
-        title = "${appInfo.name} Config",
-        initialConfig = containerData,
-        onDismissRequest = { showConfigDialog = false },
-        onSave = {
-            showConfigDialog = false
-            ContainerUtils.applyToContainer(context, appId, it)
-        },
-    )
-
-    LoadingDialog(
-        visible = loadingDialogVisible,
-        progress = loadingProgress,
-    )
-
-    // State and UI for Create shortcut dialog
-    var showCreateShortcutDialog by remember { mutableStateOf(false) }
-    var shortcutLabel by rememberSaveable(appId) { mutableStateOf(appInfo.name) }
-    if (showCreateShortcutDialog) {
-        AlertDialog(
-            onDismissRequest = { showCreateShortcutDialog = false },
-            title = { Text("Create shortcut") },
-            text = {
-                Column {
-                    Text(text = "Label")
-                    TextField(
-                        value = shortcutLabel,
-                        onValueChange = { shortcutLabel = it },
-                        singleLine = true
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "Icon")
-                        Spacer(Modifier.width(12.dp))
-                        CoilImage(
-                            imageModel = { appInfo.iconUrl },
-                            imageOptions = ImageOptions(contentDescription = "Game icon"),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    scope.launch {
-                        try {
-                            createPinnedShortcut(context.applicationContext, gameId, shortcutLabel, appInfo.iconUrl)
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
-                            }
-                        } catch (t: Throwable) {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Failed to create shortcut: ${t.message}", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                        showCreateShortcutDialog = false
-                    }
-                }) { Text("Create") }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showCreateShortcutDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    Scaffold {
-        AppScreenContent(
-            modifier = Modifier.padding(it),
-            appInfo = appInfo,
-            isInstalled = isInstalled,
-            isValidToDownload = isValidToDownload,
-            isDownloading = isDownloading(),
-            downloadProgress = downloadProgress,
-            onDownloadInstallClick = {
-                if (isDownloading()) {
-                    // Prompt to cancel ongoing download
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.CANCEL_APP_DOWNLOAD,
-                        title = context.getString(R.string.cancel_download_prompt_title),
-                        message = "Are you sure you want to cancel the download of the app?",
-                        confirmBtnText = context.getString(R.string.yes),
-                        dismissBtnText = context.getString(R.string.no),
-                    )
-                } else if (SteamService.hasPartialDownload(gameId)) {
-                    // Resume incomplete download
-                    CoroutineScope(Dispatchers.IO).launch {
-                        downloadInfo = SteamService.downloadApp(gameId)
-                    }
-                } else if (!isInstalled) {
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.READ_EXTERNAL_STORAGE,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                            ),
-                        )
-                } else {
-                    // Already installed: launch app
-                    PostHog.capture(event = "game_launched",
-                        properties = mapOf(
-                            "game_name" to appInfo.name
-                        ))
-                    onClickPlay(false)
-                }
-            },
-            onPauseResumeClick = {
-                if (isDownloading()) {
-                    downloadInfo?.cancel()
-                    downloadInfo = null
-                } else {
-                    downloadInfo = SteamService.downloadApp(gameId)
-                }
-            },
-            onDeleteDownloadClick = {
-                msgDialogState = MessageDialogState(
-                    visible = true,
-                    type = DialogType.CANCEL_APP_DOWNLOAD,
-                    title = context.getString(R.string.cancel_download_prompt_title),
-                    message = "Delete all downloaded data for this game?",
-                    confirmBtnText = context.getString(R.string.yes),
-                    dismissBtnText = context.getString(R.string.no)
-                )
-            },
-            onUpdateClick = { CoroutineScope(Dispatchers.IO).launch {
-                downloadInfo = SteamService.downloadApp(gameId)
-            }},
-            onBack = onBack,
-            optionsMenu = arrayOf(
-                AppMenuOption(
-                    optionType = AppOptionMenuType.EditContainer,
-                    onClick = {
-                        if (!SteamService.isImageFsInstalled(context)) {
-                            if (!SteamService.isImageFsInstallable(context, "")) {
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Download & Install ImageFS",
-                                    message = "The Ubuntu image needs to be downloaded and installed before " +
-                                        "being able to edit the configuration. This operation might take " +
-                                        "a few minutes. Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
-                                )
-                            } else {
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.INSTALL_IMAGEFS,
-                                    title = "Install ImageFS",
-                                    message = "The Ubuntu image needs to be installed before being able to edit " +
-                                        "the configuration. This operation might take a few minutes. " +
-                                        "Would you like to continue?",
-                                    confirmBtnText = "Proceed",
-                                    dismissBtnText = "Cancel",
-                                )
-                            }
-                        } else {
-                            showEditConfigDialog()
-                        }
-                    },
-                ),
-                *(
-                    if (isInstalled) {
-                        arrayOf(
-                            AppMenuOption(
-                                AppOptionMenuType.RunContainer,
-                                onClick = {
-                                    PostHog.capture(event = "container_opened",
-                                        properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        )
-                                    )
-                                    onClickPlay(true)
-                                },
-                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.ResetToDefaults,
-                                onClick = {
-                                    // Reset container configuration to the app's current default settings,
-                                    // but keep the existing drives mapping so the game path remains mounted.
-                                    val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                    val defaults = ContainerUtils.getDefaultContainerData()
-                                    val adjusted = defaults.copy(drives = container.drives)
-                                    ContainerUtils.applyToContainer(context, container, adjusted)
-                                },
-                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.ResetDrm,
-                                onClick = {
-                                    val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
-                                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                                    container.isNeedsUnpacking = true
-                                    container.saveData()
-                                },
-                            ),
-                            AppMenuOption(
-                                optionType = AppOptionMenuType.CreateShortcut,
-                                onClick = { showCreateShortcutDialog = true }
-                            ),
-                            AppMenuOption(
-                                optionType = AppOptionMenuType.ExportFrontend,
-                                onClick = {
-                                    val suggested = "${appInfo.name}.steam"
-                                    exportFrontendLauncher.launch(suggested)
-                                }
-                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.VerifyFiles,
-                                onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                        downloadInfo = SteamService.downloadApp(gameId)
-                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
-                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                                        container.isNeedsUnpacking = true
-                                        container.saveData()
-                                    }
-                                },
-                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.Update,
-                                onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                        downloadInfo = SteamService.downloadApp(gameId)
-                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
-                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                                        container.isNeedsUnpacking = true
-                                        container.saveData()
-                                    }
-                                },
-                            ),
-//                            *(
-//                                    if(File(context.dataDir, "Steam").exists()) {
-//                                        arrayOf(
-//                                            AppMenuOption(
-//                                                AppOptionMenuType.MoveToExternalStorage,
-//                                                onClick = {
-//                                                    permissionMovingExternalLauncher.launch(
-//                                                        arrayOf(
-//                                                            Manifest.permission.READ_EXTERNAL_STORAGE,
-//                                                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-//                                                        ),
-//                                                    )
-//                                                },
-//                                            ),
-//                                        )
-//                                    } else {
-//                                        arrayOf(
-//                                            AppMenuOption(
-//                                                AppOptionMenuType.MoveToInternalStorage,
-//                                                onClick = {
-//                                                    permissionMovingInternalLauncher.launch(
-//                                                        arrayOf(
-//                                                            Manifest.permission.READ_EXTERNAL_STORAGE,
-//                                                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-//                                                        ),
-//                                                    )
-//                                                },
-//                                            ),
-//                                        )
-//                                    }
-//                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.Uninstall,
-                                onClick = {
-                                    // TODO: show loading screen of delete progress
-                                    msgDialogState = MessageDialogState(
-                                        visible = true,
-                                        type = DialogType.DELETE_APP,
-                                        title = context.getString(R.string.delete_prompt_title),
-                                        message = "Are you sure you want to delete this app?",
-                                        confirmBtnText = context.getString(R.string.delete_app),
-                                        dismissBtnText = context.getString(R.string.cancel),
-                                    )
-                                },
-                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.ForceCloudSync,
-                                onClick = {
-                                    PostHog.capture(event = "cloud_sync_forced",
-                                        properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        ))
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        // Activate container before sync (required for proper path resolution)
-                                        val containerManager = ContainerManager(context)
-                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                        containerManager.activateContainer(container)
-
-                                        val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                                        }
-                                        val syncResult = SteamService.forceSyncUserFiles(
-                                            appId = gameId,
-                                            prefixToPath = prefixToPath
-                                        ).await()
-
-                                        // Handle result on main thread
-                                        scope.launch(Dispatchers.Main) {
-                                            when (syncResult.syncResult) {
-                                                SyncResult.Success -> {
-                                                    Toast.makeText(context, "Cloud sync completed successfully", Toast.LENGTH_SHORT).show()
-                                                }
-                                                SyncResult.UpToDate -> {
-                                                    Toast.makeText(context, "Save files are already up to date", Toast.LENGTH_SHORT).show()
-                                                }
-                                                else -> {
-                                                    Toast.makeText(context, "Cloud sync failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                            ),
-                        )
-                    } else {
-                        emptyArray()
-                    }
-                ),
-                AppMenuOption(
-                    optionType = AppOptionMenuType.SubmitFeedback,
-                    onClick = {
-                        PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(appId))
-                    },
-                ),
-                (
-                    AppMenuOption(
-                        optionType = AppOptionMenuType.GetSupport,
-                        onClick = {
-                            val browserIntent = Intent(
-                                Intent.ACTION_VIEW,
-                                ("https://discord.gg/2hKv4VfZfE").toUri(),
-                            )
-                            context.startActivity(browserIntent)
-                        },
-                    )
-                )
-            ),
-        )
-    }
 }
 
 @Composable
-private fun AppScreenContent(
+internal fun AppScreenContent(
     modifier: Modifier = Modifier,
-    appInfo: SteamApp,
+    displayInfo: GameDisplayInfo,
     isInstalled: Boolean,
     isValidToDownload: Boolean,
     isDownloading: Boolean,
     downloadProgress: Float,
+    hasPartialDownload: Boolean,
+    isUpdatePending: Boolean,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
     onDeleteDownloadClick: () -> Unit,
@@ -871,63 +217,17 @@ private fun AppScreenContent(
     val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
     val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    val wifiConnected = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+    val wifiConnected = capabilities?.run {
+        hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+        hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+    } == true
     val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
 
-    // Compute last played timestamp from local install folder
-    val lastPlayedText by remember(appInfo.id, isInstalled) {
-        mutableStateOf(
-            if (isInstalled) {
-                val path = SteamService.getAppDirPath(appInfo.id)
-                val file = java.io.File(path)
-                if (file.exists()) {
-                    SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
-                } else {
-                    "Never"
-                }
-            } else {
-                "Never"
-            }
-        )
-    }
-    // Compute real playtime by fetching owned games
-    var playtimeText by remember { mutableStateOf("0 hrs") }
-    LaunchedEffect(appInfo.id) {
-        val steamID = SteamService.userSteamId?.accountID?.toLong()
-        if (steamID != null) {
-            val games = SteamService.getOwnedGames(steamID)
-            val game = games.firstOrNull { it.appId == appInfo.id }
-            playtimeText = if (game != null) {
-                SteamUtils.formatPlayTime(game.playtimeForever) + " hrs"
-            } else "0 hrs"
-        }
-    }
-
-    LaunchedEffect(appInfo.id) {
+    LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
-    }
-
-    var appSizeOnDisk by remember { mutableStateOf("") }
-
-    var appSizeDisplayed by remember { mutableStateOf(true) }
-    // Fatass disk size call - needs to stop if we do something important like launch the app
-    LaunchedEffect(appSizeDisplayed) {
-        if (isInstalled) {
-            appSizeOnDisk = " ..."
-
-            DownloadService.getSizeOnDiskDisplay(appInfo.id) {
-                appSizeOnDisk = "$it"
-            }
-        }
-    }
-
-    // Check if an update is pending
-    var isUpdatePending by remember(appInfo.id) { mutableStateOf(false) }
-    LaunchedEffect(appInfo.id) {
-        isUpdatePending = SteamService.isUpdatePending(appInfo.id)
     }
 
     Column(
@@ -943,9 +243,10 @@ private fun AppScreenContent(
                 .height(250.dp)
         ) {
             // Hero background image
+            if (displayInfo.heroImageUrl != null) {
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
-                imageModel = { appInfo.getHeroUrl() },
+                    imageModel = { displayInfo.heroImageUrl },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },
                 failure = {
@@ -962,6 +263,13 @@ private fun AppScreenContent(
                 },
                 previewPlaceholder = painterResource(R.drawable.testhero),
             )
+            } else {
+                // Fallback gradient background when no hero image
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.primary
+                ) { }
+            }
 
             // Gradient overlay
             Box(
@@ -1034,7 +342,7 @@ private fun AppScreenContent(
                     .padding(20.dp)
             ) {
                 Text(
-                    text = appInfo.name,
+                    text = displayInfo.name,
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Bold,
                         shadow = Shadow(
@@ -1047,8 +355,12 @@ private fun AppScreenContent(
                 )
 
                 Text(
-                    text = "${appInfo.developer} • ${remember(appInfo.releaseDate) {
-                        SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(appInfo.releaseDate * 1000))
+                    text = "${displayInfo.developer} • ${remember(displayInfo.releaseDate) {
+                        if (displayInfo.releaseDate > 0) {
+                            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
+                        } else {
+                            ""
+                        }
                     }}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.9f)
@@ -1068,12 +380,11 @@ private fun AppScreenContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Pause/Resume and Delete when downloading or paused
-                // Determine if there's a partial download (in-session or from ungraceful close)
-                val isPartiallyDownloaded = (downloadProgress > 0f && downloadProgress < 1f) || SteamService.hasPartialDownload(appInfo.id)
+                // Use hasPartialDownload from BaseAppScreen (implemented per game source)
                 // Disable resume when Wi-Fi only is enabled and there's no Wi-Fi
-                val isResume = !isDownloading && isPartiallyDownloaded
+                val isResume = !isDownloading && hasPartialDownload
                 val pauseResumeEnabled = if (isResume) wifiAllowed else true
-                if (isDownloading || isPartiallyDownloaded) {
+                if (isDownloading || hasPartialDownload) {
                     // Pause or Resume
                     Button(
                         enabled = pauseResumeEnabled,
@@ -1104,13 +415,18 @@ private fun AppScreenContent(
                     // Disable install when Wi-Fi only is enabled and there's no Wi-Fi
                     val isInstall = !isInstalled
                     val installEnabled = if (isInstall) wifiAllowed && hasInternet else true
+                    // For installed games, button should always be enabled (regardless of isValidToDownload)
+                    // For games that need installation, check isValidToDownload
+                    val buttonEnabled = if (isInstalled) {
+                        installEnabled // Installed games can always be played
+                    } else {
+                        installEnabled && isValidToDownload // Only check download validity when not installed
+                    }
                     // Install or Play button
                     Button(
-                        enabled = installEnabled && isValidToDownload,
+                        enabled = buttonEnabled,
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            // Stop heavy operations first
-                            appSizeDisplayed = false
                             onDownloadInstallClick()
                         },
                         shape = RoundedCornerShape(16.dp),
@@ -1120,7 +436,7 @@ private fun AppScreenContent(
                         val text = when {
                             isInstalled -> stringResource(R.string.run_app)
                             !hasInternet -> "Need internet to install"
-                            !wifiConnected && PrefManager.downloadOnWifiOnly -> "Install over WiFi only enabled"
+                            !wifiConnected && PrefManager.downloadOnWifiOnly -> "Install over Wi-Fi/LAN only enabled"
                             else -> stringResource(R.string.install_app)
                         }
                         Text(
@@ -1128,11 +444,13 @@ private fun AppScreenContent(
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
-                    // Uninstall if already installed
+                    // Uninstall/Delete button if already installed
+                    // This is shared functionality - all game types show delete button when installed
+                    // The action is handled by onDeleteDownloadClick which is implemented per game source
                     if (isInstalled) {
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
-                            onClick = { optionsMenu.find { it.optionType == AppOptionMenuType.Uninstall }?.onClick?.invoke() },
+                            onClick = { onDeleteDownloadClick() },
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
@@ -1274,7 +592,7 @@ private fun AppScreenContent(
                             ),
                             contentPadding = PaddingValues(12.dp)
                         ) {
-                            Text("Update Now", color = MaterialTheme.colorScheme.onTertiary)
+                            Text(stringResource(R.string.update_now), color = MaterialTheme.colorScheme.onTertiary)
                         }
                     }
                 }
@@ -1368,23 +686,15 @@ private fun AppScreenContent(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    // Show skeleton while calculating disk size, otherwise show actual text
-                                    if (isInstalled && (appSizeOnDisk.isEmpty() || appSizeOnDisk == " ...")) {
-                                        SkeletonText(lines = 1, lineHeight = 20)
-                                    } else {
-                                        if (!isInstalled){
-                                            Text(
-                                                text = DownloadService.getSizeFromStoreDisplay(appInfo.id),
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                            )
-                                        }
-                                        else {
-                                            Text(
-                                                text = appSizeOnDisk,
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                            )
-                                        }
-                                    }
+                                    // Show size from displayInfo
+                                    Text(
+                                        text = when {
+                                            isInstalled && displayInfo.sizeOnDisk != null -> displayInfo.sizeOnDisk
+                                            !isInstalled && displayInfo.sizeFromStore != null -> displayInfo.sizeFromStore
+                                            else -> "Unknown"
+                                        },
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                    )
                                 }
                             }
 
@@ -1405,7 +715,7 @@ private fun AppScreenContent(
                                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
                                         ) {
                                             Text(
-                                                text = getAppDirPath(appInfo.id),
+                                                text = displayInfo.installLocation ?: "Unknown",
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1425,7 +735,7 @@ private fun AppScreenContent(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = appInfo.developer,
+                                        text = displayInfo.developer,
                                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                                     )
                                 }
@@ -1441,9 +751,13 @@ private fun AppScreenContent(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = remember(appInfo.releaseDate) {
-                                            val date = Date(appInfo.releaseDate * 1000)
+                                        text = remember(displayInfo.releaseDate) {
+                                            if (displayInfo.releaseDate > 0) {
+                                                val date = Date(displayInfo.releaseDate * 1000)
                                             SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
+                                            } else {
+                                                "Unknown"
+                                            }
                                         },
                                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                                     )
@@ -1469,7 +783,7 @@ internal fun GameMigrationDialog(
             // We don't allow dismissal during move.
         },
         icon = { Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null) },
-        title = { Text(text = "Moving Files") },
+        title = { Text(text = stringResource(R.string.moving_files)) },
         text = {
             Column(
                 modifier = Modifier
@@ -1526,14 +840,31 @@ private fun Preview_AppScreen() {
     val intent = Intent(context, SteamService::class.java)
     context.startForegroundService(intent)
     var isDownloading by remember { mutableStateOf(false) }
+    val fakeApp = fakeAppInfo(1)
+    val displayInfo = GameDisplayInfo(
+        name = fakeApp.name,
+        developer = fakeApp.developer,
+        releaseDate = fakeApp.releaseDate,
+        heroImageUrl = fakeApp.getHeroUrl(),
+        iconUrl = fakeApp.iconUrl,
+        gameId = fakeApp.id,
+        appId = "STEAM_${fakeApp.id}",
+        installLocation = null,
+        sizeOnDisk = null,
+        sizeFromStore = null,
+        lastPlayedText = null,
+        playtimeText = null,
+    )
     PluviaTheme {
         Surface {
             AppScreenContent(
-                appInfo = fakeAppInfo(1),
+                displayInfo = displayInfo,
                 isInstalled = false,
                 isValidToDownload = true,
                 isDownloading = isDownloading,
                 downloadProgress = .50f,
+                hasPartialDownload = false,
+                isUpdatePending = false,
                 onDownloadInstallClick = { isDownloading = !isDownloading },
                 onPauseResumeClick = { },
                 onDeleteDownloadClick = { },

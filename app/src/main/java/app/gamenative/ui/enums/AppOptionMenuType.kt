@@ -17,5 +17,6 @@ enum class AppOptionMenuType(val text: String) {
     MoveToInternalStorage("Move to internal storage"),
     ForceCloudSync("Force cloud sync"),
     ForceDownloadRemote("Force download remote saves"),
-    ForceUploadLocal("Force upload local saves")
+    ForceUploadLocal("Force upload local saves"),
+    FetchSteamGridDBImages("Fetch game images")
 }

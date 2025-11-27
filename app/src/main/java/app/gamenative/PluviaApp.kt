@@ -3,6 +3,7 @@ package app.gamenative
 import android.os.StrictMode
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
+import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
@@ -102,7 +103,8 @@ class PluviaApp : SplitCompatApplication() {
     }
 
     companion object {
-        internal val events: EventDispatcher = EventDispatcher()
+        @JvmField
+        val events: EventDispatcher = EventDispatcher()
         internal var onDestinationChangedListener: NavChangedListener? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
