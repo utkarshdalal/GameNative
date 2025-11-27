@@ -13,6 +13,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +29,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.LoadingToast
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -46,6 +48,31 @@ import kotlinx.coroutines.withContext
  * This defines the contract that all game source-specific screens must implement.
  */
 abstract class BaseAppScreen {
+    companion object {
+        // Track which appId is currently fetching images
+        private val fetchingImagesAppId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+        val fetchingImagesFlow: kotlinx.coroutines.flow.StateFlow<String?> = fetchingImagesAppId
+        
+        // Track done message for the currently fetching app
+        private val fetchingImagesDoneMessage = kotlinx.coroutines.flow.MutableStateFlow<Pair<String?, String?>?>(null)
+        val fetchingImagesDoneMessageFlow: kotlinx.coroutines.flow.StateFlow<Pair<String?, String?>?> = fetchingImagesDoneMessage
+        
+        fun isFetchingImages(appId: String): Boolean {
+            return fetchingImagesAppId.value == appId
+        }
+        
+        fun setFetchingImages(appId: String?, isFetching: Boolean) {
+            fetchingImagesAppId.value = if (isFetching) appId else null
+            if (!isFetching) {
+                // Clear done message when not fetching
+                fetchingImagesDoneMessage.value = null
+            }
+        }
+        
+        fun setFetchingImagesDone(appId: String?, doneMessage: String?) {
+            fetchingImagesDoneMessage.value = Pair(appId, doneMessage)
+        }
+    }
     /**
      * Get the game display information for rendering the UI.
      * This is called to get all the data needed for the common UI layout.
@@ -290,6 +317,9 @@ abstract class BaseAppScreen {
         return AppMenuOption(
             optionType = AppOptionMenuType.FetchSteamGridDBImages,
             onClick = {
+                // Set loading state
+                setFetchingImages(libraryItem.appId, true)
+
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val gameName = libraryItem.name
@@ -305,18 +335,29 @@ abstract class BaseAppScreen {
                             )
 
                             SteamGridDB.fetchGameImages(gameName, gameFolderPath)
-                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                            
+                            // Call hook for post-fetch processing (e.g., icon extraction)
                             onAfterFetchImages(context, libraryItem, gameFolderPath)
 
+                            // Notify UI that images have been refreshed
+                            app.gamenative.utils.GameImageUtils.notifyImagesRefreshed()
+
+                            // Emit event to notify UI that images have been fetched
+                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+
+                            // Set done message to show checkmark and fade out (don't clear fetching state yet)
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.base_app_images_fetched),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                setFetchingImagesDone(
+                                    libraryItem.appId,
+                                    context.getString(R.string.base_app_images_fetched)
+                                )
                             }
+                            // Note: Don't clear fetching state in finally block for success case
+                            // It will be cleared by LoadingToast's onDismiss after fade animation
                         } else {
                             withContext(Dispatchers.Main) {
+                                // Clear loading state immediately for error case
+                                setFetchingImages(libraryItem.appId, false)
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.base_app_game_folder_not_found),
@@ -326,6 +367,8 @@ abstract class BaseAppScreen {
                         }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
+                            // Clear loading state immediately for error case
+                            setFetchingImages(libraryItem.appId, false)
                             Toast.makeText(
                                 context,
                                 context.getString(
@@ -489,6 +532,26 @@ abstract class BaseAppScreen {
         val context = LocalContext.current
         val displayInfo = getGameDisplayInfo(context, libraryItem)
 
+        // Observe fetching images state
+        val fetchingAppId by BaseAppScreen.fetchingImagesFlow.collectAsState()
+        val fetchingDoneMessage by BaseAppScreen.fetchingImagesDoneMessageFlow.collectAsState()
+        val isFetchingImages = fetchingAppId == libraryItem.appId
+        val doneMessage = if (fetchingDoneMessage?.first == libraryItem.appId) {
+            fetchingDoneMessage?.second
+        } else null
+
+        // Show toast-style loading indicator while fetching images
+        LoadingToast(
+            visible = isFetchingImages || doneMessage != null,
+            message = context.getString(R.string.base_app_images_fetching),
+            doneMessage = doneMessage,
+            onDismiss = {
+                // Clear both fetching state and done message
+                BaseAppScreen.setFetchingImages(libraryItem.appId, false)
+                BaseAppScreen.setFetchingImagesDone(libraryItem.appId, null)
+            }
+        )
+
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
             mutableStateOf(isInstalled(context, libraryItem))
@@ -648,6 +711,13 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
+                mediaHeroUrl = displayInfo.heroImageUrl,
+                mediaLogoUrl = displayInfo.logoUrl,
+                mediaCapsuleUrl = displayInfo.capsuleUrl,
+                mediaHeaderUrl = displayInfo.headerUrl,
+                mediaIconUrl = displayInfo.iconUrl,
+                gameId = displayInfo.gameId,
+                appId = libraryItem.appId,
             )
         }
 

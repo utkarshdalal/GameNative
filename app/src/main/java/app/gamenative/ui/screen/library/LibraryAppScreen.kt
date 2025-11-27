@@ -242,11 +242,12 @@ internal fun AppScreenContent(
                 .fillMaxWidth()
                 .height(250.dp)
         ) {
-            // Hero background image
-            if (displayInfo.heroImageUrl != null) {
+            // Header background image (use headerUrl, fallback to heroImageUrl if header not available)
+            val headerImageUrl = displayInfo.headerUrl ?: displayInfo.heroImageUrl
+            if (headerImageUrl != null) {
             CoilImage(
                 modifier = Modifier.fillMaxSize(),
-                    imageModel = { displayInfo.heroImageUrl },
+                    imageModel = { headerImageUrl },
                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                 loading = { LoadingScreen() },
                 failure = {
@@ -264,7 +265,7 @@ internal fun AppScreenContent(
                 previewPlaceholder = painterResource(R.drawable.testhero),
             )
             } else {
-                // Fallback gradient background when no hero image
+                // Fallback gradient background when no header image
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.primary

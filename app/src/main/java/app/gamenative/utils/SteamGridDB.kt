@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.net.Uri
 import app.gamenative.PrefManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -138,65 +139,16 @@ object SteamGridDB {
     }
 
     /**
-     * Download and save an image from a URL
-     * @return Pair of (file path, isHorizontal) or null if failed
-     */
-    private suspend fun downloadAndSaveImage(
-        imageUrl: String,
-        gameFolder: File,
-        fileName: String
-    ): Pair<String, Boolean?>? = withContext(Dispatchers.IO) {
-        try {
-            // Download the image
-            val imageRequest = Request.Builder()
-                .url(imageUrl)
-                .build()
-
-            val imageResponse = httpClient.newCall(imageRequest).execute()
-
-            if (!imageResponse.isSuccessful) {
-                Timber.tag("SteamGridDB").w("Failed to download image from $imageUrl - HTTP ${imageResponse.code}")
-                return@withContext null
-            }
-
-            val imageBytes = imageResponse.body?.bytes() ?: return@withContext null
-
-            // Determine orientation
-            val isHorizontal = isImageHorizontal(imageBytes)
-
-            // Determine file extension from URL
-            val extension = when {
-                imageUrl.contains(".png", ignoreCase = true) -> ".png"
-                imageUrl.contains(".jpg", ignoreCase = true) -> ".jpg"
-                imageUrl.contains(".jpeg", ignoreCase = true) -> ".jpg"
-                imageUrl.contains(".webp", ignoreCase = true) -> ".webp"
-                else -> ".png" // Default to PNG
-            }
-
-            val outputFile = File(gameFolder, "$fileName$extension")
-
-            // Save to file
-            FileOutputStream(outputFile).use { it.write(imageBytes) }
-
-            Timber.tag("SteamGridDB").i("Saved image to ${outputFile.absolutePath} (horizontal: $isHorizontal)")
-            return@withContext Pair(outputFile.absolutePath, isHorizontal)
-        } catch (e: Exception) {
-            Timber.tag("SteamGridDB").e(e, "Error downloading image from $imageUrl")
-            return@withContext null
-        }
-    }
-
-    /**
-     * Fetch grids for a game, find horizontal and vertical images, and save them separately.
+     * Fetch grids for a game, find horizontal, vertical, and header-sized images, and save them separately.
      * @param gameId The SteamGridDB game ID
      * @param gameFolder The folder where images should be saved
-     * @return Pair of (heroPath, capsulePath) where hero is horizontal grid and capsule is vertical grid
+     * @return Triple of (heroPath, capsulePath, headerPath) where hero is horizontal grid, capsule is vertical grid, and header is 460x215 image
      */
     private suspend fun fetchGrids(
         gameId: Int,
         gameFolder: File
-    ): Pair<String?, String?> = withContext(Dispatchers.IO) {
-        val apiKey = getApiKey() ?: return@withContext Pair(null, null)
+    ): Triple<String?, String?, String?> = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey() ?: return@withContext Triple(null, null, null)
 
         try {
             val url = "$API_BASE_URL$GRIDS_ENDPOINT/$gameId"
@@ -210,32 +162,37 @@ object SteamGridDB {
 
             if (!response.isSuccessful) {
                 Timber.tag("SteamGridDB").w("Failed to fetch grids for game $gameId - HTTP ${response.code}")
-                return@withContext Pair(null, null)
+                return@withContext Triple(null, null, null)
             }
 
-            val body = response.body?.string() ?: return@withContext Pair(null, null)
+            val body = response.body?.string() ?: return@withContext Triple(null, null, null)
             val json = JSONObject(body)
 
             if (!json.optBoolean("success", false)) {
                 Timber.tag("SteamGridDB").w("API returned success=false for grids (game $gameId)")
-                return@withContext Pair(null, null)
+                return@withContext Triple(null, null, null)
             }
 
             val dataArray = json.optJSONArray("data")
             if (dataArray == null || dataArray.length() == 0) {
                 Timber.tag("SteamGridDB").d("No grid images found for game $gameId")
-                return@withContext Pair(null, null)
+                return@withContext Triple(null, null, null)
             }
 
             var heroPath: String? = null
             var capsulePath: String? = null
+            var headerPath: String? = null
 
-            // Loop through all grid images to find horizontal (hero) and vertical (capsule)
+            // Loop through all grid images to find horizontal (hero), vertical (capsule), and header-sized (460x215)
             for (i in 0 until dataArray.length()) {
                 val imageObj = dataArray.getJSONObject(i)
                 val imageUrl = imageObj.optString("url", "")
 
                 if (imageUrl.isEmpty()) continue
+
+                // Check dimensions from JSON (more efficient than downloading first)
+                val width = imageObj.optInt("width", 0)
+                val height = imageObj.optInt("height", 0)
 
                 // Determine file extension from URL
                 val extension = when {
@@ -246,7 +203,10 @@ object SteamGridDB {
                     else -> ".png" // Default to PNG
                 }
 
-                // Download the image to check orientation first
+                // Check if this is a hero-sized image (460x215)
+                val isHeroSize = (width == 460 && height == 215) || (width == 215 && height == 460)
+
+                // Download the image
                 val imageRequest = Request.Builder()
                     .url(imageUrl)
                     .build()
@@ -260,19 +220,32 @@ object SteamGridDB {
 
                 val imageBytes = imageResponse.body?.bytes() ?: continue
 
-                // Determine orientation
-                val isHorizontal = isImageHorizontal(imageBytes)
-
-                // Save directly to the final filename based on orientation
-                if (isHorizontal == true && heroPath == null) {
-                    // This is horizontal - use for hero
+                // Handle grid hero-sized images (460x215) - save as hero
+                if (isHeroSize && heroPath == null) {
                     val heroFile = File(gameFolder, "steamgriddb_grid_hero$extension")
                     try {
                         FileOutputStream(heroFile).use { it.write(imageBytes) }
                         heroPath = heroFile.absolutePath
-                        Timber.tag("SteamGridDB").i("Found horizontal grid for hero: ${heroFile.name}")
+                        Timber.tag("SteamGridDB").i("Found hero-sized image (${width}x${height}): ${heroFile.name}")
+                        continue // Skip orientation check for header images
                     } catch (e: Exception) {
-                        Timber.tag("SteamGridDB").e(e, "Failed to save hero image")
+                        Timber.tag("SteamGridDB").e(e, "Failed to save header image")
+                    }
+                }
+
+                // Determine orientation for non-header images
+                val isHorizontal = isImageHorizontal(imageBytes)
+
+                // Save directly to the final filename based on orientation
+                if (isHorizontal == true && headerPath == null) {
+                    // This is horizontal - use for hero
+                    val headerFile = File(gameFolder, "steamgriddb_header$extension")
+                    try {
+                        FileOutputStream(headerFile).use { it.write(imageBytes) }
+                        headerPath = headerFile.absolutePath
+                        Timber.tag("SteamGridDB").i("Found horizontal image for header: ${headerFile.name}")
+                    } catch (e: Exception) {
+                        Timber.tag("SteamGridDB").e(e, "Failed to save header image")
                     }
                 } else if (isHorizontal == false && capsulePath == null) {
                     // This is vertical - use for capsule
@@ -285,26 +258,29 @@ object SteamGridDB {
                         Timber.tag("SteamGridDB").e(e, "Failed to save capsule image")
                     }
                 }
-                // If we don't need this image, we just skip it (no temp file to delete)
 
-                // If we found both, we can stop
-                if (heroPath != null && capsulePath != null) {
+
+                // If we found all needed images, we can stop
+                if (heroPath != null && capsulePath != null && headerPath != null) {
                     break
                 }
             }
 
-            // Log if we didn't find both images
+            // Log if we didn't find images
             if (heroPath == null) {
-                Timber.tag("SteamGridDB").w("No horizontal grid found for hero (game $gameId)")
+                Timber.tag("SteamGridDB").w("No horizontal grid-sized (460x215) found for hero (game $gameId)")
             }
             if (capsulePath == null) {
                 Timber.tag("SteamGridDB").w("No vertical grid found for capsule (game $gameId)")
             }
+            if (headerPath == null) {
+                Timber.tag("SteamGridDB").d("No header image found in grids (game $gameId)")
+            }
 
-            return@withContext Pair(heroPath, capsulePath)
+            return@withContext Triple(heroPath, capsulePath, headerPath)
         } catch (e: Exception) {
             Timber.tag("SteamGridDB").e(e, "Error fetching grids for game $gameId")
-            return@withContext Pair(null, null)
+            return@withContext Triple(null, null, null)
         }
     }
 
@@ -445,9 +421,8 @@ object SteamGridDB {
             file.isFile && file.name.startsWith("steamgriddb_grid_capsule", ignoreCase = true) &&
             (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
         }?.isNotEmpty() == true
-        val existingHero = gameFolder.listFiles { file ->
-            file.isFile && file.name.startsWith("steamgriddb_hero", ignoreCase = true) &&
-            !file.name.contains("grid", ignoreCase = true) &&
+        val existingHeader = gameFolder.listFiles { file ->
+            file.isFile && file.name.startsWith("steamgriddb_header", ignoreCase = true) &&
             (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
         }?.isNotEmpty() == true
         val existingLogo = gameFolder.listFiles { file ->
@@ -455,7 +430,7 @@ object SteamGridDB {
             (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
         }?.isNotEmpty() == true
 
-        if (existingGridHero && existingGridCapsule && existingHero && existingLogo) {
+        if (existingGridHero && existingGridCapsule && existingHeader && existingLogo) {
             Timber.tag("SteamGridDB").d("All images already exist for '$gameName', skipping fetch")
             val gridHeroFile = gameFolder.listFiles { file ->
                 file.isFile && file.name.startsWith("steamgriddb_grid_hero", ignoreCase = true) &&
@@ -466,8 +441,7 @@ object SteamGridDB {
                 (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
             }?.firstOrNull()
             val heroFile = gameFolder.listFiles { file ->
-                file.isFile && file.name.startsWith("steamgriddb_hero", ignoreCase = true) &&
-                !file.name.contains("grid", ignoreCase = true) &&
+                file.isFile && file.name.startsWith("steamgriddb_header", ignoreCase = true) &&
                 (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
             }?.firstOrNull()
             val logoFile = gameFolder.listFiles { file ->
@@ -475,8 +449,8 @@ object SteamGridDB {
                 (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
             }?.firstOrNull()
             return@withContext ImageFetchResult(
-                gridPath = gridHeroFile?.absolutePath, // Hero path (horizontal grid)
-                heroPath = heroFile?.absolutePath, // Header path (heroes endpoint)
+                heroPath = gridHeroFile?.absolutePath, // Hero path (horizontal grid)
+                headerPath = heroFile?.absolutePath, // Header path
                 logoPath = logoFile?.absolutePath,
                 capsulePath = gridCapsuleFile?.absolutePath, // Capsule path (vertical grid)
                 releaseDate = null // Don't update release date if images already exist
@@ -486,8 +460,8 @@ object SteamGridDB {
         // Search for the game
         val searchResult = searchGame(gameName) ?: return@withContext ImageFetchResult(null, null, null, null, null)
 
-        // Fetch grids (returns hero and capsule paths)
-        val (gridHeroPath, gridCapsulePath) = if (!existingGridHero || !existingGridCapsule) {
+        // Fetch grids (returns hero, capsule, and header paths)
+        val (gridHeroPath, gridCapsulePath, headerPathFromGrids) = if (!existingGridHero || !existingGridCapsule || !existingHeader) {
             fetchGrids(searchResult.gameId, gameFolder)
         } else {
             val gridHeroFile = gameFolder.listFiles { file ->
@@ -498,17 +472,21 @@ object SteamGridDB {
                 file.isFile && file.name.startsWith("steamgriddb_grid_capsule", ignoreCase = true) &&
                 (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
             }?.firstOrNull()
-            Pair(gridHeroFile?.absolutePath, gridCapsuleFile?.absolutePath)
+            val headerFile = gameFolder.listFiles { file ->
+                file.isFile && file.name.startsWith("steamgriddb_header", ignoreCase = true) &&
+                (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
+            }?.firstOrNull()
+            Triple(gridHeroFile?.absolutePath, gridCapsuleFile?.absolutePath, headerFile?.absolutePath)
         }
 
-        // Fetch heroes (for header)
-        val heroPath = if (!existingHero) {
-            fetchAndSaveImage(searchResult.gameId, gameFolder, "hero")
+        // Fetch header - only if not found in grids
+        val headerPath = headerPathFromGrids ?: if (!existingHeader) {
+            fetchAndSaveImage(searchResult.gameId, gameFolder, "header")
         } else {
             gameFolder.listFiles { file ->
-                file.isFile && file.name.startsWith("steamgriddb_hero", ignoreCase = true) &&
-                !file.name.contains("grid", ignoreCase = true) &&
-                (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
+                file.isFile && file.name.startsWith("steamgriddb_header", ignoreCase = true) &&
+                        !file.name.contains("grid", ignoreCase = true) &&
+                        (file.name.endsWith(".png", ignoreCase = true) || file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".webp", ignoreCase = true))
             }?.firstOrNull()?.absolutePath
         }
 
@@ -539,8 +517,8 @@ object SteamGridDB {
         }
 
         return@withContext ImageFetchResult(
-            gridPath = gridHeroPath, // Horizontal grid for hero view
-            heroPath = heroPath, // Heroes endpoint for header view
+            heroPath = gridHeroPath, // Horizontal grid for hero view
+            headerPath = headerPath, // Heroes endpoint for header view
             logoPath = logoPath,
             capsulePath = gridCapsulePath, // Vertical grid for capsule view
             releaseDate = searchResult.releaseDate
@@ -560,11 +538,44 @@ object SteamGridDB {
      * Data class for image fetch results
      */
     data class ImageFetchResult(
-        val gridPath: String?, // Horizontal grid for hero view
-        val heroPath: String?, // Heroes endpoint for header view
+        val heroPath: String?, // Horizontal grid for hero view
+        val headerPath: String?, // Heroes endpoint for header view
         val logoPath: String?,
         val capsulePath: String? = null, // Vertical grid for capsule view
         val releaseDate: Long? = null
     )
+
+    /**
+     * Find a SteamGridDB image file in a game folder by type.
+     * @param folder The game folder to search in
+     * @param imageType The image type to find (e.g., "grid_hero", "grid_capsule", "logo", "hero")
+     * @param excludePattern Optional pattern to exclude from matches (e.g., "grid" to exclude "grid_hero" when searching for "hero")
+     * @return Uri string of the found image file, or null if not found
+     */
+    fun findSteamGridDBImage(folder: File, imageType: String, excludePattern: String? = null): String? {
+        if (!folder.exists() || !folder.isDirectory) return null
+
+        return folder.listFiles()?.firstOrNull { file ->
+            file.isFile &&
+            file.name.startsWith("steamgriddb_$imageType", ignoreCase = true) &&
+            (excludePattern == null || !file.name.contains(excludePattern, ignoreCase = true)) &&
+            (file.name.endsWith(".png", ignoreCase = true) ||
+             file.name.endsWith(".jpg", ignoreCase = true) ||
+             file.name.endsWith(".webp", ignoreCase = true))
+        }?.let { Uri.fromFile(it).toString() }
+    }
+
+    /**
+     * Find a SteamGridDB image by appId (for Custom Games).
+     * @param appId The appId (e.g., "CUSTOM_GAME_123")
+     * @param imageType The image type to find (e.g., "grid_hero", "grid_capsule", "logo", "hero")
+     * @param excludePattern Optional pattern to exclude from matches (e.g., "grid" to exclude "grid_hero" when searching for "hero")
+     * @return Uri string of the found image file, or null if not found
+     */
+    fun findSteamGridDBImageByAppId(appId: String, imageType: String, excludePattern: String? = null): String? {
+        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId) ?: return null
+        val folder = File(gameFolderPath)
+        return findSteamGridDBImage(folder, imageType, excludePattern)
+    }
 }
 

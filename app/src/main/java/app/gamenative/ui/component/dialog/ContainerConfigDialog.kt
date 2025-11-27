@@ -17,9 +17,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
@@ -31,6 +42,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -50,6 +62,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +70,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +86,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
+import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -98,6 +119,7 @@ import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
 import com.winlator.fexcore.FEXCoreManager
 import java.util.Locale
+import app.gamenative.utils.GameImageUtils
 import kotlin.math.roundToInt
 
 /**
@@ -118,6 +140,108 @@ private fun winComponentsItemTitleRes(string: String): Int {
     }
 }
 
+/**
+ * Reusable composable for media management sections (Logo, Icon, Hero, Capsule, Header).
+ * Handles displaying the media, pick/reset actions, and all UI elements.
+ */
+@Composable
+private fun MediaSection(
+    titleRes: Int,
+    descriptionRes: Int,
+    noMediaTitleRes: Int,
+    gameId: Int?,
+    mediaVersion: Int,
+    currentModel: Any?,
+    placeholderRes: Int,
+    imageModifier: Modifier,
+    imageContentScale: ContentScale,
+    hasCustomMedia: (Int) -> Boolean,
+    onPickMedia: (android.content.Context, Int, android.net.Uri) -> Boolean,
+    onResetMedia: (Int) -> Unit,
+) {
+    Text(
+        text = stringResource(titleRes),
+        color = Color.White,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            val hasModel = when (currentModel) {
+                is String -> currentModel.isNotBlank()
+                is android.net.Uri -> true
+                else -> false
+            }
+            if (hasModel) {
+                CoilImage(
+                    modifier = imageModifier,
+                    imageModel = { app.gamenative.utils.bustCache(currentModel, mediaVersion) },
+                    imageOptions = ImageOptions(contentScale = imageContentScale),
+                    previewPlaceholder = painterResource(placeholderRes),
+                )
+            } else {
+                SettingsCenteredLabel(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(noMediaTitleRes)) },
+                    subtitle = { Text(text = stringResource(R.string.media_choose_media)) },
+                )
+            }
+        }
+    }
+
+    Text(
+        text = stringResource(descriptionRes),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    )
+
+    if (gameId != null) {
+        val context = LocalContext.current
+        val isCustom = remember(mediaVersion, gameId) { hasCustomMedia(gameId) }
+        val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+            contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+        ) { uri ->
+            if (uri != null) {
+                val ok = onPickMedia(context, gameId, uri)
+                Toast.makeText(
+                    context,
+                    if (ok) context.getString(R.string.media_updated, context.getString(titleRes))
+                    else context.getString(R.string.media_update_failed, context.getString(titleRes).lowercase()),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+        ) {
+            androidx.compose.material3.Button(onClick = { picker.launch("image/*") }) {
+                Text(stringResource(R.string.media_choose_image))
+            }
+            if (isCustom) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        onResetMedia(gameId)
+                        Toast.makeText(context, context.getString(R.string.media_reverted), Toast.LENGTH_SHORT).show()
+                    },
+                ) {
+                    Text(stringResource(R.string.media_remove_custom_image))
+                }
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.padding(8.dp))
+    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContainerConfigDialog(
@@ -127,6 +251,13 @@ fun ContainerConfigDialog(
     initialConfig: ContainerData = ContainerData(),
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
+    mediaHeroUrl: String? = null,
+    mediaLogoUrl: String? = null,
+    mediaCapsuleUrl: String? = null,
+    mediaHeaderUrl: String? = null,
+    mediaIconUrl: String? = null,
+    gameId: Int? = null,
+    appId: String? = null,
 ) {
     if (visible) {
         val context = LocalContext.current
@@ -840,11 +971,13 @@ fun ContainerConfigDialog(
                     },
                 ) { paddingValues ->
                     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-                    val tabs = listOf("General", "Graphics", "Emulation", "Controller", "Wine", "Win Components", "Environment", "Drives", "Advanced")
+                    val tabs = listOf("General", "Graphics", "Emulation", "Controller", "Wine", "Win Components", "Environment", "Drives", "Media", "Advanced")
                     Column(
                         modifier = Modifier
                             .padding(
-                                top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
+                                top = WindowInsets.statusBars
+                                    .asPaddingValues()
+                                    .calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
                                 start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                                 end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
@@ -1886,7 +2019,174 @@ fun ContainerConfigDialog(
                                     },
                                 )
                             }
-                            if (selectedTab == 8) SettingsGroup() {
+                            if (selectedTab == 8) SettingsGroup(title = { Text(text = "Media") }) {
+                                // Observe global media change version to refresh previews instantly
+                                val mediaVersion by app.gamenative.utils.CustomMediaUtils.mediaVersionFlow.collectAsState(initial = 0)
+
+                                // Determine game source from appId and create a minimal LibraryItem
+                                val libraryItem = remember(appId) {
+                                    if (appId != null && appId.isNotEmpty()) {
+                                        val gameSource = if (appId.startsWith("CUSTOM_GAME_")) {
+                                            GameSource.CUSTOM_GAME
+                                        } else {
+                                            GameSource.STEAM
+                                        }
+                                        LibraryItem(
+                                            appId = appId,
+                                            gameSource = gameSource
+                                        )
+                                    } else null
+                                }
+
+                                // LOGO ---------------------------------------------
+                                val currentLogoModel: Any? = remember(mediaVersion, libraryItem) {
+                                    if (libraryItem != null) {
+                                        GameImageUtils.getGameImage(
+                                            libraryItem = libraryItem,
+                                            imageType = "logo",
+                                            steamUrl = mediaLogoUrl
+                                        )
+                                    } else mediaLogoUrl
+                                }
+                                MediaSection(
+                                    titleRes = R.string.media_logo_title,
+                                    descriptionRes = R.string.media_logo_hint,
+                                    noMediaTitleRes = R.string.media_no_logo,
+                                    gameId = gameId,
+                                    mediaVersion = mediaVersion,
+                                    currentModel = currentLogoModel,
+                                    placeholderRes = app.gamenative.R.drawable.testliblogo,
+                                    imageModifier = Modifier
+                                        .widthIn(min = 150.dp, max = 300.dp)
+                                        .heightIn(max = 100.dp),
+                                    imageContentScale = ContentScale.Fit,
+                                    hasCustomMedia = app.gamenative.utils.CustomMediaUtils::hasCustomLogo,
+                                    onPickMedia = { ctx, gid, uri -> app.gamenative.utils.CustomMediaUtils.saveCustomLogo(ctx, gid, uri) },
+                                    onResetMedia = app.gamenative.utils.CustomMediaUtils::resetCustomLogo,
+                                )
+
+                                // ICON ---------------------------------------------
+                                val currentIconModel: Any? = remember(mediaVersion, libraryItem) {
+                                    if (libraryItem != null) {
+                                        GameImageUtils.getGameImage(
+                                            libraryItem = libraryItem,
+                                            imageType = "icon",
+                                            steamUrl = mediaIconUrl
+                                        )
+                                    } else mediaIconUrl
+                                }
+                                MediaSection(
+                                    titleRes = R.string.media_icon_title,
+                                    descriptionRes = R.string.media_icon_hint,
+                                    noMediaTitleRes = R.string.media_no_icon,
+                                    gameId = gameId,
+                                    mediaVersion = mediaVersion,
+                                    currentModel = currentIconModel,
+                                    placeholderRes = app.gamenative.R.drawable.ic_logo_color,
+                                    imageModifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(10.dp)),
+                                    imageContentScale = ContentScale.Fit,
+                                    hasCustomMedia = app.gamenative.utils.CustomMediaUtils::hasCustomIcon,
+                                    onPickMedia = { ctx, gid, uri -> app.gamenative.utils.CustomMediaUtils.saveCustomIcon(ctx, gid, uri) },
+                                    onResetMedia = app.gamenative.utils.CustomMediaUtils::resetCustomIcon,
+                                )
+
+                                // HEADER ---------------------------------------------
+                                val currentHeaderModel: Any? = remember(mediaVersion, libraryItem) {
+                                    if (libraryItem != null) {
+                                        GameImageUtils.getGameImage(
+                                            libraryItem = libraryItem,
+                                            imageType = "header",
+                                            steamUrl = mediaHeaderUrl
+                                        )
+                                    } else mediaHeaderUrl
+                                }
+                                MediaSection(
+                                    titleRes = R.string.media_header_title,
+                                    descriptionRes = R.string.media_header_hint,
+                                    noMediaTitleRes = R.string.media_no_header,
+                                    gameId = gameId,
+                                    mediaVersion = mediaVersion,
+                                    currentModel = currentHeaderModel,
+                                    placeholderRes = app.gamenative.R.drawable.testhero,
+                                    imageModifier = Modifier
+                                        .widthIn(min = 200.dp, max = 400.dp)
+                                        .height(250.dp),
+                                    imageContentScale = ContentScale.Crop,
+                                    hasCustomMedia = app.gamenative.utils.CustomMediaUtils::hasCustomHeader,
+                                    onPickMedia = { ctx, gid, uri -> app.gamenative.utils.CustomMediaUtils.saveCustomHeader(ctx, gid, uri) },
+                                    onResetMedia = app.gamenative.utils.CustomMediaUtils::resetCustomHeader,
+                                )
+
+                                // Grid CAPSULE ---------------------------------------------
+                                val currentCapsuleModel: Any? = remember(mediaVersion, libraryItem) {
+                                    if (libraryItem != null) {
+                                        GameImageUtils.getGameImage(
+                                            libraryItem = libraryItem,
+                                            imageType = "grid_capsule",
+                                            steamUrl = mediaCapsuleUrl
+                                        )
+                                    } else mediaCapsuleUrl
+                                }
+                                MediaSection(
+                                    titleRes = R.string.media_grid_capsule_title,
+                                    descriptionRes = R.string.media_grid_capsule_hint,
+                                    noMediaTitleRes = R.string.media_no_grid_capsule,
+                                    gameId = gameId,
+                                    mediaVersion = mediaVersion,
+                                    currentModel = currentCapsuleModel,
+                                    placeholderRes = app.gamenative.R.drawable.testhero,
+                                    imageModifier = Modifier
+                                        .widthIn(min = 150.dp, max = 250.dp)
+                                        .aspectRatio(2/3f)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(3.dp)
+                                        ),
+                                    imageContentScale = ContentScale.Crop,
+                                    hasCustomMedia = app.gamenative.utils.CustomMediaUtils::hasCustomCapsule,
+                                    onPickMedia = { ctx, gid, uri -> app.gamenative.utils.CustomMediaUtils.saveCustomCapsule(ctx, gid, uri) },
+                                    onResetMedia = app.gamenative.utils.CustomMediaUtils::resetCustomCapsule,
+                                )
+
+                                // Grid HERO ---------------------------------------------
+                                val currentHeroModel: Any? = remember(mediaVersion, libraryItem) {
+                                    if (libraryItem != null) {
+                                        GameImageUtils.getGameImage(
+                                            libraryItem = libraryItem,
+                                            imageType = "grid_hero",
+                                            steamUrl = mediaHeroUrl
+                                        )
+                                    } else mediaHeroUrl
+                                }
+                                MediaSection(
+                                    titleRes = R.string.media_grid_hero_title,
+                                    descriptionRes = R.string.media_grid_hero_hint,
+                                    noMediaTitleRes = R.string.media_no_grid_hero,
+                                    gameId = gameId,
+                                    mediaVersion = mediaVersion,
+                                    currentModel = currentHeroModel,
+                                    placeholderRes = app.gamenative.R.drawable.testhero,
+                                    imageModifier = Modifier
+                                        .widthIn(min = 150.dp, max = 250.dp)
+                                        .aspectRatio(460/215f)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(3.dp)
+                                        ),
+                                    imageContentScale = ContentScale.Crop,
+                                    hasCustomMedia = app.gamenative.utils.CustomMediaUtils::hasCustomHero,
+                                    onPickMedia = { ctx, gid, uri -> app.gamenative.utils.CustomMediaUtils.saveCustomHero(ctx, gid, uri) },
+                                    onResetMedia = app.gamenative.utils.CustomMediaUtils::resetCustomHero,
+                                )
+
+                            }
+                            if (selectedTab == 9) SettingsGroup() {
                                 SettingsListDropdown(
                                     colors = settingsTileColors(),
                                     title = { Text(text = stringResource(R.string.startup_selection)) },

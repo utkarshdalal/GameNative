@@ -90,6 +90,8 @@
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
     <string name="custom_game_delete_message">Are you sure you want to uninstall %1$s?</string>
+    <string name="custom_game_deleted">\"%1$s\" has been deleted</string>
+    <string name="custom_game_delete_failed">Failed to delete game: %1$s</string>
     <string name="custom_game_unknown_developer">Unknown</string>
 
     <!--Winlator-->
@@ -273,10 +275,11 @@
     <string name="total_playtime">Total Playtime: %s hrs</string>
     <string name="add_custom_game_content_desc">Add custom game</string>
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
-    <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
+    <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.\n\nPlease note that you can fetch images for this game later in the game settings.</string>
     <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
+    <string name="base_app_images_fetching">Fetching images...</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
     <string name="base_app_game_folder_not_found">Game folder not found</string>
     <string name="base_app_images_fetch_failed">Failed to fetch images: %s</string>
@@ -414,6 +417,28 @@
     <string name="remove_content">Remove content?</string>
     <string name="remove_content_confirmation">Are you sure you want to remove %1$s (%2$s)?</string>
 
+    <!-- Media management strings -->
+    <string name="media_logo_title">Logo</string>
+    <string name="media_logo_hint">Recommended: up to 600×200 PNG with transparency. Will be scaled to fit.</string>
+    <string name="media_icon_title">Icon (List view)</string>
+    <string name="media_icon_hint">Recommended: Square PNG with transparency. Will be center-cropped to fit.</string>
+    <string name="media_header_title">Header Image</string>
+    <string name="media_header_hint">Recommended: 920×430 JPG/PNG. Will be center-cropped to fit.</string>
+    <string name="media_grid_capsule_title">Capsule (Grid view)</string>
+    <string name="media_grid_capsule_hint">Recommended: 600×900 JPG/PNG. Will be center-cropped to fit.</string>
+    <string name="media_grid_hero_title">Hero (Grid view)</string>
+    <string name="media_grid_hero_hint">Recommended: 460×215 JPG/PNG. Will be center-cropped to fit.</string>
+    <string name="media_no_logo">No logo available</string>
+    <string name="media_no_icon">No icon available</string>
+    <string name="media_no_header">No header image available</string>
+    <string name="media_no_grid_capsule">No grid capsule image available</string>
+    <string name="media_no_grid_hero">No grid hero image available</string>
+    <string name="media_choose_media">Select an image to use instead.</string>
+    <string name="media_choose_image">Choose image</string>
+    <string name="media_remove_custom_image">Remove custom image</string>
+    <string name="media_updated">%s updated</string>
+    <string name="media_update_failed">Failed to update %s</string>
+    <string name="media_reverted">Reverted to Steam default</string>
     <!-- Wine/Proton Manager -->
     <string name="wine_proton_manager">Wine/Proton Manager</string>
     <string name="wine_proton_bionic_notice_header">Bionic Images Only</string>
