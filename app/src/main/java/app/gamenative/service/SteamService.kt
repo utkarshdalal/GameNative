@@ -500,6 +500,43 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.toMap()
         }
 
+        /**
+         * Refresh the owned games list by querying Steam, diffing with the local DB, and
+         * queueing PICS requests for anything new so metadata gets populated.
+         *
+         * @return number of newly discovered appIds that were scheduled for PICS.
+         */
+        suspend fun refreshOwnedGamesFromServer(): Int = withContext(Dispatchers.IO) {
+            val service = instance ?: return@withContext 0
+            val unifiedFriends = service._unifiedFriends ?: return@withContext 0
+            val steamId = userSteamId ?: return@withContext 0
+
+            runCatching {
+                val ownedGames = unifiedFriends.getOwnedGames(steamId.convertToUInt64())
+                val remoteAppIds = ownedGames.map { it.appId }.filter { it > 0 }.toSet()
+                if (remoteAppIds.isEmpty()) {
+                    return@runCatching 0
+                }
+
+                val localAppIds = service.appDao.getAllAppIds().toSet()
+                val missingAppIds = remoteAppIds - localAppIds
+                if (missingAppIds.isEmpty()) {
+                    return@runCatching 0
+                }
+
+                missingAppIds
+                    .chunked(MAX_PICS_BUFFER)
+                    .forEach { chunk ->
+                        val requests = chunk.map { PICSRequest(id = it) }
+                        service.appPicsChannel.send(requests)
+                    }
+
+                missingAppIds.size
+            }.onFailure { error ->
+                Timber.tag("SteamService").e(error, "Failed to refresh owned games from server")
+            }.getOrDefault(0)
+        }
+
         fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
             val appInfo   = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc  = runBlocking { getOwnedAppDlc(appId) }

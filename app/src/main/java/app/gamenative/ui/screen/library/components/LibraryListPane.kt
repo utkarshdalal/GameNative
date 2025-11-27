@@ -142,38 +142,7 @@ internal fun LibraryListPane(
     }
 
 
-    var isRefreshing by remember { mutableStateOf(false) }
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing)
-
-    // Track the state snapshot when refresh starts
-    var refreshStartSnapshot by remember { mutableStateOf<List<LibraryItem>?>(null) }
-
-    // Reset refreshing state when the list updates after a refresh
-    LaunchedEffect(state.appInfoList) {
-        if (isRefreshing && refreshStartSnapshot != null) {
-            // Check if state has changed since refresh started
-            val hasChanged = state.appInfoList != refreshStartSnapshot
-
-            if (hasChanged) {
-                // State updated, refresh is complete
-                delay(200) // Small delay for smooth UI transition
-                isRefreshing = false
-                refreshStartSnapshot = null
-            }
-        }
-    }
-
-    // Fallback: if refresh takes too long, turn it off anyway
-    LaunchedEffect(isRefreshing) {
-        if (isRefreshing) {
-            delay(2000) // Max 2 seconds
-            if (isRefreshing) {
-                isRefreshing = false
-                refreshStartSnapshot = null
-            }
-        }
-    }
-
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isRefreshing)
 
 
 
@@ -361,11 +330,7 @@ internal fun LibraryListPane(
                 if (state.appInfoList.isNotEmpty()) {
                     SwipeRefresh(
                         state = swipeRefreshState,
-                        onRefresh = {
-                            isRefreshing = true
-                            refreshStartSnapshot = state.appInfoList
-                            onRefresh()
-                        }
+                        onRefresh = onRefresh,
                     ) {
                         LazyVerticalGrid(
                             columns = columnType,

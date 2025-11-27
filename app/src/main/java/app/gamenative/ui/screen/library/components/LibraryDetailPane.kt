@@ -65,7 +65,7 @@ internal fun LibraryDetailPane(
                 onSearchQuery = {},
                 onNavigateRoute = {},
                 onGoOnline = {},
-                onRefresh = {}
+                onRefresh = {},
                 onSourceToggle = {},
             )
         } else {

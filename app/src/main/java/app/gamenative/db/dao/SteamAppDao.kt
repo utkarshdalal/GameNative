@@ -46,4 +46,7 @@ interface SteamAppDao {
 
     @Query("DELETE from steam_app")
     suspend fun deleteAll()
+
+    @Query("SELECT id FROM steam_app")
+    suspend fun getAllAppIds(): List<Int>
 }

@@ -8,6 +8,7 @@ import java.util.EnumSet
 data class LibraryState(
     val appInfoSortType: EnumSet<AppFilter> = PrefManager.libraryFilter,
     val appInfoList: List<LibraryItem> = emptyList(),
+    val isRefreshing: Boolean = false,
 
     // Human readable, not 0-indexed
     val totalAppsInFilter: Int = 0,

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.max
@@ -150,8 +151,23 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onRefresh() {
-        // Reset to first page and refresh the filtered list
-        onFilterApps(0)
+        viewModelScope.launch {
+            _state.update { it.copy(isRefreshing = true) }
+
+            try {
+                val newApps = SteamService.refreshOwnedGamesFromServer()
+                if (newApps > 0) {
+                    Timber.tag("LibraryViewModel").i("Queued $newApps newly owned games for PICS sync")
+                } else {
+                    Timber.tag("LibraryViewModel").d("No newly owned games discovered during refresh")
+                }
+            } catch (e: Exception) {
+                Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
+            } finally {
+                onFilterApps(0).join()
+                _state.update { it.copy(isRefreshing = false) }
+            }
+        }
     }
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -173,10 +189,10 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
-    private fun onFilterApps(paginationPage: Int = 0) {
+    private fun onFilterApps(paginationPage: Int = 0): Job {
         // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        viewModelScope.launch {
+        return viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
             val currentState = _state.value
