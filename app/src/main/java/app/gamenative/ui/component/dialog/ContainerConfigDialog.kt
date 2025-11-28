@@ -1215,133 +1215,131 @@ fun ContainerConfigDialog(
                                             config = config.copy(graphicsDriverConfig = cfg.toString())
                                         },
                                     )
-                                    if (config.wineVersion.contains("arm64ec", true)) {
-                                        SettingsListDropdown(
-                                            colors = settingsTileColors(),
-                                            title = { Text(text = stringResource(R.string.present_modes)) },
-                                            value = presentModeIndex.coerceIn(0, presentModes.lastIndex.coerceAtLeast(0)),
-                                            items = presentModes,
-                                            onItemSelected = { idx ->
-                                                presentModeIndex = idx
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("presentMode", presentModes[idx])
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsListDropdown(
-                                            colors = settingsTileColors(),
-                                            title = { Text(text = stringResource(R.string.resource_type)) },
-                                            value = resourceTypeIndex.coerceIn(0, resourceTypes.lastIndex.coerceAtLeast(0)),
-                                            items = resourceTypes,
-                                            onItemSelected = { idx ->
-                                                resourceTypeIndex = idx
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("resourceType", resourceTypes[idx])
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsListDropdown(
-                                            colors = settingsTileColors(),
-                                            title = { Text(text = stringResource(R.string.bcn_emulation)) },
-                                            value = bcnEmulationIndex.coerceIn(0, bcnEmulationEntries.lastIndex.coerceAtLeast(0)),
-                                            items = bcnEmulationEntries,
-                                            onItemSelected = { idx ->
-                                                bcnEmulationIndex = idx
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("bcnEmulation", bcnEmulationEntries[idx])
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsListDropdown(
-                                            colors = settingsTileColors(),
-                                            title = { Text(text = stringResource(R.string.bcn_emulation_type)) },
-                                            value = bcnEmulationTypeIndex.coerceIn(0, bcnEmulationTypeEntries.lastIndex.coerceAtLeast(0)),
-                                            items = bcnEmulationTypeEntries,
-                                            onItemSelected = { idx ->
-                                                bcnEmulationTypeIndex = idx
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("bcnEmulationType", bcnEmulationTypeEntries[idx])
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsSwitch(
-                                            colors = settingsTileColorsAlt(),
-                                            title = { Text(text = stringResource(R.string.bcn_emulation_cache)) },
-                                            state = bcnEmulationCacheEnabled,
-                                            onCheckedChange = { checked ->
-                                                bcnEmulationCacheEnabled = checked
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("bcnEmulationCache", if (checked) "1" else "0")
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsSwitch(
-                                            colors = settingsTileColorsAlt(),
-                                            title = { Text(text = stringResource(R.string.disable_present_wait)) },
-                                            state = disablePresentWaitChecked,
-                                            onCheckedChange = { checked ->
-                                                disablePresentWaitChecked = checked
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("disablePresentWait", if (checked) "1" else "0")
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsSwitch(
-                                            colors = settingsTileColorsAlt(),
-                                            title = { Text(text = stringResource(R.string.sync_frame)) },
-                                            state = syncEveryFrameChecked,
-                                            onCheckedChange = { checked ->
-                                                syncEveryFrameChecked = checked
-                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                                cfg.put("syncFrame", if (checked) "1" else "0")
-                                                config = config.copy(graphicsDriverConfig = cfg.toString())
-                                            },
-                                        )
-                                        SettingsListDropdown(
-                                            colors = settingsTileColors(),
-                                            title = { Text(text = stringResource(R.string.sharpness_effect)) },
-                                            value = sharpnessEffectIndex.coerceIn(0, sharpnessEffects.lastIndex.coerceAtLeast(0)),
-                                            items = sharpnessDisplayItems,
-                                            onItemSelected = { idx ->
-                                                sharpnessEffectIndex = idx
-                                                config = config.copy(sharpnessEffect = sharpnessEffects[idx])
-                                            },
-                                        )
-                                        val selectedBoost = sharpnessEffects
-                                            .getOrNull(sharpnessEffectIndex)
-                                            ?.equals("None", ignoreCase = true)
-                                            ?.not() ?: false
-                                        if (selectedBoost) {
-                                            Column(
-                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                            ) {
-                                                Text(text = stringResource(R.string.sharpness_level))
-                                                Slider(
-                                                    value = sharpnessLevel.toFloat(),
-                                                    onValueChange = { newValue ->
-                                                        val clamped = newValue.roundToInt().coerceIn(0, 100)
-                                                        sharpnessLevel = clamped
-                                                        config = config.copy(sharpnessLevel = clamped)
-                                                    },
-                                                    valueRange = 0f..100f,
-                                                )
-                                                Text(text = "${sharpnessLevel}%")
-                                            }
-                                            Column(
-                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                            ) {
-                                                Text(text = stringResource(R.string.sharpness_denoise))
-                                                Slider(
-                                                    value = sharpnessDenoise.toFloat(),
-                                                    onValueChange = { newValue ->
-                                                        val clamped = newValue.roundToInt().coerceIn(0, 100)
-                                                        sharpnessDenoise = clamped
-                                                        config = config.copy(sharpnessDenoise = clamped)
-                                                    },
-                                                    valueRange = 0f..100f,
-                                                )
-                                                Text(text = "${sharpnessDenoise}%")
-                                            }
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = stringResource(R.string.present_modes)) },
+                                        value = presentModeIndex.coerceIn(0, presentModes.lastIndex.coerceAtLeast(0)),
+                                        items = presentModes,
+                                        onItemSelected = { idx ->
+                                            presentModeIndex = idx
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("presentMode", presentModes[idx])
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = stringResource(R.string.resource_type)) },
+                                        value = resourceTypeIndex.coerceIn(0, resourceTypes.lastIndex.coerceAtLeast(0)),
+                                        items = resourceTypes,
+                                        onItemSelected = { idx ->
+                                            resourceTypeIndex = idx
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("resourceType", resourceTypes[idx])
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = stringResource(R.string.bcn_emulation)) },
+                                        value = bcnEmulationIndex.coerceIn(0, bcnEmulationEntries.lastIndex.coerceAtLeast(0)),
+                                        items = bcnEmulationEntries,
+                                        onItemSelected = { idx ->
+                                            bcnEmulationIndex = idx
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("bcnEmulation", bcnEmulationEntries[idx])
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = stringResource(R.string.bcn_emulation_type)) },
+                                        value = bcnEmulationTypeIndex.coerceIn(0, bcnEmulationTypeEntries.lastIndex.coerceAtLeast(0)),
+                                        items = bcnEmulationTypeEntries,
+                                        onItemSelected = { idx ->
+                                            bcnEmulationTypeIndex = idx
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("bcnEmulationType", bcnEmulationTypeEntries[idx])
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsSwitch(
+                                        colors = settingsTileColorsAlt(),
+                                        title = { Text(text = stringResource(R.string.bcn_emulation_cache)) },
+                                        state = bcnEmulationCacheEnabled,
+                                        onCheckedChange = { checked ->
+                                            bcnEmulationCacheEnabled = checked
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("bcnEmulationCache", if (checked) "1" else "0")
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsSwitch(
+                                        colors = settingsTileColorsAlt(),
+                                        title = { Text(text = stringResource(R.string.disable_present_wait)) },
+                                        state = disablePresentWaitChecked,
+                                        onCheckedChange = { checked ->
+                                            disablePresentWaitChecked = checked
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("disablePresentWait", if (checked) "1" else "0")
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsSwitch(
+                                        colors = settingsTileColorsAlt(),
+                                        title = { Text(text = stringResource(R.string.sync_frame)) },
+                                        state = syncEveryFrameChecked,
+                                        onCheckedChange = { checked ->
+                                            syncEveryFrameChecked = checked
+                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                            cfg.put("syncFrame", if (checked) "1" else "0")
+                                            config = config.copy(graphicsDriverConfig = cfg.toString())
+                                        },
+                                    )
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = stringResource(R.string.sharpness_effect)) },
+                                        value = sharpnessEffectIndex.coerceIn(0, sharpnessEffects.lastIndex.coerceAtLeast(0)),
+                                        items = sharpnessDisplayItems,
+                                        onItemSelected = { idx ->
+                                            sharpnessEffectIndex = idx
+                                            config = config.copy(sharpnessEffect = sharpnessEffects[idx])
+                                        },
+                                    )
+                                    val selectedBoost = sharpnessEffects
+                                        .getOrNull(sharpnessEffectIndex)
+                                        ?.equals("None", ignoreCase = true)
+                                        ?.not() ?: false
+                                    if (selectedBoost) {
+                                        Column(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        ) {
+                                            Text(text = stringResource(R.string.sharpness_level))
+                                            Slider(
+                                                value = sharpnessLevel.toFloat(),
+                                                onValueChange = { newValue ->
+                                                    val clamped = newValue.roundToInt().coerceIn(0, 100)
+                                                    sharpnessLevel = clamped
+                                                    config = config.copy(sharpnessLevel = clamped)
+                                                },
+                                                valueRange = 0f..100f,
+                                            )
+                                            Text(text = "${sharpnessLevel}%")
+                                        }
+                                        Column(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        ) {
+                                            Text(text = stringResource(R.string.sharpness_denoise))
+                                            Slider(
+                                                value = sharpnessDenoise.toFloat(),
+                                                onValueChange = { newValue ->
+                                                    val clamped = newValue.roundToInt().coerceIn(0, 100)
+                                                    sharpnessDenoise = clamped
+                                                    config = config.copy(sharpnessDenoise = clamped)
+                                                },
+                                                valueRange = 0f..100f,
+                                            )
+                                            Text(text = "${sharpnessDenoise}%")
                                         }
                                     }
                                 } else {

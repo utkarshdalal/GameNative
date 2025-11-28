@@ -35,6 +35,9 @@
         <item>turnip25.1.0</item>
         <item>turnip25.3.0_R3_Auto</item>
         <item>turnip25.3.0_R3_Gmem</item>
+        <item>turnip25.3.0_R6_Gmem</item>
+        <item>25.3.0_R11</item>
+        <item>26.0.0_R4</item>
     </string-array>
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>
@@ -85,6 +88,7 @@
         <item>2.4.1</item>
         <item>2.4.1-gplasync</item>
         <item>2.6.1-gplasync</item>
+        <item>2.6-arm64ec</item>
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>2.6</item>
@@ -159,6 +163,7 @@
     <string-array name="box64_version_entries">
         <item>0.3.6 (Default)</item>
         <item>0.3.4</item>
+        <item>0.3.8</item>
     </string-array>
     <string-array name="box64_bionic_version_entries">
         <item>0.3.7 (Default)</item>

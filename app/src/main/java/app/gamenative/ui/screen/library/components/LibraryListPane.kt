@@ -49,8 +49,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
@@ -63,10 +63,7 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import kotlinx.coroutines.delay
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.delay
 import app.gamenative.PrefManager
 import app.gamenative.utils.DeviceUtils
 import kotlinx.coroutines.flow.filterNotNull
@@ -142,7 +139,7 @@ internal fun LibraryListPane(
     }
 
 
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isRefreshing)
+    val pullToRefreshState = rememberPullToRefreshState()
 
 
 
@@ -328,9 +325,10 @@ internal fun LibraryListPane(
 
                 // Show actual games (base layer)
                 if (state.appInfoList.isNotEmpty()) {
-                    SwipeRefresh(
-                        state = swipeRefreshState,
+                    PullToRefreshBox(
+                        isRefreshing = state.isRefreshing,
                         onRefresh = onRefresh,
+                        state = pullToRefreshState
                     ) {
                         LazyVerticalGrid(
                             columns = columnType,
