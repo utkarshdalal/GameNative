@@ -243,7 +243,9 @@ internal fun AppItem(
 
                     ListItemImage(
                         modifier = Modifier.aspectRatio(aspectRatio),
-                        imageModifier = Modifier.clip(RoundedCornerShape(3.dp)).alpha(alpha),
+                        imageModifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .alpha(alpha),
                         image = { imageUrl },
                         onFailure = {
                             hideText = false
@@ -272,7 +274,11 @@ internal fun AppItem(
                         LaunchedEffect(isRefreshing) {
                             if (!isRefreshing) {
                                 // Refresh just completed, check installation status
-                                isInstalled = SteamService.isAppInstalled(appInfo.gameId)
+                                isInstalled = when (appInfo.gameSource) {
+                                    GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                    GameSource.CUSTOM_GAME -> true
+                                    else -> false
+                                }
                             }
                         }
 
@@ -379,8 +385,10 @@ internal fun GameInfoBlock(
     // Update installation status when refresh completes
     LaunchedEffect(isRefreshing) {
         if (!isRefreshing) {
-            // Refresh just completed, check installation status
-            isInstalledSteam = SteamService.isAppInstalled(appInfo.gameId)
+            if (isSteam) {
+                // Refresh just completed, check installation status
+                isInstalledSteam = SteamService.isAppInstalled(appInfo.gameId)
+            }
         }
     }
 
