@@ -157,6 +157,7 @@ object SteamUtils {
         autoLoginUserChanges(imageFs)
         setupLightweightSteamConfig(imageFs, SteamService.userSteamId?.toString())
 
+        val dllPathsToConfigure = mutableListOf<Path>()
         FileUtils.walkThroughPath(Paths.get(appDirPath), -1) {
             if (it.name == "steam_api.dll" && it.exists()) {
                 Timber.i("Found steam_api.dll at ${it.absolutePathString()}, replacing...")
@@ -171,7 +172,7 @@ object SteamUtils {
                 }
                 Timber.i("Replaced steam_api.dll")
                 replaced32 = true
-                ensureSteamSettings(context, it, appId)
+                dllPathsToConfigure.add(it)
             }
             if (it.name == "steam_api64.dll" && it.exists()) {
                 Timber.i("Found steam_api64.dll at ${it.absolutePathString()}, replacing...")
@@ -186,8 +187,16 @@ object SteamUtils {
                 }
                 Timber.i("Replaced steam_api64.dll")
                 replaced64 = true
-                ensureSteamSettings(context, it, appId)
+                dllPathsToConfigure.add(it)
             }
+        }
+        
+        // Get ticket once for all DLLs
+        val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
+        
+        // Configure steam settings for all replaced DLLs
+        dllPathsToConfigure.forEach { dllPath ->
+            ensureSteamSettings(context, dllPath, appId, ticketBase64)
         }
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
 
@@ -220,7 +229,10 @@ object SteamUtils {
         );
         putBackSteamDlls(appDirPath)
         restoreUnpackedExecutable(context, steamAppId)
-        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId)
+        
+        // Get ticket and pass to ensureSteamSettings
+        val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
+        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
@@ -693,9 +705,9 @@ object SteamUtils {
     }
 
     /**
-     * Sibling folder “steam_settings” + empty “offline.txt” file, no-ops if they already exist.
+     * Sibling folder "steam_settings" + empty "offline.txt" file, no-ops if they already exist.
      */
-    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String) {
+    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val steamDir = dllPath.parent
         Files.createDirectories(steamDir)
@@ -731,12 +743,15 @@ object SteamUtils {
                 ?: "english"
         }.getOrDefault("english").lowercase()
 
-        val iniContent = """
-            [user::general]
-            account_name=$accountName
-            account_steamid=$accountSteamId
-            language=$language
-        """.trimIndent()
+        val iniContent = buildString {
+            appendLine("[user::general]")
+            appendLine("account_name=$accountName")
+            appendLine("account_steamid=$accountSteamId")
+            appendLine("language=$language")
+            if (ticketBase64 != null) {
+                appendLine("ticket=$ticketBase64")
+            }
+        }
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
         configsIni.toFile().writeText(iniContent)

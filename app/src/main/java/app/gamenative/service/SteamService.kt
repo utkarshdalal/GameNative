@@ -25,6 +25,7 @@ import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamFriend
 import app.gamenative.data.SteamLicense
 import app.gamenative.data.UserFileInfo
+import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.ChangeNumbersDao
 import app.gamenative.db.dao.EmoticonDao
@@ -163,6 +164,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.util.Base64
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
@@ -199,6 +201,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     @Inject
     lateinit var cachedLicenseDao: CachedLicenseDao
+
+    @Inject
+    lateinit var encryptedAppTicketDao: app.gamenative.db.dao.EncryptedAppTicketDao
 
     private lateinit var notificationHelper: NotificationHelper
 
@@ -1006,21 +1011,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("entitledDepotIds is empty? " + entitledDepotIds.isEmpty())
 
             if (entitledDepotIds.isEmpty()) return null
-
-            val encryptedTicket = runBlocking {
-                try {
-                    withTimeout(5_000) {
-                        steamApps.requestEncryptedAppTicket(appId)
-                            .await()
-                    }
-                } catch (e: Exception) {
-                    null
-                }
-            }
-
-            if (encryptedTicket?.result == EResult.OK && encryptedTicket.encryptedAppTicket != null) {
-                encryptedTicket.encryptedAppTicket
-            }
 
             Timber.i("Starting download for $appId")
 
@@ -2807,5 +2797,70 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
         }
+    }
+
+    /**
+     * Get encrypted app ticket for an app, with 30-minute caching.
+     * Returns the encrypted ticket bytes, or null if unavailable.
+     */
+    suspend fun getEncryptedAppTicket(appId: Int): ByteArray? {
+        return try {
+            // Check database for existing ticket less than 30 minutes old
+            val cachedTicket = encryptedAppTicketDao.getByAppId(appId)
+            val now = System.currentTimeMillis()
+            val thirtyMinutes = 30 * 60 * 1000L
+
+            if (cachedTicket != null && (now - cachedTicket.timestamp) < thirtyMinutes) {
+                Timber.d("Using cached encrypted app ticket for app $appId")
+                return cachedTicket.encryptedTicket
+            }
+
+            // Request new ticket from Steam
+            val steamApps = instance?._steamApps ?: null
+            val response = try {
+                withTimeout(5_000) {
+                    steamApps.requestEncryptedAppTicket(appId).await()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to request encrypted app ticket for app $appId")
+                return null
+            }
+
+            if (response.result != EResult.OK || response.encryptedAppTicket == null) {
+                Timber.w("Failed to get encrypted app ticket for app $appId: ${response.result}")
+                return null
+            }
+
+            // Extract all fields from the protobuf message
+            val ticketProto = response.encryptedAppTicket
+            val ticket = EncryptedAppTicket(
+                appId = appId,
+                result = response.result.code,
+                ticketVersionNo = ticketProto.ticketVersionNo.toInt(),
+                crcEncryptedTicket = ticketProto.crcEncryptedticket.toInt(),
+                cbEncryptedUserData = ticketProto.cbEncrypteduserdata.toInt(),
+                cbEncryptedAppOwnershipTicket = ticketProto.cbEncryptedAppownershipticket.toInt(),
+                encryptedTicket = ticketProto.encryptedTicket.toByteArray(),
+                timestamp = now,
+            )
+
+            // Store in database
+            encryptedAppTicketDao.insert(ticket)
+            Timber.d("Stored new encrypted app ticket for app $appId")
+
+            ticket.encryptedTicket
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting encrypted app ticket for app $appId")
+            null
+        }
+    }
+
+    /**
+     * Get encrypted app ticket as base64 encoded string, with 30-minute caching.
+     * Returns the base64 encoded ticket, or null if unavailable.
+     */
+    suspend fun getEncryptedAppTicketBase64(appId: Int): String? {
+        val ticket = getEncryptedAppTicket(appId) ?: return null
+        return Base64.encodeToString(ticket, Base64.DEFAULT)
     }
 }

@@ -1233,6 +1233,24 @@ private fun setupXEnvironment(
         Timber.i("---------------------------")
     }
 
+    // Request encrypted app ticket for Steam games at launch time
+    val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+    val gameIdForTicket = ContainerUtils.extractGameIdFromContainerId(appId)
+    if (!bootToContainer && !isCustomGame && gameIdForTicket != null) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val ticket = SteamService.instance?.getEncryptedAppTicket(gameIdForTicket)
+                if (ticket != null) {
+                    Timber.i("Successfully retrieved encrypted app ticket for app $gameIdForTicket")
+                } else {
+                    Timber.w("Failed to retrieve encrypted app ticket for app $gameIdForTicket")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error requesting encrypted app ticket for app $gameIdForTicket")
+            }
+        }
+    }
+
     environment.startEnvironmentComponents()
 
     // put in separate scope since winhandler start method does some network stuff
