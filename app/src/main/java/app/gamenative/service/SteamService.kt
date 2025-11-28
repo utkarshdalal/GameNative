@@ -1007,6 +1007,21 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             if (entitledDepotIds.isEmpty()) return null
 
+            val encryptedTicket = runBlocking {
+                try {
+                    withTimeout(5_000) {
+                        steamApps.requestEncryptedAppTicket(appId)
+                            .await()
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            if (encryptedTicket?.result == EResult.OK && encryptedTicket.encryptedAppTicket != null) {
+                encryptedTicket.encryptedAppTicket
+            }
+
             Timber.i("Starting download for $appId")
 
             // Create mapping from depotId to index for progress tracking
