@@ -18,6 +18,7 @@ import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
+import com.winlator.xenvironment.ImageFs
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -524,7 +525,34 @@ object ContainerUtils {
         data.put("name", "container_$containerId")
 
         // Create the actual container
-        val container = containerManager.createContainerFuture(containerId, data).get()
+        var container = containerManager.createContainerFuture(containerId, data).get()
+
+        // If container creation failed, it might be because directory already exists but is corrupted
+        // Try to clean it up and retry once
+        if (container == null) {
+            Timber.w("Container creation failed for $containerId, checking for corrupted directory...")
+            // Get the container directory path
+            val rootDir = ImageFs.find(context).getRootDir()
+            val homeDir = File(rootDir, "home")
+            val containerDir = File(homeDir, ImageFs.USER+"-"+containerId)
+
+            if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
+                Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
+                try {
+                    FileUtils.delete(containerDir)
+                    // Retry container creation after cleanup
+                    container = containerManager.createContainerFuture(containerId, data).get()
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
+                }
+            }
+
+            // If still null after retry, throw exception
+            if (container == null) {
+                Timber.e("Failed to create container for $containerId after cleanup attempt")
+                throw IllegalStateException("Failed to create container: $containerId")
+            }
+        }
 
         // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
         if (gameSource == GameSource.CUSTOM_GAME) {

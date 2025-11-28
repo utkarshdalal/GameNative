@@ -51,29 +51,34 @@ public class ContainerManager {
     private void loadContainers() {
         containers.clear();
 
-        try {
-            File[] files = homeDir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        if (file.getName().startsWith(ImageFs.USER+"-")) {
-                            String containerId = file.getName().replace(ImageFs.USER+"-", "");
-                            Container container = new Container(containerId);
-                            container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
-                            try {
-                                JSONObject data = new JSONObject(FileUtils.readString(container.getConfigFile()));
-                                container.loadData(data);
-                                containers.add(container);
-                            } catch (NullPointerException e){
-                                Log.w("ContainerManager", "Could not load container: " + e);
+        File[] files = homeDir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    if (file.getName().startsWith(ImageFs.USER+"-")) {
+                        String containerId = file.getName().replace(ImageFs.USER+"-", "");
+                        Container container = new Container(containerId);
+                        container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
+                        try {
+                            File configFile = container.getConfigFile();
+                            String configContent = FileUtils.readString(configFile);
+                            
+                            if (configContent == null || configContent.trim().isEmpty()) {
+                                Log.w("ContainerManager", "Container config file is null or empty, skipping: " + containerId);
+                                continue;
                             }
+                            
+                            JSONObject data = new JSONObject(configContent);
+                            container.loadData(data);
+                            containers.add(container);
+                        } catch (Exception e) {
+                            // Catch ALL exceptions (NullPointerException, JSONException, etc.)
+                            Log.w("ContainerManager", "Could not load container " + containerId + ": " + e.getMessage());
+                            // Continue loading other containers
                         }
                     }
                 }
             }
-        }
-        catch (JSONException e) {
-            Log.e("ContainerManager", "Failed to load containers: " + e);
         }
     }
 
