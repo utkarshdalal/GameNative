@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.library.components
 
-import android.annotation.SuppressLint
 import android.content.res.Configuration
 import app.gamenative.data.GameSource
 import androidx.compose.foundation.background
@@ -362,7 +361,6 @@ internal fun AppItem(
     }
 }
 
-@SuppressLint("RememberReturnType")
 @Composable
 internal fun GameInfoBlock(
     modifier: Modifier,
@@ -374,9 +372,9 @@ internal fun GameInfoBlock(
     // Determine download and install state for Steam games only
     val isSteam = appInfo.gameSource == GameSource.STEAM
     val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
-    var downloadProgress = remember(downloadInfo) { downloadInfo?.getProgress() ?: 0f }
+    var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
-    var isInstalledSteam = remember(appInfo.appId) { if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false }
+    var isInstalledSteam by remember(appInfo.appId) { mutableStateOf(if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false) }
 
     // Update installation status when refresh completes
     LaunchedEffect(isRefreshing) {
@@ -389,11 +387,6 @@ internal fun GameInfoBlock(
     // Function to refresh progress from downloadInfo - can be called from remember and LaunchedEffect
     val refreshProgress: () -> Unit = {
         downloadProgress = downloadInfo?.getProgress() ?: 0f
-    }
-
-    // Initialize progress when component is created or downloadInfo changes
-    remember(downloadInfo) {
-        refreshProgress()
     }
 
     // Refresh progress when list reloads (for downloading games) or when downloadInfo changes

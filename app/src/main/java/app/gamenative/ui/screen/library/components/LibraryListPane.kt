@@ -49,8 +49,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
@@ -142,7 +142,7 @@ internal fun LibraryListPane(
     }
 
 
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isRefreshing)
+    val pullToRefreshState = rememberPullToRefreshState()
 
 
 
@@ -328,9 +328,10 @@ internal fun LibraryListPane(
 
                 // Show actual games (base layer)
                 if (state.appInfoList.isNotEmpty()) {
-                    SwipeRefresh(
-                        state = swipeRefreshState,
+                    PullToRefreshBox(
+                        isRefreshing = state.isRefreshing,
                         onRefresh = onRefresh,
+                        state = pullToRefreshState
                     ) {
                         LazyVerticalGrid(
                             columns = columnType,
