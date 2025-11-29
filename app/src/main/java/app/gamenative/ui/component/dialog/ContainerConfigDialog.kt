@@ -477,7 +477,7 @@ fun ContainerConfigDialog(
                 val isVortekLike = config.containerVariant.equals(Container.GLIBC) && driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
                 val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
                 val items =
-                    if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(
+                    if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(
                             1,
                             3,
                             0
@@ -571,7 +571,7 @@ fun ContainerConfigDialog(
             val isVortekLike  = config.containerVariant.equals(Container.GLIBC) && driverType in listOf("vortek", "adreno", "sd-8-elite")
 
             val isVKD3D       = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
-            val constrained   = if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0))
+            val constrained   = if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0))
                 listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3")
             else
                 dxvkVersionsAll

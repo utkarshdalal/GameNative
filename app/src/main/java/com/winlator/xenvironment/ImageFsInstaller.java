@@ -349,6 +349,7 @@ public abstract class ImageFsInstaller {
                     String mappedPath = SteamService.Companion.getAppDirPath(gameId);
                     MarkerUtils.INSTANCE.removeMarker(mappedPath, Marker.STEAM_DLL_REPLACED);
                     MarkerUtils.INSTANCE.removeMarker(mappedPath, Marker.STEAM_DLL_RESTORED);
+                    MarkerUtils.INSTANCE.removeMarker(mappedPath, Marker.STEAM_COLDCLIENT_USED);
                     Log.i("ImageFsInstaller", "Cleared markers for container: " + container.getName() + " (ID: " + container.id + ")");
                 } catch (Exception e) {
                     Log.w("ImageFsInstaller", "Failed to clear markers for container ID " + container.id + ": " + e.getMessage());

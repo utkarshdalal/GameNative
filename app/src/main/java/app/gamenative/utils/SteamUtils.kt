@@ -149,6 +149,7 @@ object SteamUtils {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
         Timber.i("Starting replaceSteamApi for appId: $appId")
         Timber.i("Checking directory: $appDirPath")
         var replaced32 = false
@@ -204,9 +205,10 @@ object SteamUtils {
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
 
-        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
             return
         }
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
         val imageFs = ImageFs.find(context)
         TarCompressorUtils.extract(
@@ -222,7 +224,7 @@ object SteamUtils {
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
         ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64)
 
-        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
     }
 
     internal fun writeColdClientIni(steamAppId: Int, container: Container) {
@@ -595,6 +597,7 @@ object SteamUtils {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
         Timber.i("Checking directory: $appDirPath")
 
         autoLoginUserChanges(imageFs)

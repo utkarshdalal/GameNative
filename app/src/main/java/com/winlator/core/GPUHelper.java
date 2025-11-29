@@ -7,6 +7,10 @@ import android.util.Log;
 import dalvik.annotation.optimization.CriticalNative;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.microedition.khronos.egl.EGL10;
@@ -19,18 +23,34 @@ import javax.microedition.khronos.opengles.GL10;
 public abstract class GPUHelper {
     public static int VK_API_VERSION_1_3 = vkMakeVersion(1, 3, 0);
 
-    @CriticalNative
-    public static native int vkGetApiVersion();
-
-    public static native String[] vkGetDeviceExtensions();
-
     static {
         System.loadLibrary("winlator_11");
     }
 
+    private static final Executor io =
+            Executors.newSingleThreadExecutor();        // created once
+
+    // start the work immediately; runs exactly once
+    private static final CompletableFuture<Integer> apiVersionFuture =
+            CompletableFuture.supplyAsync(GPUHelper::vkGetApiVersion, io);
+
+    @CriticalNative
+    public static native int vkGetApiVersion();
+
+    public static int vkGetApiVersionSafe() {
+        try {
+            return apiVersionFuture.getNow(VK_API_VERSION_1_3);
+        } catch (CompletionException ex) {
+            Log.e("GPUHelper", "Failed to get Vulkan API version", ex);
+            return VK_API_VERSION_1_3;
+        }
+    }
+
+    public static native String[] vkGetDeviceExtensions();
+
     public static int vkVersionPatch(){
         try {
-            return vkGetApiVersion() & 0xFFF;
+            return vkGetApiVersionSafe() & 0xFFF;
         } catch (UnsatisfiedLinkError e) {
             Log.e("GPUHelper", "Failed to load Vulkan library", e);
             return 0; // Fallback if library not loaded
