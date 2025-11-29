@@ -583,6 +583,7 @@ class SteamAppScreen : BaseAppScreen() {
                     val container = ContainerUtils.getOrCreateContainer(context, appId)
                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
                     container.isNeedsUnpacking = true
                     container.saveData()
                 },
@@ -921,6 +922,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 val downloadInfo = SteamService.downloadApp(gameId)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                                MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
 
                                 if (operation == AppOptionMenuType.VerifyFiles) {
                                     val steamId = SteamService.userSteamId
