@@ -42,7 +42,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
-    public static final byte LATEST_VERSION = 24;
+    public static final byte LATEST_VERSION = 25;
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -55,6 +55,7 @@ public abstract class ImageFsInstaller {
 
             container.putExtra("imgVersion", null);
             container.putExtra("dxwrapper", null);
+            container.putExtra("appVersion", null);
             container.saveData();
         }
     }
@@ -81,7 +82,7 @@ public abstract class ImageFsInstaller {
         // final DownloadProgressDialog dialog = new DownloadProgressDialog(context);
         // dialog.show(R.string.installing_system_files);
         return Executors.newSingleThreadExecutor().submit(() -> {
-            clearRootDir(rootDir);
+            clearRootDir(context, rootDir);
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
@@ -192,17 +193,51 @@ public abstract class ImageFsInstaller {
         }
     }
 
-    private static void clearOptDir(File optDir) {
+    private static boolean isImportedWineProton(Context context, String fileName) {
+        String lowerName = fileName.toLowerCase();
+
+        // Not a Wine/Proton directory
+        if (!lowerName.startsWith("wine-") && !lowerName.startsWith("proton-")) {
+            return false;
+        }
+
+        // Get bundled versions from resource arrays
+        String[] bionicWineEntries = context.getResources().getStringArray(R.array.bionic_wine_entries);
+        String[] glibcWineEntries = context.getResources().getStringArray(R.array.glibc_wine_entries);
+
+        // Check if it's a bundled version
+        for (String version : bionicWineEntries) {
+            if (lowerName.equals(version.toLowerCase())) return false;
+        }
+        for (String version : glibcWineEntries) {
+            if (lowerName.equals(version.toLowerCase())) return false;
+        }
+
+        // It's Wine/Proton but not bundled, so it's imported
+        return true;
+    }
+
+    private static void clearOptDir(Context context, File optDir) {
         File[] files = optDir.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (file.getName().equals("installed-wine")) continue;
-                FileUtils.delete(file);
+        if (files == null) return;
+
+        for (File file : files) {
+            String fileName = file.getName();
+
+            if (fileName.equals("installed-wine")) continue;
+
+            // Keep imported Wine/Proton installations
+            if (isImportedWineProton(context, fileName)) {
+                Log.d("ImageFsInstaller", "Preserving imported installation: " + fileName);
+                continue;
             }
+
+            // Delete everything else
+            FileUtils.delete(file);
         }
     }
 
-    private static void clearRootDir(File rootDir) {
+    private static void clearRootDir(Context context, File rootDir) {
         if (rootDir.isDirectory()) {
             File[] files = rootDir.listFiles();
             if (files != null) {
@@ -210,6 +245,12 @@ public abstract class ImageFsInstaller {
                     if (file.isDirectory()) {
                         String name = file.getName();
                         if (name.equals("home")) {
+                            continue;
+                        }
+                        // Preserve imported Wine/Proton installations in opt/
+                        if (name.equals("opt")) {
+                            Log.d("ImageFsInstaller", "Clearing opt directory while preserving imported Wine/Proton installations");
+                            clearOptDir(context, file);
                             continue;
                         }
                     }

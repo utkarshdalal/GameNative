@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.max
@@ -45,6 +46,12 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
+    private val onCustomGameImagesFetched: (AndroidEvent.CustomGameImagesFetched) -> Unit = {
+        // Increment refresh counter and refresh the library list to pick up newly fetched images
+        _state.update { it.copy(imageRefreshCounter = it.imageRefreshCounter + 1) }
         onFilterApps(paginationCurrentPage)
     }
 
@@ -75,10 +82,12 @@ class LibraryViewModel @Inject constructor(
         }
 
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
     }
 
     override fun onCleared() {
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         super.onCleared()
     }
 
@@ -141,6 +150,25 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(toPage)
     }
 
+    fun onRefresh() {
+        viewModelScope.launch {
+            _state.update { it.copy(isRefreshing = true) }
+
+            try {
+                val newApps = SteamService.refreshOwnedGamesFromServer()
+                if (newApps > 0) {
+                    Timber.tag("LibraryViewModel").i("Queued $newApps newly owned games for PICS sync")
+                } else {
+                    Timber.tag("LibraryViewModel").d("No newly owned games discovered during refresh")
+                }
+            } catch (e: Exception) {
+                Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
+            } finally {
+                onFilterApps(0).join()
+                _state.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath
@@ -161,17 +189,11 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
-    private fun onFilterApps(paginationPage: Int = 0) {
+    private fun onFilterApps(paginationPage: Int = 0): Job {
         // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        viewModelScope.launch {
+        return viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-
-            // On first load, if Steam games haven't arrived yet, don't process - wait for them
-            if (isFirstLoad && appList.isEmpty()) {
-                Timber.tag("LibraryViewModel").d("First load but Steam games not ready yet, keeping loading state")
-                return@launch
-            }
 
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)

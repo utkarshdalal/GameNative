@@ -6,48 +6,27 @@ import timber.log.Timber
 
 /**
  * Manages caching of Custom Game app IDs and their folder paths.
- * Provides fast lookups and automatic invalidation when root paths change.
+ * Provides fast lookups and automatic invalidation when manual folders change.
  */
 internal object CustomGameCache {
     // Cache: appId (Int) -> folder path (String)
     private var appIdCache: Map<Int, String>? = null
-    private var cacheRoots: Set<String>? = null
     private var cacheManualFolders: Set<String>? = null
 
     /**
-     * Builds the appId cache by scanning all Custom Game folders.
+     * Builds the appId cache by scanning all Custom Game manual folders.
      * Returns a map of appId (Int) -> folder path (String).
      */
     fun buildCache(
-        getAllRoots: () -> Set<String>,
         getManualFolders: () -> Set<String>,
-        looksLikeGameFolder: (File) -> Boolean,
         readGameIdFromFile: (File) -> Int?
     ): Map<Int, String> {
         val cache = mutableMapOf<Int, String>()
-        val roots = getAllRoots()
-        
-        for (root in roots) {
-            val rootFile = File(root)
-            if (!rootFile.exists() || !rootFile.isDirectory) continue
-            
-            val children = rootFile.listFiles { f -> f.isDirectory } ?: continue
-            for (folder in children) {
-                if (!looksLikeGameFolder(folder)) continue
-                
-                // Get the ID for this folder (from .gamenative file or hash)
-                val folderId = readGameIdFromFile(folder) 
-                    ?: abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
-                
-                cache[folderId] = folder.absolutePath
-            }
-        }
         
         val manualFolders = getManualFolders()
         for (path in manualFolders) {
             val folder = File(path)
             if (!folder.exists() || !folder.isDirectory) continue
-            if (!looksLikeGameFolder(folder)) continue
 
             val folderId = readGameIdFromFile(folder)
                 ?: abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
@@ -61,23 +40,18 @@ internal object CustomGameCache {
 
     /**
      * Gets or rebuilds the appId cache if needed.
-     * Cache is invalidated when Custom Game root paths change.
+     * Cache is invalidated when Custom Game manual folders change.
      */
     fun getOrRebuildCache(
-        getAllRoots: () -> Set<String>,
         getManualFolders: () -> Set<String>,
-        looksLikeGameFolder: (File) -> Boolean,
         readGameIdFromFile: (File) -> Int?
     ): Map<Int, String> {
-        val currentRoots = getAllRoots()
         val currentManualFolders = getManualFolders()
-        val cachedRoots = cacheRoots
         val cachedManual = cacheManualFolders
         
-        // Rebuild if roots changed or cache is null
-        if (appIdCache == null || cachedRoots != currentRoots || cachedManual != currentManualFolders) {
-            appIdCache = buildCache(getAllRoots, getManualFolders, looksLikeGameFolder, readGameIdFromFile)
-            cacheRoots = currentRoots
+        // Rebuild if manual folders changed or cache is null
+        if (appIdCache == null || cachedManual != currentManualFolders) {
+            appIdCache = buildCache(getManualFolders, readGameIdFromFile)
             cacheManualFolders = currentManualFolders
         }
         
@@ -90,7 +64,6 @@ internal object CustomGameCache {
      */
     fun invalidate() {
         appIdCache = null
-        cacheRoots = null
         cacheManualFolders = null
         Timber.tag("CustomGameCache").d("AppId cache invalidated")
     }

@@ -26,5 +26,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest
       - name: Build APK release variant, unsigned.
         run: ./gradlew :app:lintKotlin :app:assembleRelease :ubuntufs:assembleRelease

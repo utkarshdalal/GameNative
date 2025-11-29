@@ -10,6 +10,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import android.net.Uri
+import app.gamenative.ui.enums.AppOptionMenuType
 import timber.log.Timber
 
 /**
@@ -159,7 +161,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         // Custom Games don't have Steam metadata, so we use basic info
         return GameDisplayInfo(
             name = libraryItem.name,
-            developer = "Unknown", // Custom Games don't have developer info
+            developer = context.getString(R.string.custom_game_unknown_developer), // Custom Games don't have developer info
             releaseDate = releaseDate,
             heroImageUrl = heroImageUrl,
             iconUrl = null, // Icons are extracted from exe files, not from SteamGridDB
@@ -204,23 +206,13 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
-        // Check if there are multiple valid exe files and none is selected
-        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
-        if (gameFolderPath != null) {
-            val allExes = CustomGameScanner.findAllValidExeFiles(gameFolderPath)
-            if (allExes.size > 1) {
-                // Check if container has an executable selected
-                val containerManager = ContainerManager(context)
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                if (container.executablePath.isEmpty()) {
-                    // Multiple exes found but none selected - show dialog
-                    showExeSelectionDialog(libraryItem.appId)
-                    return
-                }
-            }
+        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        if (container.executablePath.isEmpty()) {
+            // Multiple exes found but none selected - show dialog
+            showExeSelectionDialog(libraryItem.appId)
+            return
         }
-
-        // Launch the game
+        // Launch the game - executable check is now done in preLaunchApp
         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
     }
 
@@ -275,11 +267,13 @@ class CustomGameAppScreen : BaseAppScreen() {
 
                 Timber.tag("CustomGameAppScreen").d("Icon check - existingIconPath: ${existingIconPath ?: "null"}, hasExtractedIcon: $hasExtractedIcon")
 
-                // Also check if there's an extracted icon file anywhere in the folder (recursive search)
-                fun findExtractedIconRecursive(dir: File): File? {
+                // Also check if there's an extracted icon file anywhere in the folder (limited depth search)
+                // Limit search to 2 levels deep to avoid performance issues with large game folders
+                fun findExtractedIconLimited(dir: File, depth: Int = 0, maxDepth: Int = 2): File? {
+                    if (depth > maxDepth) return null
                     dir.listFiles()?.forEach { file ->
                         if (file.isDirectory) {
-                            val found = findExtractedIconRecursive(file)
+                            val found = findExtractedIconLimited(file, depth + 1, maxDepth)
                             if (found != null) return found
                         } else if (file.name.endsWith(".extracted.ico", ignoreCase = true)) {
                             return file
@@ -287,7 +281,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                     }
                     return null
                 }
-                val extractedIconFile = findExtractedIconRecursive(gameFolder)
+                val extractedIconFile = findExtractedIconLimited(gameFolder)
                 Timber.tag("CustomGameAppScreen").d("Recursive search found extracted icon: ${extractedIconFile?.absolutePath ?: "null"}")
 
                 // If findIconFileForCustomGame didn't find an extracted icon, but one exists, we should still try to extract
@@ -364,6 +358,35 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
     }
 
+    /**
+     * Override Reset Container to show confirmation dialog and preserve drives
+     */
+    @Composable
+    override fun getResetContainerOption(
+        context: Context,
+        libraryItem: LibraryItem
+    ): AppMenuOption {
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false }
+            )
+        }
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ResetToDefaults,
+            onClick = { showResetConfirmDialog = true }
+        )
+    }
+
+    /**
+     * Custom games don't have source-specific menu options beyond what's inherited
+     */
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -373,8 +396,6 @@ class CustomGameAppScreen : BaseAppScreen() {
         onClickPlay: (Boolean) -> Unit,
         isInstalled: Boolean
     ): List<AppMenuOption> {
-        // Custom Games don't have source-specific menu options
-        // Delete button is handled via onDeleteDownloadClick and shown next to play button
         return emptyList()
     }
 
@@ -460,7 +481,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                 },
                 title = { Text(stringResource(R.string.custom_game_delete_title)) },
                 text = {
-                    Text(text = stringResource(R.string.custom_game_delete_message))
+                    Text(text = stringResource(R.string.custom_game_delete_message, libraryItem.name))
                 },
                 confirmButton = {
                     TextButton(
@@ -475,16 +496,14 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         ContainerUtils.deleteContainer(context, libraryItem.appId)
                                     }
 
-                                    // Delete the game folder on background thread
+                                    // Remove from manual folders list and invalidate cache
                                     withContext(Dispatchers.IO) {
-                                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
-                                        if (gameFolderPath != null) {
-                                            val gameFolder = File(gameFolderPath)
-                                            if (gameFolder.exists()) {
-                                                gameFolder.deleteRecursively()
-                                            }
+                                        val folderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
+                                        if (folderPath != null) {
+                                            val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
+                                            manualFolders.remove(folderPath)
+                                            PrefManager.customGameManualFolders = manualFolders
                                         }
-                                        // Invalidate cache after deletion
                                         CustomGameScanner.invalidateCache()
                                     }
 
@@ -529,5 +548,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
     }
 }
+
+
 
 

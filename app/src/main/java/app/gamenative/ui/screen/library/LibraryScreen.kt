@@ -97,12 +97,6 @@ fun HomeLibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Ensure default CustomGames folder exists when the library screen loads
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            CustomGameScanner.ensureDefaultFolderExists()
-        }
-    }
 
     LibraryScreenContent(
         state = state,
@@ -113,6 +107,7 @@ fun HomeLibraryScreen(
         onModalBottomSheet = viewModel::onModalBottomSheet,
         onIsSearching = viewModel::onIsSearching,
         onSearchQuery = viewModel::onSearchQuery,
+        onRefresh = viewModel::onRefresh,
         onClickPlay = onClickPlay,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
@@ -135,6 +130,7 @@ private fun LibraryScreenContent(
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
+    onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -145,7 +141,7 @@ private fun LibraryScreenContent(
     val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
-    
+
     // Dialog state for add custom game prompt
     var showAddCustomGameDialog by remember { mutableStateOf(false) }
     var dontShowAgain by remember { mutableStateOf(false) }
@@ -156,7 +152,19 @@ private fun LibraryScreenContent(
 
     val folderPicker = rememberCustomGameFolderPicker(
         onPathSelected = { path ->
-            if (!CustomGameScanner.hasStoragePermission(context, path)) {
+            // When a folder is selected via OpenDocumentTree, the user has already granted
+            // URI permissions for that specific folder. We should verify we can access it
+            // rather than checking for broad storage permissions.
+            val folder = java.io.File(path)
+            val canAccess = try {
+                folder.exists() && (folder.isDirectory && folder.canRead())
+            } catch (e: Exception) {
+                false
+            }
+
+            // Only request permissions if we can't access the folder AND it's outside the sandbox
+            // (folders selected via OpenDocumentTree should already be accessible)
+            if (!canAccess && !CustomGameScanner.hasStoragePermission(context, path)) {
                 requestPermissionsForPath(context, path, storagePermissionLauncher)
             }
             onAddCustomGameFolder(path)
@@ -165,7 +173,7 @@ private fun LibraryScreenContent(
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         },
     )
-    
+
     // Handle opening folder picker (with dialog check)
     val onAddCustomGameClick = {
         if (PrefManager.showAddCustomGameDialog) {
@@ -222,6 +230,7 @@ private fun LibraryScreenContent(
                 onLogout = onLogout,
                 onNavigate = { appId -> selectedAppId = appId },
                 onGoOnline = onGoOnline,
+                onRefresh = onRefresh,
                 onSourceToggle = onSourceToggle,
                 isOffline = isOffline,
             )
@@ -272,7 +281,7 @@ private fun LibraryScreenContent(
                 }
             }
         }
-        
+
         // Add custom game dialog
         if (showAddCustomGameDialog) {
             AlertDialog(
@@ -374,6 +383,7 @@ private fun Preview_LibraryScreenContent() {
                 state = state.copy(modalBottomSheet = !currentState)
             },
             onClickPlay = { _, _ -> },
+            onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},
             onGoOnline = {},

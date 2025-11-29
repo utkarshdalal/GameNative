@@ -43,13 +43,14 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
-import app.gamenative.utils.CustomGameScanner
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
@@ -97,7 +98,7 @@ private fun calculateInstalledCount(state: LibraryState): Int {
 
     // Count Custom Games (always considered "installed")
     val customGameCount = if (state.showCustomGamesInLibrary) {
-        CustomGameScanner.scanAsLibraryItems(query = "").count()
+        PrefManager.customGamesCount
     } else {
         0
     }
@@ -120,6 +121,7 @@ internal fun LibraryListPane(
     onSearchQuery: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
+    onRefresh: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
     isOffline: Boolean = false,
 ) {
@@ -135,6 +137,12 @@ internal fun LibraryListPane(
     ) {
         calculateInstalledCount(state)
     }
+
+
+    val pullToRefreshState = rememberPullToRefreshState()
+
+
+
 
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
@@ -321,52 +329,59 @@ internal fun LibraryListPane(
 
                 // Show actual games (base layer)
                 if (state.appInfoList.isNotEmpty()) {
-                    LazyVerticalGrid(
-                        columns = columnType,
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(
-                            start = 20.dp,
-                            end = 20.dp,
-                            bottom = 72.dp
-                        ),
+                    PullToRefreshBox(
+                        isRefreshing = state.isRefreshing,
+                        onRefresh = onRefresh,
+                        state = pullToRefreshState
                     ) {
-                        items(items = state.appInfoList, key = { it.index }) { item ->
-                            // Fade-in animation for items
-                            var isVisible by remember(item.index) { mutableStateOf(false) }
-                            val alpha by animateFloatAsState(
-                                targetValue = if (isVisible) 1f else 0f,
-                                animationSpec = tween(durationMillis = 300),
-                                label = "fadeIn"
-                            )
-
-                            LaunchedEffect(item.index) {
-                                isVisible = true
-                            }
-
-                            Box(modifier = Modifier.alpha(alpha)) {
-                                if (item.index > 0 && paneType == PaneType.LIST) {
-                                    // Dividers in list view
-                                    HorizontalDivider()
-                                }
-                                AppItem(
-                                    appInfo = item,
-                                    onClick = { onNavigate(item.appId) },
-                                    paneType = paneType,
-                                    onFocus = { targetOfScroll = item.index },
+                        LazyVerticalGrid(
+                            columns = columnType,
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(
+                                start = 20.dp,
+                                end = 20.dp,
+                                bottom = 72.dp
+                            ),
+                        ) {
+                            items(items = state.appInfoList, key = { it.index }) { item ->
+                                // Fade-in animation for items
+                                var isVisible by remember(item.index) { mutableStateOf(false) }
+                                val alpha by animateFloatAsState(
+                                    targetValue = if (isVisible) 1f else 0f,
+                                    animationSpec = tween(durationMillis = 300),
+                                    label = "fadeIn"
                                 )
+
+                                LaunchedEffect(item.index) {
+                                    isVisible = true
+                                }
+
+                                Box(modifier = Modifier.alpha(alpha)) {
+                                    if (item.index > 0 && paneType == PaneType.LIST) {
+                                        // Dividers in list view
+                                        HorizontalDivider()
+                                    }
+                                    AppItem(
+                                        appInfo = item,
+                                        onClick = { onNavigate(item.appId) },
+                                        paneType = paneType,
+                                        onFocus = { targetOfScroll = item.index },
+                                        imageRefreshCounter = state.imageRefreshCounter,
+                                    )
+                                }
                             }
-                        }
-                        if (state.appInfoList.size < state.totalAppsInFilter) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
+                            if (state.appInfoList.size < state.totalAppsInFilter) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
                                 }
                             }
                         }
@@ -478,6 +493,7 @@ private fun Preview_LibraryListPane() {
                 onLogout = { },
                 onNavigate = { },
                 onGoOnline = { },
+                onRefresh = { },
                 onSourceToggle = { },
             )
         }

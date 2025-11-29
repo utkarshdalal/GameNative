@@ -26,6 +26,7 @@ internal fun LibraryList(
     listState: LazyListState,
     list: List<LibraryItem>,
     onItemClick: (String) -> Unit,
+    imageRefreshCounter: Long = 0L,
 ) {
     if (list.isEmpty()) {
         Box(
@@ -57,6 +58,7 @@ internal fun LibraryList(
                     modifier = Modifier.animateItem(),
                     appInfo = item,
                     onClick = { onItemClick(item.appId) },
+                    imageRefreshCounter = imageRefreshCounter,
                 )
 
                 if (item.index < list.lastIndex) {

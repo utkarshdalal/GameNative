@@ -697,6 +697,8 @@ object SteamUtils {
      */
     private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val steamDir = dllPath.parent
+        Files.createDirectories(steamDir)
         val appIdFileUpper = dllPath.parent.resolve("steam_appid.txt")
         if (Files.notExists(appIdFileUpper)) {
             Files.createFile(appIdFileUpper)

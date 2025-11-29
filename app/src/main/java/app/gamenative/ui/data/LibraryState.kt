@@ -8,6 +8,7 @@ import java.util.EnumSet
 data class LibraryState(
     val appInfoSortType: EnumSet<AppFilter> = PrefManager.libraryFilter,
     val appInfoList: List<LibraryItem> = emptyList(),
+    val isRefreshing: Boolean = false,
 
     // Human readable, not 0-indexed
     val totalAppsInFilter: Int = 0,
@@ -25,4 +26,8 @@ data class LibraryState(
     
     // Loading state for skeleton loaders
     val isLoading: Boolean = false,
+    
+    // Refresh counter that increments when custom game images are fetched
+    // Used to trigger UI recomposition to show newly downloaded images
+    val imageRefreshCounter: Long = 0,
 )

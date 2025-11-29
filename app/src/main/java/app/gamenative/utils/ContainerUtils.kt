@@ -18,6 +18,7 @@ import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
+import com.winlator.xenvironment.ImageFs
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -114,6 +115,9 @@ object ContainerUtils {
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
+            sharpnessEffect = PrefManager.sharpnessEffect,
+            sharpnessLevel = PrefManager.sharpnessLevel,
+            sharpnessDenoise = PrefManager.sharpnessDenoise,
         )
     }
 
@@ -164,6 +168,9 @@ object ContainerUtils {
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
+        PrefManager.sharpnessEffect = containerData.sharpnessEffect
+        PrefManager.sharpnessLevel = containerData.sharpnessLevel
+        PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -258,6 +265,9 @@ object ContainerUtils {
             useDRI3 = container.isUseDRI3(),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
+            sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
+            sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
+            sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
         )
     }
 
@@ -337,6 +347,9 @@ object ContainerUtils {
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
+        container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
+        container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
+        container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         try {
             val bindingsStr = containerData.controllerEmulationBindings
             if (bindingsStr.isNotEmpty()) {
@@ -512,7 +525,34 @@ object ContainerUtils {
         data.put("name", "container_$containerId")
 
         // Create the actual container
-        val container = containerManager.createContainerFuture(containerId, data).get()
+        var container = containerManager.createContainerFuture(containerId, data).get()
+
+        // If container creation failed, it might be because directory already exists but is corrupted
+        // Try to clean it up and retry once
+        if (container == null) {
+            Timber.w("Container creation failed for $containerId, checking for corrupted directory...")
+            // Get the container directory path
+            val rootDir = ImageFs.find(context).getRootDir()
+            val homeDir = File(rootDir, "home")
+            val containerDir = File(homeDir, ImageFs.USER+"-"+containerId)
+
+            if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
+                Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
+                try {
+                    FileUtils.delete(containerDir)
+                    // Retry container creation after cleanup
+                    container = containerManager.createContainerFuture(containerId, data).get()
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
+                }
+            }
+
+            // If still null after retry, throw exception
+            if (container == null) {
+                Timber.e("Failed to create container for $containerId after cleanup attempt")
+                throw IllegalStateException("Failed to create container: $containerId")
+            }
+        }
 
         // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
         if (gameSource == GameSource.CUSTOM_GAME) {

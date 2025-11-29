@@ -254,7 +254,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         }
 
         envVars.putAll(Box86_64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
-        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
         String renderer = GPUInformation.getRenderer(context);
         if (renderer.contains("Mali"))
             envVars.put("BOX64_MMAP32", "0");
