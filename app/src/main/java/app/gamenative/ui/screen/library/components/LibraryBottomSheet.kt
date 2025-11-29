@@ -92,13 +92,13 @@ fun LibraryBottomSheet(
         ) {
             FlowFilterChip(
                 onClick = { onSourceToggle(GameSource.STEAM) },
-                label = { Text(text = "Steam") },
+                label = { Text(text = stringResource(R.string.library_source_steam)) },
                 selected = showSteam,
                 leadingIcon = { Icon(imageVector = Icons.Filled.Steam, contentDescription = null) },
             )
             FlowFilterChip(
                 onClick = { onSourceToggle(GameSource.CUSTOM_GAME) },
-                label = { Text(text = "Custom Games") },
+                label = { Text(text = stringResource(R.string.library_source_custom)) },
                 selected = showCustomGames,
                 leadingIcon = { Icon(imageVector = Icons.Filled.CustomGame, contentDescription = null) },
             )
@@ -106,7 +106,7 @@ fun LibraryBottomSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Layout", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.library_layout_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow (
             verticalArrangement = Arrangement.spacedBy(12.dp)

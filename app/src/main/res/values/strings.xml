@@ -450,6 +450,8 @@
     <string name="settings_emulation_driver_manager_subtitle">Install or remove custom graphics driver packages</string>
     <string name="settings_emulation_contents_manager_title">Contents Manager</string>
     <string name="settings_emulation_contents_manager_subtitle">Install additional components (.wcp)</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton Manager</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">Import custom Wine/Proton versions (Bionic only)</string>
 
     <!-- Settings: Debug Group -->
     <string name="settings_debug_title">Debug</string>
@@ -662,6 +664,9 @@
     <string name="library_no_items">No items listed with selection</string>
     <string name="library_filters">Filters</string>
     <string name="library_game_count">%1$d games • %2$d installed</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">Custom Games</string>
+    <string name="library_layout_title">Layout</string>
 
     <!-- Two Factor Auth -->
     <string name="two_factor_login">Login</string>

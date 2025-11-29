@@ -260,7 +260,7 @@ private fun LibraryScreenContent(
             ) {
                 if (!state.isSearching) {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = "Filters") },
+                        text = { Text(text = stringResource(R.string.library_filters)) },
                         icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
                         expanded = filterFabExpanded,
                         onClick = { onModalBottomSheet(true) },

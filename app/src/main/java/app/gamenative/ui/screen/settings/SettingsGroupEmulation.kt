@@ -95,8 +95,8 @@ fun SettingsGroupEmulation() {
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = "Driver Manager") },
-            subtitle = { Text(text = "Install or remove custom graphics driver packages") },
+            title = { Text(text = stringResource(R.string.settings_emulation_driver_manager_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_driver_manager_subtitle)) },
             onClick = { showDriverManager = true },
         )
         SettingsMenuLink(
@@ -107,8 +107,8 @@ fun SettingsGroupEmulation() {
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = "Wine/Proton Manager") },
-            subtitle = { Text(text = "Import custom Wine/Proton versions (Bionic only)") },
+            title = { Text(text = stringResource(R.string.settings_emulation_wine_proton_manager_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_wine_proton_manager_subtitle)) },
             onClick = { showWineProtonManager = true },
         )
     }
