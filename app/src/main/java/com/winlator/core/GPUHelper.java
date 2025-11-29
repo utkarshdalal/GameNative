@@ -8,6 +8,8 @@ import dalvik.annotation.optimization.CriticalNative;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,14 +23,21 @@ import javax.microedition.khronos.opengles.GL10;
 public abstract class GPUHelper {
     public static int VK_API_VERSION_1_3 = vkMakeVersion(1, 3, 0);
 
+    private static final Executor io =
+            Executors.newSingleThreadExecutor();        // created once
+
+    // start the work immediately; runs exactly once
+    private static final CompletableFuture<Integer> apiVersionFuture =
+            CompletableFuture.supplyAsync(GPUHelper::vkGetApiVersion, io);
+
     @CriticalNative
     public static native int vkGetApiVersion();
 
     public static int vkGetApiVersionSafe() {
         try {
-            return CompletableFuture.supplyAsync(() -> vkGetApiVersion(), Executors.newSingleThreadExecutor()).get();
-        } catch (Exception e) {
-            Log.e("GPUHelper", "Failed to get Vulkan API version", e);
+            return apiVersionFuture.join();
+        } catch (CompletionException ex) {
+            Log.e("GPUHelper", "Failed to get Vulkan API version", ex);
             return VK_API_VERSION_1_3;
         }
     }
