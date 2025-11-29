@@ -171,20 +171,22 @@ object SteamUtils {
 
             if ((is32Bit && replaced32) || (is64Bit && replaced64)) return@forEach
 
-            val dllName = if (is64Bit) "steam_api64.dll" else "steam_api.dll"
-            Timber.i("Found $dllName at ${path.absolutePathString()}, replacing...")
-            generateInterfacesFile(path)
-            copyOriginalSteamDll(path, appDirPath)
-            Files.delete(path)
-            Files.createFile(path)
-            FileOutputStream(path.absolutePathString()).use { fos ->
-                context.assets.open("steampipe/$dllName").use { fs ->
-                    fs.copyTo(fos)
+            if (is64Bit || is32Bit) {
+                val dllName = if (is64Bit) "steam_api64.dll" else "steam_api.dll"
+                Timber.i("Found $dllName at ${path.absolutePathString()}, replacing...")
+                generateInterfacesFile(path)
+                copyOriginalSteamDll(path, appDirPath)
+                Files.delete(path)
+                Files.createFile(path)
+                FileOutputStream(path.absolutePathString()).use { fos ->
+                    context.assets.open("steampipe/$dllName").use { fs ->
+                        fs.copyTo(fos)
+                    }
                 }
+                Timber.i("Replaced $dllName")
+                if (is64Bit) replaced64 = true else replaced32 = true
+                ensureSteamSettings(context, path, appId, ticketBase64)
             }
-            Timber.i("Replaced $dllName")
-            if (is64Bit) replaced64 = true else replaced32 = true
-            ensureSteamSettings(context, path, appId, ticketBase64)
         }
 
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
@@ -627,22 +629,24 @@ object SteamUtils {
 
             if (!is32Bit && !is64Bit) return@forEach
 
-            try {
-                val dllName = if (is64Bit) "steam_api64.dll" else "steam_api.dll"
-                val originalPath = path.parent.resolve(dllName)
-                Timber.i("Found ${path.name} at ${path.absolutePathString()}, restoring...")
+            if (is64Bit || is32Bit) {
+                try {
+                    val dllName = if (is64Bit) "steam_api64.dll" else "steam_api.dll"
+                    val originalPath = path.parent.resolve(dllName)
+                    Timber.i("Found ${path.name} at ${path.absolutePathString()}, restoring...")
 
-                // Delete the current DLL if it exists
-                if (Files.exists(originalPath)) {
-                    Files.delete(originalPath)
+                    // Delete the current DLL if it exists
+                    if (Files.exists(originalPath)) {
+                        Files.delete(originalPath)
+                    }
+
+                    // Copy the backup back to the original location
+                    Files.copy(path, originalPath)
+
+                    Timber.i("Restored $dllName from backup")
+                } catch (e: IOException) {
+                    Timber.w(e, "Failed to restore ${path.name} from backup")
                 }
-
-                // Copy the backup back to the original location
-                Files.copy(path, originalPath)
-
-                Timber.i("Restored $dllName from backup")
-            } catch (e: IOException) {
-                Timber.w(e, "Failed to restore ${path.name} from backup")
             }
         }
     }
