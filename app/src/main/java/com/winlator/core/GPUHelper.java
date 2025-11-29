@@ -39,7 +39,7 @@ public abstract class GPUHelper {
 
     public static int vkGetApiVersionSafe() {
         try {
-            return apiVersionFuture.join();
+            return apiVersionFuture.getNow(VK_API_VERSION_1_3);
         } catch (CompletionException ex) {
             Log.e("GPUHelper", "Failed to get Vulkan API version", ex);
             return VK_API_VERSION_1_3;
