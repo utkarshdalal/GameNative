@@ -2862,6 +2862,6 @@ class SteamService : Service(), IChallengeUrlChanged {
      */
     suspend fun getEncryptedAppTicketBase64(appId: Int): String? {
         val ticket = getEncryptedAppTicket(appId) ?: return null
-        return Base64.encodeToString(ticket, Base64.DEFAULT)
+        return Base64.encodeToString(ticket, Base64.NO_WRAP)
     }
 }

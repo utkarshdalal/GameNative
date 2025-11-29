@@ -162,7 +162,7 @@ object SteamUtils {
         // Get ticket once for all DLLs
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
 
-        rootPath.toFile().walkTopDown().maxDepth(5).forEach { file ->
+        rootPath.toFile().walkTopDown().maxDepth(10).forEach { file ->
             val path = file.toPath()
             if (!file.isFile || !path.name.startsWith("steam_api", ignoreCase = true)) return@forEach
 
@@ -664,7 +664,7 @@ object SteamUtils {
         val imageFs = ImageFs.find(context)
         val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
 
-        dosDevicesPath.walkTopDown().maxDepth(5).firstOrNull {
+        dosDevicesPath.walkTopDown().maxDepth(10).firstOrNull {
             it.isFile && it.name.endsWith(".original.exe", ignoreCase = true)
         }?.let { file ->
             try {
