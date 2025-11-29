@@ -7,6 +7,8 @@ import android.util.Log;
 import dalvik.annotation.optimization.CriticalNative;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.microedition.khronos.egl.EGL10;
@@ -22,6 +24,15 @@ public abstract class GPUHelper {
     @CriticalNative
     public static native int vkGetApiVersion();
 
+    public static int vkGetApiVersionSafe() {
+        try {
+            return CompletableFuture.supplyAsync(() -> vkGetApiVersion(), Executors.newSingleThreadExecutor()).get();
+        } catch (Exception e) {
+            Log.e("GPUHelper", "Failed to get Vulkan API version", e);
+            return VK_API_VERSION_1_3;
+        }
+    }
+
     public static native String[] vkGetDeviceExtensions();
 
     static {
@@ -30,7 +41,7 @@ public abstract class GPUHelper {
 
     public static int vkVersionPatch(){
         try {
-            return vkGetApiVersion() & 0xFFF;
+            return vkGetApiVersionSafe() & 0xFFF;
         } catch (UnsatisfiedLinkError e) {
             Log.e("GPUHelper", "Failed to load Vulkan library", e);
             return 0; // Fallback if library not loaded

@@ -1891,7 +1891,7 @@ private fun extractDXWrapperFiles(
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             // Determine graphics driver to choose DXVK version
             val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
-            val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0)) "1.10.3" else "2.4.1"
+            val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0)) "1.10.3" else "2.4.1"
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD, context.assets,
