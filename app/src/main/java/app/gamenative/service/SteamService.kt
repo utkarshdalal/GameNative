@@ -1127,6 +1127,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     )
                 }
                 MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
+                MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_COLDCLIENT_USED)
                 removeDownloadJob(appId)
             }
 
