@@ -2819,15 +2819,15 @@ class SteamService : Service(), IChallengeUrlChanged {
             val steamApps = instance?._steamApps ?: null
             val response = try {
                 withTimeout(5_000) {
-                    steamApps.requestEncryptedAppTicket(appId).await()
+                    steamApps?.requestEncryptedAppTicket(appId)?.await()
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to request encrypted app ticket for app $appId")
                 return null
             }
 
-            if (response.result != EResult.OK || response.encryptedAppTicket == null) {
-                Timber.w("Failed to get encrypted app ticket for app $appId: ${response.result}")
+            if (response?.result != EResult.OK || response.encryptedAppTicket == null) {
+                Timber.w("Failed to get encrypted app ticket for app $appId: ${response?.result}")
                 return null
             }
 
@@ -2835,8 +2835,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             val ticketProto = response.encryptedAppTicket
             val ticket = EncryptedAppTicket(
                 appId = appId,
-                result = response.result.code,
-                ticketVersionNo = ticketProto.ticketVersionNo.toInt(),
+                result = response.result.code(),
+                ticketVersionNo = ticketProto!!.ticketVersionNo.toInt(),
                 crcEncryptedTicket = ticketProto.crcEncryptedticket.toInt(),
                 cbEncryptedUserData = ticketProto.cbEncrypteduserdata.toInt(),
                 cbEncryptedAppOwnershipTicket = ticketProto.cbEncryptedAppownershipticket.toInt(),

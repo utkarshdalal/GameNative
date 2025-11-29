@@ -197,7 +197,7 @@ android {
 dependencies {
     implementation(libs.material)
     // JavaSteam
-    val localBuild = true // Change to 'true' needed when building JavaSteam manually
+    val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
         implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
         implementation(files("../../JavaSteam/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
