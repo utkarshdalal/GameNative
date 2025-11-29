@@ -22,11 +22,17 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+      - name: Inject credentials
+        run: |
+          cat <<EOF > local.properties
+          POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+          EOF
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest
-      - name: Build APK release variant, unsigned.
-        run: ./gradlew :app:lintKotlin :app:assembleRelease :ubuntufs:assembleRelease

@@ -284,7 +284,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private val PROTOCOL_TYPES = EnumSet.of(ProtocolTypes.WEB_SOCKET)
 
-        private var instance: SteamService? = null
+        internal var instance: SteamService? = null
 
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
