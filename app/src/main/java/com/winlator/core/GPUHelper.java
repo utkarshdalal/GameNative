@@ -23,6 +23,10 @@ import javax.microedition.khronos.opengles.GL10;
 public abstract class GPUHelper {
     public static int VK_API_VERSION_1_3 = vkMakeVersion(1, 3, 0);
 
+    static {
+        System.loadLibrary("winlator_11");
+    }
+
     private static final Executor io =
             Executors.newSingleThreadExecutor();        // created once
 
@@ -43,10 +47,6 @@ public abstract class GPUHelper {
     }
 
     public static native String[] vkGetDeviceExtensions();
-
-    static {
-        System.loadLibrary("winlator_11");
-    }
 
     public static int vkVersionPatch(){
         try {
