@@ -165,6 +165,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import android.util.Base64
+import app.gamenative.db.dao.EncryptedAppTicketDao
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
@@ -203,7 +204,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     lateinit var cachedLicenseDao: CachedLicenseDao
 
     @Inject
-    lateinit var encryptedAppTicketDao: app.gamenative.db.dao.EncryptedAppTicketDao
+    lateinit var encryptedAppTicketDao: EncryptedAppTicketDao
 
     private lateinit var notificationHelper: NotificationHelper
 
@@ -1686,6 +1687,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         fileChangeListsDao.deleteAll()
                         friendDao.deleteAll()
                         licenseDao.deleteAll()
+                        encryptedAppTicketDao.deleteAll()
                     }
                 }
             }

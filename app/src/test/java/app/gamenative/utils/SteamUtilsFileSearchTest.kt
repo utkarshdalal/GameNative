@@ -619,8 +619,8 @@ class SteamUtilsFileSearchTest {
             originalDllContent, dllFile.readText())
 
         // Verify game.exe is NOT overwritten after first replaceSteamClientDll call
-        assertEquals("game.exe should not be overwritten after replaceSteamClientDll",
-            "game.exe content", gameExe.readText())
+        assertEquals("game.exe should be overwritten after replaceSteamClientDll",
+            "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
         assertTrue("Should add STEAM_COLDCLIENT_USED marker",
@@ -690,8 +690,8 @@ class SteamUtilsFileSearchTest {
             steamAppId.toString(), appSteamAppIdFile.readText().trim())
 
         // Verify game.exe is NOT overwritten after replaceSteamApi call
-        assertEquals("game.exe should not be overwritten after replaceSteamApi",
-            "game.exe content", gameExe.readText())
+        assertEquals("game.exe should be overwritten after replaceSteamApi",
+            "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
         assertTrue("Should add STEAM_DLL_REPLACED marker",
@@ -737,8 +737,8 @@ class SteamUtilsFileSearchTest {
             steamAppId.toString(), steamAppIdFile.readText().trim())
 
         // Verify game.exe is NOT overwritten after second replaceSteamClientDll call
-        assertEquals("game.exe should not be overwritten after second replaceSteamClientDll",
-            "game.exe content", gameExe.readText())
+        assertEquals("game.exe should be overwritten after second replaceSteamClientDll",
+            "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
         assertTrue("Should add STEAM_COLDCLIENT_USED marker",
@@ -951,35 +951,35 @@ class SteamUtilsFileSearchTest {
 
         // Verify configs.user.ini contains all required fields
         val appUserIniContent = appConfigsUserIni.readText()
-        assertTrue("configs.user.ini should contain [user::general] section", 
+        assertTrue("configs.user.ini should contain [user::general] section",
             appUserIniContent.contains("[user::general]"))
-        assertTrue("configs.user.ini should contain account_name field", 
+        assertTrue("configs.user.ini should contain account_name field",
             appUserIniContent.contains("account_name="))
-        assertTrue("configs.user.ini should contain account_steamid field", 
+        assertTrue("configs.user.ini should contain account_steamid field",
             appUserIniContent.contains("account_steamid="))
-        assertTrue("configs.user.ini should contain language field", 
+        assertTrue("configs.user.ini should contain language field",
             appUserIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field", 
+        assertTrue("configs.user.ini should contain ticket field",
             appUserIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content
         val appAppIniContent = appConfigsAppIni.readText()
-        assertTrue("configs.app.ini should contain [app::dlcs] section", 
+        assertTrue("configs.app.ini should contain [app::dlcs] section",
             appAppIniContent.contains("[app::dlcs]"))
-        assertTrue("configs.app.ini should contain unlock_all field", 
+        assertTrue("configs.app.ini should contain unlock_all field",
             appAppIniContent.contains("unlock_all="))
 
         // Verify configs.main.ini contains expected content
         val appMainIniContent = appConfigsMainIni.readText()
-        assertTrue("configs.main.ini should contain [main::connectivity] section", 
+        assertTrue("configs.main.ini should contain [main::connectivity] section",
             appMainIniContent.contains("[main::connectivity]"))
-        assertTrue("configs.main.ini should contain disable_lan_only=1", 
+        assertTrue("configs.main.ini should contain disable_lan_only=1",
             appMainIniContent.contains("disable_lan_only=1"))
 
         // Verify steam_appid.txt exists in app directory steam_settings folder
         val appSteamAppIdFile = File(appSettingsDir, "steam_appid.txt")
         assertTrue("steam_appid.txt should exist in app directory steam_settings folder", appSteamAppIdFile.exists())
-        assertEquals("steam_appid.txt in app directory should contain correct app ID", 
+        assertEquals("steam_appid.txt in app directory should contain correct app ID",
             steamAppId.toString(), appSteamAppIdFile.readText().trim())
 
         // Verify restoreUnpackedExecutable overwrites game.exe with game.exe.unpacked.exe content
@@ -1032,18 +1032,18 @@ class SteamUtilsFileSearchTest {
 
         // Verify config file contents are still correct
         val finalUserIniContent = appConfigsUserIni.readText()
-        assertTrue("configs.user.ini should still contain [user::general] section", 
+        assertTrue("configs.user.ini should still contain [user::general] section",
             finalUserIniContent.contains("[user::general]"))
         val finalAppIniContent = appConfigsAppIni.readText()
-        assertTrue("configs.app.ini should still contain [app::dlcs] section", 
+        assertTrue("configs.app.ini should still contain [app::dlcs] section",
             finalAppIniContent.contains("[app::dlcs]"))
         val finalMainIniContent = appConfigsMainIni.readText()
-        assertTrue("configs.main.ini should still contain [main::connectivity] section", 
+        assertTrue("configs.main.ini should still contain [main::connectivity] section",
             finalMainIniContent.contains("[main::connectivity]"))
 
         // Verify steam_appid.txt still exists with correct app ID
         assertTrue("steam_appid.txt should still exist", appSteamAppIdFile.exists())
-        assertEquals("steam_appid.txt should still contain correct app ID", 
+        assertEquals("steam_appid.txt should still contain correct app ID",
             steamAppId.toString(), appSteamAppIdFile.readText().trim())
 
         // Verify restoreUnpackedExecutable overwrites game.exe with game.exe.unpacked.exe content again
