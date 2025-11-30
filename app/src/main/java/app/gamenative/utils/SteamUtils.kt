@@ -620,7 +620,7 @@ object SteamUtils {
     fun putBackSteamDlls(appDirPath: String) {
         val rootPath = Paths.get(appDirPath)
 
-        rootPath.toFile().walkTopDown().maxDepth(5).forEach { file ->
+        rootPath.toFile().walkTopDown().maxDepth(10).forEach { file ->
             val path = file.toPath()
             if (!file.isFile || !path.name.startsWith("steam_api", ignoreCase = true) || !path.name.endsWith(".orig", ignoreCase = true)) return@forEach
 
