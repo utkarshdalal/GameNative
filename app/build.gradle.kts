@@ -261,6 +261,7 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.zstd.jni)
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.+")
