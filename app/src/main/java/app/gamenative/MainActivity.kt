@@ -2,6 +2,7 @@ package app.gamenative
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
@@ -38,6 +39,7 @@ import app.gamenative.utils.AnimatedPngDecoder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LocaleHelper
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -109,6 +111,16 @@ class MainActivity : ComponentActivity() {
 
     // Add a property to keep a reference to the orientation sensor listener
     private var orientationSensorListener: OrientationEventListener? = null
+
+    override fun attachBaseContext(newBase: Context) {
+        // Initialize PrefManager to read language setting
+        PrefManager.init(newBase)
+
+        // Apply the saved language preference before creating the activity
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(

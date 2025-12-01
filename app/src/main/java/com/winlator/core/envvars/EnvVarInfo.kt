@@ -94,6 +94,79 @@ data class EnvVarInfo(
                 possibleValues = listOf("0", "1"),
             ),
         )
+        val KNOWN_FEXCORE_VARS = mapOf(
+            "FEX_TSOENABLED" to EnvVarInfo(
+                identifier = "FEX_TSOENABLED",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_VECTORTSOENABLED" to EnvVarInfo(
+                identifier = "FEX_VECTORTSOENABLED",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_HALFBARRIERTSOENABLED" to EnvVarInfo(
+                identifier = "FEX_HALFBARRIERTSOENABLED",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_MEMCPYSETTSOENABLED" to EnvVarInfo(
+                identifier = "FEX_MEMCPYSETTSOENABLED",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_X87REDUCEDPRECISION" to EnvVarInfo(
+                identifier = "FEX_X87REDUCEDPRECISION",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_MULTIBLOCK" to EnvVarInfo(
+                identifier = "FEX_MULTIBLOCK",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_MAXINST" to EnvVarInfo(
+                identifier = "FEX_MAXINST",
+            ),
+            "FEX_HOSTFEATURES" to EnvVarInfo(
+                identifier = "FEX_HOSTFEATURES",
+                possibleValues = listOf("enablesve", "disablesve", "enableavx", "disableavx", "off"),
+            ),
+            "FEX_SMALLTSCSCALE" to EnvVarInfo(
+                identifier = "FEX_SMALLTSCSCALE",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_SMC_CHECKS" to EnvVarInfo(
+                identifier = "FEX_SMC_CHECKS",
+                possibleValues = listOf("none", "mtrack", "full"),
+            ),
+            "FEX_VOLATILEMETADATA" to EnvVarInfo(
+                identifier = "FEX_VOLATILEMETADATA",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_MONOHACKS" to EnvVarInfo(
+                identifier = "FEX_MONOHACKS",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_HIDEHYPERVISORBIT" to EnvVarInfo(
+                identifier = "FEX_HIDEHYPERVISORBIT",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_DISABLEL2CACHE" to EnvVarInfo(
+                identifier = "FEX_DISABLEL2CACHE",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "FEX_DYNAMICL1CACHE" to EnvVarInfo(
+                identifier = "FEX_DYNAMICL1CACHE",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+        )
         val KNOWN_ENV_VARS = mapOf(
             "ZINK_DESCRIPTORS" to EnvVarInfo(
                 identifier = "ZINK_DESCRIPTORS",
@@ -139,6 +212,12 @@ data class EnvVarInfo(
             "MESA_EXTENSION_MAX_YEAR" to EnvVarInfo(
                 identifier = "MESA_EXTENSION_MAX_YEAR",
             ),
+            "WRAPPER_MAX_IMAGE_COUNT" to EnvVarInfo(
+                identifier = "MESA_EXTENSION_MAX_YEAR",
+            ),
+            "MESA_GL_VERSION_OVERRIDE" to EnvVarInfo(
+                identifier = "MESA_EXTENSION_MAX_YEAR",
+            ),
             "PULSE_LATENCY_MSEC" to EnvVarInfo(
                 identifier = "PULSE_LATENCY_MSEC",
             ),
@@ -148,6 +227,16 @@ data class EnvVarInfo(
             ),
             "DXVK_FRAME_RATE" to EnvVarInfo(
                 identifier = "DXVK_FRAME_RATE",
+            ),
+            "WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER" to EnvVarInfo(
+                identifier = "WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
+            "WINE_NEW_MEDIASOURCE" to EnvVarInfo(
+                identifier = "WINE_NEW_MEDIASOURCE",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
             ),
         )
     }

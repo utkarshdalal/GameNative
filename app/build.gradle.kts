@@ -79,8 +79,10 @@ android {
         // Localization support - specify which languages to include
         resourceConfigurations += listOf(
             "en",    // English (default)
+            "da",      // Danish
+            "pt-rBR",  // Portuguese (Brazilian)
             "zh-rTW", // Traditional Chinese
-            // TODO: Add more languages here using the ISO 639-1 locale code
+            // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -160,6 +162,11 @@ android {
             useLegacyPackaging = true
         }
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
     dynamicFeatures += setOf(":ubuntufs")
 
     kotlinter {
@@ -192,11 +199,11 @@ android {
 
 dependencies {
     implementation(libs.material)
-    // JavaSteaml
+    // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
         implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/build/libs/javasteam-depotdownloader:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {
@@ -253,6 +260,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.zstd.jni)
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.+")

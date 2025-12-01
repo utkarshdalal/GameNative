@@ -112,14 +112,15 @@ private fun ChatScreenContent(
 ) {
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // NOTE: This should be removed once chat is considered stable.
     LaunchedEffect(Unit) {
         if (!PrefManager.ackChatPreview) {
             scope.launch {
                 val result = snackbarHost.showSnackbar(
-                    message = "Chatting is still an early feature.\nPlease report any issues in the project repo.",
-                    actionLabel = "OK",
+                    message = context.getString(app.gamenative.R.string.chat_preview_warning),
+                    actionLabel = context.getString(app.gamenative.R.string.ok),
                 )
 
                 if (result == SnackbarResult.ActionPerformed) {
@@ -261,7 +262,7 @@ private fun NoChatHistoryBox() {
         ) {
             Text(
                 modifier = Modifier.padding(24.dp),
-                text = "No chat history",
+                text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.chat_no_history),
                 textAlign = TextAlign.Center,
             )
         }

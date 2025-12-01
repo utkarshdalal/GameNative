@@ -134,6 +134,6 @@ jobs:
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
-        artifact_url='${{ steps.upload_app.outputs.artifact-url }}'
+        artifact_url="https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed.zip"
         payload='{"content":"**New Android build**\nDownload: '"$artifact_url"'\n\nChanges:\n'"${{ steps.changelog.outputs.log }}"'"}'
         curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

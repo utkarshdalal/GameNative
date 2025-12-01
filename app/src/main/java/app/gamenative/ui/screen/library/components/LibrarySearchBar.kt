@@ -95,14 +95,14 @@ internal fun LibrarySearchBar(
                 .focusable(allowFocusing.value),
             placeholder = {
                 Text(
-                    text = "Search your games...",
+                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
@@ -113,7 +113,7 @@ internal fun LibrarySearchBar(
                         content = {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = "Clear search",
+                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

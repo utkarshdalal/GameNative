@@ -5,6 +5,11 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ActivityResultLauncher
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +21,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
+import app.gamenative.utils.SteamGridDB
+import app.gamenative.utils.GameMetadataManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -153,193 +160,199 @@ abstract class BaseAppScreen {
     protected abstract fun getInstallPath(context: Context, libraryItem: LibraryItem): String?
 
     /**
-     * Build common menu options that are available for all game sources
+     * Get Edit Container menu option.
      */
     @Composable
-    protected fun buildCommonMenuOptions(
+    protected open fun getEditContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-        onEditContainer: () -> Unit,
-        onClickPlay: (Boolean) -> Unit,
-        isInstalled: Boolean,
-        exportFrontendLauncher: androidx.activity.result.ActivityResultLauncher<String>
-    ): MutableList<AppMenuOption> {
-        val menuOptions = mutableListOf<AppMenuOption>()
-        val appId = libraryItem.appId
+        onEditContainer: () -> Unit
+    ): AppMenuOption {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.EditContainer,
+            onClick = onEditContainer
+        )
+    }
+
+    @Composable
+    protected open fun getRunContainerOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onClickPlay: (Boolean) -> Unit
+    ): AppMenuOption? {
+        return AppMenuOption(
+            AppOptionMenuType.RunContainer,
+            onClick = {
+                onRunContainerClick(context, libraryItem, onClickPlay)
+            }
+        )
+    }
+
+    @Composable
+    protected abstract fun getResetContainerOption(
+        context: Context,
+        libraryItem: LibraryItem
+    ): AppMenuOption?
+
+
+    @Composable
+    protected open fun getExportContainerOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        exportFrontendLauncher: ActivityResultLauncher<String>
+    ): AppMenuOption? {
+        val gameId = getGameId(libraryItem)
+        val gameName = getGameName(context, libraryItem)
+        val extension = getExportFileExtension()
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ExportFrontend,
+            onClick = {
+                val suggested = "${gameName}${extension}"
+                exportFrontendLauncher.launch(suggested)
+            }
+        )
+    }
+
+    /**
+     * Get Create Shortcut menu option. Subclasses can override to customize behavior.
+     */
+    @Composable
+    protected open fun getCreateShortcutOption(
+        context: Context,
+        libraryItem: LibraryItem
+    ): AppMenuOption? {
         val gameId = getGameId(libraryItem)
         val gameName = getGameName(context, libraryItem)
         val iconUrl = getIconUrl(context, libraryItem)
 
-        // Edit Container option (always available)
-        // Note: SteamAppScreen will override this to check for ImageFS installation
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.EditContainer,
-                onClick = onEditContainer
-            )
-        )
-
-        if (isInstalled) {
-            // Run Container option
-            menuOptions.add(
-                AppMenuOption(
-                    AppOptionMenuType.RunContainer,
-                    onClick = {
-                        onRunContainerClick(context, libraryItem, onClickPlay)
-                    },
-                )
-            )
-
-            // Reset to Defaults option - will be overridden by SteamAppScreen to show confirmation dialog
-            menuOptions.add(
-                AppMenuOption(
-                    AppOptionMenuType.ResetToDefaults,
-                    onClick = {
-                        val defaultConfig = ContainerUtils.getDefaultContainerData()
-                        ContainerUtils.applyToContainer(context, appId, defaultConfig)
-                        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
-                    },
-                )
-            )
-
-            // Create Shortcut option
-            menuOptions.add(
-                AppMenuOption(
-                    optionType = AppOptionMenuType.CreateShortcut,
-                    onClick = {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                createPinnedShortcut(
-                                    context = context,
-                                    gameId = gameId,
-                                    label = gameName,
-                                    iconUrl = iconUrl
-                                )
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.base_app_shortcut_created),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(
-                                            R.string.base_app_shortcut_failed,
-                                            e.message ?: ""
-                                        ),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
+        return AppMenuOption(
+            optionType = AppOptionMenuType.CreateShortcut,
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        createPinnedShortcut(
+                            context = context,
+                            gameId = gameId,
+                            label = gameName,
+                            iconUrl = iconUrl
+                        )
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.base_app_shortcut_created),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    R.string.base_app_shortcut_failed,
+                                    e.message ?: ""
+                                ),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
-                )
-            )
-
-            // Export for Frontend option
-            menuOptions.add(
-                AppMenuOption(
-                    optionType = AppOptionMenuType.ExportFrontend,
-                    onClick = {
-                        val extension = getExportFileExtension()
-                        val suggested = "${gameName}$extension"
-                        exportFrontendLauncher.launch(suggested)
-                    }
-                )
-            )
-        }
-
-        // Submit Feedback option (always available)
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.SubmitFeedback,
-                onClick = {
-                    PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(appId))
-                },
-            )
+                }
+            }
         )
+    }
 
-        // Fetch SteamGridDB Images option (always available)
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.FetchSteamGridDBImages,
-                onClick = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            // Use libraryItem.name directly (non-composable)
-                            val gameName = libraryItem.name
-                            val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
+    /**
+     * Get source-specific menu options. Subclasses can override to add custom options.
+     */
+    @Composable
+    protected open fun getSourceSpecificMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+        onEditContainer: () -> Unit,
+        onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
+        isInstalled: Boolean
+    ): List<AppMenuOption> {
+        return emptyList()
+    }
 
-                            if (gameFolderPath != null) {
-                                // Clear SteamGridDB fetched flag to force re-fetch
-                                val folder = File(gameFolderPath)
-                                // Extract appId from libraryItem (works for both Steam and Custom Games)
-                                val appId = libraryItem.gameId
-                                app.gamenative.utils.GameMetadataManager.update(
-                                    folder = folder,
-                                    appId = appId,
-                                    steamgriddbFetched = false
-                                )
+    @Composable
+    private fun getSubmitFeedbackOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.SubmitFeedback,
+            onClick = {
+                PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(libraryItem.appId))
+            }
+        )
+    }
 
-                                app.gamenative.utils.SteamGridDB.fetchGameImages(gameName, gameFolderPath)
+    @Composable
+    private fun getFetchImagesOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.FetchSteamGridDBImages,
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val gameName = libraryItem.name
+                        val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
 
-                                // Emit event to notify UI that images have been fetched
-                                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                        if (gameFolderPath != null) {
+                            val folder = File(gameFolderPath)
+                            val appId = libraryItem.gameId
+                            GameMetadataManager.update(
+                                folder = folder,
+                                appId = appId,
+                                steamgriddbFetched = false
+                            )
 
-                                // Call hook for post-fetch processing (e.g., icon extraction)
-                                onAfterFetchImages(context, libraryItem, gameFolderPath)
+                            SteamGridDB.fetchGameImages(gameName, gameFolderPath)
+                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                            onAfterFetchImages(context, libraryItem, gameFolderPath)
 
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.base_app_images_fetched),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            } else {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.base_app_game_folder_not_found),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(
                                     context,
-                                    context.getString(
-                                        R.string.base_app_images_fetch_failed,
-                                        e.message ?: ""
-                                    ),
+                                    context.getString(R.string.base_app_images_fetched),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.base_app_game_folder_not_found),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
                         }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    R.string.base_app_images_fetch_failed,
+                                    e.message ?: ""
+                                ),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 }
-            )
+            }
         )
+    }
 
-        // Get Support option (always available)
-        menuOptions.add(
-            AppMenuOption(
-                optionType = AppOptionMenuType.GetSupport,
-                onClick = {
-                    val browserIntent = Intent(
-                        Intent.ACTION_VIEW,
-                        ("https://discord.gg/2hKv4VfZfE").toUri(),
-                    )
-                    context.startActivity(browserIntent)
-                },
-            )
+    @Composable
+    private fun getGetSupportOption(context: Context): AppMenuOption {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.GetSupport,
+            onClick = {
+                val browserIntent = Intent(
+                    Intent.ACTION_VIEW,
+                    ("https://discord.gg/2hKv4VfZfE").toUri()
+                )
+                context.startActivity(browserIntent)
+            }
         )
-
-        return menuOptions
     }
 
     /**
@@ -376,18 +389,44 @@ abstract class BaseAppScreen {
     }
 
     /**
-     * Get source-specific menu options (to be overridden by subclasses)
+     * Reset container to default settings while preserving drive mappings.
+     * This is common behavior for all game sources.
+     */
+    protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
+        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+
+        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+
+        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Common reset confirmation dialog for all game sources.
      */
     @Composable
-    protected open fun getSourceSpecificMenuOptions(
-        context: Context,
-        libraryItem: LibraryItem,
-        onEditContainer: () -> Unit,
-        onBack: () -> Unit,
-        onClickPlay: (Boolean) -> Unit,
-        isInstalled: Boolean
-    ): List<AppMenuOption> {
-        return emptyList()
+    protected fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(context.getString(R.string.base_app_reset_container_title)) },
+            text = {
+                Text(context.getString(R.string.steam_reset_container_message))
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(
+                        text = context.getString(R.string.base_app_reset_container_confirm),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(context.getString(R.string.cancel))
+                }
+            }
+        )
     }
 
     /**
@@ -400,11 +439,30 @@ abstract class BaseAppScreen {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
-        exportFrontendLauncher: androidx.activity.result.ActivityResultLauncher<String>
+        exportFrontendLauncher: ActivityResultLauncher<String>
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
-        val menuOptions = buildCommonMenuOptions(context, libraryItem, onEditContainer, onClickPlay, isInstalled, exportFrontendLauncher)
+        val menuOptions = mutableListOf<AppMenuOption>()
+
+        // Always available: Edit Container
+        menuOptions.add(getEditContainerOption(context, libraryItem, onEditContainer))
+
+        if (isInstalled) {
+            // Options only available when game is installed
+            getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
+            getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
+            getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
+            getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
+        }
+
+        // Always available options
+        menuOptions.add(getSubmitFeedbackOption(context, libraryItem))
+        menuOptions.add(getFetchImagesOption(context, libraryItem))
+        menuOptions.add(getGetSupportOption(context))
+
+        // Add any source-specific options
         menuOptions.addAll(getSourceSpecificMenuOptions(context, libraryItem, onEditContainer, onBack, onClickPlay, isInstalled))
+
         return menuOptions
     }
 

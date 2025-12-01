@@ -22,6 +22,8 @@
     <string name="steam_imagefs_install_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="steam_reset_container_title">Reset Container</string>
     <string name="steam_reset_container_message">This will reset your container to the default configuration.</string>
+    <string name="base_app_reset_container_title">Reset Container?</string>
+    <string name="base_app_reset_container_confirm">Reset</string>
     <string name="steam_verify_files_title">Verify Files</string>
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
     <string name="steam_update_title">Update</string>
@@ -29,6 +31,7 @@
     <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
     <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
+    <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
     <string name="steam_container_reset_success">Container reset to defaults</string>
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
@@ -180,9 +183,62 @@
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
     ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
+        Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
+        <b>0</b> : Use regular safe barriers<br />
+        <b>1</b> : Use weak barriers for mild performance boost<br />
+        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
+        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
+        <b>0</b> : Generate unaligned atomics handling code.<br />
+        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
+        Enable or disable the use of deferred flags.<br /><br />
+        <b>0</b> : Disable the use of deferred flags.<br />
+        <b>1</b> : Enable the use of deferred flags.]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
+        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
+        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
+        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
+        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
+        Enable or disable the use of native flags.<br /><br />
+        <b>0</b> : Do not use native flags.<br />
+        <b>1</b> : Use native flags when possible.]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
+        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
+        <b>0</b> : Ignore x86 PAUSE instruction.<br />
+        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
+        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
+        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
+    ]]></string>
+    <string name="box86_64_env_var_help__avx"><![CDATA[
+        AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
+        <b>0</b> : Disable AVX extension<br />
+        <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
+        <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
+    ]]></string>
+    <string name="box86_64_env_var_help__maxcpu">Maximum number of CPUs presented to programs by box64</string>
+    <string name="box86_64_env_var_help__unityplayer">Detect UnityPlayer.dll and apply strongmem settings</string>
+    <string name="box86_64_env_var_help__mmap32">Force every memory allocation in 32bit address spaces</string>
     <string name="box86_64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
     <string name="box86_64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
     <string name="box86_64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+    <string name="fexcore_env_var_help__tsoenabled">Enables TSO IR ops (required for multithreaded apps).</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">Makes vector load/stores atomic when TSO is enabled.</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">Uses half-barrier atomics for unaligned loads/stores under TSO.</string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled">Makes REP MOVS / REP STOS atomic under TSO.</string>
+    <string name="fexcore_env_var_help__multiblock">Enables multiblock code compilation. Can cause longer JIT compilation and stutter.</string>
+    <string name="fexcore_env_var_help__hostfeatures">Controls CPU feature forcing.</string>
+    <string name="fexcore_env_var_help__smalltscscale">Scales TSC on low-frequency systems.</string>
+    <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
+    <string name="fexcore_env_var_help__volatilemetadata">Uses volatile metadata from PE files for TSO when available.</string>
+    <string name="fexcore_env_var_help__monohacks">Special SMC + JIT block hacks for Mono detection.</string>
+    <string name="fexcore_env_var_help__hidehypervisorbit">Hides CPUID hypervisor bit (useful for apps that crash with it).</string>
+    <string name="fexcore_env_var_help__disablel2cache">Disables FEXCore JIT L2 cache lookup, saving memory but introducing stutters.</string>
+    <string name="fexcore_env_var_help__dynamicl1cache">Switches FEXCore JIT L1 cache to be dynamically sized, saving memory but introducing stutters.</string>
+    <string name="fexcore_env_var_help__x87reducedprecision">Emulates X87 floating point using 64-bit precision. This reduces emulation accuracy and may result in rendering bugs.</string>
+    <string name="fexcore_env_var_help__maxinst">Maximum instruction budget per translation block. Higher values can improve performance but may reduce stability.</string>
 
     <string name="resume_download">Resume</string>
     <string name="pause_download">Pause</string>
@@ -228,10 +284,25 @@
     <string name="base_app_export_failed">Failed to export: %s</string>
     <string name="base_app_export_cancelled">Export cancelled</string>
 
+
+    <!-- App Filter -->
+    <string name="app_filter_installed">Installed</string>
+    <string name="app_filter_game">Game</string>
+    <string name="app_filter_application">Application</string>
+    <string name="app_filter_tool">Tool</string>
+    <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_family">Family</string>
+
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">No connection to Steam</string>
     <string name="retry_steam_connection">Retry Steam Connection</string>
     <string name="continue_offline">Continue Offline</string>
+
+
+    <!--Game Feedback Dialog -->
+    <string name="game_feedback_game_run">How did the game run?</string>
+    <string name="game_feedback_issues_question">Select any issues you encountered:</string>
+
 
     <!-- Profile & Menu -->
     <string name="help_and_support">Help &amp; Support</string>
@@ -273,7 +344,6 @@
     <string name="graphics_driver_version">Graphics Driver Version</string>
     <string name="exposed_vulkan_extensions">Exposed Vulkan Extensions</string>
     <string name="max_device_memory">Max Device Memory</string>
-    <string name="frame_synchronization">Frame Synchronization</string>
     <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
@@ -281,9 +351,20 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Use DRI3</string>
     <string name="use_dri3_description">Disabling may fix graphical glitches on some devices</string>
+    <string name="sync_frame">Sync Every Frame</string>
+    <string name="disable_present_wait">Disable KHR_present_wait</string>
+    <string name="present_modes">Present Modes</string>
+    <string name="resource_type">Memory Resource Type</string>
+    <string name="bcn_emulation">BCn Emulation</string>
+    <string name="bcn_emulation_type">BCn Emulation Type</string>
+    <string name="bcn_emulation_cache">BCn Emulation Cache</string>
+    <string name="sharpness_effect">Sharpness Boost</string>
+    <string name="sharpness_level">Sharpness Level</string>
+    <string name="sharpness_denoise">Sharpness Denoise</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">FEXCore Version</string>
+    <string name="fexcore_preset">FEXCore Preset</string>
     <string name="tso_mode">TSO Mode</string>
     <string name="x87_mode">x87 Mode</string>
     <string name="multiblock">Multiblock</string>
@@ -292,6 +373,8 @@
     <string name="box64_version">Box64 Version</string>
     <string name="box64_preset">Box64 Preset</string>
     <string name="box64_presets">Box64 Presets</string>
+    <string name="fexcore_presets">FEXCore Presets</string>
+    <string name="fexcore_presets_description">View, modify, and create FEXCore presets</string>
     <string name="preset_name">Preset name</string>
 
     <!-- Container Configuration: Input -->
@@ -345,4 +428,359 @@
     <string name="install_anyway">Install Anyway</string>
     <string name="remove_content">Remove content?</string>
     <string name="remove_content_confirmation">Are you sure you want to remove %1$s (%2$s)?</string>
+
+    <!-- Settings -->
+    <string name="settings_language">Language</string>
+    <string name="settings_select_language">Select Language</string>
+    <string name="settings_language_restart_title">Restart Required</string>
+    <string name="settings_language_restart_message">Changing the language requires the app to restart. Do you want to continue?</string>
+    <string name="settings_language_restart_confirm">Restart</string>
+    <string name="settings_language_changing">Changing language and restarting...</string>
+
+    <!-- Settings: Emulation Group -->
+    <string name="settings_emulation_title">Emulation</string>
+    <string name="settings_emulation_orientations_title">Allowed Orientations</string>
+    <string name="settings_emulation_orientations_subtitle">Choose which orientations can be rotated to when in-game</string>
+    <string name="settings_emulation_default_config_title">Modify Default Config</string>
+    <string name="settings_emulation_default_config_subtitle">The initial container settings for each game (does not affect already installed games)</string>
+    <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
+    <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
+    <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
+    <string name="settings_emulation_driver_manager_title">Driver Manager</string>
+    <string name="settings_emulation_driver_manager_subtitle">Install or remove custom graphics driver packages</string>
+    <string name="settings_emulation_contents_manager_title">Contents Manager</string>
+    <string name="settings_emulation_contents_manager_subtitle">Install additional components (.wcp)</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton Manager</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">Import custom Wine/Proton versions (Bionic only)</string>
+
+    <!-- Settings: Debug Group -->
+    <string name="settings_debug_title">Debug</string>
+    <string name="settings_debug_wine_channels_title">Select Wine Debug Channels</string>
+    <string name="settings_debug_wine_logs_title">Enable Wine Debug Logs</string>
+    <string name="settings_debug_wine_logs_subtitle">Write Wine debug output to file</string>
+    <string name="settings_debug_box_logs_title">Enable Box86/64 Logs</string>
+    <string name="settings_debug_box_logs_subtitle">Write Box86 &amp; Box64 debug output to file</string>
+    <string name="settings_debug_view_crash_title">View latest crash</string>
+    <string name="settings_debug_view_log_title">View game debug log</string>
+    <string name="settings_debug_clear_prefs_title">Clear Preferences</string>
+    <string name="settings_debug_clear_prefs_subtitle">[Closes App] Logs out the client and wipes local preference data.</string>
+    <string name="settings_debug_clear_db_title">Clear Local Database</string>
+    <string name="settings_debug_clear_db_subtitle">[Closes app] May help fix issues with library items or messages.</string>
+    <string name="settings_debug_clear_cache_title">Clear Image Cache</string>
+    <string name="settings_debug_clear_cache_subtitle">Remove all images that were loaded.</string>
+
+    <!-- Settings: Info Group -->
+    <string name="settings_info_title">Info</string>
+    <string name="settings_info_send_tip_title">Send tip</string>
+    <string name="settings_info_send_tip_subtitle">Contribute to ongoing development</string>
+    <string name="settings_info_ask_tip_title">Ask for tip on startup</string>
+    <string name="settings_info_ask_tip_subtitle">Stops the tip message from appearing</string>
+    <string name="settings_info_source_title">Source code</string>
+    <string name="settings_info_source_subtitle">View the source code of this project</string>
+    <string name="settings_info_libraries_title">Libraries Used</string>
+    <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
+    <string name="settings_info_privacy_title">Privacy Policy</string>
+    <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+
+    <!-- Settings: Interface Group -->
+    <string name="settings_interface_title">Interface</string>
+    <string name="settings_interface_external_links_title">Open web links externally</string>
+    <string name="settings_interface_external_links_subtitle">Links open with your main web browser</string>
+    <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
+    <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
+    <string name="settings_interface_icon_style">Icon style</string>
+    <string name="settings_interface_wifi_only_title">Download only over Wi-Fi</string>
+    <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
+    <string name="settings_interface_external_storage_title">Write to external storage</string>
+    <string name="settings_interface_no_external_storage">No external storage detected</string>
+    <string name="settings_interface_external_storage_subtitle">Save games to external storage</string>
+    <string name="settings_interface_storage_volume_title">Storage volume</string>
+    <string name="settings_interface_download_server_title">Steam Download Server</string>
+    <string name="settings_interface_restart_required_title">Restart Required</string>
+
+    <!-- Settings: Downloads Group -->
+    <string name="settings_downloads_title">Downloads</string>
+
+    <!-- Login Screen -->
+    <string name="login_app_name">GameNative</string>
+    <string name="login_privacy_policy">Privacy Policy</string>
+    <string name="login_welcome_back">Welcome Back</string>
+    <string name="login_subtitle">Sign in to access your Steam library</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_remember_session">Remember session</string>
+    <string name="login_sign_in">Sign In</string>
+    <string name="login_qr_failed">QR Code Failed</string>
+    <string name="login_retry_qr">Retry QR Code</string>
+    <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>
+
+    <!-- Generic/Reusable strings -->
+    <string name="continue_action">Continue</string>
+    <string name="settings_text">Settings</string>
+
+
+    <!-- Connecting to Servers Screen -->
+    <string name="connect_to_remote_server">Connecting to remote servers...</string>
+
+    <!-- LibraryAppScreen: Dialogs -->
+    <string name="library_not_enough_space_message">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
+    <string name="library_download_prompt_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="library_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
+    <string name="library_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="library_delete_app_message">Are you sure you want to delete this app?</string>
+    <string name="library_download_install_imagefs_title">Download &amp; Install ImageFS</string>
+    <string name="library_download_install_imagefs_message">The Ubuntu image needs to be downloaded and installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
+    <string name="library_install_imagefs_title">Install ImageFS</string>
+    <string name="library_install_imagefs_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
+    <string name="library_reset_container_title">Reset Container</string>
+    <string name="library_reset_container_message">This will reset your container to the default configuration.</string>
+    <string name="library_verify_files_title">Verify Files</string>
+    <string name="library_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
+    <string name="library_update_title">Update</string>
+    <string name="library_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
+    <string name="library_config_title">%s Config</string>
+
+    <!-- LibraryAppScreen: Toast Messages -->
+    <string name="library_storage_permission_required">Storage permission required</string>
+    <string name="library_exported">Exported</string>
+    <string name="library_failed_to_export">Failed to export: %s</string>
+    <string name="library_export_cancelled">Export cancelled</string>
+    <string name="library_shortcut_created">Shortcut created</string>
+    <string name="library_failed_to_create_shortcut">Failed to create shortcut: %s</string>
+    <string name="library_cloud_sync_success">Cloud sync completed successfully</string>
+    <string name="library_cloud_sync_up_to_date">Save files are already up to date</string>
+    <string name="library_cloud_sync_failed">Cloud sync failed: %s</string>
+
+    <!-- LibraryAppScreen: UI Labels -->
+    <string name="library_need_internet">Need internet to install</string>
+    <string name="library_wifi_only_enabled">Install over Wi-Fi/LAN only enabled</string>
+    <string name="library_file_count">File %1$d of %2$d</string>
+
+    <!-- PluviaMain: Update & App Info -->
+    <string name="main_update_available_title">Update Available</string>
+    <string name="main_update_available_message">A new version (%1$s) is available!%2$s</string>
+    <string name="main_update_button">Update</string>
+    <string name="main_later_button">Later</string>
+    <string name="main_update_failed_title">Update Failed</string>
+    <string name="main_update_failed_message">Failed to download or install the update. Please try again later.</string>
+
+    <!-- PluviaMain: Crash & Support -->
+    <string name="main_recent_crash_title">Recent Crash</string>
+    <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
+    <string name="main_thank_you_title">Thank you for using GameNative!</string>
+    <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
+    <string name="main_join_kofi">Join on Ko-fi</string>
+    <string name="main_share">Share</string>
+    <string name="main_discord_support_title">Did the game work?</string>
+    <string name="main_discord_support_message">Join the Discord to get support to fix your game or improve performance.</string>
+    <string name="main_open_discord">Open Discord</string>
+
+    <!-- PluviaMain: Game Launch -->
+    <string name="main_downloading_steam">Downloading Steam...</string>
+    <string name="main_installing_glibc">Installing glibc components...</string>
+    <string name="main_installing_bionic">Installing Bionic components...</string>
+    <string name="main_loading">Loading...</string>
+
+    <!-- PluviaMain: Session Conflicts -->
+    <string name="main_app_running_title">App Running</string>
+    <string name="main_app_running_message">You are logged in on another device already playing %s. \nYou can still play this game, but that will disconnect the other session from Steam.</string>
+    <string name="main_app_running_other_device">You are logged in on another device (%1$s) already playing %2$s (%3$s), and that save is not yet in the cloud. \nYou can still play this game, but that will disconnect the other session from Steam and may create a save conflict when that session progress is synced</string>
+    <string name="main_play_anyway">Play anyway</string>
+
+    <!-- PluviaMain: Save Conflicts -->
+    <string name="main_save_conflict_title">Save Conflict</string>
+    <string name="main_save_conflict_message">There is a new remote save and a new local save, which would you like to keep?\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s</string>
+    <string name="main_keep_local">Keep local</string>
+    <string name="main_keep_remote">Keep remote</string>
+
+    <!-- PluviaMain: Sync Errors -->
+    <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>
+    <string name="main_sync_in_progress">Sync is currently in progress. Please try again in a moment.</string>
+    <string name="main_sync_failed">Failed to sync save files: %s.</string>
+
+    <!-- PluviaMain: Pending Operations -->
+    <string name="main_upload_in_progress_title">Upload in Progress</string>
+    <string name="main_upload_in_progress_message">You played %1$s on the device %2$s (%3$s) and the save of that session is still uploading.\nTry again later.</string>
+    <string name="main_pending_upload_title">Pending Upload</string>
+    <string name="main_pending_upload_message">You played %1$s on the device %2$s (%3$s), and that save is not yet in the cloud. (upload not started)\nYou can still play this game, but that may create a conflict when your previous game progress successfully uploads.</string>
+    <string name="main_app_session_suspended">App session suspended. Please restart app.</string>
+    <string name="main_pending_operation_none">Received pending remote operations whose operation was \'none\'. Please restart app.</string>
+    <string name="main_multiple_pending_operations">Multiple pending remote operations, try again later. Please restart app.</string>
+
+    <!-- Container Config Dialog -->
+    <string name="container_config_title">Configure Container</string>
+    <string name="container_config_unsaved_changes_title">Unsaved Changes</string>
+    <string name="container_config_unsaved_changes_message">Are you sure you\'d like to discard your changes?</string>
+    <string name="container_config_tab_general">General</string>
+    <string name="container_config_tab_graphics">Graphics</string>
+    <string name="container_config_tab_emulation">Emulation</string>
+    <string name="container_config_tab_controller">Controller</string>
+    <string name="container_config_tab_wine">Wine</string>
+    <string name="container_config_tab_win_components">Win Components</string>
+    <string name="container_config_tab_environment">Environment</string>
+    <string name="container_config_tab_drives">Drives</string>
+    <string name="container_config_tab_advanced">Advanced</string>
+    <string name="container_config_vkd3d_version">VKD3D Version</string>
+    <string name="container_config_executable_path">Executable Path</string>
+    <string name="container_config_executable_path_placeholder">e.g., path\\to\\exe</string>
+
+    <!-- Libraries Dialog -->
+    <string name="libraries_title">Libraries Used</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+
+    <!-- Supporters Dialog -->
+    <string name="supporters_art_credits">Art Credits</string>
+    <string name="supporters_app_icon">App Icon: Hachi</string>
+    <string name="supporters_alt_icon">Alternate App Icon: rhapsody_mdr</string>
+    <string name="supporters_loading">Loading supporters…</string>
+    <string name="supporters_members">Members</string>
+    <string name="supporters_supporters">Supporters</string>
+    <string name="supporters_none">No supporters yet.</string>
+    <string name="supporters_anonymous">Anonymous</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_preview_warning">Chatting is still an early feature.\nPlease report any issues in the project repo.</string>
+    <string name="chat_no_history">No chat history</string>
+    <string name="chat_send_message">Send a message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_emoticons">Emoticons</string>
+    <string name="chat_stickers">Stickers</string>
+
+    <!-- Library Components -->
+    <string name="library_open">Open</string>
+    <string name="library_installed">Installed</string>
+    <string name="library_installing">Installing</string>
+    <string name="library_not_installed">Not installed</string>
+    <string name="library_family_shared">Family Shared</string>
+    <string name="library_app_type">App Type</string>
+    <string name="library_app_status">App Status</string>
+    <string name="library_layout">Layout</string>
+    <string name="library_layout_list">List</string>
+    <string name="library_layout_capsule">Capsule</string>
+    <string name="library_layout_hero">Hero</string>
+    <string name="library_search_placeholder">Search your games…</string>
+    <string name="library_search_description">Search</string>
+    <string name="library_search_clear">Clear search</string>
+    <string name="library_no_items">No items listed with selection</string>
+    <string name="library_filters">Filters</string>
+    <string name="library_game_count">%1$d games • %2$d installed</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">Custom Games</string>
+    <string name="library_layout_title">Layout</string>
+
+    <!-- Two Factor Auth -->
+    <string name="two_factor_login">Login</string>
+    <string name="two_factor_verification_code">Verification Code</string>
+    <string name="two_factor_enter_code">Enter 5-character code</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_validating">Validating content…</string>
+    <string name="contents_error_badtar">File cannot be recognized</string>
+    <string name="contents_error_noprofile">Profile not found in content</string>
+    <string name="contents_error_badprofile">Profile cannot be recognized</string>
+    <string name="contents_error_exist">Content already exists</string>
+    <string name="contents_error_missingfiles">Content is incomplete</string>
+    <string name="contents_error_untrustprofile">Content cannot be trusted</string>
+    <string name="contents_error_nospace">Not enough space</string>
+    <string name="contents_error_generic">Unable to install content</string>
+    <string name="contents_untrusted_files">This content includes files outside the trusted set.</string>
+    <string name="contents_install_components">Install additional components (.wcp: tar.xz/zst)</string>
+    <string name="contents_type">Type</string>
+    <string name="contents_version">Version</string>
+    <string name="contents_code">Code</string>
+    <string name="contents_description">Description</string>
+    <string name="contents_all_trusted">All files are trusted. Ready to install.</string>
+    <string name="contents_no_installed">No installed content for this type.</string>
+    <string name="contents_delete">Delete</string>
+    <string name="contents_review_confirm">This content includes files outside the trusted set. Review and confirm to proceed.</string>
+    <string name="contents_removed">Removed %1$s</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_error_manifest">Failed to load driver manifest: %1$d</string>
+    <string name="driver_error_loading">Error loading driver manifest: %1$s</string>
+    <string name="driver_timeout">Connection timed out. Please check your network and try again.</string>
+    <string name="driver_network_error">Network error: %1$s</string>
+
+    <!-- Settings Interface -->
+    <string name="settings_theme_default">Default</string>
+    <string name="settings_theme_alternate">Alternate</string>
+    <string name="settings_download_slow">Slow</string>
+    <string name="settings_download_medium">Medium</string>
+    <string name="settings_download_fast">Fast</string>
+    <string name="settings_download_blazing">Blazing</string>
+    <string name="settings_download_speed">Download speed</string>
+    <string name="settings_download_heat_warning">Higher speeds may cause increased device heat during downloads</string>
+    <string name="settings_region_default">Default</string>
+    <string name="settings_saving_restarting">Saving settings and restarting…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+
+    <!-- Contents Install Finish -->
+    <string name="contents_install_success">Content installed successfully</string>
+    <string name="contents_install_failed">Failed to install content</string>
+    <string name="contents_install_error">Installation error: %1$s</string>
+
+    <!-- Library Status -->
+    <string name="library_status_ready">Ready</string>
+    <!-- Wine/Proton Manager -->
+    <string name="wine_proton_manager">Wine/Proton Manager</string>
+    <string name="wine_proton_bionic_notice_header">Bionic Images Only</string>
+    <string name="wine_proton_info_description">Import custom Wine or Proton versions for Bionic containers. Filename must begin with \'wine\' or \'proton\' (case-insensitive). Packages must include bin/, lib/, and prefixPack.txz. All imports are bionic-compatible only.</string>
+    <string name="win_proton_example">For example: "proton-10.0-ARM64ec.wcp"</string>
+    <string name="wine_proton_import_package">Import Wine/Proton Package</string>
+    <string name="wine_proton_select_file_description">Select a .wcp file (with filename starting with \'wine\' or \'proton\')</string>
+    <string name="wine_proton_import_wcp_button">Import .wcp Package</string>
+    <string name="wine_proton_processing">Processing...</string>
+    <string name="wine_proton_package_details">Package Details</string>
+    <string name="wine_proton_type">Type</string>
+    <string name="wine_proton_version">Version</string>
+    <string name="wine_proton_version_code">Version Code</string>
+    <string name="wine_proton_bin_path">Bin Path</string>
+    <string name="wine_proton_lib_path">Lib Path</string>
+    <string name="wine_proton_description">Description</string>
+    <string name="wine_proton_all_files_trusted">✓ All files are trusted. Ready to install.</string>
+    <string name="wine_proton_install_package">Install Package</string>
+    <string name="wine_proton_installed_versions">Installed Wine/Proton Versions</string>
+    <string name="wine_proton_no_versions_found">No installed Wine or Proton versions found.</string>
+    <string name="wine_proton_delete_content_desc">Delete</string>
+    <string name="wine_proton_untrusted_files_message">This package includes files outside the trusted set. Review and confirm to proceed with installation.</string>
+    <string name="wine_proton_untrusted_files_label">Untrusted files:</string>
+    <string name="wine_proton_remove_title">Remove Wine/Proton Version</string>
+    <string name="wine_proton_remove_message">Are you sure you want to remove %1$s %2$s (%3$d)? Containers using this version will no longer work.</string>
+    <string name="wine_proton_removed_toast">Removed %s</string>
+    <string name="wine_proton_remove_failed">Failed to remove: %s</string>
+    <string name="cancel_import_title">Cancel Import?</string>
+    <string name="cancel_import_message">An import is currently in progress. Cancelling will discard all extracted files and you will need to start the import again.\n\nAre you sure you want to cancel?</string>
+    <string name="cancel_import_confirm">Yes, Cancel Import</string>
+    <string name="cancel_import_keep">No, Keep Import</string>
+
+    <!-- Wine/Proton Manager - Status Messages -->
+    <string name="wine_proton_extracting">Extracting and validating package (this may take 2-3 minutes for large files)...</string>
+    <string name="wine_proton_filename_error">Filename must begin with \'wine\' or \'proton\' (case-insensitive)</string>
+    <string name="wine_proton_file_empty">File is empty or cannot be read</string>
+    <string name="wine_proton_cannot_open">Cannot open file</string>
+    <string name="wine_proton_failed_file_picker">Failed to open file picker: %s</string>
+    <string name="wine_proton_error_badtar">File cannot be recognized as valid archive</string>
+    <string name="wine_proton_error_noprofile">profile.json not found in package</string>
+    <string name="wine_proton_error_badprofile">profile.json is invalid</string>
+    <string name="wine_proton_error_exist">This Wine/Proton version already exists</string>
+    <string name="wine_proton_error_missingfiles">Package is missing required files (bin/, lib/, or prefixPack.txz)</string>
+    <string name="wine_proton_error_untrustprofile">Package cannot be trusted</string>
+    <string name="wine_proton_error_nospace">Not enough storage space</string>
+    <string name="wine_proton_error_unknown">Unknown error occurred</string>
+    <string name="wine_proton_error_unable_install">Unable to install Wine/Proton package</string>
+    <string name="wine_proton_not_wine_or_proton">Package is not Wine or Proton (type: %s)</string>
+    <string name="wine_proton_type_mismatch">Filename indicates %1$s but package contains %2$s</string>
+    <string name="wine_proton_untrusted_files_detected">This package includes files outside the trusted set.</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton version already exists</string>
+    <string name="wine_proton_install_failed">Failed to install: %s</string>
+    <string name="wine_proton_install_error">Installation error: %s</string>
+    <string name="wine_proton_install_success">%1$s %2$s installed successfully</string>
+    <string name="wine_proton_glibc_incompatible">This Wine/Proton build requires GLIBC containers and is not compatible with GameNative. Please use ARM64/bionic builds only.</string>
+    <string name="wine_proton_containers_in_use">Containers using this version:</string>
+    <string name="wine_proton_no_containers_warning">No containers are currently using this version.</string>
+    <string name="wine_proton_containers_will_break">These containers will no longer work if you proceed:</string>
 </resources>
+
+

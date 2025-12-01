@@ -289,23 +289,22 @@ fun PluviaMain(
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.APP_UPDATE,
-                                        title = "Update Available",
-                                        message = "A new version (${currentUpdateInfo.versionName}) is available!" +
-                                            (currentUpdateInfo.releaseNotes?.let { "\n\n$it" } ?: ""),
-                                        confirmBtnText = "Update",
-                                        dismissBtnText = "Later",
+                                        title = context.getString(R.string.main_update_available_title),
+                                        message = context.getString(
+                                            R.string.main_update_available_message,
+                                            currentUpdateInfo.versionName,
+                                            currentUpdateInfo.releaseNotes?.let { "\n\n$it" } ?: ""
+                                        ),
+                                        confirmBtnText = context.getString(R.string.main_update_button),
+                                        dismissBtnText = context.getString(R.string.main_later_button),
                                     )
                                 } else if (!state.annoyingDialogShown && state.hasCrashedLastStart) {
                                     viewModel.setAnnoyingDialogShown(true)
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.CRASH,
-                                        title = "Recent Crash",
-                                        message = "Sorry about that!\n" +
-                                            "It would be nice to know about the recent issue you've had.\n" +
-                                            "You can view and export the most recent crash log in the app's settings " +
-                                            "and attach it as a Github issue in the project's repository.\n" +
-                                            "Link to the Github repo is also in settings!",
+                                        title = context.getString(R.string.main_recent_crash_title),
+                                        message = context.getString(R.string.main_recent_crash_message),
                                         confirmBtnText = context.getString(R.string.ok),
                                     )
                                 } else if (!(PrefManager.tipped || BuildConfig.GOLD) && !state.annoyingDialogShown) {
@@ -313,12 +312,11 @@ fun PluviaMain(
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.SUPPORT,
-                                        title = "Thank you for using GameNative!",
-                                        message = "Support open-source PC gaming on Android by sharing the app with your friends" +
-                                                " or becoming a member on Ko-fi.",
-                                        confirmBtnText = "Join on Ko-fi",
-                                        dismissBtnText = "Close",
-                                        actionBtnText = "Share",
+                                        title = context.getString(R.string.main_thank_you_title),
+                                        message = context.getString(R.string.main_thank_you_message),
+                                        confirmBtnText = context.getString(R.string.main_join_kofi),
+                                        dismissBtnText = context.getString(R.string.close),
+                                        actionBtnText = context.getString(R.string.main_share),
                                     )
                                 }
                             }
@@ -332,10 +330,10 @@ fun PluviaMain(
                     msgDialogState = MessageDialogState(
                         visible = true,
                         type = DialogType.DISCORD,
-                        title = "Did the game work?",
-                        message = "Join the Discord to get support to fix your game or improve performance.",
-                        confirmBtnText = "Open Discord",
-                        dismissBtnText = "Close",
+                        title = context.getString(R.string.main_discord_support_title),
+                        message = context.getString(R.string.main_discord_support_message),
+                        confirmBtnText = context.getString(R.string.main_open_discord),
+                        dismissBtnText = context.getString(R.string.close),
                     )
                 }
 
@@ -748,8 +746,8 @@ fun PluviaMain(
                             msgDialogState = MessageDialogState(
                                 visible = true,
                                 type = DialogType.SYNC_FAIL,
-                                title = "Update Failed",
-                                message = "Failed to download or install the update. Please try again later.",
+                                title = context.getString(R.string.main_update_failed_title),
+                                message = context.getString(R.string.main_update_failed_message),
                                 dismissBtnText = context.getString(R.string.ok),
                             )
                         }
@@ -1056,21 +1054,24 @@ fun preLaunchApp(
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
-            setLoadingMessage("Downloading Steam...")
+            setLoadingMessage(context.getString(R.string.main_downloading_steam))
             SteamService.downloadSteam(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
             ).await()
         }
-        val loadingMessage = if (container.containerVariant.equals(Container.GLIBC)) "Installing glibc components..." else "Installing Bionic components..."
+        val loadingMessage = if (container.containerVariant.equals(Container.GLIBC))
+            context.getString(R.string.main_installing_glibc)
+        else
+            context.getString(R.string.main_installing_bionic)
         setLoadingMessage(loadingMessage)
         val imageFsInstallSuccess =
             ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
                 // Log.d("XServerScreen", "$progress")
                 setLoadingProgress(progress / 100f)
             }.get()
-        setLoadingMessage("Loading...")
+        setLoadingMessage(context.getString(R.string.main_loading))
         setLoadingProgress(-1f)
 
         // must activate container before downloading save files
@@ -1086,10 +1087,10 @@ fun preLaunchApp(
                     MessageDialogState(
                         visible = true,
                         type = DialogType.ACCOUNT_SESSION_ACTIVE,
-                        title = "App Running",
-                        message = "You are logged in on another device already playing ${otherGameName}. \nYou can still play this game, but that will disconnect the other session from Steam.",
-                        confirmBtnText = "Play anyway",
-                        dismissBtnText = "Cancel",
+                        title = context.getString(R.string.main_app_running_title),
+                        message = context.getString(R.string.main_app_running_message, otherGameName),
+                        confirmBtnText = context.getString(R.string.main_play_anyway),
+                        dismissBtnText = context.getString(R.string.cancel),
                     ),
                 )
                 return@launch
@@ -1125,12 +1126,14 @@ fun preLaunchApp(
                     MessageDialogState(
                         visible = true,
                         type = DialogType.SYNC_CONFLICT,
-                        title = "Save Conflict",
-                        message = "There is a new remote save and a new local save, which would you " +
-                            "like to keep?\n\nLocal save:\n\t${Date(postSyncInfo.localTimestamp)}" +
-                            "\nRemote save:\n\t${Date(postSyncInfo.remoteTimestamp)}",
-                        dismissBtnText = "Keep local",
-                        confirmBtnText = "Keep remote",
+                        title = context.getString(R.string.main_save_conflict_title),
+                        message = context.getString(
+                            R.string.main_save_conflict_message,
+                            Date(postSyncInfo.localTimestamp).toString(),
+                            Date(postSyncInfo.remoteTimestamp).toString()
+                        ),
+                        dismissBtnText = context.getString(R.string.main_keep_local),
+                        confirmBtnText = context.getString(R.string.main_keep_remote),
                     ),
                 )
             }
@@ -1155,9 +1158,9 @@ fun preLaunchApp(
                     )
                 } else {
                     val message = if (useTemporaryOverride) {
-                        "Sync operation is taking too long. Please try launching the game again in a moment."
+                        context.getString(R.string.main_sync_in_progress_retry)
                     } else {
-                        "Sync is currently in progress. Please try again in a moment."
+                        context.getString(R.string.main_sync_in_progress)
                     }
                     setMessageDialogState(
                         MessageDialogState(
@@ -1179,7 +1182,7 @@ fun preLaunchApp(
                         visible = true,
                         type = DialogType.SYNC_FAIL,
                         title = context.getString(R.string.sync_error_title),
-                        message = "Failed to sync save files: ${postSyncInfo.syncResult}.",
+                        message = context.getString(R.string.main_sync_failed, postSyncInfo.syncResult.toString()),
                         dismissBtnText = context.getString(R.string.ok),
                     ),
                 )
@@ -1197,6 +1200,8 @@ fun preLaunchApp(
                 )
                 if (postSyncInfo.pendingRemoteOperations.size == 1) {
                     val pro = postSyncInfo.pendingRemoteOperations.first()
+                    val gameName = SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name ?: ""
+                    val dateStr = Date(pro.timeLastUpdated * 1000L).toString()
                     when (pro.operation) {
                         ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationUploadInProgress -> {
                             // maybe this should instead wait for the upload to finish and then
@@ -1205,11 +1210,13 @@ fun preLaunchApp(
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.PENDING_UPLOAD_IN_PROGRESS,
-                                    title = "Upload in Progress",
-                                    message = "You played ${SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name} " +
-                                        "on the device ${pro.machineName} " +
-                                        "(${Date(pro.timeLastUpdated * 1000L)}) and the save of " +
-                                        "that session is still uploading.\nTry again later.",
+                                    title = context.getString(R.string.main_upload_in_progress_title),
+                                    message = context.getString(
+                                        R.string.main_upload_in_progress_message,
+                                        gameName,
+                                        pro.machineName,
+                                        dateStr
+                                    ),
                                     dismissBtnText = context.getString(R.string.ok),
                                 ),
                             )
@@ -1220,18 +1227,15 @@ fun preLaunchApp(
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.PENDING_UPLOAD,
-                                    title = "Pending Upload",
-                                    message = "You played " +
-                                        "${SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name} " +
-                                        "on the device ${pro.machineName} " +
-                                        "(${Date(pro.timeLastUpdated * 1000L)}), " +
-                                        "and that save is not yet in the cloud. " +
-                                        "(upload not started)\nYou can still play " +
-                                        "this game, but that may create a conflict " +
-                                        "when your previous game progress " +
-                                        "successfully uploads.",
-                                    confirmBtnText = "Play anyway",
-                                    dismissBtnText = "Cancel",
+                                    title = context.getString(R.string.main_pending_upload_title),
+                                    message = context.getString(
+                                        R.string.main_pending_upload_message,
+                                        gameName,
+                                        pro.machineName,
+                                        dateStr
+                                    ),
+                                    confirmBtnText = context.getString(R.string.main_play_anyway),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 ),
                             )
                         }
@@ -1241,16 +1245,15 @@ fun preLaunchApp(
                                 MessageDialogState(
                                     visible = true,
                                     type = DialogType.APP_SESSION_ACTIVE,
-                                    title = "App Running",
-                                    message = "You are logged in on another device (${pro.machineName}) " +
-                                        "already playing ${SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name} " +
-                                        "(${Date(pro.timeLastUpdated * 1000L)}), and that save " +
-                                        "is not yet in the cloud. \nYou can still play this game, " +
-                                        "but that will disconnect the other session from Steam " +
-                                        "and may create a save conflict when that session " +
-                                        "progress is synced",
-                                    confirmBtnText = "Play anyway",
-                                    dismissBtnText = "Cancel",
+                                    title = context.getString(R.string.main_app_running_title),
+                                    message = context.getString(
+                                        R.string.main_app_running_other_device,
+                                        pro.machineName,
+                                        gameName,
+                                        dateStr
+                                    ),
+                                    confirmBtnText = context.getString(R.string.main_play_anyway),
+                                    dismissBtnText = context.getString(R.string.cancel),
                                 ),
                             )
                         }
@@ -1262,7 +1265,7 @@ fun preLaunchApp(
                                     visible = true,
                                     type = DialogType.APP_SESSION_SUSPENDED,
                                     title = context.getString(R.string.sync_error_title),
-                                    message = "App session suspended. Please restart app.",
+                                    message = context.getString(R.string.main_app_session_suspended),
                                     dismissBtnText = context.getString(R.string.ok),
                                 ),
                             )
@@ -1275,7 +1278,7 @@ fun preLaunchApp(
                                     visible = true,
                                     type = DialogType.PENDING_OPERATION_NONE,
                                     title = context.getString(R.string.sync_error_title),
-                                    message = "Received pending remote operations whose operation was 'none'. Please restart app.",
+                                    message = context.getString(R.string.main_pending_operation_none),
                                     dismissBtnText = context.getString(R.string.ok),
                                 ),
                             )
@@ -1288,7 +1291,7 @@ fun preLaunchApp(
                             visible = true,
                             type = DialogType.MULTIPLE_PENDING_OPERATIONS,
                             title = context.getString(R.string.sync_error_title),
-                            message = "Multiple pending remote operations, try again later. Please restart app.",
+                            message = context.getString(R.string.main_multiple_pending_operations),
                             dismissBtnText = context.getString(R.string.ok),
                         ),
                     )

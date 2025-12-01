@@ -435,8 +435,8 @@ internal fun AppScreenContent(
                     ) {
                         val text = when {
                             isInstalled -> stringResource(R.string.run_app)
-                            !hasInternet -> "Need internet to install"
-                            !wifiConnected && PrefManager.downloadOnWifiOnly -> "Install over Wi-Fi/LAN only enabled"
+                            !hasInternet -> stringResource(R.string.library_need_internet)
+                            !wifiConnected && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
                             else -> stringResource(R.string.install_app)
                         }
                         Text(
@@ -498,7 +498,7 @@ internal fun AppScreenContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Installation Progress",
+                            text = stringResource(R.string.installation_progress),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
@@ -528,7 +528,7 @@ internal fun AppScreenContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Downloading...",
+                            text = stringResource(R.string.downloading),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -576,7 +576,7 @@ internal fun AppScreenContent(
                                 Text("↑", color = MaterialTheme.colorScheme.onTertiary, fontSize = 14.sp)
                             }
                             Text(
-                                "Update Available",
+                                stringResource(R.string.update_available),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.tertiary
                             )
@@ -624,7 +624,7 @@ internal fun AppScreenContent(
 
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
-                            text = "Game Information",
+                            text = stringResource(R.string.game_information),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -640,7 +640,7 @@ internal fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Status",
+                                        text = stringResource(R.string.status),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -665,9 +665,9 @@ internal fun AppScreenContent(
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
                                                 text = when {
-                                                    isInstalled -> "Installed"
-                                                    isDownloading -> "Installing"
-                                                    else -> "Not Installed"
+                                                    isInstalled -> stringResource(R.string.installed)
+                                                    isDownloading -> stringResource(R.string.installing)
+                                                    else -> stringResource(R.string.not_installed)
                                                 },
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                                 color = MaterialTheme.colorScheme.tertiary
@@ -681,7 +681,7 @@ internal fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Size",
+                                        text = stringResource(R.string.size),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -704,7 +704,7 @@ internal fun AppScreenContent(
 
                                     Column {
                                         Text(
-                                            text = "Location",
+                                            text = stringResource(R.string.location),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -729,7 +729,7 @@ internal fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Developer",
+                                        text = stringResource(R.string.developer),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -745,7 +745,7 @@ internal fun AppScreenContent(
                             item {
                                 Column {
                                     Text(
-                                        text = "Release Date",
+                                        text = stringResource(R.string.release_date),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -792,7 +792,7 @@ internal fun GameMigrationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "File ${movedFiles + 1} of $totalFiles",
+                    text = stringResource(R.string.library_file_count, movedFiles + 1, totalFiles),
                     style = MaterialTheme.typography.bodyLarge,
                 )
 

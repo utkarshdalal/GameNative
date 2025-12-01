@@ -1,0 +1,650 @@
+<resources>
+    <string name="app_name">GameNative</string>
+    <string name="login_user">Brugerlogin</string>
+    <string name="login_2fa">Tofaktorgodkendelse</string>
+    <string name="home">Hjem</string>
+    <string name="settings">Indstillinger</string>
+    <string name="login_qr">QR-login</string>
+    <string name="app_library">Bibliotek</string>
+    <string name="app_downloads">Downloads</string>
+    <string name="unknown_app">Ukendt app</string>
+    <string name="steam_2fa_incorrect">Forrige kode var forkert, prøv igen.</string>
+    <string name="steam_2fa_confirmation">Brug Steam Mobile-appen til at bekræfte dit login…</string>
+    <string name="steam_2fa_device">Indtast din 2-faktor-godkendelseskode fra din autentifikator-app.</string>
+    <string name="steam_2fa_email">Indtast koden sendt til e-mailen på %s</string>
+    <string name="header_img_desc">Appens header-billede</string>
+    <string name="install_app">Installér</string>
+    <string name="delete_app">Slet</string>
+    <string name="uninstall">Afinstallér</string>
+    <string name="run_app">Spil</string>
+    <string name="download_prompt_title">Installér app</string>
+    <string name="delete_prompt_title">Slet app</string>
+    <string name="cancel_download_prompt_title">Annullér download</string>
+    <string name="acknowledge">OK</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nej</string>
+    <string name="not_enough_space">Ikke nok plads</string>
+    <string name="proceed">Fortsæt</string>
+    <string name="cancel">Annullér</string>
+    <string name="untitled">Uden titel</string>
+    <string name="confirm_delete">Bekræft sletning</string>
+    <string name="destination_library">Bibliotek</string>
+    <string name="destination_downloads">Downloads</string>
+    <string name="destination_friends">Venner</string>
+
+    <!-- Winlator -->
+    <string name="disabled">Deaktiveret</string>
+    <string name="copy">Kopiér</string>
+    <string name="stability">Stabilitet</string>
+    <string name="compatibility">Kompatibilitet</string>
+    <string name="intermediate">Mellemtrin</string>
+    <string name="performance">Ydelse</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="title_ubuntufs">Ubuntu FS</string>
+
+    <!-- Winlator: Win Components -->
+    <string name="direct3d">Direct3D</string>
+    <string name="directsound">DirectSound</string>
+    <string name="directmusic">DirectMusic</string>
+    <string name="directplay">DirectPlay</string>
+    <string name="directshow">DirectShow</string>
+    <string name="directx">DirectX</string>
+    <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="wmdecoder">Windows Media Decoder</string>
+    <string name="opengl">OpenGL</string>
+    <string name="dxvk_version">DXVK-version</string>
+    <string name="run">Kør</string>
+    <string name="edit">Redigér</string>
+    <string name="remove">Fjern</string>
+    <string name="add">Tilføj</string>
+    <string name="ok">Ok</string>
+    <string name="storage_info">Lagerinformation</string>
+    <string name="duplicate">Duplikér</string>
+    <string name="reconfigure">Konfigurér igen</string>
+    <string name="content_info">Indholdsinfo</string>
+    <string name="game_not_installed_title">Spillet er ikke installeret</string>
+    <string name="game_not_installed_message">%s er ikke installeret. Installér spillet før du starter det.</string>
+    <string name="save_container_settings_title">Gem containerkonfiguration?</string>
+    <string name="save_container_settings_message">Midlertidige containerændringer blev brugt til denne start. Vil du gemme dem?</string>
+    <string name="sync_error_title">Synkroniseringsfejl</string>
+    <string name="save">Gem</string>
+    <string name="discard">Forkast</string>
+    <string name="shortcuts">Genveje</string>
+    <string name="containers">Containere</string>
+    <string name="box64_rc_file">Box64 RCFile</string>
+    <string name="contents">Indhold</string>
+    <string name="about">Om</string>
+    <string name="open_file">Åbn fil</string>
+    <string name="download_file">Download fil</string>
+    <string name="processor_affinity">Processor-tilknytning</string>
+    <string name="bring_to_front">Bring i forgrunden</string>
+    <string name="end_process">Afslut proces</string>
+    <string name="new_file">Ny fil</string>
+    <string name="add_to_home_screen">Føj til startskærm</string>
+    <string name="toggle_fullscreen">Skift fuldskærm</string>
+    <string name="toggle_orientation">Skift orientering</string>
+    <string name="task_manager">Jobliste</string>
+    <string name="magnifier">Forstørrelsesglas</string>
+    <string name="logs">Logfiler</string>
+    <string name="exit_game">Afslut</string>
+    <string name="exit">Afslut spil</string>
+    <string name="keyboard">Tastatur</string>
+    <string name="input_controls">On-screen-controller</string>
+    <string name="touchpad_help">Touchpad-hjælp</string>
+
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
+        Håndtering af flag på CALL/RET-opcodes<br /><br />
+        <b>0</b> : Behandler CALL/RET som om de aldrig krævede flag (hurtigere, ustabilt)<br />
+        <b>1</b> : De fleste RET kræver flag, de fleste CALL ikke<br />
+        <b>2</b> : Alle CALL/RET kræver flag (langsommere)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">Generering af -NAN som på x86</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">Generering af præcis x86-afrunding</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">Brug af Float/Double til x87-emulering</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
+        Dynarec opbygning af BigBlock<br /><br />
+        <b>0</b> : Forsøg ikke at bygge blokken så stor som muligt<br />
+        <b>1</b> : Byg Dynarec-blokken så stor som muligt<br />
+        <b>2</b> : Byg blokke større (fortsæt når blok overlapper, men kun for blokke i ELF-hukommelse)<br />
+        <b>3</b> : Byg blokke større (fortsæt når blok overlapper, for alle typer hukommelse)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
+        Simulation af Strong Memory-model<br /><br />
+        <b>0</b> : Gør intet særligt<br />
+        <b>1</b> : Aktiver Memory Barrier ved skrivning til hukommelse (på visse MOV-opkoder)<br />
+        <b>2</b> : Som 1 + Memory Barrier på hver MOV-skrivning<br />
+        <b>3</b> : Som 2 + Memory Barrier ved læsning fra hukommelse og på nogle SSE/SSE2-opkoder
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_forward">Definerer maksimal tilladt fremadværdi ved opbygning af blokke</string>
+    <string name="box86_64_env_var_help__dynarec_callret">Optimering af CALL/RET-opcodes</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Definerer om Dynarec venter på, at FillBlock bliver klar</string>
+
+    <string name="resume_download">Genoptag</string>
+    <string name="pause_download">Pause</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">Opret genvej</string>
+    <string name="label">Etiket</string>
+    <string name="icon">Ikon</string>
+    <string name="create">Opret</string>
+    <string name="update_now">Opdatér nu</string>
+    <string name="moving_files">Flytter filer</string>
+    <string name="need_internet_to_install">Internet kræves for installation</string>
+    <string name="install_wifi_only_enabled">Installation kun via WiFi er aktiveret</string>
+    <string name="installation_progress">Installationsstatus</string>
+    <string name="downloading">Downloader...</string>
+    <string name="calculating_time">Beregner...</string>
+    <string name="update_available">Opdatering tilgængelig</string>
+    <string name="game_information">Spilinformation</string>
+    <string name="status">Status</string>
+    <string name="size">Størrelse</string>
+    <string name="location">Placering</string>
+    <string name="developer">Udvikler</string>
+    <string name="release_date">Udgivelsesdato</string>
+    <string name="installed">Installeret</string>
+    <string name="installing">Installerer</string>
+    <string name="not_installed">Ikke installeret</string>
+    <string name="open">Åbn</string>
+    <string name="family_shared">Familiedelt</string>
+    <string name="games">Spil</string>
+    <string name="playtime_last_two_weeks">Spilletid de sidste 2 uger: %s timer</string>
+    <string name="total_playtime">Total spilletid: %s timer</string>
+
+    <!-- Login & Connection -->
+    <string name="no_connection_to_steam">Ingen forbindelse til Steam</string>
+    <string name="retry_steam_connection">Prøv at forbinde igen</string>
+    <string name="continue_offline">Fortsæt offline</string>
+
+    <!-- Profile & Menu -->
+    <string name="help_and_support">Hjælp &amp; support</string>
+    <string name="hall_of_fame">Hall of Fame</string>
+    <string name="go_online">Gå online</string>
+    <string name="go_offline">Gå offline</string>
+    <string name="log_out">Log ud</string>
+    <string name="close">Luk</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">Ny miljøvariabel</string>
+    <string name="name">Navn</string>
+    <string name="value">Værdi</string>
+    <string name="no_more_known_variables">Ingen flere kendte variabler</string>
+    <string name="container_variant">Container-variant</string>
+    <string name="wine_version">Wine-version</string>
+    <string name="exec_arguments">Kørselsargumenter</string>
+    <string name="exec_arguments_example">Eksempel: -dx11</string>
+    <string name="language">Sprog</string>
+    <string name="screen_size">Skærmstørrelse</string>
+    <string name="width">Bredde</string>
+    <string name="height">Højde</string>
+    <string name="audio_driver">Lyd-driver</string>
+    <string name="show_fps">Vis FPS</string>
+    <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="force_dlc">Gennemtving DLC</string>
+    <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
+    <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
+    <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
+    <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
+    <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
+    <string name="steam_type">Steam-type</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">Grafikdriver</string>
+    <string name="graphics_driver_version">Grafikdriverversion</string>
+    <string name="exposed_vulkan_extensions">Eksponerede Vulkan-udvidelser</string>
+    <string name="max_device_memory">Maksimal enhedshukommelse</string>
+    <string name="frame_synchronization">Rammens synkronisering</string>
+    <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
+    <string name="vulkan_version">Vulkan-version</string>
+    <string name="image_cache_size">Billedcache-størrelse</string>
+    <string name="dx_wrapper">DX-wrapper</string>
+    <string name="vkd3d_feature_level">VKD3D Feature Level</string>
+    <string name="use_dri3">Brug DRI3</string>
+    <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">FEXCore-version</string>
+    <string name="tso_mode">TSO-tilstand</string>
+    <string name="x87_mode">x87-tilstand</string>
+    <string name="multiblock">Multiblok</string>
+    <string name="emulator_64bit">64-bit emulator</string>
+    <string name="emulator_32bit">32-bit emulator</string>
+    <string name="box64_version">Box64-version</string>
+    <string name="box64_preset">Box64-forudindstilling</string>
+    <string name="box64_presets">Box64-forudindstillinger</string>
+    <string name="preset_name">Forudindstillingsnavn</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">Brug SDL API</string>
+    <string name="enable_xinput_api">Aktivér XInput API</string>
+    <string name="enable_directinput_api">Aktivér DirectInput API</string>
+    <string name="directinput_mapper_type">DirectInput-mappertype</string>
+    <string name="disable_mouse_input">Deaktivér musinput</string>
+    <string name="touchscreen_mode">Touchskærmstilstand</string>
+    <string name="emulate_keyboard_mouse">Emulér tastatur og mus</string>
+    <string name="emulate_keyboard_mouse_description">Venstre stick = WASD, højre stick = mus. L2 = venstre klik, R2 = højre klik.</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">Renderer</string>
+    <string name="gpu_name">GPU-navn</string>
+    <string name="offscreen_rendering_mode">Offscreen-rendering-tilstand</string>
+    <string name="video_memory_size">Videohukommelsesstørrelse</string>
+    <string name="enable_csmt">Aktivér CSMT (Command Stream Multi-Thread)</string>
+    <string name="enable_strict_shader_math">Aktivér Strict Shader Math</string>
+    <string name="mouse_warp_override">Mouse Warp Override</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">Miljøvariabler</string>
+    <string name="no_environment_variables">Ingen miljøvariabler</string>
+    <string name="no_drives">Ingen drev</string>
+    <string name="startup_selection">Opstartsvalg</string>
+    <string name="processor_affinity_32bit">Processor-tilknytning (32-bit apps)</string>
+    <string name="executable_path">Sti til eksekverbar fil</string>
+    <string name="executable_path_placeholder">f.eks. sti\\til\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">Tilladte orienteringer</string>
+    <string name="select_wine_debug_channels">Vælg Wine debug-kanaler</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">Beskriv hvad der skete</string>
+    <string name="get_support_on_discord">Få support på Discord</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">Driverhåndtering</string>
+    <string name="select_a_driver">Vælg en driver</string>
+    <string name="import_zip_from_device">Importér ZIP fra enhed</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">Indholdshåndtering</string>
+    <string name="import_wcp_from_device">Importér .wcp fra enhed</string>
+    <string name="working">Arbejder...</string>
+    <string name="selected_content">Valgt indhold</string>
+    <string name="installed_contents">Installeret indhold</string>
+    <string name="select_type">Vælg type</string>
+    <string name="untrusted_files_detected">Upålidelige filer fundet</string>
+    <string name="install_anyway">Installér alligevel</string>
+    <string name="remove_content">Fjern indhold?</string>
+    <string name="remove_content_confirmation">Er du sikker på, at du vil fjerne %1$s (%2$s)?</string>
+
+    <!-- TODO: Manual review - New strings added for Settings -->
+    <string name="settings_language">Sprog</string>
+    <string name="settings_select_language">Vælg sprog</string>
+    <string name="settings_language_restart_title">Genstart påkrævet</string>
+    <string name="settings_language_restart_message">Ændring af sprog kræver, at appen genstartes. Vil du fortsætte?</string>
+    <string name="settings_language_restart_confirm">Genstart</string>
+    <string name="settings_language_changing">Ændrer sprog og genstarter...</string>
+
+    <!-- Settings: Emulation Group -->
+    <string name="settings_emulation_title">Emulering</string>
+    <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
+    <string name="settings_emulation_orientations_subtitle">Vælg hvilke orienteringer der kan roteres til i spillet</string>
+    <string name="settings_emulation_default_config_title">Redigér standardkonfiguration</string>
+    <string name="settings_emulation_default_config_subtitle">De indledende containerindstillinger for hvert spil (påvirker ikke allerede installerede spil)</string>
+    <string name="settings_emulation_default_config_dialog_title">Standard containerkonfiguration</string>
+    <string name="settings_emulation_box64_presets_title">Box64-forudindstillinger</string>
+    <string name="settings_emulation_box64_presets_subtitle">Vis, redigér og opret Box64-forudindstillinger</string>
+    <string name="settings_emulation_driver_manager_title">Driverhåndtering</string>
+    <string name="settings_emulation_driver_manager_subtitle">Installér eller fjern tilpassede grafikdriverpakker</string>
+    <string name="settings_emulation_contents_manager_title">Indholdshåndtering</string>
+    <string name="settings_emulation_contents_manager_subtitle">Installér yderligere komponenter (.wcp)</string>
+
+    <!-- Settings: Debug Group -->
+    <string name="settings_debug_title">Debug</string>
+    <string name="settings_debug_wine_channels_title">Vælg Wine debug-kanaler</string>
+    <string name="settings_debug_wine_logs_title">Aktivér Wine debug-logs</string>
+    <string name="settings_debug_wine_logs_subtitle">Skriv Wine debug-output til fil</string>
+    <string name="settings_debug_box_logs_title">Aktivér Box86/64-logs</string>
+    <string name="settings_debug_box_logs_subtitle">Skriv Box86 &amp; Box64 debug-output til fil</string>
+    <string name="settings_debug_view_crash_title">Vis seneste crash</string>
+    <string name="settings_debug_view_log_title">Vis spil-debug-log</string>
+    <string name="settings_debug_clear_prefs_title">Ryd præferencer</string>
+    <string name="settings_debug_clear_prefs_subtitle">[Lukker app] Logger klienten ud og sletter lokale præferencedata.</string>
+    <string name="settings_debug_clear_db_title">Ryd lokal database</string>
+    <string name="settings_debug_clear_db_subtitle">[Lukker app] Kan hjælpe med at løse problemer med bibliotekselementer eller beskeder.</string>
+    <string name="settings_debug_clear_cache_title">Ryd billedcache</string>
+    <string name="settings_debug_clear_cache_subtitle">Fjern alle billeder, der blev indlæst.</string>
+
+    <!-- Settings: Info Group -->
+    <string name="settings_info_title">Info</string>
+    <string name="settings_info_send_tip_title">Send drikkepenge</string>
+    <string name="settings_info_send_tip_subtitle">Bidrag til løbende udvikling</string>
+    <string name="settings_info_ask_tip_title">Spørg efter drikkepenge ved opstart</string>
+    <string name="settings_info_ask_tip_subtitle">Forhindrer drikkepengebeskeden i at vises</string>
+    <string name="settings_info_source_title">Kildekode</string>
+    <string name="settings_info_source_subtitle">Se kildekoden til dette projekt</string>
+    <string name="settings_info_libraries_title">Anvendte biblioteker</string>
+    <string name="settings_info_libraries_subtitle">Se hvilke teknologier der gør GameNative mulig</string>
+    <string name="settings_info_privacy_title">Privatlivspolitik</string>
+    <string name="settings_info_privacy_subtitle">Åbner et link til GameNatives privatlivspolitik</string>
+
+    <!-- Settings: Interface Group -->
+    <string name="settings_interface_title">Grænseflade</string>
+    <string name="settings_interface_external_links_title">Åbn weblinks eksternt</string>
+    <string name="settings_interface_external_links_subtitle">Links åbnes med din primære webbrowser</string>
+    <string name="settings_interface_hide_statusbar_title">Skjul statuslinje når ikke i spillet</string>
+    <string name="settings_interface_hide_statusbar_subtitle">Skjul Android-statuslinje i spilliste, indstillinger osv. Appen genstarter når den ændres.</string>
+    <string name="settings_interface_icon_style">Ikonstil</string>
+    <string name="settings_interface_wifi_only_title">Download kun via Wi-Fi</string>
+    <string name="settings_interface_wifi_only_subtitle">Forhindrer downloads på mobildata</string>
+    <string name="settings_interface_external_storage_title">Skriv til ekstern lager</string>
+    <string name="settings_interface_no_external_storage">Ingen ekstern lager fundet</string>
+    <string name="settings_interface_external_storage_subtitle">Gem spil på ekstern lager</string>
+    <string name="settings_interface_storage_volume_title">Lagerenhed</string>
+    <string name="settings_interface_download_server_title">Steam-downloadserver</string>
+    <string name="settings_interface_restart_required_title">Genstart påkrævet</string>
+
+    <!-- Settings: Downloads Group -->
+    <string name="settings_downloads_title">Downloads</string>
+
+    <!-- TODO: Manual review - New strings for Login Screen -->
+    <string name="login_app_name">GameNative</string>
+    <string name="login_privacy_policy">Privatlivspolitik</string>
+    <string name="login_welcome_back">Velkommen tilbage</string>
+    <string name="login_subtitle">Log ind for at få adgang til dit Steam-bibliotek</string>
+    <string name="login_username">Brugernavn</string>
+    <string name="login_password">Adgangskode</string>
+    <string name="login_remember_session">Husk session</string>
+    <string name="login_sign_in">Log ind</string>
+    <string name="login_qr_failed">QR-kode fejlede</string>
+    <string name="login_retry_qr">Prøv QR-kode igen</string>
+    <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>
+
+    <!-- TODO: Manual review - Generic/Reusable strings -->
+    <string name="continue_action">Fortsæt</string>
+    <string name="settings_text">Indstillinger</string>
+    <string name="download">Download</string>
+    <string name="install">Installér</string>
+
+    <!-- TODO: Manual review - Connecting to Servers Screen -->
+    <string name="connect_to_remote_server">Forbinder til fjernservere...</string>
+
+    <!-- TODO: Manual review - LibraryAppScreen: Dialogs -->
+    <string name="download_failed_try_again">Download fejlede. Prøv venligst igen.</string>
+    <string name="library_not_enough_space_message">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
+    <string name="library_download_prompt_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
+    <string name="library_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
+    <string name="library_delete_download_message">Slet alle downloadede data for dette spil?</string>
+    <string name="library_delete_app_message">Er du sikker på, at du vil slette denne app?</string>
+    <string name="library_download_install_imagefs_title">Download &amp; installér ImageFS</string>
+    <string name="library_download_install_imagefs_message">Ubuntu-billedet skal downloades og installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="library_install_imagefs_title">Installér ImageFS</string>
+    <string name="library_install_imagefs_message">Ubuntu-billedet skal installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="library_reset_container_title">Nulstil container</string>
+    <string name="library_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
+    <string name="library_verify_files_title">Verificér filer</string>
+    <string name="library_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
+    <string name="library_update_title">Opdatering</string>
+    <string name="library_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
+    <string name="library_config_title">%s-konfiguration</string>
+
+    <!-- TODO: Manual review - LibraryAppScreen: Toast Messages -->
+    <string name="library_storage_permission_required">Lagertilladelse påkrævet</string>
+    <string name="library_exported">Eksporteret</string>
+    <string name="library_failed_to_export">Kunne ikke eksportere: %s</string>
+    <string name="library_export_cancelled">Eksport annulleret</string>
+    <string name="library_shortcut_created">Genvej oprettet</string>
+    <string name="library_failed_to_create_shortcut">Kunne ikke oprette genvej: %s</string>
+    <string name="library_cloud_sync_success">Sky-synkronisering fuldført</string>
+    <string name="library_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
+    <string name="library_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
+
+    <!-- TODO: Manual review - LibraryAppScreen: UI Labels -->
+    <string name="library_need_internet">Internet påkrævet for installation</string>
+    <string name="library_wifi_only_enabled">Installation kun via Wi-Fi/LAN aktiveret</string>
+    <string name="library_file_count">Fil %1$d af %2$d</string>
+
+    <!-- TODO: Manual review - PluviaMain: Update & App Info -->
+    <string name="main_update_available_title">Opdatering tilgængelig</string>
+    <string name="main_update_available_message">En ny version (%1$s) er tilgængelig!%2$s</string>
+    <string name="main_update_button">Opdatér</string>
+    <string name="main_later_button">Senere</string>
+    <string name="main_update_failed_title">Opdatering fejlede</string>
+    <string name="main_update_failed_message">Kunne ikke downloade eller installere opdateringen. Prøv venligst igen senere.</string>
+
+    <!-- TODO: Manual review - PluviaMain: Crash & Support -->
+    <string name="main_recent_crash_title">Nylig crash</string>
+    <string name="main_recent_crash_message">Beklager det!\nDet ville være dejligt at vide om det nylige problem, du har haft.\nDu kan se og eksportere den nyeste crash-log i appens indstillinger og vedhæfte den som et Github-problem i projektets repository.\nLink til Github-repo er også i indstillinger!</string>
+    <string name="main_thank_you_title">Tak for at bruge GameNative!</string>
+    <string name="main_thank_you_message">Støt open-source PC-gaming på Android ved at dele appen med dine venner eller ved at blive medlem på Ko-fi.</string>
+    <string name="main_join_kofi">Tilmeld dig på Ko-fi</string>
+    <string name="main_share">Del</string>
+    <string name="main_discord_support_title">Virkede spillet?</string>
+    <string name="main_discord_support_message">Tilmeld dig Discord for at få support til at rette dit spil eller forbedre ydelsen.</string>
+    <string name="main_open_discord">Åbn Discord</string>
+
+    <!-- TODO: Manual review - PluviaMain: Game Launch -->
+    <string name="main_downloading_steam">Downloader Steam...</string>
+    <string name="main_installing_glibc">Installerer glibc-komponenter...</string>
+    <string name="main_installing_bionic">Installerer Bionic-komponenter...</string>
+    <string name="main_loading">Indlæser...</string>
+
+    <!-- TODO: Manual review - PluviaMain: Session Conflicts -->
+    <string name="main_app_running_title">App kører</string>
+    <string name="main_app_running_message">Du er logget ind på en anden enhed og spiller allerede %s. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam.</string>
+    <string name="main_app_running_other_device">Du er logget ind på en anden enhed (%1$s) og spiller allerede %2$s (%3$s), og den gemfil er ikke i skyen endnu. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam og kan skabe en gemfilkonflikt når sessionsframgangen synkroniseres</string>
+    <string name="main_play_anyway">Spil alligevel</string>
+
+    <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
+    <string name="main_save_conflict_title">Gemfilkonflikt</string>
+    <string name="main_save_conflict_message">Der er en ny fjern-gemfil og en ny lokal gemfil, hvilken vil du beholde?\n\nLokal gemfil:\n\t%1$s\nFjern-gemfil:\n\t%2$s</string>
+    <string name="main_keep_local">Behold lokal</string>
+    <string name="main_keep_remote">Behold fjern</string>
+
+    <!-- TODO: Manual review - PluviaMain: Sync Errors -->
+    <string name="main_sync_in_progress_retry">Synkroniseringsoperationen tager for lang tid. Prøv venligst at starte spillet igen om et øjeblik.</string>
+    <string name="main_sync_in_progress">Synkronisering er i gang. Prøv venligst igen om et øjeblik.</string>
+    <string name="main_sync_failed">Kunne ikke synkronisere gemfiler: %s.</string>
+
+    <!-- TODO: Manual review - PluviaMain: Pending Operations -->
+    <string name="main_upload_in_progress_title">Upload i gang</string>
+    <string name="main_upload_in_progress_message">Du spillede %1$s på enheden %2$s (%3$s) og gemfilen fra den session uploader stadig.\nPrøv igen senere.</string>
+    <string name="main_pending_upload_title">Ventende upload</string>
+    <string name="main_pending_upload_message">Du spillede %1$s på enheden %2$s (%3$s), og den gemfil er ikke i skyen endnu. (upload ikke startet)\nDu kan stadig spille dette spil, men det kan skabe en konflikt når din forrige spilstatus uploades.</string>
+    <string name="main_app_session_suspended">App-session suspenderet. Genstart venligst appen.</string>
+    <string name="main_pending_operation_none">Modtog ventende fjernoperationer, hvis operation var \'none\'. Genstart venligst appen.</string>
+    <string name="main_multiple_pending_operations">Flere ventende fjernoperationer, prøv igen senere. Genstart venligst appen.</string>
+
+    <!-- TODO: Manual review - Container Config Dialog -->
+    <string name="container_config_title">Konfigurér container</string>
+    <string name="container_config_unsaved_changes_title">Ikke-gemte ændringer</string>
+    <string name="container_config_unsaved_changes_message">Er du sikker på, at du vil kassere dine ændringer?</string>
+    <string name="container_config_tab_general">Generelt</string>
+    <string name="container_config_tab_graphics">Grafik</string>
+    <string name="container_config_tab_emulation">Emulering</string>
+    <string name="container_config_tab_controller">Controller</string>
+    <string name="container_config_tab_wine">Wine</string>
+    <string name="container_config_tab_win_components">Win-komponenter</string>
+    <string name="container_config_tab_environment">Miljø</string>
+    <string name="container_config_tab_drives">Drev</string>
+    <string name="container_config_tab_advanced">Avanceret</string>
+    <string name="container_config_vkd3d_version">VKD3D-version</string>
+    <string name="container_config_executable_path">Sti til eksekverbar fil</string>
+    <string name="container_config_executable_path_placeholder">f.eks. sti\\til\\exe</string>
+
+    <!-- TODO: Manual review - Libraries Dialog -->
+    <string name="libraries_title">Anvendte biblioteker</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+
+    <!-- TODO: Manual review - Supporters Dialog -->
+    <string name="supporters_art_credits">Kunstnerkreditter</string>
+    <string name="supporters_app_icon">App-ikon: Hachi</string>
+    <string name="supporters_alt_icon">Alternativt app-ikon: rhapsody_mdr</string>
+    <string name="supporters_loading">Indlæser støtter...</string>
+    <string name="supporters_members">Medlemmer</string>
+    <string name="supporters_supporters">Støtter</string>
+    <string name="supporters_none">Ingen støtter endnu.</string>
+    <string name="supporters_anonymous">Anonym</string>
+
+    <!-- TODO: Manual review - Chat Screen -->
+    <string name="chat_preview_warning">Chatning er stadig en tidlig funktion.\nRapportér venligst problemer i projektets repository.</string>
+    <string name="chat_no_history">Ingen chathistorik</string>
+    <string name="chat_send_message">Send en besked</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_emoticons">Humørikoner</string>
+    <string name="chat_stickers">Mærkater</string>
+
+    <!-- TODO: Manual review - Library Components -->
+    <string name="library_open">Åbn</string>
+    <string name="library_installed">Installeret</string>
+    <string name="library_installing">Installerer</string>
+    <string name="library_not_installed">Ikke installeret</string>
+    <string name="library_family_shared">Familiedelt</string>
+    <string name="library_app_type">App-type</string>
+    <string name="library_app_status">App-status</string>
+    <string name="library_layout">Layout</string>
+    <string name="library_layout_list">Liste</string>
+    <string name="library_layout_capsule">Kapsel</string>
+    <string name="library_layout_hero">Helt</string>
+    <string name="library_search_placeholder">Søg i dine spil...</string>
+    <string name="library_search_description">Søg</string>
+    <string name="library_search_clear">Ryd søgning</string>
+    <string name="library_no_items">Ingen elementer vist med markeringen</string>
+    <string name="library_filters">Filtre</string>
+    <string name="library_game_count">%1$d spil • %2$d installerede</string>
+
+    <!-- TODO: Manual review - Two Factor Auth -->
+    <string name="two_factor_login">Login</string>
+    <string name="two_factor_verification_code">Verifikationskode</string>
+    <string name="two_factor_enter_code">Indtast 5-tegns kode</string>
+
+    <!-- TODO: Manual review - Contents Manager -->
+    <string name="contents_validating">Validerer indhold...</string>
+    <string name="contents_error_badtar">Filen kan ikke genkendes</string>
+    <string name="contents_error_noprofile">Profil ikke fundet i indhold</string>
+    <string name="contents_error_badprofile">Profil kan ikke genkendes</string>
+    <string name="contents_error_exist">Indhold eksisterer allerede</string>
+    <string name="contents_error_missingfiles">Indhold er ufuldstændigt</string>
+    <string name="contents_error_untrustprofile">Indhold kan ikke stoles på</string>
+    <string name="contents_error_nospace">Ikke nok plads</string>
+    <string name="contents_error_generic">Kan ikke installere indhold</string>
+    <string name="contents_untrusted_files">Dette indhold inkluderer filer uden for det pålidelige sæt.</string>
+    <string name="contents_install_components">Installér yderligere komponenter (.wcp: tar.xz/zst)</string>
+    <string name="contents_type">Type</string>
+    <string name="contents_version">Version</string>
+    <string name="contents_code">Kode</string>
+    <string name="contents_description">Beskrivelse</string>
+    <string name="contents_all_trusted">Alle filer er pålidelige. Klar til installation.</string>
+    <string name="contents_no_installed">Intet installeret indhold for denne type.</string>
+    <string name="contents_delete">Slet</string>
+    <string name="contents_review_confirm">Dette indhold inkluderer filer uden for det pålidelige sæt. Gennemgå og bekræft for at fortsætte.</string>
+    <string name="contents_removed">Fjernede %1$s</string>
+
+    <!-- TODO: Manual review - Driver Manager -->
+    <string name="driver_error_manifest">Kunne ikke indlæse drivermanifest: %1$d</string>
+    <string name="driver_error_loading">Fejl ved indlæsning af drivermanifest: %1$s</string>
+    <string name="driver_timeout">Forbindelsen fik timeout. Tjek venligst dit netværk og prøv igen.</string>
+    <string name="driver_network_error">Netværksfejl: %1$s</string>
+
+    <!-- TODO: Manual review - Settings Interface -->
+    <string name="settings_theme_default">Standard</string>
+    <string name="settings_theme_alternate">Alternativ</string>
+    <string name="settings_download_slow">Langsom</string>
+    <string name="settings_download_medium">Mellem</string>
+    <string name="settings_download_fast">Hurtig</string>
+    <string name="settings_download_blazing">Lynhurtig</string>
+    <string name="settings_download_speed">Download-hastighed</string>
+    <string name="settings_download_heat_warning">Højere hastigheder kan forårsage øget varme på enheden under downloads</string>
+    <string name="settings_region_default">Standard</string>
+    <string name="settings_saving_restarting">Gemmer indstillinger og genstarter...</string>
+
+    <!-- TODO: Manual review - Settings Screen -->
+    <string name="settings_title">Indstillinger</string>
+
+    <!-- TODO: Manual review - Contents Install Finish -->
+    <string name="contents_install_success">Indhold installeret</string>
+    <string name="contents_install_failed">Kunne ikke installere indhold</string>
+    <string name="contents_install_error">Installationsfejl: %1$s</string>
+
+    <!-- TODO: Manual review - App Filter -->
+    <string name="app_filter_installed">Installeret</string>
+    <string name="app_filter_game">Spil</string>
+    <string name="app_filter_application">Applikation</string>
+    <string name="app_filter_tool">Værktøj</string>
+    <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_family">Familie</string>
+
+    <!-- TODO: Manual review - Game Feedback Dialog -->
+    <string name="game_feedback_game_run">Hvordan kørte spillet?</string>
+    <string name="game_feedback_issues_question">Vælg eventuelle problemer du stødte på:</string>
+
+    <!-- TODO: Manual review - Container Configuration: Steam Integration (missing) -->
+    <string name="use_legacy_drm">Brug ældre DRM</string>
+
+    <!-- TODO: Manual review - Library Status -->
+    <string name="library_status_ready">Klar</string>
+
+    <!-- TODO: Manual review - New strings from latest pull -->
+    <!-- Steam-specific dialogs -->
+    <string name="steam_install_space_prompt">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
+    <string name="steam_install_not_enough_space">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
+    <string name="steam_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
+    <string name="steam_delete_download_message">Slet alle downloadede data for dette spil?</string>
+    <string name="steam_imagefs_download_install_title">Download &amp; installér ImageFS</string>
+    <string name="steam_imagefs_download_install_message">Ubuntu-billedet skal downloades og installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="steam_imagefs_install_title">Installér ImageFS</string>
+    <string name="steam_imagefs_install_message">Ubuntu-billedet skal installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="steam_reset_container_title">Nulstil container</string>
+    <string name="steam_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
+    <string name="steam_verify_files_title">Verificér filer</string>
+    <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_update_title">Opdatering</string>
+    <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_cloud_sync_success">Sky-synkronisering fuldført</string>
+    <string name="steam_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
+    <string name="steam_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
+    <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
+    <string name="steam_container_reset_success">Container nulstillet til standard</string>
+    <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
+    <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
+    <string name="steam_uninstall_game_title">Afinstallér spil</string>
+
+    <!-- Custom Games -->
+    <string name="custom_games_title">Tilpassede spil</string>
+    <string name="custom_games_no_paths">Ingen stier tilføjet</string>
+    <string name="custom_games_grant_permission">Giv tilladelse</string>
+    <string name="custom_games_manual_subtitle">Tilføjet fra bibliotek</string>
+    <string name="custom_games_no_manual_entries">Ingen manuelt tilføjede spil endnu.</string>
+    <string name="custom_games_remove_path_title">Fjern sti</string>
+    <string name="custom_games_remove_path_message">Fjern denne sti fra scanning? Mappeindholdet bliver på disken.</string>
+    <string name="custom_games_remove_path_content_desc">Fjern sti</string>
+    <string name="custom_games_path_removed_toast">Sti fjernet fra listen. Indhold er ikke blevet slettet.</string>
+    <string name="custom_games_remove_manual_title">Fjern manuelt spil</string>
+    <string name="custom_games_remove_manual_message">Fjern denne manuelt tilføjede mappe fra dit bibliotek? Dette sletter ikke filer på disken.</string>
+    <string name="custom_games_remove_manual_content_desc">Fjern manuel mappe</string>
+    <string name="custom_games_manual_removed_toast">Manuel mappe fjernet fra bibliotek.</string>
+    <string name="custom_games_cannot_access">⚠ Kan ikke få adgang (tjek om stien eksisterer)</string>
+    <string name="custom_games_permission_denied">⚠ Tilladelse nægtet</string>
+    <string name="custom_games_zero_folders">0 mapper fundet</string>
+    <string name="custom_games_folders_found">%d mapper fundet</string>
+    <string name="custom_games_scan_description">Mapper i disse stier scannes for .exe-filer og vises som tilpassede spil.</string>
+    <string name="custom_game_folder_picker_error">Kunne ikke løse mappesti</string>
+    <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
+    <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn venligst tilpassede spilindstillinger for at vælge hvilken der skal startes.</string>
+    <string name="custom_game_settings">Tilpassede spilindstillinger</string>
+    <string name="custom_game_delete_title">Slet spil</string>
+    <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
+
+    <!-- Toast messages -->
+    <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
+
+    <!-- Settings additions -->
+    <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
+    <string name="settings_save_logcat_title">Gem logcat</string>
+
+    <!-- Misc additions -->
+    <string name="calculating_space_requirements">Beregner pladskrav...</string>
+    <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
+    <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
+    <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
+    <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
+    <string name="base_app_shortcut_created">Genvej oprettet</string>
+    <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
+    <string name="base_app_images_fetched">Billeder hentet</string>
+    <string name="base_app_game_folder_not_found">Spilmappe ikke fundet</string>
+    <string name="base_app_images_fetch_failed">Kunne ikke hente billeder: %s</string>
+    <string name="base_app_exported">Eksporteret</string>
+    <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
+    <string name="base_app_export_cancelled">Eksport annulleret</string>
+</resources>

@@ -28,7 +28,7 @@ fun ConnectingServersScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Connecting to remote servers...",
+                text = stringResource(R.string.connect_to_remote_server),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 24.dp)

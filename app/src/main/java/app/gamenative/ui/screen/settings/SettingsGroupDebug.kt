@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.CrashHandler
 import coil.annotation.ExperimentalCoilApi
 import coil.imageLoader
+import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.CrashLogDialog
 import app.gamenative.ui.theme.settingsTileColors
@@ -155,7 +156,7 @@ fun SettingsGroupDebug() {
         )
     }
 
-    SettingsGroup(title = { Text(text = "Debug") }) {
+    SettingsGroup(title = { Text(text = stringResource(R.string.settings_debug_title)) }) {
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_save_logcat_title)) },
@@ -165,15 +166,15 @@ fun SettingsGroupDebug() {
         // Link to open channel selector
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = "Select Wine Debug Channels") },
+            title = { Text(text = stringResource(R.string.settings_debug_wine_channels_title)) },
             subtitle = { Text(text = if (selectedWineChannels.isNotEmpty()) selectedWineChannels.joinToString(",") else "No channels selected") },
             onClick = { showChannelsDialog = true },
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             state = enableWineDebugPref,
-            title = { Text(text = "Enable Wine Debug Logs") },
-            subtitle = { Text(text = "Write Wine debug output to file") },
+            title = { Text(text = stringResource(R.string.settings_debug_wine_logs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_debug_wine_logs_subtitle)) },
             onCheckedChange = {
                 enableWineDebugPref = it
                 PrefManager.enableWineDebug = it
@@ -182,8 +183,8 @@ fun SettingsGroupDebug() {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             state = enableBox86Logs,
-            title = { Text(text = "Enable Box86/64 Logs") },
-            subtitle = { Text(text = "Write Box86 & Box64 debug output to file") },
+            title = { Text(text = stringResource(R.string.settings_debug_box_logs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_debug_box_logs_subtitle)) },
             onCheckedChange = {
                 enableBox86Logs = it
                 WinlatorPrefManager.putBoolean("enable_box86_64_logs", it)
@@ -191,7 +192,7 @@ fun SettingsGroupDebug() {
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = "View latest crash") },
+            title = { Text(text = stringResource(R.string.settings_debug_view_crash_title)) },
             subtitle = {
                 val text = if (latestCrashFile != null) {
                     "Shows the most recent crash log"
@@ -206,7 +207,7 @@ fun SettingsGroupDebug() {
 
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = "View game debug log") },
+            title = { Text(text = stringResource(R.string.settings_debug_view_log_title)) },
             subtitle = {
                 val text = if (latestWineLogFile != null) {
                     "Shows the latest Wine/Box64 debug log"
@@ -230,8 +231,8 @@ fun SettingsGroupDebug() {
                 },
             ),
             colors = settingsTileColorsDebug(),
-            title = { Text(text = "Clear Preferences") },
-            subtitle = { Text("[Closes App] Logs out the client and wipes local preference data.") },
+            title = { Text(text = stringResource(R.string.settings_debug_clear_prefs_title)) },
+            subtitle = { Text(stringResource(R.string.settings_debug_clear_prefs_subtitle)) },
             onClick = {},
         )
 
@@ -247,8 +248,8 @@ fun SettingsGroupDebug() {
                 },
             ),
             colors = settingsTileColorsDebug(),
-            title = { Text(text = "Clear Local Database") },
-            subtitle = { Text("[Closes app] May help fix issues with library items or messages.") },
+            title = { Text(text = stringResource(R.string.settings_debug_clear_db_title)) },
+            subtitle = { Text(stringResource(R.string.settings_debug_clear_db_subtitle)) },
             onClick = {},
         )
 
@@ -263,8 +264,8 @@ fun SettingsGroupDebug() {
                 },
             ),
             colors = settingsTileColorsDebug(),
-            title = { Text(text = "Clear Image Cache") },
-            subtitle = { Text(text = "Remove all images that were loaded.") },
+            title = { Text(text = stringResource(R.string.settings_debug_clear_cache_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_debug_clear_cache_subtitle)) },
             onClick = {},
         )
     }

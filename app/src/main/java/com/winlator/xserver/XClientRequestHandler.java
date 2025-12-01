@@ -336,6 +336,11 @@ public class XClientRequestHandler implements RequestHandler {
                         GraphicsContextRequests.changeGC(client, inputStream, outputStream);
                     }
                     break;
+                case ClientOpcodes.COPY_GC:
+                    try (XLock lock = client.xServer.lock(XServer.Lockable.PIXMAP_MANAGER, XServer.Lockable.DRAWABLE_MANAGER, XServer.Lockable.GRAPHIC_CONTEXT_MANAGER)) {
+                        GraphicsContextRequests.copyGC(client, inputStream, outputStream);
+                    }
+                    break;
                 case ClientOpcodes.SET_CLIP_RECTANGLES:
                     client.skipRequest();
                     break;

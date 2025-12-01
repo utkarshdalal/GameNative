@@ -172,7 +172,7 @@ private fun UserLoginScreenContent(
             ) {
                 // Logo
                 Text(
-                    text = "GameNative",
+                    text = stringResource(R.string.login_app_name),
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         brush = Brush.horizontalGradient(
@@ -189,7 +189,7 @@ private fun UserLoginScreenContent(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "Privacy Policy",
+                        text = stringResource(R.string.login_privacy_policy),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -248,7 +248,7 @@ private fun UserLoginScreenContent(
                         ) {
                             // Title
                             Text(
-                                text = "Welcome Back",
+                                text = stringResource(R.string.login_welcome_back),
                                 style = MaterialTheme.typography.headlineMedium.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -257,7 +257,7 @@ private fun UserLoginScreenContent(
 
                             // Subtitle
                             Text(
-                                text = "Sign in to access your Steam library",
+                                text = stringResource(R.string.login_subtitle),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(bottom = 24.dp)
@@ -480,7 +480,7 @@ private fun ModernUsernamePassword(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             Text(
-                text = "Username",
+                text = stringResource(R.string.login_username),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -530,7 +530,7 @@ private fun ModernUsernamePassword(
                 .padding(bottom = 16.dp)
         ) {
             Text(
-                text = "Password",
+                text = stringResource(R.string.login_password),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -606,7 +606,7 @@ private fun ModernUsernamePassword(
                 onCheckedChange = onRememberSession,
             )
             Text(
-                text = "Remember session",
+                text = stringResource(R.string.login_remember_session),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -631,7 +631,7 @@ private fun ModernUsernamePassword(
             )
         ) {
             Text(
-                text = "Sign In",
+                text = stringResource(R.string.login_sign_in),
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimary
             )
@@ -656,7 +656,7 @@ private fun ModernQRCode(
     ) {
         if (isQrFailed) {
             Text(
-                text = "QR Code Failed",
+                text = stringResource(R.string.login_qr_failed),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -672,7 +672,7 @@ private fun ModernQRCode(
                 )
             ) {
                 Text(
-                    text = "Retry QR Code",
+                    text = stringResource(R.string.login_retry_qr),
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
@@ -723,7 +723,7 @@ private fun ModernQRCode(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Open the Steam mobile app and scan this QR code to sign in instantly",
+                text = stringResource(R.string.login_qr_instructions),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

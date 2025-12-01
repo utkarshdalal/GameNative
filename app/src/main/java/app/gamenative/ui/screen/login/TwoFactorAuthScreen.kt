@@ -85,7 +85,7 @@ fun TwoFactorAuthScreenContent(
                     .height(48.dp),
                 content = {
                     Text(
-                        text = "Login",
+                        text = stringResource(R.string.two_factor_login),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     )
                 },
@@ -108,7 +108,7 @@ private fun TwoFactorTextField(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Verification Code",
+            text = stringResource(R.string.two_factor_verification_code),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -131,7 +131,7 @@ private fun TwoFactorTextField(
             singleLine = true,
             placeholder = {
                 Text(
-                    "Enter 5-character code",
+                    stringResource(R.string.two_factor_enter_code),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             },

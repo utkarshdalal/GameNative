@@ -41,7 +41,7 @@ internal fun LibraryList(
             ) {
                 Text(
                     modifier = Modifier.padding(24.dp),
-                    text = "No items listed with selection",
+                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_no_items),
                 )
             }
         }

@@ -75,6 +75,7 @@ public class InputControlsManager {
                 File targetFile = null;
                 for (File file : files) {
                     ControlsProfile targetProfile = loadProfile(context, file);
+                    if (originProfile == null || targetProfile == null) continue;
                     if (originProfile.id == targetProfile.id && originProfile.getName().equals(targetProfile.getName())) {
                         targetFile = file;
                         break;
@@ -98,6 +99,7 @@ public class InputControlsManager {
         if (files != null) {
             for (File file : files) {
                 ControlsProfile profile = loadProfile(context, file);
+                if (profile == null) continue;
                 if (!(ignoreTemplates && profile.isTemplate())) profiles.add(profile);
                 maxProfileId = Math.max(maxProfileId, profile.id);
             }

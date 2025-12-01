@@ -53,7 +53,7 @@ fun GameFeedbackDialog(
                 ) {
                     // Title
                     Text(
-                        text = "How did the game run?",
+                        text = stringResource(R.string.game_feedback_game_run),
                         style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -83,7 +83,7 @@ fun GameFeedbackDialog(
 
                     // Tags Selection
                     Text(
-                        text = "Select any issues you encountered:",
+                        text = stringResource(R.string.game_feedback_issues_question),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .align(Alignment.Start)

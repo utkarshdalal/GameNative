@@ -26,6 +26,8 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -87,23 +89,45 @@ public abstract class FileUtils {
     }
 
     public static boolean writeString(File file, String data) {
-        try {
-            if (!file.exists()) {
-                file.getParentFile().mkdirs();
-                file.createNewFile();
-            }
+        // Ensure parent directory exists
+        File parentDir = file.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
         }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+        
+        // Create temporary file in same directory
+        File tempFile = createTempFile(parentDir != null ? parentDir : file.getAbsoluteFile().getParentFile(), 
+                                        getBasename(file.getPath()));
+        
+        boolean success = false;
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(tempFile))) {
             bw.write(data);
             bw.flush();
-            return true;
+            success = true;
         }
         catch (IOException e) {
             e.printStackTrace();
+            // Clean up temp file on failure
+            tempFile.delete();
+            return false;
         }
+        
+        // Atomically replace original file with temp file
+        if (success) {
+            try {
+                // Atomic move - replaces target if it exists
+                Files.move(tempFile.toPath(), file.toPath(), 
+                          StandardCopyOption.ATOMIC_MOVE, 
+                          StandardCopyOption.REPLACE_EXISTING);
+                return true;
+            }
+            catch (IOException e) {
+                Log.e("FileUtils", "Failed to atomically move temp file: " + e);
+                tempFile.delete();
+                return false;
+            }
+        }
+        
         return false;
     }
 
