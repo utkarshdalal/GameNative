@@ -72,6 +72,7 @@ import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
@@ -365,6 +366,13 @@ private fun Preview_LibraryScreenContent() {
                         iconHash = item.iconHash,
                     )
                 },
+                // Add compatibility map for preview
+                compatibilityMap = mapOf(
+                    "Game 0" to GameCompatibilityStatus.COMPATIBLE,
+                    "Game 1" to GameCompatibilityStatus.GPU_COMPATIBLE,
+                    "Game 2" to GameCompatibilityStatus.NOT_COMPATIBLE,
+                    "Game 3" to GameCompatibilityStatus.UNKNOWN,
+                ),
             ),
         )
     }

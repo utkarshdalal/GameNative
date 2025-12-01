@@ -9,6 +9,13 @@ enum class GameSource {
     // Add other platforms here..
 }
 
+enum class GameCompatibilityStatus {
+    NOT_COMPATIBLE,
+    UNKNOWN,
+    COMPATIBLE,
+    GPU_COMPATIBLE
+}
+
 /**
  * Data class for the Library list
  */
@@ -19,6 +26,7 @@ data class LibraryItem(
     val iconHash: String = "",
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
+    val compatibilityStatus: GameCompatibilityStatus? = null,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

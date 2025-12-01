@@ -492,6 +492,9 @@
     <string name="library_installing">Instalando</string>
     <string name="library_not_installed">Não instalado</string>
     <string name="library_family_shared">Compartilhado na família</string>
+    <string name="library_compatible">Compatível</string>
+    <string name="library_compatibility_unknown">Compatibilidade Desconhecida</string>
+    <string name="library_not_compatible">Não Compatível</string>
     <string name="library_app_type">Tipo de app</string>
     <string name="library_app_status">Status do app</string>
     <string name="library_layout">Layout</string>

@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
@@ -78,6 +81,7 @@ internal fun AppItem(
     onFocus: () -> Unit = {},
     isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
+    compatibilityStatus: GameCompatibilityStatus? = null,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -243,17 +247,45 @@ internal fun AppItem(
                         }
                     }
 
-                    ListItemImage(
-                        modifier = Modifier.aspectRatio(aspectRatio),
-                        imageModifier = Modifier
-                            .clip(RoundedCornerShape(3.dp))
-                            .alpha(alpha),
-                        image = { imageUrl },
-                        onFailure = {
-                            hideText = false
-                            alpha = 0.1f
+                    Box {
+                        ListItemImage(
+                            modifier = Modifier.aspectRatio(aspectRatio),
+                            imageModifier = Modifier
+                                .clip(RoundedCornerShape(3.dp))
+                                .alpha(alpha),
+                            image = { imageUrl },
+                            onFailure = {
+                                hideText = false
+                                alpha = 0.1f
+                            }
+                        )
+
+                        // Header overlay with compatibility status
+                        compatibilityStatus?.let { status ->
+                            val (text, color) = when (status) {
+                                GameCompatibilityStatus.COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                                GameCompatibilityStatus.GPU_COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                                GameCompatibilityStatus.UNKNOWN -> stringResource(R.string.library_compatibility_unknown) to Color.Gray
+                                GameCompatibilityStatus.NOT_COMPATIBLE -> stringResource(R.string.library_not_compatible) to Color.Red
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = color,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
                         }
-                    )
+                    }
 
                     // Only display text if the image loading has failed
                     if (! hideText) {
@@ -263,6 +295,7 @@ internal fun AppItem(
                                 .padding(8.dp),
                             appInfo = appInfo,
                             isRefreshing = isRefreshing,
+                            compatibilityStatus = compatibilityStatus,
                         )
                     } else {
                         var isInstalled by remember(appInfo.appId, appInfo.gameSource) {
@@ -346,6 +379,7 @@ internal fun AppItem(
                     modifier = Modifier.weight(1f),
                     appInfo = appInfo,
                     isRefreshing = isRefreshing,
+                    compatibilityStatus = compatibilityStatus,
                 )
 
                 // Play/Open button
@@ -374,6 +408,7 @@ internal fun GameInfoBlock(
     modifier: Modifier,
     appInfo: LibraryItem,
     isRefreshing: Boolean = false,
+    compatibilityStatus: GameCompatibilityStatus? = null,
 ) {
     // For text displayed in list view, or as override if image loading fails
 
@@ -449,7 +484,7 @@ internal fun GameInfoBlock(
             val (statusText, statusColor) = if (isSteam) {
                 val text = when {
                     isDownloading -> stringResource(R.string.library_installing)
-                    isInstalled -> stringResource(R.string.library_installed)
+                    isInstalledSteam -> stringResource(R.string.library_installed)
                     else -> stringResource(R.string.library_not_installed)
                 }
                 val color = when {
@@ -505,6 +540,21 @@ internal fun GameInfoBlock(
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
+
+            // Compatibility status indicator on its own line if needed
+            compatibilityStatus?.let { status ->
+                val (text, color) = when (status) {
+                    GameCompatibilityStatus.COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                    GameCompatibilityStatus.GPU_COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                    GameCompatibilityStatus.UNKNOWN -> stringResource(R.string.library_compatibility_unknown) to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    GameCompatibilityStatus.NOT_COMPATIBLE -> stringResource(R.string.library_not_compatible) to Color.Red
+                }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                    color = color
+                )
+            }
         }
     }
 }
@@ -534,7 +584,18 @@ private fun Preview_AppItem() {
                         )
                     },
                     itemContent = {
-                        AppItem(appInfo = it, onClick = {})
+                        // Show different compatibility states in preview
+                        val status = when (it.index % 4) {
+                            0 -> GameCompatibilityStatus.COMPATIBLE
+                            1 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                            2 -> GameCompatibilityStatus.NOT_COMPATIBLE
+                            else -> GameCompatibilityStatus.UNKNOWN
+                        }
+                        AppItem(
+                            appInfo = it,
+                            onClick = {},
+                            compatibilityStatus = status
+                        )
                     },
                 )
             }
@@ -572,10 +633,18 @@ private fun Preview_AppItemGrid() {
                     ),
                 ) {
                     items(items = appInfoList, key = { it.index }) { item ->
+                        // Show different compatibility states in preview
+                        val status = when (item.index % 4) {
+                            0 -> GameCompatibilityStatus.COMPATIBLE
+                            1 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                            2 -> GameCompatibilityStatus.NOT_COMPATIBLE
+                            else -> GameCompatibilityStatus.UNKNOWN
+                        }
                         AppItem(
                             appInfo = item,
                             onClick = { },
                             paneType = PaneType.GRID_HERO,
+                            compatibilityStatus = status
                         )
                     }
                 }
@@ -591,10 +660,18 @@ private fun Preview_AppItemGrid() {
                     ),
                 ) {
                     items(items = appInfoList, key = { it.index }) { item ->
+                        // Show different compatibility states in preview
+                        val status = when (item.index % 4) {
+                            0 -> GameCompatibilityStatus.COMPATIBLE
+                            1 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                            2 -> GameCompatibilityStatus.NOT_COMPATIBLE
+                            else -> GameCompatibilityStatus.UNKNOWN
+                        }
                         AppItem(
                             appInfo = item,
                             onClick = { },
                             paneType = PaneType.GRID_CAPSULE,
+                            compatibilityStatus = status
                         )
                     }
                 }

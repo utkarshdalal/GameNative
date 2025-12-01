@@ -29,6 +29,24 @@ object HardwareUtils {
     }
     
     /**
+     * Gets SOC (System on Chip) identifier for grouping devices with the same chip.
+     * Returns Build.SOC_MODEL on Android 12+ (API 31+) if it exists and is not empty,
+     * otherwise returns null.
+     */
+    fun getSOCName(): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val socModel = Build.SOC_MODEL
+            if (!socModel.isNullOrEmpty()) {
+                socModel
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+    }
+    
+    /**
      * Gets GPU information if available
      */
     suspend fun getGPUInfo(context: Context): String? = suspendCancellableCoroutine { continuation ->
