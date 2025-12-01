@@ -12,12 +12,45 @@
     <string name="steam_2fa_confirmation">Brug Steam Mobile-appen til at bekræfte dit login…</string>
     <string name="steam_2fa_device">Indtast din 2-faktor-godkendelseskode fra din autentifikator-app.</string>
     <string name="steam_2fa_email">Indtast koden sendt til e-mailen på %s</string>
+    <string name="steam_install_space_prompt">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
+    <string name="steam_install_not_enough_space">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
+    <string name="steam_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
+    <string name="steam_delete_download_message">Slet alle downloadede data for dette spil?</string>
+    <string name="steam_imagefs_download_install_title">Download & installér ImageFS</string>
+    <string name="steam_imagefs_download_install_message">Ubuntu-billedet skal downloades og installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="steam_imagefs_install_title">Installér ImageFS</string>
+    <string name="steam_imagefs_install_message">Ubuntu-billedet skal installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
+    <string name="steam_reset_container_title">Nulstil container</string>
+    <string name="steam_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
+    <string name="base_app_reset_container_title">Nulstil Container?</string>
+    <string name="base_app_reset_container_confirm">Nulstil</string>
+    <string name="steam_verify_files_title">Verificér filer</string>
+    <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_update_title">Opdatering</string>
+    <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_cloud_sync_success">Sky-synkronisering fuldført</string>
+    <string name="steam_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
+    <string name="steam_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
+    <string name="steam_not_logged_in">Du skal være logget ind på Steam for at bruge denne funktion</string>
+    <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
+    <string name="steam_container_reset_success">Container nulstillet til standard</string>
+    <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
+    <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
+    <string name="steam_uninstall_game_title">Afinstallér spil</string>
+    <string name="steam_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="steam_uninstall_success">%1$s er blevet afinstalleret</string>
+    <string name="steam_uninstall_failed">Kunne ikke afinstallere spil</string>
+    <string name="steam_never">Aldrig</string>
+    <string name="steam_continue">Fortsæt</string>
     <string name="header_img_desc">Appens header-billede</string>
+    <string name="download">Download</string>
+    <string name="install">Installér</string>
     <string name="install_app">Installér</string>
     <string name="delete_app">Slet</string>
     <string name="uninstall">Afinstallér</string>
     <string name="run_app">Spil</string>
     <string name="download_prompt_title">Installér app</string>
+    <string name="calculating_space_requirements">Beregner pladskrav...</string>
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
     <string name="acknowledge">OK</string>
@@ -32,7 +65,34 @@
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Venner</string>
 
-    <!-- Winlator -->
+    <!-- Custom Games -->
+    <string name="custom_games_title">Egne spil</string>
+    <string name="custom_games_no_paths">Ingen stier tilføjet</string>
+    <string name="custom_games_grant_permission">Giv tilladelse</string>
+    <string name="custom_games_manual_subtitle">Tilføjet fra bibliotek</string>
+    <string name="custom_games_no_manual_entries">Ingen manuelt tilføjede spil endnu.</string>
+    <string name="custom_games_remove_path_title">Fjern sti</string>
+    <string name="custom_games_remove_path_message">Fjern denne sti fra scanning? Mappeindholdet bliver på disken.</string>
+    <string name="custom_games_remove_path_content_desc">Fjern sti</string>
+    <string name="custom_games_path_removed_toast">Sti fjernet fra listen. Indhold er ikke blevet slettet.</string>
+    <string name="custom_games_remove_manual_title">Fjern eget spil</string>
+    <string name="custom_games_remove_manual_message">Fjern denne manuelt tilføjede mappe fra dit bibliotek? Dette sletter ikke filer på disken.</string>
+    <string name="custom_games_remove_manual_content_desc">Fjern manuel mappe</string>
+    <string name="custom_games_manual_removed_toast">Manuel mappe fjernet fra bibliotek.</string>
+    <string name="custom_games_cannot_access">⚠ Kan ikke få adgang (tjek om stien eksisterer)</string>
+    <string name="custom_games_permission_denied">⚠ Tilladelse nægtet</string>
+    <string name="custom_games_zero_folders">0 mapper fundet</string>
+    <string name="custom_games_folders_found">%d mapper fundet</string>
+    <string name="custom_games_scan_description">Mapper i disse stier scannes for .exe-filer og vises som egne spil.</string>
+    <string name="custom_game_folder_picker_error">Kunne ikke løse mappesti</string>
+    <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
+    <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn venligst spilindstillinger for at vælge hvilken der skal startes.</string>
+    <string name="custom_game_settings">Indstillinger for egne spil</string>
+    <string name="custom_game_delete_title">Slet spil</string>
+    <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
+    <string name="custom_game_unknown_developer">Ukendt</string>
+
+    <!--Winlator-->
     <string name="disabled">Deaktiveret</string>
     <string name="copy">Kopiér</string>
     <string name="stability">Stabilitet</string>
@@ -93,6 +153,13 @@
     <string name="input_controls">On-screen-controller</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
 
+    <!-- Toast -->
+    <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
+
+    <!-- Settings -->
+    <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
+    <string name="settings_save_logcat_title">Gem logcat</string>
+
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Håndtering af flag på CALL/RET-opcodes<br /><br />
         <b>0</b> : Behandler CALL/RET som om de aldrig krævede flag (hurtigere, ustabilt)<br />
@@ -116,9 +183,63 @@
         <b>2</b> : Som 1 + Memory Barrier på hver MOV-skrivning<br />
         <b>3</b> : Som 2 + Memory Barrier ved læsning fra hukommelse og på nogle SSE/SSE2-opkoder
     ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
+        Justér memory barriers for at reducere ydelsespåvirkningen ved stærk memory-emulering<br /><br />
+        <b>0</b> : Brug normale sikre barriers<br />
+        <b>1</b> : Brug svage barriers for en lille ydelsesforbedring<br />
+        <b>2</b> : Brug svage barriers og deaktivér desuden sidste write-barrier]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
+        Generér kun aligned atomics (kun tilgængeligt på Arm64 i øjeblikket).<br /><br />
+        <b>0</b> : Generér kode der håndterer unaligned atomics.<br />
+        <b>1</b> : Generér kun aligned atomics, hvilket er hurtigere og giver mindre kode,
+        men vil forårsage SIGBUS for LOCK-instruktioner der opererer på unaligned adresser.]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
+        Aktivér eller deaktivér brugen af deferred flags.<br /><br />
+        <b>0</b> : Deaktivér brug af deferred flags.<br />
+        <b>1</b> : Aktivér brug af deferred flags.]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
+        Tillad fortsat kørsel af en blok der er ubeskyttet og potentielt ændret.<br /><br />
+        <b>0</b> : Tillad ikke fortsat kørsel af sådanne blokke.<br />
+        <b>1</b> : Tillad fortsat kørsel af en dynablock der skriver data i samme side som kode.
+        Dette kan forbedre loadtider, men kan også give uventede crashes.<br />
+        <b>2</b> : Når en HotPage opdages, markeres siden som NEVERCLEAN, så den ikke write-protectes,
+        men blokke fra siden testes altid. Dette kan være hurtigere (dog kan nogle SMC-tilfælde ikke fanges).]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
+        Aktivér eller deaktivér brugen af native flags.<br /><br />
+        <b>0</b> : Brug ikke native flags.<br />
+        <b>1</b> : Brug native flags når muligt.]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
+        Aktivér emulering af x86 PAUSE-instruktion; kan forbedre spinlock-ydelse.<br /><br />
+        <b>0</b> : Ignorér x86 PAUSE-instruktionen.<br />
+        <b>1</b> : Brug YIELD til at emulere x86 Pause instruktioner.<br />
+        <b>2</b> : Brug WFI til at emulere x86 Pause instruktioner.<br />
+        <b>3</b> : Brug SEVL+WFE til at emulere x86 Pause instruktioner.]]></string>
+    <string name="box86_64_env_var_help__avx"><![CDATA[
+        AVX og AVX2 implementeret, sammen med BMI1, BMI2, ADX, FMA, F16C og RDRAND udvidelserne!<br /><br />
+        <b>0</b> : Deaktiver AVX udvidelse<br />
+        <b>1</b> : Aktivér AVX, BMI1, F16C og VAES udvidelser.<br />
+        <b>2</b> : Alle 1 plus AVX2, BMI2, FMA, ADX, VPCLMULQDQ og RDRAND.]]></string>
+    <string name="box86_64_env_var_help__maxcpu">Maksimalt antal CPU-kerner præsenterer til box64 programmer</string>
+    <string name="box86_64_env_var_help__unityplayer">Find UnityPlayer.dll og anvend strongmem-indstillinger</string>
+    <string name="box86_64_env_var_help__mmap32">Gennemtving at alle memory-allokeringer placeres i 32-bit adressområdet</string>
     <string name="box86_64_env_var_help__dynarec_forward">Definerer maksimal tilladt fremadværdi ved opbygning af blokke</string>
     <string name="box86_64_env_var_help__dynarec_callret">Optimering af CALL/RET-opcodes</string>
     <string name="box86_64_env_var_help__dynarec_wait">Definerer om Dynarec venter på, at FillBlock bliver klar</string>
+    <string name="fexcore_env_var_help__tsoenabled">Aktiverer TSO IR-operationer (påkrævet for multitrådede apps).</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">Gør vector load/stores atomare når TSO er aktiveret.</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">Bruger half-barrier atomics for unaligned load/stores under TSO.</string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled">Gør REP MOVS / REP STOS atomare under TSO.</string>
+    <string name="fexcore_env_var_help__multiblock">Aktiverer multiblok-kompilering. Kan give længere JIT-tider og stutter.</string>
+    <string name="fexcore_env_var_help__hostfeatures">Styrer tvungen CPU-feature-emulering.</string>
+    <string name="fexcore_env_var_help__smalltscscale">Skalerer TSC på lavfrekvente systemer.</string>
+    <string name="fexcore_env_var_help__smc_checks">Tjek for Self-Modifying Code.</string>
+    <string name="fexcore_env_var_help__volatilemetadata">Bruger volatil metadata fra PE-filer for TSO når tilgængeligt.</string>
+    <string name="fexcore_env_var_help__monohacks">Specielle SMC- og JIT-hacks til Mono-detektion.</string>
+    <string name="fexcore_env_var_help__hidehypervisorbit">Skjuler CPUID hypervisor-bit (nyttigt for apps der crasher med den aktiv).</string>
+    <string name="fexcore_env_var_help__disablel2cache">Deaktiverer FEXCore JIT L2-cacheopslag; sparer RAM men kan give stutter.</string>
+    <string name="fexcore_env_var_help__dynamicl1cache">Gør FEXCore JIT L1-cachen dynamisk i størrelse; sparer RAM men kan give stutter.</string>
+    <string name="fexcore_env_var_help__x87reducedprecision">Emulerer X87-flydende punkt med 64-bit præcision. Kan give renderingsfejl.</string>
+    <string name="fexcore_env_var_help__maxinst">Maksimalt instruktionsbudget pr. oversættelsesblok. Højere værdier kan forbedre ydelse men reducere stabilitet.</string>
 
     <string name="resume_download">Genoptag</string>
     <string name="pause_download">Pause</string>
@@ -135,6 +256,7 @@
     <string name="installation_progress">Installationsstatus</string>
     <string name="downloading">Downloader...</string>
     <string name="calculating_time">Beregner...</string>
+    <string name="download_failed_try_again">Download fejlede. Prøv venligst igen.</string>
     <string name="update_available">Opdatering tilgængelig</string>
     <string name="game_information">Spilinformation</string>
     <string name="status">Status</string>
@@ -150,14 +272,41 @@
     <string name="games">Spil</string>
     <string name="playtime_last_two_weeks">Spilletid de sidste 2 uger: %s timer</string>
     <string name="total_playtime">Total spilletid: %s timer</string>
+    <string name="add_custom_game_content_desc">Tilføj eget spil</string>
+    <string name="add_custom_game_dialog_title">Tilføj eget spil</string>
+    <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et eget spil.</string>
+    <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
+    <string name="base_app_shortcut_created">Genvej oprettet</string>
+    <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
+    <string name="base_app_images_fetched">Billeder hentet</string>
+    <string name="base_app_game_folder_not_found">Spilmappe ikke fundet</string>
+    <string name="base_app_images_fetch_failed">Kunne ikke hente billeder: %s</string>
+    <string name="base_app_exported">Eksporteret</string>
+    <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
+    <string name="base_app_export_cancelled">Eksport annulleret</string>
+
+
+    <!-- App Filter -->
+    <string name="app_filter_installed">Installeret</string>
+    <string name="app_filter_game">Spil</string>
+    <string name="app_filter_application">Applikation</string>
+    <string name="app_filter_tool">Værktøj</string>
+    <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_family">Familie</string>
 
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">Ingen forbindelse til Steam</string>
     <string name="retry_steam_connection">Prøv at forbinde igen</string>
     <string name="continue_offline">Fortsæt offline</string>
 
+
+    <!--Game Feedback Dialog -->
+    <string name="game_feedback_game_run">Hvordan kørte spillet?</string>
+    <string name="game_feedback_issues_question">Vælg eventuelle problemer du stødte på:</string>
+
+
     <!-- Profile & Menu -->
-    <string name="help_and_support">Hjælp &amp; support</string>
+    <string name="help_and_support">Hjælp & support</string>
     <string name="hall_of_fame">Hall of Fame</string>
     <string name="go_online">Gå online</string>
     <string name="go_offline">Gå offline</string>
@@ -182,6 +331,7 @@
     <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
 
     <!-- Container Configuration: Steam Integration -->
+    <string name="use_legacy_drm">Brug ældre DRM</string>
     <string name="force_dlc">Gennemtving DLC</string>
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
@@ -195,7 +345,6 @@
     <string name="graphics_driver_version">Grafikdriverversion</string>
     <string name="exposed_vulkan_extensions">Eksponerede Vulkan-udvidelser</string>
     <string name="max_device_memory">Maksimal enhedshukommelse</string>
-    <string name="frame_synchronization">Rammens synkronisering</string>
     <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan-version</string>
     <string name="image_cache_size">Billedcache-størrelse</string>
@@ -203,9 +352,20 @@
     <string name="vkd3d_feature_level">VKD3D Feature Level</string>
     <string name="use_dri3">Brug DRI3</string>
     <string name="use_dri3_description">Deaktivering kan løse grafiske fejl på nogle enheder</string>
+    <string name="sync_frame">Synkronisér hver frame</string>
+    <string name="disable_present_wait">Deaktivér KHR_present_wait</string>
+    <string name="present_modes">Present-tilstande</string>
+    <string name="resource_type">Hukommelsesresourcetype</string>
+    <string name="bcn_emulation">BCn-emulering</string>
+    <string name="bcn_emulation_type">BCn-emuleringstype</string>
+    <string name="bcn_emulation_cache">BCn-emuleringscache</string>
+    <string name="sharpness_effect">Skarphedsforbedring</string>
+    <string name="sharpness_level">Skarphedsniveau</string>
+    <string name="sharpness_denoise">Skarphedsstøjreduktion</string>
 
     <!-- Container Configuration: Emulation -->
     <string name="fexcore_version">FEXCore-version</string>
+    <string name="fexcore_preset">FEXCore-forudindstilling</string>
     <string name="tso_mode">TSO-tilstand</string>
     <string name="x87_mode">x87-tilstand</string>
     <string name="multiblock">Multiblok</string>
@@ -214,6 +374,8 @@
     <string name="box64_version">Box64-version</string>
     <string name="box64_preset">Box64-forudindstilling</string>
     <string name="box64_presets">Box64-forudindstillinger</string>
+    <string name="fexcore_presets">FEXCore-forudindstillinger</string>
+    <string name="fexcore_presets_description">Se, redigér og opret FEXCore-forudindstillinger</string>
     <string name="preset_name">Forudindstillingsnavn</string>
 
     <!-- Container Configuration: Input -->
@@ -227,7 +389,7 @@
     <string name="emulate_keyboard_mouse_description">Venstre stick = WASD, højre stick = mus. L2 = venstre klik, R2 = højre klik.</string>
 
     <!-- Container Configuration: Rendering -->
-    <string name="renderer">Renderer</string>
+    <string name="renderer">Gengiver</string>
     <string name="gpu_name">GPU-navn</string>
     <string name="offscreen_rendering_mode">Offscreen-rendering-tilstand</string>
     <string name="video_memory_size">Videohukommelsesstørrelse</string>
@@ -268,7 +430,7 @@
     <string name="remove_content">Fjern indhold?</string>
     <string name="remove_content_confirmation">Er du sikker på, at du vil fjerne %1$s (%2$s)?</string>
 
-    <!-- TODO: Manual review - New strings added for Settings -->
+    <!-- Settings -->
     <string name="settings_language">Sprog</string>
     <string name="settings_select_language">Vælg sprog</string>
     <string name="settings_language_restart_title">Genstart påkrævet</string>
@@ -289,14 +451,16 @@
     <string name="settings_emulation_driver_manager_subtitle">Installér eller fjern tilpassede grafikdriverpakker</string>
     <string name="settings_emulation_contents_manager_title">Indholdshåndtering</string>
     <string name="settings_emulation_contents_manager_subtitle">Installér yderligere komponenter (.wcp)</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton-håndtering</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">Importér egne Wine- eller Proton-versioner (kun Bionic)</string>
 
     <!-- Settings: Debug Group -->
-    <string name="settings_debug_title">Debug</string>
+    <string name="settings_debug_title">Fejlfinding</string>
     <string name="settings_debug_wine_channels_title">Vælg Wine debug-kanaler</string>
     <string name="settings_debug_wine_logs_title">Aktivér Wine debug-logs</string>
     <string name="settings_debug_wine_logs_subtitle">Skriv Wine debug-output til fil</string>
     <string name="settings_debug_box_logs_title">Aktivér Box86/64-logs</string>
-    <string name="settings_debug_box_logs_subtitle">Skriv Box86 &amp; Box64 debug-output til fil</string>
+    <string name="settings_debug_box_logs_subtitle">Skriv Box86 & Box64 debug-output til fil</string>
     <string name="settings_debug_view_crash_title">Vis seneste crash</string>
     <string name="settings_debug_view_log_title">Vis spil-debug-log</string>
     <string name="settings_debug_clear_prefs_title">Ryd præferencer</string>
@@ -338,7 +502,7 @@
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>
 
-    <!-- TODO: Manual review - New strings for Login Screen -->
+    <!-- Login Screen -->
     <string name="login_app_name">GameNative</string>
     <string name="login_privacy_policy">Privatlivspolitik</string>
     <string name="login_welcome_back">Velkommen tilbage</string>
@@ -351,23 +515,21 @@
     <string name="login_retry_qr">Prøv QR-kode igen</string>
     <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>
 
-    <!-- TODO: Manual review - Generic/Reusable strings -->
+    <!-- Generic/Reusable strings -->
     <string name="continue_action">Fortsæt</string>
     <string name="settings_text">Indstillinger</string>
-    <string name="download">Download</string>
-    <string name="install">Installér</string>
 
-    <!-- TODO: Manual review - Connecting to Servers Screen -->
+
+    <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Forbinder til fjernservere...</string>
 
-    <!-- TODO: Manual review - LibraryAppScreen: Dialogs -->
-    <string name="download_failed_try_again">Download fejlede. Prøv venligst igen.</string>
+    <!-- LibraryAppScreen: Dialogs -->
     <string name="library_not_enough_space_message">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
     <string name="library_download_prompt_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
     <string name="library_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
     <string name="library_delete_download_message">Slet alle downloadede data for dette spil?</string>
     <string name="library_delete_app_message">Er du sikker på, at du vil slette denne app?</string>
-    <string name="library_download_install_imagefs_title">Download &amp; installér ImageFS</string>
+    <string name="library_download_install_imagefs_title">Download & installér ImageFS</string>
     <string name="library_download_install_imagefs_message">Ubuntu-billedet skal downloades og installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
     <string name="library_install_imagefs_title">Installér ImageFS</string>
     <string name="library_install_imagefs_message">Ubuntu-billedet skal installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
@@ -379,7 +541,7 @@
     <string name="library_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
     <string name="library_config_title">%s-konfiguration</string>
 
-    <!-- TODO: Manual review - LibraryAppScreen: Toast Messages -->
+    <!-- LibraryAppScreen: Toast Messages -->
     <string name="library_storage_permission_required">Lagertilladelse påkrævet</string>
     <string name="library_exported">Eksporteret</string>
     <string name="library_failed_to_export">Kunne ikke eksportere: %s</string>
@@ -390,12 +552,12 @@
     <string name="library_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
     <string name="library_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
 
-    <!-- TODO: Manual review - LibraryAppScreen: UI Labels -->
+    <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internet påkrævet for installation</string>
     <string name="library_wifi_only_enabled">Installation kun via Wi-Fi/LAN aktiveret</string>
     <string name="library_file_count">Fil %1$d af %2$d</string>
 
-    <!-- TODO: Manual review - PluviaMain: Update & App Info -->
+    <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Opdatering tilgængelig</string>
     <string name="main_update_available_message">En ny version (%1$s) er tilgængelig!%2$s</string>
     <string name="main_update_button">Opdatér</string>
@@ -403,7 +565,7 @@
     <string name="main_update_failed_title">Opdatering fejlede</string>
     <string name="main_update_failed_message">Kunne ikke downloade eller installere opdateringen. Prøv venligst igen senere.</string>
 
-    <!-- TODO: Manual review - PluviaMain: Crash & Support -->
+    <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Nylig crash</string>
     <string name="main_recent_crash_message">Beklager det!\nDet ville være dejligt at vide om det nylige problem, du har haft.\nDu kan se og eksportere den nyeste crash-log i appens indstillinger og vedhæfte den som et Github-problem i projektets repository.\nLink til Github-repo er også i indstillinger!</string>
     <string name="main_thank_you_title">Tak for at bruge GameNative!</string>
@@ -414,30 +576,30 @@
     <string name="main_discord_support_message">Tilmeld dig Discord for at få support til at rette dit spil eller forbedre ydelsen.</string>
     <string name="main_open_discord">Åbn Discord</string>
 
-    <!-- TODO: Manual review - PluviaMain: Game Launch -->
+    <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Downloader Steam...</string>
     <string name="main_installing_glibc">Installerer glibc-komponenter...</string>
     <string name="main_installing_bionic">Installerer Bionic-komponenter...</string>
     <string name="main_loading">Indlæser...</string>
 
-    <!-- TODO: Manual review - PluviaMain: Session Conflicts -->
+    <!-- PluviaMain: Session Conflicts -->
     <string name="main_app_running_title">App kører</string>
     <string name="main_app_running_message">Du er logget ind på en anden enhed og spiller allerede %s. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam.</string>
     <string name="main_app_running_other_device">Du er logget ind på en anden enhed (%1$s) og spiller allerede %2$s (%3$s), og den gemfil er ikke i skyen endnu. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam og kan skabe en gemfilkonflikt når sessionsframgangen synkroniseres</string>
     <string name="main_play_anyway">Spil alligevel</string>
 
-    <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
+    <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
     <string name="main_save_conflict_message">Der er en ny fjern-gemfil og en ny lokal gemfil, hvilken vil du beholde?\n\nLokal gemfil:\n\t%1$s\nFjern-gemfil:\n\t%2$s</string>
     <string name="main_keep_local">Behold lokal</string>
     <string name="main_keep_remote">Behold fjern</string>
 
-    <!-- TODO: Manual review - PluviaMain: Sync Errors -->
+    <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Synkroniseringsoperationen tager for lang tid. Prøv venligst at starte spillet igen om et øjeblik.</string>
     <string name="main_sync_in_progress">Synkronisering er i gang. Prøv venligst igen om et øjeblik.</string>
     <string name="main_sync_failed">Kunne ikke synkronisere gemfiler: %s.</string>
 
-    <!-- TODO: Manual review - PluviaMain: Pending Operations -->
+    <!-- PluviaMain: Pending Operations -->
     <string name="main_upload_in_progress_title">Upload i gang</string>
     <string name="main_upload_in_progress_message">Du spillede %1$s på enheden %2$s (%3$s) og gemfilen fra den session uploader stadig.\nPrøv igen senere.</string>
     <string name="main_pending_upload_title">Ventende upload</string>
@@ -446,7 +608,7 @@
     <string name="main_pending_operation_none">Modtog ventende fjernoperationer, hvis operation var \'none\'. Genstart venligst appen.</string>
     <string name="main_multiple_pending_operations">Flere ventende fjernoperationer, prøv igen senere. Genstart venligst appen.</string>
 
-    <!-- TODO: Manual review - Container Config Dialog -->
+    <!-- Container Config Dialog -->
     <string name="container_config_title">Konfigurér container</string>
     <string name="container_config_unsaved_changes_title">Ikke-gemte ændringer</string>
     <string name="container_config_unsaved_changes_message">Er du sikker på, at du vil kassere dine ændringer?</string>
@@ -463,11 +625,11 @@
     <string name="container_config_executable_path">Sti til eksekverbar fil</string>
     <string name="container_config_executable_path_placeholder">f.eks. sti\\til\\exe</string>
 
-    <!-- TODO: Manual review - Libraries Dialog -->
+    <!-- Libraries Dialog -->
     <string name="libraries_title">Anvendte biblioteker</string>
-    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator & Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper & https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
 
-    <!-- TODO: Manual review - Supporters Dialog -->
+    <!-- Supporters Dialog -->
     <string name="supporters_art_credits">Kunstnerkreditter</string>
     <string name="supporters_app_icon">App-ikon: Hachi</string>
     <string name="supporters_alt_icon">Alternativt app-ikon: rhapsody_mdr</string>
@@ -477,7 +639,7 @@
     <string name="supporters_none">Ingen støtter endnu.</string>
     <string name="supporters_anonymous">Anonym</string>
 
-    <!-- TODO: Manual review - Chat Screen -->
+    <!-- Chat Screen -->
     <string name="chat_preview_warning">Chatning er stadig en tidlig funktion.\nRapportér venligst problemer i projektets repository.</string>
     <string name="chat_no_history">Ingen chathistorik</string>
     <string name="chat_send_message">Send en besked</string>
@@ -485,7 +647,7 @@
     <string name="chat_emoticons">Humørikoner</string>
     <string name="chat_stickers">Mærkater</string>
 
-    <!-- TODO: Manual review - Library Components -->
+    <!-- Library Components -->
     <string name="library_open">Åbn</string>
     <string name="library_installed">Installeret</string>
     <string name="library_installing">Installerer</string>
@@ -503,13 +665,16 @@
     <string name="library_no_items">Ingen elementer vist med markeringen</string>
     <string name="library_filters">Filtre</string>
     <string name="library_game_count">%1$d spil • %2$d installerede</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">Egne spil</string>
+    <string name="library_layout_title">Layout</string>
 
-    <!-- TODO: Manual review - Two Factor Auth -->
+    <!-- Two Factor Auth -->
     <string name="two_factor_login">Login</string>
     <string name="two_factor_verification_code">Verifikationskode</string>
     <string name="two_factor_enter_code">Indtast 5-tegns kode</string>
 
-    <!-- TODO: Manual review - Contents Manager -->
+    <!-- Contents Manager -->
     <string name="contents_validating">Validerer indhold...</string>
     <string name="contents_error_badtar">Filen kan ikke genkendes</string>
     <string name="contents_error_noprofile">Profil ikke fundet i indhold</string>
@@ -531,13 +696,13 @@
     <string name="contents_review_confirm">Dette indhold inkluderer filer uden for det pålidelige sæt. Gennemgå og bekræft for at fortsætte.</string>
     <string name="contents_removed">Fjernede %1$s</string>
 
-    <!-- TODO: Manual review - Driver Manager -->
+    <!-- Driver Manager -->
     <string name="driver_error_manifest">Kunne ikke indlæse drivermanifest: %1$d</string>
     <string name="driver_error_loading">Fejl ved indlæsning af drivermanifest: %1$s</string>
     <string name="driver_timeout">Forbindelsen fik timeout. Tjek venligst dit netværk og prøv igen.</string>
     <string name="driver_network_error">Netværksfejl: %1$s</string>
 
-    <!-- TODO: Manual review - Settings Interface -->
+    <!-- Settings Interface -->
     <string name="settings_theme_default">Standard</string>
     <string name="settings_theme_alternate">Alternativ</string>
     <string name="settings_download_slow">Langsom</string>
@@ -549,102 +714,74 @@
     <string name="settings_region_default">Standard</string>
     <string name="settings_saving_restarting">Gemmer indstillinger og genstarter...</string>
 
-    <!-- TODO: Manual review - Settings Screen -->
+    <!-- Settings Screen -->
     <string name="settings_title">Indstillinger</string>
 
-    <!-- TODO: Manual review - Contents Install Finish -->
+    <!-- Contents Install Finish -->
     <string name="contents_install_success">Indhold installeret</string>
     <string name="contents_install_failed">Kunne ikke installere indhold</string>
     <string name="contents_install_error">Installationsfejl: %1$s</string>
 
-    <!-- TODO: Manual review - App Filter -->
-    <string name="app_filter_installed">Installeret</string>
-    <string name="app_filter_game">Spil</string>
-    <string name="app_filter_application">Applikation</string>
-    <string name="app_filter_tool">Værktøj</string>
-    <string name="app_filter_demo">Demo</string>
-    <string name="app_filter_family">Familie</string>
-
-    <!-- TODO: Manual review - Game Feedback Dialog -->
-    <string name="game_feedback_game_run">Hvordan kørte spillet?</string>
-    <string name="game_feedback_issues_question">Vælg eventuelle problemer du stødte på:</string>
-
-    <!-- TODO: Manual review - Container Configuration: Steam Integration (missing) -->
-    <string name="use_legacy_drm">Brug ældre DRM</string>
-
-    <!-- TODO: Manual review - Library Status -->
+    <!-- Library Status -->
     <string name="library_status_ready">Klar</string>
+    <!-- Wine/Proton Manager -->
+    <string name="wine_proton_manager">Wine/Proton-håndtering</string>
+    <string name="wine_proton_bionic_notice_header">Kun Bionic-billeder</string>
+    <string name="wine_proton_info_description">Importér egne Wine- eller Proton-versioner til Bionic-containere. Filnavnet skal starte med "wine" eller "proton" (ikke-versalfølsomt). Pakker skal indeholde bin/, lib/ og prefixPack.txz. Alle importer er kun kompatible med bionic.</string>
+    <string name="win_proton_example">For eksempel: "proton-10.0-ARM64ec.wcp"</string>
+    <string name="wine_proton_import_package">Importér Wine/Proton-pakke</string>
+    <string name="wine_proton_select_file_description">Vælg en .wcp-fil (hvis filnavn starter med "wine" eller "proton")</string>
+    <string name="wine_proton_import_wcp_button">Importér .wcp-pakke</string>
+    <string name="wine_proton_processing">Behandler...</string>
+    <string name="wine_proton_package_details">Pakkedetaljer</string>
+    <string name="wine_proton_type">Type</string>
+    <string name="wine_proton_version">Version</string>
+    <string name="wine_proton_version_code">Versionskode</string>
+    <string name="wine_proton_bin_path">Bin-sti</string>
+    <string name="wine_proton_lib_path">Lib-sti</string>
+    <string name="wine_proton_description">Beskrivelse</string>
+    <string name="wine_proton_all_files_trusted">✓ Alle filer er pålidelige. Klar til installation.</string>
+    <string name="wine_proton_install_package">Installér pakke</string>
+    <string name="wine_proton_installed_versions">Installerede Wine-/Proton-versioner</string>
+    <string name="wine_proton_no_versions_found">Ingen installerede Wine- eller Proton-versioner fundet.</string>
+    <string name="wine_proton_delete_content_desc">Slet</string>
+    <string name="wine_proton_untrusted_files_message">Denne pakke indeholder filer uden for det pålidelige sæt. Gennemgå og bekræft for at fortsætte.</string>
+    <string name="wine_proton_untrusted_files_label">Upålidelige filer:</string>
+    <string name="wine_proton_remove_title">Fjern Wine/Proton-version</string>
+    <string name="wine_proton_remove_message">Er du sikker på, at du vil fjerne %1$s %2$s (%3$d)? Containere der bruger denne version vil ikke længere virke.</string>
+    <string name="wine_proton_removed_toast">Fjernede %s</string>
+    <string name="wine_proton_remove_failed">Kunne ikke fjerne: %s</string>
+    <string name="cancel_import_title">Annullér import?</string>
+    <string name="cancel_import_message">En import er i gang. Annullering vil slette alle udpakkede filer, og du skal starte forfra.\n\nEr du sikker på, at du vil annullere?</string>
+    <string name="cancel_import_confirm">Ja, annullér import</string>
+    <string name="cancel_import_keep">Nej, behold import</string>
 
-    <!-- TODO: Manual review - New strings from latest pull -->
-    <!-- Steam-specific dialogs -->
-    <string name="steam_install_space_prompt">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
-    <string name="steam_install_not_enough_space">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
-    <string name="steam_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
-    <string name="steam_delete_download_message">Slet alle downloadede data for dette spil?</string>
-    <string name="steam_imagefs_download_install_title">Download &amp; installér ImageFS</string>
-    <string name="steam_imagefs_download_install_message">Ubuntu-billedet skal downloades og installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
-    <string name="steam_imagefs_install_title">Installér ImageFS</string>
-    <string name="steam_imagefs_install_message">Ubuntu-billedet skal installeres før konfigurationen kan redigeres. Denne operation kan tage nogle minutter. Vil du fortsætte?</string>
-    <string name="steam_reset_container_title">Nulstil container</string>
-    <string name="steam_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
-    <string name="steam_verify_files_title">Verificér filer</string>
-    <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
-    <string name="steam_update_title">Opdatering</string>
-    <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
-    <string name="steam_cloud_sync_success">Sky-synkronisering fuldført</string>
-    <string name="steam_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
-    <string name="steam_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
-    <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
-    <string name="steam_container_reset_success">Container nulstillet til standard</string>
-    <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
-    <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
-    <string name="steam_uninstall_game_title">Afinstallér spil</string>
-
-    <!-- Custom Games -->
-    <string name="custom_games_title">Tilpassede spil</string>
-    <string name="custom_games_no_paths">Ingen stier tilføjet</string>
-    <string name="custom_games_grant_permission">Giv tilladelse</string>
-    <string name="custom_games_manual_subtitle">Tilføjet fra bibliotek</string>
-    <string name="custom_games_no_manual_entries">Ingen manuelt tilføjede spil endnu.</string>
-    <string name="custom_games_remove_path_title">Fjern sti</string>
-    <string name="custom_games_remove_path_message">Fjern denne sti fra scanning? Mappeindholdet bliver på disken.</string>
-    <string name="custom_games_remove_path_content_desc">Fjern sti</string>
-    <string name="custom_games_path_removed_toast">Sti fjernet fra listen. Indhold er ikke blevet slettet.</string>
-    <string name="custom_games_remove_manual_title">Fjern manuelt spil</string>
-    <string name="custom_games_remove_manual_message">Fjern denne manuelt tilføjede mappe fra dit bibliotek? Dette sletter ikke filer på disken.</string>
-    <string name="custom_games_remove_manual_content_desc">Fjern manuel mappe</string>
-    <string name="custom_games_manual_removed_toast">Manuel mappe fjernet fra bibliotek.</string>
-    <string name="custom_games_cannot_access">⚠ Kan ikke få adgang (tjek om stien eksisterer)</string>
-    <string name="custom_games_permission_denied">⚠ Tilladelse nægtet</string>
-    <string name="custom_games_zero_folders">0 mapper fundet</string>
-    <string name="custom_games_folders_found">%d mapper fundet</string>
-    <string name="custom_games_scan_description">Mapper i disse stier scannes for .exe-filer og vises som tilpassede spil.</string>
-    <string name="custom_game_folder_picker_error">Kunne ikke løse mappesti</string>
-    <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
-    <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn venligst tilpassede spilindstillinger for at vælge hvilken der skal startes.</string>
-    <string name="custom_game_settings">Tilpassede spilindstillinger</string>
-    <string name="custom_game_delete_title">Slet spil</string>
-    <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
-
-    <!-- Toast messages -->
-    <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
-
-    <!-- Settings additions -->
-    <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
-    <string name="settings_save_logcat_title">Gem logcat</string>
-
-    <!-- Misc additions -->
-    <string name="calculating_space_requirements">Beregner pladskrav...</string>
-    <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
-    <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
-    <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
-    <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
-    <string name="base_app_shortcut_created">Genvej oprettet</string>
-    <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
-    <string name="base_app_images_fetched">Billeder hentet</string>
-    <string name="base_app_game_folder_not_found">Spilmappe ikke fundet</string>
-    <string name="base_app_images_fetch_failed">Kunne ikke hente billeder: %s</string>
-    <string name="base_app_exported">Eksporteret</string>
-    <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
-    <string name="base_app_export_cancelled">Eksport annulleret</string>
+    <!-- Wine/Proton Manager - Status Messages -->
+    <string name="wine_proton_extracting">Udpakker og validerer pakke (kan tage 2–3 minutter for store filer)...</string>
+    <string name="wine_proton_filename_error">Filnavnet skal starte med "wine" eller "proton" (Ikke case-sensitive)</string>
+    <string name="wine_proton_file_empty">Filen er tom eller kan ikke læses</string>
+    <string name="wine_proton_cannot_open">Kan ikke åbne filen</string>
+    <string name="wine_proton_failed_file_picker">Kunne ikke åbne filvælger: %s</string>
+    <string name="wine_proton_error_badtar">Filen genkendes ikke som et gyldigt arkiv</string>
+    <string name="wine_proton_error_noprofile">profile.json blev ikke fundet i pakken</string>
+    <string name="wine_proton_error_badprofile">profile.json er ugyldig</string>
+    <string name="wine_proton_error_exist">Denne Wine/Proton-version findes allerede</string>
+    <string name="wine_proton_error_missingfiles">Pakken mangler nødvendige filer (bin/, lib/ eller prefixPack.txz)</string>
+    <string name="wine_proton_error_untrustprofile">Pakken kan ikke stoles på</string>
+    <string name="wine_proton_error_nospace">Ikke nok lagerplads</string>
+    <string name="wine_proton_error_unknown">Ukendt fejl opstod</string>
+    <string name="wine_proton_error_unable_install">Kunne ikke installere Wine/Proton-pakke</string>
+    <string name="wine_proton_not_wine_or_proton">Pakken er ikke Wine eller Proton (type: %s)</string>
+    <string name="wine_proton_type_mismatch">Filnavnet angiver %1$s men pakken indeholder %2$s</string>
+    <string name="wine_proton_untrusted_files_detected">Denne pakke indeholder filer uden for det pålidelige sæt.</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton-versionen findes allerede</string>
+    <string name="wine_proton_install_failed">Kunne ikke installere: %s</string>
+    <string name="wine_proton_install_error">Installationsfejl: %s</string>
+    <string name="wine_proton_install_success">%1$s %2$s blev installeret</string>
+    <string name="wine_proton_glibc_incompatible">Denne Wine/Proton-build kræver GLIBC-containere og er ikke kompatibel med GameNative. Brug venligst ARM64/bionic-builds.</string>
+    <string name="wine_proton_containers_in_use">Containere der bruger denne version:</string>
+    <string name="wine_proton_no_containers_warning">Ingen containere bruger denne version.</string>
+    <string name="wine_proton_containers_will_break">Disse containere vil ikke længere virke hvis du fortsætter:</string>
 </resources>
+
+
