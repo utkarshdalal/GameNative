@@ -294,7 +294,7 @@
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">沒有連接到 Steam</string>
     <string name="retry_steam_connection">重試連接到 Steam</string>
-    <string name="continue_offline">離線下使用</string>
+    <string name="continue_offline">離線使用</string>
 
 
     <!--Game Feedback Dialog -->

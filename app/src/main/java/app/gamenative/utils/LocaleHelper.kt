@@ -19,7 +19,8 @@ object LocaleHelper {
         "" to "System Default",
         "da" to "Dansk (Danish)",
         "en" to "English",
-        "pt-BR" to "Português Brasileiro (Brazilian Portuguese)"
+        "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
+        "zh-TW" to "正體中文"
     )
 
     /**
