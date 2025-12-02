@@ -268,7 +268,7 @@ dependencies {
     testImplementation(libs.zstd.jni)
 
     // Add PostHog Android SDK dependency
-    implementation("com.posthog:posthog-android:3.+")
+    implementation("com.posthog:posthog-android:3.8.0")
 
     // 1) import the platform – it pins *every* Supabase + Ktor module
     implementation(platform("io.github.jan-tennert.supabase:bom:3.1.4"))
