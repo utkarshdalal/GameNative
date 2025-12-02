@@ -6,8 +6,6 @@ import java.io.File
 
 object MarkerUtils {
     fun hasMarker(dirPath: String, type: Marker): Boolean {
-        val file = File(dirPath, type.fileName)
-        Timber.i("$file marker is ${file.exists()}")
         return File(dirPath, type.fileName).exists()
     }
 
