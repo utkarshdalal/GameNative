@@ -75,10 +75,12 @@ material-kolor = { group = "com.materialkolor", name = "material-kolor", version
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 spongycastle = { group = "com.madgag.spongycastle", name = "prov", version.ref = "spongycastle" }
-steamkit = { group = "in.dragonbra", name = "javasteam", version.ref = "steamkit" }
+#steamkit = { group = "in.dragonbra", name = "javasteam", version.ref = "steamkit" }
+steamkit = { group = "io.github.utkarshdalal", name = "javasteam", version.ref = "steamkit" }
 steamkit-tf = { group = "in.dragonbra", name = "javasteam-tf", version.ref = "steamkit" }
 steamkit-dota2 = { group = "in.dragonbra", name = "javasteam-dota2", version.ref = "steamkit" }
-steamkit-depotdownloader = { group = "in.dragonbra", name = "javasteam-depotdownloader", version.ref = "steamkit" }
+#steamkit-depotdownloader = { group = "in.dragonbra", name = "javasteam-depotdownloader", version.ref = "steamkit" }
+steamkit-depotdownloader = { group = "io.github.utkarshdalal", name = "javasteam-depotdownloader", version.ref = "steamkit" }
 steamkit-deadlock = { group = "in.dragonbra", name = "javasteam-deadlock", version.ref = "steamkit" }
 steamkit-cs = { group = "in.dragonbra", name = "javasteam-cs", version.ref = "steamkit" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }

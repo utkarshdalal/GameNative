@@ -195,6 +195,22 @@ fun AppScreen(
     )
 }
 
+/**
+ * Formats bytes into a human-readable string (KB, MB, GB).
+ * Uses binary units (1024 base).
+ */
+private fun formatBytes(bytes: Long): String {
+    val kb = 1024.0
+    val mb = kb * 1024
+    val gb = mb * 1024
+    return when {
+        bytes >= gb -> String.format("%.1f GB", bytes / gb)
+        bytes >= mb -> String.format("%.1f MB", bytes / mb)
+        bytes >= kb -> String.format("%.1f KB", bytes / kb)
+        else -> "$bytes B"
+    }
+}
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -469,24 +485,20 @@ internal fun AppScreenContent(
 
             // Download progress section
             if (isDownloading) {
-                // Track download start time and estimate remaining time
-                var downloadStartTime by remember { mutableStateOf<Long?>(null) }
-                LaunchedEffect(downloadProgress) {
-                    if (downloadProgress > 0f && downloadStartTime == null) {
-                        downloadStartTime = System.currentTimeMillis()
-                    }
-                }
-                val timeLeftText = remember(downloadProgress, downloadStartTime) {
-                    if (downloadProgress in 0f..1f && downloadStartTime != null && downloadProgress < 1f) {
-                        val elapsed = System.currentTimeMillis() - downloadStartTime!!
-                        val totalEst = (elapsed / downloadProgress).toLong()
-                        val remaining = totalEst - elapsed
-                        val secondsLeft = remaining / 1000
-                        val minutesLeft = secondsLeft / 60
-                        val secondsPart = secondsLeft % 60
+                // Use DownloadInfo's byte-based ETA when available for more stable estimates
+                val timeLeftText = remember(displayInfo.appId, downloadProgress) {
+                    val downloadInfo = SteamService.getAppDownloadInfo(displayInfo.gameId)
+                    val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+                    if (etaMs != null && etaMs > 0L) {
+                        val totalSeconds = etaMs / 1000
+                        val minutesLeft = totalSeconds / 60
+                        val secondsPart = totalSeconds % 60
                         "${minutesLeft}m ${secondsPart}s left"
-                    } else {
+                    } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                        // Not enough data yet to estimate speed
                         "Calculating..."
+                    } else {
+                        ""
                     }
                 }
                 Column(
@@ -522,13 +534,25 @@ internal fun AppScreenContent(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // This is placeholder text since we don't have exact size info in the state
+                    // Show download size and ETA
+                    val downloadingText = stringResource(R.string.downloading)
+                    val sizeText = remember(displayInfo.gameId, downloadProgress) {
+                        val downloadInfo = SteamService.getAppDownloadInfo(displayInfo.gameId)
+                        val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
+                        if (bytesTotal > 0L) {
+                            "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
+                        } else if (bytesDone > 0L) {
+                            formatBytes(bytesDone)
+                        } else {
+                            downloadingText
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.downloading),
+                            text = sizeText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

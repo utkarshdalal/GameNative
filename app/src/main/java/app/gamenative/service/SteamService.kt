@@ -595,14 +595,20 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun getAppDirPath(gameId: Int): String {
 
-            val appName = getAppDirName(getAppInfoOf(gameId))
+            val info     = getAppInfoOf(gameId)
+            val appName  = getAppDirName(info)
+            val oldName  = info?.name.orEmpty()
 
             // Internal first (legacy installs), external second
             val internalPath = Paths.get(internalAppInstallPath, appName)
             if (Files.exists(internalPath)) return internalPath.pathString
+            val internalOld = Paths.get(internalAppInstallPath, oldName)
+            if (oldName.isNotEmpty() && Files.exists(internalOld)) return internalOld.pathString
 
             val externalPath = Paths.get(externalAppInstallPath, appName)
             if (Files.exists(externalPath)) return externalPath.pathString
+            val externalOld = Paths.get(externalAppInstallPath, oldName)
+            if (oldName.isNotEmpty() && Files.exists(externalOld)) return externalOld.pathString
 
             // Nothing on disk yet – default to whatever location you want new installs to use
             if (PrefManager.useExternalStorage) {
@@ -1018,6 +1024,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Create mapping from depotId to index for progress tracking
             val depotIdToIndex = entitledDepotIds.mapIndexed { index, depotId -> depotId to index }.toMap()
 
+            val appDirPath = getAppDirPath(appId)
             val info = DownloadInfo(entitledDepotIds.size).also { di ->
                 // Set weights for each depot based on manifest sizes
                 val sizes = entitledDepotIds.map { depotId ->
@@ -1028,6 +1035,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                     (mInfo.size ?: 1).toLong()
                 }
                 sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
+
+                // Total expected size (used for ETA based on recent download speed)
+                val totalBytes = sizes.sum()
+                di.setTotalExpectedBytes(totalBytes)
+
+                // Load persisted bytes downloaded value on resume
+                val persistedBytes = di.loadPersistedBytesDownloaded(appDirPath)
+                if (persistedBytes > 0L) {
+                    di.initializeBytesDownloaded(persistedBytes)
+                    Timber.i("Resumed download: initialized with $persistedBytes bytes")
+                }
 
                 val downloadJob = instance!!.scope.launch {
                     try {
@@ -1047,7 +1065,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         )
 
                         // Create listener
-                        val listener = AppDownloadListener(di, depotIdToIndex, appId, entitledDepotIds)
+                        val listener = AppDownloadListener(di, depotIdToIndex, appId, entitledDepotIds, appDirPath)
                         depotDownloader.addListener(listener)
 
                         // Create AppItem with only mandatory appId
@@ -1102,7 +1120,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             private val depotIdToIndex: Map<Int, Int>,
             private val appId: Int,
             private val entitledDepotIds: List<Int>,
+            private val appDirPath: String,
         ) : IDownloadListener {
+            // Track cumulative uncompressed bytes per depot to calculate deltas
+            // (uncompressedBytes from onChunkCompleted is cumulative per depot)
+            private val depotCumulativeUncompressedBytes = mutableMapOf<Int, Long>()
             override fun onItemAdded(item: DownloadItem) {
                 Timber.d("Item ${item.appId} added to queue")
             }
@@ -1129,6 +1151,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
                 MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_COLDCLIENT_USED)
+                
+                // Clear persisted bytes file on successful completion
+                downloadInfo.clearPersistedBytesDownloaded(appDirPath)
+                
                 removeDownloadJob(appId)
             }
 
@@ -1150,7 +1176,30 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.d("Download status: $message")
             }
 
-            override fun onFileCompleted(depotId: Int, fileName: String, depotPercentComplete: Float) {
+            override fun onChunkCompleted(
+                depotId: Int,
+                depotPercentComplete: Float,
+                compressedBytes: Long,
+                uncompressedBytes: Long,
+            ) {
+                val isFirstCallForDepot = !depotCumulativeUncompressedBytes.containsKey(depotId)
+                
+                // uncompressedBytes is cumulative per depot, so calculate delta
+                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
+                val deltaBytes = uncompressedBytes - previousBytes
+                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+
+                // On first call after resume, if uncompressedBytes > 0, it's already counted
+                // in the persisted bytesDownloaded value, so don't add it again
+                if (isFirstCallForDepot && uncompressedBytes > 0L) {
+                    // This is a resume - the bytes are already in bytesDownloaded from persistence
+                    // Just store the baseline, don't add to bytesDownloaded
+                    Timber.d("Resume detected for depot $depotId: baseline = $uncompressedBytes")
+                } else if (deltaBytes > 0L) {
+                    // Normal case: add the delta
+                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis(), appDirPath)
+                }
+
                 depotIdToIndex[depotId]?.let { index ->
                     downloadInfo.setProgress(depotPercentComplete, index)
                 }
@@ -1158,6 +1207,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
                 Timber.i("Depot $depotId completed (compressed: $compressedBytes, uncompressed: $uncompressedBytes)")
+                
+                // Ensure we capture any remaining bytes
+                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
+                val deltaBytes = uncompressedBytes - previousBytes
+                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+
+                if (deltaBytes > 0L) {
+                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis(), appDirPath)
+                }
+
                 depotIdToIndex[depotId]?.let { index ->
                     downloadInfo.setProgress(1f, index)
                 }
