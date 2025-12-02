@@ -491,6 +491,9 @@
     <string name="library_installing">Installerer</string>
     <string name="library_not_installed">Ikke installeret</string>
     <string name="library_family_shared">Familiedelt</string>
+    <string name="library_compatible">Kompatibel</string>
+    <string name="library_compatibility_unknown">Kompatibilitet ukendt</string>
+    <string name="library_not_compatible">Ikke kompatibel</string>
     <string name="library_app_type">App-type</string>
     <string name="library_app_status">App-status</string>
     <string name="library_layout">Layout</string>

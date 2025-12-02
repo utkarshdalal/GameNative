@@ -652,6 +652,9 @@
     <string name="library_installing">Installing</string>
     <string name="library_not_installed">Not installed</string>
     <string name="library_family_shared">Family Shared</string>
+    <string name="library_compatible">Compatible</string>
+    <string name="library_compatibility_unknown">Compatibility Unknown</string>
+    <string name="library_not_compatible">Not Compatible</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>

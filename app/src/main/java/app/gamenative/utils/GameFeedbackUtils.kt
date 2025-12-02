@@ -79,6 +79,17 @@ object GameFeedbackUtils {
                 "Unknown GPU"  // Provide a default value instead of null
             }
 
+            // Get SOC identifier
+            val soc = try {
+                val socName = HardwareUtils.getSOCName()
+                Timber.d("GameFeedbackUtils: SOC info: $socName")
+                socName
+            } catch (e: Exception) {
+                Timber.e(e, "GameFeedbackUtils: Failed to get SOC info: ${e.message}")
+                e.printStackTrace()
+                null
+            }
+
             // Get Android version
             val androidVer = Build.VERSION.RELEASE
             Timber.d("GameFeedbackUtils: Android version: $androidVer")
@@ -117,6 +128,7 @@ object GameFeedbackUtils {
                     gameName = gameName,
                     deviceModel = deviceModel,
                     gpu = gpu,
+                    soc = soc,
                     androidVer = androidVer,
                     appVersion = appVersion,
                     configs = configJson,
@@ -149,6 +161,7 @@ object GameFeedbackUtils {
         gameName: String,
         deviceModel: String,
         gpu: String? = null,
+        soc: String? = null,
         androidVer: String? = null,
         appVersion: String,
         configs: JsonObject,
@@ -180,11 +193,14 @@ object GameFeedbackUtils {
 
             // Create device or get its ID
             Timber.d("GameFeedbackUtils.logRun: Creating/getting device record")
-            val deviceData = mapOf(
-                "model" to deviceModel,
-                "gpu" to (gpu ?: ""),
-                "android_ver" to (androidVer ?: ""),
-            )
+            val deviceData = buildMap {
+                put("model", deviceModel)
+                put("gpu", gpu ?: "")
+                if (soc != null) {
+                    put("soc", soc)
+                }
+                put("android_ver", androidVer ?: "")
+            }
             val deviceId = try {
                 val result = from("devices")
                     .upsert(listOf(deviceData)) {

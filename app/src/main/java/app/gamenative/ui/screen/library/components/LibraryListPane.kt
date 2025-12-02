@@ -369,6 +369,7 @@ internal fun LibraryListPane(
                                         paneType = paneType,
                                         onFocus = { targetOfScroll = item.index },
                                         imageRefreshCounter = state.imageRefreshCounter,
+                                        compatibilityStatus = state.compatibilityMap[item.name],
                                     )
                                 }
                             }
