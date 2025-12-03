@@ -10,6 +10,8 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
+import app.gamenative.PrefManager;
+
 // import com.winlator.XServerDisplayActivity;
 import com.winlator.core.StringUtils;
 import com.winlator.inputcontrols.ControllerManager;
@@ -80,6 +82,7 @@ public class WinHandler {
     private short lastLowFreq = 0;  // Use 'short' instead of uint16_t
     private short lastHighFreq = 0; // Use 'short' instead of uint16_t
     private boolean isRumbling = false;
+    private float vibrationIntensity = 100.0f; // Default to 100% (normal)
     private boolean isShowingAssignDialog = false;
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
@@ -621,14 +624,25 @@ public class WinHandler {
             return;
         }
         isRumbling = true; // We know we are going to try to rumble.
+        
+        // Apply vibration intensity multiplier from settings (convert from percentage to multiplier)
+        float intensityMultiplier = vibrationIntensity / 100.0f;
+        int adjustedAmplitude = Math.round(amplitude * intensityMultiplier);
+        
+        // Ensure the adjusted amplitude stays within valid range
+        if (adjustedAmplitude > 255) adjustedAmplitude = 255;
+        if (adjustedAmplitude <= 1) adjustedAmplitude = 0;
+        
         // --- Step 2: Attempt to vibrate the physical controller first ---
         if (currentController != null) {
             InputDevice device = InputDevice.getDevice(currentController.getDeviceId());
             if (device != null) {
                 Vibrator controllerVibrator = device.getVibrator();
                 if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                    // Vibrate the physical controller and then we are done.
-                    controllerVibrator.vibrate(VibrationEffect.createOneShot(50, amplitude));
+                    // Vibrate the physical controller with adjusted amplitude
+                    if (adjustedAmplitude > 0) {
+                        controllerVibrator.vibrate(VibrationEffect.createOneShot(50, adjustedAmplitude));
+                    }
                     return;
                 }
             }
@@ -637,17 +651,21 @@ public class WinHandler {
         Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
         Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
         if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-            // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
-            float normalizedAmplitude = (float) amplitude / 255.0f;
-            float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
-            int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
-            if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
-            if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
-            if (finalPhoneAmplitude > 0) {
-                phoneVibrator.vibrate(VibrationEffect.createOneShot(50, finalPhoneAmplitude));
+            // Apply the same intensity multiplier to phone vibration
+            if (adjustedAmplitude > 0) {
+                // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
+                float normalizedAmplitude = (float) adjustedAmplitude / 255.0f;
+                float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
+                int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
+                if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
+                if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
+                if (finalPhoneAmplitude > 0) {
+                    phoneVibrator.vibrate(VibrationEffect.createOneShot(50, finalPhoneAmplitude));
+                }
             }
         }
     }
+    
     private void stopVibration() {
         if (!isRumbling) return; // Simplified check
         // Attempt to stop the physical controller's vibration if it exists
@@ -760,6 +778,15 @@ public class WinHandler {
 
     public ExternalController getCurrentController() {
         return this.currentController;
+    }
+    
+    public void setVibrationIntensity(float intensity) {
+        // Ensure intensity is within valid range (0% to 200%)
+        this.vibrationIntensity = Math.max(0.0f, Math.min(200.0f, intensity));
+    }
+    
+    public float getVibrationIntensity() {
+        return this.vibrationIntensity;
     }
 
 

@@ -417,6 +417,12 @@ object PrefManager {
         get() = getPref(DISABLE_MOUSE_INPUT, false)
         set(value) { setPref(DISABLE_MOUSE_INPUT, value) }
 
+    // Vibration Intensity (0% to 200%)
+    private val VIBRATION_INTENSITY = floatPreferencesKey("vibration_intensity")
+    var vibrationIntensity: Float
+        get() = getPref(VIBRATION_INTENSITY, 100f)  // Default to 100% (normal)
+        set(value) { setPref(VIBRATION_INTENSITY, value.coerceIn(0f, 200f)) }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)
