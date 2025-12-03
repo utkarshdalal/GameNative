@@ -86,7 +86,6 @@ public class InputControlsView extends View {
         } else {
             vibrator = null; // Device doesn't support vibrator service
         }
-        effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     public void setEditMode(boolean editMode) {

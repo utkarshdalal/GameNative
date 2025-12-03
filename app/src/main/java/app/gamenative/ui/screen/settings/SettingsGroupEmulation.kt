@@ -135,7 +135,7 @@ fun SettingsGroupEmulation() {
         )
         
         // Vibration Intensity Setting
-        val vibrationIntensity = PrefManager.vibrationIntensity
+        val vibrationIntensity by remember { mutableStateOf(PrefManager.vibrationIntensity) }
         var showVibrationSliderDialog by rememberSaveable { mutableStateOf(false) }
         
         SettingsMenuLink(
@@ -150,6 +150,7 @@ fun SettingsGroupEmulation() {
                 initialValue = vibrationIntensity,
                 onConfirm = { newValue ->
                     PrefManager.vibrationIntensity = newValue
+                    vibrationIntensity = newValue
                     showVibrationSliderDialog = false
                 },
                 onDismiss = { showVibrationSliderDialog = false }
