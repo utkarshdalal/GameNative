@@ -169,11 +169,12 @@ fun VibrationIntensityDialog(
     
     // Add effect to provide haptic feedback when slider value changes
     LaunchedEffect(sliderValue) {
-        // Small delay to avoid vibration during initial load
+        // Small delay to avoid vibration during slider changes
         delay(100)
-        // Only vibrate if the slider is being actively changed (not on initial load)
-        // We'll use a simple approach: vibrate with the current intensity setting
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+        // Safely obtain the vibrator service; skip if unavailable
+        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            ?: return@LaunchedEffect
         if (vibrator.hasVibrator()) {
             // Calculate vibration amplitude based on the current slider position (0-255 range)
             val amplitude = (sliderValue / 200f * 255f).toInt()

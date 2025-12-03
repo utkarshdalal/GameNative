@@ -649,7 +649,11 @@ public class WinHandler {
         }
         // --- Step 3: Fallback to phone vibration if physical controller fails or doesn't exist ---
         Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
-        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+        Object vibratorService = activity.getSystemService(Context.VIBRATOR_SERVICE);
+        Vibrator phoneVibrator = null;
+        if (vibratorService instanceof Vibrator) {
+            phoneVibrator = (Vibrator) vibratorService;
+        }
         if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
             // Apply the same intensity multiplier to phone vibration
             if (adjustedAmplitude > 0) {
@@ -679,7 +683,11 @@ public class WinHandler {
             }
         }
         // Always attempt to stop the phone's vibration
-        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+        Object vibratorService = activity.getSystemService(Context.VIBRATOR_SERVICE);
+        Vibrator phoneVibrator = null;
+        if (vibratorService instanceof Vibrator) {
+            phoneVibrator = (Vibrator) vibratorService;
+        }
         if (phoneVibrator != null) {
             phoneVibrator.cancel();
         }

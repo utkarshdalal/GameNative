@@ -74,7 +74,18 @@ public class InputControlsView extends View {
         setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+        Object vibratorService = context.getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibratorService instanceof Vibrator) {
+            vibrator = (Vibrator) vibratorService;
+            // Check if the vibrator has a physical vibrator
+            if (vibrator.hasVibrator()) {
+                effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE);
+            } else {
+                vibrator = null; // Device has vibrator service but no actual vibrator
+            }
+        } else {
+            vibrator = null; // Device doesn't support vibrator service
+        }
         effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
