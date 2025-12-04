@@ -136,19 +136,19 @@ object BestConfigService {
         return when (matchType) {
             "exact_gpu_match" -> CompatibilityMessage(
                 text = "Works on your GPU",
-                color = Color(0xFF4CAF50) // Green
+                color = Color.Green
             )
             "gpu_family_match" -> CompatibilityMessage(
                 text = "Works on your GPU family",
-                color = Color(0xFF4CAF50) // Green
+                color = Color.Green // Green
             )
             "fallback_match" -> CompatibilityMessage(
                 text = "Works on other devices",
-                color = Color(0xFFFFC107) // Yellow
+                color = Color.Yellow // Yellow
             )
             else -> CompatibilityMessage(
                 text = "Compatibility unknown",
-                color = Color(0xFF9E9E9E) // Grey
+                color = Color.Gray // Grey
             )
         }
     }

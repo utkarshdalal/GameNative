@@ -310,8 +310,8 @@ internal fun AppScreenContent(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .background(Color.Black.copy(alpha = 0.4f))
+                        .padding(horizontal = 8.dp, vertical = 1.dp)
                 ) {
                     Text(
                         text = displayInfo.compatibilityMessage,
