@@ -904,6 +904,7 @@ class SteamAppScreen : BaseAppScreen() {
                         downloadInfo?.cancel()
                         CoroutineScope(Dispatchers.IO).launch {
                             SteamService.deleteApp(gameId)
+                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                             withContext(Dispatchers.Main) {
                                 hideInstallDialog(gameId)
                             }

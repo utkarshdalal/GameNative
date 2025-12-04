@@ -47,6 +47,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -485,9 +487,13 @@ internal fun AppScreenContent(
 
             // Download progress section
             if (isDownloading) {
+                val downloadInfo = SteamService.getAppDownloadInfo(displayInfo.gameId)
+                val statusMessageFlow = downloadInfo?.getStatusMessageFlow()
+                val statusMessageState = statusMessageFlow?.collectAsState(initial = statusMessageFlow.value)
+                val statusMessage = statusMessageState?.value
+
                 // Use DownloadInfo's byte-based ETA when available for more stable estimates
-                val timeLeftText = remember(displayInfo.appId, downloadProgress) {
-                    val downloadInfo = SteamService.getAppDownloadInfo(displayInfo.gameId)
+                val timeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, statusMessage) {
                     val etaMs = downloadInfo?.getEstimatedTimeRemaining()
                     if (etaMs != null && etaMs > 0L) {
                         val totalSeconds = etaMs / 1000
@@ -495,8 +501,8 @@ internal fun AppScreenContent(
                         val secondsPart = totalSeconds % 60
                         "${minutesLeft}m ${secondsPart}s left"
                     } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-                        // Not enough data yet to estimate speed
-                        "Calculating..."
+                        val statusText = statusMessage?.takeUnless { it.isBlank() }
+                        statusText ?: "Calculating..."
                     } else {
                         ""
                     }
@@ -536,8 +542,7 @@ internal fun AppScreenContent(
 
                     // Show download size and ETA
                     val downloadingText = stringResource(R.string.downloading)
-                    val sizeText = remember(displayInfo.gameId, downloadProgress) {
-                        val downloadInfo = SteamService.getAppDownloadInfo(displayInfo.gameId)
+                    val sizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
                         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
                         if (bytesTotal > 0L) {
                             "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
@@ -556,10 +561,13 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = timeLeftText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 

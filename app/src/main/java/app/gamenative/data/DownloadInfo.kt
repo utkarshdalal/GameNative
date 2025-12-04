@@ -2,6 +2,8 @@ package app.gamenative.data
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 
@@ -18,6 +20,7 @@ data class DownloadInfo(
     // === Bytes / speed tracking for more stable ETA ===
     private var totalExpectedBytes: Long = 0L
     private var bytesDownloaded: Long = 0L
+    private var persistencePath: String? = null
 
     private data class SpeedSample(val timeMs: Long, val bytes: Long)
 
@@ -25,8 +28,11 @@ data class DownloadInfo(
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
+    private val statusMessage = MutableStateFlow<String?>(null)
 
     fun cancel() {
+        // Persist the most recent progress so a resume can pick up where it left off.
+        persistProgressSnapshot()
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
         setActive(false)
@@ -39,6 +45,13 @@ data class DownloadInfo(
     }
 
     fun getProgress(): Float {
+        // Always use bytes-based progress when available for accuracy
+        if (totalExpectedBytes > 0L) {
+            val bytesProgress = (bytesDownloaded.toFloat() / totalExpectedBytes.toFloat()).coerceIn(0f, 1f)
+            return bytesProgress
+        }
+        
+        // Fallback to depot-based progress only if we don't have byte tracking
         var total = 0f
         for (i in progresses.indices) {
             total += progresses[i] * weights[i]   // weight each depot
@@ -74,7 +87,15 @@ data class DownloadInfo(
      * Record that [deltaBytes] have just been downloaded at [timestampMs].
      * This is used to derive recent download speed over a sliding window.
      */
-    fun updateBytesDownloaded(deltaBytes: Long, timestampMs: Long = System.currentTimeMillis(), appDirPath: String? = null) {
+    fun setPersistencePath(appDirPath: String?) {
+        persistencePath = appDirPath
+    }
+
+    fun persistProgressSnapshot() {
+        persistencePath?.let { persistBytesDownloaded(it) }
+    }
+
+    fun updateBytesDownloaded(deltaBytes: Long, timestampMs: Long = System.currentTimeMillis()) {
         if (!isActive) return
         if (deltaBytes <= 0L) {
             // Still record a sample to advance the time window, but do not change the count.
@@ -87,12 +108,13 @@ data class DownloadInfo(
             bytesDownloaded = 0L
         }
         addSpeedSample(timestampMs)
-        
-        // Persist the updated value
-        if (appDirPath != null) {
-            persistBytesDownloaded(appDirPath)
-        }
     }
+
+    fun updateStatusMessage(message: String?) {
+        statusMessage.value = message
+    }
+
+    fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
 
     private fun addSpeedSample(timestampMs: Long) {
         speedSamples.addLast(SpeedSample(timestampMs, bytesDownloaded))
