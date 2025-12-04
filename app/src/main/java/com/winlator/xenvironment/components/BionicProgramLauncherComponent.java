@@ -444,18 +444,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BOX64_RCFILE", box64RCFile.getPath());
     }
 
-    public void suspendProcess() {
-        synchronized (lock) {
-            if (pid != -1) ProcessHelper.suspendProcess(pid);
-        }
-    }
-
-    public void resumeProcess() {
-        synchronized (lock) {
-            if (pid != -1) ProcessHelper.resumeProcess(pid);
-        }
-    }
-
     public String execShellCommand(String command) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);

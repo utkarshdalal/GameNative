@@ -3,6 +3,8 @@ package com.winlator.xenvironment;
 import android.content.Context;
 
 import com.winlator.core.FileUtils;
+import com.winlator.xenvironment.components.BionicProgramLauncherComponent;
+import com.winlator.xenvironment.components.GlibcProgramLauncherComponent;
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent;
 
 import java.io.File;
@@ -75,10 +77,18 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     public void onPause() {
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.suspendProcess();
+        GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
+        if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.suspendProcess();
+        BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
+        if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.suspendProcess();
     }
 
     public void onResume() {
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.resumeProcess();
+        GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
+        if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.resumeProcess();
+        BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
+        if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.resumeProcess();
     }
 }
