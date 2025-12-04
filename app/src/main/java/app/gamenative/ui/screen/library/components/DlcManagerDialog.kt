@@ -12,6 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +51,7 @@ import app.gamenative.utils.ContainerUtils
  * - Enabling starts a depot download for that depot
  * - Disabling removes the depot id from the stored AppInfo record (does not remove files)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DlcManagerDialog(
     appId: Int,
@@ -98,11 +105,19 @@ fun DlcManagerDialog(
 
     if (!visible) return
 
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = { Text(text = "Manage DLC", style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Surface(modifier = Modifier.fillMaxWidth()) {
+    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = "Manage DLC") },
+                    actions = {
+                        // No actions in the top bar now; buttons moved to bottom
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Surface(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column {
                     // quick actions row (always visible so user can refresh even when no DLC entries)
                     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.End) {
@@ -371,52 +386,45 @@ fun DlcManagerDialog(
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = onDismissRequest) { Text("Cancel") }
+                            Spacer(modifier = Modifier.padding(6.dp))
+                            Button(onClick = {
+                                scope.launch {
+                                    try {
+                                        val selectedDlcDepotIds = checkedMap.filterValues { it }.keys.toList()
+                                        val baseDepotIds = try {
+                                            SteamService.getDownloadableDepots(appId)
+                                                .filter { (_, depot) -> depot.dlcAppId == SteamService.INVALID_APP_ID }
+                                                .keys
+                                                .toList()
+                                        } catch (t: Throwable) { emptyList() }
+
+                                        val finalSelected = (baseDepotIds + selectedDlcDepotIds).distinct()
+                                        val selectedDlcFromDepots = dlcList.filter { (depotId, _) -> depotId in selectedDlcDepotIds }
+                                            .map { it.second.dlcAppId }
+                                        val selectedManualDlc = knownDlcList.filter { it.third }.map { it.first }
+                                        val selectedDlcAppIds = (selectedDlcFromDepots + selectedManualDlc).distinct()
+
+                                        val setOk = SteamService.setAppSelection(appId, finalSelected, selectedDlcAppIds)
+                                        if (!setOk) {
+                                            Toast.makeText(ctx, "Failed to save selection", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(ctx, "Applying changes and rebuilding...", Toast.LENGTH_SHORT).show()
+                                            SteamService.rebuildAppWithDepots(appId, finalSelected)
+                                        }
+                                    } catch (t: Throwable) {
+                                        Toast.makeText(ctx, "Failed to apply DLC changes", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        onDismissRequest()
+                                    }
+                                }
+                            }) { Text("Save") }
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            // Save — compute differences and apply
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        // DLC depots selected by user
-                        val selectedDlcDepotIds = checkedMap.filterValues { it }.keys.toList()
-
-                        // Always include base depots for this platform/language
-                        val baseDepotIds = try {
-                            SteamService.getDownloadableDepots(appId)
-                                .filter { (_, depot) -> depot.dlcAppId == SteamService.INVALID_APP_ID }
-                                .keys
-                                .toList()
-                        } catch (t: Throwable) { emptyList() }
-
-                        val finalSelected = (baseDepotIds + selectedDlcDepotIds).distinct()
-                        val removed = installedDepots.filterNot { it in finalSelected }
-                        val added = finalSelected.filterNot { it in installedDepots }
-
-                            val selectedDlcFromDepots = dlcList.filter { (depotId, _) -> depotId in selectedDlcDepotIds }
-                                .map { it.second.dlcAppId }
-                            val selectedManualDlc = knownDlcList.filter { it.third }.map { it.first }
-                            val selectedDlcAppIds = (selectedDlcFromDepots + selectedManualDlc).distinct()
-
-                        val setOk = SteamService.setAppSelection(appId, finalSelected, selectedDlcAppIds)
-                        if (!setOk) {
-                            Toast.makeText(ctx, "Failed to save selection", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(ctx, "Applying changes and rebuilding...", Toast.LENGTH_SHORT).show()
-                            SteamService.rebuildAppWithDepots(appId, finalSelected)
-                        }
-                    } catch (t: Throwable) {
-                        Toast.makeText(ctx, "Failed to apply DLC changes", Toast.LENGTH_SHORT).show()
-                    } finally {
-                        onDismissRequest()
-                    }
-                }
-            }) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = { onDismissRequest() }) { Text("Cancel") }
         }
-    )
+    }
 }
