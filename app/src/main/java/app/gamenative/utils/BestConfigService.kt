@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import app.gamenative.PrefManager
 import app.gamenative.R
+import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.contents.AdrenotoolsManager
@@ -303,6 +304,20 @@ object BestConfigService {
             }
         }
 
+        // Validate Box64 preset
+        val box64Preset = Box86_64PresetManager.getPreset("box64", context, config.box64Preset)
+        if (box64Preset == null) {
+            Timber.tag("BestConfigService").w("Box64 preset ${config.box64Preset} not found, using PrefManager default")
+            validatedConfig = validatedConfig.copy(box64Preset = PrefManager.box64Preset)
+        }
+
+        // Validate Box86 preset
+        val box86Preset = Box86_64PresetManager.getPreset("box86", context, config.box86Preset)
+        if (box86Preset == null) {
+            Timber.tag("BestConfigService").w("Box86 preset ${config.box86Preset} not found, using PrefManager default")
+            validatedConfig = validatedConfig.copy(box86Preset = PrefManager.box86Preset)
+        }
+
         return validatedConfig
     }
 
@@ -327,9 +342,7 @@ object BestConfigService {
                 audioDriver = filteredJson.optString("audioDriver", PrefManager.audioDriver),
                 wincomponents = filteredJson.optString("wincomponents", PrefManager.winComponents),
                 execArgs = filteredJson.optString("execArgs", PrefManager.execArgs),
-                showFPS = filteredJson.optBoolean("showFPS", PrefManager.showFps),
                 launchRealSteam = filteredJson.optBoolean("launchRealSteam", PrefManager.launchRealSteam),
-                allowSteamUpdates = filteredJson.optBoolean("allowSteamUpdates", false),
                 steamType = filteredJson.optString("steamType", "normal"),
                 cpuList = filteredJson.optString("cpuList", PrefManager.cpuList),
                 cpuListWoW64 = filteredJson.optString("cpuListWoW64", PrefManager.cpuListWoW64),
