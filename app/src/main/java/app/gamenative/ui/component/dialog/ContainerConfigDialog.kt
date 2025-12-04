@@ -97,6 +97,7 @@ import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePresetManager
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -161,6 +162,7 @@ fun ContainerConfigDialog(
         val box64BionicVersionsBase = stringArrayResource(R.array.box64_bionic_version_entries).toList()
         val box64Presets = Box86_64PresetManager.getPresets("box64", context)
         val fexcoreVersionsBase = stringArrayResource(R.array.fexcore_version_entries).toList()
+        val fexcorePresets = FEXCorePresetManager.getPresets(context)
         val fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList()
         val fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList()
         val fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList()

@@ -386,6 +386,25 @@ internal fun AppScreenContent(
             }
         }
 
+        // Compatibility banner (only for uninstalled Steam games)
+        if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(displayInfo.compatibilityColor)
+            ) {
+                Text(
+                    text = displayInfo.compatibilityMessage,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Color.White
+                )
+            }
+        }
+
         // Content section
         Column(
             modifier = Modifier

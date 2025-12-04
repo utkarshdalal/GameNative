@@ -5,6 +5,7 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
+import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -574,7 +575,46 @@ object ContainerUtils {
             }
         }
 
-        // Initialize container with default/custom config
+        // Check for cached best config (only for Steam games, only if no custom config provided)
+        var bestConfigData: ContainerData? = null
+        if (gameSource == GameSource.STEAM && customConfig == null) {
+            try {
+                val gameId = extractGameIdFromContainerId(appId)
+                val appInfo = SteamService.getAppInfoOf(gameId)
+                if (appInfo != null) {
+                    val gameName = appInfo.name
+                    val gpuName = GPUInformation.getRenderer(context)
+                    val cacheKey = "${gameName}_${gpuName}"
+                    
+                    // Check cache (BestConfigService uses in-memory cache)
+                    // We need to fetch it again to get from cache, or access cache directly
+                    // For now, we'll try to get it from the cache by making a quick check
+                    // Since the cache is private, we'll need to fetch it (which will use cache if available)
+                    runBlocking {
+                        try {
+                            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+                            if (bestConfig != null && bestConfig.matchType != "no_match") {
+                                Timber.i("Applying best config for $gameName (matchType: ${bestConfig.matchType})")
+                                val parsedConfig = BestConfigService.parseConfigToContainerData(
+                                    context,
+                                    bestConfig.bestConfig,
+                                    bestConfig.matchType
+                                )
+                                if (parsedConfig != null) {
+                                    bestConfigData = parsedConfig
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to get best config for container creation: ${e.message}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Error checking for best config: ${e.message}")
+            }
+        }
+
+        // Initialize container with default/custom config or best config
         val containerData = if (customConfig != null) {
             // Use custom config, but ensure drives are set if not specified
             if (customConfig.drives == Container.DEFAULT_DRIVES) {
