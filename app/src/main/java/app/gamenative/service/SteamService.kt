@@ -45,6 +45,9 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.callback.EmoticonListCallback
 import app.gamenative.service.handler.PluviaHandler
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.MarkerUtils
+import app.gamenative.enums.Marker
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.generateSteamApp
 import com.google.android.play.core.ktx.bytesDownloaded
 import com.google.android.play.core.ktx.requestCancelInstall
@@ -146,9 +149,7 @@ import java.lang.NullPointerException
 import app.gamenative.data.AppInfo
 import app.gamenative.db.dao.AppInfoDao
 import kotlinx.coroutines.ensureActive
-import app.gamenative.enums.Marker
 import app.gamenative.utils.FileUtils
-import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.LicenseSerializer
 import app.gamenative.data.CachedLicense
 import com.winlator.container.Container
@@ -559,7 +560,23 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 val di = downloadApp(appId, depotIds, "public")
-                di != null
+                val success = di != null
+
+                // After delete + redownload completes for DLC changes, mirror Reset DRM poke
+                if (success) {
+                    try {
+                        val appDirPath = getAppDirPath(appId)
+                        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+                        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+                        val containerId = "STEAM_" + appId
+                        val container = ContainerUtils.getOrCreateContainer(instance!!.applicationContext, containerId)
+                        container.isNeedsUnpacking = true
+                        container.saveData()
+                    } catch (_: Throwable) { }
+                }
+
+                success
             } catch (t: Throwable) {
                 Timber.e(t, "Failed to rebuild app $appId")
                 false
@@ -621,7 +638,23 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 val di = downloadApp(appId, depotIds, "public")
-                di != null
+                val success = di != null
+
+                if (success) {
+                    // Mirror Reset DRM timing: only after successful delete + redownload
+                    try {
+                        val appDirPath = getAppDirPath(appId)
+                        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+                        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+                        val containerId = "STEAM_" + appId
+                        val container = ContainerUtils.getOrCreateContainer(instance!!.applicationContext, containerId)
+                        container.isNeedsUnpacking = true
+                        container.saveData()
+                    } catch (_: Throwable) { }
+                }
+
+                success
             } catch (t: Throwable) {
                 Timber.e(t, "Failed to rebuild app $appId with depots")
                 false

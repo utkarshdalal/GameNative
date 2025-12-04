@@ -34,6 +34,9 @@ import androidx.compose.ui.platform.LocalContext
 import app.gamenative.service.SteamService
 import app.gamenative.data.DepotInfo
 import kotlinx.coroutines.launch
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.ContainerUtils
 
 /**
  * Dialog that lists owned DLC for a given app and allows enabling/disabling each DLC.
@@ -348,7 +351,7 @@ fun DlcManagerDialog(
                     } else {
                         LazyColumn {
                             items(dlcList) { (depotId, depotInfo) ->
-                                val checked = remember { checkedMap[depotId] ?: false }
+                                val checked = checkedMap[depotId] ?: false
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -377,21 +380,32 @@ fun DlcManagerDialog(
             Button(onClick = {
                 scope.launch {
                     try {
-                        val newSelected = checkedMap.filterValues { it }.keys.toList()
-                        val removed = installedDepots.filterNot { it in newSelected }
-                        val added = newSelected.filterNot { it in installedDepots }
+                        // DLC depots selected by user
+                        val selectedDlcDepotIds = checkedMap.filterValues { it }.keys.toList()
 
-                            val selectedDlcFromDepots = dlcList.filter { (depotId, _) -> depotId in newSelected }
+                        // Always include base depots for this platform/language
+                        val baseDepotIds = try {
+                            SteamService.getDownloadableDepots(appId)
+                                .filter { (_, depot) -> depot.dlcAppId == SteamService.INVALID_APP_ID }
+                                .keys
+                                .toList()
+                        } catch (t: Throwable) { emptyList() }
+
+                        val finalSelected = (baseDepotIds + selectedDlcDepotIds).distinct()
+                        val removed = installedDepots.filterNot { it in finalSelected }
+                        val added = finalSelected.filterNot { it in installedDepots }
+
+                            val selectedDlcFromDepots = dlcList.filter { (depotId, _) -> depotId in selectedDlcDepotIds }
                                 .map { it.second.dlcAppId }
                             val selectedManualDlc = knownDlcList.filter { it.third }.map { it.first }
                             val selectedDlcAppIds = (selectedDlcFromDepots + selectedManualDlc).distinct()
 
-                        val setOk = SteamService.setAppSelection(appId, newSelected, selectedDlcAppIds)
+                        val setOk = SteamService.setAppSelection(appId, finalSelected, selectedDlcAppIds)
                         if (!setOk) {
                             Toast.makeText(ctx, "Failed to save selection", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(ctx, "Applying changes and rebuilding...", Toast.LENGTH_SHORT).show()
-                            SteamService.rebuildAppWithDepots(appId, newSelected)
+                            SteamService.rebuildAppWithDepots(appId, finalSelected)
                         }
                     } catch (t: Throwable) {
                         Toast.makeText(ctx, "Failed to apply DLC changes", Toast.LENGTH_SHORT).show()

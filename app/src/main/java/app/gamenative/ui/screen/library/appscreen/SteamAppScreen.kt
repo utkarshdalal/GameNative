@@ -29,6 +29,7 @@ import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.screen.library.components.DlcManagerDialog
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.utils.ContainerUtils
@@ -575,8 +576,18 @@ class SteamAppScreen : BaseAppScreen() {
             return emptyList()
         }
 
+        var showDlcManager by remember { mutableStateOf(false) }
+
+        if (showDlcManager) {
+            DlcManagerDialog(
+                appId = gameId,
+                visible = true,
+                onDismissRequest = { showDlcManager = false }
+            )
+        }
+
         // Steam-specific options (only when installed)
-        return listOf(
+        val options = mutableListOf(
             AppMenuOption(
                 AppOptionMenuType.ResetDrm,
                 onClick = {
@@ -690,6 +701,15 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             )
         )
+
+        // Add Manage DLC option for Steam apps when installed
+        options.add(
+            AppMenuOption(
+                AppOptionMenuType.ManageDLC,
+                onClick = { showDlcManager = true }
+            )
+        )
+        return options
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
