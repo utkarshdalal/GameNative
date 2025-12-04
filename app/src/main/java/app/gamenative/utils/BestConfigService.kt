@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -158,14 +159,15 @@ object BestConfigService {
      * For fallback_match, excludes containerVariant, graphicsDriver, dxwrapper, and dxwrapperConfig.
      */
     fun filterConfigByMatchType(config: JsonObject, matchType: String): JsonObject {
+        val filtered = config.toMutableMap()
+
         if (matchType == "exact_gpu_match" || matchType == "gpu_family_match") {
             // Apply all fields
-            return config
+            return JsonObject(filtered)
         }
 
         if (matchType == "fallback_match") {
             // Exclude containerVariant, graphicsDriver, dxwrapper, dxwrapperConfig
-            val filtered = config.toMutableMap()
             filtered.remove("graphicsDriver")
             filtered.remove("graphicsDriverVersion")
             filtered.remove("graphicsDriverConfig")
@@ -179,12 +181,10 @@ object BestConfigService {
     }
 
     /**
-     * Validates and fixes component versions in the ContainerData.
-     * Checks if versions exist in resource arrays and falls back to PrefManager defaults if not.
+     * Validates component versions in the ContainerData.
+     * Returns null if any version doesn't exist in resource arrays (strict validation).
      */
-    private fun validateComponentVersions(context: Context, config: ContainerData): ContainerData {
-        var validatedConfig = config
-
+    private fun validateComponentVersions(context: Context, config: ContainerData): ContainerData? {
         // Get resource arrays (same as ContainerConfigDialog)
         val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
         val vkd3dVersions = context.resources.getStringArray(R.array.vkd3d_version_entries).toList()
@@ -214,8 +214,8 @@ object BestConfigService {
             val kvs = KeyValueSet(config.dxwrapperConfig)
             val version = kvs.get("version")
             if (version.isNotEmpty() && !versionExists(version, dxvkVersions)) {
-                Timber.tag("BestConfigService").w("DXVK version $version not found, using PrefManager default")
-                validatedConfig = validatedConfig.copy(dxwrapperConfig = PrefManager.dxWrapperConfig)
+                Timber.tag("BestConfigService").w("DXVK version $version not found, returning null")
+                return null
             }
         }
 
@@ -224,41 +224,55 @@ object BestConfigService {
             val kvs = KeyValueSet(config.dxwrapperConfig)
             val version = kvs.get("vkd3dVersion")
             if (version.isNotEmpty() && !versionExists(version, vkd3dVersions)) {
-                Timber.tag("BestConfigService").w("VKD3D version $version not found, using PrefManager default")
-                validatedConfig = validatedConfig.copy(dxwrapperConfig = PrefManager.dxWrapperConfig)
+                Timber.tag("BestConfigService").w("VKD3D version $version not found, returning null")
+                return null
             }
         }
 
         // Validate Box64 version (check separately based on container variant)
-        val box64VersionsToCheck = when (config.containerVariant) {
-            Container.GLIBC -> box64Versions
-            Container.BIONIC -> box64BionicVersions
-            else -> box64Versions // Default to glibc
+        // Box64 has different version entries for bionic and glibc containers
+        val box64VersionsToCheck = when {
+            config.containerVariant.equals(Container.BIONIC, ignoreCase = true) -> box64BionicVersions
+            config.containerVariant.equals(Container.GLIBC, ignoreCase = true) -> box64Versions
+            else -> {
+                // Default based on container variant, but log warning
+                Timber.tag("BestConfigService").w("Unknown container variant '${config.containerVariant}', defaulting to glibc Box64 versions")
+                box64Versions
+            }
         }
         if (config.box64Version.isNotEmpty() && !versionExists(config.box64Version, box64VersionsToCheck)) {
-            Timber.tag("BestConfigService").w("Box64 version ${config.box64Version} not found for ${config.containerVariant} variant, using PrefManager default")
-            validatedConfig = validatedConfig.copy(box64Version = PrefManager.box64Version)
+            Timber.tag("BestConfigService").w("Box64 version ${config.box64Version} not found in ${config.containerVariant} variant entries, returning null")
+            return null
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
         if (config.wineVersion.contains("arm64ec", ignoreCase = true)) {
             if (config.box64Version.isNotEmpty() && !versionExists(config.box64Version, wowBox64Versions)) {
-                Timber.tag("BestConfigService").w("WoWBox64 version ${config.box64Version} not found, using PrefManager default")
-                validatedConfig = validatedConfig.copy(box64Version = PrefManager.box64Version)
+                Timber.tag("BestConfigService").w("WoWBox64 version ${config.box64Version} not found, returning null")
+                return null
             }
         }
 
         // Validate FEXCore version
         if (config.fexcoreVersion.isNotEmpty() && !versionExists(config.fexcoreVersion, fexcoreVersions)) {
-            Timber.tag("BestConfigService").w("FEXCore version ${config.fexcoreVersion} not found, using PrefManager default")
-            validatedConfig = validatedConfig.copy(fexcoreVersion = PrefManager.fexcoreVersion)
+            Timber.tag("BestConfigService").w("FEXCore version ${config.fexcoreVersion} not found, returning null")
+            return null
         }
 
-        // Validate Wine/Proton version
-        val allWineVersions = (bionicWineEntries + glibcWineEntries).distinct()
-        if (config.wineVersion.isNotEmpty() && !versionExists(config.wineVersion, allWineVersions)) {
-            Timber.tag("BestConfigService").w("Wine version ${config.wineVersion} not found, using PrefManager default")
-            validatedConfig = validatedConfig.copy(wineVersion = PrefManager.wineVersion)
+        // Validate Wine/Proton version (check separately based on container variant)
+        // Wine versions are different for bionic and glibc containers
+        val wineVersionsToCheck = when {
+            config.containerVariant.equals(Container.BIONIC, ignoreCase = true) -> bionicWineEntries
+            config.containerVariant.equals(Container.GLIBC, ignoreCase = true) -> glibcWineEntries
+            else -> {
+                // Default to all versions if variant is unknown
+                Timber.tag("BestConfigService").w("Unknown container variant '${config.containerVariant}', checking against all wine versions")
+                (bionicWineEntries + glibcWineEntries).distinct()
+            }
+        }
+        if (config.wineVersion.isNotEmpty() && !versionExists(config.wineVersion, wineVersionsToCheck)) {
+            Timber.tag("BestConfigService").w("Wine version ${config.wineVersion} not found in ${config.containerVariant} variant entries, returning null")
+            return null
         }
 
         // Validate graphics driver version (from graphicsDriverConfig)
@@ -298,8 +312,8 @@ object BestConfigService {
                 }
 
                 if (!versionExists(driverVersion, availableVersions)) {
-                    Timber.tag("BestConfigService").w("Graphics driver version $driverVersion not found for ${config.containerVariant} variant, using PrefManager default")
-                    validatedConfig = validatedConfig.copy(graphicsDriverConfig = PrefManager.graphicsDriverConfig)
+                    Timber.tag("BestConfigService").w("Graphics driver version $driverVersion not found for ${config.containerVariant} variant, returning null")
+                    return null
                 }
             }
         }
@@ -307,18 +321,18 @@ object BestConfigService {
         // Validate Box64 preset
         val box64Preset = Box86_64PresetManager.getPreset("box64", context, config.box64Preset)
         if (box64Preset == null) {
-            Timber.tag("BestConfigService").w("Box64 preset ${config.box64Preset} not found, using PrefManager default")
-            validatedConfig = validatedConfig.copy(box64Preset = PrefManager.box64Preset)
+            Timber.tag("BestConfigService").w("Box64 preset ${config.box64Preset} not found, returning null")
+            return null
         }
 
         // Validate Box86 preset
         val box86Preset = Box86_64PresetManager.getPreset("box86", context, config.box86Preset)
         if (box86Preset == null) {
-            Timber.tag("BestConfigService").w("Box86 preset ${config.box86Preset} not found, using PrefManager default")
-            validatedConfig = validatedConfig.copy(box86Preset = PrefManager.box86Preset)
+            Timber.tag("BestConfigService").w("Box86 preset ${config.box86Preset} not found, returning null")
+            return null
         }
 
-        return validatedConfig
+        return config
     }
 
     /**
@@ -327,6 +341,49 @@ object BestConfigService {
      */
     fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String): ContainerData? {
         try {
+            // Step 0: Validate required fields are present in original config (before filtering)
+            val originalJson = JSONObject(configJson.toString())
+            
+            if (!originalJson.has("containerVariant") || originalJson.isNull("containerVariant")) {
+                Timber.tag("BestConfigService").w("containerVariant is missing or null in original config, returning null")
+                return null
+            }
+            if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
+                Timber.tag("BestConfigService").w("wineVersion is missing or null in original config, returning null")
+                return null
+            }
+            if (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper")) {
+                Timber.tag("BestConfigService").w("dxwrapper is missing or null in original config, returning null")
+                return null
+            }
+            if (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig")) {
+                Timber.tag("BestConfigService").w("dxwrapperConfig is missing or null in original config, returning null")
+                return null
+            }
+            
+            // Also check they're not empty strings
+            val containerVariant = originalJson.optString("containerVariant", "")
+            val wineVersion = originalJson.optString("wineVersion", "")
+            val dxwrapper = originalJson.optString("dxwrapper", "")
+            val dxwrapperConfig = originalJson.optString("dxwrapperConfig", "")
+            
+            if (containerVariant.isEmpty()) {
+                Timber.tag("BestConfigService").w("containerVariant is empty in original config, returning null")
+                return null
+            }
+            if (wineVersion.isEmpty()) {
+                Timber.tag("BestConfigService").w("wineVersion is empty in original config, returning null")
+                return null
+            }
+            if (dxwrapper.isEmpty()) {
+                Timber.tag("BestConfigService").w("dxwrapper is empty in original config, returning null")
+                return null
+            }
+            if (dxwrapperConfig.isEmpty()) {
+                Timber.tag("BestConfigService").w("dxwrapperConfig is empty in original config, returning null")
+                return null
+            }
+
             // Step 1: Filter config based on match type
             val filteredConfig = filterConfigByMatchType(configJson, matchType)
             val filteredJson = JSONObject(filteredConfig.toString())
@@ -384,9 +441,13 @@ object BestConfigService {
             )
 
             // Step 3: Validate component versions against resource arrays
-            config = validateComponentVersions(context, config)
+            val validatedConfig = validateComponentVersions(context, config)
+            if (validatedConfig == null) {
+                Timber.tag("BestConfigService").w("Component version validation failed, returning null")
+                return null
+            }
 
-            return config
+            return validatedConfig
         } catch (e: Exception) {
             Timber.tag("BestConfigService").e(e, "Failed to parse config to ContainerData: ${e.message}")
             return null

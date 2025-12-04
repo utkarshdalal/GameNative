@@ -20,6 +20,7 @@ import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -584,13 +585,10 @@ object ContainerUtils {
                 if (appInfo != null) {
                     val gameName = appInfo.name
                     val gpuName = GPUInformation.getRenderer(context)
-                    val cacheKey = "${gameName}_${gpuName}"
                     
-                    // Check cache (BestConfigService uses in-memory cache)
-                    // We need to fetch it again to get from cache, or access cache directly
-                    // For now, we'll try to get it from the cache by making a quick check
-                    // Since the cache is private, we'll need to fetch it (which will use cache if available)
-                    runBlocking {
+                    // Check cache first (synchronous, fast)
+                    // If not cached, make request on background thread (not UI thread)
+                    runBlocking(Dispatchers.IO) {
                         try {
                             val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
                             if (bestConfig != null && bestConfig.matchType != "no_match") {
@@ -622,6 +620,9 @@ object ContainerUtils {
             } else {
                 customConfig
             }
+        } else if (bestConfigData != null) {
+            // Use best config from API/cache (drives are set separately below)
+            bestConfigData.copy(drives = drives)
         } else {
             // Use default config with drives
             ContainerData(

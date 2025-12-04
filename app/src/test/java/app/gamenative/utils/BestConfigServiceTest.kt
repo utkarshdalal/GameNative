@@ -231,7 +231,7 @@ class BestConfigServiceTest {
         // Verify other fields are parsed
         assertEquals("FEXCore", result.emulator)
         assertEquals("2507", result.fexcoreVersion)
-        assertEquals("proton-9.0-x86_64", result.wineVersion)
+        assertEquals("wine-9.2-x86_64", result.wineVersion)
         assertEquals("0.3.6", result.box64Version)
         assertEquals("UNITY_MONO_BLEEDING_EDGE", result.box64Preset)
         assertEquals("ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem DXVK_FRAME_RATE=60", result.envVars)
@@ -411,7 +411,7 @@ class BestConfigServiceTest {
         // Create a minimal config with only a few fields
         val minimalConfigJson = """
             {
-                "wineVersion": "proton-9.0-x86_64",
+                "containerVariant": "glibc",
                 "box64Version": "0.3.6"
             }
         """.trimIndent()
@@ -422,7 +422,7 @@ class BestConfigServiceTest {
         assertNotNull("Result should not be null", result)
 
         // Verify provided fields are used
-        assertEquals("proton-9.0-x86_64", result!!.wineVersion)
+        assertEquals("wine-9.2-x86_64", result!!.wineVersion)
         assertEquals("0.3.6", result.box64Version)
 
         // Note: showFPS is currently being parsed, but user says it should NOT be parsed
@@ -568,14 +568,14 @@ class BestConfigServiceTest {
         // Verify DXVK version in dxwrapperConfig falls back to default
         // The dxwrapperConfig should contain the default DXVK version from PrefManager
         val defaultDxvkConfig = PrefManager.dxWrapperConfig
-        assertTrue("DXVK version should fall back to PrefManager default in dxwrapperConfig", 
+        assertTrue("DXVK version should fall back to PrefManager default in dxwrapperConfig",
             result.dxwrapperConfig.contains(defaultDxvkConfig.split(",").firstOrNull { it.startsWith("version=") }?.substringAfter("version=") ?: ""))
 
         // Verify VKD3D version in dxwrapperConfig falls back to default
         // Extract VKD3D version from default config
         val defaultVkd3dVersion = defaultDxvkConfig.split(",").firstOrNull { it.startsWith("vkd3dVersion=") }?.substringAfter("vkd3dVersion=")
         if (defaultVkd3dVersion != null) {
-            assertTrue("VKD3D version should fall back to PrefManager default in dxwrapperConfig", 
+            assertTrue("VKD3D version should fall back to PrefManager default in dxwrapperConfig",
                 result.dxwrapperConfig.contains("vkd3dVersion=$defaultVkd3dVersion"))
         }
 
@@ -585,10 +585,10 @@ class BestConfigServiceTest {
         // Since we're using bionic, the default should be from PrefManager.graphicsDriverConfig
         val defaultGraphicsDriverConfig = PrefManager.graphicsDriverConfig
         // The version might be in a different format, so we check that it doesn't contain the invalid version
-        assertFalse("Graphics driver config should not contain invalid version", 
+        assertFalse("Graphics driver config should not contain invalid version",
             result.graphicsDriverConfig.contains("invalid-turnip-999.99.99"))
         // It should contain the default version format or structure
-        assertTrue("Graphics driver config should use PrefManager default structure", 
+        assertTrue("Graphics driver config should use PrefManager default structure",
             result.graphicsDriverConfig.isNotEmpty())
 
         // Verify invalid presets fall back to PrefManager defaults
