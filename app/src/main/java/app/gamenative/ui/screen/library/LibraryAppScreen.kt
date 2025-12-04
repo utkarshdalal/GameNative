@@ -303,6 +303,27 @@ internal fun AppScreenContent(
                     )
             )
 
+            // Compatibility status overlay (bottom center)
+            // Must be after gradient but before title to ensure visibility
+            if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = displayInfo.compatibilityMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(displayInfo.compatibilityColor),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
+
             // Back button (top left)
             Box(
                 modifier = Modifier
@@ -382,25 +403,6 @@ internal fun AppScreenContent(
                     }}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.9f)
-                )
-            }
-        }
-
-        // Compatibility banner (only for uninstalled Steam games)
-        if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(displayInfo.compatibilityColor)
-            ) {
-                Text(
-                    text = displayInfo.compatibilityMessage,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = Color.White
                 )
             }
         }
