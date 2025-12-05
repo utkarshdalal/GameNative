@@ -240,9 +240,11 @@ class SteamService : Service(), IChallengeUrlChanged {
     private val _isPlayingBlocked = MutableStateFlow(false)
     val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
 
-    //
-    private val _localPersona = MutableStateFlow(SteamFriend())
-    private val localPersona = _localPersona.asStateFlow()
+    // Cache in-memory the local persona state.
+    private val _localPersona = MutableStateFlow(
+        SteamFriend(name = PrefManager.steamUserAvatarHash, avatarHash = PrefManager.steamUserAvatarHash),
+    )
+    val localPersona = _localPersona.asStateFlow()
 
     companion object {
         const val MAX_PICS_BUFFER = 256
@@ -407,8 +409,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 false
             }
         }
-
-        fun getPersonaStateOf(): SteamFriend? = instance?.localPersona?.value
 
         /**
          * Get licenses from database for use with DepotDownloader
@@ -2300,15 +2300,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             db.withTransaction {
                 // Send off an event if we change states.
                 if (callback.friendId == steamClient!!.steamID) {
+                    Timber.d("Local persona state received: ${callback.playerName}")
+
+                    val avatarHash = callback.avatarHash.toHexString()
+                    val playerName = callback.playerName
+
+                    // Update local state flow
                     _localPersona.update {
                         it.copy(
-                            avatarHash = callback.avatarHash.toHexString(),
-                            name = callback.playerName,
+                            avatarHash = avatarHash,
+                            name = playerName,
                             state = callback.personaState,
                             gameAppID = callback.gamePlayedAppId,
                             gameName = appDao.findApp(callback.gamePlayedAppId)?.name ?: callback.gameName,
                         )
                     }
+
+                    // Cache local persona
+                    PrefManager.steamUserAvatarHash = avatarHash
+                    PrefManager.steamUserName = playerName
 
                     val event = SteamEvent.PersonaStateReceived(localPersona.value)
                     PluviaApp.events.emit(event)
