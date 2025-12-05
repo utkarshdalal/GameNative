@@ -3,7 +3,7 @@ package app.gamenative.data
 import `in`.dragonbra.javasteam.enums.EPersonaState
 
 /**
- * This class services to update your steam's profile icon on the main library screen and settings dialog.
+ * This class serves to update your steam's profile icon on the main library screen and settings dialog.
  */
 data class SteamFriend(
     val avatarHash: String = "",
