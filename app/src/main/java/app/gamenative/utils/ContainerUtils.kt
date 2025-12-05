@@ -757,7 +757,7 @@ object ContainerUtils {
                     // Update the wrapper if needed
                     if (newDxWrapper != containerData.dxwrapper) {
                         Timber.i("Setting DX wrapper for app $appId to $newDxWrapper (DirectX version: $dxVersion)")
-                        containerData = containerData.copy(dxwrapper = newDxWrapper)
+                        containerData.dxwrapper = newDxWrapper
                     }
                 } catch (e: Exception) {
                     Timber.w(e, "Error determining DirectX version: ${e.message}")
