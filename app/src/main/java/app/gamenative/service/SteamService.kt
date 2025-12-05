@@ -242,7 +242,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     // Cache in-memory the local persona state.
     private val _localPersona = MutableStateFlow(
-        SteamFriend(name = PrefManager.steamUserAvatarHash, avatarHash = PrefManager.steamUserAvatarHash),
+        SteamFriend(name = PrefManager.steamUserName, avatarHash = PrefManager.steamUserAvatarHash),
     )
     val localPersona = _localPersona.asStateFlow()
 
