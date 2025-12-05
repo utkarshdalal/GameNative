@@ -259,7 +259,7 @@ class SteamAppScreen : BaseAppScreen() {
                 val gpuName = GPUInformation.getRenderer(context)
                 val bestConfig = BestConfigService.fetchBestConfig(appInfo.name, gpuName)
                 if (bestConfig != null) {
-                    val message = BestConfigService.getCompatibilityMessage(bestConfig.matchType)
+                    val message = BestConfigService.getCompatibilityMessage(context, bestConfig.matchType)
                     compatibilityMessage = message.text
                     compatibilityColor = message.color.value
                 } else {
@@ -745,7 +745,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             context,
-                                            "Best config applied successfully",
+                                            context.getString(R.string.best_config_applied_successfully),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -753,7 +753,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             context,
-                                            "Known config invalid",
+                                            context.getString(R.string.best_config_known_config_invalid),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -762,7 +762,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(
                                         context,
-                                        "No best config available for this game",
+                                        context.getString(R.string.best_config_no_config_available),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -772,7 +772,7 @@ class SteamAppScreen : BaseAppScreen() {
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(
                                     context,
-                                    "Failed to apply config: ${e.message ?: "Unknown error"}",
+                                    context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }

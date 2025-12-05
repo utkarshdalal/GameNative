@@ -133,23 +133,23 @@ object BestConfigService {
     /**
      * Gets user-friendly compatibility message based on match type.
      */
-    fun getCompatibilityMessage(matchType: String?): CompatibilityMessage {
+    fun getCompatibilityMessage(context: Context, matchType: String?): CompatibilityMessage {
         return when (matchType) {
             "exact_gpu_match" -> CompatibilityMessage(
-                text = "Works on your GPU",
+                text = context.getString(R.string.best_config_exact_gpu_match),
                 color = Color.Green
             )
             "gpu_family_match" -> CompatibilityMessage(
-                text = "Works on your GPU family",
-                color = Color.Green // Green
+                text = context.getString(R.string.best_config_gpu_family_match),
+                color = Color.Green
             )
             "fallback_match" -> CompatibilityMessage(
-                text = "Works on other devices",
-                color = Color.Yellow // Yellow
+                text = context.getString(R.string.best_config_fallback_match),
+                color = Color.Yellow
             )
             else -> CompatibilityMessage(
-                text = "Compatibility unknown",
-                color = Color.Gray // Grey
+                text = context.getString(R.string.best_config_compatibility_unknown),
+                color = Color.Gray
             )
         }
     }

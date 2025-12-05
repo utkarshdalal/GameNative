@@ -655,6 +655,18 @@
     <string name="library_compatible">Compatible</string>
     <string name="library_compatibility_unknown">Compatibility Unknown</string>
     <string name="library_not_compatible">Not Compatible</string>
+
+    <!-- Best Config Compatibility Messages -->
+    <string name="best_config_exact_gpu_match">Known config works on your device</string>
+    <string name="best_config_gpu_family_match">Known config should work on your device</string>
+    <string name="best_config_fallback_match">Known config may work on your device</string>
+    <string name="best_config_compatibility_unknown">No known config</string>
+
+    <!-- Best Config Toast Messages -->
+    <string name="best_config_applied_successfully">Best config applied successfully</string>
+    <string name="best_config_known_config_invalid">Known config invalid</string>
+    <string name="best_config_no_config_available">No best config available for this game</string>
+    <string name="best_config_apply_failed">Failed to apply config: %s</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>

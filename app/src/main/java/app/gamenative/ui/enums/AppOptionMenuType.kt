@@ -10,7 +10,7 @@ enum class AppOptionMenuType(val text: String) {
     GetSupport("Get support"),
     SubmitFeedback("Submit feedback"),
     ResetDrm("Reset DRM"),
-    UseKnownConfig("Use Known Config"),
+    UseKnownConfig("Use known config"),
     Uninstall("Uninstall"),
     VerifyFiles("Verify files"),
     Update("Update"),

@@ -494,6 +494,19 @@
     <string name="library_compatible">Kompatibel</string>
     <string name="library_compatibility_unknown">Kompatibilitet ukendt</string>
     <string name="library_not_compatible">Ikke kompatibel</string>
+
+    <!-- Best Config Compatibility Messages -->
+    <string name="best_config_exact_gpu_match">Kendt konfiguration virker på din enhed</string>
+    <string name="best_config_gpu_family_match">Kendt konfiguration bør virke på din enhed</string>
+    <string name="best_config_fallback_match">Kendt konfiguration kan virke på din enhed</string>
+    <string name="best_config_compatibility_unknown">Ingen kendt konfiguration</string>
+
+    <!-- Best Config Toast Messages -->
+    <string name="best_config_applied_successfully">Bedste konfiguration anvendt med succes</string>
+    <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
+    <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
+    <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
+
     <string name="library_app_type">App-type</string>
     <string name="library_app_status">App-status</string>
     <string name="library_layout">Layout</string>

@@ -650,6 +650,19 @@
     <string name="library_installing">安裝中</string>
     <string name="library_not_installed">未安裝</string>
     <string name="library_family_shared">家庭共享</string>
+
+    <!-- Best Config Compatibility Messages -->
+    <string name="best_config_exact_gpu_match">已知配置可在您的裝置上運作</string>
+    <string name="best_config_gpu_family_match">已知配置應該可在您的裝置上運作</string>
+    <string name="best_config_fallback_match">已知配置可能可在您的裝置上運作</string>
+    <string name="best_config_compatibility_unknown">沒有已知配置</string>
+
+    <!-- Best Config Toast Messages -->
+    <string name="best_config_applied_successfully">最佳配置已成功套用</string>
+    <string name="best_config_known_config_invalid">已知配置無效</string>
+    <string name="best_config_no_config_available">此遊戲沒有可用的最佳配置</string>
+    <string name="best_config_apply_failed">套用配置失敗: %s</string>
+
     <string name="library_app_type">應用程式類型</string>
     <string name="library_app_status">應用程式狀態</string>
     <string name="library_layout">版面配置</string>
