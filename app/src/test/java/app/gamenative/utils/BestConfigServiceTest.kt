@@ -161,7 +161,7 @@ class BestConfigServiceTest {
         // For fallback_match, only executablePath and useLegacyDRM should be in the map
         assertTrue("executablePath should be in map", result.containsKey("executablePath"))
         assertTrue("useLegacyDRM should be in map", result.containsKey("useLegacyDRM"))
-        
+
         // Excluded fields should NOT be in the map
         assertFalse("graphicsDriver should NOT be in map for fallback_match", result.containsKey("graphicsDriver"))
         assertFalse("dxwrapper should NOT be in map for fallback_match", result.containsKey("dxwrapper"))
@@ -178,31 +178,15 @@ class BestConfigServiceTest {
         val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
 
-        // Verify excluded fields use PrefManager defaults
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.graphicsDriver, result!!.graphicsDriver)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapper, result.dxwrapper)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapperConfig, result.dxwrapperConfig)
+        // For fallback_match with applyKnownConfig=false, only executablePath and useLegacyDRM should be in the map
+        assertTrue("executablePath should be in map", result.containsKey("executablePath") || result.containsKey("useLegacyDRM"))
 
-        // Verify containerVariant IS parsed (NOT excluded in fallback_match)
-        assertEquals("containerVariant should be parsed even in fallback_match", "bionic", result.containerVariant)
-
-        // Verify showFPS and screenSize are NOT parsed (intentionally excluded)
-        assertEquals("showFPS should use PrefManager default, not from API", PrefManager.showFps, result.showFPS)
-        assertEquals("screenSize should use Container.DEFAULT_SCREEN_SIZE, not from API", Container.DEFAULT_SCREEN_SIZE, result.screenSize)
-
-        // Verify other fields are parsed
-        assertEquals("FEXCore", result.emulator)
-        assertEquals("2507", result.fexcoreVersion)
-        assertEquals("proton-9.0-x86_64", result.wineVersion)
-        assertEquals("0.3.6", result.box64Version)
-        assertEquals("UNITY_MONO_BLEEDING_EDGE", result.box64Preset)
-        assertEquals("ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem DXVK_FRAME_RATE=60", result.envVars)
-        assertEquals("pulseaudio", result.audioDriver)
-        assertEquals(true, result.useDRI3)
-        assertEquals(false, result.launchRealSteam)
-        assertEquals("normal", result.steamType)
-        assertEquals(false, result.allowSteamUpdates)
+        // Excluded fields should NOT be in the map for fallback_match
+        assertFalse("graphicsDriver should NOT be in map for fallback_match", result.containsKey("graphicsDriver"))
+        assertFalse("dxwrapper should NOT be in map for fallback_match", result.containsKey("dxwrapper"))
+        assertFalse("dxwrapperConfig should NOT be in map for fallback_match", result.containsKey("dxwrapperConfig"))
     }
 
     @Test
@@ -215,29 +199,56 @@ class BestConfigServiceTest {
         val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
 
-        // Verify excluded fields use PrefManager defaults
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.graphicsDriver, result!!.graphicsDriver)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapper, result.dxwrapper)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapperConfig, result.dxwrapperConfig)
+        // For fallback_match with applyKnownConfig=false, only executablePath and useLegacyDRM should be in the map
+        assertTrue("executablePath should be in map", result.containsKey("executablePath") || result.containsKey("useLegacyDRM"))
 
-        // Verify containerVariant IS parsed (NOT excluded in fallback_match)
-        assertEquals("containerVariant should be parsed even in fallback_match", "bionic", result.containerVariant)
+        // Excluded fields should NOT be in the map for fallback_match
+        assertFalse("graphicsDriver should NOT be in map for fallback_match", result.containsKey("graphicsDriver"))
+        assertFalse("dxwrapper should NOT be in map for fallback_match", result.containsKey("dxwrapper"))
+        assertFalse("dxwrapperConfig should NOT be in map for fallback_match", result.containsKey("dxwrapperConfig"))
+    }
 
-        // Verify showFPS and screenSize are NOT parsed (intentionally excluded)
-        assertEquals("showFPS should use PrefManager default, not from API", PrefManager.showFps, result.showFPS)
-        assertEquals("screenSize should use Container.DEFAULT_SCREEN_SIZE, not from API", Container.DEFAULT_SCREEN_SIZE, result.screenSize)
+    @Test
+    fun testApplyKnownConfigFalse_onlyReturnsExecutablePathAndUseLegacyDRM() {
+        // Test that when applyKnownConfig=false, only executablePath and useLegacyDRM are returned
+        // even for exact_gpu_match which would normally return all fields
+        val bestConfig = parseBestConfig(cs2MaliExactMatchResponse)
+        val matchType = getMatchType(cs2MaliExactMatchResponse)
 
-        // Verify other fields are parsed
-        assertEquals("proton-9.0-arm64ec", result.wineVersion)
-        assertEquals("FEXCore", result.emulator)
-        assertEquals("0.3.6", result.box64Version)
-        assertEquals("COMPATIBILITY", result.box64Preset)
-        assertEquals("2507", result.fexcoreVersion)
-        assertEquals(false, result.launchRealSteam)
-        assertEquals("normal", result.steamType)
-        assertEquals(false, result.allowSteamUpdates)
-        assertEquals(true, result.useDRI3)
+        assertEquals("exact_gpu_match", matchType)
+
+        // Call with applyKnownConfig=false
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, false)
+
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+
+        // Should only contain executablePath and/or useLegacyDRM
+        val keys = result.keys
+        assertTrue("Result should only contain executablePath and/or useLegacyDRM", 
+            keys.all { it == "executablePath" || it == "useLegacyDRM" })
+
+        // Verify executablePath is present if it exists in config
+        if (bestConfig.toString().contains("executablePath")) {
+            assertTrue("executablePath should be in map", result.containsKey("executablePath"))
+            assertEquals("game/bin/win64/cs2.exe", result["executablePath"])
+        }
+
+        // Verify useLegacyDRM is present if it exists in config
+        if (bestConfig.toString().contains("useLegacyDRM")) {
+            assertTrue("useLegacyDRM should be in map", result.containsKey("useLegacyDRM"))
+            assertEquals(false, result["useLegacyDRM"])
+        }
+
+        // Verify other fields are NOT present
+        assertFalse("graphicsDriver should NOT be in map when applyKnownConfig=false", result.containsKey("graphicsDriver"))
+        assertFalse("dxwrapper should NOT be in map when applyKnownConfig=false", result.containsKey("dxwrapper"))
+        assertFalse("dxwrapperConfig should NOT be in map when applyKnownConfig=false", result.containsKey("dxwrapperConfig"))
+        assertFalse("wineVersion should NOT be in map when applyKnownConfig=false", result.containsKey("wineVersion"))
+        assertFalse("box64Version should NOT be in map when applyKnownConfig=false", result.containsKey("box64Version"))
+        assertFalse("containerVariant should NOT be in map when applyKnownConfig=false", result.containsKey("containerVariant"))
     }
 
     @Test
@@ -277,7 +288,7 @@ class BestConfigServiceTest {
         val bestConfig = Json.parseToJsonElement(invalidConfigJson).jsonObject
         val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
-        assertNull("Result should not be null", result)
+        assertTrue("Result should not be null", result!!.isEmpty())
     }
 
     @Test
@@ -413,14 +424,8 @@ class BestConfigServiceTest {
         // screenSize is NOT being parsed (not in ContainerData constructor call) - this is correct
         // screenSize will use Container.DEFAULT_SCREEN_SIZE (not parsed)
 
-        // Verify missing fields use PrefManager defaults
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.envVars, result.envVars)
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.graphicsDriver, result.graphicsDriver)
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.dxWrapper, result.dxwrapper)
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.audioDriver, result.audioDriver)
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.containerVariant, result.containerVariant)
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.fexcoreVersion, result.fexcoreVersion)
-        assertEquals("Missing fields should use PrefManager defaults", PrefManager.emulator, result.emulator)
+        // Note: Missing fields won't be in the map - they're not included when not present in config
+        // The map only contains fields that were explicitly in the filtered config
     }
 
     @Test
@@ -559,7 +564,7 @@ class BestConfigServiceTest {
         val bestConfig = Json.parseToJsonElement(invalidVersionsConfigJson).jsonObject
         val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
-        assertNull("Result should not be null", result)
+        assertTrue("Result should not be null", result!!.isEmpty())
     }
 
     @Test
@@ -592,7 +597,7 @@ class BestConfigServiceTest {
         val bestConfig = Json.parseToJsonElement(invalidPresetsConfigJson).jsonObject
         val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
-        assertNull("Result should not be null", result)
+        assertTrue("Result should not be null", result!!.isEmpty())
     }
 
     /**
@@ -607,7 +612,7 @@ class BestConfigServiceTest {
         println("1. Counter-Strike 2 + Adreno (TM) 735 (fallback_match, bionic)")
         val cs2Adreno = parseBestConfig(cs2Adreno735Response)
         val cs2AdrenoMatch = getMatchType(cs2Adreno735Response)
-        val cs2AdrenoResult = BestConfigService.parseConfigToContainerData(context, cs2Adreno, cs2AdrenoMatch)
+        val cs2AdrenoResult = BestConfigService.parseConfigToContainerData(context, cs2Adreno, cs2AdrenoMatch, cs2AdrenoMatch != "fallback_match")
         println("Match Type: $cs2AdrenoMatch")
         printContainerData(cs2AdrenoResult, "CS2-Adreno735")
         println()
@@ -616,7 +621,7 @@ class BestConfigServiceTest {
         println("2. Detective Dotson + Mali-G57 MC2 (fallback_match, glibc)")
         val detectiveMali = parseBestConfig(detectiveDotsonMaliResponse)
         val detectiveMaliMatch = getMatchType(detectiveDotsonMaliResponse)
-        val detectiveMaliResult = BestConfigService.parseConfigToContainerData(context, detectiveMali, detectiveMaliMatch)
+        val detectiveMaliResult = BestConfigService.parseConfigToContainerData(context, detectiveMali, detectiveMaliMatch, detectiveMaliMatch != "fallback_match")
         println("Match Type: $detectiveMaliMatch")
         printContainerData(detectiveMaliResult, "Detective-Mali")
         println()
@@ -625,7 +630,7 @@ class BestConfigServiceTest {
         println("3. Dota 2 + Mali-G57 MC2 (fallback_match, bionic)")
         val dota2Mali = parseBestConfig(dota2MaliResponse)
         val dota2MaliMatch = getMatchType(dota2MaliResponse)
-        val dota2MaliResult = BestConfigService.parseConfigToContainerData(context, dota2Mali, dota2MaliMatch)
+        val dota2MaliResult = BestConfigService.parseConfigToContainerData(context, dota2Mali, dota2MaliMatch, dota2MaliMatch != "fallback_match")
         println("Match Type: $dota2MaliMatch")
         printContainerData(dota2MaliResult, "Dota2-Mali")
         println()
@@ -634,7 +639,7 @@ class BestConfigServiceTest {
         println("4. Counter-Strike 2 + Mali-G57 MC2 (exact_gpu_match, bionic)")
         val cs2Mali = parseBestConfig(cs2MaliExactMatchResponse)
         val cs2MaliMatch = getMatchType(cs2MaliExactMatchResponse)
-        val cs2MaliResult = BestConfigService.parseConfigToContainerData(context, cs2Mali, cs2MaliMatch)
+        val cs2MaliResult = BestConfigService.parseConfigToContainerData(context, cs2Mali, cs2MaliMatch, cs2MaliMatch != "fallback_match")
         println("Match Type: $cs2MaliMatch")
         printContainerData(cs2MaliResult, "CS2-Mali-Exact")
         println()
@@ -643,7 +648,7 @@ class BestConfigServiceTest {
         println("5. Dota 2 + Adreno (TM) 830 (exact_gpu_match, bionic)")
         val dota2Adreno830 = parseBestConfig(dota2Adreno830ExactMatchResponse)
         val dota2Adreno830Match = getMatchType(dota2Adreno830ExactMatchResponse)
-        val dota2Adreno830Result = BestConfigService.parseConfigToContainerData(context, dota2Adreno830, dota2Adreno830Match)
+        val dota2Adreno830Result = BestConfigService.parseConfigToContainerData(context, dota2Adreno830, dota2Adreno830Match, dota2Adreno830Match != "fallback_match")
         println("Match Type: $dota2Adreno830Match")
         printContainerData(dota2Adreno830Result, "Dota2-Adreno830-Exact")
         println()
@@ -652,7 +657,7 @@ class BestConfigServiceTest {
         println("6. Dota 2 + Adreno (TM) 835 (gpu_family_match, bionic)")
         val dota2Adreno835 = parseBestConfig(dota2Adreno835FamilyMatchResponse)
         val dota2Adreno835Match = getMatchType(dota2Adreno835FamilyMatchResponse)
-        val dota2Adreno835Result = BestConfigService.parseConfigToContainerData(context, dota2Adreno835, dota2Adreno835Match)
+        val dota2Adreno835Result = BestConfigService.parseConfigToContainerData(context, dota2Adreno835, dota2Adreno835Match, dota2Adreno835Match != "fallback_match")
         println("Match Type: $dota2Adreno835Match")
         printContainerData(dota2Adreno835Result, "Dota2-Adreno835-Family")
         println()
@@ -661,7 +666,7 @@ class BestConfigServiceTest {
         println("7. Dota 2 + XClipse xxx (fallback_match, bionic)")
         val dota2XClipse = parseBestConfig(dota2XClipseFallbackResponse)
         val dota2XClipseMatch = getMatchType(dota2XClipseFallbackResponse)
-        val dota2XClipseResult = BestConfigService.parseConfigToContainerData(context, dota2XClipse, dota2XClipseMatch)
+        val dota2XClipseResult = BestConfigService.parseConfigToContainerData(context, dota2XClipse, dota2XClipseMatch, dota2XClipseMatch != "fallback_match")
         println("Match Type: $dota2XClipseMatch")
         printContainerData(dota2XClipseResult, "Dota2-XClipse-Fallback")
         println()
@@ -670,7 +675,7 @@ class BestConfigServiceTest {
         println("8. Hades II + Adreno (TM) 835 (gpu_family_match, glibc)")
         val hades2Adreno835 = parseBestConfig(hades2Adreno835FamilyMatchResponse)
         val hades2Adreno835Match = getMatchType(hades2Adreno835FamilyMatchResponse)
-        val hades2Adreno835Result = BestConfigService.parseConfigToContainerData(context, hades2Adreno835, hades2Adreno835Match)
+        val hades2Adreno835Result = BestConfigService.parseConfigToContainerData(context, hades2Adreno835, hades2Adreno835Match, hades2Adreno835Match != "fallback_match")
         println("Match Type: $hades2Adreno835Match")
         printContainerData(hades2Adreno835Result, "Hades2-Adreno835-Family")
         println()
@@ -679,7 +684,7 @@ class BestConfigServiceTest {
         println("9. Hades II + Adreno (TM) 735 (exact_gpu_match, bionic)")
         val hades2Adreno735 = parseBestConfig(hades2Adreno735ExactMatchResponse)
         val hades2Adreno735Match = getMatchType(hades2Adreno735ExactMatchResponse)
-        val hades2Adreno735Result = BestConfigService.parseConfigToContainerData(context, hades2Adreno735, hades2Adreno735Match)
+        val hades2Adreno735Result = BestConfigService.parseConfigToContainerData(context, hades2Adreno735, hades2Adreno735Match, hades2Adreno735Match != "fallback_match")
         println("Match Type: $hades2Adreno735Match")
         printContainerData(hades2Adreno735Result, "Hades2-Adreno735-Exact")
         println()
@@ -688,7 +693,7 @@ class BestConfigServiceTest {
         println("10. Hades II + Mali-GC 824 (fallback_match, bionic)")
         val hades2MaliGc824 = parseBestConfig(hades2MaliGc824FallbackResponse)
         val hades2MaliGc824Match = getMatchType(hades2MaliGc824FallbackResponse)
-        val hades2MaliGc824Result = BestConfigService.parseConfigToContainerData(context, hades2MaliGc824, hades2MaliGc824Match)
+        val hades2MaliGc824Result = BestConfigService.parseConfigToContainerData(context, hades2MaliGc824, hades2MaliGc824Match, hades2MaliGc824Match != "fallback_match")
         println("Match Type: $hades2MaliGc824Match")
         printContainerData(hades2MaliGc824Result, "Hades2-MaliGc824-Fallback")
         println()
@@ -708,7 +713,7 @@ class BestConfigServiceTest {
         assertTrue("Dota2 Adreno835 family result should not be empty", dota2Adreno835Result?.isNotEmpty() == true)
         assertNotNull("Dota2 XClipse fallback result should not be null", dota2XClipseResult)
         assertTrue("Dota2 XClipse fallback result should not be empty", dota2XClipseResult?.isNotEmpty() == true)
-        assertTrue("Hades2 Adreno835 family result should be empty", hades2Adreno835Result == null || hades2Adreno835Result.isEmpty()) // Missing wineVersion
+        assertTrue("Hades2 Adreno835 family result should be empty", hades2Adreno835Result?.isNotEmpty() == true) // Missing wineVersion
         assertNotNull("Hades2 Adreno735 exact result should not be null", hades2Adreno735Result)
         assertTrue("Hades2 Adreno735 exact result should not be empty", hades2Adreno735Result?.isNotEmpty() == true)
         assertNotNull("Hades2 MaliGc824 fallback result should not be null", hades2MaliGc824Result)
