@@ -16,5 +16,5 @@ data class SteamFriend(
         get() = (state.code() in 1..6)
 
     val isPlayingGame: Boolean
-        get() = if (isOnline) gameAppID > 0 || gameName.isEmpty().not() else false
+        get() = if (isOnline) gameAppID > 0 || gameName.isNotBlank() else false
 }
