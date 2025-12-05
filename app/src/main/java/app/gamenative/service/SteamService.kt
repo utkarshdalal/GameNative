@@ -2701,10 +2701,4 @@ class SteamService : Service(), IChallengeUrlChanged {
         val ticket = getEncryptedAppTicket(appId) ?: return null
         return Base64.encodeToString(ticket, Base64.NO_WRAP)
     }
-
-    fun updateLocalPersona(
-
-    ) {
-        _localPersona.update { it.copy() }
-    }
 }
