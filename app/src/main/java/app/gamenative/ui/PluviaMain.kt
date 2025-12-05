@@ -63,12 +63,10 @@ import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
-import app.gamenative.ui.screen.chat.ChatScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameFeedbackUtils
@@ -924,30 +922,6 @@ fun PluviaMain(
                     isOffline = isOffline,
                 )
             }
-
-            /** Full Screen Chat **/
-
-            /** Full Screen Chat **/
-            composable(
-                route = "chat/{id}",
-                arguments = listOf(
-                    navArgument(PluviaScreen.Chat.ARG_ID) {
-                        type = NavType.LongType
-                    },
-                ),
-            ) {
-                val id = it.arguments?.getLong(PluviaScreen.Chat.ARG_ID) ?: throw RuntimeException("Unable to get ID to chat")
-                ChatScreen(
-                    friendId = id,
-                    onBack = {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            navController.popBackStack()
-                        }
-                    },
-                )
-            }
-
-            /** Game Screen **/
 
             /** Game Screen **/
             composable(route = PluviaScreen.XServer.route) {
