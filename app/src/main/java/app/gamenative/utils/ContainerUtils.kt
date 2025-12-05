@@ -617,7 +617,7 @@ object ContainerUtils {
                 if (appInfo != null) {
                     val gameName = appInfo.name
                     val gpuName = GPUInformation.getRenderer(context)
-                    
+
                     // Check cache first (synchronous, fast)
                     // If not cached, make request on background thread (not UI thread)
                     runBlocking(Dispatchers.IO) {
@@ -646,7 +646,7 @@ object ContainerUtils {
         }
 
         // Initialize container with default/custom config or best config
-        val containerData = if (customConfig != null) {
+        var containerData = if (customConfig != null) {
             // Use custom config, but ensure drives are set if not specified
             if (customConfig.drives == Container.DEFAULT_DRIVES) {
                 customConfig.copy(drives = drives)
@@ -704,7 +704,7 @@ object ContainerUtils {
         // Apply best config map to containerData if available
         // Note: When applyKnownConfig=false (container creation), map only contains executablePath and useLegacyDRM
         // When applyKnownConfig=true, map contains all validated fields from the best config
-        var finalContainerData = if (bestConfigMap != null && bestConfigMap.isNotEmpty()) {
+        containerData = if (bestConfigMap != null && bestConfigMap.isNotEmpty()) {
             var updatedData = containerData
             bestConfigMap.forEach { (key, value) ->
                 updatedData = when (key) {
@@ -720,7 +720,7 @@ object ContainerUtils {
 
         // If custom config is provided, just apply it and return
         if (customConfig?.dxwrapper != null) {
-            applyToContainer(context, container, finalContainerData)
+            applyToContainer(context, container, containerData)
             return container
         }
 
@@ -751,13 +751,13 @@ object ContainerUtils {
                     val newDxWrapper = when {
                         dxVersion == 12 -> "vkd3d"
                         dxVersion in 1..8 -> "wined3d"
-                        else -> finalContainerData.dxwrapper // Keep existing for DX10/11 or errors
+                        else -> containerData.dxwrapper // Keep existing for DX10/11 or errors
                     }
 
                     // Update the wrapper if needed
-                    if (newDxWrapper != finalContainerData.dxwrapper) {
+                    if (newDxWrapper != containerData.dxwrapper) {
                         Timber.i("Setting DX wrapper for app $appId to $newDxWrapper (DirectX version: $dxVersion)")
-                        finalContainerData = finalContainerData.copy(dxwrapper = newDxWrapper)
+                        containerData = containerData.copy(dxwrapper = newDxWrapper)
                     }
                 } catch (e: Exception) {
                     Timber.w(e, "Error determining DirectX version: ${e.message}")
@@ -767,7 +767,7 @@ object ContainerUtils {
         }
 
         // Apply container data with the determined DX wrapper
-        applyToContainer(context, container, finalContainerData)
+        applyToContainer(context, container, containerData)
         return container
     }
 
