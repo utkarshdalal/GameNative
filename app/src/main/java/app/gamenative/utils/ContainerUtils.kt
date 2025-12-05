@@ -278,6 +278,38 @@ object ContainerUtils {
         applyToContainer(context, container, containerData)
     }
 
+    /**
+     * Applies best config map to containerData, handling all possible fields.
+     * Used when applyKnownConfig=true returns all validated fields.
+     */
+    fun applyBestConfigMapToContainerData(containerData: ContainerData, bestConfigMap: Map<String, Any?>): ContainerData {
+        var updatedData = containerData
+        bestConfigMap.forEach { (key, value) ->
+            updatedData = when (key) {
+                "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
+                "graphicsDriver" -> value?.let { updatedData.copy(graphicsDriver = it as? String ?: updatedData.graphicsDriver) } ?: updatedData
+                "graphicsDriverVersion" -> value?.let { updatedData.copy(graphicsDriverVersion = it as? String ?: updatedData.graphicsDriverVersion) } ?: updatedData
+                "graphicsDriverConfig" -> value?.let { updatedData.copy(graphicsDriverConfig = it as? String ?: updatedData.graphicsDriverConfig) } ?: updatedData
+                "dxwrapper" -> value?.let { updatedData.copy(dxwrapper = it as? String ?: updatedData.dxwrapper) } ?: updatedData
+                "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) } ?: updatedData
+                "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
+                "startupSelection" -> value?.let { updatedData.copy(startupSelection = (it as? Int)?.toByte() ?: updatedData.startupSelection) } ?: updatedData
+                "box64Version" -> value?.let { updatedData.copy(box64Version = it as? String ?: updatedData.box64Version) } ?: updatedData
+                "box64Preset" -> value?.let { updatedData.copy(box64Preset = it as? String ?: updatedData.box64Preset) } ?: updatedData
+                "containerVariant" -> value?.let { updatedData.copy(containerVariant = it as? String ?: updatedData.containerVariant) } ?: updatedData
+                "wineVersion" -> value?.let { updatedData.copy(wineVersion = it as? String ?: updatedData.wineVersion) } ?: updatedData
+                "emulator" -> value?.let { updatedData.copy(emulator = it as? String ?: updatedData.emulator) } ?: updatedData
+                "fexcoreVersion" -> value?.let { updatedData.copy(fexcoreVersion = it as? String ?: updatedData.fexcoreVersion) } ?: updatedData
+                "fexcoreTSOMode" -> value?.let { updatedData.copy(fexcoreTSOMode = it as? String ?: updatedData.fexcoreTSOMode) } ?: updatedData
+                "fexcoreX87Mode" -> value?.let { updatedData.copy(fexcoreX87Mode = it as? String ?: updatedData.fexcoreX87Mode) } ?: updatedData
+                "fexcoreMultiBlock" -> value?.let { updatedData.copy(fexcoreMultiBlock = it as? String ?: updatedData.fexcoreMultiBlock) } ?: updatedData
+                "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+                else -> updatedData
+            }
+        }
+        return updatedData
+    }
+
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
         applyToContainer(context, container, containerData, saveToDisk = true)
     }
@@ -577,7 +609,7 @@ object ContainerUtils {
         }
 
         // Check for cached best config (only for Steam games, only if no custom config provided)
-        var bestConfigData: ContainerData? = null
+        var bestConfigMap: Map<String, Any?>? = null
         if (gameSource == GameSource.STEAM && customConfig == null) {
             try {
                 val gameId = extractGameIdFromContainerId(appId)
@@ -596,10 +628,11 @@ object ContainerUtils {
                                 val parsedConfig = BestConfigService.parseConfigToContainerData(
                                     context,
                                     bestConfig.bestConfig,
-                                    bestConfig.matchType
+                                    bestConfig.matchType,
+                                    false
                                 )
-                                if (parsedConfig != null) {
-                                    bestConfigData = parsedConfig
+                                if (parsedConfig != null && parsedConfig.isNotEmpty()) {
+                                    bestConfigMap = parsedConfig
                                 }
                             }
                         } catch (e: Exception) {
@@ -620,9 +653,6 @@ object ContainerUtils {
             } else {
                 customConfig
             }
-        } else if (bestConfigData != null) {
-            // Use best config from API/cache (drives are set separately below)
-            bestConfigData.copy(drives = drives)
         } else {
             // Use default config with drives
             ContainerData(
@@ -671,9 +701,26 @@ object ContainerUtils {
             )
         }
 
+        // Apply best config map to containerData if available
+        // Note: When applyKnownConfig=false (container creation), map only contains executablePath and useLegacyDRM
+        // When applyKnownConfig=true, map contains all validated fields from the best config
+        var finalContainerData = if (bestConfigMap != null && bestConfigMap.isNotEmpty()) {
+            var updatedData = containerData
+            bestConfigMap.forEach { (key, value) ->
+                updatedData = when (key) {
+                    "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
+                    "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+                    else -> updatedData
+                }
+            }
+            updatedData
+        } else {
+            containerData
+        }
+
         // If custom config is provided, just apply it and return
         if (customConfig?.dxwrapper != null) {
-            applyToContainer(context, container, containerData)
+            applyToContainer(context, container, finalContainerData)
             return container
         }
 
@@ -704,13 +751,13 @@ object ContainerUtils {
                     val newDxWrapper = when {
                         dxVersion == 12 -> "vkd3d"
                         dxVersion in 1..8 -> "wined3d"
-                        else -> containerData.dxwrapper // Keep existing for DX10/11 or errors
+                        else -> finalContainerData.dxwrapper // Keep existing for DX10/11 or errors
                     }
 
                     // Update the wrapper if needed
-                    if (newDxWrapper != containerData.dxwrapper) {
+                    if (newDxWrapper != finalContainerData.dxwrapper) {
                         Timber.i("Setting DX wrapper for app $appId to $newDxWrapper (DirectX version: $dxVersion)")
-                        containerData.dxwrapper = newDxWrapper
+                        finalContainerData = finalContainerData.copy(dxwrapper = newDxWrapper)
                     }
                 } catch (e: Exception) {
                     Timber.w(e, "Error determining DirectX version: ${e.message}")
@@ -720,7 +767,7 @@ object ContainerUtils {
         }
 
         // Apply container data with the determined DX wrapper
-        applyToContainer(context, container, containerData)
+        applyToContainer(context, container, finalContainerData)
         return container
     }
 

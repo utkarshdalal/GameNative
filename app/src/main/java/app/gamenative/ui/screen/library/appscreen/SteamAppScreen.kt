@@ -254,25 +254,20 @@ class SteamAppScreen : BaseAppScreen() {
         var compatibilityMessage by remember { mutableStateOf<String?>(null) }
         var compatibilityColor by remember { mutableStateOf<ULong?>(null) }
         LaunchedEffect(isInstalled, gameId, appInfo.name) {
-            if (!isInstalled) {
-                // Check if container exists
-                try {
-                    val gpuName = GPUInformation.getRenderer(context)
-                    val bestConfig = BestConfigService.fetchBestConfig(appInfo.name, gpuName)
-                    if (bestConfig != null) {
-                        val message = BestConfigService.getCompatibilityMessage(bestConfig.matchType)
-                        compatibilityMessage = message.text
-                        compatibilityColor = message.color.value
-                    } else {
-                        compatibilityMessage = null
-                        compatibilityColor = null
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("SteamAppScreen").e(e, "Failed to fetch best config")
+            // Check if container exists
+            try {
+                val gpuName = GPUInformation.getRenderer(context)
+                val bestConfig = BestConfigService.fetchBestConfig(appInfo.name, gpuName)
+                if (bestConfig != null) {
+                    val message = BestConfigService.getCompatibilityMessage(bestConfig.matchType)
+                    compatibilityMessage = message.text
+                    compatibilityColor = message.color.value
+                } else {
                     compatibilityMessage = null
                     compatibilityColor = null
                 }
-            } else {
+            } catch (e: Exception) {
+                Timber.tag("SteamAppScreen").e(e, "Failed to fetch best config")
                 compatibilityMessage = null
                 compatibilityColor = null
             }
@@ -716,6 +711,70 @@ class SteamAppScreen : BaseAppScreen() {
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
+                            }
+                        }
+                    }
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.UseKnownConfig,
+                onClick = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val container = ContainerUtils.getOrCreateContainer(context, appId)
+                            val containerData = ContainerUtils.toContainerData(container)
+                            val gameName = appInfo.name
+                            val gpuName = GPUInformation.getRenderer(context)
+
+                            val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
+                            if (bestConfig != null && bestConfig.matchType != "no_match") {
+                                val parsedConfig = BestConfigService.parseConfigToContainerData(
+                                    context,
+                                    bestConfig.bestConfig,
+                                    bestConfig.matchType,
+                                    true // applyKnownConfig=true to get all fields
+                                )
+
+                                if (parsedConfig != null && parsedConfig.isNotEmpty()) {
+                                    val updatedContainerData = ContainerUtils.applyBestConfigMapToContainerData(
+                                        containerData,
+                                        parsedConfig
+                                    )
+                                    ContainerUtils.applyToContainer(context, container, updatedContainerData)
+
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Best config applied successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                } else {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Known config invalid",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        context,
+                                        "No best config available for this game",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to apply known config: ${e.message}")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "Failed to apply config: ${e.message ?: "Unknown error"}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }

@@ -181,10 +181,10 @@ object BestConfigService {
     }
 
     /**
-     * Validates component versions in the ContainerData.
-     * Returns null if any version doesn't exist in resource arrays (strict validation).
+     * Validates component versions in the filtered JSON.
+     * Updates invalid versions to PrefManager defaults and continues validation.
      */
-    private fun validateComponentVersions(context: Context, config: ContainerData): ContainerData? {
+    private fun validateComponentVersions(context: Context, filteredJson: JSONObject): Boolean {
         // Get resource arrays (same as ContainerConfigDialog)
         val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
         val vkd3dVersions = context.resources.getStringArray(R.array.vkd3d_version_entries).toList()
@@ -209,94 +209,110 @@ object BestConfigService {
             }
         }
 
+        // Get values from JSON (only if present)
+        val dxwrapper = filteredJson.optString("dxwrapper", "")
+        val dxwrapperConfig = filteredJson.optString("dxwrapperConfig", "")
+        val containerVariant = filteredJson.optString("containerVariant", "")
+        val box64Version = filteredJson.optString("box64Version", "")
+        val wineVersion = filteredJson.optString("wineVersion", "")
+        val emulator = filteredJson.optString("emulator", "")
+        val fexcoreVersion = filteredJson.optString("fexcoreVersion", "")
+        val graphicsDriver = filteredJson.optString("graphicsDriver", "")
+        val graphicsDriverConfig = filteredJson.optString("graphicsDriverConfig", "")
+        val box64Preset = filteredJson.optString("box64Preset", "")
+
         // Validate DXVK version
-        if (config.dxwrapper == "dxvk" && config.dxwrapperConfig.isNotEmpty()) {
-            val kvs = KeyValueSet(config.dxwrapperConfig)
+        if (dxwrapper == "dxvk" && dxwrapperConfig.isNotEmpty()) {
+            val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("version")
             if (version.isNotEmpty() && !versionExists(version, dxvkVersions)) {
-                Timber.tag("BestConfigService").w("DXVK version $version not found, returning null")
-                return null
+                Timber.tag("BestConfigService").w("DXVK version $version not found, updating to PrefManager default")
+                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
         // Validate VKD3D version
-        if (config.dxwrapper == "vkd3d" && config.dxwrapperConfig.isNotEmpty()) {
-            val kvs = KeyValueSet(config.dxwrapperConfig)
+        if (dxwrapper == "vkd3d" && dxwrapperConfig.isNotEmpty()) {
+            val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("vkd3dVersion")
             if (version.isNotEmpty() && !versionExists(version, vkd3dVersions)) {
-                Timber.tag("BestConfigService").w("VKD3D version $version not found, returning null")
-                return null
+                Timber.tag("BestConfigService").w("VKD3D version $version not found, updating to PrefManager default")
+                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
         // Validate Box64 version (check separately based on container variant)
         // Box64 has different version entries for bionic and glibc containers
-        val box64VersionsToCheck = when {
-            config.containerVariant.equals(Container.BIONIC, ignoreCase = true) -> box64BionicVersions
-            config.containerVariant.equals(Container.GLIBC, ignoreCase = true) -> box64Versions
-            else -> {
-                // Default based on container variant, but log warning
-                Timber.tag("BestConfigService").w("Unknown container variant '${config.containerVariant}', defaulting to glibc Box64 versions")
-                box64Versions
+        if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
+            val box64VersionsToCheck = when {
+                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> box64BionicVersions
+                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> box64Versions
+                else -> {
+                    // Default based on container variant, but log warning
+                    Timber.tag("BestConfigService").w("Unknown container variant '$containerVariant', defaulting to glibc Box64 versions")
+                    box64Versions
+                }
             }
-        }
-        if (config.box64Version.isNotEmpty() && !versionExists(config.box64Version, box64VersionsToCheck)) {
-            Timber.tag("BestConfigService").w("Box64 version ${config.box64Version} not found in ${config.containerVariant} variant entries, returning null")
-            return null
+            if (!versionExists(box64Version, box64VersionsToCheck)) {
+                Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries, updating to PrefManager default")
+                filteredJson.put("box64Version", PrefManager.box64Version)
+            }
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
-        if (config.wineVersion.contains("arm64ec", ignoreCase = true)) {
-            if (config.box64Version.isNotEmpty() && !versionExists(config.box64Version, wowBox64Versions)) {
-                Timber.tag("BestConfigService").w("WoWBox64 version ${config.box64Version} not found, returning null")
-                return null
+        if (wineVersion.contains("arm64ec", ignoreCase = true)) {
+            if (box64Version.isNotEmpty() && !versionExists(box64Version, wowBox64Versions) && emulator != "FEXCore") {
+                Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found, updating to PrefManager default")
+                filteredJson.put("box64Version", PrefManager.box64Version)
             }
         }
 
         // Validate FEXCore version
-        if (config.fexcoreVersion.isNotEmpty() && !versionExists(config.fexcoreVersion, fexcoreVersions)) {
-            Timber.tag("BestConfigService").w("FEXCore version ${config.fexcoreVersion} not found, returning null")
-            return null
+        if (fexcoreVersion.isNotEmpty() && !versionExists(fexcoreVersion, fexcoreVersions)) {
+            Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found, updating to PrefManager default")
+            filteredJson.put("fexcoreVersion", PrefManager.fexcoreVersion)
         }
 
         // Validate Wine/Proton version (check separately based on container variant)
         // Wine versions are different for bionic and glibc containers
-        val wineVersionsToCheck = when {
-            config.containerVariant.equals(Container.BIONIC, ignoreCase = true) -> bionicWineEntries
-            config.containerVariant.equals(Container.GLIBC, ignoreCase = true) -> glibcWineEntries
-            else -> {
-                // Default to all versions if variant is unknown
-                Timber.tag("BestConfigService").w("Unknown container variant '${config.containerVariant}', checking against all wine versions")
-                (bionicWineEntries + glibcWineEntries).distinct()
+        if (wineVersion.isNotEmpty() && containerVariant.isNotEmpty()) {
+            val wineVersionsToCheck = when {
+                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> bionicWineEntries
+                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> glibcWineEntries
+                else -> {
+                    // Default to all versions if variant is unknown
+                    Timber.tag("BestConfigService").w("Unknown container variant '$containerVariant', checking against all wine versions")
+                    (bionicWineEntries + glibcWineEntries).distinct()
+                }
             }
-        }
-        if (config.wineVersion.isNotEmpty() && !versionExists(config.wineVersion, wineVersionsToCheck)) {
-            Timber.tag("BestConfigService").w("Wine version ${config.wineVersion} not found in ${config.containerVariant} variant entries, returning null")
-            return null
+            if (!versionExists(wineVersion, wineVersionsToCheck)) {
+                Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries, updating to PrefManager default")
+                filteredJson.put("wineVersion", PrefManager.wineVersion)
+            }
         }
 
         // Validate graphics driver version (from graphicsDriverConfig)
-        if (config.graphicsDriverConfig.isNotEmpty()) {
-            val configMap = config.graphicsDriverConfig.split(";").associate { part ->
+        if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
+            val configMap = graphicsDriverConfig.split(";").associate { part ->
                 val kv = part.split("=", limit = 2)
                 if (kv.size == 2) kv[0] to kv[1] else part to ""
             }
             val driverVersion = configMap["version"] ?: ""
 
             if (driverVersion.isNotEmpty()) {
-                val availableVersions = if (config.containerVariant == Container.BIONIC) {
+                val availableVersions = if (containerVariant == Container.BIONIC) {
                     // For bionic containers, check against wrapper_graphics_driver_version_entries
                     context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList()
                 } else {
                     // For glibc containers, check based on driver type
                     when {
-                        config.graphicsDriver.contains("turnip", ignoreCase = true) ->
+                        graphicsDriver.contains("turnip", ignoreCase = true) ->
                             context.resources.getStringArray(R.array.turnip_version_entries).toList()
-                        config.graphicsDriver.contains("virgl", ignoreCase = true) ->
+                        graphicsDriver.contains("virgl", ignoreCase = true) ->
                             context.resources.getStringArray(R.array.virgl_version_entries).toList()
-                        config.graphicsDriver.contains("vortek", ignoreCase = true) ->
+                        graphicsDriver.contains("vortek", ignoreCase = true) ->
                             context.resources.getStringArray(R.array.vortek_version_entries).toList()
-                        config.graphicsDriver.contains("adreno", ignoreCase = true) -> {
+                        graphicsDriver.contains("adreno", ignoreCase = true) -> {
                             val base = context.resources.getStringArray(R.array.adreno_version_entries).toList()
                             try {
                                 (base + AdrenotoolsManager(context).enumarateInstalledDrivers()).distinct()
@@ -304,7 +320,7 @@ object BestConfigService {
                                 base
                             }
                         }
-                        config.graphicsDriver.contains("sd-8-elite", ignoreCase = true) ->
+                        graphicsDriver.contains("sd-8-elite", ignoreCase = true) ->
                             context.resources.getStringArray(R.array.sd8elite_version_entries).toList()
                         else ->
                             context.resources.getStringArray(R.array.zink_version_entries).toList()
@@ -312,145 +328,165 @@ object BestConfigService {
                 }
 
                 if (!versionExists(driverVersion, availableVersions)) {
-                    Timber.tag("BestConfigService").w("Graphics driver version $driverVersion not found for ${config.containerVariant} variant, returning null")
-                    return null
+                    Timber.tag("BestConfigService").w("Graphics driver version $driverVersion not found for $containerVariant variant, updating to PrefManager default")
+                    filteredJson.put("graphicsDriverConfig", PrefManager.graphicsDriverConfig)
                 }
             }
         }
 
         // Validate Box64 preset
-        val box64Preset = Box86_64PresetManager.getPreset("box64", context, config.box64Preset)
-        if (box64Preset == null) {
-            Timber.tag("BestConfigService").w("Box64 preset ${config.box64Preset} not found, returning null")
-            return null
+        if (box64Preset.isNotEmpty()) {
+            val preset = Box86_64PresetManager.getPreset("box64", context, box64Preset)
+            if (preset == null) {
+                Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found, updating to PrefManager default")
+                filteredJson.put("box64Preset", PrefManager.box64Preset)
+            }
         }
 
-        // Validate Box86 preset
-        val box86Preset = Box86_64PresetManager.getPreset("box86", context, config.box86Preset)
-        if (box86Preset == null) {
-            Timber.tag("BestConfigService").w("Box86 preset ${config.box86Preset} not found, returning null")
-            return null
-        }
-
-        return config
+        return true
     }
 
     /**
-     * Parses bestConfig JSON into ContainerData.
-     * First parses values (using PrefManager defaults), then validates component versions.
+     * Parses bestConfig JSON into a map of fields to update.
+     * First parses values (using PrefManager defaults for validation), then validates component versions.
+     * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      */
-    fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String): ContainerData? {
+    fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String, applyKnownConfig: Boolean): Map<String, Any?>? {
         try {
-            // Step 0: Validate required fields are present in original config (before filtering)
             val originalJson = JSONObject(configJson.toString())
-            
-            if (!originalJson.has("containerVariant") || originalJson.isNull("containerVariant")) {
-                Timber.tag("BestConfigService").w("containerVariant is missing or null in original config, returning null")
-                return null
-            }
-            if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
-                Timber.tag("BestConfigService").w("wineVersion is missing or null in original config, returning null")
-                return null
-            }
-            if (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper")) {
-                Timber.tag("BestConfigService").w("dxwrapper is missing or null in original config, returning null")
-                return null
-            }
-            if (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig")) {
-                Timber.tag("BestConfigService").w("dxwrapperConfig is missing or null in original config, returning null")
-                return null
-            }
-            
-            // Also check they're not empty strings
-            val containerVariant = originalJson.optString("containerVariant", "")
-            val wineVersion = originalJson.optString("wineVersion", "")
-            val dxwrapper = originalJson.optString("dxwrapper", "")
-            val dxwrapperConfig = originalJson.optString("dxwrapperConfig", "")
-            
-            if (containerVariant.isEmpty()) {
-                Timber.tag("BestConfigService").w("containerVariant is empty in original config, returning null")
-                return null
-            }
-            if (wineVersion.isEmpty()) {
-                Timber.tag("BestConfigService").w("wineVersion is empty in original config, returning null")
-                return null
-            }
-            if (dxwrapper.isEmpty()) {
-                Timber.tag("BestConfigService").w("dxwrapper is empty in original config, returning null")
-                return null
-            }
-            if (dxwrapperConfig.isEmpty()) {
-                Timber.tag("BestConfigService").w("dxwrapperConfig is empty in original config, returning null")
-                return null
+
+            if (!applyKnownConfig){
+                val resultMap = mutableMapOf<String, Any?>()
+                if (originalJson.has("executablePath") && !originalJson.isNull("executablePath")) {
+                    resultMap["executablePath"] = originalJson.optString("executablePath", "")
+                }
+                if (originalJson.has("useLegacyDRM") && !originalJson.isNull("useLegacyDRM")) {
+                    resultMap["useLegacyDRM"] = originalJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
+                }
+                return resultMap
             }
 
-            // Step 1: Filter config based on match type
-            val filteredConfig = filterConfigByMatchType(configJson, matchType)
-            val filteredJson = JSONObject(filteredConfig.toString())
+            else {
+                if (!originalJson.has("containerVariant") || originalJson.isNull("containerVariant")) {
+                    Timber.tag("BestConfigService").w("containerVariant is missing or null in original config, returning empty map")
+                    return mapOf()
+                }
 
-            // Step 2: Parse values into ContainerData (using PrefManager defaults)
-            var config = ContainerData(
-                envVars = filteredJson.optString("envVars", PrefManager.envVars),
-                graphicsDriver = filteredJson.optString("graphicsDriver", PrefManager.graphicsDriver),
-                graphicsDriverVersion = filteredJson.optString("graphicsDriverVersion", PrefManager.graphicsDriverVersion),
-                graphicsDriverConfig = filteredJson.optString("graphicsDriverConfig", PrefManager.graphicsDriverConfig),
-                dxwrapper = filteredJson.optString("dxwrapper", PrefManager.dxWrapper),
-                dxwrapperConfig = filteredJson.optString("dxwrapperConfig", PrefManager.dxWrapperConfig),
-                audioDriver = filteredJson.optString("audioDriver", PrefManager.audioDriver),
-                wincomponents = filteredJson.optString("wincomponents", PrefManager.winComponents),
-                execArgs = filteredJson.optString("execArgs", PrefManager.execArgs),
-                launchRealSteam = filteredJson.optBoolean("launchRealSteam", PrefManager.launchRealSteam),
-                steamType = filteredJson.optString("steamType", "normal"),
-                cpuList = filteredJson.optString("cpuList", PrefManager.cpuList),
-                cpuListWoW64 = filteredJson.optString("cpuListWoW64", PrefManager.cpuListWoW64),
-                wow64Mode = filteredJson.optBoolean("wow64Mode", PrefManager.wow64Mode),
-                startupSelection = filteredJson.optInt("startupSelection", PrefManager.startupSelection).toByte(),
-                box86Version = filteredJson.optString("box86Version", PrefManager.box86Version),
-                box64Version = filteredJson.optString("box64Version", PrefManager.box64Version),
-                box86Preset = filteredJson.optString("box86Preset", PrefManager.box86Preset),
-                box64Preset = filteredJson.optString("box64Preset", PrefManager.box64Preset),
-                desktopTheme = filteredJson.optString("desktopTheme", ""),
-                containerVariant = filteredJson.optString("containerVariant", PrefManager.containerVariant),
-                wineVersion = filteredJson.optString("wineVersion", PrefManager.wineVersion),
-                emulator = filteredJson.optString("emulator", PrefManager.emulator),
-                fexcoreVersion = filteredJson.optString("fexcoreVersion", PrefManager.fexcoreVersion),
-                fexcoreTSOMode = filteredJson.optString("fexcoreTSOMode", PrefManager.fexcoreTSOMode),
-                fexcoreX87Mode = filteredJson.optString("fexcoreX87Mode", PrefManager.fexcoreX87Mode),
-                fexcoreMultiBlock = filteredJson.optString("fexcoreMultiBlock", PrefManager.fexcoreMultiBlock),
-                renderer = filteredJson.optString("renderer", PrefManager.renderer),
-                csmt = filteredJson.optBoolean("csmt", PrefManager.csmt),
-                videoPciDeviceID = filteredJson.optInt("videoPciDeviceID", PrefManager.videoPciDeviceID),
-                offScreenRenderingMode = filteredJson.optString("offScreenRenderingMode", PrefManager.offScreenRenderingMode),
-                strictShaderMath = filteredJson.optBoolean("strictShaderMath", PrefManager.strictShaderMath),
-                useDRI3 = filteredJson.optBoolean("useDRI3", PrefManager.useDRI3),
-                videoMemorySize = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize),
-                mouseWarpOverride = filteredJson.optString("mouseWarpOverride", PrefManager.mouseWarpOverride),
-                sdlControllerAPI = filteredJson.optBoolean("sdlControllerAPI", true),
-                enableXInput = filteredJson.optBoolean("enableXInput", PrefManager.xinputEnabled),
-                enableDInput = filteredJson.optBoolean("enableDInput", PrefManager.dinputEnabled),
-                dinputMapperType = filteredJson.optInt("dinputMapperType", PrefManager.dinputMapperType).toByte(),
-                disableMouseInput = filteredJson.optBoolean("disableMouseInput", PrefManager.disableMouseInput),
-                touchscreenMode = filteredJson.optBoolean("touchscreenMode", false),
-                language = filteredJson.optString("language", PrefManager.containerLanguage),
-                emulateKeyboardMouse = filteredJson.optBoolean("emulateKeyboardMouse", false),
-                forceDlc = filteredJson.optBoolean("forceDlc", PrefManager.forceDlc),
-                useLegacyDRM = filteredJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM),
-                sharpnessEffect = filteredJson.optString("sharpnessEffect", PrefManager.sharpnessEffect),
-                sharpnessLevel = filteredJson.optInt("sharpnessLevel", PrefManager.sharpnessLevel),
-                sharpnessDenoise = filteredJson.optInt("sharpnessDenoise", PrefManager.sharpnessDenoise),
-            )
+                val containerVariant = originalJson.optString("containerVariant", "")
 
-            // Step 3: Validate component versions against resource arrays
-            val validatedConfig = validateComponentVersions(context, config)
-            if (validatedConfig == null) {
-                Timber.tag("BestConfigService").w("Component version validation failed, returning null")
-                return null
+                if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
+                    if (containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
+                        originalJson.put("wineVersion", "wine-9.2-x86_64")
+                    }
+                    else {
+                        Timber.tag("BestConfigService").w("wineVersion is missing or null in original config, returning empty map")
+                        return mapOf()
+                    }
+                }
+                if (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper")) {
+                    Timber.tag("BestConfigService").w("dxwrapper is missing or null in original config, returning empty map")
+                    return mapOf()
+                }
+                if (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig")) {
+                    Timber.tag("BestConfigService").w("dxwrapperConfig is missing or null in original config, returning empty map")
+                    return mapOf()
+                }
+
+                // Also check they're not empty strings
+                val wineVersion = originalJson.optString("wineVersion", "")
+                val dxwrapper = originalJson.optString("dxwrapper", "")
+                val dxwrapperConfig = originalJson.optString("dxwrapperConfig", "")
+
+                if (containerVariant.isEmpty()) {
+                    Timber.tag("BestConfigService").w("containerVariant is empty in original config, returning empty map")
+                    return mapOf()
+                }
+                if (wineVersion.isEmpty()) {
+                    Timber.tag("BestConfigService").w("wineVersion is empty in original config, returning empty map")
+                    return mapOf()
+                }
+                if (dxwrapper.isEmpty()) {
+                    Timber.tag("BestConfigService").w("dxwrapper is empty in original config, returning empty map")
+                    return mapOf()
+                }
+                if (dxwrapperConfig.isEmpty()) {
+                    Timber.tag("BestConfigService").w("dxwrapperConfig is empty in original config, returning empty map")
+                    return mapOf()
+                }
+
+                // Step 1: Filter config based on match type
+                val updatedConfigJson = Json.parseToJsonElement(originalJson.toString()).jsonObject
+                val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType)
+                val filteredJson = JSONObject(filteredConfig.toString())
+                
+                // Step 2: Validate component versions against resource arrays
+                if (!validateComponentVersions(context, filteredJson)) {
+                    Timber.tag("BestConfigService").w("Component version validation failed, returning empty map")
+                    return mapOf()
+                }
+
+                // Step 3: Build map with only fields present in filteredJson (not defaults)
+                val resultMap = mutableMapOf<String, Any?>()
+                if (filteredJson.has("executablePath") && !filteredJson.isNull("executablePath")) {
+                    resultMap["executablePath"] = filteredJson.optString("executablePath", "")
+                }
+                if (filteredJson.has("graphicsDriver") && !filteredJson.isNull("graphicsDriver")) {
+                    resultMap["graphicsDriver"] = filteredJson.optString("graphicsDriver", "")
+                }
+                if (filteredJson.has("graphicsDriverVersion") && !filteredJson.isNull("graphicsDriverVersion")) {
+                    resultMap["graphicsDriverVersion"] = filteredJson.optString("graphicsDriverVersion", "")
+                }
+                if (filteredJson.has("graphicsDriverConfig") && !filteredJson.isNull("graphicsDriverConfig")) {
+                    resultMap["graphicsDriverConfig"] = filteredJson.optString("graphicsDriverConfig", "")
+                }
+                if (filteredJson.has("dxwrapper") && !filteredJson.isNull("dxwrapper")) {
+                    resultMap["dxwrapper"] = filteredJson.optString("dxwrapper", "")
+                }
+                if (filteredJson.has("dxwrapperConfig") && !filteredJson.isNull("dxwrapperConfig")) {
+                    resultMap["dxwrapperConfig"] = filteredJson.optString("dxwrapperConfig", "")
+                }
+                if (filteredJson.has("execArgs") && !filteredJson.isNull("execArgs")) {
+                    resultMap["execArgs"] = filteredJson.optString("execArgs", "")
+                }
+                if (filteredJson.has("startupSelection") && !filteredJson.isNull("startupSelection")) {
+                    resultMap["startupSelection"] = filteredJson.optInt("startupSelection", PrefManager.startupSelection).toByte()
+                }
+                if (filteredJson.has("box64Version") && !filteredJson.isNull("box64Version")) {
+                    resultMap["box64Version"] = filteredJson.optString("box64Version", "")
+                }
+                if (filteredJson.has("box64Preset") && !filteredJson.isNull("box64Preset")) {
+                    resultMap["box64Preset"] = filteredJson.optString("box64Preset", "")
+                }
+                if (filteredJson.has("containerVariant") && !filteredJson.isNull("containerVariant")) {
+                    resultMap["containerVariant"] = filteredJson.optString("containerVariant", "")
+                }
+                if (filteredJson.has("wineVersion") && !filteredJson.isNull("wineVersion")) {
+                    resultMap["wineVersion"] = filteredJson.optString("wineVersion", "")
+                }
+                if (filteredJson.has("emulator") && !filteredJson.isNull("emulator")) {
+                    resultMap["emulator"] = filteredJson.optString("emulator", "")
+                }
+                if (filteredJson.has("fexcoreVersion") && !filteredJson.isNull("fexcoreVersion")) {
+                    resultMap["fexcoreVersion"] = filteredJson.optString("fexcoreVersion", "")
+                }
+                if (filteredJson.has("fexcoreTSOMode") && !filteredJson.isNull("fexcoreTSOMode")) {
+                    resultMap["fexcoreTSOMode"] = filteredJson.optString("fexcoreTSOMode", "")
+                }
+                if (filteredJson.has("fexcoreX87Mode") && !filteredJson.isNull("fexcoreX87Mode")) {
+                    resultMap["fexcoreX87Mode"] = filteredJson.optString("fexcoreX87Mode", "")
+                }
+                if (filteredJson.has("fexcoreMultiBlock") && !filteredJson.isNull("fexcoreMultiBlock")) {
+                    resultMap["fexcoreMultiBlock"] = filteredJson.optString("fexcoreMultiBlock", "")
+                }
+                if (filteredJson.has("useLegacyDRM") && !filteredJson.isNull("useLegacyDRM")) {
+                    resultMap["useLegacyDRM"] = filteredJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
+                }
+
+                return resultMap
             }
-
-            return validatedConfig
         } catch (e: Exception) {
             Timber.tag("BestConfigService").e(e, "Failed to parse config to ContainerData: ${e.message}")
-            return null
+            return mapOf()
         }
     }
 }

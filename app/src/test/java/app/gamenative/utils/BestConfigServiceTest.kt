@@ -29,7 +29,7 @@ class BestConfigServiceTest {
     """.trimIndent()
 
     private val detectiveDotsonMaliResponse = """
-        {"bestConfig":{"id":"STEAM_2450840","name":"","drives":"D:/storage/emulated/0/DownloadE:/data/data/app.gamenative/storageA:/data/user/0/app.gamenative/Steam/steamapps/common/Detective Dotson","lc_all":"en_US.utf8","cpuList":"0,1,2,3,4,5,6,7","envVars":"ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem DXVK_FRAME_RATE=60","showFPS":false,"useDRI3":true,"emulator":"FEXCore","execArgs":"","forceDlc":false,"language":"english","rcfileId":0,"dxwrapper":"dxvk","extraData":{"dxwrapper":"dxvk-2.6.1-gplasync","appVersion":"6","imgVersion":"24","audioDriver":"pulseaudio","desktopTheme":"LIGHT,IMAGE,#0277bd,1280x720","wincomponents":"direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0","config_changed":"true","graphicsDriver":"turnip-25.2.0-22.2.5","startupSelection":"1","discord_support_prompt_shown":"true"},"inputType":3,"steamType":"normal","wow64Mode":true,"screenSize":"1280x720","audioDriver":"pulseaudio","box64Preset":"UNITY_MONO_BLEEDING_EDGE","box86Preset":"COMPATIBILITY","installPath":"","wineVersion":"proton-9.0-x86_64","box64Version":"0.3.6","box86Version":"0.3.2","cpuListWoW64":"0,1,2,3,4,5,6,7","desktopTheme":"LIGHT,IMAGE,#0277bd","useLegacyDRM":false,"midiSoundFont":"","wincomponents":"direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0","executablePath":"DetectiveDotson.exe","fexcoreVersion":"2507","graphicsDriver":"turnip","needsUnpacking":false,"dxwrapperConfig":"version=2.6.1-gplasync,framerate=0,maxDeviceMemory=0,async=1,asyncCache=1,vkd3dVersion=2.14.1,vkd3dLevel=12_1","launchRealSteam":false,"touchscreenMode":false,"containerVariant":"glibc","dinputMapperType":1,"sdlControllerAPI":true,"startupSelection":1,"allowSteamUpdates":false,"controllerMapping":"","disableMouseInput":false,"primaryController":1,"emulateKeyboardMouse":false,"graphicsDriverConfig":"version=turnip25.3.0_R3_Auto;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal","graphicsDriverVersion":"","controllerEmulationBindings":{"A":"KEY_SPACE","B":"KEY_E","X":"KEY_Q","Y":"KEY_TAB","L1":"KEY_SHIFT_L","L2":"MOUSE_LEFT_BUTTON","L3":"NONE","R1":"KEY_CTRL_R","R2":"MOUSE_RIGHT_BUTTON","R3":"NONE","START":"KEY_ENTER","SELECT":"KEY_ESC","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT"}},"matchType":"fallback_match","matchedGpu":"Adreno (TM) 735","matchedDeviceId":1}
+        {"bestConfig":{"id":"STEAM_2450840","name":"","drives":"D:/storage/emulated/0/DownloadE:/data/data/app.gamenative/storageA:/data/user/0/app.gamenative/Steam/steamapps/common/Detective Dotson","lc_all":"en_US.utf8","cpuList":"0,1,2,3,4,5,6,7","envVars":"ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem DXVK_FRAME_RATE=60","showFPS":false,"useDRI3":true,"emulator":"FEXCore","execArgs":"","forceDlc":false,"language":"english","rcfileId":0,"dxwrapper":"dxvk","extraData":{"dxwrapper":"dxvk-2.6.1-gplasync","appVersion":"6","imgVersion":"24","audioDriver":"pulseaudio","desktopTheme":"LIGHT,IMAGE,#0277bd,1280x720","wincomponents":"direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0","config_changed":"true","graphicsDriver":"turnip-25.2.0-22.2.5","startupSelection":"1","discord_support_prompt_shown":"true"},"inputType":3,"steamType":"normal","wow64Mode":true,"screenSize":"1280x720","audioDriver":"pulseaudio","box64Preset":"UNITY_MONO_BLEEDING_EDGE","box86Preset":"COMPATIBILITY","installPath":"","wineVersion":"proton-9.0-x86_64","box64Version":"0.3.6","box86Version":"0.3.2","cpuListWoW64":"0,1,2,3,4,5,6,7","desktopTheme":"LIGHT,IMAGE,#0277bd","useLegacyDRM":false,"midiSoundFont":"","wincomponents":"direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0","executablePath":"DetectiveDotson.exe","fexcoreVersion":"2507","graphicsDriver":"turnip","needsUnpacking":false,"dxwrapperConfig":"version=2.6.1-gplasync,framerate=0,maxDeviceMemory=0,async=1,asyncCache=1,vkd3dVersion=2.14.1,vkd3dLevel=12_1","launchRealSteam":false,"touchscreenMode":false,"containerVariant":"bionic","dinputMapperType":1,"sdlControllerAPI":true,"startupSelection":1,"allowSteamUpdates":false,"controllerMapping":"","disableMouseInput":false,"primaryController":1,"emulateKeyboardMouse":false,"graphicsDriverConfig":"version=turnip25.3.0_R3_Auto;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal","graphicsDriverVersion":"","controllerEmulationBindings":{"A":"KEY_SPACE","B":"KEY_E","X":"KEY_Q","Y":"KEY_TAB","L1":"KEY_SHIFT_L","L2":"MOUSE_LEFT_BUTTON","L3":"NONE","R1":"KEY_CTRL_R","R2":"MOUSE_RIGHT_BUTTON","R3":"NONE","START":"KEY_ENTER","SELECT":"KEY_ESC","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT"}},"matchType":"fallback_match","matchedGpu":"Adreno (TM) 735","matchedDeviceId":1}
     """.trimIndent()
 
     private val dota2MaliResponse = """
@@ -97,37 +97,25 @@ class BestConfigServiceTest {
 
         assertEquals("exact_gpu_match", matchType)
 
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
 
         // Verify all fields are parsed (including containerVariant, graphicsDriver, dxwrapper, dxwrapperConfig)
-        assertEquals("bionic", result!!.containerVariant)
-        assertEquals("wrapper-leegao", result.graphicsDriver)
-        assertEquals("dxvk", result.dxwrapper)
-        assertEquals("version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1", result.dxwrapperConfig)
-        assertEquals("version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal", result.graphicsDriverConfig)
+        assertEquals("bionic", result["containerVariant"])
+        assertEquals("wrapper-leegao", result["graphicsDriver"])
+        assertEquals("dxvk", result["dxwrapper"])
+        assertEquals("version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1", result["dxwrapperConfig"])
+        assertEquals("version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal", result["graphicsDriverConfig"])
 
         // Verify other fields are parsed
-        assertEquals("proton-9.0-x86_64", result.wineVersion)
-        assertEquals("0.3.6", result.box64Version)
-        assertEquals("PERFORMANCE", result.box64Preset)
-        assertEquals("Box64", result.emulator)
-        assertEquals(true, result.launchRealSteam)
-        assertEquals("ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60", result.envVars)
-        assertEquals("pulseaudio", result.audioDriver)
-        assertEquals("0,1,2,3,4,5,6,7", result.cpuList)
-        assertEquals("0,1,2,3,4,5,6,7", result.cpuListWoW64)
-        assertEquals(true, result.wow64Mode)
-        assertEquals(1, result.startupSelection.toInt())
-        assertEquals("0.3.2", result.box86Version)
-        assertEquals("COMPATIBILITY", result.box86Preset)
-        assertEquals("english", result.language)
-        assertEquals(false, result.forceDlc)
-        assertEquals(false, result.useLegacyDRM)
-        assertEquals("normal", result.steamType)
-        assertEquals(false, result.useDRI3)
-        assertEquals("2507", result.fexcoreVersion)
+        assertEquals("proton-9.0-x86_64", result["wineVersion"])
+        assertEquals("0.3.6", result["box64Version"])
+        assertEquals("PERFORMANCE", result["box64Preset"])
+        assertEquals("Box64", result["emulator"])
+        assertEquals(1, (result["startupSelection"] as? Byte)?.toInt() ?: (result["startupSelection"] as? Int))
+        assertEquals("2507", result["fexcoreVersion"])
     }
 
     @Test
@@ -138,31 +126,24 @@ class BestConfigServiceTest {
 
         assertEquals("gpu_family_match", matchType)
 
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
 
         // Verify all fields are parsed (same as exact_gpu_match)
-        assertEquals("bionic", result!!.containerVariant)
-        assertEquals("Wrapper-leegao", result.graphicsDriver)
-        assertEquals("dxvk", result.dxwrapper)
-        assertEquals("version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1", result.dxwrapperConfig)
-        assertEquals("version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal", result.graphicsDriverConfig)
-
-        // Verify showFPS and screenSize are NOT parsed (intentionally excluded)
-        assertEquals("showFPS should use PrefManager default, not from API", PrefManager.showFps, result.showFPS)
-        assertEquals("screenSize should use Container.DEFAULT_SCREEN_SIZE, not from API", Container.DEFAULT_SCREEN_SIZE, result.screenSize)
+        assertEquals("bionic", result["containerVariant"])
+        assertEquals("Wrapper-leegao", result["graphicsDriver"])
+        assertEquals("dxvk", result["dxwrapper"])
+        assertEquals("version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1", result["dxwrapperConfig"])
+        assertEquals("version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal", result["graphicsDriverConfig"])
 
         // Verify other fields
-        assertEquals("proton-9.0-arm64ec", result.wineVersion)
-        assertEquals("0.3.6", result.box64Version)
-        assertEquals("FEXCore", result.emulator)
-        assertEquals("COMPATIBILITY", result.box64Preset)
-        assertEquals("2507", result.fexcoreVersion)
-        assertEquals(false, result.launchRealSteam)
-        assertEquals("normal", result.steamType)
-        assertEquals(false, result.allowSteamUpdates)
-        assertEquals(true, result.useDRI3)
+        assertEquals("proton-9.0-arm64ec", result["wineVersion"])
+        assertEquals("0.3.6", result["box64Version"])
+        assertEquals("FEXCore", result["emulator"])
+        assertEquals("COMPATIBILITY", result["box64Preset"])
+        assertEquals("2507", result["fexcoreVersion"])
     }
 
     @Test
@@ -172,37 +153,19 @@ class BestConfigServiceTest {
 
         assertEquals("fallback_match", matchType)
 
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
 
-        // Verify excluded fields use PrefManager defaults (not from API)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.graphicsDriver, result!!.graphicsDriver)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapper, result.dxwrapper)
-        assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapperConfig, result.dxwrapperConfig)
-
-        // Verify containerVariant IS parsed (NOT excluded in fallback_match)
-        assertEquals("containerVariant should be parsed even in fallback_match", "bionic", result.containerVariant)
-
-        // Verify other fields are still parsed
-        assertEquals("proton-9.0-x86_64", result.wineVersion)
-        assertEquals("0.3.6", result.box64Version)
-        assertEquals("PERFORMANCE", result.box64Preset)
-        assertEquals("Box64", result.emulator)
-        assertEquals(true, result.launchRealSteam)
-        assertEquals("ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60", result.envVars)
-        assertEquals("pulseaudio", result.audioDriver)
-        assertEquals("0,1,2,3,4,5,6,7", result.cpuList)
-        assertEquals("0,1,2,3,4,5,6,7", result.cpuListWoW64)
-        assertEquals(true, result.wow64Mode)
-        assertEquals(1, result.startupSelection.toInt())
-        assertEquals("0.3.2", result.box86Version)
-        assertEquals("COMPATIBILITY", result.box86Preset)
-        assertEquals("english", result.language)
-        assertEquals(false, result.forceDlc)
-        assertEquals(false, result.useLegacyDRM)
-        assertEquals("normal", result.steamType)
-        assertEquals(false, result.allowSteamUpdates)
+        // For fallback_match, only executablePath and useLegacyDRM should be in the map
+        assertTrue("executablePath should be in map", result.containsKey("executablePath"))
+        assertTrue("useLegacyDRM should be in map", result.containsKey("useLegacyDRM"))
+        
+        // Excluded fields should NOT be in the map
+        assertFalse("graphicsDriver should NOT be in map for fallback_match", result.containsKey("graphicsDriver"))
+        assertFalse("dxwrapper should NOT be in map for fallback_match", result.containsKey("dxwrapper"))
+        assertFalse("dxwrapperConfig should NOT be in map for fallback_match", result.containsKey("dxwrapperConfig"))
     }
 
     @Test
@@ -212,7 +175,7 @@ class BestConfigServiceTest {
 
         assertEquals("fallback_match", matchType)
 
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
 
@@ -222,7 +185,7 @@ class BestConfigServiceTest {
         assertEquals("Excluded fields should use PrefManager defaults", PrefManager.dxWrapperConfig, result.dxwrapperConfig)
 
         // Verify containerVariant IS parsed (NOT excluded in fallback_match)
-        assertEquals("containerVariant should be parsed even in fallback_match", "glibc", result.containerVariant)
+        assertEquals("containerVariant should be parsed even in fallback_match", "bionic", result.containerVariant)
 
         // Verify showFPS and screenSize are NOT parsed (intentionally excluded)
         assertEquals("showFPS should use PrefManager default, not from API", PrefManager.showFps, result.showFPS)
@@ -231,7 +194,7 @@ class BestConfigServiceTest {
         // Verify other fields are parsed
         assertEquals("FEXCore", result.emulator)
         assertEquals("2507", result.fexcoreVersion)
-        assertEquals("wine-9.2-x86_64", result.wineVersion)
+        assertEquals("proton-9.0-x86_64", result.wineVersion)
         assertEquals("0.3.6", result.box64Version)
         assertEquals("UNITY_MONO_BLEEDING_EDGE", result.box64Preset)
         assertEquals("ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem DXVK_FRAME_RATE=60", result.envVars)
@@ -249,7 +212,7 @@ class BestConfigServiceTest {
 
         assertEquals("fallback_match", matchType)
 
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
 
@@ -282,20 +245,21 @@ class BestConfigServiceTest {
         val bestConfig = parseBestConfig(cs2MaliExactMatchResponse)
         val matchType = getMatchType(cs2MaliExactMatchResponse)
 
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
 
         // Verify versions are preserved if they exist in resource arrays
         // DXVK version "async-1.10.3" should be in dxvk_version_entries
-        assertTrue("DXVK version should be valid", result!!.dxwrapperConfig.contains("async-1.10.3"))
+        val dxwrapperConfig = result!!["dxwrapperConfig"] as? String ?: ""
+        assertTrue("DXVK version should be valid", dxwrapperConfig.contains("async-1.10.3"))
 
         // Box64 version "0.3.6" should be in box64_bionic_version_entries (for bionic)
-        assertEquals("0.3.6", result.box64Version)
+        assertEquals("0.3.6", result["box64Version"])
     }
 
     @Test
-    fun testVersionValidation_invalidVersions_fallbackToPrefManager() {
+    fun testVersionValidation_invalidVersions_fallbackToNull() {
         // Create a config with invalid versions
         val invalidConfigJson = """
             {
@@ -311,15 +275,9 @@ class BestConfigServiceTest {
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(invalidConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
-        assertNotNull("Result should not be null", result)
-
-        // Verify invalid versions fall back to PrefManager defaults
-        assertEquals("Invalid Box64 version should fall back to PrefManager", PrefManager.box64Version, result!!.box64Version)
-        assertEquals("Invalid FEXCore version should fall back to PrefManager", PrefManager.fexcoreVersion, result.fexcoreVersion)
-        assertEquals("Invalid Wine version should fall back to PrefManager", PrefManager.wineVersion, result.wineVersion)
-        assertEquals("Invalid DXVK version should fall back to PrefManager", PrefManager.dxWrapperConfig, result.dxwrapperConfig)
+        assertNull("Result should not be null", result)
     }
 
     @Test
@@ -327,6 +285,8 @@ class BestConfigServiceTest {
         // Test bionic container with Box64 version
         val bionicConfigJson = """
             {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
                 "containerVariant": "bionic",
                 "box64Version": "0.3.6",
                 "wineVersion": "proton-9.0-x86_64"
@@ -334,13 +294,15 @@ class BestConfigServiceTest {
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(bionicConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // For bionic, should check against box64_bionic_version_entries
         // If version exists, it should be preserved
-        assertEquals("0.3.6", result!!.box64Version)
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        assertEquals("0.3.6", result["box64Version"])
     }
 
     @Test
@@ -348,20 +310,25 @@ class BestConfigServiceTest {
         // Test glibc container with Box64 version
         val glibcConfigJson = """
             {
+                "wineVersion": "invalid-wine-version",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
                 "containerVariant": "glibc",
                 "box64Version": "0.3.6",
-                "wineVersion": "proton-9.0-x86_64"
+                "wineVersion": "wine-9.2-x86_64"
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(glibcConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // For glibc, should check against box64_version_entries
         // If version exists, it should be preserved
-        assertEquals("0.3.6", result!!.box64Version)
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        assertEquals("0.3.6", result["box64Version"])
     }
 
     @Test
@@ -369,6 +336,9 @@ class BestConfigServiceTest {
         // Test bionic container with graphics driver version
         val bionicConfigJson = """
             {
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
                 "containerVariant": "bionic",
                 "graphicsDriver": "Wrapper",
                 "graphicsDriverConfig": "version=System"
@@ -376,13 +346,16 @@ class BestConfigServiceTest {
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(bionicConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // For bionic, should check against wrapper_graphics_driver_version_entries
         // "System" should be in that array
-        assertTrue("Graphics driver config should contain System", result!!.graphicsDriverConfig.contains("System"))
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        val graphicsDriverConfig = result["graphicsDriverConfig"] as? String ?: ""
+        assertTrue("Graphics driver config should contain System", graphicsDriverConfig.contains("System"))
     }
 
     @Test
@@ -390,6 +363,9 @@ class BestConfigServiceTest {
         // Test glibc container with turnip graphics driver
         val glibcConfigJson = """
             {
+                "wineVersion": "wine-9.2-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
                 "containerVariant": "glibc",
                 "graphicsDriver": "turnip",
                 "graphicsDriverConfig": "version=25.3.0"
@@ -397,13 +373,16 @@ class BestConfigServiceTest {
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(glibcConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // For glibc with turnip, should check against turnip_version_entries
         // "25.3.0" should be in that array
-        assertTrue("Graphics driver config should contain 25.3.0", result!!.graphicsDriverConfig.contains("25.3.0"))
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        val graphicsDriverConfig = result["graphicsDriverConfig"] as? String ?: ""
+        assertTrue("Graphics driver config should contain 25.3.0", graphicsDriverConfig.contains("25.3.0"))
     }
 
     @Test
@@ -411,19 +390,24 @@ class BestConfigServiceTest {
         // Create a minimal config with only a few fields
         val minimalConfigJson = """
             {
+                "wineVersion": "wine-9.2-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
                 "containerVariant": "glibc",
                 "box64Version": "0.3.6"
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(minimalConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // Verify provided fields are used
-        assertEquals("wine-9.2-x86_64", result!!.wineVersion)
-        assertEquals("0.3.6", result.box64Version)
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        assertEquals("wine-9.2-x86_64", result["wineVersion"])
+        assertEquals("0.3.6", result["box64Version"])
 
         // Note: showFPS is currently being parsed, but user says it should NOT be parsed
         // screenSize is NOT being parsed (not in ContainerData constructor call) - this is correct
@@ -444,16 +428,18 @@ class BestConfigServiceTest {
         // Create a config with empty string fields
         val emptyFieldsConfigJson = """
             {
+                "dxwrapper": "dxvk",
+                "containerVariant": "bionic",
+                "dxwrapperConfig": "version=1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=999.99.99,vkd3dLevel=12_1",
                 "envVars": "",
                 "graphicsDriver": "",
-                "dxwrapper": "",
-                "wineVersion": "",
+                "wineVersion": "proton-9.0-arm64ec",
                 "box64Version": ""
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(emptyFieldsConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
@@ -470,19 +456,24 @@ class BestConfigServiceTest {
         // Test with arm64ec wine version (should use wowbox64 versions)
         val arm64ecConfigJson = """
             {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
                 "wineVersion": "proton-9.0-arm64ec",
                 "box64Version": "0.3.7"
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(arm64ecConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // If version exists in wowbox64_version_entries, it should be preserved
         // Otherwise, should fall back to PrefManager default
-        assertNotNull("Box64 version should be set", result!!.box64Version)
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        assertNotNull("Box64 version should be set", result["box64Version"])
     }
 
     @Test
@@ -490,18 +481,23 @@ class BestConfigServiceTest {
         // Test DXVK version validation
         val dxvkConfigJson = """
             {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-arm64ec",
                 "dxwrapper": "dxvk",
                 "dxwrapperConfig": "version=async-1.10.3"
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(dxvkConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // "async-1.10.3" should be in dxvk_version_entries, so it should be preserved
-        assertTrue("DXVK version should be preserved if valid", result!!.dxwrapperConfig.contains("async-1.10.3"))
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        val dxwrapperConfig = result["dxwrapperConfig"] as? String ?: ""
+        assertTrue("DXVK version should be preserved if valid", dxwrapperConfig.contains("async-1.10.3"))
     }
 
     @Test
@@ -509,22 +505,27 @@ class BestConfigServiceTest {
         // Test VKD3D version validation
         val vkd3dConfigJson = """
             {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-arm64ec",
                 "dxwrapper": "vkd3d",
                 "dxwrapperConfig": "vkd3dVersion=2.14.1"
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(vkd3dConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
         assertNotNull("Result should not be null", result)
 
         // "2.14.1" should be in vkd3d_version_entries, so it should be preserved
-        assertTrue("VKD3D version should be preserved if valid", result!!.dxwrapperConfig.contains("2.14.1"))
+        assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
+        val dxwrapperConfig = result["dxwrapperConfig"] as? String ?: ""
+        assertTrue("VKD3D version should be preserved if valid", dxwrapperConfig.contains("2.14.1"))
     }
 
     @Test
-    fun testAllInvalidVersions_fallbackToDefaults() {
+    fun testAllInvalidVersions_fallbackToNull() {
         // Test that all downloadable components with invalid versions fall back to PrefManager defaults
         val invalidVersionsConfigJson = """
             {
@@ -556,70 +557,19 @@ class BestConfigServiceTest {
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(invalidVersionsConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
-        assertNotNull("Result should not be null", result)
-
-        // Verify all invalid versions fall back to PrefManager defaults
-        assertEquals("Box64 version should fall back to PrefManager default", PrefManager.box64Version, result!!.box64Version)
-        assertEquals("FEXCore version should fall back to PrefManager default", PrefManager.fexcoreVersion, result.fexcoreVersion)
-        assertEquals("Wine version should fall back to PrefManager default", PrefManager.wineVersion, result.wineVersion)
-
-        // Verify DXVK version in dxwrapperConfig falls back to default
-        // The dxwrapperConfig should contain the default DXVK version from PrefManager
-        val defaultDxvkConfig = PrefManager.dxWrapperConfig
-        assertTrue("DXVK version should fall back to PrefManager default in dxwrapperConfig",
-            result.dxwrapperConfig.contains(defaultDxvkConfig.split(",").firstOrNull { it.startsWith("version=") }?.substringAfter("version=") ?: ""))
-
-        // Verify VKD3D version in dxwrapperConfig falls back to default
-        // Extract VKD3D version from default config
-        val defaultVkd3dVersion = defaultDxvkConfig.split(",").firstOrNull { it.startsWith("vkd3dVersion=") }?.substringAfter("vkd3dVersion=")
-        if (defaultVkd3dVersion != null) {
-            assertTrue("VKD3D version should fall back to PrefManager default in dxwrapperConfig",
-                result.dxwrapperConfig.contains("vkd3dVersion=$defaultVkd3dVersion"))
-        }
-
-        // Verify graphics driver version in graphicsDriverConfig falls back to default
-        // For bionic containers, check against wrapper_graphics_driver_version_entries
-        // For glibc containers with turnip, check against turnip_version_entries
-        // Since we're using bionic, the default should be from PrefManager.graphicsDriverConfig
-        val defaultGraphicsDriverConfig = PrefManager.graphicsDriverConfig
-        // The version might be in a different format, so we check that it doesn't contain the invalid version
-        assertFalse("Graphics driver config should not contain invalid version",
-            result.graphicsDriverConfig.contains("invalid-turnip-999.99.99"))
-        // It should contain the default version format or structure
-        assertTrue("Graphics driver config should use PrefManager default structure",
-            result.graphicsDriverConfig.isNotEmpty())
-
-        // Verify invalid presets fall back to PrefManager defaults
-        assertEquals("Box64 preset should fall back to PrefManager default", PrefManager.box64Preset, result.box64Preset)
-        assertEquals("Box86 preset should fall back to PrefManager default", PrefManager.box86Preset, result.box86Preset)
-
-        // Verify other fields that don't require version validation are still parsed
-        assertEquals("containerVariant should still be parsed", "bionic", result.containerVariant)
-        assertEquals("dxwrapper should still be parsed", "dxvk", result.dxwrapper)
-        assertEquals("emulator should still be parsed", "FEXCore", result.emulator)
-        assertEquals("envVars should still be parsed", "TEST_VAR=test", result.envVars)
-        assertEquals("audioDriver should still be parsed", "pulseaudio", result.audioDriver)
-        assertEquals("cpuList should still be parsed", "0,1,2,3", result.cpuList)
-        assertEquals("cpuListWoW64 should still be parsed", "0,1,2,3", result.cpuListWoW64)
-        assertEquals("wow64Mode should still be parsed", true, result.wow64Mode)
-        assertEquals("startupSelection should still be parsed", 1, result.startupSelection.toInt())
-        assertEquals("box86Version should still be parsed", "0.3.2", result.box86Version)
-        // Presets should fall back to defaults since they were invalid
-        assertEquals("box86Preset should fall back to PrefManager default", PrefManager.box86Preset, result.box86Preset)
-        assertEquals("box64Preset should fall back to PrefManager default", PrefManager.box64Preset, result.box64Preset)
-        assertEquals("language should still be parsed", "english", result.language)
-        assertEquals("steamType should still be parsed", "normal", result.steamType)
-        assertEquals("useDRI3 should still be parsed", true, result.useDRI3)
-        assertEquals("launchRealSteam should still be parsed", false, result.launchRealSteam)
+        assertNull("Result should not be null", result)
     }
 
     @Test
-    fun testInvalidPresets_fallbackToDefaults() {
+    fun testInvalidPresets_returnNull() {
         // Test that invalid Box64 and Box86 presets fall back to PrefManager defaults
         val invalidPresetsConfigJson = """
             {
+                "wineVersion": "proton-9.0-arm64ec",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=invalid-dxvk-999.99.99,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=999.99.99,vkd3dLevel=12_1",
                 "containerVariant": "bionic",
                 "box64Preset": "INVALID_PRESET_999",
                 "box86Preset": "INVALID_PRESET_999",
@@ -640,29 +590,9 @@ class BestConfigServiceTest {
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(invalidPresetsConfigJson).jsonObject
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match")
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
 
-        assertNotNull("Result should not be null", result)
-
-        // Verify invalid presets fall back to PrefManager defaults
-        assertEquals("Box64 preset should fall back to PrefManager default", PrefManager.box64Preset, result!!.box64Preset)
-        assertEquals("Box86 preset should fall back to PrefManager default", PrefManager.box86Preset, result.box86Preset)
-
-        // Verify other fields are still parsed
-        assertEquals("containerVariant should still be parsed", "bionic", result.containerVariant)
-        assertEquals("box64Version should still be parsed", "0.3.6", result.box64Version)
-        assertEquals("box86Version should still be parsed", "0.3.2", result.box86Version)
-        assertEquals("emulator should still be parsed", "FEXCore", result.emulator)
-        assertEquals("envVars should still be parsed", "TEST_VAR=test", result.envVars)
-        assertEquals("audioDriver should still be parsed", "pulseaudio", result.audioDriver)
-        assertEquals("cpuList should still be parsed", "0,1,2,3", result.cpuList)
-        assertEquals("cpuListWoW64 should still be parsed", "0,1,2,3", result.cpuListWoW64)
-        assertEquals("wow64Mode should still be parsed", true, result.wow64Mode)
-        assertEquals("startupSelection should still be parsed", 1, result.startupSelection.toInt())
-        assertEquals("language should still be parsed", "english", result.language)
-        assertEquals("steamType should still be parsed", "normal", result.steamType)
-        assertEquals("useDRI3 should still be parsed", true, result.useDRI3)
-        assertEquals("launchRealSteam should still be parsed", false, result.launchRealSteam)
+        assertNull("Result should not be null", result)
     }
 
     /**
@@ -763,53 +693,41 @@ class BestConfigServiceTest {
         printContainerData(hades2MaliGc824Result, "Hades2-MaliGc824-Fallback")
         println()
 
-        // All tests should pass (not null)
+        // All tests should pass (not null or empty)
         assertNotNull("CS2 Adreno result should not be null", cs2AdrenoResult)
+        assertTrue("CS2 Adreno result should not be empty", cs2AdrenoResult?.isNotEmpty() == true)
         assertNotNull("Detective Mali result should not be null", detectiveMaliResult)
+        assertTrue("Detective Mali result should not be empty", detectiveMaliResult?.isNotEmpty() == true)
         assertNotNull("Dota2 Mali result should not be null", dota2MaliResult)
+        assertTrue("Dota2 Mali result should not be empty", dota2MaliResult?.isNotEmpty() == true)
         assertNotNull("CS2 Mali exact result should not be null", cs2MaliResult)
+        assertTrue("CS2 Mali exact result should not be empty", cs2MaliResult?.isNotEmpty() == true)
         assertNotNull("Dota2 Adreno830 exact result should not be null", dota2Adreno830Result)
+        assertTrue("Dota2 Adreno830 exact result should not be empty", dota2Adreno830Result?.isNotEmpty() == true)
         assertNotNull("Dota2 Adreno835 family result should not be null", dota2Adreno835Result)
+        assertTrue("Dota2 Adreno835 family result should not be empty", dota2Adreno835Result?.isNotEmpty() == true)
         assertNotNull("Dota2 XClipse fallback result should not be null", dota2XClipseResult)
-        assertNotNull("Hades2 Adreno835 family result should not be null", hades2Adreno835Result)
+        assertTrue("Dota2 XClipse fallback result should not be empty", dota2XClipseResult?.isNotEmpty() == true)
+        assertTrue("Hades2 Adreno835 family result should be empty", hades2Adreno835Result == null || hades2Adreno835Result.isEmpty()) // Missing wineVersion
         assertNotNull("Hades2 Adreno735 exact result should not be null", hades2Adreno735Result)
+        assertTrue("Hades2 Adreno735 exact result should not be empty", hades2Adreno735Result?.isNotEmpty() == true)
         assertNotNull("Hades2 MaliGc824 fallback result should not be null", hades2MaliGc824Result)
+        assertTrue("Hades2 MaliGc824 fallback result should not be empty", hades2MaliGc824Result?.isNotEmpty() == true)
     }
 
     /**
-     * Helper function to print ContainerData in a readable format
+     * Helper function to print Map in a readable format
      */
-    private fun printContainerData(data: ContainerData?, testName: String) {
-        if (data == null) {
-            println("  Result: null")
+    private fun printContainerData(data: Map<String, Any?>?, testName: String) {
+        if (data == null || data.isEmpty()) {
+            println("  Result: null or empty")
             return
         }
 
         println("  Result for $testName:")
-        println("    containerVariant: ${data.containerVariant}")
-        println("    graphicsDriver: ${data.graphicsDriver}")
-        println("    graphicsDriverConfig: ${data.graphicsDriverConfig}")
-        println("    dxwrapper: ${data.dxwrapper}")
-        println("    dxwrapperConfig: ${data.dxwrapperConfig}")
-        println("    wineVersion: ${data.wineVersion}")
-        println("    box64Version: ${data.box64Version}")
-        println("    box64Preset: ${data.box64Preset}")
-        println("    fexcoreVersion: ${data.fexcoreVersion}")
-        println("    emulator: ${data.emulator}")
-        println("    screenSize: ${data.screenSize} (NOT parsed from API, uses Container.DEFAULT_SCREEN_SIZE)")
-        println("    showFPS: ${data.showFPS} (currently parsed from API, but should NOT be - uses PrefManager.showFps: ${PrefManager.showFps})")
-        println("    launchRealSteam: ${data.launchRealSteam}")
-        println("    envVars: ${data.envVars.take(100)}...") // Truncate long env vars
-        println("    audioDriver: ${data.audioDriver}")
-        println("    cpuList: ${data.cpuList}")
-        println("    wow64Mode: ${data.wow64Mode}")
-        println("    startupSelection: ${data.startupSelection}")
-        println("    box86Version: ${data.box86Version}")
-        println("    box86Preset: ${data.box86Preset}")
-        println("    language: ${data.language}")
-        println("    steamType: ${data.steamType}")
-        println("    allowSteamUpdates: ${data.allowSteamUpdates}")
-        println("    useDRI3: ${data.useDRI3}")
+        data.forEach { (key, value) ->
+            println("    $key: $value")
+        }
     }
 
     @Test
@@ -817,66 +735,275 @@ class BestConfigServiceTest {
         // Test that all important fields are being parsed correctly
         val bestConfig = parseBestConfig(cs2MaliExactMatchResponse)
         val matchType = getMatchType(cs2MaliExactMatchResponse)
-        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType)
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
 
         assertNotNull("Result should not be null", result)
+        assertTrue("Result should not be empty", result!!.isNotEmpty())
 
-        // Test every field that should be parsed
-        assertEquals("envVars should be parsed", "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60", result!!.envVars)
-        assertEquals("graphicsDriver should be parsed in exact match", "wrapper-leegao", result.graphicsDriver)
-        assertEquals("graphicsDriverConfig should be parsed in exact match", "version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal", result.graphicsDriverConfig)
-        assertEquals("dxwrapper should be parsed in exact match", "dxvk", result.dxwrapper)
-        assertEquals("dxwrapperConfig should be parsed in exact match", "version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1", result.dxwrapperConfig)
-        assertEquals("audioDriver should be parsed", "pulseaudio", result.audioDriver)
-        assertEquals("wincomponents should be parsed", "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0", result.wincomponents)
-        assertEquals("execArgs should be parsed", "", result.execArgs)
-        assertEquals("launchRealSteam should be parsed", true, result.launchRealSteam)
-        assertEquals("steamType should be parsed", "normal", result.steamType)
-        // allowSteamUpdates is not parsed (removed from implementation), uses ContainerData default (false)
-        assertEquals("allowSteamUpdates should use ContainerData default (false), not from API", false, result.allowSteamUpdates)
-        assertEquals("cpuList should be parsed", "0,1,2,3,4,5,6,7", result.cpuList)
-        assertEquals("cpuListWoW64 should be parsed", "0,1,2,3,4,5,6,7", result.cpuListWoW64)
-        assertEquals("wow64Mode should be parsed", true, result.wow64Mode)
-        assertEquals("startupSelection should be parsed", 1, result.startupSelection.toInt())
-        assertEquals("box86Version should be parsed", "0.3.2", result.box86Version)
-        assertEquals("box64Version should be parsed", "0.3.6", result.box64Version)
-        assertEquals("box86Preset should be parsed", "COMPATIBILITY", result.box86Preset)
-        assertEquals("box64Preset should be parsed", "PERFORMANCE", result.box64Preset)
-        assertEquals("containerVariant should be parsed", "bionic", result.containerVariant)
-        assertEquals("wineVersion should be parsed", "proton-9.0-x86_64", result.wineVersion)
-        assertEquals("emulator should be parsed", "Box64", result.emulator)
-        assertEquals("fexcoreVersion should be parsed", "2507", result.fexcoreVersion)
-        assertEquals("fexcoreTSOMode should use PrefManager default if not in API", PrefManager.fexcoreTSOMode, result.fexcoreTSOMode)
-        assertEquals("fexcoreX87Mode should use PrefManager default if not in API", PrefManager.fexcoreX87Mode, result.fexcoreX87Mode)
-        assertEquals("fexcoreMultiBlock should use PrefManager default if not in API", PrefManager.fexcoreMultiBlock, result.fexcoreMultiBlock)
-        assertEquals("renderer should use PrefManager default if not in API", PrefManager.renderer, result.renderer)
-        assertEquals("csmt should use PrefManager default if not in API", PrefManager.csmt, result.csmt)
-        assertEquals("videoPciDeviceID should use PrefManager default if not in API", PrefManager.videoPciDeviceID, result.videoPciDeviceID)
-        assertEquals("offScreenRenderingMode should use PrefManager default if not in API", PrefManager.offScreenRenderingMode, result.offScreenRenderingMode)
-        assertEquals("strictShaderMath should use PrefManager default if not in API", PrefManager.strictShaderMath, result.strictShaderMath)
-        assertEquals("useDRI3 should be parsed", false, result.useDRI3)
-        assertEquals("videoMemorySize should use PrefManager default if not in API", PrefManager.videoMemorySize, result.videoMemorySize)
-        assertEquals("mouseWarpOverride should use PrefManager default if not in API", PrefManager.mouseWarpOverride, result.mouseWarpOverride)
-        assertEquals("sdlControllerAPI should be parsed", true, result.sdlControllerAPI)
-        assertEquals("enableXInput should use PrefManager default if not in API", PrefManager.xinputEnabled, result.enableXInput)
-        assertEquals("enableDInput should use PrefManager default if not in API", PrefManager.dinputEnabled, result.enableDInput)
-        assertEquals("dinputMapperType should use PrefManager default if not in API", PrefManager.dinputMapperType, result.dinputMapperType.toInt())
-        assertEquals("disableMouseInput should use PrefManager default if not in API", PrefManager.disableMouseInput, result.disableMouseInput)
-        assertEquals("touchscreenMode should be parsed", false, result.touchscreenMode)
-        assertEquals("language should be parsed", "english", result.language)
-        assertEquals("emulateKeyboardMouse should be parsed", false, result.emulateKeyboardMouse)
-        assertEquals("forceDlc should be parsed", false, result.forceDlc)
-        assertEquals("useLegacyDRM should be parsed", false, result.useLegacyDRM)
-        assertEquals("sharpnessEffect should use PrefManager default if not in API", PrefManager.sharpnessEffect, result.sharpnessEffect)
-        assertEquals("sharpnessLevel should use PrefManager default if not in API", PrefManager.sharpnessLevel, result.sharpnessLevel)
-        assertEquals("sharpnessDenoise should use PrefManager default if not in API", PrefManager.sharpnessDenoise, result.sharpnessDenoise)
+        // Test fields that should be in the map for exact_gpu_match
+        assertEquals("graphicsDriver should be parsed in exact match", "wrapper-leegao", result["graphicsDriver"])
+        assertEquals("graphicsDriverConfig should be parsed in exact match", "version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal", result["graphicsDriverConfig"])
+        assertEquals("dxwrapper should be parsed in exact match", "dxvk", result["dxwrapper"])
+        assertEquals("dxwrapperConfig should be parsed in exact match", "version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1", result["dxwrapperConfig"])
+        assertEquals("execArgs should be parsed", "", result["execArgs"])
+        assertEquals("containerVariant should be parsed", "bionic", result["containerVariant"])
+        assertEquals("wineVersion should be parsed", "proton-9.0-x86_64", result["wineVersion"])
+        assertEquals("emulator should be parsed", "Box64", result["emulator"])
+        assertEquals("fexcoreVersion should be parsed", "2507", result["fexcoreVersion"])
+        assertEquals("box64Version should be parsed", "0.3.6", result["box64Version"])
+        assertEquals("box64Preset should be parsed", "PERFORMANCE", result["box64Preset"])
+        assertEquals(1, (result["startupSelection"] as? Byte)?.toInt() ?: (result["startupSelection"] as? Int))
+        assertEquals(false, result["useLegacyDRM"])
+    }
 
-        // Note: showFPS is currently being parsed, but user says it should NOT be parsed
-        // screenSize is NOT being parsed (not in ContainerData constructor call) - this is correct
-        // screenSize will use Container.DEFAULT_SCREEN_SIZE (not parsed)
+    @Test
+    fun testMissingContainerVariant_returnsNull() {
+        // Test that missing containerVariant returns null
+        val configJson = """
+            {
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
 
-        // Verify screenSize uses default (not parsed)
-        assertEquals("screenSize should use Container.DEFAULT_SCREEN_SIZE, not from API", Container.DEFAULT_SCREEN_SIZE, result.screenSize)
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when containerVariant is missing", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testMissingWineVersion_returnsNull() {
+        // Test that missing wineVersion returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when wineVersion is missing", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testMissingDxwrapper_returnsNull() {
+        // Test that missing dxwrapper returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when dxwrapper is missing", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testMissingDxwrapperConfig_returnsNull() {
+        // Test that missing dxwrapperConfig returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when dxwrapperConfig is missing", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testEmptyContainerVariant_returnsNull() {
+        // Test that empty containerVariant returns null
+        val configJson = """
+            {
+                "containerVariant": "",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when containerVariant is empty", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testEmptyWineVersion_returnsNull() {
+        // Test that empty wineVersion returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when wineVersion is empty", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testEmptyDxwrapper_returnsNull() {
+        // Test that empty dxwrapper returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when dxwrapper is empty", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testEmptyDxwrapperConfig_returnsNull() {
+        // Test that empty dxwrapperConfig returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": ""
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when dxwrapperConfig is empty", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testAllMandatoryFieldsMissing_returnsNull() {
+        // Test that missing all mandatory fields returns null
+        val configJson = """
+            {
+                "box64Version": "0.3.6",
+                "emulator": "Box64",
+                "envVars": "TEST_VAR=test"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when all mandatory fields are missing", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testNullContainerVariant_returnsNull() {
+        // Test that null containerVariant returns null
+        val configJson = """
+            {
+                "containerVariant": null,
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when containerVariant is null", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testNullWineVersion_returnsNull() {
+        // Test that null wineVersion returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": null,
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when wineVersion is null", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testNullDxwrapper_returnsNull() {
+        // Test that null dxwrapper returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": null,
+                "dxwrapperConfig": "version=async-1.10.3"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when dxwrapper is null", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testNullDxwrapperConfig_returnsNull() {
+        // Test that null dxwrapperConfig returns null
+        val configJson = """
+            {
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-x86_64",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": null
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+
+        assertTrue("Result should be empty map when dxwrapperConfig is null", result == null || result.isEmpty())
+    }
+
+    @Test
+    fun testNidhoggResponse_missingWineVersion_returnsNull() {
+        // Test Nidhogg response where wineVersion is missing from bestConfig
+        // This simulates a real API response where wineVersion might be missing
+        // Note: wineVersion has been removed from the bestConfig object
+        val nidhoggResponse = """
+            {"bestConfig":{"id":"STEAM_94400","name":"","drives":"D:/storage/emulated/0/DownloadE:/data/data/app.gamenative/storageA:/data/user/0/app.gamenative/Steam/steamapps/common/Nidhogg","lc_all":"en_US.utf8","cpuList":"0,1,2,3,4,5,6,7","envVars":"ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60","showFPS":false,"useDRI3":true,"emulator":"FEXCore","execArgs":"","forceDlc":false,"language":"english","rcfileId":0,"dxwrapper":"dxvk","extraData":{"dxwrapper":"dxvk-async-1.10.3","appVersion":"6","imgVersion":"24","audioDriver":"pulseaudio","box64Version":"0.3.6","desktopTheme":"LIGHT,IMAGE,#0277bd,1280x720","wincomponents":"direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0","config_changed":"true","fexcoreVersion":"2507","startupSelection":"1","lastInstalledMainWrapper":"Wrapper-leegao"},"inputType":3,"steamType":"normal","wow64Mode":true,"screenSize":"1280x720","audioDriver":"pulseaudio","box64Preset":"COMPATIBILITY","box86Preset":"COMPATIBILITY","installPath":"","box64Version":"0.3.6","box86Version":"0.3.2","cpuListWoW64":"0,1,2,3,4,5,6,7","desktopTheme":"LIGHT,IMAGE,#0277bd","useLegacyDRM":false,"midiSoundFont":"","wincomponents":"direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0","executablePath":"Nidhogg.exe","fexcoreVersion":"2507","graphicsDriver":"Wrapper-leegao","needsUnpacking":false,"dxwrapperConfig":"version=async-1.10.3,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0,vkd3dVersion=2.6,vkd3dLevel=12_1","launchRealSteam":false,"sessionMetadata":{"avg_fps":58.443478,"session_length_sec":117},"touchscreenMode":false,"containerVariant":"bionic","dinputMapperType":1,"sdlControllerAPI":true,"startupSelection":1,"allowSteamUpdates":false,"controllerMapping":"","disableMouseInput":false,"primaryController":1,"emulateKeyboardMouse":false,"graphicsDriverConfig":"version=System;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Normal","graphicsDriverVersion":"","controllerEmulationBindings":{"A":"KEY_SPACE","B":"KEY_E","X":"KEY_Q","Y":"KEY_TAB","L1":"KEY_SHIFT_L","L2":"MOUSE_LEFT_BUTTON","L3":"NONE","R1":"KEY_CTRL_R","R2":"MOUSE_RIGHT_BUTTON","R3":"NONE","START":"KEY_ENTER","SELECT":"KEY_ESC","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT"}},"matchType":"gpu_family_match","matchedGpu":"Mali-G57","matchedDeviceId":285}
+        """.trimIndent()
+
+        val bestConfig = parseBestConfig(nidhoggResponse)
+        val matchType = getMatchType(nidhoggResponse)
+
+        // Verify wineVersion is actually missing from bestConfig
+        val bestConfigJson = org.json.JSONObject(bestConfig.toString())
+        assertFalse("wineVersion should be missing from bestConfig", bestConfigJson.has("wineVersion"))
+
+        val result = BestConfigService.parseConfigToContainerData(context, bestConfig, matchType, matchType != "fallback_match")
+
+        assertTrue("Result should be empty map when wineVersion is missing from bestConfig", result == null || result.isEmpty())
     }
 }
 
