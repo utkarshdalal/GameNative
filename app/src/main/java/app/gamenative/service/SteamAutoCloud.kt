@@ -455,8 +455,8 @@ object SteamAutoCloud {
 
                             Timber.i("Read $bytesRead byte(s) for block")
 
-                            val mediaType = if (blockRequest.requestHeaders.any { it.name == "Content-Type" }) {
-                                blockRequest.requestHeaders.first { it.name == "Content-Type" }.value.toMediaTypeOrNull()
+                            val mediaType = if (blockRequest.requestHeaders.any { it.name.equals("Content-Type", ignoreCase = true) }) {
+                                blockRequest.requestHeaders.first { it.name.equals("Content-Type", ignoreCase = true) }.value.toMediaTypeOrNull()
                             } else {
                                 "application/octet-stream".toMediaTypeOrNull()
                             }
