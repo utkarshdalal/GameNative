@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
@@ -40,6 +41,7 @@ fun BoxScope.RenderLayer(layer: Layer, parentSize: DpSize, binding: BindingConte
         is Layer.BorderLayer -> BorderLayerView(layer, parentSize, binding, anchor)
         is Layer.TextLayer -> TextLayerView(layer, parentSize, binding, anchor)
         is Layer.BackdropLayer -> BackdropLayerView(layer, parentSize, binding, anchor)
+        is Layer.ButtonLayer -> ButtonLayerView(layer, parentSize, binding, anchor)
     }
 }
 
@@ -143,6 +145,13 @@ private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize,
         return
     }
 
+    // Determine content scale based on scaleType attribute
+    val contentScale = when (layer.scaleType.lowercase()) {
+        "contain", "fit" -> androidx.compose.ui.layout.ContentScale.Fit
+        "stretch", "fill" -> androidx.compose.ui.layout.ContentScale.FillBounds
+        else -> androidx.compose.ui.layout.ContentScale.Crop // "cover" is default
+    }
+
     // Render the resolved image with Coil (Landscapist), keeping clipping, alpha and optional tint overlay.
     Box(
         modifier = Modifier
@@ -152,9 +161,10 @@ private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize,
             .graphicsLayer(alpha = alpha)
     ) {
         com.skydoves.landscapist.coil.CoilImage(
+            modifier = Modifier.fillMaxSize(),
             imageModel = { resolved.uri },
             imageOptions = com.skydoves.landscapist.ImageOptions(
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                contentScale = contentScale,
                 contentDescription = null,
             ),
         )
@@ -249,6 +259,19 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
         is StringOrBinding.Literal -> t.value
         is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
     }
+    val fontWeight = when (layer.fontWeight.lowercase()) {
+        "bold" -> androidx.compose.ui.text.font.FontWeight.Bold
+        "semibold" -> androidx.compose.ui.text.font.FontWeight.SemiBold
+        "medium" -> androidx.compose.ui.text.font.FontWeight.Medium
+        "light" -> androidx.compose.ui.text.font.FontWeight.Light
+        "thin" -> androidx.compose.ui.text.font.FontWeight.Thin
+        "extrabold", "black" -> androidx.compose.ui.text.font.FontWeight.ExtraBold
+        else -> androidx.compose.ui.text.font.FontWeight.Normal
+    }
+    val fontStyle = when (layer.fontStyle.lowercase()) {
+        "italic" -> androidx.compose.ui.text.font.FontStyle.Italic
+        else -> androidx.compose.ui.text.font.FontStyle.Normal
+    }
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
@@ -259,6 +282,8 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
             text = text,
             color = color,
             fontSize = spSize,
+            fontWeight = fontWeight,
+            fontStyle = fontStyle,
             maxLines = layer.maxLines ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.TopStart)
@@ -281,4 +306,36 @@ private fun BoxScope.BackdropLayerView(layer: Layer.BackdropLayer, parentSize: D
             .blur(radius = blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
             .background(tint)
     ) {}
+}
+
+@Composable
+private fun BoxScope.ButtonLayerView(layer: Layer.ButtonLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(80.dp, 40.dp), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val shape = parseCornerRadius(layer.cornerRadius)
+    val bgColorInt = binding.or(layer.backgroundColor, 0xFFE91E63.toInt())
+    val textColorInt = binding.or(layer.textColor, 0xFFFFFFFF.toInt())
+    val textSizeSp = binding.or(layer.textSize, 14f).sp
+    val text = when (val t = layer.text) {
+        is StringOrBinding.Literal -> t.value
+        is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
+    }
+    
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .graphicsLayer(alpha = alpha)
+            .clip(shape)
+            .background(Color(bgColorInt)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = Color(textColorInt),
+            fontSize = textSizeSp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }

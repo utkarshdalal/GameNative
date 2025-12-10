@@ -289,6 +289,12 @@ private fun LibraryScreenContent(
                             GameSource.CUSTOM_GAME -> true // Custom games are always "installed"
                             else -> false
                         }
+                        val installStatusLabel = if (isInstalled) {
+                            context.getString(R.string.library_installed)
+                        } else {
+                            context.getString(R.string.library_not_installed)
+                        }
+                        val installStatusColor = if (isInstalled) "#FF00C853" else "#FF888888"
 
                         mapOf(
                             "game.title" to title,
@@ -300,6 +306,8 @@ private fun LibraryScreenContent(
                             "game.compatibility.color" to compatColor,
                             "game.compatibility.visible" to if (compatStatus != null) "true" else "false",
                             "game.isInstalled" to isInstalled.toString(),
+                            "game.installStatus" to installStatusLabel,
+                            "game.installStatus.color" to installStatusColor,
                         )
                     }
                 }
@@ -320,6 +328,7 @@ private fun LibraryScreenContent(
                             onItemClick = { item -> selectedAppId = item.appId },
                             onItemFocus = { /* Can be used for preview pane later */ },
                             bindingProvider = bindingProvider,
+                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
                         )
                     }
                 } else {

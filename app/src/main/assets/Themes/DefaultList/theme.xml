@@ -1,31 +1,56 @@
 <theme>
-    <!-- Fixed UI elements -->
-    <fixed id="topBar">
+    <!-- Fixed UI elements (CSS-like positioning: positive values = inward from anchor) -->
+    <fixed id="topBar" backgroundColor="#FF000000" height="80">
         <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
-                showAppName="true" showThemeName="true" showGameCount="true" />
+                showAppName="true" showGameCount="true" />
         <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
                    backgroundColor="#FF1E1E1E" borderRadius="24" />
-        <profileButton x="-16" y="8" anchor="topRight" size="40" />
+        <profileButton x="16" y="8" anchor="topRight" size="40" />
     </fixed>
     
     <fixed id="bottomBar">
-        <filterButton x="-100" y="-24" anchor="bottomRight" expanded="true" />
-        <addButton x="-16" y="-24" anchor="bottomRight" />
+        <filterButton x="100" y="24" anchor="bottomRight" expanded="true" />
+        <addButton x="16" y="24" anchor="bottomRight" />
     </fixed>
 
     <!-- Card definitions for list items -->
     <cards>
-        <card id="listItem" width="400" height="100">
-            <image id="cover" x="0" y="0" width="100" height="100" 
-                   src="@{game.cover}" cornerRadius="8" />
-            <text id="title" x="112" y="12" width="272" height="76" 
-                  text="@{game.title}" textSize="20" color="#FFFFFFFF" maxLines="2" />
+        <card id="listItem" width="900" height="100">
+            <!-- Row background with more rounded corners -->
+            <overlay id="rowBg" x="0" y="0" width="900" height="100" 
+                     color="#FF1E1E1E" cornerRadius="16" />
+            
+            <!-- Game cover with proper padding (16px left, centered vertically) -->
+            <image id="cover" x="16" y="12" width="76" height="76" 
+                   src="@{game.cover}" cornerRadius="6" scaleType="stretch" />
+            
+            <!-- Game title - bold style -->
+            <text id="title" x="108" y="16" width="650" height="26" 
+                  text="@{game.title}" textSize="17" color="#FFFFFFFF" maxLines="1" fontWeight="bold" />
+            
+            <!-- Installation status indicator (bullet) -->
+            <text id="installIndicator" x="108" y="44" width="12" height="16"
+                  text="●" textSize="6" color="#FF888888" />
+            
+            <!-- Installation status text -->
+            <text id="installStatus" x="120" y="44" width="300" height="16"
+                  text="@{game.installStatus}" textSize="13" color="#FF888888" />
+            
+            <!-- Compatibility status (italic style) -->
+            <text id="compatStatus" x="108" y="64" width="300" height="18"
+                  text="@{game.compatibility.label}" textSize="13" 
+                  color="@{game.compatibility.color}" fontStyle="italic" />
+            
+            <!-- Open button - anchored to right side, pill shaped -->
+            <button id="openBtn" x="16" y="30" width="92" height="40" anchor="topRight"
+                    text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
+                    textSize="15" cornerRadius="20" />
         </card>
     </cards>
     
     <!-- Layout configuration - single column list -->
     <layout>
-        <grid columns="1" cellWidth="400" cellHeight="110" 
+        <grid columns="1" cellWidth="900" cellHeight="108" 
               hSpacing="0" vSpacing="8" 
               contentPaddingTop="80" contentPaddingBottom="80"
               contentPaddingStart="16" contentPaddingEnd="16"

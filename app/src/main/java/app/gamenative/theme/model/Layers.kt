@@ -1,6 +1,21 @@
 package app.gamenative.theme.model
 
 /**
+ * Anchor point for positioning layers within a card.
+ */
+enum class LayerAnchor {
+    TOP_LEFT,      // x,y refers to top-left corner (default)
+    TOP_RIGHT,     // x,y refers to top-right corner
+    TOP_CENTER,    // x,y refers to top-center
+    BOTTOM_LEFT,   // x,y refers to bottom-left corner
+    BOTTOM_RIGHT,  // x,y refers to bottom-right corner
+    BOTTOM_CENTER, // x,y refers to bottom-center
+    CENTER_LEFT,   // x,y refers to center-left
+    CENTER_RIGHT,  // x,y refers to center-right
+    CENTER,        // x,y refers to center
+}
+
+/**
  * Base layer definition used inside a [Card].
  */
 sealed class Layer {
@@ -16,6 +31,9 @@ sealed class Layer {
     /** Opacity multiplier [0f..1f]. */
     abstract val opacity: FloatOrBinding?
 
+    /** Anchor point for positioning. Determines which point of the layer the x,y refers to. */
+    abstract val anchor: LayerAnchor
+
     /**
      * Renders an image.
      */
@@ -24,6 +42,7 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Source image or binding to an image path. */
         val source: MediaSource.Image,
         /**
@@ -36,6 +55,13 @@ sealed class Layer {
         val cornerRadius: String? = null,
         /** Optional tint color (ARGB). */
         val tintColor: IntOrBinding? = null,
+        /**
+         * How the image should be scaled within its bounds (CSS-like):
+         * - "cover" = Fill container, crop if needed (default)
+         * - "contain" = Fit entire image within container
+         * - "stretch" / "fill" = Stretch to fill exactly
+         */
+        val scaleType: String = "cover",
     ) : Layer()
 
     /**
@@ -46,6 +72,7 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Source video with playback options. */
         val source: MediaSource.Video,
         /** Optional corner radius. */
@@ -60,6 +87,7 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Fill color (ARGB). */
         val color: IntOrBinding,
         /**
@@ -80,6 +108,7 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Shadow blur radius. */
         val radius: FloatOrBinding,
         /** Shadow color (ARGB). */
@@ -96,6 +125,7 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Stroke width. */
         val strokeWidth: FloatOrBinding,
         /** Border color (ARGB). */
@@ -118,6 +148,7 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Text content or binding. */
         val text: StringOrBinding,
         /** Text color (ARGB). */
@@ -128,6 +159,10 @@ sealed class Layer {
         val maxLines: Int? = null,
         /** Text alignment: "left", "center", or "right". Defaults to "left". */
         val textAlign: String = "left",
+        /** Font weight: "normal", "bold", "light", "medium", "semibold", etc. */
+        val fontWeight: String = "normal",
+        /** Font style: "normal" or "italic". */
+        val fontStyle: String = "normal",
     ) : Layer()
 
     /**
@@ -138,9 +173,31 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
         /** Blur radius. */
         val blurRadius: FloatOrBinding? = null,
         /** Optional tint color (ARGB). */
         val tintColor: IntOrBinding? = null,
+    ) : Layer()
+
+    /**
+     * Button layer - renders a clickable button (visual only, card handles click).
+     */
+    data class ButtonLayer(
+        override val id: String? = null,
+        override val position: DimOffset,
+        override val size: DimSize? = null,
+        override val opacity: FloatOrBinding? = null,
+        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        /** Button label text or binding. */
+        val text: StringOrBinding,
+        /** Button background color (ARGB). */
+        val backgroundColor: IntOrBinding,
+        /** Button text color (ARGB). */
+        val textColor: IntOrBinding,
+        /** Text size. */
+        val textSize: FloatOrBinding = FloatOrBinding.Literal(14f),
+        /** Corner radius for button shape. */
+        val cornerRadius: String? = null,
     ) : Layer()
 }

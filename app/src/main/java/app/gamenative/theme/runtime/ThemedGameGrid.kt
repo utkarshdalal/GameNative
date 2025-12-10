@@ -24,6 +24,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.data.LibraryItem
+import app.gamenative.theme.io.ThemeStringResolver
 import app.gamenative.theme.model.*
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -53,7 +55,13 @@ fun ThemedGameGrid(
     onItemClick: (LibraryItem) -> Unit = {},
     onItemFocus: (LibraryItem) -> Unit = {},
     bindingProvider: (LibraryItem) -> Map<String, String> = { emptyMap() },
+    themePath: String? = null,
 ) {
+    // String resolver for @string/ references
+    val context = LocalContext.current
+    val stringResolver = remember(themePath) {
+        ThemeStringResolver(context, context.assets)
+    }
     val cellWidthDp = (gridConfig.cellSize.width as? Dimension.Px)?.value?.dp ?: 150.dp
     val cellHeightDp = (gridConfig.cellSize.height as? Dimension.Px)?.value?.dp ?: 225.dp
     val hSpacing = gridConfig.hSpacing.dp
@@ -89,6 +97,8 @@ fun ThemedGameGrid(
                 cellSize = DpSize(cellWidthDp, cellHeightDp),
                 onClick = { onItemClick(item) },
                 onFocus = { onItemFocus(item) },
+                stringResolver = stringResolver,
+                themePath = themePath,
             )
         }
     }
@@ -105,6 +115,8 @@ private fun ThemedGameTile(
     cellSize: DpSize,
     onClick: () -> Unit,
     onFocus: () -> Unit,
+    stringResolver: ThemeStringResolver,
+    themePath: String?,
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var imageLoadFailed by remember { mutableStateOf(false) }
@@ -143,6 +155,8 @@ private fun ThemedGameTile(
                 bindings = bindings,
                 parentSize = cellSize,
                 onImageLoadFailed = { imageLoadFailed = true },
+                stringResolver = stringResolver,
+                themePath = themePath,
             )
         }
 
@@ -175,6 +189,8 @@ private fun BoxScope.RenderThemedLayer(
     bindings: Map<String, String>,
     parentSize: DpSize,
     onImageLoadFailed: () -> Unit = {},
+    stringResolver: ThemeStringResolver,
+    themePath: String?,
 ) {
     when (layer) {
         is Layer.ImageLayer -> {
@@ -187,6 +203,11 @@ private fun BoxScope.RenderThemedLayer(
             val alpha = resolveFloatBinding(layer.opacity, 1f)
 
             if (src.isNotBlank()) {
+                val contentScale = when (layer.scaleType.lowercase()) {
+                    "contain", "fit" -> ContentScale.Fit
+                    "stretch", "fill" -> ContentScale.FillBounds
+                    else -> ContentScale.Crop // "cover" is default
+                }
                 Box(
                     modifier = Modifier
                         .offset(x = x, y = y)
@@ -195,9 +216,10 @@ private fun BoxScope.RenderThemedLayer(
                         .alpha(alpha)
                 ) {
                     CoilImage(
+                        modifier = Modifier.fillMaxSize(),
                         imageModel = { src },
                         imageOptions = ImageOptions(
-                            contentScale = ContentScale.Crop,
+                            contentScale = contentScale,
                             contentDescription = null,
                         ),
                         failure = {
@@ -249,7 +271,8 @@ private fun BoxScope.RenderThemedLayer(
         }
 
         is Layer.TextLayer -> {
-            val text = resolveBinding(layer.text, bindings)
+            val rawText = resolveBinding(layer.text, bindings)
+            val text = stringResolver.resolve(rawText, themePath)
             val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
             val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
             val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
@@ -271,6 +294,19 @@ private fun BoxScope.RenderThemedLayer(
                 "right" -> Alignment.CenterEnd
                 else -> Alignment.CenterStart
             }
+            val fontWeight = when (layer.fontWeight.lowercase()) {
+                "bold" -> FontWeight.Bold
+                "semibold" -> FontWeight.SemiBold
+                "medium" -> FontWeight.Medium
+                "light" -> FontWeight.Light
+                "thin" -> FontWeight.Thin
+                "extrabold", "black" -> FontWeight.ExtraBold
+                else -> FontWeight.Normal
+            }
+            val fontStyle = when (layer.fontStyle.lowercase()) {
+                "italic" -> androidx.compose.ui.text.font.FontStyle.Italic
+                else -> androidx.compose.ui.text.font.FontStyle.Normal
+            }
 
             Box(
                 modifier = Modifier
@@ -283,7 +319,8 @@ private fun BoxScope.RenderThemedLayer(
                     text = text,
                     color = Color(color),
                     fontSize = textSizeSp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = fontWeight,
+                    fontStyle = fontStyle,
                     maxLines = layer.maxLines ?: 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = textAlignment,
@@ -354,6 +391,41 @@ private fun BoxScope.RenderThemedLayer(
                 )
             }
         }
+
+        is Layer.ButtonLayer -> {
+            val rawX = (layer.position.x as? Dimension.Px)?.value ?: 0f
+            val rawY = (layer.position.y as? Dimension.Px)?.value ?: 0f
+            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: 80.dp
+            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: 40.dp
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
+            val shape = parseCornerRadius(layer.cornerRadius)
+            // Use color resolver for system color support (@color/primary, etc.)
+            val bgColor = resolveColorBinding(layer.backgroundColor, MaterialTheme.colorScheme.primary, bindings)
+            val txtColor = resolveColorBinding(layer.textColor, MaterialTheme.colorScheme.onPrimary, bindings)
+            val rawText = resolveBinding(layer.text, bindings)
+            val text = stringResolver.resolve(rawText, themePath)
+            val textSizeSp = resolveFloatBinding(layer.textSize, 14f).sp
+            val alpha = resolveFloatBinding(layer.opacity, 1f)
+
+            Box(
+                modifier = Modifier
+                    .offset(x = pos.x, y = pos.y)
+                    .size(w, h)
+                    .alpha(alpha)
+                    .clip(shape)
+                    .background(bgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = text,
+                    color = txtColor,
+                    fontSize = textSizeSp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -382,12 +454,119 @@ private fun resolveIntBinding(value: IntOrBinding?, default: Int, bindings: Map<
     }
 }
 
+/**
+ * Resolve a color binding with support for @color/ system references.
+ * Supported system colors:
+ * - @color/primary, @color/onPrimary
+ * - @color/secondary, @color/onSecondary
+ * - @color/tertiary, @color/onTertiary
+ * - @color/background, @color/onBackground
+ * - @color/surface, @color/onSurface
+ * - @color/error, @color/onError
+ * - @color/surfaceVariant, @color/onSurfaceVariant
+ */
+@Composable
+private fun resolveColorBinding(value: IntOrBinding?, default: Color, bindings: Map<String, String> = emptyMap()): Color {
+    val colorScheme = MaterialTheme.colorScheme
+    
+    return when (value) {
+        null -> default
+        is IntOrBinding.Literal -> {
+            // Check if the literal value encodes a system color reference
+            // This happens when the XML has @color/primary as the value
+            Color(value.value)
+        }
+        is IntOrBinding.Ref -> {
+            val path = value.binding.path
+            // Check for @color/ prefix (system colors)
+            if (path.startsWith("@color/")) {
+                val colorName = path.removePrefix("@color/")
+                resolveSystemColor(colorName, colorScheme) ?: default
+            } else {
+                // Regular binding from data
+                bindings[path]?.let { parseColorString(it) }?.let { Color(it) } ?: default
+            }
+        }
+    }
+}
+
+@Composable
+private fun resolveSystemColor(name: String, colorScheme: androidx.compose.material3.ColorScheme): Color? {
+    return when (name.lowercase()) {
+        "primary" -> colorScheme.primary
+        "onprimary" -> colorScheme.onPrimary
+        "primarycontainer" -> colorScheme.primaryContainer
+        "onprimarycontainer" -> colorScheme.onPrimaryContainer
+        "secondary" -> colorScheme.secondary
+        "onsecondary" -> colorScheme.onSecondary
+        "secondarycontainer" -> colorScheme.secondaryContainer
+        "onsecondarycontainer" -> colorScheme.onSecondaryContainer
+        "tertiary" -> colorScheme.tertiary
+        "ontertiary" -> colorScheme.onTertiary
+        "tertiarycontainer" -> colorScheme.tertiaryContainer
+        "ontertiarycontainer" -> colorScheme.onTertiaryContainer
+        "background" -> colorScheme.background
+        "onbackground" -> colorScheme.onBackground
+        "surface" -> colorScheme.surface
+        "onsurface" -> colorScheme.onSurface
+        "surfacevariant" -> colorScheme.surfaceVariant
+        "onsurfacevariant" -> colorScheme.onSurfaceVariant
+        "error" -> colorScheme.error
+        "onerror" -> colorScheme.onError
+        "errorcontainer" -> colorScheme.errorContainer
+        "onerrorcontainer" -> colorScheme.onErrorContainer
+        "outline" -> colorScheme.outline
+        "outlinevariant" -> colorScheme.outlineVariant
+        else -> null
+    }
+}
+
 private fun parseColorString(s: String): Int? {
     return try {
         android.graphics.Color.parseColor(s)
     } catch (e: Exception) {
         null
     }
+}
+
+/**
+ * Calculate actual x,y position based on anchor (CSS-like positioning).
+ * 
+ * With anchor="topLeft" (default): x is from left edge, y is from top edge
+ * With anchor="topRight": x is from right edge (inward), y is from top edge
+ * With anchor="bottomRight": x is from right edge (inward), y is from bottom edge (inward)
+ * etc.
+ * 
+ * Positive values always mean "inset" from the anchor edge.
+ */
+private data class AnchoredPosition(val x: Dp, val y: Dp)
+
+private fun calculateAnchoredPosition(
+    rawX: Float,
+    rawY: Float,
+    elementWidth: Dp,
+    elementHeight: Dp,
+    parentWidth: Dp,
+    parentHeight: Dp,
+    anchor: LayerAnchor
+): AnchoredPosition {
+    val x = when (anchor) {
+        LayerAnchor.TOP_LEFT, LayerAnchor.CENTER_LEFT, LayerAnchor.BOTTOM_LEFT -> rawX.dp
+        LayerAnchor.TOP_CENTER, LayerAnchor.CENTER, LayerAnchor.BOTTOM_CENTER -> 
+            (parentWidth - elementWidth) / 2 + rawX.dp
+        LayerAnchor.TOP_RIGHT, LayerAnchor.CENTER_RIGHT, LayerAnchor.BOTTOM_RIGHT -> 
+            parentWidth - elementWidth - rawX.dp
+    }
+    
+    val y = when (anchor) {
+        LayerAnchor.TOP_LEFT, LayerAnchor.TOP_CENTER, LayerAnchor.TOP_RIGHT -> rawY.dp
+        LayerAnchor.CENTER_LEFT, LayerAnchor.CENTER, LayerAnchor.CENTER_RIGHT -> 
+            (parentHeight - elementHeight) / 2 + rawY.dp
+        LayerAnchor.BOTTOM_LEFT, LayerAnchor.BOTTOM_CENTER, LayerAnchor.BOTTOM_RIGHT -> 
+            parentHeight - elementHeight - rawY.dp
+    }
+    
+    return AnchoredPosition(x, y)
 }
 
 /**

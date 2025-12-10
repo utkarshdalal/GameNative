@@ -1,16 +1,16 @@
 <theme>
-    <!-- Fixed UI elements -->
+    <!-- Fixed UI elements (CSS-like positioning: positive values = inward from anchor) -->
     <fixed id="topBar">
         <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
                 showAppName="true" showThemeName="true" showGameCount="true" />
         <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
                    backgroundColor="#FF1E1E1E" borderRadius="24" />
-        <profileButton x="-16" y="8" anchor="topRight" size="40" />
+        <profileButton x="16" y="8" anchor="topRight" size="40" />
     </fixed>
     
     <fixed id="bottomBar">
-        <filterButton x="-100" y="-24" anchor="bottomRight" expanded="true" />
-        <addButton x="-16" y="-24" anchor="bottomRight" />
+        <filterButton x="100" y="24" anchor="bottomRight" expanded="true" />
+        <addButton x="16" y="24" anchor="bottomRight" />
     </fixed>
 
     <!-- Card definitions for carousel items -->

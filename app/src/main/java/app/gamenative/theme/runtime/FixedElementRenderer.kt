@@ -115,8 +115,9 @@ private fun BoxScope.RenderFixedElement(
     searchBarContent: @Composable () -> Unit,
 ) {
     val alignment = element.anchor.toComposeAlignment()
-    val offsetX = element.position.x.toDp()
-    val offsetY = element.position.y.toDp()
+    val rawX = element.position.x.toDp()
+    val rawY = element.position.y.toDp()
+    val (offsetX, offsetY) = calculateCssLikeOffset(rawX, rawY, element.anchor)
 
     when (element) {
         is FixedElement.Header -> {
@@ -366,6 +367,30 @@ private fun Anchor.toComposeAlignment(): Alignment = when (this) {
     Anchor.BOTTOM_LEFT -> Alignment.BottomStart
     Anchor.BOTTOM_CENTER -> Alignment.BottomCenter
     Anchor.BOTTOM_RIGHT -> Alignment.BottomEnd
+}
+
+/**
+ * Convert CSS-like positioning to Compose offset.
+ * With CSS-like positioning, positive values always mean "inward" from the anchor edge.
+ * 
+ * For example, with anchor=topRight and x=16, y=8:
+ * - x=16 means 16px from the right edge (so Compose offsetX = -16)
+ * - y=8 means 8px from the top edge (so Compose offsetY = 8)
+ */
+private fun calculateCssLikeOffset(rawX: Dp, rawY: Dp, anchor: Anchor): Pair<Dp, Dp> {
+    val offsetX = when (anchor) {
+        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> rawX
+        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> rawX
+        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> -rawX
+    }
+    
+    val offsetY = when (anchor) {
+        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
+        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> rawY
+        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> -rawY
+    }
+    
+    return Pair(offsetX, offsetY)
 }
 
 private fun Dimension.toDp(): Dp = when (this) {

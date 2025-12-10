@@ -122,6 +122,19 @@ object ThemeManager {
 
     fun getSelectedThemeEntry(): ThemeEntry? = _availableThemes.value.firstOrNull { it.id == _selectedThemeId.value }
 
+    /**
+     * Get the asset path for string resolution in the currently selected theme.
+     * For built-in themes: "Themes/<themeId>"
+     * For user themes: returns the user theme location
+     */
+    fun getActiveThemeAssetPath(): String? {
+        val entry = getSelectedThemeEntry() ?: return null
+        return when (entry.source) {
+            Source.BuiltIn -> "$ASSETS_THEMES_ROOT/${entry.location}"
+            Source.User -> entry.location
+        }
+    }
+
     fun selectTheme(id: String) {
         val match = _availableThemes.value.firstOrNull { it.id == id }
         if (match == null) {

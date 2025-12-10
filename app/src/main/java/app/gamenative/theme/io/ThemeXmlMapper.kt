@@ -140,24 +140,42 @@ object ThemeXmlMapper {
     }
     // endregion
 
+    private fun parseLayerAnchor(s: String?): LayerAnchor {
+        return when (s?.lowercase()?.replace("_", "")) {
+            "topleft" -> LayerAnchor.TOP_LEFT
+            "topcenter" -> LayerAnchor.TOP_CENTER
+            "topright" -> LayerAnchor.TOP_RIGHT
+            "centerleft" -> LayerAnchor.CENTER_LEFT
+            "center" -> LayerAnchor.CENTER
+            "centerright" -> LayerAnchor.CENTER_RIGHT
+            "bottomleft" -> LayerAnchor.BOTTOM_LEFT
+            "bottomcenter" -> LayerAnchor.BOTTOM_CENTER
+            "bottomright" -> LayerAnchor.BOTTOM_RIGHT
+            else -> LayerAnchor.TOP_LEFT
+        }
+    }
+
     private fun parseLayer(n: XmlNode): Layer? = when (n.name.lowercase()) {
         "image" -> Layer.ImageLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             source = MediaSource.Image(
                 src = stringBinding(n.attributes["src"]) ?: StringOrBinding.Literal(""),
                 fallback = stringBinding(n.attributes["fallback"]) ,
             ),
             cornerRadius = n.attributes["cornerRadius"],
             tintColor = intBinding(n.attributes["tint"]),
+            scaleType = n.attributes["scaleType"] ?: "cover",
         )
         "video" -> Layer.VideoLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             source = MediaSource.Video(
                 src = stringBinding(n.attributes["src"]) ?: StringOrBinding.Literal(""),
                 poster = stringBinding(n.attributes["poster"]),
@@ -178,6 +196,7 @@ object ThemeXmlMapper {
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0x88000000.toInt()),
             cornerRadius = n.attributes["cornerRadius"],
         )
@@ -186,6 +205,7 @@ object ThemeXmlMapper {
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             radius = floatBinding(n.attributes["radius"]) ?: FloatOrBinding.Literal(8f),
             color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0x80000000.toInt()),
             offset = DimOffset(px(n, "dx"), px(n, "dy")),
@@ -195,6 +215,7 @@ object ThemeXmlMapper {
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             strokeWidth = floatBinding(n.attributes["strokeWidth"]) ?: FloatOrBinding.Literal(2f),
             color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
             cornerRadius = n.attributes["cornerRadius"],
@@ -204,19 +225,35 @@ object ThemeXmlMapper {
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
             color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
             textSize = floatBinding(n.attributes["textSize"]) ?: FloatOrBinding.Literal(18f),
             maxLines = n.attributes["maxLines"]?.toIntOrNull(),
             textAlign = n.attributes["textAlign"] ?: "left",
+            fontWeight = n.attributes["fontWeight"] ?: "normal",
+            fontStyle = n.attributes["fontStyle"] ?: "normal",
         )
         "backdrop" -> Layer.BackdropLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
             size = size(n),
             opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
             blurRadius = floatBinding(n.attributes["blurRadius"]),
             tintColor = intBinding(n.attributes["tint"]),
+        )
+        "button" -> Layer.ButtonLayer(
+            id = n.attributes["id"],
+            position = DimOffset(px(n, "x"), px(n, "y")),
+            size = size(n),
+            opacity = floatBinding(n.attributes["opacity"]),
+            anchor = parseLayerAnchor(n.attributes["anchor"]),
+            text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
+            backgroundColor = intBinding(n.attributes["backgroundColor"]) ?: IntOrBinding.Literal(0xFFE91E63.toInt()),
+            textColor = intBinding(n.attributes["textColor"]) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
+            textSize = floatBinding(n.attributes["textSize"]) ?: FloatOrBinding.Literal(14f),
+            cornerRadius = n.attributes["cornerRadius"],
         )
         else -> null
     }
@@ -356,8 +393,15 @@ object ThemeXmlMapper {
 
     private fun intBinding(raw: String?): IntOrBinding? {
         val s = raw ?: return null
-        return if (isBinding(s)) IntOrBinding.Ref(Binding(bindingPath(s))) else IntOrBinding.Literal(parseColor(s))
+        return when {
+            isBinding(s) -> IntOrBinding.Ref(Binding(bindingPath(s)))
+            isColorRef(s) -> IntOrBinding.Ref(Binding(s)) // Keep @color/primary as binding path
+            else -> IntOrBinding.Literal(parseColor(s))
+        }
     }
+
+    /** Check for @color/ system color reference */
+    private fun isColorRef(s: String): Boolean = s.startsWith("@color/")
 
     private fun parseColor(s: String): Int {
         // Supports #AARRGGBB or 0xAARRGGBB; also #RRGGBB (assume opaque)
