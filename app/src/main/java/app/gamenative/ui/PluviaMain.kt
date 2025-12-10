@@ -1037,7 +1037,7 @@ fun preLaunchApp(
         // set up Ubuntu file system
         SplitCompat.install(context)
         if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
-            setLoadingMessage("Downloading first-time files${if(container.containerVariant.equals(Container.GLIBC)) " (1/2)" else ""}")
+            setLoadingMessage("Downloading first-time files")
             SteamService.downloadImageFs(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
@@ -1046,11 +1046,38 @@ fun preLaunchApp(
             ).await()
         }
         if (container.containerVariant.equals(Container.GLIBC) && !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")) {
-            setLoadingMessage("Downloading first-time files (2/2)")
+            setLoadingMessage("Downloading Wine")
             SteamService.downloadImageFsPatches(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
+            ).await()
+        } else {
+            if (container.wineVersion.contains("proton-9.0-arm64ec") && !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")) {
+                setLoadingMessage("Downloading arm64ec Proton")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "proton-9.0-arm64ec.txz"
+                ).await()
+            } else if (container.wineVersion.contains("proton-9.0-x86_64") && !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")) {
+                setLoadingMessage("Downloading x86_64 Proton")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "proton-9.0-x86_64.txz"
+                ).await()
+            }
+        }
+        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm.tzst")) {
+            setLoadingMessage("Downloading extras")
+            SteamService.downloadFile(
+                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                this,
+                context = context,
+                "experimental-drm.tzst"
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {

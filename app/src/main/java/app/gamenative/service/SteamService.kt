@@ -967,6 +967,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             fetchFileWithFallback("imagefs_patches_gamenative.tzst", dest, context, onDownloadProgress)
         }
 
+        fun downloadFile(
+            onDownloadProgress: (Float) -> Unit,
+            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+            context: Context,
+            fileName: String
+        ) = parentScope.async {
+            Timber.i("${fileName} will be downloaded")
+            val dest = File(instance!!.filesDir, fileName)
+            Timber.d("Downloading ${fileName} to " + dest.toString());
+            fetchFileWithFallback(fileName, dest, context, onDownloadProgress)
+        }
+
         fun downloadSteam(
             onDownloadProgress: (Float) -> Unit,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),

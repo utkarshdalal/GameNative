@@ -213,12 +213,12 @@ object SteamUtils {
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
         val imageFs = ImageFs.find(context)
+        val downloaded = File(imageFs.getFilesDir(), "experimental-drm.tzst")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
-            context.assets,
-            "experimental-drm.tzst",
+            downloaded,
             imageFs.getRootDir(),
-        );
+        )
         putBackSteamDlls(appDirPath)
         restoreUnpackedExecutable(context, steamAppId)
 
