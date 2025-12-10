@@ -782,4 +782,22 @@ object PrefManager {
     var appLanguage: String
         get() = getPref(APP_LANGUAGE, "")
         set(value) = setPref(APP_LANGUAGE, value)
+
+    // Active Theme Engine theme id (for ThemeManager)
+    private val ACTIVE_THEME_ID = stringPreferencesKey("active_theme_id")
+    var activeThemeId: String
+        get() = getPref(ACTIVE_THEME_ID, "")
+        set(value) = setPref(ACTIVE_THEME_ID, value)
+
+    // One-time migration flag: legacy Library layout -> ThemeManager theme id
+    private val THEME_LAYOUT_MIGRATED = booleanPreferencesKey("theme_layout_migrated")
+    var themeLayoutMigrated: Boolean
+        get() = getPref(THEME_LAYOUT_MIGRATED, false)
+        set(value) = setPref(THEME_LAYOUT_MIGRATED, value)
+
+    // Experimental: Use Theme Engine UI for Library screen
+    private val USE_THEME_ENGINE_UI = booleanPreferencesKey("use_theme_engine_ui")
+    var useThemeEngineUi: Boolean
+        get() = getPref(USE_THEME_ENGINE_UI, false)
+        set(value) = setPref(USE_THEME_ENGINE_UI, value)
 }

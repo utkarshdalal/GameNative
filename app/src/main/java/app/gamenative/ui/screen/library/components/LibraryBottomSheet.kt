@@ -30,6 +30,7 @@ import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.data.GameSource
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.PrefManager
 import java.util.EnumSet
 
 @Composable
@@ -85,7 +86,7 @@ fun LibraryBottomSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = stringResource(R.string.library_layout), style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.library_app_source), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow(
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -106,32 +107,36 @@ fun LibraryBottomSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = stringResource(R.string.library_layout_title), style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        FlowRow (
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FlowFilterChip(
-                onClick = { onViewChanged(PaneType.LIST) },
-                label = { Text(text = stringResource(R.string.library_layout_list)) },
-                selected = (currentView == PaneType.LIST),
-                leadingIcon = { Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = null) },
-            )
-            FlowFilterChip(
-                onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
-                label = { Text(text = stringResource(R.string.library_layout_capsule)) },
-                selected = (currentView == PaneType.GRID_CAPSULE),
-                leadingIcon = { Icon(imageVector = Icons.Default.PhotoAlbum, contentDescription = null) },
-            )
-            FlowFilterChip(
-                onClick = { onViewChanged(PaneType.GRID_HERO) },
-                label = { Text(text = stringResource(R.string.library_layout_hero)) },
-                selected = (currentView == PaneType.GRID_HERO),
-                leadingIcon = { Icon(imageVector = Icons.Default.PhotoSizeSelectActual, contentDescription = null) },
-            )
+        // Reintroduce legacy layout selector when experimental Theme Engine UI is OFF
+        if (!PrefManager.useThemeEngineUi) {
+            Text(text = stringResource(R.string.library_layout_title), style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FlowFilterChip(
+                    onClick = { onViewChanged(PaneType.LIST) },
+                    label = { Text(text = stringResource(R.string.library_layout_list)) },
+                    selected = currentView == PaneType.LIST,
+                    leadingIcon = { Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                )
+                FlowFilterChip(
+                    onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
+                    label = { Text(text = stringResource(R.string.library_layout_capsule)) },
+                    selected = currentView == PaneType.GRID_CAPSULE,
+                    leadingIcon = { Icon(imageVector = Icons.Filled.PhotoAlbum, contentDescription = null) },
+                )
+                FlowFilterChip(
+                    onClick = { onViewChanged(PaneType.GRID_HERO) },
+                    label = { Text(text = stringResource(R.string.library_layout_hero)) },
+                    selected = currentView == PaneType.GRID_HERO,
+                    leadingIcon = { Icon(imageVector = Icons.Filled.PhotoSizeSelectActual, contentDescription = null) },
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp)) // A little extra padding.
+        } else {
+            Spacer(modifier = Modifier.height(16.dp)) // Keep spacing consistency when hidden
         }
-
-        Spacer(modifier = Modifier.height(16.dp)) // A little extra padding.
     }
 }
 

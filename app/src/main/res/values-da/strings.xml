@@ -509,6 +509,7 @@
 
     <string name="library_app_type">App-type</string>
     <string name="library_app_status">App-status</string>
+    <string name="library_app_source">App-kilder</string>
     <string name="library_layout">Layout</string>
     <string name="library_layout_list">Liste</string>
     <string name="library_layout_capsule">Kapsel</string>

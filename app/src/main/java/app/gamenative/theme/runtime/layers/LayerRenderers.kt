@@ -1,0 +1,284 @@
+package app.gamenative.theme.runtime.layers
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import app.gamenative.theme.model.*
+import app.gamenative.theme.runtime.Anchor
+import app.gamenative.theme.runtime.BindingContext
+
+/** Dispatcher for rendering a single template layer. */
+@Composable
+fun BoxScope.RenderLayer(layer: Layer, parentSize: DpSize, binding: BindingContext, anchor: Anchor = Anchor.TopLeft) {
+    when (layer) {
+        is Layer.ImageLayer -> ImageLayerView(layer, parentSize, binding, anchor)
+        is Layer.VideoLayer -> VideoLayerView(layer, parentSize, binding, anchor)
+        is Layer.OverlayLayer -> OverlayLayerView(layer, parentSize, binding, anchor)
+        is Layer.ShadowLayer -> ShadowLayerView(layer, parentSize, binding, anchor)
+        is Layer.BorderLayer -> BorderLayerView(layer, parentSize, binding, anchor)
+        is Layer.TextLayer -> TextLayerView(layer, parentSize, binding, anchor)
+        is Layer.BackdropLayer -> BackdropLayerView(layer, parentSize, binding, anchor)
+    }
+}
+
+// --- Helpers ---
+
+@Composable
+private fun dimToDp(d: Dimension, maxW: Dp, maxH: Dp): Dp = when (d) {
+    is Dimension.Px -> d.value.dp
+    is Dimension.RelW -> maxW * d.fraction
+    is Dimension.RelH -> maxH * d.fraction
+}
+
+/**
+ * Parse CSS-like corner radius string.
+ * - "8" = all corners 8dp
+ * - "8 4" = top-left/bottom-right 8dp, top-right/bottom-left 4dp
+ * - "8 4 2" = top-left 8dp, top-right/bottom-left 4dp, bottom-right 2dp
+ * - "8 4 2 1" = top-left 8dp, top-right 4dp, bottom-right 2dp, bottom-left 1dp
+ */
+private fun parseCornerRadius(value: String?): RoundedCornerShape {
+    if (value.isNullOrBlank()) return RoundedCornerShape(0.dp)
+    val parts = value.trim().split("\\s+".toRegex()).mapNotNull { it.toFloatOrNull() }
+    return when (parts.size) {
+        0 -> RoundedCornerShape(0.dp)
+        1 -> RoundedCornerShape(parts[0].dp)
+        2 -> RoundedCornerShape(topStart = parts[0].dp, topEnd = parts[1].dp, bottomEnd = parts[0].dp, bottomStart = parts[1].dp)
+        3 -> RoundedCornerShape(topStart = parts[0].dp, topEnd = parts[1].dp, bottomEnd = parts[2].dp, bottomStart = parts[1].dp)
+        else -> RoundedCornerShape(topStart = parts[0].dp, topEnd = parts[1].dp, bottomEnd = parts[2].dp, bottomStart = parts[3].dp)
+    }
+}
+
+private data class Placement(val x: Dp, val y: Dp, val w: Dp, val h: Dp)
+
+@Composable
+private fun place(parent: DpSize, pos: DimOffset, size: DimSize?, defaultSize: DpSize, anchor: Anchor): Placement {
+    val w = size?.let { dimToDp(it.width, parent.width, parent.height) } ?: defaultSize.width
+    val h = size?.let { dimToDp(it.height, parent.width, parent.height) } ?: defaultSize.height
+    val x = dimToDp(pos.x, parent.width, parent.height)
+    val y = dimToDp(pos.y, parent.width, parent.height)
+    val px = when (anchor) {
+        Anchor.TopLeft -> x
+        Anchor.TopRight -> parent.width - x - w
+        Anchor.BottomLeft -> x
+        Anchor.BottomRight -> parent.width - x - w
+    }
+    val py = when (anchor) {
+        Anchor.TopLeft -> y
+        Anchor.TopRight -> y
+        Anchor.BottomLeft -> parent.height - y - h
+        Anchor.BottomRight -> parent.height - y - h
+    }
+    return Placement(px, py, w, h)
+}
+
+@Composable
+private fun BindingContext.or(value: FloatOrBinding?, default: Float): Float = when (value) {
+    null -> default
+    is FloatOrBinding.Literal -> value.value
+    is FloatOrBinding.Ref -> resolveFloat(value) ?: default
+}
+
+@Composable
+private fun BindingContext.or(value: IntOrBinding?, default: Int): Int = when (value) {
+    null -> default
+    is IntOrBinding.Literal -> value.value
+    is IntOrBinding.Ref -> resolveInt(value) ?: default
+}
+
+// --- Layer views ---
+
+@Composable
+private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val shape = parseCornerRadius(layer.cornerRadius)
+    val tintInt = binding.or(layer.tintColor, 0)
+    val tint = if (tintInt != 0) Color(tintInt) else null
+
+    // Resolve the image source using the media pipeline, mapping bindings like "game.capsule".
+    val mediaManager = remember { app.gamenative.theme.media.MediaSourceManager() }
+    val resolved = mediaManager.resolve(
+        media = layer.source,
+        allowVideo = false,
+        bindingResolver = { b ->
+            // Bridge our simple BindingContext to theme Binding resolver
+            binding.resolveString(app.gamenative.theme.model.StringOrBinding.Ref(b))
+        },
+        themeRoot = null,
+    ) as app.gamenative.theme.media.ResolvedMedia.Image
+
+    // When no image could be resolved, show a tinted placeholder to match previous behavior.
+    if (resolved.uri.isNullOrEmpty()) {
+        Box(
+            modifier = Modifier
+                .offset(p.x, p.y)
+                .size(p.w, p.h)
+                .clip(shape)
+                .graphicsLayer(alpha = alpha)
+                .background(tint ?: Color(0xFF555555))
+        ) {}
+        return
+    }
+
+    // Render the resolved image with Coil (Landscapist), keeping clipping, alpha and optional tint overlay.
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .clip(shape)
+            .graphicsLayer(alpha = alpha)
+    ) {
+        com.skydoves.landscapist.coil.CoilImage(
+            imageModel = { resolved.uri },
+            imageOptions = com.skydoves.landscapist.ImageOptions(
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                contentDescription = null,
+            ),
+        )
+        if (tint != null) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(tint)
+            ) {}
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.VideoLayerView(layer: Layer.VideoLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val corner = binding.or(layer.cornerRadius, 0f).dp
+    val shape = if (corner > 0.dp) RoundedCornerShape(corner) else RectangleShape
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .clip(shape)
+            .graphicsLayer(alpha = alpha)
+            .background(Color(0xFF303030))
+    ) {
+        Text("VIDEO", color = Color.White, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun BoxScope.OverlayLayerView(layer: Layer.OverlayLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val shape = parseCornerRadius(layer.cornerRadius)
+    val color = Color(binding.or(layer.color, 0x66000000.toInt()))
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .clip(shape)
+            .graphicsLayer(alpha = alpha)
+            .background(color)
+    ) {}
+}
+
+@Composable
+private fun BoxScope.ShadowLayerView(layer: Layer.ShadowLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val radius = binding.or(layer.radius, 0f).dp
+    val color = Color(binding.or(layer.color, 0x88000000.toInt()))
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .shadow(elevation = if (radius > 0.dp) radius / 2 else 0.dp, shape = RectangleShape, ambientColor = color, spotColor = color)
+            .graphicsLayer(alpha = alpha)
+            .background(Color.Transparent)
+    ) {}
+}
+
+@Composable
+private fun BoxScope.BorderLayerView(layer: Layer.BorderLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val width = binding.or(layer.strokeWidth, 1f).dp
+    val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
+    val shape = parseCornerRadius(layer.cornerRadius)
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .clip(shape)
+            .graphicsLayer(alpha = alpha)
+            .border(width = width, color = color, shape = shape)
+    ) {}
+}
+
+@Composable
+private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
+    val px = binding.or(layer.textSize, 16f)
+    val density = LocalDensity.current
+    val d = density.density
+    val spSize = with(density) { (px / d).sp }
+    val text = when (val t = layer.text) {
+        is StringOrBinding.Literal -> t.value
+        is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
+    }
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .graphicsLayer(alpha = alpha)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = spSize,
+            maxLines = layer.maxLines ?: Int.MAX_VALUE,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.BackdropLayerView(layer: Layer.BackdropLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val alpha = binding.or(layer.opacity, 1f)
+    val blurRadius = binding.or(layer.blurRadius, 0f).dp
+    val tintInt = binding.or(layer.tintColor, 0)
+    val tint = if (tintInt != 0) Color(tintInt) else Color.Transparent
+    Box(
+        modifier = Modifier
+            .offset(p.x, p.y)
+            .size(p.w, p.h)
+            .graphicsLayer(alpha = alpha)
+            .blur(radius = blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+            .background(tint)
+    ) {}
+}

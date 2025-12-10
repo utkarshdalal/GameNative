@@ -1,0 +1,11 @@
+<layouts>
+  <!-- Optional supporting grid below the main row (moving selection) -->
+  <grid id="supportGrid"
+        columns="6"
+        cellWidth="300"
+        cellHeight="450"
+        hSpacing="12"
+        vSpacing="12"
+        itemTemplate="capsuleSmall"
+        selectionMode="moving"/>
+</layouts>

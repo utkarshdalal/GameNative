@@ -1,0 +1,37 @@
+<theme>
+    <!-- Fixed UI elements -->
+    <fixed id="topBar">
+        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
+                showAppName="true" showThemeName="true" showGameCount="true" />
+        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
+                   backgroundColor="#FF1E1E1E" borderRadius="24" />
+        <profileButton x="-16" y="8" anchor="topRight" size="40" />
+    </fixed>
+    
+    <fixed id="bottomBar">
+        <filterButton x="-100" y="-24" anchor="bottomRight" expanded="true" />
+        <addButton x="-16" y="-24" anchor="bottomRight" />
+    </fixed>
+
+    <!-- Card definitions for big picture carousel -->
+    <cards>
+        <card id="big" width="800" height="450">
+            <!-- Large hero image -->
+            <image id="hero" x="0" y="0" width="800" height="450" 
+                   src="@{game.hero}" cornerRadius="20" />
+            
+            <!-- Subtle shade overlay -->
+            <overlay id="shade" x="0" y="0" width="800" height="450" color="#22000000" />
+            
+            <!-- Game title at bottom -->
+            <text id="title" x="24" y="380" width="752" height="48" 
+                  text="@{game.title}" textSize="28" color="#FFFFFFFF" maxLines="1" />
+        </card>
+    </cards>
+    
+    <!-- Layout configuration - big picture style carousel -->
+    <layout>
+        <carousel direction="right" itemWidth="820" itemHeight="462" 
+                  itemSpacing="24" selectionMode="stationary" itemCard="big" />
+    </layout>
+</theme>

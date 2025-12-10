@@ -64,6 +64,9 @@ class PluviaApp : SplitCompatApplication() {
         // Init our datastore preferences.
         PrefManager.init(this)
 
+        // Initialize ThemeManager (scan themes, migrate old layout to theme, and activate)
+        app.gamenative.theme.ThemeManager.init(this)
+
         DownloadService.populateDownloadService(this)
 
         appScope.launch {

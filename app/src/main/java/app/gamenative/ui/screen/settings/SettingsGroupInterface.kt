@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -146,6 +147,32 @@ fun SettingsGroupInterface(
             title = { Text(text = stringResource(R.string.settings_language)) },
             subtitle = { Text(text = LocaleHelper.getLanguageDisplayName(PrefManager.appLanguage)) },
             onClick = { openLanguageDialog = true }
+        )
+
+        // Theme engine picker
+        val selectedThemeId by app.gamenative.theme.ThemeManager.selectedThemeId.collectAsState(null)
+        var openThemePickerDialog by rememberSaveable { mutableStateOf(false) }
+        SettingsMenuLink(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_theme_picker_title)) },
+            subtitle = { Text(text = selectedThemeId ?: "—") },
+            onClick = { openThemePickerDialog = true }
+        )
+        if (openThemePickerDialog) {
+            ThemePickerDialog(onDismiss = { openThemePickerDialog = false })
+        }
+
+        // Experimental: Enable Theme Engine UI rendering
+        var useThemeEngineUi by rememberSaveable { mutableStateOf(PrefManager.useThemeEngineUi) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_use_theme_engine_ui_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_use_theme_engine_ui_subtitle)) },
+            state = useThemeEngineUi,
+            onCheckedChange = {
+                useThemeEngineUi = it
+                PrefManager.useThemeEngineUi = it
+            },
         )
 
         // Unified visual icon picker (affects app and notification icons)

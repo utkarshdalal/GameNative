@@ -1,0 +1,34 @@
+<theme>
+    <!-- Fixed UI elements -->
+    <fixed id="topBar">
+        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
+                showAppName="true" showThemeName="true" showGameCount="true" />
+        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
+                   backgroundColor="#FF1E1E1E" borderRadius="24" />
+        <profileButton x="-16" y="8" anchor="topRight" size="40" />
+    </fixed>
+    
+    <fixed id="bottomBar">
+        <filterButton x="-100" y="-24" anchor="bottomRight" expanded="true" />
+        <addButton x="-16" y="-24" anchor="bottomRight" />
+    </fixed>
+
+    <!-- Card definitions for list items -->
+    <cards>
+        <card id="listItem" width="400" height="100">
+            <image id="cover" x="0" y="0" width="100" height="100" 
+                   src="@{game.cover}" cornerRadius="8" />
+            <text id="title" x="112" y="12" width="272" height="76" 
+                  text="@{game.title}" textSize="20" color="#FFFFFFFF" maxLines="2" />
+        </card>
+    </cards>
+    
+    <!-- Layout configuration - single column list -->
+    <layout>
+        <grid columns="1" cellWidth="400" cellHeight="110" 
+              hSpacing="0" vSpacing="8" 
+              contentPaddingTop="80" contentPaddingBottom="80"
+              contentPaddingStart="16" contentPaddingEnd="16"
+              selectionMode="moving" itemCard="listItem" />
+    </layout>
+</theme>

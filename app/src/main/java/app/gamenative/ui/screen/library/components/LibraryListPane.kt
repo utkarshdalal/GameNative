@@ -73,6 +73,8 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.PaddingUtils
 import timber.log.Timber
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gamenative.theme.ThemeManager
 
 /**
  * Calculates the installed games count based on the current filter state.
@@ -139,6 +141,9 @@ internal fun LibraryListPane(
     }
 
 
+    // Observe currently selected Theme (to provide a visible cue when themes change)
+    val selectedThemeId by ThemeManager.selectedThemeId.collectAsStateWithLifecycle(null)
+
     val pullToRefreshState = rememberPullToRefreshState()
 
 
@@ -147,7 +152,7 @@ internal fun LibraryListPane(
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
 
-    var paneType: PaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    var paneType: PaneType by remember { mutableStateOf(PaneType.UNDECIDED) }
     val columnType = remember(paneType) {
         when (paneType) {
             PaneType.GRID_HERO -> GridCells.Adaptive(minSize = 200.dp)
@@ -178,7 +183,6 @@ internal fun LibraryListPane(
             } else {
                 paneType = PaneType.GRID_CAPSULE
             }
-            PrefManager.libraryLayout = paneType
         }
 
     }
@@ -225,6 +229,14 @@ internal fun LibraryListPane(
                                 )
                             )
                         )
+                        // Show current Theme id as a subtle subtitle when the experimental UI is off
+                        if (selectedThemeId != null && !PrefManager.useThemeEngineUi) {
+                            Text(
+                                text = "Theme: ${selectedThemeId}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Text(
                             text = androidx.compose.ui.res.stringResource(
                                 app.gamenative.R.string.library_game_count,
@@ -432,7 +444,6 @@ internal fun LibraryListPane(
                                 onFilterChanged = onFilterChanged,
                                 currentView = paneType,
                                 onViewChanged = { newPaneType ->
-                                    PrefManager.libraryLayout = newPaneType
                                     paneType = newPaneType
                                 },
                                 showSteam = state.showSteamInLibrary,

@@ -1,0 +1,46 @@
+<theme>
+    <!-- Fixed UI elements -->
+    <fixed id="topBar" backgroundColor="#FF000000" height="80">
+        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
+                showAppName="true" showGameCount="true" />
+        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
+                   backgroundColor="#FF1E1E1E" borderRadius="24" />
+        <profileButton x="-16" y="8" anchor="topRight" size="40" />
+    </fixed>
+    
+    <fixed id="bottomBar">
+        <filterButton x="-100" y="-24" anchor="bottomRight" expanded="true" />
+        <addButton x="-16" y="-24" anchor="bottomRight" />
+    </fixed>
+
+    <!-- Card definitions for grid items -->
+    <cards>
+        <card id="capsule" width="150" height="225">
+            <!-- Game capsule art FIRST (bottom layer) -->
+            <image id="art" x="0" y="0" width="150" height="225" 
+                   src="@{game.capsule}" cornerRadius="8" />
+            
+            <!-- Compatibility badge - dark background, colored text, top corners only -->
+            <overlay id="compatBadge" x="0" y="0" width="150" height="20" 
+                     color="#AA000000" cornerRadius="8 8 0 0" />
+            <text id="compatLabel" x="0" y="0" width="150" height="20"
+                  text="@{game.compatibility.label}" textSize="10" color="@{game.compatibility.color}" maxLines="1" textAlign="center" />
+            
+            <!-- Bottom overlay for title -->
+            <overlay id="footer" x="0" y="190" width="150" height="35" color="#CC000000" cornerRadius="0" />
+            
+            <!-- Game title -->
+            <text id="title" x="6" y="196" width="138" height="26" 
+                  text="@{game.title}" textSize="11" color="#FFFFFFFF" maxLines="1" textAlign="left" />
+        </card>
+    </cards>
+    
+    <!-- Layout configuration -->
+    <layout>
+        <grid columns="5" cellWidth="150" cellHeight="237" 
+              hSpacing="12" vSpacing="12" 
+              contentPaddingTop="80" contentPaddingBottom="80"
+              contentPaddingStart="16" contentPaddingEnd="16"
+              selectionMode="moving" itemCard="capsule" />
+    </layout>
+</theme>

@@ -37,7 +37,10 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import app.gamenative.ui.screen.library.components.LibraryBottomSheet
+import app.gamenative.ui.enums.PaneType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -81,6 +85,8 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.theme.runtime.FixedElementCallbacks
+import app.gamenative.theme.runtime.RenderFixedElements
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.EnumSet
@@ -214,27 +220,186 @@ private fun LibraryScreenContent(
         }
     } else Modifier
 
+    // Collect the active ThemeDefinition and dev reload tick (DEBUG only)
+    val activeTheme by app.gamenative.theme.ThemeManager.activeTheme.collectAsStateWithLifecycle()
+    val reloadTick by app.gamenative.theme.ThemeManager.reloadTick.collectAsStateWithLifecycle()
+
     Box(
-        Modifier.background(MaterialTheme.colorScheme.background)
-        .then(safePaddingModifier)) {
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .then(safePaddingModifier)
+    ) {
         if (selectedAppId == null) {
-            LibraryListPane(
-                state = state,
-                listState = listState,
-                sheetState = sheetState,
-                onFilterChanged = onFilterChanged,
-                onPageChange = onPageChange,
-                onModalBottomSheet = onModalBottomSheet,
-                onIsSearching = onIsSearching,
-                onSearchQuery = onSearchQuery,
-                onNavigateRoute = onNavigateRoute,
-                onLogout = onLogout,
-                onNavigate = { appId -> selectedAppId = appId },
-                onGoOnline = onGoOnline,
-                onRefresh = onRefresh,
-                onSourceToggle = onSourceToggle,
-                isOffline = isOffline,
-            )
+            val def = activeTheme
+            val useThemeUi = PrefManager.useThemeEngineUi
+            if (useThemeUi && def != null) {
+                // Render themed layout using the Theme Engine (experimental)
+                val cards = remember(def.cards, reloadTick) { def.cards.associateBy { it.id } }
+
+                // Helper function to resolve Steam/custom game images
+                fun findSteamGridDBImage(item: LibraryItem, imageType: String): String? {
+                    if (item.gameSource == GameSource.CUSTOM_GAME) {
+                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(item.appId)
+                        gameFolderPath?.let { path ->
+                            val folder = java.io.File(path)
+                            val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                file.name.startsWith("steamgriddb_$imageType") &&
+                                        (file.name.endsWith(".png", true) || file.name.endsWith(".jpg", true) || file.name.endsWith(".webp", true))
+                            }
+                            return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                        }
+                    }
+                    return null
+                }
+
+                // Create binding provider that maps LibraryItem to binding values
+                val bindingProvider: (LibraryItem) -> Map<String, String> = remember(state.compatibilityMap, reloadTick) {
+                    { item: LibraryItem ->
+                        val title = item.name
+                        val capsuleUrl = when (item.gameSource) {
+                            GameSource.CUSTOM_GAME ->
+                                findSteamGridDBImage(item, "grid_capsule")
+                                    ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_600x900.jpg" else "")
+                            GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_600x900.jpg"
+                            else -> ""
+                        }
+                        val heroUrl = when (item.gameSource) {
+                            GameSource.CUSTOM_GAME ->
+                                findSteamGridDBImage(item, "grid_hero")
+                                    ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg" else "")
+                            GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg"
+                            else -> ""
+                        }
+                        val coverUrl = item.clientIconUrl
+
+                        // Compatibility status bindings
+                        val compatStatus = state.compatibilityMap[item.name]
+                        val (compatLabel, compatColor) = when (compatStatus) {
+                            GameCompatibilityStatus.COMPATIBLE -> context.getString(R.string.library_compatible) to "#FF00C853"
+                            GameCompatibilityStatus.GPU_COMPATIBLE -> context.getString(R.string.library_compatible) to "#FF00C853"
+                            GameCompatibilityStatus.NOT_COMPATIBLE -> context.getString(R.string.library_not_compatible) to "#FFFF1744"
+                            GameCompatibilityStatus.UNKNOWN -> context.getString(R.string.library_compatibility_unknown) to "#FF888888"
+                            null -> "" to "#00000000"
+                        }
+
+                        // Check if game is installed
+                        val isInstalled = when (item.gameSource) {
+                            GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
+                            GameSource.CUSTOM_GAME -> true // Custom games are always "installed"
+                            else -> false
+                        }
+
+                        mapOf(
+                            "game.title" to title,
+                            "game.cover" to coverUrl,
+                            "game.capsule" to capsuleUrl,
+                            "game.hero" to heroUrl,
+                            "game.appId" to item.appId,
+                            "game.compatibility.label" to compatLabel,
+                            "game.compatibility.color" to compatColor,
+                            "game.compatibility.visible" to if (compatStatus != null) "true" else "false",
+                            "game.isInstalled" to isInstalled.toString(),
+                        )
+                    }
+                }
+
+                // Check if layout is a Grid - use the new ThemedGameGrid for full functionality
+                val layout = def.layout
+                if (layout is app.gamenative.theme.model.LayoutNode.Grid) {
+                    val card = cards[layout.itemCard]
+                    if (card != null) {
+                        app.gamenative.theme.runtime.ThemedGameGrid(
+                            items = state.appInfoList,
+                            gridConfig = layout,
+                            card = card,
+                            listState = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(safePaddingModifier),
+                            onItemClick = { item -> selectedAppId = item.appId },
+                            onItemFocus = { /* Can be used for preview pane later */ },
+                            bindingProvider = bindingProvider,
+                        )
+                    }
+                } else {
+                    // Fallback to basic ThemeLayout for other layout types (Canvas, Carousel)
+                    val baseBinding = remember(reloadTick) {
+                        app.gamenative.theme.runtime.MapBindingContext()
+                    }
+                    val itemBindingProvider = remember(state.appInfoList, reloadTick) {
+                        { index: Int ->
+                            val item = state.appInfoList.getOrNull(index)
+                            val bindings = item?.let { bindingProvider(it) } ?: emptyMap()
+                            app.gamenative.theme.runtime.MapBindingContext(strings = bindings)
+                        }
+                    }
+                    app.gamenative.theme.runtime.ThemeLayout(
+                        layout = layout,
+                        cards = cards,
+                        binding = baseBinding,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(safePaddingModifier)
+                            .padding(8.dp),
+                        itemBindingProvider = itemBindingProvider,
+                    )
+                }
+
+                // Render fixed UI elements from theme config (or defaults if not specified)
+                val fixedCallbacks = FixedElementCallbacks(
+                    onNavigateRoute = onNavigateRoute,
+                    onLogout = onLogout,
+                    onGoOnline = onGoOnline,
+                    onFilterClick = { onModalBottomSheet(true) },
+                    onAddClick = onAddCustomGameClick,
+                    onSearchQuery = onSearchQuery,
+                    isOffline = isOffline,
+                    filterExpanded = filterFabExpanded,
+                    isSearching = state.isSearching,
+                )
+                RenderFixedElements(
+                    fixedContainers = def.fixedContainers,
+                    state = state,
+                    listState = listState,
+                    themeName = def.manifest.id,
+                    callbacks = fixedCallbacks,
+                    accountButtonContent = {
+                        app.gamenative.ui.component.topbar.AccountButton(
+                            onNavigateRoute = onNavigateRoute,
+                            onLogout = onLogout,
+                            onGoOnline = onGoOnline,
+                            isOffline = isOffline,
+                        )
+                    },
+                    searchBarContent = {
+                        app.gamenative.ui.screen.library.components.LibrarySearchBar(
+                            state = state,
+                            listState = listState,
+                            onSearchQuery = onSearchQuery,
+                        )
+                    },
+                )
+            } else {
+                // Legacy interactive Library list
+                LibraryListPane(
+                    state = state,
+                    listState = listState,
+                    sheetState = sheetState,
+                    onFilterChanged = onFilterChanged,
+                    onPageChange = onPageChange,
+                    onModalBottomSheet = onModalBottomSheet,
+                    onIsSearching = onIsSearching,
+                    onSearchQuery = onSearchQuery,
+                    onNavigateRoute = onNavigateRoute,
+                    onLogout = onLogout,
+                    onNavigate = { appId -> selectedAppId = appId },
+                    onGoOnline = onGoOnline,
+                    onRefresh = onRefresh,
+                    onSourceToggle = onSourceToggle,
+                    isOffline = isOffline,
+                )
+            }
         } else {
             // Find the LibraryItem from the state based on selectedAppId
             val selectedLibraryItem = selectedAppId?.let { appId ->
@@ -252,7 +417,9 @@ private fun LibraryScreenContent(
             )
         }
 
-        if (selectedAppId == null) {
+        // FABs for legacy view (themed view handles these via FixedElementRenderer)
+        val useThemeUiForFabs = PrefManager.useThemeEngineUi && app.gamenative.theme.ThemeManager.activeTheme.value != null
+        if (selectedAppId == null && !useThemeUiForFabs) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -331,6 +498,25 @@ private fun LibraryScreenContent(
                     }
                 }
             )
+        }
+
+        // Filter bottom sheet - shown for themed views (LibraryListPane handles its own)
+        val useThemeUi = PrefManager.useThemeEngineUi
+        if (useThemeUi && state.modalBottomSheet && selectedAppId == null) {
+            ModalBottomSheet(
+                onDismissRequest = { onModalBottomSheet(false) },
+                sheetState = sheetState,
+            ) {
+                LibraryBottomSheet(
+                    selectedFilters = state.appInfoSortType,
+                    onFilterChanged = onFilterChanged,
+                    currentView = PaneType.GRID_CAPSULE, // Theme controls layout, not this
+                    onViewChanged = { /* No-op when using themes */ },
+                    showSteam = state.showSteamInLibrary,
+                    showCustomGames = state.showCustomGamesInLibrary,
+                    onSourceToggle = onSourceToggle,
+                )
+            }
         }
     }
 }

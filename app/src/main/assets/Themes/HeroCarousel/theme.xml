@@ -1,0 +1,37 @@
+<theme>
+    <!-- Fixed UI elements -->
+    <fixed id="topBar">
+        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
+                showAppName="true" showThemeName="true" showGameCount="true" />
+        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
+                   backgroundColor="#FF1E1E1E" borderRadius="24" />
+        <profileButton x="-16" y="8" anchor="topRight" size="40" />
+    </fixed>
+    
+    <fixed id="bottomBar">
+        <filterButton x="-100" y="-24" anchor="bottomRight" expanded="true" />
+        <addButton x="-16" y="-24" anchor="bottomRight" />
+    </fixed>
+
+    <!-- Card definitions for carousel items -->
+    <cards>
+        <card id="hero" width="640" height="360">
+            <!-- Hero backdrop image -->
+            <image id="backdrop" x="0" y="0" width="640" height="360" 
+                   src="@{game.hero}" cornerRadius="16" />
+            
+            <!-- Vignette overlay for better text readability -->
+            <overlay id="vignette" x="0" y="0" width="640" height="360" color="#33000000" />
+            
+            <!-- Game title at bottom -->
+            <text id="title" x="24" y="300" width="592" height="40" 
+                  text="@{game.title}" textSize="24" color="#FFFFFFFF" maxLines="1" />
+        </card>
+    </cards>
+    
+    <!-- Layout configuration - horizontal carousel -->
+    <layout>
+        <carousel direction="right" itemWidth="660" itemHeight="372" 
+                  itemSpacing="16" selectionMode="stationary" itemCard="hero" />
+    </layout>
+</theme>
