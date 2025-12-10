@@ -75,13 +75,13 @@ public abstract class ImageFsInstaller {
         File rootDir = ImageFs.find(context).getRootDir();
         ImageFs imageFs = ImageFs.find(context);
         for (String version : versions) {
-            File downloaded = new File(imageFs.getFilesDir(), "imagefs_patches_gamenative.tzst");
+            File downloaded = new File(imageFs.getFilesDir(), version + ".txz");
             File outFile = new File(rootDir, "/opt/" + version);
             outFile.mkdirs();
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.XZ,
                 downloaded,
-                rootDir
+                outFile
             );
         }
     }
