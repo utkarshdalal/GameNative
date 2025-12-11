@@ -36,7 +36,7 @@ fun BoxScope.RenderLayer(layer: Layer, parentSize: DpSize, binding: BindingConte
     when (layer) {
         is Layer.ImageLayer -> ImageLayerView(layer, parentSize, binding, anchor)
         is Layer.VideoLayer -> VideoLayerView(layer, parentSize, binding, anchor)
-        is Layer.OverlayLayer -> OverlayLayerView(layer, parentSize, binding, anchor)
+        is Layer.RectLayer -> RectLayerView(layer, parentSize, binding, anchor)
         is Layer.ShadowLayer -> ShadowLayerView(layer, parentSize, binding, anchor)
         is Layer.BorderLayer -> BorderLayerView(layer, parentSize, binding, anchor)
         is Layer.TextLayer -> TextLayerView(layer, parentSize, binding, anchor)
@@ -198,18 +198,27 @@ private fun BoxScope.VideoLayerView(layer: Layer.VideoLayer, parentSize: DpSize,
 }
 
 @Composable
-private fun BoxScope.OverlayLayerView(layer: Layer.OverlayLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
+private fun BoxScope.RectLayerView(layer: Layer.RectLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val shape = parseCornerRadius(layer.cornerRadius)
-    val color = Color(binding.or(layer.color, 0x66000000.toInt()))
+    val fillColor = Color(binding.or(layer.color, 0x66000000.toInt()))
+    val borderWidth = binding.or(layer.borderWidth, 0f)
+    val borderColor = Color(binding.or(layer.borderColor, 0xFFFFFFFF.toInt()))
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
             .size(p.w, p.h)
             .clip(shape)
             .graphicsLayer(alpha = alpha)
-            .background(color)
+            .background(fillColor)
+            .then(
+                if (borderWidth > 0f) {
+                    Modifier.border(borderWidth.dp, borderColor, shape)
+                } else {
+                    Modifier
+                }
+            )
     ) {}
 }
 

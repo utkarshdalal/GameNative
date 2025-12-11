@@ -62,10 +62,6 @@ fun ThemedGameGrid(
     val stringResolver = remember(themePath) {
         ThemeStringResolver(context, context.assets)
     }
-    val cellWidthDp = (gridConfig.cellSize.width as? Dimension.Px)?.value?.dp ?: 150.dp
-    val cellHeightDp = (gridConfig.cellSize.height as? Dimension.Px)?.value?.dp ?: 225.dp
-    val hSpacing = gridConfig.hSpacing.dp
-    val vSpacing = gridConfig.vSpacing.dp
     
     // Use content padding from grid config, with defaults
     val paddingTop = if (gridConfig.contentPaddingTop > 0) gridConfig.contentPaddingTop.dp else 80.dp
@@ -73,33 +69,116 @@ fun ThemedGameGrid(
     val paddingStart = if (gridConfig.contentPaddingStart > 0) gridConfig.contentPaddingStart.dp else 16.dp
     val paddingEnd = if (gridConfig.contentPaddingEnd > 0) gridConfig.contentPaddingEnd.dp else 16.dp
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = cellWidthDp),
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = paddingStart,
-            end = paddingEnd,
-            top = paddingTop,
-            bottom = paddingBottom,
-        ),
-        horizontalArrangement = Arrangement.spacedBy(hSpacing),
-        verticalArrangement = Arrangement.spacedBy(vSpacing),
+    // Use BoxWithConstraints to support percentage-based cell sizes
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val viewportWidth = maxWidth
+        val viewportHeight = maxHeight
+        
+        val cellWidthDp = dimToDp(gridConfig.cellWidth, viewportWidth, viewportHeight)
+        // If cellHeight not specified, use the card's canvas height
+        val cellHeightDp = gridConfig.cellHeight?.let { dimToDp(it, viewportWidth, viewportHeight) }
+            ?: dimToDp(card.canvas.height, viewportWidth, viewportHeight)
+        val hSpacing = gridConfig.hSpacing.dp
+        val vSpacing = gridConfig.vSpacing.dp
+        
+        // Calculate separator height if present (content height + margins)
+        val separatorContentHeightDp = gridConfig.separator?.let { 
+            dimToDp(it.height, viewportWidth, viewportHeight) 
+        } ?: 0.dp
+        val separatorTotalHeightDp = gridConfig.separator?.let {
+            separatorContentHeightDp + it.marginTop.dp + it.marginBottom.dp
+        } ?: 0.dp
+        
+        // Total cell height including separator
+        val totalCellHeight = cellHeightDp + separatorTotalHeightDp
+
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = cellWidthDp),
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = paddingStart,
+                end = paddingEnd,
+                top = paddingTop,
+                bottom = paddingBottom,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(hSpacing),
+            verticalArrangement = Arrangement.spacedBy(vSpacing),
+        ) {
+            items(
+                items = items,
+                key = { it.appId }
+            ) { item ->
+                Column {
+                    ThemedGameTile(
+                        item = item,
+                        card = card,
+                        bindings = bindingProvider(item),
+                        cellSize = DpSize(cellWidthDp, cellHeightDp),
+                        onClick = { onItemClick(item) },
+                        onFocus = { onItemFocus(item) },
+                        stringResolver = stringResolver,
+                        themePath = themePath,
+                    )
+                    // Render separator if configured
+                    gridConfig.separator?.let { separator ->
+                        SeparatorView(
+                            separator = separator,
+                            width = cellWidthDp,
+                            contentHeight = separatorContentHeightDp,
+                            stringResolver = stringResolver,
+                            themePath = themePath,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders a separator between grid items.
+ * Layers are rendered without game bindings (static content only).
+ */
+@Composable
+private fun SeparatorView(
+    separator: GridSeparator,
+    width: Dp,
+    contentHeight: Dp,
+    stringResolver: ThemeStringResolver,
+    themePath: String?,
+) {
+    // Apply margins
+    val marginTop = separator.marginTop.dp
+    val marginBottom = separator.marginBottom.dp
+    val marginStart = separator.marginStart.dp
+    val marginEnd = separator.marginEnd.dp
+    
+    // Content area size (excluding margins)
+    val contentWidth = width - marginStart - marginEnd
+    val parentSize = DpSize(contentWidth, contentHeight)
+    
+    // Empty bindings - separator doesn't have access to game data
+    val emptyBindings = emptyMap<String, String>()
+    
+    // Total height includes margins
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = marginTop, bottom = marginBottom, start = marginStart, end = marginEnd)
     ) {
-        items(
-            items = items,
-            key = { it.appId }
-        ) { item ->
-            ThemedGameTile(
-                item = item,
-                card = card,
-                bindings = bindingProvider(item),
-                cellSize = DpSize(cellWidthDp, cellHeightDp),
-                onClick = { onItemClick(item) },
-                onFocus = { onItemFocus(item) },
-                stringResolver = stringResolver,
-                themePath = themePath,
-            )
+        Box(
+            modifier = Modifier.size(contentWidth, contentHeight)
+        ) {
+            separator.layers.forEach { layer ->
+                RenderThemedLayer(
+                    layer = layer,
+                    bindings = emptyBindings,
+                    parentSize = parentSize,
+                    stringResolver = stringResolver,
+                    themePath = themePath,
+                )
+            }
         }
     }
 }
@@ -196,10 +275,10 @@ private fun BoxScope.RenderThemedLayer(
         is Layer.ImageLayer -> {
             val src = resolveBinding(layer.source.src, bindings)
             val shape = parseCornerRadius(layer.cornerRadius)
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: parentSize.height
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
             val alpha = resolveFloatBinding(layer.opacity, 1f)
 
             if (src.isNotBlank()) {
@@ -251,14 +330,16 @@ private fun BoxScope.RenderThemedLayer(
             }
         }
 
-        is Layer.OverlayLayer -> {
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: parentSize.height
+        is Layer.RectLayer -> {
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
             val shape = parseCornerRadius(layer.cornerRadius)
-            val color = resolveIntBinding(layer.color, 0x66000000, bindings)
+            val fillColor = resolveIntBinding(layer.color, 0x66000000, bindings)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
+            val borderWidth = resolveFloatBinding(layer.borderWidth, 0f)
+            val borderColor = resolveIntBinding(layer.borderColor, 0xFFFFFFFF.toInt(), bindings)
 
             Box(
                 modifier = Modifier
@@ -266,17 +347,24 @@ private fun BoxScope.RenderThemedLayer(
                     .size(w, h)
                     .clip(shape)
                     .alpha(alpha)
-                    .background(Color(color))
+                    .background(Color(fillColor))
+                    .then(
+                        if (borderWidth > 0f) {
+                            Modifier.border(borderWidth.dp, Color(borderColor), shape)
+                        } else {
+                            Modifier
+                        }
+                    )
             )
         }
 
         is Layer.TextLayer -> {
             val rawText = resolveBinding(layer.text, bindings)
             val text = stringResolver.resolve(rawText, themePath)
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: 24.dp
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: 24.dp
             val textSize = resolveFloatBinding(layer.textSize, 14f)
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
@@ -329,10 +417,10 @@ private fun BoxScope.RenderThemedLayer(
         }
 
         is Layer.BorderLayer -> {
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: parentSize.height
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
             val shape = parseCornerRadius(layer.cornerRadius)
             val borderWidth = resolveFloatBinding(layer.strokeWidth, 1f).dp
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
@@ -349,19 +437,19 @@ private fun BoxScope.RenderThemedLayer(
 
         is Layer.ShadowLayer -> {
             // Shadows are complex in Compose - simplified implementation
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: parentSize.height
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
             // Shadow layers are primarily decorative - skip for now in this implementation
         }
 
         is Layer.VideoLayer -> {
             // Video not supported in grid tiles - show poster or placeholder
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: parentSize.height
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
 
             Box(
                 modifier = Modifier
@@ -376,10 +464,10 @@ private fun BoxScope.RenderThemedLayer(
 
         is Layer.BackdropLayer -> {
             // Backdrop blur effects - simplified
-            val x = (layer.position.x as? Dimension.Px)?.value?.dp ?: 0.dp
-            val y = (layer.position.y as? Dimension.Px)?.value?.dp ?: 0.dp
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: parentSize.width
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: parentSize.height
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
             val tint = resolveIntBinding(layer.tintColor, 0, bindings)
 
             if (tint != 0) {
@@ -393,11 +481,11 @@ private fun BoxScope.RenderThemedLayer(
         }
 
         is Layer.ButtonLayer -> {
-            val rawX = (layer.position.x as? Dimension.Px)?.value ?: 0f
-            val rawY = (layer.position.y as? Dimension.Px)?.value ?: 0f
-            val w = (layer.size?.width as? Dimension.Px)?.value?.dp ?: 80.dp
-            val h = (layer.size?.height as? Dimension.Px)?.value?.dp ?: 40.dp
-            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
+            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: 80.dp
+            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: 40.dp
+            val pos = calculateAnchoredPosition(x, y, w, h, parentSize.width, parentSize.height, layer.anchor)
             val shape = parseCornerRadius(layer.cornerRadius)
             // Use color resolver for system color support (@color/primary, etc.)
             val bgColor = resolveColorBinding(layer.backgroundColor, MaterialTheme.colorScheme.primary, bindings)
@@ -542,8 +630,8 @@ private fun parseColorString(s: String): Int? {
 private data class AnchoredPosition(val x: Dp, val y: Dp)
 
 private fun calculateAnchoredPosition(
-    rawX: Float,
-    rawY: Float,
+    rawX: Dp,
+    rawY: Dp,
     elementWidth: Dp,
     elementHeight: Dp,
     parentWidth: Dp,
@@ -551,22 +639,34 @@ private fun calculateAnchoredPosition(
     anchor: LayerAnchor
 ): AnchoredPosition {
     val x = when (anchor) {
-        LayerAnchor.TOP_LEFT, LayerAnchor.CENTER_LEFT, LayerAnchor.BOTTOM_LEFT -> rawX.dp
+        LayerAnchor.TOP_LEFT, LayerAnchor.CENTER_LEFT, LayerAnchor.BOTTOM_LEFT -> rawX
         LayerAnchor.TOP_CENTER, LayerAnchor.CENTER, LayerAnchor.BOTTOM_CENTER -> 
-            (parentWidth - elementWidth) / 2 + rawX.dp
+            (parentWidth - elementWidth) / 2 + rawX
         LayerAnchor.TOP_RIGHT, LayerAnchor.CENTER_RIGHT, LayerAnchor.BOTTOM_RIGHT -> 
-            parentWidth - elementWidth - rawX.dp
+            parentWidth - elementWidth - rawX
     }
     
     val y = when (anchor) {
-        LayerAnchor.TOP_LEFT, LayerAnchor.TOP_CENTER, LayerAnchor.TOP_RIGHT -> rawY.dp
+        LayerAnchor.TOP_LEFT, LayerAnchor.TOP_CENTER, LayerAnchor.TOP_RIGHT -> rawY
         LayerAnchor.CENTER_LEFT, LayerAnchor.CENTER, LayerAnchor.CENTER_RIGHT -> 
-            (parentHeight - elementHeight) / 2 + rawY.dp
+            (parentHeight - elementHeight) / 2 + rawY
         LayerAnchor.BOTTOM_LEFT, LayerAnchor.BOTTOM_CENTER, LayerAnchor.BOTTOM_RIGHT -> 
-            parentHeight - elementHeight - rawY.dp
+            parentHeight - elementHeight - rawY
     }
     
     return AnchoredPosition(x, y)
+}
+
+/**
+ * Convert a Dimension to Dp, handling pixels and percentages.
+ * @param d The dimension to convert
+ * @param parentW The parent width for percentage calculations
+ * @param parentH The parent height for percentage calculations
+ */
+private fun dimToDp(d: Dimension, parentW: Dp, parentH: Dp): Dp = when (d) {
+    is Dimension.Px -> d.value.dp
+    is Dimension.RelW -> parentW * d.fraction
+    is Dimension.RelH -> parentH * d.fraction
 }
 
 /**

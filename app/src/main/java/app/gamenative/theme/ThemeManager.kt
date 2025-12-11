@@ -346,7 +346,10 @@ object ThemeManager {
                         engineMajor = ThemeEngine.ENGINE_MAJOR,
                     )
                     if (validation.hasBlocking()) {
-                        Timber.w("Validation failed for theme %s: %s", entry.id, validation.issues.joinToString { it.code.name })
+                        validation.issues.forEach { issue ->
+                            Timber.e("[THEME_V2] %s: %s", issue.code.name, issue.message)
+                        }
+                        Timber.w("Validation failed for theme %s: %s", entry.id, validation.issues.joinToString { "${it.code.name}: ${it.message}" })
                         val all = _availableThemes.value
                         applyFallbackWithToast(all)
                         pickFallback(all)?.let { fb -> if (fb.id != entry.id) loadAndActivateTheme(fb) }

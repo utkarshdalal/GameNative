@@ -179,15 +179,19 @@ object ThemeValidator {
                     out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid columns must be > 0.", node.source)
                 }
                 node.attributes["rows"]?.toIntOrNull()?.let { if (it <= 0) out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid rows must be > 0 when specified.", node.source) }
-                val cellW = node.attributes["cellWidth"]?.toFloatOrNull()
-                val cellH = node.attributes["cellHeight"]?.toFloatOrNull()
-                if (cellW == null || cellW <= 0f || cellH == null || cellH <= 0f) {
-                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid cellWidth/cellHeight must be > 0.", node.source)
+                val cellW = parseDimensionValue(node.attributes["cellWidth"])
+                if (cellW == null || cellW <= 0f) {
+                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid cellWidth must be > 0.", node.source)
+                }
+                // cellHeight is optional - if specified, must be > 0
+                val cellH = parseDimensionValue(node.attributes["cellHeight"])
+                if (cellH != null && cellH <= 0f) {
+                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid cellHeight must be > 0 when specified.", node.source)
                 }
             }
             if (node.name.equals("carousel", ignoreCase = true)) {
-                val itemW = node.attributes["itemWidth"]?.toFloatOrNull()
-                val itemH = node.attributes["itemHeight"]?.toFloatOrNull()
+                val itemW = parseDimensionValue(node.attributes["itemWidth"])
+                val itemH = parseDimensionValue(node.attributes["itemHeight"])
                 if (itemW == null || itemW <= 0f || itemH == null || itemH <= 0f) {
                     out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Carousel itemWidth/itemHeight must be > 0.", node.source)
                 }
@@ -200,8 +204,8 @@ object ThemeValidator {
                 validateVideoNode(tree, node, out)
             }
             if (node.name.equals("canvas", ignoreCase = true)) {
-                val w = node.attributes["width"]?.toFloatOrNull()
-                val h = node.attributes["height"]?.toFloatOrNull()
+                val w = parseDimensionValue(node.attributes["width"])
+                val h = parseDimensionValue(node.attributes["height"])
                 if (w == null || w <= 0f || h == null || h <= 0f) {
                     out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Canvas width/height must be > 0.", node.source)
                 }
@@ -388,6 +392,20 @@ object ThemeValidator {
             if (ai != bi) return ai - bi
         }
         return 0
+    }
+
+    /**
+     * Parse a dimension value that can be either pixels (e.g., "100") or percentage (e.g., "50%").
+     * Returns the numeric value if valid (> 0), or null if invalid.
+     */
+    private fun parseDimensionValue(value: String?): Float? {
+        if (value.isNullOrBlank()) return null
+        val trimmed = value.trim()
+        return if (trimmed.endsWith("%")) {
+            trimmed.dropLast(1).toFloatOrNull()
+        } else {
+            trimmed.toFloatOrNull()
+        }
     }
 
     private fun traverse(node: XmlNode, block: (XmlNode) -> Unit) {

@@ -40,8 +40,10 @@ sealed class LayoutNode {
         val columns: Int,
         /** Number of rows (optional if content is dynamic). */
         val rows: Int? = null,
-        /** Size of each grid cell. */
-        val cellSize: DimSize,
+        /** Width of each grid cell. */
+        val cellWidth: Dimension,
+        /** Height of each grid cell. If null, uses the card's canvas height. */
+        val cellHeight: Dimension? = null,
         /** Horizontal spacing between cells. */
         val hSpacing: Float = 0f,
         /** Vertical spacing between cells. */
@@ -58,6 +60,8 @@ sealed class LayoutNode {
         val contentPaddingStart: Float = 0f,
         /** Content padding from end (right in LTR). */
         val contentPaddingEnd: Float = 0f,
+        /** Optional separator rendered between items. Contains static layers (no game bindings). */
+        val separator: GridSeparator? = null,
     ) : LayoutNode()
 
     /**
@@ -89,4 +93,23 @@ data class CanvasChild(
     val position: DimOffset,
     /** Optional explicit size; otherwise the card's canvas size is used. */
     val size: DimSize? = null,
+)
+
+/**
+ * A separator rendered between grid items.
+ * Contains static layers (rect, image, text) without game bindings.
+ */
+data class GridSeparator(
+    /** Height of the separator content area. */
+    val height: Dimension,
+    /** Layers to render in the separator (rect, image, text only - no game bindings). */
+    val layers: List<Layer> = emptyList(),
+    /** Margin from top of separator. */
+    val marginTop: Float = 0f,
+    /** Margin from bottom of separator. */
+    val marginBottom: Float = 0f,
+    /** Margin from start (left in LTR). */
+    val marginStart: Float = 0f,
+    /** Margin from end (right in LTR). */
+    val marginEnd: Float = 0f,
 )

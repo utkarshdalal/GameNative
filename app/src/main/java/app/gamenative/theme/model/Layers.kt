@@ -80,9 +80,10 @@ sealed class Layer {
     ) : Layer()
 
     /**
-     * Solid overlay rectangle, commonly used for dimming or highlight.
+     * A drawable rectangle shape. Can be used as background, overlay, or any filled rectangle.
+     * Supports fill color, optional border, and rounded corners.
      */
-    data class OverlayLayer(
+    data class RectLayer(
         override val id: String? = null,
         override val position: DimOffset,
         override val size: DimSize? = null,
@@ -98,6 +99,10 @@ sealed class Layer {
          * - "8 4 2 1" = top-left 8, top-right 4, bottom-right 2, bottom-left 1
          */
         val cornerRadius: String? = null,
+        /** Border/stroke width in dp. If null or 0, no border is drawn. */
+        val borderWidth: FloatOrBinding? = null,
+        /** Border/stroke color (ARGB). Only used if borderWidth > 0. */
+        val borderColor: IntOrBinding? = null,
     ) : Layer()
 
     /**

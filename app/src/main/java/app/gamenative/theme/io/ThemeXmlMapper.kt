@@ -57,12 +57,14 @@ object ThemeXmlMapper {
         val cardTagName = if (cardsRoot.name.equals("cards", ignoreCase = true)) "card" else "template"
         return cardsRoot.children.filter { it.name.equals(cardTagName, ignoreCase = true) }.map { n ->
             val id = req(n, "id")
-            val width = reqFloat(n, "width")
-            val height = reqFloat(n, "height")
-            val layers = n.children.mapNotNull { parseLayer(it) }
+            val width = reqDimensionWidth(n, "width")
+            val height = reqDimensionHeight(n, "height")
+            val layers = n.children.mapNotNull { child ->
+                parseLayer(child)
+            }
             Card(
                 id = id,
-                canvas = DimSize(Dimension.Px(width), Dimension.Px(height)),
+                canvas = DimSize(width, height),
                 layers = layers,
                 // states/transitions future work — kept empty for now
             )
@@ -155,11 +157,13 @@ object ThemeXmlMapper {
         }
     }
 
-    private fun parseLayer(n: XmlNode): Layer? = when (n.name.lowercase()) {
+    private fun parseLayer(n: XmlNode): Layer? {
+        val layerSize = size(n)
+        return when (n.name.lowercase()) {
         "image" -> Layer.ImageLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             source = MediaSource.Image(
@@ -173,7 +177,7 @@ object ThemeXmlMapper {
         "video" -> Layer.VideoLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             source = MediaSource.Video(
@@ -191,19 +195,22 @@ object ThemeXmlMapper {
             ),
             cornerRadius = floatBinding(n.attributes["cornerRadius"]),
         )
-        "overlay" -> Layer.OverlayLayer(
+        // Support both "rect" (new) and "overlay" (legacy) for rectangle shapes
+        "rect", "overlay" -> Layer.RectLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0x88000000.toInt()),
             cornerRadius = n.attributes["cornerRadius"],
+            borderWidth = floatBinding(n.attributes["borderWidth"]),
+            borderColor = intBinding(n.attributes["borderColor"]),
         )
         "shadow" -> Layer.ShadowLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             radius = floatBinding(n.attributes["radius"]) ?: FloatOrBinding.Literal(8f),
@@ -213,7 +220,7 @@ object ThemeXmlMapper {
         "border" -> Layer.BorderLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             strokeWidth = floatBinding(n.attributes["strokeWidth"]) ?: FloatOrBinding.Literal(2f),
@@ -223,7 +230,7 @@ object ThemeXmlMapper {
         "text" -> Layer.TextLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
@@ -237,7 +244,7 @@ object ThemeXmlMapper {
         "backdrop" -> Layer.BackdropLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             blurRadius = floatBinding(n.attributes["blurRadius"]),
@@ -246,7 +253,7 @@ object ThemeXmlMapper {
         "button" -> Layer.ButtonLayer(
             id = n.attributes["id"],
             position = DimOffset(px(n, "x"), px(n, "y")),
-            size = size(n),
+            size = layerSize,
             opacity = floatBinding(n.attributes["opacity"]),
             anchor = parseLayerAnchor(n.attributes["anchor"]),
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
@@ -256,6 +263,7 @@ object ThemeXmlMapper {
             cornerRadius = n.attributes["cornerRadius"],
         )
         else -> null
+        }
     }
     // endregion
 
@@ -275,8 +283,8 @@ object ThemeXmlMapper {
     }
 
     private fun parseCanvas(node: XmlNode): LayoutNode.Canvas {
-        val w = reqFloat(node, "width")
-        val h = reqFloat(node, "height")
+        val w = reqDimensionWidth(node, "width")
+        val h = reqDimensionHeight(node, "height")
         val children = node.children.filter { it.name.equals("child", ignoreCase = true) }.map { ch ->
             // Support both new "card" and legacy "template" attribute
             val cardId = ch.attributes["card"] ?: ch.attributes["template"] 
@@ -287,16 +295,21 @@ object ThemeXmlMapper {
                 size = size(ch),
             )
         }
-        return LayoutNode.Canvas(size = DimSize(Dimension.Px(w), Dimension.Px(h)), children = children)
+        return LayoutNode.Canvas(size = DimSize(w, h), children = children)
     }
 
     private fun parseGrid(node: XmlNode, tree: ThemeTree): LayoutNode.Grid {
         val cols = reqInt(node, "columns")
         val rows = node.attributes["rows"]?.toIntOrNull()
-        val cellW = reqFloat(node, "cellWidth")
-        val cellH = reqFloat(node, "cellHeight")
-        val hSpacing = resolveFloat(node, "hSpacing", default = 0f, tree)
-        val vSpacing = resolveFloat(node, "vSpacing", default = 0f, tree)
+        val cellW = reqDimensionWidth(node, "cellWidth")
+        // cellHeight is optional - if not specified, card height will be used
+        val cellH = node.attributes["cellHeight"]?.let { parseDimensionHeight(it) }
+        
+        // cellSpacing sets both hSpacing and vSpacing; individual values override it
+        val cellSpacing = resolveFloat(node, "cellSpacing", default = 0f, tree)
+        val hSpacing = resolveFloat(node, "hSpacing", default = cellSpacing, tree)
+        val vSpacing = resolveFloat(node, "vSpacing", default = cellSpacing, tree)
+        
         val sel = when (node.attributes["selectionMode"]?.lowercase()) {
             "stationary" -> SelectionMode.STATIONARY
             "moving" -> SelectionMode.MOVING
@@ -307,16 +320,30 @@ object ThemeXmlMapper {
         val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"]
             ?: error("Missing required attribute 'itemCard' on <grid>")
         
-        // Content padding
-        val paddingTop = resolveFloat(node, "contentPaddingTop", default = 0f, tree)
-        val paddingBottom = resolveFloat(node, "contentPaddingBottom", default = 0f, tree)
-        val paddingStart = resolveFloat(node, "contentPaddingStart", default = 0f, tree)
-        val paddingEnd = resolveFloat(node, "contentPaddingEnd", default = 0f, tree)
+        // Content padding - supports CSS-like shorthand: 1, 2, 3, or 4 values
+        val (paddingTop, paddingEnd, paddingBottom, paddingStart) = parsePadding(node.attributes["padding"], tree)
+        
+        // Parse optional separator
+        val separator = node.children.firstOrNull { it.name.equals("separator", ignoreCase = true) }?.let { sepNode ->
+            val sepHeight = reqDimensionHeight(sepNode, "height")
+            val sepLayers = sepNode.children.mapNotNull { parseLayer(it) }
+            // Parse margin - supports CSS-like shorthand
+            val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
+            GridSeparator(
+                height = sepHeight, 
+                layers = sepLayers,
+                marginTop = marginTop,
+                marginBottom = marginBottom,
+                marginStart = marginStart,
+                marginEnd = marginEnd,
+            )
+        }
         
         return LayoutNode.Grid(
             columns = cols,
             rows = rows,
-            cellSize = DimSize(Dimension.Px(cellW), Dimension.Px(cellH)),
+            cellWidth = cellW,
+            cellHeight = cellH,
             hSpacing = hSpacing,
             vSpacing = vSpacing,
             selectionMode = sel,
@@ -325,6 +352,7 @@ object ThemeXmlMapper {
             contentPaddingBottom = paddingBottom,
             contentPaddingStart = paddingStart,
             contentPaddingEnd = paddingEnd,
+            separator = separator,
         )
     }
 
@@ -336,8 +364,8 @@ object ThemeXmlMapper {
             "down" -> Direction.DOWN
             else -> Direction.RIGHT
         }
-        val itemW = reqFloat(node, "itemWidth")
-        val itemH = reqFloat(node, "itemHeight")
+        val itemW = reqDimensionWidth(node, "itemWidth")
+        val itemH = reqDimensionHeight(node, "itemHeight")
         val spacing = resolveFloat(node, "itemSpacing", default = 0f, tree)
         val sel = when (node.attributes["selectionMode"]?.lowercase()) {
             "stationary" -> SelectionMode.STATIONARY
@@ -351,7 +379,7 @@ object ThemeXmlMapper {
             ?: error("Missing required attribute 'itemCard' on <carousel>")
         return LayoutNode.Carousel(
             direction = dir,
-            itemSize = DimSize(Dimension.Px(itemW), Dimension.Px(itemH)),
+            itemSize = DimSize(itemW, itemH),
             itemSpacing = spacing,
             selectionMode = sel,
             itemCard = itemCard,
@@ -373,13 +401,79 @@ object ThemeXmlMapper {
             ?: error("Attribute '$key' on <${node.name}> must be an integer")
 
     private fun size(n: XmlNode): DimSize? {
-        val w = n.attributes["width"]?.toFloatOrNull()
-        val h = n.attributes["height"]?.toFloatOrNull()
-        return if (w != null && h != null) DimSize(Dimension.Px(w), Dimension.Px(h)) else null
+        val wAttr = n.attributes["width"]
+        val hAttr = n.attributes["height"]
+        if (wAttr == null || hAttr == null) return null
+        val w = parseDimensionWidth(wAttr) ?: return null
+        val h = parseDimensionHeight(hAttr) ?: return null
+        return DimSize(w, h)
     }
 
-    private fun px(n: XmlNode, key: String): Dimension =
-        Dimension.Px(n.attributes[key]?.toFloatOrNull() ?: 0f)
+    private fun px(n: XmlNode, key: String): Dimension {
+        val attr = n.attributes[key] ?: return Dimension.Px(0f)
+        // For x position, use width-relative; for y position, use height-relative
+        return if (key == "y" || key == "dy") {
+            parseDimensionHeight(attr) ?: Dimension.Px(0f)
+        } else {
+            parseDimensionWidth(attr) ?: Dimension.Px(0f)
+        }
+    }
+
+    /**
+     * Parse a dimension value that can be either pixels or percentage.
+     * Percentages are relative to parent width.
+     * - "100" → Dimension.Px(100f)
+     * - "50%" → Dimension.RelW(0.5f)
+     */
+    private fun parseDimensionWidth(value: String): Dimension? {
+        val trimmed = value.trim()
+        return when {
+            trimmed.endsWith("%") -> {
+                val percent = trimmed.dropLast(1).toFloatOrNull() ?: return null
+                Dimension.RelW(percent / 100f)
+            }
+            else -> {
+                val px = trimmed.toFloatOrNull() ?: return null
+                Dimension.Px(px)
+            }
+        }
+    }
+
+    /**
+     * Parse a dimension value that can be either pixels or percentage.
+     * Percentages are relative to parent height.
+     * - "100" → Dimension.Px(100f)
+     * - "50%" → Dimension.RelH(0.5f)
+     */
+    private fun parseDimensionHeight(value: String): Dimension? {
+        val trimmed = value.trim()
+        return when {
+            trimmed.endsWith("%") -> {
+                val percent = trimmed.dropLast(1).toFloatOrNull() ?: return null
+                Dimension.RelH(percent / 100f)
+            }
+            else -> {
+                val px = trimmed.toFloatOrNull() ?: return null
+                Dimension.Px(px)
+            }
+        }
+    }
+
+    /**
+     * Parse a required dimension for width (returns Px or RelW).
+     */
+    private fun reqDimensionWidth(node: XmlNode, key: String): Dimension {
+        val attr = node.attributes[key] ?: error("Missing required attribute '$key' on <${node.name}>")
+        return parseDimensionWidth(attr) ?: error("Invalid dimension value '$attr' for '$key' on <${node.name}>")
+    }
+
+    /**
+     * Parse a required dimension for height (returns Px or RelH).
+     */
+    private fun reqDimensionHeight(node: XmlNode, key: String): Dimension {
+        val attr = node.attributes[key] ?: error("Missing required attribute '$key' on <${node.name}>")
+        return parseDimensionHeight(attr) ?: error("Invalid dimension value '$attr' for '$key' on <${node.name}>")
+    }
 
     private fun stringBinding(raw: String?): StringOrBinding? {
         val s = raw ?: return null
@@ -428,6 +522,53 @@ object ThemeXmlMapper {
         val varName = path.substringAfter("vars.", missingDelimiterValue = path)
         val value = tree.variables[varName] ?: return default
         return value.toFloatOrNull() ?: default
+    }
+
+    /**
+     * Parse CSS-like padding shorthand.
+     * - 1 value: all sides get the same value
+     * - 2 values: top/bottom, start/end (vertical, horizontal)
+     * - 3 values: top, start/end, bottom
+     * - 4 values: top, end, bottom, start (clockwise from top)
+     * @return Quadruple of (top, end, bottom, start)
+     */
+    private data class PaddingValues(val top: Float, val end: Float, val bottom: Float, val start: Float)
+    
+    private fun parsePadding(value: String?, tree: ThemeTree): PaddingValues {
+        if (value.isNullOrBlank()) return PaddingValues(0f, 0f, 0f, 0f)
+        
+        val parts = value.trim().split("\\s+".toRegex()).map { part ->
+            if (isBinding(part)) {
+                val path = bindingPath(part)
+                val varName = path.substringAfter("vars.", missingDelimiterValue = path)
+                tree.variables[varName]?.toFloatOrNull() ?: 0f
+            } else {
+                part.toFloatOrNull() ?: 0f
+            }
+        }
+        
+        return when (parts.size) {
+            0 -> PaddingValues(0f, 0f, 0f, 0f)
+            1 -> PaddingValues(parts[0], parts[0], parts[0], parts[0])
+            2 -> PaddingValues(
+                top = parts[0],
+                end = parts[1],
+                bottom = parts[0],
+                start = parts[1]
+            )
+            3 -> PaddingValues(
+                top = parts[0],
+                end = parts[1],
+                bottom = parts[2],
+                start = parts[1]
+            )
+            else -> PaddingValues(
+                top = parts[0],
+                end = parts[1],
+                bottom = parts[2],
+                start = parts[3]
+            )
+        }
     }
     // endregion
 }

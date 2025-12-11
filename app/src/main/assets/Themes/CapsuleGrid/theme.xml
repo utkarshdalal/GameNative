@@ -21,13 +21,13 @@
                    src="@{game.capsule}" cornerRadius="8" scaleType="cover" />
             
             <!-- Compatibility badge - dark background, colored text, top corners only -->
-            <overlay id="compatBadge" x="0" y="0" width="150" height="20" 
-                     color="#AA000000" cornerRadius="8 8 0 0" />
+            <rect id="compatBadge" x="0" y="0" width="150" height="20" 
+                  color="#AA000000" cornerRadius="8 8 0 0" />
             <text id="compatLabel" x="0" y="0" width="150" height="20"
                   text="@{game.compatibility.label}" textSize="10" color="@{game.compatibility.color}" maxLines="1" textAlign="center" />
             
-            <!-- Bottom overlay for title -->
-            <overlay id="footer" x="0" y="190" width="150" height="35" color="#CC000000" cornerRadius="0" />
+            <!-- Bottom rect for title background -->
+            <rect id="footer" x="0" y="190" width="150" height="35" color="#CC000000" cornerRadius="0" />
             
             <!-- Game title -->
             <text id="title" x="6" y="196" width="138" height="26" 
@@ -39,8 +39,7 @@
     <layout>
         <grid columns="5" cellWidth="150" cellHeight="237" 
               hSpacing="12" vSpacing="12" 
-              contentPaddingTop="80" contentPaddingBottom="80"
-              contentPaddingStart="16" contentPaddingEnd="16"
+              padding="80 16"
               selectionMode="moving" itemCard="capsule" />
     </layout>
 </theme>

@@ -1,13 +1,13 @@
 <theme>
     <!-- Fixed UI elements (CSS-like positioning: positive values = inward from anchor) -->
     <fixed id="topBar" backgroundColor="#FF000000" height="80">
-        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
+        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF"
                 showAppName="true" showGameCount="true" />
-        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
+        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft"
                    backgroundColor="#FF1E1E1E" borderRadius="24" />
         <profileButton x="16" y="8" anchor="topRight" size="40" />
     </fixed>
-    
+
     <fixed id="bottomBar">
         <filterButton x="100" y="24" anchor="bottomRight" expanded="true" />
         <addButton x="16" y="24" anchor="bottomRight" />
@@ -15,45 +15,51 @@
 
     <!-- Card definitions for list items -->
     <cards>
-        <card id="listItem" width="900" height="100">
-            <!-- Row background with more rounded corners -->
-            <overlay id="rowBg" x="0" y="0" width="900" height="100" 
-                     color="#FF1E1E1E" cornerRadius="16" />
-            
-            <!-- Game cover with proper padding (16px left, centered vertically) -->
-            <image id="cover" x="16" y="12" width="76" height="76" 
-                   src="@{game.cover}" cornerRadius="6" scaleType="stretch" />
-            
+        <card id="listItem" width="100%" height="92">
+            <!-- Row background with rounded corners and subtle border -->
+            <rect id="rowBg" x="0" y="0" width="100%" height="92"
+                  color="#AA1E1E1E" cornerRadius="15"
+                  borderWidth="1" borderColor="#22FFFFFF" />
+
+            <!-- Game cover with proper padding -->
+            <image id="cover" x="16" y="16" width="60" height="60"
+                   src="@{game.cover}" cornerRadius="15" scaleType="cover" />
+
             <!-- Game title - bold style -->
-            <text id="title" x="108" y="16" width="650" height="26" 
-                  text="@{game.title}" textSize="17" color="#FFFFFFFF" maxLines="1" fontWeight="bold" />
-            
+            <text id="title" x="88" y="18" width="650" height="24"
+                  text="@{game.title}" textSize="16" color="#FFFFFFFF" maxLines="1" fontWeight="bold" />
+
             <!-- Installation status indicator (bullet) -->
-            <text id="installIndicator" x="108" y="44" width="12" height="16"
-                  text="●" textSize="6" color="#FF888888" />
-            
+            <text id="installIndicator" x="88" y="42" width="16" height="16"
+                  text="●" textSize="16" color="#FF888888" fontWeight="bold" />
+
             <!-- Installation status text -->
-            <text id="installStatus" x="120" y="44" width="300" height="16"
-                  text="@{game.installStatus}" textSize="13" color="#FF888888" />
-            
+            <text id="installStatus" x="100" y="42" width="300" height="16"
+                  text="@{game.installStatus}" textSize="12" color="#FF888888" />
+
             <!-- Compatibility status (italic style) -->
-            <text id="compatStatus" x="108" y="64" width="300" height="18"
-                  text="@{game.compatibility.label}" textSize="13" 
+            <text id="compatStatus" x="88" y="60" width="300" height="18"
+                  text="@{game.compatibility.label}" textSize="13"
                   color="@{game.compatibility.color}" fontStyle="italic" />
-            
+
             <!-- Open button - anchored to right side, pill shaped -->
-            <button id="openBtn" x="16" y="30" width="92" height="40" anchor="topRight"
+            <button id="openBtn" x="50" y="26" height="40" anchor="topRight"
                     text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
-                    textSize="15" cornerRadius="20" />
+                    textSize="14" cornerRadius="15" />
         </card>
     </cards>
-    
+
     <!-- Layout configuration - single column list -->
     <layout>
-        <grid columns="1" cellWidth="900" cellHeight="108" 
-              hSpacing="0" vSpacing="8" 
-              contentPaddingTop="80" contentPaddingBottom="80"
-              contentPaddingStart="16" contentPaddingEnd="16"
-              selectionMode="moving" itemCard="listItem" />
+        <grid columns="1" cellWidth="100%"
+              cellSpacing="0"
+              padding="80 16"
+              selectionMode="moving" itemCard="listItem">
+
+            <!-- Separator line between items -->
+            <separator height="1" margin="12 0">
+                <rect x="0" y="0" width="100%" height="1" color="#22FFFFFF" />
+            </separator>
+        </grid>
     </layout>
 </theme>

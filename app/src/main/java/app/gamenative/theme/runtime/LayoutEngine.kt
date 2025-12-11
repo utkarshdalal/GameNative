@@ -146,8 +146,10 @@ private fun GridLayout(
     itemBindingProvider: ((Int) -> BindingContext)? = null,
 ) {
     val card = cards[node.itemCard] ?: return
-    val cellW = dimToDp(node.cellSize.width, viewportSize.width, viewportSize.height)
-    val cellH = dimToDp(node.cellSize.height, viewportSize.width, viewportSize.height)
+    val cellW = dimToDp(node.cellWidth, viewportSize.width, viewportSize.height)
+    // If cellHeight not specified, use the card's canvas height
+    val cellH = node.cellHeight?.let { dimToDp(it, viewportSize.width, viewportSize.height) }
+        ?: dimToDp(card.canvas.height, viewportSize.width, viewportSize.height)
     val hSpace = node.hSpacing.dp
     val vSpace = node.vSpacing.dp
     val columns = node.columns
@@ -255,7 +257,7 @@ fun ThemeLayoutPreview_Canvas() {
         id = "gameCard",
         canvas = DimSize(Dimension.Px(320f), Dimension.Px(180f)),
         layers = listOf(
-            Layer.OverlayLayer(
+            Layer.RectLayer(
                 position = DimOffset(Dimension.Px(0f), Dimension.Px(0f)),
                 size = DimSize(Dimension.RelW(1f), Dimension.RelH(1f)),
                 opacity = FloatOrBinding.Literal(1f),
