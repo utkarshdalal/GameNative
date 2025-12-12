@@ -142,6 +142,7 @@ fun ContainerConfigDialog(
         val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
         // Start with defaults from resources
         val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
+        val d7vkVersionsBase = stringArrayResource(R.array.d7vk_version_entries).toList()
         val vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList()
         val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
         val gpuCards = ContainerUtils.getGPUCards(context)
@@ -183,6 +184,7 @@ fun ContainerConfigDialog(
         val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
         var wrapperVersions by remember { mutableStateOf(baseWrapperVersions) }
         var dxvkVersionsAll by remember { mutableStateOf(dxvkVersionsBase) }
+        var d7vkVersionsAll by remember { mutableStateOf(d7vkVersionsBase) }
         var vkd3dVersions by remember { mutableStateOf(vkd3dVersionsBase) }
         var box64BionicVersions by remember { mutableStateOf(box64BionicVersionsBase) }
         var wowBox64Versions by remember { mutableStateOf(wowBox64VersionsBase) } // reuse existing base list
@@ -213,6 +215,7 @@ fun ContainerConfigDialog(
                 }
 
                 dxvkVersionsAll = (dxvkVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_DXVK))).distinct()
+                d7vkVersionsAll = (d7vkVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_D7VK))).distinct()
                 vkd3dVersions = (vkd3dVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VKD3D))).distinct()
                 box64BionicVersions = (box64BionicVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64))).distinct()
                 wowBox64Versions = (wowBox64Versions + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64))).distinct()
@@ -452,6 +455,7 @@ fun ContainerConfigDialog(
         }
 
         var dxvkVersionIndex by rememberSaveable { mutableIntStateOf(0) }
+        var d7vkVersionIndex by rememberSaveable { mutableIntStateOf(0) }
 
         // VKD3D version control (forced depending on driver)
         fun vkd3dForcedVersion(): String {
@@ -477,7 +481,9 @@ fun ContainerConfigDialog(
             run {
                 val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
                 val isVortekLike = config.containerVariant.equals(Container.GLIBC) && driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
-                val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+                val wrapperType = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex])
+                val isVKD3D = wrapperType == "vkd3d"
+                val isD7VK = wrapperType == "d7vk"
                 val items =
                     if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(
                             1,
@@ -485,7 +491,7 @@ fun ContainerConfigDialog(
                             0
                         )
                     ) listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3") else dxvkVersionsAll
-                if (!isVKD3D) {
+                if (!isVKD3D && !isD7VK) {
                     SettingsListDropdown(
                         colors = settingsTileColors(),
                         title = { Text(text = stringResource(R.string.dxvk_version)) },
@@ -511,6 +517,26 @@ fun ContainerConfigDialog(
                     val currentConfig = KeyValueSet(config.dxwrapperConfig)
                     currentConfig.put("version", version)
                     config = config.copy(dxwrapperConfig = currentConfig.toString())
+                }
+            }
+            // D7VK Version Dropdown
+            run {
+                val wrapperType = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex])
+                val isD7VK = wrapperType == "d7vk"
+                if (isD7VK) {
+                    SettingsListDropdown(
+                        colors = settingsTileColors(),
+                        title = { Text(text = "D7VK Version") },
+                        value = d7vkVersionIndex.coerceIn(0, (d7vkVersionsAll.size - 1).coerceAtLeast(0)),
+                        items = d7vkVersionsAll,
+                        onItemSelected = {
+                            d7vkVersionIndex = it
+                            val version = StringUtils.parseIdentifier(d7vkVersionsAll[it])
+                            val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                            currentConfig.put("version", version)
+                            config = config.copy(dxwrapperConfig = currentConfig.toString())
+                        }
+                    )
                 }
             }
             // VKD3D Version UI (visible only when VKD3D selected)
@@ -1564,7 +1590,7 @@ fun ContainerConfigDialog(
                                     },
                                 )
                                 // FEXCore Preset (only when Bionic + Wine arm64ec)
-                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true) 
+                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
                                     && config.wineVersion.contains("arm64ec", ignoreCase = true)) {
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),

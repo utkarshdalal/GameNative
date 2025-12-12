@@ -75,10 +75,11 @@
     <string-array name="dxwrapper_entries">
         <item>WineD3D</item>
         <item>DXVK</item>
+        <item>D7VK</item>
         <item>VKD3D</item>
         <item>CNC DDraw</item>
     </string-array>
-    <string-array>
+    <string-array name="d7vk_version_entries">
         <item>1.0</item>
     </string-array>
     <string-array name="dxvk_version_entries">
