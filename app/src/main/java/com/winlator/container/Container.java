@@ -866,6 +866,9 @@ public class Container {
                 else if (dxwrapper.startsWith("d8vk-") || dxwrapper.startsWith("dxvk-")) {
                     data.put("dxwrapper", dxwrapper);
                 }
+                else if (dxwrapper.startsWith("d7vk-") || dxwrapper.startsWith("dxvk-")) {
+                    data.put("dxwrapper", dxwrapper);
+                }
             }
 
             if (data.has("graphicsDriver")) {

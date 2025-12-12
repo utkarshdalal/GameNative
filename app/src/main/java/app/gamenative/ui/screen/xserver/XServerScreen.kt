@@ -1927,6 +1927,28 @@ private fun extractDXWrapperFiles(
                 )
             }
         }
+        "d7vk" -> {
+            val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
+            // This block handles dxvk-VERSION strings
+            Timber.i("Extracting D7VK DLLs for dxwrapper: $dxwrapper")
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll", "ddraw.dll")
+            if (profile != null) {
+                Timber.d("Applying user-defined DXVK content profile: " + dxwrapper)
+                contentsManager.applyContent(profile);
+            } else {
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/$dxwrapper.tzst", windowsDir, onExtractFileListener,
+                )
+            }
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD,
+                context.assets,
+                "dxwrapper/d8vk-${DefaultVersion.D8VK}.tzst",
+                windowsDir,
+                onExtractFileListener,
+            )
+    }
         else -> {
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             // This block handles dxvk-VERSION strings
