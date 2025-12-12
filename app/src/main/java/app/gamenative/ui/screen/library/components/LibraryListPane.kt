@@ -229,14 +229,6 @@ internal fun LibraryListPane(
                                 )
                             )
                         )
-                        // Show current Theme id as a subtle subtitle when the experimental UI is off
-                        if (selectedThemeId != null && !PrefManager.useThemeEngineUi) {
-                            Text(
-                                text = "Theme: ${selectedThemeId}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                         Text(
                             text = androidx.compose.ui.res.stringResource(
                                 app.gamenative.R.string.library_game_count,

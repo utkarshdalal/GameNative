@@ -1,7 +1,7 @@
 <manifest engineVersion="1" minAppVersion="0.0.0">
-    <id>HeroCarousel</id>
+    <id>List View</id>
     <version>1.0.0</version>
     <engineVersion>1</engineVersion>
     <minAppVersion>0.0.0</minAppVersion>
-    <entry theme="/theme.xml"/>
+    <entry theme="/theme.xml" variables="/variables.xml"/>
 </manifest>

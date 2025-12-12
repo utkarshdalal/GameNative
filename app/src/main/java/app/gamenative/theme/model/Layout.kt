@@ -36,14 +36,16 @@ sealed class LayoutNode {
      * Uniform grid layout.
      */
     data class Grid(
-        /** Number of columns. */
-        val columns: Int,
+        /** Number of columns. Null = adaptive based on cellWidth (recommended). */
+        val columns: Int? = null,
         /** Number of rows (optional if content is dynamic). */
         val rows: Int? = null,
-        /** Width of each grid cell. */
+        /** Minimum width of each grid cell. Used for adaptive column calculation. */
         val cellWidth: Dimension,
-        /** Height of each grid cell. If null, uses the card's canvas height. */
+        /** Height of each grid cell. If null, uses aspectRatio or card's canvas height. */
         val cellHeight: Dimension? = null,
+        /** Aspect ratio (width/height) for automatic cell height calculation. e.g., 2.14 for hero (460:215), 0.67 for capsule (2:3). */
+        val aspectRatio: Float? = null,
         /** Horizontal spacing between cells. */
         val hSpacing: Float = 0f,
         /** Vertical spacing between cells. */

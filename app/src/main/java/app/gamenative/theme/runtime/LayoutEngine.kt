@@ -152,7 +152,8 @@ private fun GridLayout(
         ?: dimToDp(card.canvas.height, viewportSize.width, viewportSize.height)
     val hSpace = node.hSpacing.dp
     val vSpace = node.vSpacing.dp
-    val columns = node.columns
+    // Default to 1 column if not specified
+    val columns = node.columns ?: 1
     val rows = node.rows ?: 3
     Column(modifier = modifier) {
         repeat(rows) { r ->
@@ -214,7 +215,7 @@ private fun RenderCard(
 // -- FocusEngine integration helpers --
 internal fun gridFocusConfig(node: LayoutNode.Grid): FocusEngine.Config = FocusEngine.Config(
     rows = node.rows ?: 1,
-    cols = node.columns,
+    cols = node.columns ?: 1,
     wrapX = true,
     wrapY = false,
     snapToCell = true,

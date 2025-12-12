@@ -149,20 +149,7 @@ fun SettingsGroupInterface(
             onClick = { openLanguageDialog = true }
         )
 
-        // Theme engine picker
-        val selectedThemeId by app.gamenative.theme.ThemeManager.selectedThemeId.collectAsState(null)
-        var openThemePickerDialog by rememberSaveable { mutableStateOf(false) }
-        SettingsMenuLink(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.settings_theme_picker_title)) },
-            subtitle = { Text(text = selectedThemeId ?: "—") },
-            onClick = { openThemePickerDialog = true }
-        )
-        if (openThemePickerDialog) {
-            ThemePickerDialog(onDismiss = { openThemePickerDialog = false })
-        }
-
-        // Experimental: Enable Theme Engine UI rendering
+        // Enable Theme Engine UI rendering
         var useThemeEngineUi by rememberSaveable { mutableStateOf(PrefManager.useThemeEngineUi) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -174,6 +161,21 @@ fun SettingsGroupInterface(
                 PrefManager.useThemeEngineUi = it
             },
         )
+
+        // Theme engine picker - only show when theme engine is enabled
+        if (useThemeEngineUi) {
+            val selectedThemeId by app.gamenative.theme.ThemeManager.selectedThemeId.collectAsState(null)
+            var openThemePickerDialog by rememberSaveable { mutableStateOf(false) }
+            SettingsMenuLink(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.settings_theme_picker_title)) },
+                subtitle = { Text(text = selectedThemeId ?: "—") },
+                onClick = { openThemePickerDialog = true }
+            )
+            if (openThemePickerDialog) {
+                ThemePickerDialog(onDismiss = { openThemePickerDialog = false })
+            }
+        }
 
         // Unified visual icon picker (affects app and notification icons)
         var selectedVariant by rememberSaveable { mutableStateOf(if (PrefManager.useAltLauncherIcon || PrefManager.useAltNotificationIcon) 1 else 0) }

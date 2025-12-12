@@ -43,7 +43,7 @@
                   color="@{game.compatibility.color}" fontStyle="italic" />
 
             <!-- Open button - anchored to right side, pill shaped -->
-            <button id="openBtn" x="50" y="26" height="40" anchor="topRight"
+            <button id="openBtn" x="26" y="26" height="40" anchor="topRight"
                     text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
                     textSize="14" cornerRadius="15" />
         </card>

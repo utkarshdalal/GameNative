@@ -56,9 +56,10 @@ object ThemeXmlMapper {
         
         val cardTagName = if (cardsRoot.name.equals("cards", ignoreCase = true)) "card" else "template"
         return cardsRoot.children.filter { it.name.equals(cardTagName, ignoreCase = true) }.map { n ->
-            val id = req(n, "id")
-            val width = reqDimensionWidth(n, "width")
-            val height = reqDimensionHeight(n, "height")
+            val id = n.attributes["id"] ?: "card_${System.nanoTime()}"
+            // Default to 100% width/height if not specified
+            val width = n.attributes["width"]?.let { parseDimensionWidth(it) } ?: Dimension.RelW(1f)
+            val height = n.attributes["height"]?.let { parseDimensionHeight(it) } ?: Dimension.RelH(1f)
             val layers = n.children.mapNotNull { child ->
                 parseLayer(child)
             }
@@ -283,12 +284,12 @@ object ThemeXmlMapper {
     }
 
     private fun parseCanvas(node: XmlNode): LayoutNode.Canvas {
-        val w = reqDimensionWidth(node, "width")
-        val h = reqDimensionHeight(node, "height")
+        // Default to 100% width/height if not specified
+        val w = node.attributes["width"]?.let { parseDimensionWidth(it) } ?: Dimension.RelW(1f)
+        val h = node.attributes["height"]?.let { parseDimensionHeight(it) } ?: Dimension.RelH(1f)
         val children = node.children.filter { it.name.equals("child", ignoreCase = true) }.map { ch ->
             // Support both new "card" and legacy "template" attribute
-            val cardId = ch.attributes["card"] ?: ch.attributes["template"] 
-                ?: error("Missing required attribute 'card' on <child>")
+            val cardId = ch.attributes["card"] ?: ch.attributes["template"] ?: "default"
             CanvasChild(
                 cardId = cardId,
                 position = DimOffset(px(ch, "x"), px(ch, "y")),
@@ -299,11 +300,15 @@ object ThemeXmlMapper {
     }
 
     private fun parseGrid(node: XmlNode, tree: ThemeTree): LayoutNode.Grid {
-        val cols = reqInt(node, "columns")
+        // columns is optional - null means adaptive based on cellWidth
+        val cols = node.attributes["columns"]?.toIntOrNull()
         val rows = node.attributes["rows"]?.toIntOrNull()
-        val cellW = reqDimensionWidth(node, "cellWidth")
-        // cellHeight is optional - if not specified, card height will be used
+        // cellWidth defaults to 100% (single column) if not specified
+        val cellW = node.attributes["cellWidth"]?.let { parseDimensionWidth(it) } ?: Dimension.RelW(1f)
+        // cellHeight is optional - if not specified, aspectRatio or card height will be used
         val cellH = node.attributes["cellHeight"]?.let { parseDimensionHeight(it) }
+        // aspectRatio for automatic height calculation (width/height, e.g. 2.14 for hero, 0.67 for capsule)
+        val aspectRatio = node.attributes["aspectRatio"]?.toFloatOrNull()
         
         // cellSpacing sets both hSpacing and vSpacing; individual values override it
         val cellSpacing = resolveFloat(node, "cellSpacing", default = 0f, tree)
@@ -316,16 +321,16 @@ object ThemeXmlMapper {
             null -> SelectionMode.MOVING
             else -> SelectionMode.MOVING
         }
-        // Support both new "itemCard" and legacy "itemTemplate" attribute
-        val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"]
-            ?: error("Missing required attribute 'itemCard' on <grid>")
+        // Support both new "itemCard" and legacy "itemTemplate" attribute; default to "default" if not specified
+        val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"] ?: "default"
         
         // Content padding - supports CSS-like shorthand: 1, 2, 3, or 4 values
         val (paddingTop, paddingEnd, paddingBottom, paddingStart) = parsePadding(node.attributes["padding"], tree)
         
         // Parse optional separator
         val separator = node.children.firstOrNull { it.name.equals("separator", ignoreCase = true) }?.let { sepNode ->
-            val sepHeight = reqDimensionHeight(sepNode, "height")
+            // Separator height defaults to 1px if not specified
+            val sepHeight = sepNode.attributes["height"]?.let { parseDimensionHeight(it) } ?: Dimension.Px(1f)
             val sepLayers = sepNode.children.mapNotNull { parseLayer(it) }
             // Parse margin - supports CSS-like shorthand
             val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
@@ -344,6 +349,7 @@ object ThemeXmlMapper {
             rows = rows,
             cellWidth = cellW,
             cellHeight = cellH,
+            aspectRatio = aspectRatio,
             hSpacing = hSpacing,
             vSpacing = vSpacing,
             selectionMode = sel,
@@ -364,8 +370,9 @@ object ThemeXmlMapper {
             "down" -> Direction.DOWN
             else -> Direction.RIGHT
         }
-        val itemW = reqDimensionWidth(node, "itemWidth")
-        val itemH = reqDimensionHeight(node, "itemHeight")
+        // Default item size to 200x200 if not specified
+        val itemW = node.attributes["itemWidth"]?.let { parseDimensionWidth(it) } ?: Dimension.Px(200f)
+        val itemH = node.attributes["itemHeight"]?.let { parseDimensionHeight(it) } ?: Dimension.Px(200f)
         val spacing = resolveFloat(node, "itemSpacing", default = 0f, tree)
         val sel = when (node.attributes["selectionMode"]?.lowercase()) {
             "stationary" -> SelectionMode.STATIONARY
@@ -374,9 +381,8 @@ object ThemeXmlMapper {
             else -> SelectionMode.STATIONARY
         }
         val pageSize = node.attributes["pageSize"]?.toIntOrNull()
-        // Support both new "itemCard" and legacy "itemTemplate" attribute
-        val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"]
-            ?: error("Missing required attribute 'itemCard' on <carousel>")
+        // Support both new "itemCard" and legacy "itemTemplate" attribute; default to "default" if not specified
+        val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"] ?: "default"
         return LayoutNode.Carousel(
             direction = dir,
             itemSize = DimSize(itemW, itemH),

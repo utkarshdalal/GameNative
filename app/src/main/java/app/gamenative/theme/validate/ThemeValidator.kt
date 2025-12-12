@@ -173,27 +173,39 @@ object ThemeValidator {
                 validateStatesTransitions(node, out)
             }
             if (node.name.equals("grid", ignoreCase = true)) {
-                // Columns > 0, rows optional but if present >0, itemTemplate must exist later
-                val columns = node.attributes["columns"]?.toIntOrNull()
-                if (columns == null || columns <= 0) {
-                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid columns must be > 0.", node.source)
+                // Columns is optional (null = adaptive), but if specified must be > 0
+                node.attributes["columns"]?.toIntOrNull()?.let { columns ->
+                    if (columns <= 0) {
+                        out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid columns must be > 0 when specified.", node.source)
+                    }
                 }
                 node.attributes["rows"]?.toIntOrNull()?.let { if (it <= 0) out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid rows must be > 0 when specified.", node.source) }
+                // cellWidth is optional (defaults to 100%), but if specified must be > 0
                 val cellW = parseDimensionValue(node.attributes["cellWidth"])
-                if (cellW == null || cellW <= 0f) {
-                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid cellWidth must be > 0.", node.source)
+                if (cellW != null && cellW <= 0f) {
+                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid cellWidth must be > 0 when specified.", node.source)
                 }
                 // cellHeight is optional - if specified, must be > 0
                 val cellH = parseDimensionValue(node.attributes["cellHeight"])
                 if (cellH != null && cellH <= 0f) {
                     out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid cellHeight must be > 0 when specified.", node.source)
                 }
+                // aspectRatio is optional - if specified, must be > 0
+                node.attributes["aspectRatio"]?.toFloatOrNull()?.let { ratio ->
+                    if (ratio <= 0f) {
+                        out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Grid aspectRatio must be > 0 when specified.", node.source)
+                    }
+                }
             }
             if (node.name.equals("carousel", ignoreCase = true)) {
+                // itemWidth/itemHeight are optional (default to 200px), but if specified must be > 0
                 val itemW = parseDimensionValue(node.attributes["itemWidth"])
                 val itemH = parseDimensionValue(node.attributes["itemHeight"])
-                if (itemW == null || itemW <= 0f || itemH == null || itemH <= 0f) {
-                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Carousel itemWidth/itemHeight must be > 0.", node.source)
+                if (itemW != null && itemW <= 0f) {
+                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Carousel itemWidth must be > 0 when specified.", node.source)
+                }
+                if (itemH != null && itemH <= 0f) {
+                    out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Carousel itemHeight must be > 0 when specified.", node.source)
                 }
                 node.attributes["pageSize"]?.toIntOrNull()?.let { if (it <= 0) out += ValidationIssue(ValidationCode.INVALID_RANGE, Severity.ERROR, "Carousel pageSize must be > 0 when specified.", node.source) }
             }

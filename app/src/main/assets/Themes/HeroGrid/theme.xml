@@ -13,34 +13,34 @@
         <addButton x="16" y="24" anchor="bottomRight" />
     </fixed>
 
-    <!-- Card definitions for grid items - Capsule style (portrait 2:3 ratio) -->
+    <!-- Card definitions for grid items - Hero style (landscape 460:215 ratio) -->
     <cards>
-        <card id="capsule" width="100%" height="100%">
-            <!-- Game capsule art FIRST (bottom layer) - fills entire cell -->
+        <card id="hero" width="100%" height="100%">
+            <!-- Game hero art FIRST (bottom layer) - fills entire cell -->
             <image id="art" x="0" y="0" width="100%" height="100%"
-                    src="@{game.capsule}" cornerRadius="20" scaleType="cover" />
+                    src="@{game.hero}" cornerRadius="20" scaleType="cover" />
 
             <!-- Compatibility badge - dark background, colored text, top corners only -->
             <rect id="compatBadge" x="0" y="0" width="100%" height="20"
-                color="#99000000" cornerRadius="20 20 0 0"
-                borderWidth="1" borderColor="#22FFFFFF"/>
+                    color="#99000000" cornerRadius="20 20 0 0"
+                    borderWidth="1" borderColor="#22FFFFFF"/>
             <text id="compatLabel" x="0" y="0" width="100%" height="20"
-                text="@{game.compatibility.label}" textSize="11" color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="bold" />
+                    text="@{game.compatibility.label}" textSize="11" color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="bold" />
 
             <!-- Bottom rect for title background - positioned from bottom -->
             <rect id="footer" x="0" y="0" width="100%" height="20" color="#99000000" cornerRadius="0 0 20 20" anchor="bottomLeft" />
 
             <!-- Game title -->
             <text id="title" x="8" y="2" width="90%" height="20"
-                text="@{game.title}" textSize="11" color="#FFFFFFFF" maxLines="1" textAlign="left" fontWeight="bold" anchor="bottomLeft" />
+                    text="@{game.title}" textSize="11" color="#FFFFFFFF" maxLines="1" textAlign="left" fontWeight="bold" anchor="bottomLeft" />
         </card>
     </cards>
 
-    <!-- Layout configuration - adaptive capsule grid -->
+    <!-- Layout configuration - adaptive hero grid -->
     <layout>
-        <grid cellWidth="150" aspectRatio="0.67"
+        <grid cellWidth="200" aspectRatio="2.14"
               hSpacing="12" vSpacing="12"
-              padding="80 16"
-              selectionMode="moving" itemCard="capsule" />
+              padding="80 20"
+              selectionMode="moving" itemCard="hero" />
     </layout>
 </theme>

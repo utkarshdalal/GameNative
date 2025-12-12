@@ -69,17 +69,41 @@ fun ThemedGameGrid(
     val paddingStart = if (gridConfig.contentPaddingStart > 0) gridConfig.contentPaddingStart.dp else 16.dp
     val paddingEnd = if (gridConfig.contentPaddingEnd > 0) gridConfig.contentPaddingEnd.dp else 16.dp
 
-    // Use BoxWithConstraints to support percentage-based cell sizes
+    // Use BoxWithConstraints to support percentage-based cell sizes and adaptive layouts
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val viewportWidth = maxWidth
         val viewportHeight = maxHeight
         
-        val cellWidthDp = dimToDp(gridConfig.cellWidth, viewportWidth, viewportHeight)
-        // If cellHeight not specified, use the card's canvas height
-        val cellHeightDp = gridConfig.cellHeight?.let { dimToDp(it, viewportWidth, viewportHeight) }
-            ?: dimToDp(card.canvas.height, viewportWidth, viewportHeight)
         val hSpacing = gridConfig.hSpacing.dp
         val vSpacing = gridConfig.vSpacing.dp
+        
+        // Calculate minimum cell width from config
+        val minCellWidthDp = dimToDp(gridConfig.cellWidth, viewportWidth, viewportHeight)
+        
+        // Calculate available width for content (excluding padding)
+        val availableWidth = viewportWidth - paddingStart - paddingEnd
+        
+        // Calculate how many columns fit, ensuring at least 1
+        val columnCount = maxOf(1, ((availableWidth + hSpacing) / (minCellWidthDp + hSpacing)).toInt())
+        
+        // Calculate actual cell width to fill the available space evenly
+        // Formula: availableWidth = columnCount * cellWidth + (columnCount - 1) * spacing
+        // Solving for cellWidth: cellWidth = (availableWidth - (columnCount - 1) * spacing) / columnCount
+        val actualCellWidthDp = if (columnCount > 1) {
+            (availableWidth - hSpacing * (columnCount - 1)) / columnCount
+        } else {
+            availableWidth // Single column fills entire width
+        }
+        
+        // Calculate cell height:
+        // 1. If aspectRatio is specified, use it to calculate from actual cell width
+        // 2. Else if cellHeight is specified, use it
+        // 3. Else fall back to card's canvas height
+        val cellHeightDp = when {
+            gridConfig.aspectRatio != null -> actualCellWidthDp / gridConfig.aspectRatio
+            gridConfig.cellHeight != null -> dimToDp(gridConfig.cellHeight, viewportWidth, viewportHeight)
+            else -> dimToDp(card.canvas.height, viewportWidth, viewportHeight)
+        }
         
         // Calculate separator height if present (content height + margins)
         val separatorContentHeightDp = gridConfig.separator?.let { 
@@ -92,8 +116,9 @@ fun ThemedGameGrid(
         // Total cell height including separator
         val totalCellHeight = cellHeightDp + separatorTotalHeightDp
 
+        // Use Fixed columns for precise control, since we've calculated the exact count
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = cellWidthDp),
+            columns = GridCells.Fixed(columnCount),
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -114,7 +139,7 @@ fun ThemedGameGrid(
                         item = item,
                         card = card,
                         bindings = bindingProvider(item),
-                        cellSize = DpSize(cellWidthDp, cellHeightDp),
+                        cellSize = DpSize(actualCellWidthDp, cellHeightDp),
                         onClick = { onItemClick(item) },
                         onFocus = { onItemFocus(item) },
                         stringResolver = stringResolver,
@@ -124,7 +149,7 @@ fun ThemedGameGrid(
                     gridConfig.separator?.let { separator ->
                         SeparatorView(
                             separator = separator,
-                            width = cellWidthDp,
+                            width = actualCellWidthDp,
                             contentHeight = separatorContentHeightDp,
                             stringResolver = stringResolver,
                             themePath = themePath,
@@ -275,10 +300,11 @@ private fun BoxScope.RenderThemedLayer(
         is Layer.ImageLayer -> {
             val src = resolveBinding(layer.source.src, bindings)
             val shape = parseCornerRadius(layer.cornerRadius)
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
 
             if (src.isNotBlank()) {
@@ -289,7 +315,7 @@ private fun BoxScope.RenderThemedLayer(
                 }
                 Box(
                     modifier = Modifier
-                        .offset(x = x, y = y)
+                        .offset(x = pos.x, y = pos.y)
                         .size(w, h)
                         .clip(shape)
                         .alpha(alpha)
@@ -322,7 +348,7 @@ private fun BoxScope.RenderThemedLayer(
                 // No image URL - show placeholder
                 Box(
                     modifier = Modifier
-                        .offset(x = x, y = y)
+                        .offset(x = pos.x, y = pos.y)
                         .size(w, h)
                         .clip(shape)
                         .background(Color(0xFF555555))
@@ -331,10 +357,11 @@ private fun BoxScope.RenderThemedLayer(
         }
 
         is Layer.RectLayer -> {
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val shape = parseCornerRadius(layer.cornerRadius)
             val fillColor = resolveIntBinding(layer.color, 0x66000000, bindings)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
@@ -343,7 +370,7 @@ private fun BoxScope.RenderThemedLayer(
 
             Box(
                 modifier = Modifier
-                    .offset(x = x, y = y)
+                    .offset(x = pos.x, y = pos.y)
                     .size(w, h)
                     .clip(shape)
                     .alpha(alpha)
@@ -361,10 +388,11 @@ private fun BoxScope.RenderThemedLayer(
         is Layer.TextLayer -> {
             val rawText = resolveBinding(layer.text, bindings)
             val text = stringResolver.resolve(rawText, themePath)
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: 24.dp
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val textSize = resolveFloatBinding(layer.textSize, 14f)
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
@@ -398,7 +426,7 @@ private fun BoxScope.RenderThemedLayer(
 
             Box(
                 modifier = Modifier
-                    .offset(x = x, y = y)
+                    .offset(x = pos.x, y = pos.y)
                     .size(w, h)
                     .alpha(alpha),
                 contentAlignment = boxAlignment
@@ -417,10 +445,11 @@ private fun BoxScope.RenderThemedLayer(
         }
 
         is Layer.BorderLayer -> {
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val shape = parseCornerRadius(layer.cornerRadius)
             val borderWidth = resolveFloatBinding(layer.strokeWidth, 1f).dp
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
@@ -428,7 +457,7 @@ private fun BoxScope.RenderThemedLayer(
 
             Box(
                 modifier = Modifier
-                    .offset(x = x, y = y)
+                    .offset(x = pos.x, y = pos.y)
                     .size(w, h)
                     .alpha(alpha)
                     .border(width = borderWidth, color = Color(color), shape = shape)
@@ -437,23 +466,25 @@ private fun BoxScope.RenderThemedLayer(
 
         is Layer.ShadowLayer -> {
             // Shadows are complex in Compose - simplified implementation
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
-            // Shadow layers are primarily decorative - skip for now in this implementation
+            // Note: anchor support added but shadow rendering is simplified/skipped
+            // val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
         }
 
         is Layer.VideoLayer -> {
             // Video not supported in grid tiles - show poster or placeholder
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
 
             Box(
                 modifier = Modifier
-                    .offset(x = x, y = y)
+                    .offset(x = pos.x, y = pos.y)
                     .size(w, h)
                     .background(Color(0xFF303030)),
                 contentAlignment = Alignment.Center
@@ -464,16 +495,17 @@ private fun BoxScope.RenderThemedLayer(
 
         is Layer.BackdropLayer -> {
             // Backdrop blur effects - simplified
-            val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
-            val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
+            val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
+            val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
             val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
             val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val tint = resolveIntBinding(layer.tintColor, 0, bindings)
 
             if (tint != 0) {
                 Box(
                     modifier = Modifier
-                        .offset(x = x, y = y)
+                        .offset(x = pos.x, y = pos.y)
                         .size(w, h)
                         .background(Color(tint).copy(alpha = 0.5f))
                 )
