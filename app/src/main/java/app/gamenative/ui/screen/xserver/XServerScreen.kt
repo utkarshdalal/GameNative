@@ -1743,7 +1743,7 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
-    // Normalize dxwrapper for state (dxvk and d7vk include version for extraction switch)
+    // Normalize dxwrapper for state (dxvk includes version for extraction switch)
     if (xServerState.value.dxwrapper == "dxvk") {
         xServerState.value = xServerState.value.copy(
             dxwrapper = "dxvk-" + xServerState.value.dxwrapperConfig?.get("version"),
@@ -1754,7 +1754,6 @@ private fun setupWineSystemFiles(
         var version = xServerState.value.dxwrapperConfig?.get("version")
         if (version == null || version != DefaultVersion.D7VK) {
             version = DefaultVersion.D7VK
-            // Update the config to prevent future issues
             xServerState.value.dxwrapperConfig?.put("version", version)
         }
         xServerState.value = xServerState.value.copy(
