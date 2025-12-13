@@ -867,18 +867,18 @@ object ContainerUtils {
      */
     private fun createDefaultVirtualGamepadProfile(context: Context, inputControlsManager: InputControlsManager): ControlsProfile {
         Timber.w("Creating default Virtual Gamepad profile - asset profiles not available")
-        
+
         // Create profile with id 3 to match the Virtual Gamepad profile
         val profile = ControlsProfile(context, 3)
         profile.setName("Virtual Gamepad")
         profile.setCursorSpeed(1.0f)
-        
+
         // Create the JSON structure matching the asset profile
         val profileJSON = JSONObject().apply {
             put("id", 3)
             put("name", "Virtual Gamepad")
             put("cursorSpeed", 1)
-            
+
             val elementsArray = JSONArray().apply {
                 // D_PAD element
                 put(JSONObject().apply {
@@ -897,7 +897,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON X
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -915,7 +915,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON Y
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -933,7 +933,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON A
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -951,7 +951,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON B
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -969,7 +969,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON R2
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -987,7 +987,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON R1
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1005,7 +1005,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON L1
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1023,7 +1023,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON L2
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1041,7 +1041,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON START
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1059,7 +1059,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 15)
                 })
-                
+
                 // BUTTON SELECT
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1077,7 +1077,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 16)
                 })
-                
+
                 // LEFT STICK
                 put(JSONObject().apply {
                     put("type", "STICK")
@@ -1095,7 +1095,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // RIGHT STICK
                 put(JSONObject().apply {
                     put("type", "STICK")
@@ -1113,7 +1113,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON L3
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1131,7 +1131,7 @@ object ContainerUtils {
                     put("text", "")
                     put("iconId", 0)
                 })
-                
+
                 // BUTTON R3
                 put(JSONObject().apply {
                     put("type", "BUTTON")
@@ -1152,14 +1152,14 @@ object ContainerUtils {
             }
             put("elements", elementsArray)
         }
-        
+
         // Write the profile file
         val profileFile = ControlsProfile.getProfileFile(context, 3)
         FileUtils.writeString(profileFile, profileJSON.toString())
-        
+
         // Reload profiles to include the new one
         inputControlsManager.loadProfiles(false)
-        
+
         return profile
     }
 

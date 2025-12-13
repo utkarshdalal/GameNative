@@ -457,6 +457,43 @@ fun ContainerConfigDialog(
         var dxvkVersionIndex by rememberSaveable { mutableIntStateOf(0) }
         var d7vkVersionIndex by rememberSaveable { mutableIntStateOf(0) }
 
+        // Validate and fix version mismatch when loading container
+        LaunchedEffect(versionsLoaded, config.dxwrapper) {
+            if (!versionsLoaded) return@LaunchedEffect
+
+            val currentConfig = KeyValueSet(config.dxwrapperConfig)
+            val savedVersion = currentConfig.get("version")
+
+            when (config.dxwrapper) {
+                "d7vk" -> {
+                    // Check if version is valid for D7VK
+                    val isValidD7VKVersion = d7vkVersionsAll.any {
+                        StringUtils.parseIdentifier(it) == savedVersion
+                    }
+                    if (!isValidD7VKVersion && d7vkVersionsAll.isNotEmpty()) {
+                        // Reset to first D7VK version
+                        val defaultVersion = StringUtils.parseIdentifier(d7vkVersionsAll[0])
+                        currentConfig.put("version", defaultVersion)
+                        config = config.copy(dxwrapperConfig = currentConfig.toString())
+                        d7vkVersionIndex = 0
+                    }
+                }
+                "dxvk" -> {
+                    // Check if version is valid for DXVK
+                    val isValidDXVKVersion = dxvkVersionsAll.any {
+                        StringUtils.parseIdentifier(it) == savedVersion
+                    }
+                    if (!isValidDXVKVersion && dxvkVersionsAll.isNotEmpty()) {
+                        // Reset to first DXVK version
+                        val defaultVersion = StringUtils.parseIdentifier(dxvkVersionsAll[0])
+                        currentConfig.put("version", defaultVersion)
+                        config = config.copy(dxwrapperConfig = currentConfig.toString())
+                        dxvkVersionIndex = 0
+                    }
+                }
+            }
+        }
+
         // VKD3D version control (forced depending on driver)
         fun vkd3dForcedVersion(): String {
             val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
@@ -474,7 +511,26 @@ fun ContainerConfigDialog(
                 items = dxWrappers,
                 onItemSelected = {
                     dxWrapperIndex = it
-                    config = config.copy(dxwrapper = StringUtils.parseIdentifier(dxWrappers[it]))
+                    val newWrapper = StringUtils.parseIdentifier(dxWrappers[it])
+                    config = config.copy(dxwrapper = newWrapper)
+                    // Reset version to default when switching wrappers
+                    val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                    when (newWrapper) {
+                        "dxvk" -> {
+                            dxvkVersionIndex = 0
+                            val newVersion = StringUtils.parseIdentifier(dxvkVersionsAll[0])
+                            currentConfig.put("version", newVersion)
+                        }
+                        "d7vk" -> {
+                            d7vkVersionIndex = 0
+                            val newVersion = StringUtils.parseIdentifier(d7vkVersionsAll[0])
+                            currentConfig.put("version", newVersion)
+                        }
+                        "vkd3d" -> {
+                            currentConfig.put("vkd3dVersion", vkd3dForcedVersion())
+                        }
+                    }
+                    config = config.copy(dxwrapperConfig = currentConfig.toString())
                 },
             )
             // DXVK Version Dropdown (conditionally visible and constrained)
@@ -511,8 +567,8 @@ fun ContainerConfigDialog(
                                 config.copy(dxwrapperConfig = currentConfig.toString(), envVars = envVarsSet.toString())
                         },
                     )
-                } else {
-                    // Ensure default version for vortek-like when hidden
+                } else if (isVKD3D) {
+                   // Ensure default version for vortek-like when hidden
                     val version = if (isVortekLike) "1.10.3" else "2.4.1"
                     val currentConfig = KeyValueSet(config.dxwrapperConfig)
                     currentConfig.put("version", version)
@@ -635,6 +691,10 @@ fun ContainerConfigDialog(
         }
         // When DXVK version defaults to an 'async' build, enable DXVK_ASYNC by default
         LaunchedEffect(dxvkVersionIndex, graphicsDriverIndex, dxWrapperIndex) {
+            // Only run this effect when DXVK wrapper is selected
+            val wrapperIsDxvk = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "dxvk"
+            if (!wrapperIsDxvk) return@LaunchedEffect
+
             val (isVortekLike, effectiveList) = currentDxvkContext()
             if (dxvkVersionIndex !in effectiveList.indices) dxvkVersionIndex = 0
 
@@ -646,11 +706,8 @@ fun ContainerConfigDialog(
             } else selectedVersion
             val envSet = EnvVars(config.envVars)
             // Update dxwrapperConfig version only when DXVK wrapper selected
-            val wrapperIsDxvk = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "dxvk"
             val kvs = KeyValueSet(config.dxwrapperConfig)
-            if (wrapperIsDxvk) {
-                kvs.put("version", version)
-            }
+            kvs.put("version", version)
             if (version.contains("async", ignoreCase = true)) {
                 kvs.put("async", "1")
             } else {

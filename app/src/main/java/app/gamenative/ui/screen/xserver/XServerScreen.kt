@@ -1750,8 +1750,15 @@ private fun setupWineSystemFiles(
         )
     }
     if (xServerState.value.dxwrapper == "d7vk") {
+        // Set version for d7vk or use default if not found.
+        var version = xServerState.value.dxwrapperConfig?.get("version")
+        if (version == null || version != DefaultVersion.D7VK) {
+            version = DefaultVersion.D7VK
+            // Update the config to prevent future issues
+            xServerState.value.dxwrapperConfig?.put("version", version)
+        }
         xServerState.value = xServerState.value.copy(
-            dxwrapper = "d7vk-" + xServerState.value.dxwrapperConfig?.get("version"),
+            dxwrapper = "d7vk-" + version,
         )
     }
 
@@ -1933,7 +1940,7 @@ private fun extractDXWrapperFiles(
             }
         }
         else -> {
-            // Handle dxvk-* and d7vk-* versions (dxvk-2.4.1, d7vk-1.0, etc.)
+            // Handle dxvk-*, d8vk-* and d7vk-* versions (dxvk-2.4.1, d7vk-1.0, etc.)
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             Timber.i("Extracting DXVK/D7VK/D8VK DLLs for dxwrapper: $dxwrapper")
             restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll", "ddraw.dll")
