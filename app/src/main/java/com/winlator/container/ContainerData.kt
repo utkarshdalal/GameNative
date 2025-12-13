@@ -72,8 +72,6 @@ data class ContainerData(
     val disableMouseInput: Boolean = false,
     /** Touchscreen mode **/
     val touchscreenMode: Boolean = false,
-    /** Hide on-screen controls when physical controller is connected **/
-    val hideControlsWithController: Boolean = false,
     /** Start with on-screen controls hidden **/
     val startWithControlsHidden: Boolean = false,
     /** Preferred game language (Goldberg) **/
@@ -129,7 +127,6 @@ data class ContainerData(
                     "dinputMapperType" to state.dinputMapperType,
                     "disableMouseInput" to state.disableMouseInput,
                     "touchscreenMode" to state.touchscreenMode,
-                    "hideControlsWithController" to state.hideControlsWithController,
                     "startWithControlsHidden" to state.startWithControlsHidden,
                     "useDRI3" to state.useDRI3,
                     "language" to state.language,
@@ -183,7 +180,6 @@ data class ContainerData(
                     dinputMapperType = savedMap["dinputMapperType"] as Byte,
                     disableMouseInput = savedMap["disableMouseInput"] as Boolean,
                     touchscreenMode = savedMap["touchscreenMode"] as Boolean,
-                    hideControlsWithController = (savedMap["hideControlsWithController"] as? Boolean) ?: false,
                     startWithControlsHidden = (savedMap["startWithControlsHidden"] as? Boolean) ?: false,
                     useDRI3 = (savedMap["useDRI3"] as? Boolean) ?: true,
                     language = (savedMap["language"] as? String) ?: "english",

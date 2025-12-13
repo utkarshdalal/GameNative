@@ -1564,7 +1564,7 @@ fun ContainerConfigDialog(
                                     },
                                 )
                                 // FEXCore Preset (only when Bionic + Wine arm64ec)
-                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true) 
+                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
                                     && config.wineVersion.contains("arm64ec", ignoreCase = true)) {
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),
@@ -1635,16 +1635,6 @@ fun ContainerConfigDialog(
                                     onCheckedChange = { config = config.copy(touchscreenMode = it) }
                                 )
 
-                                // Auto-hide on-screen controls when physical controller is connected
-                                SettingsSwitch(
-                                    colors = settingsTileColorsAlt(),
-                                    title = { Text(text = stringResource(R.string.hide_controls_with_controller)) },
-                                    subtitle = { Text(text = stringResource(R.string.hide_controls_with_controller_description)) },
-                                    state = config.hideControlsWithController,
-                                    enabled = !config.startWithControlsHidden,
-                                    onCheckedChange = { config = config.copy(hideControlsWithController = it) }
-                                )
-
                                 // Start with on-screen controls hidden
                                 SettingsSwitch(
                                     colors = settingsTileColorsAlt(),
@@ -1654,8 +1644,6 @@ fun ContainerConfigDialog(
                                     onCheckedChange = {
                                         config = config.copy(
                                             startWithControlsHidden = it,
-                                            // If enabling "always hide", disable "hide with controller" since it's redundant
-                                            hideControlsWithController = if (it) false else config.hideControlsWithController
                                         )
                                     }
                                 )

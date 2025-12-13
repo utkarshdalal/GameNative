@@ -214,15 +214,6 @@ fun XServerScreen(
     }
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
-    var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
-
-    // Clean up physical controller handler on disposal
-    DisposableEffect(Unit) {
-        onDispose {
-            physicalControllerHandler?.cleanup()
-            physicalControllerHandler = null
-        }
-    }
 
     var isKeyboardVisible = false
     var areControlsVisible by remember { mutableStateOf(false) }
@@ -418,10 +409,7 @@ fun XServerScreen(
 
             var handled = false
             if (isGamepad) {
-                // Use standalone handler first (works independently of view visibility)
-                handled = physicalControllerHandler?.onKeyEvent(it.event) == true
-                // Fallback to InputControlsView for touchscreen controls
-                if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
+                handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                 // Final fallback to WinHandler passthrough
                 if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
             }
@@ -435,10 +423,7 @@ fun XServerScreen(
 
             var handled = false
             if (isGamepad && it.event != null) {
-                // Use standalone handler first (works independently of view visibility)
-                handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
-                // Fallback to InputControlsView for touchscreen controls
-                if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                 // Final fallback to WinHandler passthrough
                 if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
             }
@@ -748,36 +733,32 @@ fun XServerScreen(
                     // Check if container has a custom profile associated
                     val profileIdStr = container.getExtra("profileId", "0")
                     val profileId = profileIdStr.toIntOrNull() ?: 0
-                    android.util.Log.d("gncontrol", "=== Profile Loading Start ===")
-                    android.util.Log.d("gncontrol", "Container: ${container.name}, ProfileID from extra: $profileId")
+                    Timber.d("=== Profile Loading Start ===")
+                    Timber.d("Container: ${container.name}, ProfileID from extra: $profileId")
 
                     val customProfile = if (profileId != 0) manager?.getProfile(profileId) else null
 
                     val targetProfile = if (customProfile != null) {
                         // Use the custom profile associated with this container
-                        android.util.Log.d("gncontrol", "Using CUSTOM profile: ${customProfile.name} (ID: ${customProfile.id})")
+                        Timber.d("Using CUSTOM profile: ${customProfile.name} (ID: ${customProfile.id})")
                         customProfile
                     } else {
                         // Use Profile 0 (Physical Controller Default) as fallback
                         val fallback = manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-                        android.util.Log.d("gncontrol", "Using DEFAULT profile: ${fallback.name} (ID: ${fallback.id})")
+                        Timber.d("Using DEFAULT profile: ${fallback.name} (ID: ${fallback.id})")
                         fallback
                     }
-                    android.util.Log.d("gncontrol", "Profile loaded successfully: ${targetProfile.name}")
+                    Timber.d("Profile loaded successfully: ${targetProfile.name}")
 
                     // Load controllers for this profile
                     val controllers = targetProfile.loadControllers()
-                    android.util.Log.d("gncontrol", "Controllers loaded: ${controllers.size} controller(s)")
+                    Timber.d("Controllers loaded: ${controllers.size} controller(s)")
                     controllers.forEachIndexed { index, controller ->
-                        android.util.Log.d("gncontrol", "  [$index] ID: ${controller.id}, Name: ${controller.name}, Bindings: ${controller.controllerBindingCount}")
+                        Timber.d("  [$index] ID: ${controller.id}, Name: ${controller.name}, Bindings: ${controller.controllerBindingCount}")
                     }
 
-                    android.util.Log.d("gncontrol", "=== Profile Loading Complete ===")
+                    Timber.d("=== Profile Loading Complete ===")
                     setProfile(targetProfile)
-
-                    // Initialize physical controller handler
-                    physicalControllerHandler = PhysicalControllerHandler(targetProfile, xServerView.getxServer(), gameBack)
-                    android.util.Log.d("gncontrol", "PhysicalControllerHandler initialized with profile: ${targetProfile.name}")
 
                     // Store profile for auto-show logic
                     loadedProfile = targetProfile
@@ -800,49 +781,48 @@ fun XServerScreen(
 
             // Auto-show on-screen controls after the view has been laid out and has proper dimensions
             icView.post {
-                android.util.Log.d("gncontrol", "Auto-show logic running - view dimensions: ${icView.width}x${icView.height}")
+                Timber.d("Auto-show logic running - view dimensions: ${icView.width}x${icView.height}")
                 loadedProfile?.let { profile ->
                     // Load elements if not already loaded (view has dimensions now)
                     if (!profile.isElementsLoaded) {
-                        android.util.Log.d("gncontrol", "Loading profile elements for auto-show")
+                        Timber.d("Loading profile elements for auto-show")
                         profile.loadElements(icView)
                     }
 
                     // Only auto-show if profile has on-screen elements
-                    android.util.Log.d("gncontrol", "Profile has ${profile.elements.size} elements loaded")
+                    Timber.d("Profile has ${profile.elements.size} elements loaded")
                     if (profile.elements.isNotEmpty()) {
                         // Read control visibility settings
                         val startWithControlsHidden = container.getExtra("startWithControlsHidden", "false").toBoolean()
-                        val hideWithController = container.getExtra("hideControlsWithController", "false").toBoolean()
 
                         // Check for ACTUAL physically connected controllers, not just saved bindings
                         val controllerManager = ControllerManager.getInstance()
                         controllerManager.scanForDevices()
                         val hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
 
-                        android.util.Log.d("gncontrol", "Control visibility settings: startWithControlsHidden=$startWithControlsHidden, hideWithController=$hideWithController, hasPhysicalController=$hasPhysicalController")
+                        Timber.d("Control visibility settings: startWithControlsHidden=$startWithControlsHidden, hasPhysicalController=$hasPhysicalController")
 
                         // Determine if controls should be shown based on priority:
                         // 1. If startWithControlsHidden is true → always hide (user preference)
-                        // 2. Else if hideWithController is true AND physical controller detected → hide
+                        // 2. Else if physical controller detected → hide
                         // 3. Else → show
                         val shouldShowControls = when {
                             startWithControlsHidden -> false
-                            hideWithController && hasPhysicalController -> false
+                            hasPhysicalController -> false
                             else -> true
                         }
 
                         if (shouldShowControls) {
-                            android.util.Log.d("gncontrol", "Auto-showing onscreen controls")
+                            Timber.d("Auto-showing onscreen controls")
                             showInputControls(profile, xServerView.getxServer().winHandler, container)
                             areControlsVisible = true
                         } else {
-                            android.util.Log.d("gncontrol", "Hiding onscreen controls")
+                            Timber.d("Hiding onscreen controls")
                             hideInputControls()
                             areControlsVisible = false
                         }
                     } else {
-                        android.util.Log.w("gncontrol", "Profile has no elements - cannot auto-show controls")
+                        Timber.w("gncontrol", "Profile has no elements - cannot auto-show controls")
                     }
                 }
             }
@@ -901,7 +881,7 @@ fun XServerScreen(
                 },
                 onResetOnScreenControls = {
                     // Reset on-screen control elements from Profile 0
-                    android.util.Log.d("gncontrol", "=== Reset On-Screen Controls ===")
+                    Timber.d("=== Reset On-Screen Controls ===")
                     val manager = PluviaApp.inputControlsManager
                     val profile0 = manager?.getProfile(0)
                     val currentProfile = PluviaApp.inputControlsView?.profile
@@ -1023,7 +1003,6 @@ fun XServerScreen(
                             if (PluviaApp.inputControlsView?.profile != null) {
                                 PluviaApp.inputControlsView?.setProfile(profile)
                             }
-                            physicalControllerHandler?.setProfile(profile)
                             showPhysicalControllerDialog = false
                         }
                     )
@@ -1121,9 +1100,9 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
         if (!profile.isElementsLoaded || icView.width == 0 || icView.height == 0) {
             if (icView.width == 0 || icView.height == 0) {
                 // View has no dimensions yet - wait for layout before loading elements
-                android.util.Log.d("gncontrol", "Deferring element loading until view has dimensions")
+                Timber.d("Deferring element loading until view has dimensions")
                 icView.post {
-                    android.util.Log.d("gncontrol", "Loading elements after layout: ${icView.width}x${icView.height}")
+                    Timber.d("Loading elements after layout: ${icView.width}x${icView.height}")
                     profile.loadElements(icView)
                     icView.setProfile(profile)
                     icView.setShowTouchscreenControls(true)
@@ -1133,7 +1112,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                 }
             } else {
                 // View has dimensions but elements not loaded - load them now
-                android.util.Log.d("gncontrol", "Loading elements with dimensions: ${icView.width}x${icView.height}")
+                Timber.d("Loading elements with dimensions: ${icView.width}x${icView.height}")
                 profile.loadElements(icView)
                 icView.setProfile(profile)
                 icView.setShowTouchscreenControls(true)
@@ -1143,7 +1122,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
             }
         } else {
             // Elements already loaded with valid dimensions - just show
-            android.util.Log.d("gncontrol", "Elements already loaded, showing controls")
+            Timber.d("Elements already loaded, showing controls")
             icView.setProfile(profile)
             icView.setShowTouchscreenControls(true)
             icView.setVisibility(View.VISIBLE)
@@ -1201,7 +1180,7 @@ fun showInputControls(context: Context, show: Boolean) {
         if (show) {
             // Reload elements with current screen dimensions when showing controls
             icView.profile?.let { profile ->
-                android.util.Log.d("gncontrol", "Reloading elements with dimensions: ${icView.width}x${icView.height}")
+                Timber.d("Reloading elements with dimensions: ${icView.width}x${icView.height}")
                 profile.loadElements(icView)
             }
         }
