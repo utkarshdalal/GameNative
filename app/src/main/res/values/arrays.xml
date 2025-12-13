@@ -83,6 +83,7 @@
         <item>1.0</item>
     </string-array>
     <string-array name="dxvk_version_entries">
+        <item>async-1.10.3</item>
         <item>2.7.1</item>
         <item>1.10.3</item>
         <item>1.10.1</item>
