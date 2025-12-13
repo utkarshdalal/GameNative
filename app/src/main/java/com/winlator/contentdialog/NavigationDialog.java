@@ -56,20 +56,18 @@ public class NavigationDialog extends ContentDialog {
         controllerManager.scanForDevices();
         boolean hasPhysicalController = !controllerManager.getDetectedDevices().isEmpty();
 
-        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, null, ACTION_KEYBOARD, listener, 1.0f, null);
+        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
         // Grey out on-screen controls icon when hidden
-        addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, null, ACTION_INPUT_CONTROLS, listener, controlsVisible ? 1.0f : 0.4f, null);
-        addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, null, ACTION_EDIT_CONTROLS, listener, 1.0f, null);
+        addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, ACTION_INPUT_CONTROLS, listener,1.0f);
+        addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
         // Show physical controller in red with "Disconnected" if no controller is plugged in
         if (hasPhysicalController) {
-            addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, null, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f, null);
-        } else {
-            addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, R.string.controller_disconnected, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f, Color.RED);
+            addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
         }
-        addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, null, ACTION_EXIT_GAME, listener, 1.0f, null);
+        addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }
 
-    private void addMenuItem(Context context, GridLayout grid, int iconRes, int titleRes, Integer subtitleRes, int itemId, NavigationListener listener, float alpha, Integer customColor) {
+    private void addMenuItem(Context context, GridLayout grid, int iconRes, int titleRes, int itemId, NavigationListener listener, float alpha) {
         int padding = dpToPx(5, context);
         LinearLayout layout = new LinearLayout(context);
         layout.setPadding(padding, padding, padding, padding);
@@ -83,11 +81,7 @@ public class NavigationDialog extends ContentDialog {
         View icon = new View(context);
         icon.setBackground(AppCompatResources.getDrawable(context, iconRes));
         if (icon.getBackground() != null) {
-            if (customColor != null) {
-                icon.getBackground().setTint(customColor);
-            } else {
-                icon.getBackground().setTint(context.getColor(R.color.navigation_dialog_item_color));
-            }
+            icon.getBackground().setTint(context.getColor(R.color.navigation_dialog_item_color));
         }
         icon.setAlpha(alpha); // Apply alpha for greying out
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
@@ -101,37 +95,13 @@ public class NavigationDialog extends ContentDialog {
         text.setText(context.getString(titleRes));
         text.setGravity(Gravity.CENTER);
         text.setLines(2);
-        if (customColor != null) {
-            text.setTextColor(customColor);
-        } else {
-            text.setTextColor(context.getColor(R.color.navigation_dialog_item_color));
-        }
+        text.setTextColor(context.getColor(R.color.navigation_dialog_item_color));
         text.setAlpha(alpha); // Apply alpha for greying out
         Typeface tf = ResourcesCompat.getFont(context, R.font.bricolage_grotesque_regular);
         if (tf != null) {
             text.setTypeface(tf);
         }
         layout.addView(text);
-
-        // Add subtitle if provided
-        if (subtitleRes != null) {
-            TextView subtitle = new TextView(context);
-            subtitle.setLayoutParams(new ViewGroup.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT));
-            subtitle.setText(context.getString(subtitleRes));
-            subtitle.setGravity(Gravity.CENTER);
-            subtitle.setLines(1);
-            subtitle.setTextSize(10);
-            if (customColor != null) {
-                subtitle.setTextColor(customColor);
-            } else {
-                subtitle.setTextColor(context.getColor(R.color.navigation_dialog_item_color));
-            }
-            subtitle.setAlpha(alpha * 0.8f); // Slightly more transparent for subtitle
-            if (tf != null) {
-                subtitle.setTypeface(tf);
-            }
-            layout.addView(subtitle);
-        }
 
         grid.addView(layout);
     }

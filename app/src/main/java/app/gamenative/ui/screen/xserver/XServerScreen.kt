@@ -11,9 +11,18 @@ import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,7 +56,9 @@ import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
+import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.SteamUtils
@@ -76,6 +87,7 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineStartMenuCreator
 import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
+import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControllerManager
@@ -124,6 +136,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Arrays
 import java.util.Locale
 import kotlin.io.path.name
+import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
@@ -822,7 +835,7 @@ fun XServerScreen(
                             areControlsVisible = false
                         }
                     } else {
-                        Timber.w("gncontrol", "Profile has no elements - cannot auto-show controls")
+                        Timber.w("Profile has no elements - cannot auto-show controls")
                     }
                 }
             }
@@ -949,6 +962,43 @@ fun XServerScreen(
                     PluviaApp.inputControlsView?.post {
                         PluviaApp.inputControlsView?.invalidate()
                     }
+                },
+                onDuplicate = { id ->
+                    val manager = PluviaApp.inputControlsManager
+                    val profile = manager?.getProfile(id)
+                    val currentProfile = PluviaApp.inputControlsView?.profile
+                    if (profile != null && currentProfile != null) {
+                        // Wait for view to be laid out before loading elements
+                        PluviaApp.inputControlsView?.let { icView ->
+                            icView.post {
+                                // Load Profile 0 elements (with valid dimensions)
+                                profile.loadElements(icView)
+
+                                // Clear current profile elements and copy from Profile 0
+                                val elementsToRemove = currentProfile.elements.toList()
+                                elementsToRemove.forEach { currentProfile.removeElement(it) }
+
+                                profile.elements.forEach { element ->
+                                    val newElement = com.winlator.inputcontrols.ControlElement(icView)
+                                    newElement.setType(element.type)
+                                    newElement.setShape(element.shape)
+                                    newElement.setX(element.x.toInt())
+                                    newElement.setY(element.y.toInt())
+                                    newElement.setScale(element.scale)
+                                    newElement.setText(element.text)
+                                    newElement.setIconId(element.iconId.toInt())
+                                    newElement.setToggleSwitch(element.isToggleSwitch)
+                                    for (i in 0 until 4) {
+                                        newElement.setBindingAt(i, element.getBindingAt(i))
+                                    }
+                                    currentProfile.addElement(newElement)
+                                }
+
+                                icView.invalidate()
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_controls_reset), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                 }
             )
         }
@@ -1021,6 +1071,7 @@ fun XServerScreen(
     // }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditModeToolbar(
     onAdd: () -> Unit,
@@ -1028,8 +1079,11 @@ private fun EditModeToolbar(
     onDelete: () -> Unit,
     onResetOnScreenControls: () -> Unit,
     onSave: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onDuplicate: (Int) -> Unit
 ) {
+    var duplicateProfileOpen = true
+    var duplicateProfileName = ""
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1068,11 +1122,40 @@ private fun EditModeToolbar(
                 Text(stringResource(R.string.delete), color = androidx.compose.ui.graphics.Color.White)
             }
 
-            // Reset On-Screen Controls button
-            TextButton(onClick = onResetOnScreenControls) {
-                Icon(Icons.Default.Refresh, contentDescription = "Reset On-Screen Controls", tint = androidx.compose.ui.graphics.Color.White)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.reset_onscreen_controls), color = androidx.compose.ui.graphics.Color.White)
+            ExposedDropdownMenuBox(
+                expanded = duplicateProfileOpen,
+                onExpandedChange = { duplicateProfileOpen = it },
+            ) {
+                OutlinedTextField(
+                    value = duplicateProfileName,
+                    onValueChange = { duplicateProfileName = it },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = duplicateProfileOpen)
+                    },
+                    label = { Text(stringResource(R.string.container_config_executable_path)) },
+                    placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
+                    modifier = Modifier
+                        .menuAnchor(),
+                    singleLine = true
+                )
+
+                val knownProfiles = PluviaApp.inputControlsManager!!.getProfiles(false)
+                if (knownProfiles.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = duplicateProfileOpen,
+                        onDismissRequest = { duplicateProfileOpen = false }
+                    ) {
+                        for (knownProfile in knownProfiles) {
+                            DropdownMenuItem(
+                                text = { Text(knownProfile.name) },
+                                onClick = {
+                                    onDuplicate(knownProfile.id)
+                                    duplicateProfileOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
             // Save button
