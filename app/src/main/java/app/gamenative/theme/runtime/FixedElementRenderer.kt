@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -77,7 +78,7 @@ fun BoxScope.RenderFixedElements(
             container.id.contains("bottom", ignoreCase = true) -> Alignment.BottomCenter
             else -> Alignment.TopCenter
         }
-        
+
         // Render container background if specified
         if (container.backgroundColor != null) {
             Box(
@@ -88,7 +89,7 @@ fun BoxScope.RenderFixedElements(
                     .background(Color(container.backgroundColor))
             )
         }
-        
+
         // Render each element in the container
         container.elements.forEach { element ->
             RenderFixedElement(
@@ -199,7 +200,9 @@ private fun BoxScope.RenderFixedElement(
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
-                    .size(element.size.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(8.dp)
             ) {
                 accountButtonContent()
             }
@@ -372,7 +375,7 @@ private fun Anchor.toComposeAlignment(): Alignment = when (this) {
 /**
  * Convert CSS-like positioning to Compose offset.
  * With CSS-like positioning, positive values always mean "inward" from the anchor edge.
- * 
+ *
  * For example, with anchor=topRight and x=16, y=8:
  * - x=16 means 16px from the right edge (so Compose offsetX = -16)
  * - y=8 means 8px from the top edge (so Compose offsetY = 8)
@@ -383,13 +386,13 @@ private fun calculateCssLikeOffset(rawX: Dp, rawY: Dp, anchor: Anchor): Pair<Dp,
         Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> rawX
         Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> -rawX
     }
-    
+
     val offsetY = when (anchor) {
         Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
         Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> rawY
         Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> -rawY
     }
-    
+
     return Pair(offsetX, offsetY)
 }
 

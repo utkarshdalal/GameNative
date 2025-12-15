@@ -1,11 +1,11 @@
 <theme>
     <!-- Fixed UI elements (CSS-like positioning: positive values = inward from anchor) -->
-    <fixed id="topBar" backgroundColor="#FF000000" height="80">
+    <fixed id="topBar" backgroundColor="#FF000000" height="72">
         <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF"
                 showAppName="true" showGameCount="true" />
-        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft"
+        <searchBar x="200" y="12" width="600" height="56" anchor="topLeft"
                    backgroundColor="#FF1E1E1E" borderRadius="24" />
-        <profileButton x="16" y="8" anchor="topRight" size="40" />
+        <profileButton x="16" y="8" anchor="topRight" size="48" />
     </fixed>
 
     <fixed id="bottomBar">
@@ -24,7 +24,7 @@
             <rect id="compatBadge" x="0" y="0" width="100%" height="20"
                     color="#99000000" cornerRadius="20 20 0 0"
                     borderWidth="1" borderColor="#22FFFFFF"/>
-            <text id="compatLabel" x="0" y="0" width="100%" height="20"
+            <text id="compatLabel" x="0" y="-2" width="100%" height="20"
                     text="@{game.compatibility.label}" textSize="11" color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="bold" />
 
             <!-- Bottom rect for title background - positioned from bottom -->
@@ -39,7 +39,7 @@
     <!-- Layout configuration - adaptive hero grid -->
     <layout>
         <grid cellWidth="200" aspectRatio="2.14"
-              hSpacing="12" vSpacing="12"
+              hSpacing="12" vSpacing="15"
               padding="80 20"
               selectionMode="moving" itemCard="hero" />
     </layout>
