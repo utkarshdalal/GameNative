@@ -27,8 +27,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
@@ -220,6 +229,17 @@ fun ThemedGameCarousel(
             pageCount = { items.size }
         )
         
+        // Coroutine scope for animating page changes
+        val coroutineScope = rememberCoroutineScope()
+        
+        // Focus requester for controller navigation
+        val focusRequester = remember { FocusRequester() }
+        
+        // Request focus when carousel is first displayed
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+        
         // Notify when focused item changes and save position
         LaunchedEffect(pagerState.currentPage) {
             items.getOrNull(pagerState.currentPage)?.let { onItemFocus(it) }
@@ -264,7 +284,38 @@ fun ThemedGameCarousel(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(y = verticalOffset),
+                .offset(y = verticalOffset)
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.key) {
+                            Key.DirectionLeft -> {
+                                if (pagerState.currentPage > 0) {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                    }
+                                }
+                                true
+                            }
+                            Key.DirectionRight -> {
+                                if (pagerState.currentPage < items.size - 1) {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                    }
+                                }
+                                true
+                            }
+                            Key.Enter, Key.DirectionCenter, Key.ButtonA -> {
+                                items.getOrNull(pagerState.currentPage)?.let { onItemClick(it) }
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
+                },
             verticalArrangement = verticalArrangement,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -277,6 +328,8 @@ fun ThemedGameCarousel(
                 pageSpacing = spacing,
                 flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
                 verticalAlignment = Alignment.CenterVertically,
+                // Disable user scroll gesture to prevent conflicts with controller input
+                userScrollEnabled = true,
             ) { page ->
                 val item = items.getOrNull(page) ?: return@HorizontalPager
                 val bindings = bindingProvider(item)
