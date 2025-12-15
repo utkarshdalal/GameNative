@@ -401,8 +401,7 @@ fun XServerScreen(
                         }
                     }
                 }
-            },
-            areControlsVisible
+            }
         ).show()
     }
 
@@ -920,6 +919,7 @@ fun XServerScreen(
                     // Force redraw on next frame to ensure grid is removed
                     PluviaApp.inputControlsView?.post {
                         PluviaApp.inputControlsView?.profile?.loadElements(PluviaApp.inputControlsView)
+                        PluviaApp.inputControlsView?.profile?.save()
                         PluviaApp.inputControlsView?.invalidate()
                     }
                 },
@@ -1109,7 +1109,7 @@ private fun EditModeToolbar(
                     Text(stringResource(R.string.copy_from), color = androidx.compose.ui.graphics.Color.White)
                 }
 
-                val knownProfiles = PluviaApp.inputControlsManager!!.getProfiles(false)
+                val knownProfiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: emptyList()
                 if (knownProfiles.isNotEmpty()) {
                     DropdownMenu(
                         expanded = duplicateProfileOpen,

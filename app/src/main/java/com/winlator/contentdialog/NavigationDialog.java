@@ -34,7 +34,7 @@ public class NavigationDialog extends ContentDialog {
         void onNavigationItemSelected(int itemId);
     }
 
-    public NavigationDialog(@NonNull Context context, NavigationListener listener, boolean controlsVisible) {
+    public NavigationDialog(@NonNull Context context, NavigationListener listener) {
         super(context, R.layout.navigation_dialog);
         if (getWindow() != null) {
             getWindow().setBackgroundDrawableResource(R.drawable.navigation_dialog_background);
@@ -57,10 +57,8 @@ public class NavigationDialog extends ContentDialog {
         boolean hasPhysicalController = !controllerManager.getDetectedDevices().isEmpty();
 
         addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
-        // Grey out on-screen controls icon when hidden
         addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, ACTION_INPUT_CONTROLS, listener,1.0f);
         addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
-        // Show physical controller in red with "Disconnected" if no controller is plugged in
         if (hasPhysicalController) {
             addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
         }

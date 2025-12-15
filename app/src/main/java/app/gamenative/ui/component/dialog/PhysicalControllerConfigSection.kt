@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.ControlsProfile
-import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
 
 /**
@@ -626,10 +626,10 @@ private fun ControllerBindingItem(
 @Composable
 private fun PhysicalControlPresets(
     presetType: PhysicalPresetTarget,
-    leftStickAxes: List<Any>,
-    rightStickAxes: List<Any>,
-    dpadButtons: List<Any>,
-    workingBindings: MutableMap<Int, com.winlator.inputcontrols.Binding?>,
+    leftStickAxes: List<AnalogConfig>,
+    rightStickAxes: List<AnalogConfig>,
+    dpadButtons: List<ButtonConfig>,
+    workingBindings: MutableMap<Int, Binding?>,
     onPresetsApplied: () -> Unit = {}
 ) {
     Card(
@@ -790,9 +790,9 @@ private enum class PhysicalPresetBinding {
 private fun applyPhysicalPreset(
     target: PhysicalPresetTarget,
     preset: PhysicalPresetBinding,
-    leftStickAxes: List<Any>,
-    rightStickAxes: List<Any>,
-    dpadButtons: List<Any>,
+    leftStickAxes: List<AnalogConfig>,
+    rightStickAxes: List<AnalogConfig>,
+    dpadButtons: List<ButtonConfig>,
     workingBindings: MutableMap<Int, com.winlator.inputcontrols.Binding?>
 ) {
     // Define bindings for each preset (Up, Down, Left, Right order for sticks; Up, Down, Left, Right for dpad buttons)
@@ -840,26 +840,19 @@ private fun applyPhysicalPreset(
         PhysicalPresetTarget.LEFT_STICK -> {
             // Up, Down, Left, Right
             leftStickAxes.map { config ->
-                val analogConfig = config as? AnalogConfig
-                if (analogConfig != null) {
-                    ExternalControllerBinding.getKeyCodeForAxis(analogConfig.axis, analogConfig.sign.toByte())
-                } else 0
+                ExternalControllerBinding.getKeyCodeForAxis(config.axis, config.sign.toByte())
             }
         }
         PhysicalPresetTarget.RIGHT_STICK -> {
             // Up, Down, Left, Right
             rightStickAxes.map { config ->
-                val analogConfig = config as? AnalogConfig
-                if (analogConfig != null) {
-                    ExternalControllerBinding.getKeyCodeForAxis(analogConfig.axis, analogConfig.sign.toByte())
-                } else 0
+                ExternalControllerBinding.getKeyCodeForAxis(config.axis, config.sign.toByte())
             }
         }
         PhysicalPresetTarget.DPAD -> {
             // Up, Down, Left, Right
             dpadButtons.map { config ->
-                val buttonConfig = config as? ButtonConfig
-                buttonConfig?.keyCode ?: 0
+                config.keyCode
             }
         }
     }
