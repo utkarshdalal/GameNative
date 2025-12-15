@@ -8,5 +8,6 @@
     <author>
         <name>Radical Thomas</name>
     </author>
-    <entry theme="/theme.xml" variables="/variables.xml" />
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" />
 </manifest>

@@ -162,21 +162,6 @@ fun SettingsGroupInterface(
             },
         )
 
-        // Theme engine picker - only show when theme engine is enabled
-        if (useThemeEngineUi) {
-            val selectedThemeEntry = app.gamenative.theme.ThemeManager.getSelectedThemeEntry()
-            var openThemePickerDialog by rememberSaveable { mutableStateOf(false) }
-            SettingsMenuLink(
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.settings_theme_picker_title)) },
-                subtitle = { Text(text = selectedThemeEntry?.name ?: "—") },
-                onClick = { openThemePickerDialog = true }
-            )
-            if (openThemePickerDialog) {
-                ThemePickerDialog(onDismiss = { openThemePickerDialog = false })
-            }
-        }
-
         // Unified visual icon picker (affects app and notification icons)
         var selectedVariant by rememberSaveable { mutableStateOf(if (PrefManager.useAltLauncherIcon || PrefManager.useAltNotificationIcon) 1 else 0) }
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

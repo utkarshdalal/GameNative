@@ -9,5 +9,6 @@
         <name>Utkarsh Dalal</name>
         <github>https://github.com/utkarshdalal</github>
     </author>
-    <entry theme="/theme.xml" variables="/variables.xml" locales="/locales" />
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" locales="/locales" />
 </manifest>

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ReplyAll
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.AlertDialog
@@ -40,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.PluviaScreen
@@ -121,6 +123,15 @@ fun ProfileDialog(
                     Icon(imageVector = Icons.Default.Settings, contentDescription = null)
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                     Text(text = stringResource(R.string.settings_text))
+                }
+
+                // Themes button - only shown when theme engine is enabled
+                if (PrefManager.useThemeEngineUi) {
+                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.ThemeSelector.route) }) {
+                        Icon(imageVector = Icons.Default.Palette, contentDescription = null)
+                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Text(text = stringResource(R.string.theme_menu_button))
+                    }
                 }
 
                 FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {

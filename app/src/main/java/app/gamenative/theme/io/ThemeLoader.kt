@@ -104,16 +104,16 @@ class ThemeLoader {
                 override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
                     when (qName) {
                         "manifest" -> inManifest = true
-                        "entry" -> if (inManifest) {
-                            val theme = attributes.getValue("theme")
+                        "theme" -> if (inManifest) {
+                            val source = attributes.getValue("source")
                             val vars = attributes.getValue("variables")
                             val src = SourceLoc(manifestFile.absolutePath, loc?.lineNumber, loc?.columnNumber)
-                            if (theme != null) {
-                                result = ManifestEntry(themePath = theme, variablesPath = vars, source = src)
+                            if (source != null) {
+                                result = ManifestEntry(themePath = source, variablesPath = vars, source = src)
                             } else {
                                 errors += ThemeLoadError(
-                                    code = "MANIFEST_ENTRY_MISSING_THEME",
-                                    message = "<entry> in manifest.xml is missing required 'theme' attribute",
+                                    code = "MANIFEST_THEME_MISSING_SOURCE",
+                                    message = "<theme> in manifest.xml is missing required 'source' attribute",
                                     source = src,
                                 )
                             }

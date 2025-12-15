@@ -993,6 +993,13 @@ fun PluviaMain(
                     onBack = { navController.navigateUp() },
                 )
             }
+
+            /** Theme Selector **/
+            composable(route = PluviaScreen.ThemeSelector.route) {
+                app.gamenative.ui.screen.settings.ThemeSelectorScreen(
+                    onBack = { navController.navigateUp() },
+                )
+            }
         }
     }
 }

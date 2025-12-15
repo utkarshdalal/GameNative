@@ -9,5 +9,5 @@
         <name>Mikkel Bjørnmose Bundgard</name>
         <github>https://github.com/maaggel</github>
     </author>
-    <entry theme="/theme.xml" variables="/variables.xml" />
+    <theme source="/theme.xml" variables="/variables.xml" />
 </manifest>

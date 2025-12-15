@@ -10,20 +10,43 @@
 
     <!-- Dimensions -->
     <var name="cornerRadius" value="15" />
-    <var name="searchBarRadius" value="24" />
-    <var name="topBarHeight" value="80" />
     <var name="rowHeight" value="92" />
     <var name="coverSize" value="60" />
+
+    <!-- Top bar -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarRadius" value="24" />
+    <var name="searchBarWidth" value="600" />
+    <var name="searchBarHeight" value="56" />
+    <var name="searchBarX" value="200" />
+    <var name="searchBarY" value="12" />
+    <var name="profileButtonSize" value="48" />
+    <var name="profileButtonX" value="12" />
+    <var name="profileButtonY" value="12" />
 
     <!-- Spacing -->
     <var name="paddingSmall" value="8" />
     <var name="paddingMedium" value="16" />
+    <var name="paddingLarge" value="20" />
     <var name="bottomOffset" value="24" />
     <var name="separatorMargin" value="12" />
+
+    <!-- Grid settings -->
+    <var name="gridPaddingTop" value="80" />
 
     <!-- Text sizes -->
     <var name="textSizeTitle" value="16" />
     <var name="textSizeBody" value="13" />
     <var name="textSizeSmall" value="12" />
     <var name="textSizeButton" value="14" />
+
+    <!-- Portrait breakpoint overrides -->
+    <breakpoint orientation="portrait">
+        <var name="topBarHeight" value="130" />
+        <var name="gridPaddingTop" value="160" />
+        <var name="searchBarWidth" value="90%" />
+        <var name="searchBarX" value="5%" />
+        <var name="searchBarY" value="80" />
+        <var name="profileButtonY" value="0" />
+    </breakpoint>
 </variables>

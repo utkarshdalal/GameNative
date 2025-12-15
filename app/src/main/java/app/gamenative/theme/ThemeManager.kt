@@ -50,6 +50,10 @@ object ThemeManager {
         val engineVersion: String,
         val minAppVersion: String,
         val maxAppVersion: String?,
+        val description: String? = null,
+        val author: String? = null,
+        val authorGithub: String? = null,
+        val previewImage: String? = null, // relative path to preview image (e.g., "/assets/theme.png")
     ) {
         /** Extract major version number from semantic version string (e.g., "1.0.0" -> 1) */
         val engineMajorVersion: Int
@@ -139,6 +143,15 @@ object ThemeManager {
      */
     fun getActiveThemeAssetPath(): String? {
         val entry = getSelectedThemeEntry() ?: return null
+        return getThemeAssetPath(entry)
+    }
+
+    /**
+     * Get the asset path for any theme entry.
+     * For built-in themes: "Themes/<location>"
+     * For user themes: returns the user theme location (absolute path)
+     */
+    fun getThemeAssetPath(entry: ThemeEntry): String {
         return when (entry.source) {
             Source.BuiltIn -> "$ASSETS_THEMES_ROOT/${entry.location}"
             Source.User -> entry.location
@@ -154,7 +167,7 @@ object ThemeManager {
         _selectedThemeId.value = match.id
         PrefManager.activeThemeId = match.id
         scope.launch(Dispatchers.Main) {
-            Toast.makeText(appCtx, appCtx.getString(R.string.theme_applied_toast, match.id), Toast.LENGTH_SHORT).show()
+            Toast.makeText(appCtx, appCtx.getString(R.string.theme_applied_toast, match.name), Toast.LENGTH_SHORT).show()
         }
         Timber.i("Theme selected: %s (%s)", match.id, match.source)
         // Load full theme definition
@@ -273,6 +286,11 @@ object ThemeManager {
                 var engineVersion: String? = null
                 var minAppVersion: String? = null
                 var maxAppVersion: String? = null
+                var description: String? = null
+                var authorName: String? = null
+                var authorGithub: String? = null
+                var previewImage: String? = null
+                var inAuthorTag = false
                 var event = parser.eventType
                 while (event != XmlPullParser.END_DOCUMENT) {
                     if (event == XmlPullParser.START_TAG) {
@@ -283,7 +301,14 @@ object ThemeManager {
                             "engineversion" -> engineVersion = parser.nextText()?.trim()
                             "minappversion" -> minAppVersion = parser.nextText()?.trim()
                             "maxappversion" -> maxAppVersion = parser.nextText()?.trim()
+                            "description" -> description = parser.nextText()?.trim()
+                            "author" -> inAuthorTag = true
+                            "name" -> if (inAuthorTag) authorName = parser.nextText()?.trim()
+                            "github" -> if (inAuthorTag) authorGithub = parser.nextText()?.trim()
+                            "preview" -> previewImage = parser.getAttributeValue(null, "src")?.trim()
                         }
+                    } else if (event == XmlPullParser.END_TAG) {
+                        if (parser.name.lowercase() == "author") inAuthorTag = false
                     }
                     event = parser.next()
                 }
@@ -292,7 +317,18 @@ object ThemeManager {
                     null
                 } else {
                     // Fall back to id if title not specified
-                    ManifestLite(id!!, title ?: id!!, version!!, engineVersion!!, minAppVersion!!, maxAppVersion)
+                    ManifestLite(
+                        id = id!!,
+                        title = title ?: id!!,
+                        version = version!!,
+                        engineVersion = engineVersion!!,
+                        minAppVersion = minAppVersion!!,
+                        maxAppVersion = maxAppVersion,
+                        description = description,
+                        author = authorName,
+                        authorGithub = authorGithub,
+                        previewImage = previewImage,
+                    )
                 }
             }
         } catch (t: Throwable) {

@@ -1,11 +1,11 @@
 <theme>
-    <!-- Top bar with header, search, and profile -->
+    <!-- Compact top bar with header, search, and profile in one row -->
     <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}">
         <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
-        <searchBar x="200" y="@{vars.paddingSmall}" width="600" height="48" anchor="topLeft"
-                   backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
-        <profileButton x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topRight" size="40" />
+        <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
+                   anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
+        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}" />
     </fixed>
 
     <!-- Bottom action buttons -->
@@ -57,7 +57,7 @@
     <!-- Layout - single column list with separators -->
     <layout>
         <grid columns="1" cellWidth="100%" cellSpacing="0"
-              padding="@{vars.topBarHeight} @{vars.paddingMedium}"
+              padding="@{vars.gridPaddingTop} @{vars.paddingLarge}"
               selectionMode="moving" itemCard="listItem">
             <separator height="1" margin="@{vars.separatorMargin} 0">
                 <rect x="0" y="0" width="100%" height="1" color="@{vars.separatorColor}" />

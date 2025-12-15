@@ -12,8 +12,8 @@ import java.util.Locale
  * Resolves `@string/key` references from theme-specific string files and app resources.
  * 
  * Priority order:
- * 1. Theme strings for current device locale (e.g., `strings/da.xml`)
- * 2. Theme strings for fallback (e.g., `strings/default.xml` or `strings/en.xml`)
+ * 1. Theme strings for current device locale (e.g., `locales/da.xml`)
+ * 2. Theme strings for fallback (e.g., `locales/default.xml` or `locales/en.xml`)
  * 3. App string resources (`R.string.*`)
  * 4. Return the key name if nothing found
  */
@@ -95,7 +95,7 @@ class ThemeStringResolver(
     }
 
     /**
-     * Load all string files from a theme's strings/ folder.
+     * Load all string files from a theme's locales/ folder.
      * Returns a map of locale code -> (key -> value) map.
      */
     private fun loadThemeStrings(themePath: String): Map<String, Map<String, String>> {
@@ -103,22 +103,22 @@ class ThemeStringResolver(
         themeStringCache[themePath]?.let { return it }
 
         val result = mutableMapOf<String, Map<String, String>>()
-        val stringsPath = "$themePath/strings"
+        val localesPath = "$themePath/locales"
 
         try {
-            val files = assetManager.list(stringsPath) ?: emptyArray()
+            val files = assetManager.list(localesPath) ?: emptyArray()
             for (file in files) {
                 if (file.endsWith(".xml")) {
                     val locale = file.removeSuffix(".xml") // "da", "en", "default"
-                    val strings = parseStringFile("$stringsPath/$file")
+                    val strings = parseStringFile("$localesPath/$file")
                     if (strings.isNotEmpty()) {
                         result[locale] = strings
                     }
                 }
             }
         } catch (e: Exception) {
-            // No strings folder or error reading - that's fine
-            Log.d(TAG, "No strings folder for theme: $themePath")
+            // No locales folder or error reading - that's fine
+            Log.d(TAG, "No locales folder for theme: $themePath")
         }
 
         themeStringCache[themePath] = result

@@ -1,12 +1,12 @@
 <layouts>
-    <!-- Main center-locked horizontal carousel -->
-    <carousel id="mainCarousel"
-              direction="right"
-              itemWidth="720"
-              itemHeight="320"
+  <!-- Main center-locked horizontal carousel -->
+  <carousel id="mainCarousel"
+            direction="right"
+            itemWidth="720"
+            itemHeight="320"
               itemSpacing="@{vars.itemSpacing}"
-              selectionMode="stationary"
-              centeredSelection="true"
-              pageSize="5"
+            selectionMode="stationary"
+            centeredSelection="true"
+            pageSize="5"
               itemCard="bigHeroCard" />
 </layouts>
