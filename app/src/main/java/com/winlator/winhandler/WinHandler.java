@@ -712,7 +712,7 @@ public class WinHandler {
             if (adopted == null) {
                 adopted = ExternalController.getController(event.getDeviceId());
             }
-            if (adopted != null) {
+            if (adopted != null && "*".equals(adopted.getId())) {
                 this.currentController = adopted;
                 externalController = adopted;
                 Timber.d("WinHandler.onGenericMotionEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
@@ -749,7 +749,7 @@ public class WinHandler {
             if (adopted == null) {
                 adopted = ExternalController.getController(event.getDeviceId());
             }
-            if (adopted != null) {
+            if (adopted != null && "*".equals(adopted.getId())) {
                 this.currentController = adopted;
                 externalController = adopted;
                 Timber.d("WinHandler.onKeyEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
