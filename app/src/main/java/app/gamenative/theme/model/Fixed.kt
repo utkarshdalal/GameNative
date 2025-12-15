@@ -62,6 +62,8 @@ sealed class FixedElement {
         val backgroundColor: Int? = null,
         /** Corner radius in pixels. */
         val borderRadius: Float = 8f,
+        /** If true, shows only an icon that expands when focused/has text. */
+        val collapsible: Boolean = false,
     ) : FixedElement()
 
     /**
@@ -71,8 +73,16 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
-        /** Size of the button in pixels. */
-        val size: Float = 40f,
+        /** Size of the button container in pixels. */
+        val size: Float = 48f,
+        /** Size of the icon inside the button in pixels. */
+        val iconSize: Float = 24f,
+        /** Padding inside the button in pixels. */
+        val padding: Float = 8f,
+        /** Background color (ARGB), null for default. */
+        val backgroundColor: Int? = null,
+        /** Corner radius in pixels. */
+        val cornerRadius: Float = 12f,
     ) : FixedElement()
 
     /**

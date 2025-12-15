@@ -1,0 +1,69 @@
+<theme>
+    <!-- Standard top bar with header, search, and profile -->
+    <fixed id="topBar" height="@{vars.topBarHeight}">
+        <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
+                textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
+        <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
+                   anchor="topRight" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}"
+                   collapsible="true" />
+        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
+                       iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
+                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}" />
+    </fixed>
+
+    <!-- Bottom action buttons -->
+    <fixed id="bottomBar">
+        <filterButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomLeft" expanded="true" />
+        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight" />
+    </fixed>
+
+    <!-- Card definition - Carousel style hero card -->
+    <cards>
+        <card id="carousel" width="@{vars.cardWidth}" height="@{vars.cardHeight}">
+            <!-- Hero image - takes up main card area, leaving room for info below -->
+            <image id="hero" x="0" y="0" width="100%" height="@{vars.heroHeight}"
+                   src="@{game.hero}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
+
+            <!-- Border overlay on hero image -->
+            <rect id="border" x="0" y="0" width="100%" height="@{vars.heroHeight}"
+                  color="#00000000" borderWidth="2" borderColor="@{vars.borderColor}"
+                  cornerRadius="@{vars.cornerRadius}" />
+
+            <!-- Game title - shown below image, only when focused -->
+            <text id="title" x="0" y="@{vars.infoY}" width="100%"
+                  text="@{game.title}" textSize="@{vars.textSizeTitle}" color="@{vars.infoTextColor}"
+                  maxLines="1" textAlign="center" fontWeight="medium" anchor="topLeft"
+                  focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}" />
+
+            <!-- Compatibility label - shown below title, only when focused -->
+            <text id="compatLabel" x="0" y="@{vars.compatY}" width="85%"
+                  text="@{game.compatibility.label}" textSize="@{vars.textSizeSmall}"
+                  color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="normal"
+                  anchor="topLeft" focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}" opacity="0.7" />
+
+            <!-- Installed checkmark - shown to the right when focused and installed -->
+            <text id="installedCheck" x="@{vars.installedX}" y="@{vars.installedY}"
+                  text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.infoTextColor}"
+                  textAlign="right" fontWeight="bold" anchor="topRight"
+                  focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}"
+                  visibleWhen="game.isInstalled" />
+        </card>
+    </cards>
+
+    <!-- Center-focused horizontal carousel -->
+    <layout>
+        <carousel
+            centerFocus="true"
+            highlightScale="@{vars.highlightScale}"
+            verticalAlign="center"
+            verticalOffset="@{vars.carouselOffsetY}"
+            itemWidth="@{vars.cardWidth}"
+            itemHeight="@{vars.cardHeight}"
+            itemSpacing="@{vars.itemSpacing}"
+            selectionMode="stationary"
+            itemCard="carousel"
+            focusedBackground="@{game.libraryHero}"
+            backgroundOpacity="@{vars.bgOpacity}"
+            backgroundTransitionSpeed="@{vars.transitionSpeed}" />
+    </layout>
+</theme>

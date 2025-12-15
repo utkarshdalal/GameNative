@@ -47,6 +47,10 @@ object ThemeManager {
         val id: String,
         val title: String, // human-readable display name
         val version: String,
+        /** 
+         * Engine version constraint (Composer-like syntax).
+         * Examples: "1.0.0", "1.*", "^1.0.0", "~1.2.0"
+         */
         val engineVersion: String,
         val minAppVersion: String,
         val maxAppVersion: String?,
@@ -54,11 +58,7 @@ object ThemeManager {
         val author: String? = null,
         val authorGithub: String? = null,
         val previewImage: String? = null, // relative path to preview image (e.g., "/assets/theme.png")
-    ) {
-        /** Extract major version number from semantic version string (e.g., "1.0.0" -> 1) */
-        val engineMajorVersion: Int
-            get() = engineVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
-    }
+    )
 
     private lateinit var appCtx: Context
 
@@ -338,9 +338,9 @@ object ThemeManager {
     }
 
     private fun isCompatible(m: ManifestLite): Boolean {
-        if (m.engineMajorVersion != ThemeEngine.ENGINE_MAJOR) {
-            Timber.i("Ignoring theme %s due to engineVersion=%s (major=%d, expected=%d)", 
-                m.id, m.engineVersion, m.engineMajorVersion, ThemeEngine.ENGINE_MAJOR)
+        if (!ThemeEngine.matchesConstraint(m.engineVersion)) {
+            Timber.i("Ignoring theme %s: engineVersion constraint '%s' does not match app engine '%s'", 
+                m.id, m.engineVersion, ThemeEngine.ENGINE_VERSION)
             return false
         }
         // App version compatibility: The app doesn't expose semantic version; accept all for now
@@ -393,7 +393,7 @@ object ThemeManager {
                     val validation = ThemeValidator.validate(
                         res.tree,
                         appVersion = BuildConfig.VERSION_NAME,
-                        engineMajor = ThemeEngine.ENGINE_MAJOR,
+                        engineVersion = ThemeEngine.ENGINE_VERSION,
                     )
                     if (validation.hasBlocking()) {
                         validation.issues.forEach { issue ->

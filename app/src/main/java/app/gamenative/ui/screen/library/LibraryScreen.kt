@@ -58,8 +58,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.res.stringResource
@@ -108,6 +111,8 @@ fun HomeLibraryScreen(
     LibraryScreenContent(
         state = state,
         listState = viewModel.listState,
+        carouselPageIndex = viewModel.carouselPageIndex,
+        onCarouselPageChanged = { viewModel.carouselPageIndex = it },
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
         onPageChange = viewModel::onPageChange,
@@ -130,6 +135,8 @@ fun HomeLibraryScreen(
 private fun LibraryScreenContent(
     state: LibraryState,
     listState: LazyGridState,
+    carouselPageIndex: Int,
+    onCarouselPageChanged: (Int) -> Unit,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
     onPageChange: (Int) -> Unit,
@@ -227,11 +234,19 @@ private fun LibraryScreenContent(
     // Trigger theme remapping when orientation changes (for breakpoint-aware variables)
     app.gamenative.theme.runtime.OrientationAwareThemeEffect()
 
+    // Focus manager for clearing search bar focus when tapping elsewhere
+    val focusManager = LocalFocusManager.current
+
     Box(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .then(safePaddingModifier)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
     ) {
         if (selectedAppId == null) {
             val def = activeTheme
@@ -248,6 +263,23 @@ private fun LibraryScreenContent(
                             val folder = java.io.File(path)
                             val imageFile = folder.listFiles()?.firstOrNull { file ->
                                 file.name.startsWith("steamgriddb_$imageType") &&
+                                        (file.name.endsWith(".png", true) || file.name.endsWith(".jpg", true) || file.name.endsWith(".webp", true))
+                            }
+                            return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                        }
+                    }
+                    return null
+                }
+                
+                // Helper function to find the full hero image (not grid_hero) for custom games
+                fun findSteamGridDBHeroImage(item: LibraryItem): String? {
+                    if (item.gameSource == GameSource.CUSTOM_GAME) {
+                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(item.appId)
+                        gameFolderPath?.let { path ->
+                            val folder = java.io.File(path)
+                            val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                file.name.startsWith("steamgriddb_hero") &&
+                                        !file.name.contains("grid") &&
                                         (file.name.endsWith(".png", true) || file.name.endsWith(".jpg", true) || file.name.endsWith(".webp", true))
                             }
                             return imageFile?.let { android.net.Uri.fromFile(it).toString() }
@@ -272,6 +304,15 @@ private fun LibraryScreenContent(
                                 findSteamGridDBImage(item, "grid_hero")
                                     ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg" else "")
                             GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg"
+                            else -> ""
+                        }
+                        // Library hero - the large 1920x620 banner used on game info screens
+                        val libraryHeroUrl = when (item.gameSource) {
+                            GameSource.CUSTOM_GAME ->
+                                findSteamGridDBHeroImage(item)
+                                    ?: findSteamGridDBImage(item, "grid_hero")
+                                    ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_hero.jpg" else "")
+                            GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_hero.jpg"
                             else -> ""
                         }
                         val coverUrl = item.clientIconUrl
@@ -304,6 +345,7 @@ private fun LibraryScreenContent(
                             "game.cover" to coverUrl,
                             "game.capsule" to capsuleUrl,
                             "game.hero" to heroUrl,
+                            "game.libraryHero" to libraryHeroUrl,
                             "game.appId" to item.appId,
                             "game.compatibility.label" to compatLabel,
                             "game.compatibility.color" to compatColor,
@@ -315,9 +357,10 @@ private fun LibraryScreenContent(
                     }
                 }
 
-                // Check if layout is a Grid - use the new ThemedGameGrid for full functionality
+                // Render themed layout based on type
                 val layout = def.layout
-                if (layout is app.gamenative.theme.model.LayoutNode.Grid) {
+                when (layout) {
+                    is app.gamenative.theme.model.LayoutNode.Grid -> {
                     val card = cards[layout.itemCard]
                     if (card != null) {
                         app.gamenative.theme.runtime.ThemedGameGrid(
@@ -334,8 +377,28 @@ private fun LibraryScreenContent(
                             themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
                         )
                     }
-                } else {
-                    // Fallback to basic ThemeLayout for other layout types (Canvas, Carousel)
+                    }
+                    is app.gamenative.theme.model.LayoutNode.Carousel -> {
+                        val card = cards[layout.itemCard]
+                        if (card != null) {
+                            app.gamenative.theme.runtime.ThemedGameCarousel(
+                                items = state.appInfoList,
+                                carouselConfig = layout,
+                                card = card,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(safePaddingModifier),
+                                initialPage = carouselPageIndex,
+                                onPageChanged = onCarouselPageChanged,
+                                onItemClick = { item -> selectedAppId = item.appId },
+                                onItemFocus = { /* Can be used for preview pane later */ },
+                                bindingProvider = bindingProvider,
+                                themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                            )
+                        }
+                    }
+                    else -> {
+                        // Fallback to basic ThemeLayout for Canvas layouts
                     val baseBinding = remember(reloadTick) {
                         app.gamenative.theme.runtime.MapBindingContext()
                     }
@@ -356,6 +419,7 @@ private fun LibraryScreenContent(
                             .padding(8.dp),
                         itemBindingProvider = itemBindingProvider,
                     )
+                    }
                 }
 
                 // Render fixed UI elements from theme config (or defaults if not specified)
@@ -376,19 +440,21 @@ private fun LibraryScreenContent(
                     listState = listState,
                     themeName = def.manifest.id,
                     callbacks = fixedCallbacks,
-                    accountButtonContent = {
+                    accountButtonContent = { iconSize ->
                         app.gamenative.ui.component.topbar.AccountButton(
                             onNavigateRoute = onNavigateRoute,
                             onLogout = onLogout,
                             onGoOnline = onGoOnline,
                             isOffline = isOffline,
+                            iconSize = iconSize,
                         )
                     },
-                    searchBarContent = {
+                    searchBarContent = { style ->
                         app.gamenative.ui.screen.library.components.LibrarySearchBar(
                             state = state,
                             listState = listState,
                             onSearchQuery = onSearchQuery,
+                            style = style,
                         )
                     },
                 )
@@ -577,6 +643,8 @@ private fun Preview_LibraryScreenContent() {
     PluviaTheme {
         LibraryScreenContent(
             listState = rememberLazyGridState(),
+            carouselPageIndex = 0,
+            onCarouselPageChanged = {},
             state = state,
             sheetState = sheetState,
             onIsSearching = {},

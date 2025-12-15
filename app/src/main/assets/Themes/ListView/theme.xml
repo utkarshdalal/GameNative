@@ -5,7 +5,9 @@
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
                    anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
-        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}" />
+        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
+                       iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
+                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}" />
     </fixed>
 
     <!-- Bottom action buttons -->
@@ -32,10 +34,10 @@
                   text="@{game.title}" textSize="@{vars.textSizeTitle}"
                   color="@{vars.textColor}" maxLines="1" fontWeight="bold" />
 
-            <!-- Installation status indicator (bullet) -->
+            <!-- Installation status indicator (bullet) - color based on install status -->
             <text id="installIndicator" x="88" y="42" width="16" height="16"
                   text="●" textSize="@{vars.textSizeTitle}"
-                  color="@{vars.textColorMuted}" fontWeight="bold" />
+                  color="@{game.installStatus.color}" fontWeight="bold" />
 
             <!-- Installation status text -->
             <text id="installStatus" x="100" y="42" width="300" height="16"

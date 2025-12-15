@@ -52,6 +52,9 @@ class LibraryViewModel @Inject constructor(
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
+    // Keep the carousel page index for carousel-based themes
+    var carouselPageIndex: Int by mutableStateOf(0)
+
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
         onFilterApps(paginationCurrentPage)
     }

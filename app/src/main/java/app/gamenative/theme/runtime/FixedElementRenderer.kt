@@ -3,6 +3,7 @@ package app.gamenative.theme.runtime
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
@@ -55,8 +56,8 @@ fun BoxScope.RenderFixedElements(
     listState: LazyGridState,
     themeName: String,
     callbacks: FixedElementCallbacks,
-    accountButtonContent: @Composable () -> Unit,
-    searchBarContent: @Composable () -> Unit,
+    accountButtonContent: @Composable (iconSize: Dp) -> Unit,
+    searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
 ) {
     if (fixedContainers.isEmpty()) {
         // Fallback to default positioning when no fixed containers are defined
@@ -94,7 +95,7 @@ fun BoxScope.RenderFixedElements(
             container.id.contains("bottom", ignoreCase = true) -> Alignment.BottomCenter
             else -> Alignment.TopCenter
         }
-
+        
         // Render container background if specified
         if (container.backgroundColor != null) {
             Box(
@@ -105,7 +106,7 @@ fun BoxScope.RenderFixedElements(
                     .background(Color(container.backgroundColor))
             )
         }
-
+        
         // Render visible elements
         visibleElements.forEach { element ->
             RenderFixedElement(
@@ -128,18 +129,18 @@ private fun BoxScope.RenderFixedElement(
     listState: LazyGridState,
     themeName: String,
     callbacks: FixedElementCallbacks,
-    accountButtonContent: @Composable () -> Unit,
-    searchBarContent: @Composable () -> Unit,
+    accountButtonContent: @Composable (iconSize: Dp) -> Unit,
+    searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
 ) {
     // Use BoxWithConstraints to get parent dimensions for relative size calculations
     BoxWithConstraints(modifier = Modifier.matchParentSize()) {
         val parentWidth = maxWidth
         val parentHeight = maxHeight
         
-        val alignment = element.anchor.toComposeAlignment()
+    val alignment = element.anchor.toComposeAlignment()
         val rawX = dimToDp(element.position.x, parentWidth, parentHeight)
         val rawY = dimToDp(element.position.y, parentWidth, parentHeight)
-        val (offsetX, offsetY) = calculateCssLikeOffset(rawX, rawY, element.anchor)
+    val (offsetX, offsetY) = calculateCssLikeOffset(rawX, rawY, element.anchor)
 
     when (element) {
         is FixedElement.Header -> {
@@ -205,27 +206,53 @@ private fun BoxScope.RenderFixedElement(
         }
 
         is FixedElement.SearchBar -> {
+            val bgColor = element.backgroundColor?.let { Color(it) }
+            val radius = element.borderRadius
+            val expandedWidth = dimToDp(element.size.width, parentWidth, parentHeight)
+            
+            // Check if anchor is on the right side
+            val isAnchorRight = element.anchor == Anchor.TOP_RIGHT ||
+                element.anchor == Anchor.CENTER_RIGHT ||
+                element.anchor == Anchor.BOTTOM_RIGHT
+            
+            // Create style from theme element
+            val searchStyle = app.gamenative.ui.screen.library.components.SearchBarStyle(
+                backgroundColor = bgColor,
+                borderRadius = radius,
+                collapsible = element.collapsible,
+                anchorRight = isAnchorRight,
+                expandedWidth = expandedWidth,
+            )
+            
             Box(
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
-                    .width(dimToDp(element.size.width, parentWidth, parentHeight))
                     .height(dimToDp(element.size.height, parentWidth, parentHeight))
             ) {
-                searchBarContent()
+                searchBarContent(searchStyle)
             }
         }
 
         is FixedElement.ProfileButton -> {
+            val bgColor = element.backgroundColor?.let { Color(it) }
+                ?: MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            val radius = element.cornerRadius.dp
+            val buttonSize = element.size.dp
+            val buttonPadding = element.padding.dp
+            val iconSize = element.iconSize.dp
+            
             Box(
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(8.dp)
+                    .size(buttonSize)
+                    .clip(RoundedCornerShape(radius))
+                    .background(bgColor)
+                    .padding(buttonPadding),
+                contentAlignment = Alignment.Center
             ) {
-                accountButtonContent()
+                accountButtonContent(iconSize)
             }
         }
 
@@ -259,7 +286,7 @@ private fun BoxScope.RenderFixedElement(
                     contentDescription = "Add custom game",
                 )
             }
-        }
+            }
         }
     }
 }
@@ -273,8 +300,8 @@ private fun BoxScope.RenderDefaultFixedElements(
     listState: LazyGridState,
     themeName: String,
     callbacks: FixedElementCallbacks,
-    accountButtonContent: @Composable () -> Unit,
-    searchBarContent: @Composable () -> Unit,
+    accountButtonContent: @Composable (iconSize: Dp) -> Unit,
+    searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
 ) {
     // Calculate installed count like LibraryListPane does
     val installedCount = remember(
@@ -338,7 +365,7 @@ private fun BoxScope.RenderDefaultFixedElements(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            accountButtonContent()
+            accountButtonContent(40.dp) // Default icon size
         }
         // Search bar
         Box(
@@ -346,7 +373,7 @@ private fun BoxScope.RenderDefaultFixedElements(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) {
-            searchBarContent()
+            searchBarContent(app.gamenative.ui.screen.library.components.SearchBarStyle())
         }
     }
 
@@ -397,7 +424,7 @@ private fun Anchor.toComposeAlignment(): Alignment = when (this) {
 /**
  * Convert CSS-like positioning to Compose offset.
  * With CSS-like positioning, positive values always mean "inward" from the anchor edge.
- *
+ * 
  * For example, with anchor=topRight and x=16, y=8:
  * - x=16 means 16px from the right edge (so Compose offsetX = -16)
  * - y=8 means 8px from the top edge (so Compose offsetY = 8)
@@ -408,13 +435,13 @@ private fun calculateCssLikeOffset(rawX: Dp, rawY: Dp, anchor: Anchor): Pair<Dp,
         Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> rawX
         Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> -rawX
     }
-
+    
     val offsetY = when (anchor) {
         Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
         Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> rawY
         Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> -rawY
     }
-
+    
     return Pair(offsetX, offsetY)
 }
 

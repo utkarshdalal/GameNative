@@ -84,7 +84,38 @@ sealed class LayoutNode {
         val itemCard: String,
         /** Optional number of items visible at once (page size). */
         val pageSize: Int? = null,
+        /** Whether the carousel centers on the focused item with snap behavior. */
+        val centerFocus: Boolean = false,
+        /** Scale factor for the highlighted/focused item (1.0 = no scaling). */
+        val highlightScale: Float = 1.0f,
+        /** Vertical alignment within parent container. */
+        val verticalAlign: VerticalAlign = VerticalAlign.TOP,
+        /** Vertical offset from the aligned position (positive = down). */
+        val verticalOffset: Dimension = Dimension.Px(0f),
+        /** Background image binding for focused item (e.g., "@{game.hero}"). Null = no background. */
+        val focusedBackground: StringOrBinding? = null,
+        /** Opacity for the focused background image (0.0-1.0). */
+        val backgroundOpacity: Float = 0.3f,
+        /** Duration in ms for background crossfade transition. */
+        val backgroundTransitionSpeed: Int = 400,
     ) : LayoutNode()
+}
+
+/**
+ * Vertical alignment options for layout elements.
+ */
+enum class VerticalAlign {
+    TOP,
+    CENTER,
+    BOTTOM;
+
+    companion object {
+        fun fromString(value: String?): VerticalAlign = when (value?.lowercase()) {
+            "center" -> CENTER
+            "bottom" -> BOTTOM
+            else -> TOP
+        }
+    }
 }
 
 /**

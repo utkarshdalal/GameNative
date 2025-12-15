@@ -59,7 +59,7 @@ object ThemeXmlMapper {
         return Manifest(
             id = id,
             version = "1.0.0",
-            engineVersion = ThemeEngine.ENGINE_MAJOR,
+            engineVersion = ThemeEngine.ENGINE_VERSION,
             minAppVersion = "0.0.0",
             maxAppVersion = null,
         )
@@ -137,12 +137,17 @@ object ThemeXmlMapper {
                 size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(400f), Dimension.Px(48f)),
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
                 borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
+                collapsible = n.attributes["collapsible"]?.toBooleanStrictOrNull() ?: false,
             )
             "profilebutton" -> FixedElement.ProfileButton(
                 position = position,
                 anchor = anchor,
                 visibility = visibility,
-                size = resolveFloat(n, "size", 40f, tree),
+                size = resolveFloat(n, "size", 48f, tree),
+                iconSize = resolveFloat(n, "iconSize", 24f, tree),
+                padding = resolveFloat(n, "padding", 8f, tree),
+                backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
+                cornerRadius = resolveFloat(n, "cornerRadius", 12f, tree),
             )
             "filterbutton" -> FixedElement.FilterButton(
                 position = position,
@@ -171,6 +176,10 @@ object ThemeXmlMapper {
         val opacity: FloatOrBinding?,
         val anchor: Anchor,
         val visibility: Visibility,
+        val zIndex: Float,
+        val focusOnly: Boolean,
+        val focusTransitionSpeed: Int,
+        val visibleWhen: String?,
     )
     
     /** Extract common base properties from an XML node. */
@@ -181,6 +190,10 @@ object ThemeXmlMapper {
         opacity = floatBindingResolved(n.attributes["opacity"], tree),
         anchor = Anchor.fromString(n.attributes["anchor"]),
         visibility = Visibility.fromString(n.attributes["visibility"]),
+        zIndex = resolveFloat(n, "zIndex", default = 0f, tree),
+        focusOnly = n.attributes["focusOnly"]?.toBooleanStrictOrNull() ?: false,
+        focusTransitionSpeed = resolveInt(n, "focusTransitionSpeed", tree) ?: 150,
+        visibleWhen = n.attributes["visibleWhen"],
     )
 
     private fun parseLayer(n: XmlNode, tree: ThemeTree): Layer? {
@@ -194,6 +207,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             source = MediaSource.Image(
                 src = stringBinding(n.attributes["src"]) ?: StringOrBinding.Literal(""),
                 fallback = stringBinding(n.attributes["fallback"]),
@@ -209,6 +226,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             source = MediaSource.Video(
                 src = stringBinding(n.attributes["src"]) ?: StringOrBinding.Literal(""),
                 poster = stringBinding(n.attributes["poster"]),
@@ -232,6 +253,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0x88000000.toInt()),
             cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
             borderWidth = floatBindingResolved(n.attributes["borderWidth"], tree),
@@ -244,6 +269,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             radius = floatBindingResolved(n.attributes["radius"], tree) ?: FloatOrBinding.Literal(8f),
             color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0x80000000.toInt()),
             offset = DimOffset(pxResolved(n, "dx", tree), pxResolved(n, "dy", tree)),
@@ -255,6 +284,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             strokeWidth = floatBindingResolved(n.attributes["strokeWidth"], tree) ?: FloatOrBinding.Literal(2f),
             color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
             cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
@@ -266,6 +299,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
             color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
             textSize = floatBindingResolved(n.attributes["textSize"], tree) ?: FloatOrBinding.Literal(18f),
@@ -281,6 +318,10 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             visibility = base.visibility,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             blurRadius = floatBindingResolved(n.attributes["blurRadius"], tree),
             tintColor = intBindingResolved(n.attributes["tint"], tree),
         )
@@ -290,6 +331,10 @@ object ThemeXmlMapper {
             size = base.size,
             opacity = base.opacity,
             anchor = base.anchor,
+            zIndex = base.zIndex,
+            focusOnly = base.focusOnly,
+            focusTransitionSpeed = base.focusTransitionSpeed,
+            visibleWhen = base.visibleWhen,
             visibility = base.visibility,
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
             backgroundColor = intBindingResolved(n.attributes["backgroundColor"], tree) ?: IntOrBinding.Literal(0xFFE91E63.toInt()),
@@ -417,6 +462,18 @@ object ThemeXmlMapper {
         val pageSize = resolveInt(node, "pageSize", tree)
         // Support both new "itemCard" and legacy "itemTemplate" attribute; default to "default" if not specified
         val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"] ?: "default"
+        
+        // Center-focus carousel attributes
+        val centerFocus = node.attributes["centerFocus"]?.toBooleanStrictOrNull() ?: false
+        val highlightScale = resolveFloat(node, "highlightScale", default = 1.0f, tree)
+        val verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"])
+        val verticalOffset = resolveDimensionWidth(node, "verticalOffset", tree) ?: Dimension.Px(0f)
+        
+        // Background image attributes
+        val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
+        val backgroundOpacity = resolveFloat(node, "backgroundOpacity", default = 0.3f, tree)
+        val backgroundTransitionSpeed = resolveInt(node, "backgroundTransitionSpeed", tree) ?: 400
+        
         return LayoutNode.Carousel(
             direction = dir,
             itemSize = DimSize(itemW, itemH),
@@ -424,6 +481,13 @@ object ThemeXmlMapper {
             selectionMode = sel,
             itemCard = itemCard,
             pageSize = pageSize,
+            centerFocus = centerFocus,
+            highlightScale = highlightScale,
+            verticalAlign = verticalAlign,
+            verticalOffset = verticalOffset,
+            focusedBackground = focusedBackground,
+            backgroundOpacity = backgroundOpacity,
+            backgroundTransitionSpeed = backgroundTransitionSpeed,
         )
     }
     // endregion

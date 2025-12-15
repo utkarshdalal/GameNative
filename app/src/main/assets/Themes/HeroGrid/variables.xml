@@ -13,8 +13,12 @@
     <var name="searchBarWidth" value="600" />
     <var name="badgeHeight" value="20" />
     <var name="profileButtonSize" value="48" />
+    <var name="profileButtonIconSize" value="32" />
+    <var name="profileButtonPadding" value="8" />
     <var name="profileButtonX" value="12" />
     <var name="profileButtonY" value="12" />
+    <var name="profileButtonBg" value="#66808080" />
+    <var name="profileButtonRadius" value="12" />
 
     <!-- Spacing -->
     <var name="paddingSmall" value="8" />

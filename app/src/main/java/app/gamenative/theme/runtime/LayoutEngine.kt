@@ -1,20 +1,27 @@
 package app.gamenative.theme.runtime
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import app.gamenative.theme.model.*
 import app.gamenative.theme.runtime.layers.RenderLayer
+import kotlin.math.absoluteValue
 
 /**
  * Simple binding context to resolve literal-or-binding values at render time.
@@ -181,14 +188,132 @@ private fun CarouselLayout(
     val itemW = dimToDp(node.itemSize.width, viewportSize.width, viewportSize.height)
     val itemH = dimToDp(node.itemSize.height, viewportSize.width, viewportSize.height)
     val space = node.itemSpacing.dp
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        val count = node.pageSize ?: 5
-        repeat(count) { i ->
-            val itemBinding = itemBindingProvider?.invoke(i) ?: binding
-            Box(modifier = Modifier.size(itemW, itemH)) {
-                RenderCard(card, itemBinding, anchor, DpSize(itemW, itemH))
+    
+    // Use center-focus pager layout if enabled
+    if (node.centerFocus) {
+        CenterFocusCarouselLayout(
+            node = node,
+            card = card,
+            binding = binding,
+            modifier = modifier,
+            anchor = anchor,
+            itemWidth = itemW,
+            itemHeight = itemH,
+            spacing = space,
+            itemBindingProvider = itemBindingProvider,
+        )
+    } else {
+        // Standard row layout
+        Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+            val count = node.pageSize ?: 5
+            repeat(count) { i ->
+                val itemBinding = itemBindingProvider?.invoke(i) ?: binding
+                Box(modifier = Modifier.size(itemW, itemH)) {
+                    RenderCard(card, itemBinding, anchor, DpSize(itemW, itemH))
+                }
+                if (i != count - 1) Spacer(Modifier.width(space))
             }
-            if (i != count - 1) Spacer(Modifier.width(space))
+        }
+    }
+}
+
+/**
+ * Center-focused carousel using HorizontalPager with snap-to-center behavior.
+ * The focused item scales up based on highlightScale.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CenterFocusCarouselLayout(
+    node: LayoutNode.Carousel,
+    card: Card,
+    binding: BindingContext,
+    modifier: Modifier,
+    anchor: Anchor,
+    itemWidth: Dp,
+    itemHeight: Dp,
+    spacing: Dp,
+    itemBindingProvider: ((Int) -> BindingContext)? = null,
+) {
+    val itemCount = node.pageSize ?: 10
+    val highlightScale = node.highlightScale
+    
+    // Account for scale when calculating item size - the highlight item will be larger
+    val scaledItemWidth = itemWidth * highlightScale
+    val scaledItemHeight = itemHeight * highlightScale
+    
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { itemCount }
+    )
+    
+    // Vertical alignment modifier
+    val verticalAlignmentModifier = when (node.verticalAlign) {
+        VerticalAlign.CENTER -> Modifier.fillMaxSize()
+        VerticalAlign.BOTTOM -> Modifier.fillMaxSize()
+        VerticalAlign.TOP -> Modifier.fillMaxWidth()
+    }
+    
+    val verticalArrangement = when (node.verticalAlign) {
+        VerticalAlign.CENTER -> Arrangement.Center
+        VerticalAlign.BOTTOM -> Arrangement.Bottom
+        VerticalAlign.TOP -> Arrangement.Top
+    }
+    
+    Column(
+        modifier = modifier.then(verticalAlignmentModifier),
+        verticalArrangement = verticalArrangement,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(scaledItemHeight),
+            contentPadding = PaddingValues(
+                horizontal = (LocalDensity.current.run { 
+                    // Calculate padding to center the first item
+                    // We need to leave space on each side equal to half the screen minus half the item
+                    // This centers the current page
+                    0.dp // Will be handled by pageSpacing and item alignment
+                })
+            ),
+            pageSpacing = spacing,
+            flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
+            verticalAlignment = Alignment.CenterVertically,
+        ) { page ->
+            val itemBinding = itemBindingProvider?.invoke(page) ?: binding
+            
+            // Calculate scale based on distance from current page
+            val pageOffset = (
+                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+            ).absoluteValue.coerceIn(0f, 1f)
+            
+            // Scale from highlightScale (at center) to 1.0 (at edges)
+            val scale = lerp(
+                start = highlightScale,
+                stop = 1f,
+                fraction = pageOffset
+            )
+            
+            // Also fade non-focused items slightly for depth effect
+            val alpha = lerp(
+                start = 1f,
+                stop = 0.7f,
+                fraction = pageOffset
+            )
+            
+            Box(
+                modifier = Modifier
+                    .size(itemWidth, itemHeight)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                RenderCard(card, itemBinding, anchor, DpSize(itemWidth, itemHeight))
+            }
         }
     }
 }

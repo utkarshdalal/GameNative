@@ -56,11 +56,11 @@ data class ValidationResult(val issues: List<ValidationIssue>) {
 object ThemeValidator {
 
     /** Validate and return issues. Incompatible themes should be blocked before selection. */
-    fun validate(tree: ThemeTree, appVersion: String, engineMajor: Int = ThemeEngine.ENGINE_MAJOR): ValidationResult {
+    fun validate(tree: ThemeTree, appVersion: String, engineVersion: String = ThemeEngine.ENGINE_VERSION): ValidationResult {
         val issues = mutableListOf<ValidationIssue>()
 
         // 1) Compatibility gates via manifest.xml
-        validateManifest(tree, appVersion, engineMajor, issues)
+        validateManifest(tree, appVersion, engineVersion, issues)
 
         // 2) Basic schema / referential integrity on theme.xml
         validateThemeXml(tree, issues)
@@ -69,7 +69,7 @@ object ThemeValidator {
     }
 
     // region Manifest
-    private fun validateManifest(tree: ThemeTree, appVersion: String, engineMajor: Int, out: MutableList<ValidationIssue>) {
+    private fun validateManifest(tree: ThemeTree, appVersion: String, engineVersion: String, out: MutableList<ValidationIssue>) {
         val manifestFile = File(tree.rootDir, "manifest.xml")
         if (!manifestFile.exists()) {
             out += ValidationIssue(
@@ -79,7 +79,7 @@ object ThemeValidator {
             )
             return
         }
-        var engineVersion: Int? = null
+        var engineConstraint: String? = null
         var minApp: String? = null
         var maxApp: String? = null
         var src: SourceLoc? = null
@@ -101,7 +101,7 @@ object ThemeValidator {
                         src = SourceLoc(manifestFile.absolutePath, locator?.lineNumber, locator?.columnNumber)
                         // Support both attribute and child element formats
                         attributes.getValue("engineVersion")?.let { v ->
-                            engineVersion = parseMajorVersion(v)
+                            engineConstraint = v.trim()
                         }
                         attributes.getValue("minAppVersion")?.let { minApp = it }
                         attributes.getValue("maxAppVersion")?.let { maxApp = it }
@@ -115,7 +115,7 @@ object ThemeValidator {
                 override fun endElement(uri: String?, localName: String?, qName: String) {
                     val text = textBuffer.toString().trim()
                     when (qName.lowercase()) {
-                        "engineversion" -> if (text.isNotEmpty()) engineVersion = parseMajorVersion(text)
+                        "engineversion" -> if (text.isNotEmpty()) engineConstraint = text
                         "minappversion" -> if (text.isNotEmpty()) minApp = text
                         "maxappversion" -> if (text.isNotEmpty()) maxApp = text
                     }
@@ -133,15 +133,15 @@ object ThemeValidator {
             return
         }
 
-        if (engineVersion == null) {
+        if (engineConstraint == null) {
             out += ValidationIssue(
                 ValidationCode.REQUIRED_FIELD_MISSING, Severity.ERROR,
                 "Manifest must declare engineVersion.", src
             )
-        } else if (engineVersion != engineMajor) {
+        } else if (!ThemeEngine.matchesConstraint(engineConstraint!!, engineVersion)) {
             out += ValidationIssue(
                 ValidationCode.ENGINE_VERSION_MISMATCH, Severity.ERROR,
-                "Theme engineVersion=$engineVersion does not match app engine=$engineMajor.", src
+                "Theme engineVersion constraint '$engineConstraint' does not match app engine version '$engineVersion'.", src
             )
         }
 

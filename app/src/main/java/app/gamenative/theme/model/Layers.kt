@@ -23,6 +23,18 @@ sealed class Layer {
     /** Visibility condition based on orientation. Defaults to ALWAYS (visible in all orientations). */
     abstract val visibility: Visibility
 
+    /** Z-index for stacking order. Higher values render on top. Default is 0. */
+    abstract val zIndex: Float
+
+    /** If true, this layer is only visible when the card is focused/highlighted. */
+    abstract val focusOnly: Boolean
+
+    /** Duration in ms for focus transition animation (fade in/out). 0 = instant. */
+    abstract val focusTransitionSpeed: Int
+
+    /** Binding path for conditional visibility (e.g., "game.isInstalled"). Layer shows only when binding = "true". */
+    abstract val visibleWhen: String?
+
     /**
      * Renders an image.
      */
@@ -33,6 +45,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Source image or binding to an image path. */
         val source: MediaSource.Image,
         /**
@@ -64,6 +80,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Source video with playback options. */
         val source: MediaSource.Video,
         /** Optional corner radius. */
@@ -81,6 +101,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Fill color (ARGB). */
         val color: IntOrBinding,
         /**
@@ -107,6 +131,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Shadow blur radius. */
         val radius: FloatOrBinding,
         /** Shadow color (ARGB). */
@@ -125,6 +153,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Stroke width. */
         val strokeWidth: FloatOrBinding,
         /** Border color (ARGB). */
@@ -149,6 +181,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Text content or binding. */
         val text: StringOrBinding,
         /** Text color (ARGB). */
@@ -175,6 +211,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Blur radius. */
         val blurRadius: FloatOrBinding? = null,
         /** Optional tint color (ARGB). */
@@ -191,6 +231,10 @@ sealed class Layer {
         override val opacity: FloatOrBinding? = null,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val focusOnly: Boolean = false,
+        override val focusTransitionSpeed: Int = 150,
+        override val visibleWhen: String? = null,
         /** Button label text or binding. */
         val text: StringOrBinding,
         /** Button background color (ARGB). */

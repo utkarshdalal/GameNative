@@ -5,7 +5,9 @@
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
                    anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
-        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}" />
+        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
+                       iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
+                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}" />
     </fixed>
 
     <!-- Bottom action buttons -->
@@ -32,9 +34,15 @@
             <rect id="footer" x="0" y="0" width="100%" height="@{vars.badgeHeight}"
                   color="@{vars.overlayColor}" cornerRadius="0 0 @{vars.cornerRadius} @{vars.cornerRadius}"
                   anchor="bottomLeft" />
-            <text id="title" x="@{vars.paddingSmall}" y="2" width="90%" height="@{vars.badgeHeight}"
+            <text id="title" x="@{vars.paddingSmall}" y="2" width="80%" height="@{vars.badgeHeight}"
                   text="@{game.title}" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
                   maxLines="1" textAlign="left" fontWeight="bold" anchor="bottomLeft" />
+            
+            <!-- Installed checkmark - bottom right -->
+            <text id="installedCheck" x="@{vars.paddingSmall}" y="2" height="@{vars.badgeHeight}"
+                  text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
+                  textAlign="right" fontWeight="bold" anchor="bottomRight"
+                  visibleWhen="game.isInstalled" />
 
             <!-- Overlay "backdrop" with border and corner radius -->
             <rect id="backdrop" x="0" y="0" width="100%" height="100%"

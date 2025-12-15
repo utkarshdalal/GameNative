@@ -1,0 +1,78 @@
+<variables>
+    <!-- Colors -->
+    <var name="bgColor" value="#FF000000" />
+    <var name="textColor" value="#FFFFFFFF" />
+    <var name="infoTextColor" value="#AAFFFFFF" />
+    <var name="searchBarBg" value="#BB1E1E1E" />
+    <var name="profileButtonBg" value="#BB1E1E1E" />
+    <var name="borderColor" value="#33FFFFFF" />
+
+    <!-- Top bar -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarRadius" value="24" />
+    <var name="searchBarWidth" value="300" />
+    <var name="searchBarHeight" value="56" />
+    <var name="searchBarX" value="76" />
+    <var name="searchBarY" value="12" />
+    <var name="profileButtonSize" value="52" />
+    <var name="profileButtonIconSize" value="52" />
+    <var name="profileButtonPadding" value="2" />
+    <var name="profileButtonX" value="12" />
+    <var name="profileButtonY" value="12" />
+    <var name="profileButtonRadius" value="27" />
+
+    <!-- Spacing -->
+    <var name="paddingSmall" value="8" />
+    <var name="paddingMedium" value="16" />
+    <var name="paddingLarge" value="24" />
+    <var name="bottomOffset" value="24" />
+
+    <!-- Card dimensions -->
+    <!-- Total card area includes hero + info space below -->
+    <var name="cardWidth" value="360" />
+    <var name="cardHeight" value="228" />
+    <var name="heroHeight" value="168" />
+    <var name="cornerRadius" value="8" />
+    <var name="itemSpacing" value="24" />
+
+    <!-- Info positioning (below hero image) -->
+    <var name="infoY" value="170" />
+    <var name="compatY" value="182" />
+    <var name="installedY" value="170" />
+    <var name="installedX" value="4" />
+
+    <!-- Carousel settings -->
+    <var name="highlightScale" value="1.4" />
+    <var name="carouselOffsetY" value="42" />
+    <var name="bgOpacity" value="0.2" />
+    <var name="transitionSpeed" value="400" />
+
+    <!-- Text -->
+    <var name="textSizeTitle" value="12" />
+    <var name="textSizeSmall" value="10" />
+
+    <!-- Portrait breakpoint overrides -->
+    <breakpoint orientation="portrait">
+        <!-- Top bar -->
+        <var name="topBarHeight" value="130" />
+        <var name="searchBarWidth" value="90%" />
+        <var name="searchBarX" value="5%" />
+        <var name="searchBarY" value="80" />
+        <var name="profileButtonY" value="0" />
+
+        <!-- Card dimensions (smaller for portrait) -->
+        <var name="cardWidth" value="280" />
+        <var name="cardHeight" value="181" />
+        <var name="heroHeight" value="131" />
+        <var name="itemSpacing" value="16" />
+        <var name="carouselOffsetY" value="40" />
+
+        <!-- Info positioning (below hero image) -->
+        <var name="infoY" value="141" />
+        <var name="compatY" value="163" />
+
+        <!-- Text sizes -->
+        <var name="textSizeTitle" value="12" />
+        <var name="textSizeSmall" value="9" />
+    </breakpoint>
+</variables>
