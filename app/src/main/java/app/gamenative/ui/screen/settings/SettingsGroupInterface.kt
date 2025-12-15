@@ -164,12 +164,12 @@ fun SettingsGroupInterface(
 
         // Theme engine picker - only show when theme engine is enabled
         if (useThemeEngineUi) {
-            val selectedThemeId by app.gamenative.theme.ThemeManager.selectedThemeId.collectAsState(null)
+            val selectedThemeEntry = app.gamenative.theme.ThemeManager.getSelectedThemeEntry()
             var openThemePickerDialog by rememberSaveable { mutableStateOf(false) }
             SettingsMenuLink(
                 colors = settingsTileColorsAlt(),
                 title = { Text(text = stringResource(R.string.settings_theme_picker_title)) },
-                subtitle = { Text(text = selectedThemeId ?: "—") },
+                subtitle = { Text(text = selectedThemeEntry?.name ?: "—") },
                 onClick = { openThemePickerDialog = true }
             )
             if (openThemePickerDialog) {

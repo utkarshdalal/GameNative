@@ -1,6 +1,8 @@
 package app.gamenative.theme.io
 
+import app.gamenative.theme.model.Breakpoint
 import app.gamenative.theme.model.ManifestEntry
+import app.gamenative.theme.model.Orientation
 import app.gamenative.theme.model.SourceLoc
 import app.gamenative.theme.model.ThemeLoadError
 import app.gamenative.theme.model.ThemeLoadResult
@@ -49,14 +51,17 @@ class ThemeLoader {
             )) })
         }
 
-        // Gather variables: external (from manifest entry) + inline <variables> + any <variables ref="..."/> nodes.
+        // Gather variables and breakpoints: external (from manifest entry) + inline <variables> + any <variables ref="..."/> nodes.
         val variables = LinkedHashMap<String, String>() // maintain insertion order; last writer wins on put
+        val breakpoints = mutableListOf<Breakpoint>()
 
         // 1) External variables from manifest entry
         manifestEntry?.variablesPath?.let { varRel ->
             val varFile = resolvePath(themeDir, varRel)
             if (varFile.exists()) {
-                variables.putAll(parseVariablesFile(varFile, errors))
+                val parsed = parseVariablesFile(varFile, errors)
+                variables.putAll(parsed.variables)
+                breakpoints.addAll(parsed.breakpoints)
             } else {
                 errors += ThemeLoadError(
                     code = "VARIABLES_FILE_NOT_FOUND",
@@ -67,13 +72,14 @@ class ThemeLoader {
         }
 
         // 2) Inline variables and variables ref inside theme tree
-        collectVariablesFromTree(root, themeDir, variables, errors)
+        collectVariablesFromTree(root, themeDir, variables, breakpoints, errors)
 
         val tree = ThemeTree(
             rootDir = themeDir.absolutePath,
             manifestEntry = manifestEntry,
             themeXml = root,
             variables = variables,
+            breakpoints = breakpoints,
         )
         return if (errors.isEmpty()) ThemeLoadResult.Success(tree) else ThemeLoadResult.Failure(errors)
     }
@@ -127,7 +133,19 @@ class ThemeLoader {
 
     // --- Variables parsing ---
 
-    private fun collectVariablesFromTree(root: XmlNode, themeDir: File, out: MutableMap<String, String>, errors: MutableList<ThemeLoadError>) {
+    /** Result of parsing a variables file, containing both base variables and breakpoints. */
+    private data class VariablesParseResult(
+        val variables: Map<String, String>,
+        val breakpoints: List<Breakpoint>
+    )
+
+    private fun collectVariablesFromTree(
+        root: XmlNode,
+        themeDir: File,
+        outVars: MutableMap<String, String>,
+        outBreakpoints: MutableList<Breakpoint>,
+        errors: MutableList<ThemeLoadError>
+    ) {
         fun traverse(node: XmlNode) {
             if (node.name.equals("variables", ignoreCase = false)) {
                 // Load external referenced variables first (so inline can override if needed)
@@ -136,7 +154,9 @@ class ThemeLoader {
                     val base = node.source?.filePath?.let { File(it).parentFile ?: themeDir } ?: themeDir
                     val refFile = if (ref.startsWith("/")) File(themeDir, ref.removePrefix("/")).canonicalFile else File(base, ref).canonicalFile
                     if (refFile.exists()) {
-                        out.putAll(parseVariablesFile(refFile, errors))
+                        val parsed = parseVariablesFile(refFile, errors)
+                        outVars.putAll(parsed.variables)
+                        outBreakpoints.addAll(parsed.breakpoints)
                     } else {
                         errors += ThemeLoadError(
                             code = "VARIABLES_REF_NOT_FOUND",
@@ -145,12 +165,12 @@ class ThemeLoader {
                         )
                     }
                 }
-                // Inline variable definitions
+                // Inline variable definitions (top-level vars, not inside breakpoints)
                 node.children.filter { it.name == "var" }.forEach { vNode ->
                     val name = vNode.attributes["name"]
                     val value = vNode.attributes["value"] ?: vNode.text
                     if (!name.isNullOrBlank() && value != null) {
-                        out[name] = value
+                        outVars[name] = value
                     } else {
                         errors += ThemeLoadError(
                             code = "VAR_BAD_DEF",
@@ -159,14 +179,22 @@ class ThemeLoader {
                         )
                     }
                 }
+                // Inline breakpoint definitions
+                node.children.filter { it.name == "breakpoint" }.forEach { bpNode ->
+                    val bp = parseBreakpointNode(bpNode, errors)
+                    if (bp != null) {
+                        outBreakpoints.add(bp)
+                    }
+                }
             }
             node.children.forEach { traverse(it) }
         }
         traverse(root)
     }
 
-    private fun parseVariablesFile(file: File, errors: MutableList<ThemeLoadError>): Map<String, String> {
-        val result = LinkedHashMap<String, String>()
+    private fun parseVariablesFile(file: File, errors: MutableList<ThemeLoadError>): VariablesParseResult {
+        val variables = LinkedHashMap<String, String>()
+        val breakpoints = mutableListOf<Breakpoint>()
         val factory = SAXParserFactory.newInstance().apply {
             isNamespaceAware = false
             isValidating = false
@@ -175,21 +203,60 @@ class ThemeLoader {
         try {
             val parser = factory.newSAXParser()
             var inVariables = false
+            var inBreakpoint = false
+            var currentBreakpointOrientation: Orientation? = null
+            var currentBreakpointMinWidth: Int? = null
+            var currentBreakpointMaxWidth: Int? = null
+            var currentBreakpointVars = LinkedHashMap<String, String>()
+
             parser.parse(InputSource(file.inputStream()), object : DefaultHandler() {
                 private var loc: Locator? = null
                 override fun setDocumentLocator(locator: Locator?) { this.loc = locator }
+
                 override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
                     when (qName) {
                         "variables" -> inVariables = true
+                        "breakpoint" -> if (inVariables) {
+                            inBreakpoint = true
+                            currentBreakpointOrientation = Orientation.fromString(attributes.getValue("orientation"))
+                            currentBreakpointMinWidth = attributes.getValue("minWidth")?.toIntOrNull()
+                            currentBreakpointMaxWidth = attributes.getValue("maxWidth")?.toIntOrNull()
+                            currentBreakpointVars = LinkedHashMap()
+                        }
                         "var" -> if (inVariables) {
                             val name = attributes.getValue("name")
                             val value = attributes.getValue("value")
                             if (!name.isNullOrBlank() && value != null) {
-                                result[name] = value
-                            } else {
-                                // Try text value support via characters -> keep simple: ignored here
+                                if (inBreakpoint) {
+                                    currentBreakpointVars[name] = value
+                                } else {
+                                    variables[name] = value
+                                }
                             }
                         }
+                    }
+                }
+
+                override fun endElement(uri: String?, localName: String?, qName: String) {
+                    when (qName) {
+                        "breakpoint" -> if (inBreakpoint) {
+                            // Only add if we have variables and at least one condition
+                            if (currentBreakpointVars.isNotEmpty() &&
+                                (currentBreakpointOrientation != null || currentBreakpointMinWidth != null || currentBreakpointMaxWidth != null)) {
+                                breakpoints.add(Breakpoint(
+                                    orientation = currentBreakpointOrientation,
+                                    minWidth = currentBreakpointMinWidth,
+                                    maxWidth = currentBreakpointMaxWidth,
+                                    variables = currentBreakpointVars.toMap()
+                                ))
+                            }
+                            inBreakpoint = false
+                            currentBreakpointOrientation = null
+                            currentBreakpointMinWidth = null
+                            currentBreakpointMaxWidth = null
+                            currentBreakpointVars = LinkedHashMap()
+                        }
+                        "variables" -> inVariables = false
                     }
                 }
             })
@@ -200,7 +267,45 @@ class ThemeLoader {
                 source = SourceLoc(file.absolutePath),
             )
         }
-        return result
+        return VariablesParseResult(variables, breakpoints)
+    }
+
+    /** Parse a breakpoint XmlNode from inline theme.xml. */
+    private fun parseBreakpointNode(node: XmlNode, errors: MutableList<ThemeLoadError>): Breakpoint? {
+        val orientation = Orientation.fromString(node.attributes["orientation"])
+        val minWidth = node.attributes["minWidth"]?.toIntOrNull()
+        val maxWidth = node.attributes["maxWidth"]?.toIntOrNull()
+
+        // Must have at least one condition
+        if (orientation == null && minWidth == null && maxWidth == null) {
+            errors += ThemeLoadError(
+                code = "BREAKPOINT_NO_CONDITION",
+                message = "<breakpoint> must have 'orientation', 'minWidth', or 'maxWidth' attribute",
+                source = node.source,
+            )
+            return null
+        }
+
+        val vars = LinkedHashMap<String, String>()
+        node.children.filter { it.name == "var" }.forEach { vNode ->
+            val name = vNode.attributes["name"]
+            val value = vNode.attributes["value"] ?: vNode.text
+            if (!name.isNullOrBlank() && value != null) {
+                vars[name] = value
+            }
+        }
+
+        if (vars.isEmpty()) {
+            // Empty breakpoint - not an error, just skip it
+            return null
+        }
+
+        return Breakpoint(
+            orientation = orientation,
+            minWidth = minWidth,
+            maxWidth = maxWidth,
+            variables = vars
+        )
     }
 
     // --- Utils ---

@@ -1,7 +1,12 @@
-<manifest engineVersion="1" minAppVersion="0.0.0">
-    <id>Capsule Grid</id>
+<manifest>
+    <id>capsule_grid</id>
+    <title>Capsule Grid</title>
     <version>1.0.0</version>
-    <engineVersion>1</engineVersion>
+    <engineVersion>1.0.0</engineVersion>
     <minAppVersion>0.0.0</minAppVersion>
-    <entry theme="/theme.xml"/>
+    <description>A responsive grid of portrait capsule art with compatibility badges and game titles.</description>
+    <author>
+        <name>Radical Thomas</name>
+    </author>
+    <entry theme="/theme.xml" variables="/variables.xml" />
 </manifest>

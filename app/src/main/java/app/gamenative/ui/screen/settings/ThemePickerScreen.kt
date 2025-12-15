@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -23,7 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeManager.Source
@@ -60,7 +58,7 @@ fun ThemePickerDialog(onDismiss: () -> Unit) {
                             ThemeManager.selectTheme(entry.id)
                         })
                         Column(Modifier.weight(1f)) {
-                            Text(text = entry.id, style = MaterialTheme.typography.bodyLarge)
+                            Text(text = entry.name, style = MaterialTheme.typography.bodyLarge)
                             val src = when (entry.source) {
                                 Source.BuiltIn -> stringResource(R.string.settings_theme_source_builtin)
                                 Source.User -> stringResource(R.string.settings_theme_source_user)
@@ -72,13 +70,6 @@ fun ThemePickerDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            if (BuildConfig.DEBUG) {
-                Button(onClick = { ThemeManager.reloadActiveThemeDevOnly() }) {
-                    Text(stringResource(R.string.settings_theme_reload_dev))
-                }
-            }
-        },
-        dismissButton = {
             OutlinedButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }

@@ -1,6 +1,7 @@
 package app.gamenative.theme.io
 
 import app.gamenative.theme.model.*
+import app.gamenative.theme.runtime.VariableResolver
 import java.io.File
 
 /**
@@ -9,22 +10,40 @@ import java.io.File
  */
 object ThemeXmlMapper {
 
-    /** Convert the merged [ThemeTree] into a [ThemeDefinition]. */
-    fun map(tree: ThemeTree): ThemeDefinition {
+    /**
+     * Convert the merged [ThemeTree] into a [ThemeDefinition].
+     * 
+     * @param tree The loaded theme tree
+     * @param resolvedVariables Optional pre-resolved variables (with breakpoints applied).
+     *                          If null, uses base variables from tree without breakpoint overrides.
+     */
+    fun map(tree: ThemeTree, resolvedVariables: Map<String, String>? = null): ThemeDefinition {
         val root = tree.themeXml
+        
+        // Use resolved variables if provided, otherwise use base variables
+        val effectiveVariables = resolvedVariables ?: tree.variables
+        
+        // Create a tree view with the effective variables for parsing
+        val effectiveTree = if (resolvedVariables != null) {
+            tree.copy(variables = effectiveVariables)
+        } else {
+            tree
+        }
+        
         // Variables: best-effort mapping from loader map -> Variable entries (typed as STRING by default)
-        val variables = tree.variables.map { (k, v) ->
+        val variables = effectiveVariables.map { (k, v) ->
             Variable(id = k, type = ValueType.STRING, defaultValue = v)
         }
 
-        val cards = parseCards(root)
-        val fixedContainers = parseFixedContainers(root)
-        val layout = parseLayout(root, tree)
+        val cards = parseCards(root, effectiveTree)
+        val fixedContainers = parseFixedContainers(root, effectiveTree)
+        val layout = parseLayout(root, effectiveTree)
         val manifest = buildManifest(tree)
 
         return ThemeDefinition(
             manifest = manifest,
             variables = variables,
+            breakpoints = tree.breakpoints,
             cards = cards,
             fixedContainers = fixedContainers,
             layout = layout,
@@ -48,7 +67,7 @@ object ThemeXmlMapper {
     // endregion
 
     // region Cards
-    private fun parseCards(root: XmlNode): List<Card> {
+    private fun parseCards(root: XmlNode, tree: ThemeTree): List<Card> {
         // Support both new <cards>/<card> and legacy <templates>/<template> for backward compatibility
         val cardsRoot = root.children.firstOrNull { it.name.equals("cards", ignoreCase = true) }
             ?: root.children.firstOrNull { it.name.equals("templates", ignoreCase = true) }
@@ -58,10 +77,10 @@ object ThemeXmlMapper {
         return cardsRoot.children.filter { it.name.equals(cardTagName, ignoreCase = true) }.map { n ->
             val id = n.attributes["id"] ?: "card_${System.nanoTime()}"
             // Default to 100% width/height if not specified
-            val width = n.attributes["width"]?.let { parseDimensionWidth(it) } ?: Dimension.RelW(1f)
-            val height = n.attributes["height"]?.let { parseDimensionHeight(it) } ?: Dimension.RelH(1f)
+            val width = resolveDimensionWidth(n, "width", tree) ?: Dimension.RelW(1f)
+            val height = resolveDimensionHeight(n, "height", tree) ?: Dimension.RelH(1f)
             val layers = n.children.mapNotNull { child ->
-                parseLayer(child)
+                parseLayer(child, tree)
             }
             Card(
                 id = id,
@@ -73,25 +92,34 @@ object ThemeXmlMapper {
     }
 
     // region Fixed Containers
-    private fun parseFixedContainers(root: XmlNode): List<FixedContainer> {
+    private fun parseFixedContainers(root: XmlNode, tree: ThemeTree): List<FixedContainer> {
         return root.children.filter { it.name.equals("fixed", ignoreCase = true) }.map { containerNode ->
             val id = containerNode.attributes["id"] ?: "default"
-            val elements = containerNode.children.mapNotNull { parseFixedElement(it) }
-            val backgroundColor = containerNode.attributes["backgroundColor"]?.let { parseColor(it) }
-            val height = containerNode.attributes["height"]?.toFloatOrNull()
-            FixedContainer(id = id, elements = elements, backgroundColor = backgroundColor, height = height)
+            val elements = containerNode.children.mapNotNull { parseFixedElement(it, tree) }
+            val backgroundColor = resolveColorAttr(containerNode, "backgroundColor", tree)
+            val height = resolveFloatOrNull(containerNode, "height", tree)
+            val visibility = Visibility.fromString(containerNode.attributes["visibility"])
+            FixedContainer(
+                id = id, 
+                elements = elements, 
+                backgroundColor = backgroundColor, 
+                height = height,
+                visibility = visibility,
+            )
         }
     }
 
-    private fun parseFixedElement(n: XmlNode): FixedElement? {
-        val position = DimOffset(px(n, "x"), px(n, "y"))
-        val anchor = parseAnchor(n.attributes["anchor"])
+    private fun parseFixedElement(n: XmlNode, tree: ThemeTree): FixedElement? {
+        val position = DimOffset(pxResolved(n, "x", tree), pxResolved(n, "y", tree))
+        val anchor = Anchor.fromString(n.attributes["anchor"])
+        val visibility = Visibility.fromString(n.attributes["visibility"])
         
         return when (n.name.lowercase()) {
             "header" -> FixedElement.Header(
                 position = position,
                 anchor = anchor,
-                textColor = n.attributes["textColor"]?.let { parseColor(it) } ?: 0xFFFFFFFF.toInt(),
+                visibility = visibility,
+                textColor = resolveColorAttr(n, "textColor", tree) ?: 0xFFFFFFFF.toInt(),
                 showAppName = n.attributes["showAppName"]?.toBooleanStrictOrNull() 
                     ?: n.children.any { it.name.equals("appName", true) && it.attributes["visible"]?.toBooleanStrictOrNull() != false }
                     ?: true,
@@ -105,82 +133,82 @@ object ThemeXmlMapper {
             "searchbar" -> FixedElement.SearchBar(
                 position = position,
                 anchor = anchor,
-                size = size(n) ?: DimSize(Dimension.Px(400f), Dimension.Px(48f)),
-                backgroundColor = n.attributes["backgroundColor"]?.let { parseColor(it) },
-                borderRadius = n.attributes["borderRadius"]?.toFloatOrNull() ?: 8f,
+                visibility = visibility,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(400f), Dimension.Px(48f)),
+                backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
+                borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
             )
             "profilebutton" -> FixedElement.ProfileButton(
                 position = position,
                 anchor = anchor,
-                size = n.attributes["size"]?.toFloatOrNull() ?: 40f,
+                visibility = visibility,
+                size = resolveFloat(n, "size", 40f, tree),
             )
             "filterbutton" -> FixedElement.FilterButton(
                 position = position,
                 anchor = anchor,
+                visibility = visibility,
                 expanded = n.attributes["expanded"]?.toBooleanStrictOrNull() ?: true,
             )
             "addbutton" -> FixedElement.AddButton(
                 position = position,
                 anchor = anchor,
+                visibility = visibility,
             )
             else -> null
         }
     }
 
-    private fun parseAnchor(value: String?): Anchor {
-        return when (value?.lowercase()?.replace("_", "")) {
-            "topleft" -> Anchor.TOP_LEFT
-            "topcenter" -> Anchor.TOP_CENTER
-            "topright" -> Anchor.TOP_RIGHT
-            "centerleft" -> Anchor.CENTER_LEFT
-            "center" -> Anchor.CENTER
-            "centerright" -> Anchor.CENTER_RIGHT
-            "bottomleft" -> Anchor.BOTTOM_LEFT
-            "bottomcenter" -> Anchor.BOTTOM_CENTER
-            "bottomright" -> Anchor.BOTTOM_RIGHT
-            else -> Anchor.TOP_LEFT
-        }
-    }
     // endregion
 
-    private fun parseLayerAnchor(s: String?): LayerAnchor {
-        return when (s?.lowercase()?.replace("_", "")) {
-            "topleft" -> LayerAnchor.TOP_LEFT
-            "topcenter" -> LayerAnchor.TOP_CENTER
-            "topright" -> LayerAnchor.TOP_RIGHT
-            "centerleft" -> LayerAnchor.CENTER_LEFT
-            "center" -> LayerAnchor.CENTER
-            "centerright" -> LayerAnchor.CENTER_RIGHT
-            "bottomleft" -> LayerAnchor.BOTTOM_LEFT
-            "bottomcenter" -> LayerAnchor.BOTTOM_CENTER
-            "bottomright" -> LayerAnchor.BOTTOM_RIGHT
-            else -> LayerAnchor.TOP_LEFT
-        }
-    }
+    /**
+     * Helper class holding common base properties shared by all layer types.
+     */
+    private data class LayerBase(
+        val id: String?,
+        val position: DimOffset,
+        val size: DimSize?,
+        val opacity: FloatOrBinding?,
+        val anchor: Anchor,
+        val visibility: Visibility,
+    )
+    
+    /** Extract common base properties from an XML node. */
+    private fun parseLayerBase(n: XmlNode, tree: ThemeTree) = LayerBase(
+        id = n.attributes["id"],
+        position = DimOffset(pxResolved(n, "x", tree), pxResolved(n, "y", tree)),
+        size = sizeResolved(n, tree),
+        opacity = floatBindingResolved(n.attributes["opacity"], tree),
+        anchor = Anchor.fromString(n.attributes["anchor"]),
+        visibility = Visibility.fromString(n.attributes["visibility"]),
+    )
 
-    private fun parseLayer(n: XmlNode): Layer? {
-        val layerSize = size(n)
+    private fun parseLayer(n: XmlNode, tree: ThemeTree): Layer? {
+        val base = parseLayerBase(n, tree)
+        
         return when (n.name.lowercase()) {
         "image" -> Layer.ImageLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
             source = MediaSource.Image(
                 src = stringBinding(n.attributes["src"]) ?: StringOrBinding.Literal(""),
-                fallback = stringBinding(n.attributes["fallback"]) ,
+                fallback = stringBinding(n.attributes["fallback"]),
             ),
-            cornerRadius = n.attributes["cornerRadius"],
-            tintColor = intBinding(n.attributes["tint"]),
+            cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+            tintColor = intBindingResolved(n.attributes["tint"], tree),
             scaleType = n.attributes["scaleType"] ?: "cover",
         )
         "video" -> Layer.VideoLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
             source = MediaSource.Video(
                 src = stringBinding(n.attributes["src"]) ?: StringOrBinding.Literal(""),
                 poster = stringBinding(n.attributes["poster"]),
@@ -194,74 +222,80 @@ object ThemeXmlMapper {
                 },
                 fallbackImage = stringBinding(n.attributes["fallbackImage"]),
             ),
-            cornerRadius = floatBinding(n.attributes["cornerRadius"]),
+            cornerRadius = floatBindingResolved(n.attributes["cornerRadius"], tree),
         )
         // Support both "rect" (new) and "overlay" (legacy) for rectangle shapes
         "rect", "overlay" -> Layer.RectLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
-            color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0x88000000.toInt()),
-            cornerRadius = n.attributes["cornerRadius"],
-            borderWidth = floatBinding(n.attributes["borderWidth"]),
-            borderColor = intBinding(n.attributes["borderColor"]),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
+            color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0x88000000.toInt()),
+            cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+            borderWidth = floatBindingResolved(n.attributes["borderWidth"], tree),
+            borderColor = intBindingResolved(n.attributes["borderColor"], tree),
         )
         "shadow" -> Layer.ShadowLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
-            radius = floatBinding(n.attributes["radius"]) ?: FloatOrBinding.Literal(8f),
-            color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0x80000000.toInt()),
-            offset = DimOffset(px(n, "dx"), px(n, "dy")),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
+            radius = floatBindingResolved(n.attributes["radius"], tree) ?: FloatOrBinding.Literal(8f),
+            color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0x80000000.toInt()),
+            offset = DimOffset(pxResolved(n, "dx", tree), pxResolved(n, "dy", tree)),
         )
         "border" -> Layer.BorderLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
-            strokeWidth = floatBinding(n.attributes["strokeWidth"]) ?: FloatOrBinding.Literal(2f),
-            color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
-            cornerRadius = n.attributes["cornerRadius"],
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
+            strokeWidth = floatBindingResolved(n.attributes["strokeWidth"], tree) ?: FloatOrBinding.Literal(2f),
+            color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
+            cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
         )
         "text" -> Layer.TextLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
-            color = intBinding(n.attributes["color"]) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
-            textSize = floatBinding(n.attributes["textSize"]) ?: FloatOrBinding.Literal(18f),
-            maxLines = n.attributes["maxLines"]?.toIntOrNull(),
+            color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
+            textSize = floatBindingResolved(n.attributes["textSize"], tree) ?: FloatOrBinding.Literal(18f),
+            maxLines = resolveInt(n, "maxLines", tree),
             textAlign = n.attributes["textAlign"] ?: "left",
             fontWeight = n.attributes["fontWeight"] ?: "normal",
             fontStyle = n.attributes["fontStyle"] ?: "normal",
         )
         "backdrop" -> Layer.BackdropLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
-            blurRadius = floatBinding(n.attributes["blurRadius"]),
-            tintColor = intBinding(n.attributes["tint"]),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
+            blurRadius = floatBindingResolved(n.attributes["blurRadius"], tree),
+            tintColor = intBindingResolved(n.attributes["tint"], tree),
         )
         "button" -> Layer.ButtonLayer(
-            id = n.attributes["id"],
-            position = DimOffset(px(n, "x"), px(n, "y")),
-            size = layerSize,
-            opacity = floatBinding(n.attributes["opacity"]),
-            anchor = parseLayerAnchor(n.attributes["anchor"]),
+            id = base.id,
+            position = base.position,
+            size = base.size,
+            opacity = base.opacity,
+            anchor = base.anchor,
+            visibility = base.visibility,
             text = stringBinding(n.attributes["text"]) ?: StringOrBinding.Literal(""),
-            backgroundColor = intBinding(n.attributes["backgroundColor"]) ?: IntOrBinding.Literal(0xFFE91E63.toInt()),
-            textColor = intBinding(n.attributes["textColor"]) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
-            textSize = floatBinding(n.attributes["textSize"]) ?: FloatOrBinding.Literal(14f),
-            cornerRadius = n.attributes["cornerRadius"],
+            backgroundColor = intBindingResolved(n.attributes["backgroundColor"], tree) ?: IntOrBinding.Literal(0xFFE91E63.toInt()),
+            textColor = intBindingResolved(n.attributes["textColor"], tree) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
+            textSize = floatBindingResolved(n.attributes["textSize"], tree) ?: FloatOrBinding.Literal(14f),
+            cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
         )
         else -> null
         }
@@ -276,17 +310,17 @@ object ThemeXmlMapper {
         val child = layoutRoot.children.firstOrNull()
             ?: error("<layout> must contain a root layout node (canvas/grid/carousel)")
         return when (child.name.lowercase()) {
-            "canvas" -> parseCanvas(child)
+            "canvas" -> parseCanvas(child, tree)
             "grid" -> parseGrid(child, tree)
             "carousel" -> parseCarousel(child, tree)
             else -> error("Unknown layout node: ${child.name}")
         }
     }
 
-    private fun parseCanvas(node: XmlNode): LayoutNode.Canvas {
+    private fun parseCanvas(node: XmlNode, tree: ThemeTree): LayoutNode.Canvas {
         // Default to 100% width/height if not specified
-        val w = node.attributes["width"]?.let { parseDimensionWidth(it) } ?: Dimension.RelW(1f)
-        val h = node.attributes["height"]?.let { parseDimensionHeight(it) } ?: Dimension.RelH(1f)
+        val w = resolveDimensionWidth(node, "width", tree) ?: Dimension.RelW(1f)
+        val h = resolveDimensionHeight(node, "height", tree) ?: Dimension.RelH(1f)
         val children = node.children.filter { it.name.equals("child", ignoreCase = true) }.map { ch ->
             // Support both new "card" and legacy "template" attribute
             val cardId = ch.attributes["card"] ?: ch.attributes["template"] ?: "default"
@@ -301,14 +335,14 @@ object ThemeXmlMapper {
 
     private fun parseGrid(node: XmlNode, tree: ThemeTree): LayoutNode.Grid {
         // columns is optional - null means adaptive based on cellWidth
-        val cols = node.attributes["columns"]?.toIntOrNull()
-        val rows = node.attributes["rows"]?.toIntOrNull()
+        val cols = resolveInt(node, "columns", tree)
+        val rows = resolveInt(node, "rows", tree)
         // cellWidth defaults to 100% (single column) if not specified
-        val cellW = node.attributes["cellWidth"]?.let { parseDimensionWidth(it) } ?: Dimension.RelW(1f)
+        val cellW = resolveDimensionWidth(node, "cellWidth", tree) ?: Dimension.RelW(1f)
         // cellHeight is optional - if not specified, aspectRatio or card height will be used
-        val cellH = node.attributes["cellHeight"]?.let { parseDimensionHeight(it) }
+        val cellH = resolveDimensionHeight(node, "cellHeight", tree)
         // aspectRatio for automatic height calculation (width/height, e.g. 2.14 for hero, 0.67 for capsule)
-        val aspectRatio = node.attributes["aspectRatio"]?.toFloatOrNull()
+        val aspectRatio = resolveFloatOrNull(node, "aspectRatio", tree)
         
         // cellSpacing sets both hSpacing and vSpacing; individual values override it
         val cellSpacing = resolveFloat(node, "cellSpacing", default = 0f, tree)
@@ -330,8 +364,8 @@ object ThemeXmlMapper {
         // Parse optional separator
         val separator = node.children.firstOrNull { it.name.equals("separator", ignoreCase = true) }?.let { sepNode ->
             // Separator height defaults to 1px if not specified
-            val sepHeight = sepNode.attributes["height"]?.let { parseDimensionHeight(it) } ?: Dimension.Px(1f)
-            val sepLayers = sepNode.children.mapNotNull { parseLayer(it) }
+            val sepHeight = resolveDimensionHeight(sepNode, "height", tree) ?: Dimension.Px(1f)
+            val sepLayers = sepNode.children.mapNotNull { parseLayer(it, tree) }
             // Parse margin - supports CSS-like shorthand
             val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
             GridSeparator(
@@ -371,8 +405,8 @@ object ThemeXmlMapper {
             else -> Direction.RIGHT
         }
         // Default item size to 200x200 if not specified
-        val itemW = node.attributes["itemWidth"]?.let { parseDimensionWidth(it) } ?: Dimension.Px(200f)
-        val itemH = node.attributes["itemHeight"]?.let { parseDimensionHeight(it) } ?: Dimension.Px(200f)
+        val itemW = resolveDimensionWidth(node, "itemWidth", tree) ?: Dimension.Px(200f)
+        val itemH = resolveDimensionHeight(node, "itemHeight", tree) ?: Dimension.Px(200f)
         val spacing = resolveFloat(node, "itemSpacing", default = 0f, tree)
         val sel = when (node.attributes["selectionMode"]?.lowercase()) {
             "stationary" -> SelectionMode.STATIONARY
@@ -380,7 +414,7 @@ object ThemeXmlMapper {
             null -> SelectionMode.STATIONARY
             else -> SelectionMode.STATIONARY
         }
-        val pageSize = node.attributes["pageSize"]?.toIntOrNull()
+        val pageSize = resolveInt(node, "pageSize", tree)
         // Support both new "itemCard" and legacy "itemTemplate" attribute; default to "default" if not specified
         val itemCard = node.attributes["itemCard"] ?: node.attributes["itemTemplate"] ?: "default"
         return LayoutNode.Carousel(
@@ -516,18 +550,119 @@ object ThemeXmlMapper {
         } else value.toInt() // AARRGGBB
     }
 
-    private fun isBinding(s: String): Boolean = s.startsWith("@{") && s.endsWith("}")
-    private fun bindingPath(s: String): String = s.removePrefix("@{").removeSuffix("}")
+    // ----- Centralized Variable Resolution (delegating to VariableResolver) -----
+    
+    private fun isBinding(s: String): Boolean = VariableResolver.isBinding(s)
+    private fun bindingPath(s: String): String = VariableResolver.getBindingPath(s)
+    
+    /** 
+     * Resolve a raw string value using the variable resolver.
+     * Handles both single variable bindings and embedded variables in strings.
+     */
+    private fun resolveRawValue(value: String?, tree: ThemeTree): String? {
+        return VariableResolver.resolveAllVariables(value, tree.variables)
+    }
 
     private fun resolveFloat(node: XmlNode, key: String, default: Float, tree: ThemeTree): Float {
-        val s = node.attributes[key] ?: return default
-        if (!isBinding(s)) return s.toFloatOrNull() ?: default
-        // Resolve @{vars.name} from tree.variables if possible
-        val path = bindingPath(s)
-        // Expect pattern vars.foo
-        val varName = path.substringAfter("vars.", missingDelimiterValue = path)
-        val value = tree.variables[varName] ?: return default
-        return value.toFloatOrNull() ?: default
+        return VariableResolver.resolveFloat(node.attributes[key], tree.variables, default)
+    }
+
+    /** Resolve an optional float that may be a variable reference. Returns null if not present or invalid. */
+    private fun resolveFloatOrNull(node: XmlNode, key: String, tree: ThemeTree): Float? {
+        return VariableResolver.resolveFloatOrNull(node.attributes[key], tree.variables)
+    }
+
+    /** Resolve an optional int that may be a variable reference. Returns null if not present or invalid. */
+    private fun resolveInt(node: XmlNode, key: String, tree: ThemeTree): Int? {
+        return VariableResolver.resolveIntOrNull(node.attributes[key], tree.variables)
+    }
+
+    /** Resolve a string attribute, expanding variable references. */
+    private fun resolveString(node: XmlNode, key: String, tree: ThemeTree): String? {
+        return VariableResolver.resolveValue(node.attributes[key], tree.variables)
+    }
+
+    /** Resolve a dimension (width-relative) that may be a variable reference. */
+    private fun resolveDimensionWidth(node: XmlNode, key: String, tree: ThemeTree): Dimension? {
+        val resolved = resolveRawValue(node.attributes[key], tree) ?: return null
+        return parseDimensionWidth(resolved)
+    }
+
+    /** Resolve a dimension (height-relative) that may be a variable reference. */
+    private fun resolveDimensionHeight(node: XmlNode, key: String, tree: ThemeTree): Dimension? {
+        val resolved = resolveRawValue(node.attributes[key], tree) ?: return null
+        return parseDimensionHeight(resolved)
+    }
+
+    /** Resolve a position dimension (px) with variable support. */
+    private fun pxResolved(n: XmlNode, key: String, tree: ThemeTree): Dimension {
+        val resolved = resolveRawValue(n.attributes[key], tree) ?: return Dimension.Px(0f)
+        // For x position, use width-relative; for y position, use height-relative
+        return if (key == "y" || key == "dy") {
+            parseDimensionHeight(resolved) ?: Dimension.Px(0f)
+        } else {
+            parseDimensionWidth(resolved) ?: Dimension.Px(0f)
+        }
+    }
+
+    /** Resolve size with variable support. */
+    private fun sizeResolved(n: XmlNode, tree: ThemeTree): DimSize? {
+        val wResolved = resolveRawValue(n.attributes["width"], tree) ?: return null
+        val hResolved = resolveRawValue(n.attributes["height"], tree) ?: return null
+        
+        val w = parseDimensionWidth(wResolved) ?: return null
+        val h = parseDimensionHeight(hResolved) ?: return null
+        return DimSize(w, h)
+    }
+
+    /** Create a FloatOrBinding, resolving variable references to literal values. */
+    private fun floatBindingResolved(raw: String?, tree: ThemeTree): FloatOrBinding? {
+        val s = raw ?: return null
+        return when {
+            VariableResolver.isVariableBinding(s) -> {
+                // Variable binding - resolve to literal
+                val resolved = VariableResolver.resolveFloatOrNull(s, tree.variables)
+                FloatOrBinding.Literal(resolved ?: 0f)
+            }
+            isBinding(s) -> {
+                // Other binding (e.g., @{game.x}) - keep as reference
+                FloatOrBinding.Ref(Binding(bindingPath(s)))
+            }
+            else -> FloatOrBinding.Literal(s.toFloatOrNull() ?: 0f)
+        }
+    }
+
+    /** Create an IntOrBinding, resolving variable references to literal values. */
+    private fun intBindingResolved(raw: String?, tree: ThemeTree): IntOrBinding? {
+        val s = raw ?: return null
+        return when {
+            VariableResolver.isVariableBinding(s) -> {
+                // Variable binding - resolve to literal color
+                val resolved = VariableResolver.resolveColorOrNull(s, tree.variables)
+                    ?: return null
+                IntOrBinding.Literal(resolved)
+            }
+            isBinding(s) -> {
+                // Other binding (e.g., @{game.compatibility.color}) - keep as reference
+                IntOrBinding.Ref(Binding(bindingPath(s)))
+            }
+            isColorRef(s) -> IntOrBinding.Ref(Binding(s)) // Keep @color/primary as binding path
+            else -> IntOrBinding.Literal(parseColor(s))
+        }
+    }
+
+    /** 
+     * Resolve a string attribute with variable support. Returns the resolved literal string.
+     * Handles both single variable bindings and multi-value strings with embedded variables.
+     * Example: "@{vars.radius} @{vars.radius} 0 0" -> "20 20 0 0"
+     */
+    private fun resolveStringAttr(node: XmlNode, key: String, tree: ThemeTree): String? {
+        return VariableResolver.resolveAllVariables(node.attributes[key], tree.variables)
+    }
+
+    /** Resolve a color attribute with variable support. Returns the parsed color int. */
+    private fun resolveColorAttr(node: XmlNode, key: String, tree: ThemeTree): Int? {
+        return VariableResolver.resolveColorOrNull(node.attributes[key], tree.variables)
     }
 
     /**
@@ -544,13 +679,7 @@ object ThemeXmlMapper {
         if (value.isNullOrBlank()) return PaddingValues(0f, 0f, 0f, 0f)
         
         val parts = value.trim().split("\\s+".toRegex()).map { part ->
-            if (isBinding(part)) {
-                val path = bindingPath(part)
-                val varName = path.substringAfter("vars.", missingDelimiterValue = path)
-                tree.variables[varName]?.toFloatOrNull() ?: 0f
-            } else {
-                part.toFloatOrNull() ?: 0f
-            }
+            VariableResolver.resolveFloat(part, tree.variables, 0f)
         }
         
         return when (parts.size) {

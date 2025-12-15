@@ -27,12 +27,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import app.gamenative.theme.model.*
-import app.gamenative.theme.runtime.Anchor
 import app.gamenative.theme.runtime.BindingContext
 
 /** Dispatcher for rendering a single template layer. */
 @Composable
-fun BoxScope.RenderLayer(layer: Layer, parentSize: DpSize, binding: BindingContext, anchor: Anchor = Anchor.TopLeft) {
+fun BoxScope.RenderLayer(layer: Layer, parentSize: DpSize, binding: BindingContext, anchor: Anchor = Anchor.TOP_LEFT) {
     when (layer) {
         is Layer.ImageLayer -> ImageLayerView(layer, parentSize, binding, anchor)
         is Layer.VideoLayer -> VideoLayerView(layer, parentSize, binding, anchor)
@@ -82,16 +81,14 @@ private fun place(parent: DpSize, pos: DimOffset, size: DimSize?, defaultSize: D
     val x = dimToDp(pos.x, parent.width, parent.height)
     val y = dimToDp(pos.y, parent.width, parent.height)
     val px = when (anchor) {
-        Anchor.TopLeft -> x
-        Anchor.TopRight -> parent.width - x - w
-        Anchor.BottomLeft -> x
-        Anchor.BottomRight -> parent.width - x - w
+        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> x
+        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> (parent.width - w) / 2 + x
+        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> parent.width - x - w
     }
     val py = when (anchor) {
-        Anchor.TopLeft -> y
-        Anchor.TopRight -> y
-        Anchor.BottomLeft -> parent.height - y - h
-        Anchor.BottomRight -> parent.height - y - h
+        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> y
+        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> (parent.height - h) / 2 + y
+        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> parent.height - y - h
     }
     return Placement(px, py, w, h)
 }

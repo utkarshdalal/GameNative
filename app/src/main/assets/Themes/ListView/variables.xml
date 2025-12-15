@@ -1,4 +1,29 @@
 <variables>
-    <var name="hSpacingPx" value="0" />
-    <var name="vSpacingPx" value="8" />
+    <!-- Colors -->
+    <var name="bgColor" value="#FF000000" />
+    <var name="textColor" value="#FFFFFFFF" />
+    <var name="textColorMuted" value="#FF888888" />
+    <var name="searchBarBg" value="#FF1E1E1E" />
+    <var name="rowBgColor" value="#AA1E1E1E" />
+    <var name="borderColor" value="#22FFFFFF" />
+    <var name="separatorColor" value="#22FFFFFF" />
+
+    <!-- Dimensions -->
+    <var name="cornerRadius" value="15" />
+    <var name="searchBarRadius" value="24" />
+    <var name="topBarHeight" value="80" />
+    <var name="rowHeight" value="92" />
+    <var name="coverSize" value="60" />
+
+    <!-- Spacing -->
+    <var name="paddingSmall" value="8" />
+    <var name="paddingMedium" value="16" />
+    <var name="bottomOffset" value="24" />
+    <var name="separatorMargin" value="12" />
+
+    <!-- Text sizes -->
+    <var name="textSizeTitle" value="16" />
+    <var name="textSizeBody" value="13" />
+    <var name="textSizeSmall" value="12" />
+    <var name="textSizeButton" value="14" />
 </variables>

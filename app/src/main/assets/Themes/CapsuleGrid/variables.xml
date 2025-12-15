@@ -1,0 +1,29 @@
+<variables>
+    <!-- Colors -->
+    <var name="bgColor" value="#FF000000" />
+    <var name="transparentColor" value="#00000000" />
+    <var name="textColor" value="#FFFFFFFF" />
+    <var name="searchBarBg" value="#FF1E1E1E" />
+    <var name="overlayColor" value="#99000000" />
+    <var name="borderColor" value="#22FFFFFF" />
+
+    <!-- Dimensions -->
+    <var name="cornerRadius" value="20" />
+    <var name="searchBarRadius" value="24" />
+    <var name="topBarHeight" value="80" />
+    <var name="badgeHeight" value="20" />
+
+    <!-- Spacing -->
+    <var name="paddingSmall" value="8" />
+    <var name="paddingMedium" value="16" />
+    <var name="gridSpacing" value="12" />
+    <var name="bottomOffset" value="24" />
+
+    <!-- Grid settings -->
+    <var name="cellWidth" value="150" />
+    <var name="aspectRatio" value="0.67" />
+
+    <!-- Text -->
+    <var name="textSizeSmall" value="11" />
+</variables>
+

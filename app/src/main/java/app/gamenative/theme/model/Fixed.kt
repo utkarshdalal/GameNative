@@ -13,6 +13,12 @@ data class FixedContainer(
     val backgroundColor: Int? = null,
     /** Height of the container in pixels, null for auto-size based on content. */
     val height: Float? = null,
+    /** 
+     * Visibility condition based on orientation. 
+     * When set, applies to this container and all its children.
+     * Child elements can still override with their own visibility.
+     */
+    val visibility: Visibility = Visibility.ALWAYS,
 )
 
 /**
@@ -23,6 +29,8 @@ sealed class FixedElement {
     abstract val position: DimOffset
     /** Anchor point for positioning. */
     abstract val anchor: Anchor
+    /** Visibility condition based on orientation. */
+    abstract val visibility: Visibility
 
     /**
      * App header showing app name, theme name, and game count.
@@ -30,6 +38,7 @@ sealed class FixedElement {
     data class Header(
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Text color (ARGB). */
         val textColor: Int = 0xFFFFFFFF.toInt(),
         /** Whether to show the app name. */
@@ -46,6 +55,7 @@ sealed class FixedElement {
     data class SearchBar(
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Size of the search bar. */
         val size: DimSize,
         /** Background color (ARGB), null for default. */
@@ -60,6 +70,7 @@ sealed class FixedElement {
     data class ProfileButton(
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_RIGHT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Size of the button in pixels. */
         val size: Float = 40f,
     ) : FixedElement()
@@ -70,6 +81,7 @@ sealed class FixedElement {
     data class FilterButton(
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.BOTTOM_RIGHT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Whether to show expanded text label. */
         val expanded: Boolean = true,
     ) : FixedElement()
@@ -80,21 +92,7 @@ sealed class FixedElement {
     data class AddButton(
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.BOTTOM_RIGHT,
+        override val visibility: Visibility = Visibility.ALWAYS,
     ) : FixedElement()
-}
-
-/**
- * Anchor point for positioning fixed elements.
- */
-enum class Anchor {
-    TOP_LEFT,
-    TOP_CENTER,
-    TOP_RIGHT,
-    CENTER_LEFT,
-    CENTER,
-    CENTER_RIGHT,
-    BOTTOM_LEFT,
-    BOTTOM_CENTER,
-    BOTTOM_RIGHT,
 }
 

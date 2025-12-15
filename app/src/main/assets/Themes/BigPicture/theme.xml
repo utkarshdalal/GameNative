@@ -1,37 +1,40 @@
 <theme>
-    <!-- Fixed UI elements (CSS-like positioning: positive values = inward from anchor) -->
+    <!-- Top bar with header, search, and profile -->
     <fixed id="topBar">
-        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF" 
-                showAppName="true" showThemeName="true" showGameCount="true" />
-        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft" 
-                   backgroundColor="#FF1E1E1E" borderRadius="24" />
-        <profileButton x="16" y="8" anchor="topRight" size="40" />
-    </fixed>
-    
-    <fixed id="bottomBar">
-        <filterButton x="100" y="24" anchor="bottomRight" expanded="true" />
-        <addButton x="16" y="24" anchor="bottomRight" />
+        <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
+                textColor="@{vars.textColor}" showAppName="true" showThemeName="true" showGameCount="true" />
+        <searchBar x="200" y="@{vars.paddingSmall}" width="600" height="48" anchor="topLeft"
+                   backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
+        <profileButton x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topRight" size="40" />
     </fixed>
 
-    <!-- Card definitions for big picture carousel -->
+    <!-- Bottom action buttons -->
+    <fixed id="bottomBar">
+        <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true" />
+        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight" />
+    </fixed>
+
+    <!-- Card definitions - Big picture carousel style -->
     <cards>
-        <card id="big" width="800" height="450">
+        <card id="big" width="@{vars.cardWidth}" height="@{vars.cardHeight}">
             <!-- Large hero image -->
-            <image id="hero" x="0" y="0" width="800" height="450" 
-                   src="@{game.hero}" cornerRadius="20" />
-            
+            <image id="hero" x="0" y="0" width="@{vars.cardWidth}" height="@{vars.cardHeight}"
+                   src="@{game.hero}" cornerRadius="@{vars.cornerRadius}" />
+
             <!-- Subtle shade overlay -->
-            <overlay id="shade" x="0" y="0" width="800" height="450" color="#22000000" />
-            
+            <rect id="shade" x="0" y="0" width="@{vars.cardWidth}" height="@{vars.cardHeight}"
+                  color="@{vars.overlayColor}" />
+
             <!-- Game title at bottom -->
-            <text id="title" x="24" y="380" width="752" height="48" 
-                  text="@{game.title}" textSize="28" color="#FFFFFFFF" maxLines="1" />
+            <text id="title" x="@{vars.paddingLarge}" y="380" width="752" height="48"
+                  text="@{game.title}" textSize="@{vars.textSizeTitle}"
+                  color="@{vars.textColor}" maxLines="1" />
         </card>
     </cards>
-    
-    <!-- Layout configuration - big picture style carousel -->
+
+    <!-- Layout - big picture style carousel -->
     <layout>
-        <carousel direction="right" itemWidth="820" itemHeight="462" 
-                  itemSpacing="24" selectionMode="stationary" itemCard="big" />
+        <carousel direction="right" itemWidth="820" itemHeight="462"
+                  itemSpacing="@{vars.itemSpacing}" selectionMode="stationary" itemCard="big" />
     </layout>
 </theme>

@@ -46,9 +46,6 @@ class MapBindingContext(
     }
 }
 
-/** Anchor positions used by the runtime for positioning without changing the model. */
-enum class Anchor { TopLeft, TopRight, BottomLeft, BottomRight }
-
 /** Convert Dimension to Dp relative to the given max width/height. */
 private fun dimToDp(d: Dimension, maxW: Dp, maxH: Dp): Dp = when (d) {
     is Dimension.Px -> d.value.dp // treat px as dp for simplicity in preview
@@ -72,16 +69,14 @@ private fun computePlacement(
     val x = dimToDp(pos.x, parentSize.width, parentSize.height)
     val y = dimToDp(pos.y, parentSize.width, parentSize.height)
     val offX = when (anchor) {
-        Anchor.TopLeft -> x
-        Anchor.TopRight -> parentSize.width - x - w
-        Anchor.BottomLeft -> x
-        Anchor.BottomRight -> parentSize.width - x - w
+        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> x
+        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> (parentSize.width - w) / 2 + x
+        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> parentSize.width - x - w
     }
     val offY = when (anchor) {
-        Anchor.TopLeft -> y
-        Anchor.TopRight -> y
-        Anchor.BottomLeft -> parentSize.height - y - h
-        Anchor.BottomRight -> parentSize.height - y - h
+        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> y
+        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> (parentSize.height - h) / 2 + y
+        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> parentSize.height - y - h
     }
     return BoxPlacement(size = DpSize(w, h), offsetX = offX, offsetY = offY)
 }
@@ -93,7 +88,7 @@ fun ThemeLayout(
     cards: Map<String, Card>,
     binding: BindingContext,
     modifier: Modifier = Modifier,
-    anchor: Anchor = Anchor.TopLeft,
+    anchor: Anchor = Anchor.TOP_LEFT,
     viewportSize: DpSize = DpSize(1080.dp, 640.dp),
     itemBindingProvider: ((Int) -> BindingContext)? = null,
 ) {
@@ -202,7 +197,7 @@ private fun CarouselLayout(
 private fun RenderCard(
     card: Card,
     binding: BindingContext,
-    anchor: Anchor = Anchor.TopLeft,
+    anchor: Anchor = Anchor.TOP_LEFT,
     parentSize: DpSize,
 ) {
     Box(modifier = Modifier.size(parentSize.width, parentSize.height)) {

@@ -89,14 +89,38 @@ object ThemeValidator {
             val parser = factory.newSAXParser()
             val handler = object : DefaultHandler() {
                 private var locator: org.xml.sax.Locator? = null
+                private var currentElement: String? = null
+                private val textBuffer = StringBuilder()
+                
                 override fun setDocumentLocator(locator: org.xml.sax.Locator?) { this.locator = locator }
+                
                 override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
+                    currentElement = qName.lowercase()
+                    textBuffer.clear()
                     if (qName.equals("manifest", ignoreCase = true)) {
                         src = SourceLoc(manifestFile.absolutePath, locator?.lineNumber, locator?.columnNumber)
-                        engineVersion = attributes.getValue("engineVersion")?.toIntOrNull()
-                        minApp = attributes.getValue("minAppVersion")
-                        maxApp = attributes.getValue("maxAppVersion")
+                        // Support both attribute and child element formats
+                        attributes.getValue("engineVersion")?.let { v ->
+                            engineVersion = parseMajorVersion(v)
+                        }
+                        attributes.getValue("minAppVersion")?.let { minApp = it }
+                        attributes.getValue("maxAppVersion")?.let { maxApp = it }
                     }
+                }
+                
+                override fun characters(ch: CharArray, start: Int, length: Int) {
+                    textBuffer.append(ch, start, length)
+                }
+                
+                override fun endElement(uri: String?, localName: String?, qName: String) {
+                    val text = textBuffer.toString().trim()
+                    when (qName.lowercase()) {
+                        "engineversion" -> if (text.isNotEmpty()) engineVersion = parseMajorVersion(text)
+                        "minappversion" -> if (text.isNotEmpty()) minApp = text
+                        "maxappversion" -> if (text.isNotEmpty()) maxApp = text
+                    }
+                    currentElement = null
+                    textBuffer.clear()
                 }
             }
             parser.parse(manifestFile, handler)
@@ -393,6 +417,14 @@ object ThemeValidator {
 
     // region utils
     /** Compare two semantic version strings a vs b. Returns <0 if a<b, 0 if equal, >0 if a>b. */
+    /**
+     * Parse major version from semantic version string (e.g., "1.0.0" -> 1, "2" -> 2).
+     * Returns null if the string cannot be parsed.
+     */
+    private fun parseMajorVersion(version: String): Int? {
+        return version.trim().split('.').firstOrNull()?.toIntOrNull()
+    }
+
     fun compareSemVer(a: String, b: String): Int {
         fun parse(s: String): List<Int> = s.trim().split('.').map { it.toIntOrNull() ?: 0 }
         val pa = parse(a)

@@ -43,6 +43,8 @@ data class ThemeTree(
     val themeXml: XmlNode,
     /** Merged variables from external and inline sources; last-writer wins semantics. */
     val variables: Map<String, String> = emptyMap(),
+    /** Responsive breakpoints for orientation/size-based variable overrides. */
+    val breakpoints: List<Breakpoint> = emptyList(),
 )
 
 /**

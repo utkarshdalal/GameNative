@@ -1,64 +1,66 @@
 <theme>
-    <!-- Fixed UI elements (CSS-like positioning: positive values = inward from anchor) -->
-    <fixed id="topBar" backgroundColor="#FF000000" height="80">
-        <header x="16" y="8" anchor="topLeft" textColor="#FFFFFFFF"
-                showAppName="true" showGameCount="true" />
-        <searchBar x="200" y="8" width="600" height="48" anchor="topLeft"
-                   backgroundColor="#FF1E1E1E" borderRadius="24" />
-        <profileButton x="16" y="8" anchor="topRight" size="40" />
+    <!-- Top bar with header, search, and profile -->
+    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}">
+        <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
+                textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
+        <searchBar x="200" y="@{vars.paddingSmall}" width="600" height="48" anchor="topLeft"
+                   backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
+        <profileButton x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topRight" size="40" />
     </fixed>
 
+    <!-- Bottom action buttons -->
     <fixed id="bottomBar">
-        <filterButton x="100" y="24" anchor="bottomRight" expanded="true" />
-        <addButton x="16" y="24" anchor="bottomRight" />
+        <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true" />
+        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight" />
     </fixed>
 
-    <!-- Card definitions for list items -->
+    <!-- Card definitions - List item style -->
     <cards>
-        <card id="listItem" width="100%" height="92">
+        <card id="listItem" width="100%" height="@{vars.rowHeight}">
             <!-- Row background with rounded corners and subtle border -->
-            <rect id="rowBg" x="0" y="0" width="100%" height="92"
-                  color="#AA1E1E1E" cornerRadius="15"
-                  borderWidth="1" borderColor="#22FFFFFF" />
+            <rect id="rowBg" x="0" y="0" width="100%" height="@{vars.rowHeight}"
+                  color="@{vars.rowBgColor}" cornerRadius="@{vars.cornerRadius}"
+                  borderWidth="1" borderColor="@{vars.borderColor}" />
 
-            <!-- Game cover with proper padding -->
-            <image id="cover" x="16" y="16" width="60" height="60"
-                   src="@{game.cover}" cornerRadius="15" scaleType="cover" />
+            <!-- Game cover image -->
+            <image id="cover" x="@{vars.paddingMedium}" y="@{vars.paddingMedium}"
+                   width="@{vars.coverSize}" height="@{vars.coverSize}"
+                   src="@{game.cover}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
 
-            <!-- Game title - bold style -->
+            <!-- Game title -->
             <text id="title" x="88" y="18" width="650" height="24"
-                  text="@{game.title}" textSize="16" color="#FFFFFFFF" maxLines="1" fontWeight="bold" />
+                  text="@{game.title}" textSize="@{vars.textSizeTitle}"
+                  color="@{vars.textColor}" maxLines="1" fontWeight="bold" />
 
             <!-- Installation status indicator (bullet) -->
             <text id="installIndicator" x="88" y="42" width="16" height="16"
-                  text="●" textSize="16" color="#FF888888" fontWeight="bold" />
+                  text="●" textSize="@{vars.textSizeTitle}"
+                  color="@{vars.textColorMuted}" fontWeight="bold" />
 
             <!-- Installation status text -->
             <text id="installStatus" x="100" y="42" width="300" height="16"
-                  text="@{game.installStatus}" textSize="12" color="#FF888888" />
+                  text="@{game.installStatus}" textSize="@{vars.textSizeSmall}"
+                  color="@{vars.textColorMuted}" />
 
-            <!-- Compatibility status (italic style) -->
+            <!-- Compatibility status -->
             <text id="compatStatus" x="88" y="60" width="300" height="18"
-                  text="@{game.compatibility.label}" textSize="13"
+                  text="@{game.compatibility.label}" textSize="@{vars.textSizeBody}"
                   color="@{game.compatibility.color}" fontStyle="italic" />
 
-            <!-- Open button - anchored to right side, pill shaped -->
+            <!-- Open button - pill shaped, anchored right -->
             <button id="openBtn" x="26" y="26" height="40" anchor="topRight"
                     text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
-                    textSize="14" cornerRadius="15" />
+                    textSize="@{vars.textSizeButton}" cornerRadius="@{vars.cornerRadius}" />
         </card>
     </cards>
 
-    <!-- Layout configuration - single column list -->
+    <!-- Layout - single column list with separators -->
     <layout>
-        <grid columns="1" cellWidth="100%"
-              cellSpacing="0"
-              padding="80 16"
+        <grid columns="1" cellWidth="100%" cellSpacing="0"
+              padding="@{vars.topBarHeight} @{vars.paddingMedium}"
               selectionMode="moving" itemCard="listItem">
-
-            <!-- Separator line between items -->
-            <separator height="1" margin="12 0">
-                <rect x="0" y="0" width="100%" height="1" color="#22FFFFFF" />
+            <separator height="1" margin="@{vars.separatorMargin} 0">
+                <rect x="0" y="0" width="100%" height="1" color="@{vars.separatorColor}" />
             </separator>
         </grid>
     </layout>

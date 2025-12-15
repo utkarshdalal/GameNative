@@ -66,3 +66,38 @@ enum class ValueType {
     BOOL,
     COLOR
 }
+
+/**
+ * Anchor point for positioning elements (both fixed elements and card layers).
+ * Determines which point of the element the x,y coordinates refer to.
+ */
+enum class Anchor {
+    TOP_LEFT,
+    TOP_CENTER,
+    TOP_RIGHT,
+    CENTER_LEFT,
+    CENTER,
+    CENTER_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_CENTER,
+    BOTTOM_RIGHT;
+
+    companion object {
+        /**
+         * Parse anchor from string value (case-insensitive, underscores optional).
+         * Returns TOP_LEFT as default if value is null or unrecognized.
+         */
+        fun fromString(value: String?): Anchor = when (value?.lowercase()?.replace("_", "")) {
+            "topleft" -> TOP_LEFT
+            "topcenter" -> TOP_CENTER
+            "topright" -> TOP_RIGHT
+            "centerleft" -> CENTER_LEFT
+            "center" -> CENTER
+            "centerright" -> CENTER_RIGHT
+            "bottomleft" -> BOTTOM_LEFT
+            "bottomcenter" -> BOTTOM_CENTER
+            "bottomright" -> BOTTOM_RIGHT
+            else -> TOP_LEFT
+        }
+    }
+}

@@ -25,6 +25,7 @@ import app.gamenative.theme.model.Anchor
 import app.gamenative.theme.model.Dimension
 import app.gamenative.theme.model.FixedContainer
 import app.gamenative.theme.model.FixedElement
+import app.gamenative.theme.model.Visibility
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 
@@ -70,8 +71,23 @@ fun BoxScope.RenderFixedElements(
         return
     }
 
+    // Determine current orientation for visibility filtering (centralized)
+    val isPortrait = rememberIsPortrait()
+
     // Render each fixed container with optional background
     fixedContainers.forEach { container ->
+        // Check container visibility first - skip entire container if not visible
+        if (!container.visibility.isVisible(isPortrait)) return@forEach
+        
+        // Filter elements by visibility
+        // Elements inherit container's visibility unless they specify their own
+        val visibleElements = container.elements.filter { element -> 
+            element.visibility.isVisible(isPortrait) 
+        }
+        
+        // Skip container if no elements are visible
+        if (visibleElements.isEmpty()) return@forEach
+        
         // Determine container alignment based on id (topBar at top, bottomBar at bottom)
         val containerAlignment = when {
             container.id.contains("top", ignoreCase = true) -> Alignment.TopCenter
@@ -90,8 +106,8 @@ fun BoxScope.RenderFixedElements(
             )
         }
 
-        // Render each element in the container
-        container.elements.forEach { element ->
+        // Render visible elements
+        visibleElements.forEach { element ->
             RenderFixedElement(
                 element = element,
                 state = state,
@@ -115,10 +131,15 @@ private fun BoxScope.RenderFixedElement(
     accountButtonContent: @Composable () -> Unit,
     searchBarContent: @Composable () -> Unit,
 ) {
-    val alignment = element.anchor.toComposeAlignment()
-    val rawX = element.position.x.toDp()
-    val rawY = element.position.y.toDp()
-    val (offsetX, offsetY) = calculateCssLikeOffset(rawX, rawY, element.anchor)
+    // Use BoxWithConstraints to get parent dimensions for relative size calculations
+    BoxWithConstraints(modifier = Modifier.matchParentSize()) {
+        val parentWidth = maxWidth
+        val parentHeight = maxHeight
+        
+        val alignment = element.anchor.toComposeAlignment()
+        val rawX = dimToDp(element.position.x, parentWidth, parentHeight)
+        val rawY = dimToDp(element.position.y, parentWidth, parentHeight)
+        val (offsetX, offsetY) = calculateCssLikeOffset(rawX, rawY, element.anchor)
 
     when (element) {
         is FixedElement.Header -> {
@@ -188,8 +209,8 @@ private fun BoxScope.RenderFixedElement(
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
-                    .width(element.size.width.toDp())
-                    .height(element.size.height.toDp())
+                    .width(dimToDp(element.size.width, parentWidth, parentHeight))
+                    .height(dimToDp(element.size.height, parentWidth, parentHeight))
             ) {
                 searchBarContent()
             }
@@ -238,6 +259,7 @@ private fun BoxScope.RenderFixedElement(
                     contentDescription = "Add custom game",
                 )
             }
+        }
         }
     }
 }
@@ -396,8 +418,11 @@ private fun calculateCssLikeOffset(rawX: Dp, rawY: Dp, anchor: Anchor): Pair<Dp,
     return Pair(offsetX, offsetY)
 }
 
-private fun Dimension.toDp(): Dp = when (this) {
-    is Dimension.Px -> value.dp
-    is Dimension.RelW -> 0.dp // Relative dimensions need parent size context
-    is Dimension.RelH -> 0.dp
+/**
+ * Convert a Dimension to Dp, resolving relative dimensions using parent size.
+ */
+private fun dimToDp(d: Dimension, parentW: Dp, parentH: Dp): Dp = when (d) {
+    is Dimension.Px -> d.value.dp
+    is Dimension.RelW -> parentW * d.fraction
+    is Dimension.RelH -> parentH * d.fraction
 }

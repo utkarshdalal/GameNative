@@ -1,0 +1,62 @@
+<variables>
+    <!-- Colors -->
+    <var name="bgColor" value="#FF000000" />
+    <var name="transparentColor" value="#00000000" />
+    <var name="textColor" value="#FFFFFFFF" />
+    <var name="searchBarBg" value="#FF1E1E1E" />
+    <var name="overlayColor" value="#99000000" />
+    <var name="borderColor" value="#22FFFFFF" />
+
+    <!-- Dimensions -->
+    <var name="cornerRadius" value="20" />
+    <var name="searchBarRadius" value="24" />
+    <var name="searchBarWidth" value="600" />
+    <var name="badgeHeight" value="20" />
+    <var name="profileButtonSize" value="48" />
+    <var name="profileButtonX" value="12" />
+    <var name="profileButtonY" value="12" />
+
+    <!-- Spacing -->
+    <var name="paddingSmall" value="8" />
+    <var name="paddingMedium" value="16" />
+    <var name="paddingLarge" value="20" />
+    <var name="bottomOffset" value="24" />
+
+    <!-- Text -->
+    <var name="textSizeSmall" value="11" />
+
+    <!-- Grid settings -->
+    <var name="cellWidth" value="200" />
+    <var name="aspectRatio" value="2.14" />
+    <var name="hSpacing" value="12" />
+    <var name="vSpacing" value="15" />
+    <var name="gridPaddingTop" value="80" />
+
+    <!-- Top bar -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarHeight" value="56" />
+    <var name="searchBarX" value="200" />
+    <var name="searchBarY" value="12" />
+
+
+    <!-- Portrait breakpoint overrides -->
+    <breakpoint orientation="portrait">
+        <!-- Dimensions -->
+        <var name="profileButtonY" value="0" />
+
+        <!-- Search bar -->
+        <var name="searchBarWidth" value="90%" />
+        <var name="searchBarX" value="5%" />
+        <var name="searchBarY" value="80" />
+
+        <!-- Grid settings -->
+        <var name="gridPaddingTop" value="160" />
+
+        <!-- Grid settings-->
+        <var name="hSpacing" value="6" />
+
+        <!-- Top bar -->
+        <var name="topBarHeight" value="130" />
+    </breakpoint>
+</variables>
+

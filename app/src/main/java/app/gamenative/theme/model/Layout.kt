@@ -9,6 +9,8 @@ data class ThemeDefinition(
     val manifest: Manifest,
     /** Declared variables that can be referenced by bindings. */
     val variables: List<Variable> = emptyList(),
+    /** Responsive breakpoints for orientation/size-based variable overrides. */
+    val breakpoints: List<Breakpoint> = emptyList(),
     /** Card definitions for rendering individual items (games). */
     val cards: List<Card> = emptyList(),
     /** Fixed UI containers with app elements (header, search, etc.). */

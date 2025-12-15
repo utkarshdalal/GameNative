@@ -37,7 +37,7 @@ object ThemeManager {
 
     data class ThemeEntry(
         val id: String,
-        val name: String, // for now same as id; can be extended later
+        val name: String, // display name from manifest title
         val source: Source,
         val location: String, // folder path or asset subfolder
         val manifest: ManifestLite,
@@ -45,11 +45,16 @@ object ThemeManager {
 
     data class ManifestLite(
         val id: String,
+        val title: String, // human-readable display name
         val version: String,
-        val engineVersion: Int,
+        val engineVersion: String,
         val minAppVersion: String,
         val maxAppVersion: String?,
-    )
+    ) {
+        /** Extract major version number from semantic version string (e.g., "1.0.0" -> 1) */
+        val engineMajorVersion: Int
+            get() = engineVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
+    }
 
     private lateinit var appCtx: Context
 
@@ -68,8 +73,13 @@ object ThemeManager {
     private val _activeTheme = MutableStateFlow<ThemeDefinition?>(null)
     val activeTheme: StateFlow<ThemeDefinition?> = _activeTheme.asStateFlow()
 
+    // Store raw theme tree for re-mapping on orientation changes
+    private var activeThemeTree: app.gamenative.theme.model.ThemeTree? = null
+    private var lastMappedIsPortrait: Boolean? = null
+    private var lastMappedScreenWidth: Int? = null
+
     private const val ASSETS_THEMES_ROOT = "Themes"
-    private const val FALLBACK_THEME_ID = "DefaultList"
+    private const val FALLBACK_THEME_ID = "list_view"
 
     fun init(context: Context) {
         appCtx = context.applicationContext
@@ -107,9 +117,9 @@ object ThemeManager {
             val layout = PrefManager.libraryLayout
             val themeId = when (layout.name) {
                 // Map rough equivalents
-                "LIST" -> "DefaultList"
-                "GRID_CAPSULE" -> "CapsuleGrid"
-                "GRID_HERO" -> "HeroCarousel"
+                "LIST" -> "list_view"
+                "GRID_CAPSULE" -> "capsule_grid"
+                "GRID_HERO" -> "hero_grid"
                 else -> FALLBACK_THEME_ID
             }
             PrefManager.activeThemeId = themeId
@@ -206,7 +216,7 @@ object ThemeManager {
                 if (!isCompatible(manifest)) return@forEach
                 results += ThemeEntry(
                     id = manifest.id,
-                    name = manifest.id,
+                    name = manifest.title,
                     source = Source.BuiltIn,
                     location = dir,
                     manifest = manifest,
@@ -231,7 +241,7 @@ object ThemeManager {
                 if (!isCompatible(manifest)) return@forEach
                 results += ThemeEntry(
                     id = manifest.id,
-                    name = manifest.id,
+                    name = manifest.title,
                     source = Source.User,
                     location = dir.absolutePath,
                     manifest = manifest,
@@ -258,8 +268,9 @@ object ThemeManager {
                 val parser = factory.newPullParser()
                 parser.setInput(it, null)
                 var id: String? = null
+                var title: String? = null
                 var version: String? = null
-                var engineVersion: Int? = null
+                var engineVersion: String? = null
                 var minAppVersion: String? = null
                 var maxAppVersion: String? = null
                 var event = parser.eventType
@@ -267,19 +278,21 @@ object ThemeManager {
                     if (event == XmlPullParser.START_TAG) {
                         when (parser.name.lowercase()) {
                             "id" -> id = parser.nextText()?.trim()
+                            "title" -> title = parser.nextText()?.trim()
                             "version" -> version = parser.nextText()?.trim()
-                            "engineversion" -> engineVersion = parser.nextText()?.trim()?.toIntOrNull()
+                            "engineversion" -> engineVersion = parser.nextText()?.trim()
                             "minappversion" -> minAppVersion = parser.nextText()?.trim()
                             "maxappversion" -> maxAppVersion = parser.nextText()?.trim()
                         }
                     }
                     event = parser.next()
                 }
-                if (id.isNullOrBlank() || version.isNullOrBlank() || engineVersion == null || minAppVersion.isNullOrBlank()) {
+                if (id.isNullOrBlank() || version.isNullOrBlank() || engineVersion.isNullOrBlank() || minAppVersion.isNullOrBlank()) {
                     Timber.w("Manifest missing required fields")
                     null
                 } else {
-                    ManifestLite(id!!, version!!, engineVersion!!, minAppVersion!!, maxAppVersion)
+                    // Fall back to id if title not specified
+                    ManifestLite(id!!, title ?: id!!, version!!, engineVersion!!, minAppVersion!!, maxAppVersion)
                 }
             }
         } catch (t: Throwable) {
@@ -289,11 +302,12 @@ object ThemeManager {
     }
 
     private fun isCompatible(m: ManifestLite): Boolean {
-        if (m.engineVersion != ThemeEngine.ENGINE_MAJOR) {
-            Timber.i("Ignoring theme %s due to engineVersion=%d", m.id, m.engineVersion)
+        if (m.engineMajorVersion != ThemeEngine.ENGINE_MAJOR) {
+            Timber.i("Ignoring theme %s due to engineVersion=%s (major=%d, expected=%d)", 
+                m.id, m.engineVersion, m.engineMajorVersion, ThemeEngine.ENGINE_MAJOR)
             return false
         }
-        // App version compatibility: The app doesn’t expose semantic version; accept all for now
+        // App version compatibility: The app doesn't expose semantic version; accept all for now
         return true
     }
 
@@ -355,7 +369,12 @@ object ThemeManager {
                         pickFallback(all)?.let { fb -> if (fb.id != entry.id) loadAndActivateTheme(fb) }
                         return
                     }
-                    // Map to runtime model
+                    // Store raw tree for orientation-aware remapping
+                    activeThemeTree = res.tree
+                    lastMappedIsPortrait = null
+                    lastMappedScreenWidth = null
+                    
+                    // Map to runtime model (initial mapping without orientation context)
                     val def: ThemeDefinition = ThemeXmlMapper.map(res.tree)
                     _activeTheme.value = def
                     Timber.i("Theme activated: %s (%s)", entry.id, entry.source)
@@ -432,4 +451,53 @@ object ThemeManager {
             Timber.e(e, "Failed copying asset file %s", assetPath)
         }
     }
+
+    // --- Orientation-aware remapping ---
+    
+    /**
+     * Re-map the active theme with orientation-aware variable resolution.
+     * Call this when screen orientation or size changes significantly.
+     * 
+     * @param isPortrait True if current orientation is portrait
+     * @param screenWidthDp Current screen width in dp
+     * @return True if theme was remapped, false if no change needed
+     */
+    fun remapForOrientation(isPortrait: Boolean, screenWidthDp: Int): Boolean {
+        val tree = activeThemeTree ?: return false
+        
+        // Skip if orientation hasn't changed
+        if (lastMappedIsPortrait == isPortrait && lastMappedScreenWidth == screenWidthDp) {
+            return false
+        }
+        
+        // Skip if no breakpoints (no orientation-specific overrides)
+        if (tree.breakpoints.isEmpty()) {
+            lastMappedIsPortrait = isPortrait
+            lastMappedScreenWidth = screenWidthDp
+            return false
+        }
+        
+        // Resolve variables with breakpoint overrides
+        val resolvedVariables = app.gamenative.theme.runtime.VariableResolver.resolveWithBreakpoints(
+            baseVariables = tree.variables,
+            breakpoints = tree.breakpoints,
+            isPortrait = isPortrait,
+            screenWidthDp = screenWidthDp
+        )
+        
+        // Re-map theme with resolved variables
+        val def = ThemeXmlMapper.map(tree, resolvedVariables)
+        _activeTheme.value = def
+        
+        lastMappedIsPortrait = isPortrait
+        lastMappedScreenWidth = screenWidthDp
+        
+        Timber.d("Theme remapped for orientation: isPortrait=%s, width=%d", isPortrait, screenWidthDp)
+        return true
+    }
+    
+    /**
+     * Check if the theme has any breakpoints that might need orientation-aware handling.
+     */
+    fun hasBreakpoints(): Boolean = activeThemeTree?.breakpoints?.isNotEmpty() == true
 }

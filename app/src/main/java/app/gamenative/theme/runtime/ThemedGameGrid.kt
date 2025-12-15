@@ -195,15 +195,20 @@ private fun SeparatorView(
         Box(
             modifier = Modifier.size(contentWidth, contentHeight)
         ) {
-            separator.layers.forEach { layer ->
-                RenderThemedLayer(
-                    layer = layer,
-                    bindings = emptyBindings,
-                    parentSize = parentSize,
-                    stringResolver = stringResolver,
-                    themePath = themePath,
-                )
-            }
+            // Get current orientation for visibility filtering (centralized)
+            val isPortrait = rememberIsPortrait()
+            
+            separator.layers
+                .filter { layer -> layer.visibility.isVisible(isPortrait) }
+                .forEach { layer ->
+                    RenderThemedLayer(
+                        layer = layer,
+                        bindings = emptyBindings,
+                        parentSize = parentSize,
+                        stringResolver = stringResolver,
+                        themePath = themePath,
+                    )
+                }
         }
     }
 }
@@ -252,17 +257,22 @@ private fun ThemedGameTile(
                 } else Modifier
             )
     ) {
-        // Render each layer from the card
-        card.layers.forEach { layer ->
-            RenderThemedLayer(
-                layer = layer,
-                bindings = bindings,
-                parentSize = cellSize,
-                onImageLoadFailed = { imageLoadFailed = true },
-                stringResolver = stringResolver,
-                themePath = themePath,
-            )
-        }
+        // Get current orientation for visibility filtering (centralized)
+        val isPortrait = rememberIsPortrait()
+        
+        // Render each layer from the card, filtering by visibility
+        card.layers
+            .filter { layer -> layer.visibility.isVisible(isPortrait) }
+            .forEach { layer ->
+                RenderThemedLayer(
+                    layer = layer,
+                    bindings = bindings,
+                    parentSize = cellSize,
+                    onImageLoadFailed = { imageLoadFailed = true },
+                    stringResolver = stringResolver,
+                    themePath = themePath,
+                )
+            }
 
         // Fallback: Show title prominently if image failed
         if (imageLoadFailed) {
@@ -668,21 +678,21 @@ private fun calculateAnchoredPosition(
     elementHeight: Dp,
     parentWidth: Dp,
     parentHeight: Dp,
-    anchor: LayerAnchor
+    anchor: Anchor
 ): AnchoredPosition {
     val x = when (anchor) {
-        LayerAnchor.TOP_LEFT, LayerAnchor.CENTER_LEFT, LayerAnchor.BOTTOM_LEFT -> rawX
-        LayerAnchor.TOP_CENTER, LayerAnchor.CENTER, LayerAnchor.BOTTOM_CENTER -> 
+        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> rawX
+        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> 
             (parentWidth - elementWidth) / 2 + rawX
-        LayerAnchor.TOP_RIGHT, LayerAnchor.CENTER_RIGHT, LayerAnchor.BOTTOM_RIGHT -> 
+        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> 
             parentWidth - elementWidth - rawX
     }
     
     val y = when (anchor) {
-        LayerAnchor.TOP_LEFT, LayerAnchor.TOP_CENTER, LayerAnchor.TOP_RIGHT -> rawY
-        LayerAnchor.CENTER_LEFT, LayerAnchor.CENTER, LayerAnchor.CENTER_RIGHT -> 
+        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
+        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> 
             (parentHeight - elementHeight) / 2 + rawY
-        LayerAnchor.BOTTOM_LEFT, LayerAnchor.BOTTOM_CENTER, LayerAnchor.BOTTOM_RIGHT -> 
+        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> 
             parentHeight - elementHeight - rawY
     }
     

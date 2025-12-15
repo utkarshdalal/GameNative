@@ -1,22 +1,8 @@
 package app.gamenative.theme.model
 
 /**
- * Anchor point for positioning layers within a card.
- */
-enum class LayerAnchor {
-    TOP_LEFT,      // x,y refers to top-left corner (default)
-    TOP_RIGHT,     // x,y refers to top-right corner
-    TOP_CENTER,    // x,y refers to top-center
-    BOTTOM_LEFT,   // x,y refers to bottom-left corner
-    BOTTOM_RIGHT,  // x,y refers to bottom-right corner
-    BOTTOM_CENTER, // x,y refers to bottom-center
-    CENTER_LEFT,   // x,y refers to center-left
-    CENTER_RIGHT,  // x,y refers to center-right
-    CENTER,        // x,y refers to center
-}
-
-/**
  * Base layer definition used inside a [Card].
+ * All layers share common positioning and visibility properties.
  */
 sealed class Layer {
     /** Optional developer identifier for the layer. */
@@ -32,7 +18,10 @@ sealed class Layer {
     abstract val opacity: FloatOrBinding?
 
     /** Anchor point for positioning. Determines which point of the layer the x,y refers to. */
-    abstract val anchor: LayerAnchor
+    abstract val anchor: Anchor
+
+    /** Visibility condition based on orientation. Defaults to ALWAYS (visible in all orientations). */
+    abstract val visibility: Visibility
 
     /**
      * Renders an image.
@@ -42,7 +31,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Source image or binding to an image path. */
         val source: MediaSource.Image,
         /**
@@ -72,7 +62,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Source video with playback options. */
         val source: MediaSource.Video,
         /** Optional corner radius. */
@@ -88,7 +79,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Fill color (ARGB). */
         val color: IntOrBinding,
         /**
@@ -113,7 +105,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Shadow blur radius. */
         val radius: FloatOrBinding,
         /** Shadow color (ARGB). */
@@ -130,7 +123,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Stroke width. */
         val strokeWidth: FloatOrBinding,
         /** Border color (ARGB). */
@@ -153,7 +147,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Text content or binding. */
         val text: StringOrBinding,
         /** Text color (ARGB). */
@@ -178,7 +173,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Blur radius. */
         val blurRadius: FloatOrBinding? = null,
         /** Optional tint color (ARGB). */
@@ -193,7 +189,8 @@ sealed class Layer {
         override val position: DimOffset,
         override val size: DimSize? = null,
         override val opacity: FloatOrBinding? = null,
-        override val anchor: LayerAnchor = LayerAnchor.TOP_LEFT,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
         /** Button label text or binding. */
         val text: StringOrBinding,
         /** Button background color (ARGB). */

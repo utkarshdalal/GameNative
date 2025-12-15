@@ -224,6 +224,9 @@ private fun LibraryScreenContent(
     val activeTheme by app.gamenative.theme.ThemeManager.activeTheme.collectAsStateWithLifecycle()
     val reloadTick by app.gamenative.theme.ThemeManager.reloadTick.collectAsStateWithLifecycle()
 
+    // Trigger theme remapping when orientation changes (for breakpoint-aware variables)
+    app.gamenative.theme.runtime.OrientationAwareThemeEffect()
+
     Box(
         Modifier
             .fillMaxSize()

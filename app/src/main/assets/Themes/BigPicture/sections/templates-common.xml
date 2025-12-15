@@ -1,57 +1,52 @@
-<templates>
-  <!-- Big Hero Card with optional video backdrop on focus/selection -->
-  <template id="bigHeroCard" width="720" height="320">
-    <!-- Poster hero image as default background -->
-    <image id="heroPoster" x="0" y="0" width="720" height="320"
-           src="@{game.hero}"
-           cornerRadius="@{vars.card_radius}"/>
+<cards>
+    <!-- Big Hero Card with optional video backdrop on focus/selection -->
+    <card id="bigHeroCard" width="720" height="320">
+        <!-- Poster hero image as default background -->
+        <image id="heroPoster" x="0" y="0" width="720" height="320"
+               src="@{game.hero}" cornerRadius="@{vars.cornerRadius}" />
 
-    <!-- Optional video layer; starts muted, loops, and only shows when focused/selected via states -->
-    <video id="previewVideo" x="0" y="0" width="720" height="320"
-           src="@{game.video.preview}"
-           poster="@{game.hero}"
-           fallbackImage="@{game.hero}"
-           muted="true" loop="true" autoplay="true" preload="metadata"/>
+        <!-- Optional video layer; starts muted, loops, shows when focused/selected -->
+        <video id="previewVideo" x="0" y="0" width="720" height="320"
+               src="@{game.video.preview}" poster="@{game.hero}" fallbackImage="@{game.hero}"
+               muted="true" loop="true" autoplay="true" preload="metadata" />
 
-    <!-- Light gradient overlay for legibility -->
-    <overlay id="bottomShade" x="0" y="240" width="720" height="80" color="@{vars.overlay_color}"/>
+        <!-- Light gradient overlay for legibility -->
+        <rect id="bottomShade" x="0" y="240" width="720" height="80"
+              color="@{vars.overlayColor}" />
 
-    <!-- Title/Subtext -->
-    <text id="title" x="20" y="252" width="680" height="28" textSize="22"
-          color="@{vars.title_color}" maxLines="1" text="@{game.title}"/>
-    <text id="subtitle" x="20" y="282" width="680" height="22" textSize="14"
-          color="@{vars.subtitle_color}" maxLines="1" text="@{game.subtitle}"/>
+        <!-- Title and subtitle -->
+        <text id="title" x="20" y="252" width="680" height="28"
+              text="@{game.title}" textSize="22" color="@{vars.textColor}" maxLines="1" />
+        <text id="subtitle" x="20" y="282" width="680" height="22"
+              text="@{game.subtitle}" textSize="14" color="@{vars.textColor}" maxLines="1" />
 
-    <!-- Subtle shadow for depth (kept small for performance) -->
-    <shadow target="heroPoster" radius="@{vars.shadow_radius}" color="@{vars.shadow_color}" dx="0" dy="@{vars.shadow_dy}"/>
+        <!-- States: Only show video when focused/selected; slightly scale up -->
+        <states>
+            <state name="normal">
+                <opacity target="previewVideo" value="0" />
+                <scale target="root" x="1.0" y="1.0" />
+            </state>
+            <state name="focused">
+                <opacity target="previewVideo" value="1" />
+                <scale target="root" x="1.06" y="1.06" />
+            </state>
+            <state name="selected">
+                <opacity target="previewVideo" value="1" />
+                <scale target="root" x="1.06" y="1.06" />
+            </state>
+        </states>
 
-    <!-- States: Only show video when focused/selected; slightly scale up -->
-    <states>
-      <state name="normal">
-        <opacity target="previewVideo" value="0"/>
-        <scale target="root" x="1.0" y="1.0"/>
-      </state>
-      <state name="focused">
-        <opacity target="previewVideo" value="1"/>
-        <scale target="root" x="1.06" y="1.06"/>
-      </state>
-      <state name="selected">
-        <opacity target="previewVideo" value="1"/>
-        <scale target="root" x="1.06" y="1.06"/>
-      </state>
-    </states>
+        <transitions>
+            <transition from="normal" to="focused" durationMs="160" easing="ease_in_out" />
+            <transition from="focused" to="normal" durationMs="140" easing="ease_out" />
+            <transition from="normal" to="selected" durationMs="160" easing="ease_in_out" />
+            <transition from="selected" to="normal" durationMs="140" easing="ease_out" />
+        </transitions>
+    </card>
 
-    <transitions>
-      <transition from="normal" to="focused" durationMs="160" easing="ease_in_out"/>
-      <transition from="focused" to="normal" durationMs="140" easing="ease_out"/>
-      <transition from="normal" to="selected" durationMs="160" easing="ease_in_out"/>
-      <transition from="selected" to="normal" durationMs="140" easing="ease_out"/>
-    </transitions>
-  </template>
-
-  <!-- Smaller capsule card for optional secondary grid section -->
-  <template id="capsuleSmall" width="300" height="450">
-    <image id="capsule" x="0" y="0" width="300" height="450"
-           src="@{game.capsule}" cornerRadius="6"/>
-  </template>
-</templates>
+    <!-- Smaller capsule card for optional secondary grid section -->
+    <card id="capsuleSmall" width="300" height="450">
+        <image id="capsule" x="0" y="0" width="300" height="450"
+               src="@{game.capsule}" cornerRadius="6" />
+    </card>
+</cards>

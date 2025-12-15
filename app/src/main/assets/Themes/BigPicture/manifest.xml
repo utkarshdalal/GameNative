@@ -1,7 +1,13 @@
-<manifest engineVersion="1" minAppVersion="0.0.0">
-    <id>Big Picture</id>
+<manifest>
+    <id>big_picture</id>
+    <title>Big Picture</title>
     <version>1.0.0</version>
-    <engineVersion>1</engineVersion>
+    <engineVersion>1.0.0</engineVersion>
     <minAppVersion>0.0.0</minAppVersion>
-    <entry theme="/theme.xml" variables="/variables.xml"/>
+    <description>A Steam Big Picture inspired carousel with large hero images and game titles.</description>
+    <author>
+        <name>Mikkel Bjørnmose Bundgard</name>
+        <github>https://github.com/maaggel</github>
+    </author>
+    <entry theme="/theme.xml" variables="/variables.xml" />
 </manifest>
