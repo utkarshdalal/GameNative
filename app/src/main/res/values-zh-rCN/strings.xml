@@ -117,6 +117,8 @@
     <string name="edit">编辑</string>
     <string name="remove">删除</string>
     <string name="add">添加</string>
+    <string name="delete">删除</string>
+    <string name="copy_from">从...复制</string>
     <string name="ok">确认</string>
     <string name="storage_info">存储信息</string>
     <string name="duplicate">复制</string>
@@ -149,10 +151,136 @@
     <string name="exit_game">退出</string>
     <string name="exit">退出游戏</string>
     <string name="keyboard">键盘</string>
+    <string name="extra">额外</string>
+    <string name="clear_search">清除搜索</string>
+    <string name="buttons">按钮</string>
+    <string name="face_buttons_category">正面按钮</string>
+    <string name="shoulder_buttons_category">肩部按钮</string>
+    <string name="menu_buttons_category">菜单按钮</string>
+    <string name="thumbstick_buttons_category">摇杆按钮</string>
+    <string name="left_stick">左摇杆</string>
+    <string name="right_stick">右摇杆</string>
+    <string name="dpad_category">方向键</string>
+    <string name="dpad_up">方向键 上</string>
+    <string name="dpad_down">方向键 下</string>
+    <string name="dpad_left">方向键 左</string>
+    <string name="dpad_right">方向键 右</string>
     <string name="input_controls">萤幕控制器</string>
+    <string name="edit_controls">编辑萤幕控制器</string>
+    <string name="edit_physical_controller">编辑实体控制器</string>
+    <string name="controller_disconnected">已断开</string>
+    <string name="reset_onscreen_controls">重置萤幕控制器</string>
+    <string name="open_navigation_menu">打开导航菜单</string>
     <string name="touchpad_help">触摸板支援</string>
+    <string name="hide_controls_with_controller">使用控制器时隐藏萤幕控制器</string>
+    <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏萤幕控制器</string>
+
+    <!-- Controller Binding Dialog -->
+    <string name="select_binding">选择绑定</string>
+    <string name="bind_button">绑定: %1$s</string>
+    <string name="current_binding">当前: %1$s</string>
+    <string name="search_bindings">搜索绑定…</string>
+    <string name="search_placeholder">搜索…</string>
+    <string name="search">搜索</string>
+    <string name="category">类别</string>
+    <string name="keyboard_bindings">键盘</string>
+    <string name="mouse_bindings">鼠标</string>
+    <string name="gamepad_bindings">游戏手柄</string>
+    <string name="mouse">鼠标</string>
+    <string name="gamepad">游戏手柄</string>
+    <string name="binding_none">无</string>
+    <string name="clear_binding">清除绑定</string>
+    <string name="no_bindings_found">找不到绑定</string>
+
+    <!-- Element Editor Dialog -->
+    <string name="edit_element">编辑 %1$s</string>
+    <string name="element_position_size">位置: (%1$d, %2$d) • 大小: %3$.2fx</string>
+    <string name="appearance">外观</string>
+    <string name="size_subtitle">%.2fx</string>
+    <string name="label_text">标签文字</string>
+    <string name="label_text_subtitle">此按钮的自定义文字</string>
+    <string name="element_type">元素类型</string>
+    <string name="element_type_subtitle">变更此控件的类型</string>
+    <string name="shape">形状</string>
+    <string name="shape_subtitle">视觉外观</string>
+    <string name="shape_restricted">%1$s 仅限于 %2$s 形状</string>
+    <string name="bindings">绑定</string>
+    <string name="bindings_auto_generated">绑定 (自动生成)</string>
+    <string name="bindings_auto_generated_subtitle">范围按钮绑定会自动生成</string>
+    <string name="primary_action">主要动作</string>
+    <string name="secondary_action">次要动作</string>
+    <string name="direction_up">上</string>
+    <string name="direction_right">右</string>
+    <string name="direction_down">下</string>
+    <string name="direction_left">左</string>
+    <string name="mouse_suffix"> (鼠标)</string>
+    <string name="slot_number">插槽 %1$d</string>
+    <string name="button_slots_help">按钮最多支持 2 个绑定: 主要 (按压) 和次要 (长按)</string>
+    <string name="properties">属性</string>
+    <string name="position">位置</string>
+    <string name="position_value">X: %1$d, Y: %2$d</string>
+    <string name="unsaved_changes">未保存的变更</string>
+    <string name="unsaved_changes_message">您有未保存的变更。您要保存还是舍弃它们？</string>
+    <string name="adjust_size">调整大小</string>
+    <string name="reset">重置</string>
+    <string name="done">完成</string>
+    <string name="copy_size_from_element">从元素复制大小</string>
+    <string name="toast_no_elements_to_copy">没有其他可用的元素可复制大小</string>
+    <string name="toast_copied_size">已复制大小: %.2fx</string>
+    <string name="on_screen_toast_controls_reset">萤幕控制器已重置为默认值</string>
+    <string name="quick_presets">快速预设</string>
+    <string name="preset_wasd">WASD</string>
+    <string name="preset_arrows">方向键</string>
+    <string name="preset_mouse">鼠标</string>
+    <string name="preset_dpad">方向键</string>
+    <string name="preset_left_stick">左摇杆</string>
+    <string name="preset_right_stick">右摇杆</string>
+
+    <!-- Physical Controller Config -->
+    <string name="physical_controller_config">实体控制器绑定编辑器</string>
+    <string name="physical_controller_config_subtitle">设置实体控制器的按钮对应</string>
+    <string name="face_buttons">正面按钮</string>
+    <string name="button_a">A 按钮</string>
+    <string name="button_a_subtitle">底部正面按钮 (确认)</string>
+    <string name="button_b">B 按钮</string>
+    <string name="button_b_subtitle">右侧正面按钮 (返回)</string>
+    <string name="button_x">X 按钮</string>
+    <string name="button_x_subtitle">左侧正面按钮</string>
+    <string name="button_y">Y 按钮</string>
+    <string name="button_y_subtitle">顶部正面按钮</string>
+    <string name="shoulder_buttons">肩部按钮</string>
+    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1_subtitle">左侧肩部按钮</string>
+    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1_subtitle">右侧肩部按钮</string>
+    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2_subtitle">左侧扳机</string>
+    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2_subtitle">右侧扳机</string>
+    <string name="menu_buttons">菜单按钮</string>
+    <string name="button_start">Start / Options</string>
+    <string name="button_select">Select / View / Share</string>
+    <string name="analog_sticks">类比摇杆</string>
+    <string name="thumbstick_buttons">摇杆按钮</string>
+    <string name="button_l3">L3 (左摇杆点击)</string>
+    <string name="button_r3">R3 (右摇杆点击)</string>
+    <string name="left_analog_stick">左类比摇杆</string>
+    <string name="left_stick_up">左摇杆 上</string>
+    <string name="left_stick_down">左摇杆 下</string>
+    <string name="left_stick_left">左摇杆 左</string>
+    <string name="left_stick_right">左摇杆 右</string>
+    <string name="right_analog_stick">右类比摇杆</string>
+    <string name="right_stick_up">右摇杆 上</string>
+    <string name="right_stick_down">右摇杆 下</string>
+    <string name="right_stick_left">右摇杆 左</string>
+    <string name="right_stick_right">右摇杆 右</string>
+    <string name="other">其他</string>
+    <string name="button_home">Home / Guide / PS</string>
+    <string name="reset_to_default_bindings">重置为默认绑定</string>
+    <string name="not_set">未设置</string>
 
     <!-- Toast -->
+    <string name="toast_controls_reset">控制器已重置</string>
     <string name="toast_failed_log_save">无法将 logcat 保存到目标</string>
 
     <!-- Settings -->
@@ -383,6 +511,9 @@
     <string name="directinput_mapper_type">DirectInput Mapper 类型</string>
     <string name="disable_mouse_input">停用滑鼠输入</string>
     <string name="touchscreen_mode">触屏模式</string>
+    <string name="touchscreen_mode_description">直接触控到光标移动 (开启) vs 触控板式相对移动 (关闭)</string>
+    <string name="start_with_controls_hidden">开始时隐藏萤幕控制器</string>
+    <string name="start_with_controls_hidden_description">游戏开始时萤幕控制器将被隐藏。可通过导航菜单切换。</string>
     <string name="emulate_keyboard_mouse">模拟键盘与滑鼠</string>
     <string name="emulate_keyboard_mouse_description">左摇杆 = WASD, 右摇杆 = 滑鼠, L2 = 滑鼠左键, R2 = 滑鼠右键</string>
 
@@ -420,6 +551,7 @@
     <string name="contents_manager">内容管理</string>
     <string name="import_wcp_from_device">从装置汇入 .wcp</string>
     <string name="working">正在处理...</string>
+    <string name="selected">已选择</string>
     <string name="selected_content">选定的内容</string>
     <string name="installed_contents">已安装的内容</string>
     <string name="select_type">选择类型</string>
