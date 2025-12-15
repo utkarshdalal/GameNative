@@ -35,10 +35,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -892,46 +896,6 @@ fun XServerScreen(
                 onDelete = {
                     PluviaApp.inputControlsView?.removeElement()
                 },
-                onResetOnScreenControls = {
-                    // Reset on-screen control elements from Profile 0
-                    Timber.d("=== Reset On-Screen Controls ===")
-                    val manager = PluviaApp.inputControlsManager
-                    val profile0 = manager?.getProfile(0)
-                    val currentProfile = PluviaApp.inputControlsView?.profile
-
-                    if (profile0 != null && currentProfile != null) {
-                        // Wait for view to be laid out before loading elements
-                        PluviaApp.inputControlsView?.let { icView ->
-                            icView.post {
-                                // Load Profile 0 elements (with valid dimensions)
-                                profile0.loadElements(icView)
-
-                                // Clear current profile elements and copy from Profile 0
-                                val elementsToRemove = currentProfile.elements.toList()
-                                elementsToRemove.forEach { currentProfile.removeElement(it) }
-
-                                profile0.elements.forEach { element ->
-                                    val newElement = com.winlator.inputcontrols.ControlElement(icView)
-                                    newElement.setType(element.type)
-                                    newElement.setShape(element.shape)
-                                    newElement.setX(element.x.toInt())
-                                    newElement.setY(element.y.toInt())
-                                    newElement.setScale(element.scale)
-                                    newElement.setText(element.text)
-                                    newElement.setIconId(element.iconId.toInt())
-                                    newElement.setToggleSwitch(element.isToggleSwitch)
-                                    for (i in 0 until 4) {
-                                        newElement.setBindingAt(i, element.getBindingAt(i))
-                                    }
-                                    currentProfile.addElement(newElement)
-                                }
-
-                                icView.invalidate()
-                                android.widget.Toast.makeText(context, context.getString(R.string.toast_controls_reset), android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                },
                 onSave = {
                     // Save profile changes
                     PluviaApp.inputControlsView?.profile?.save()
@@ -960,6 +924,7 @@ fun XServerScreen(
                     PluviaApp.inputControlsView?.setEditMode(false)
                     // Force redraw on next frame to ensure grid is removed
                     PluviaApp.inputControlsView?.post {
+                        PluviaApp.inputControlsView?.profile?.loadElements(PluviaApp.inputControlsView)
                         PluviaApp.inputControlsView?.invalidate()
                     }
                 },
@@ -1077,19 +1042,29 @@ private fun EditModeToolbar(
     onAdd: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onResetOnScreenControls: () -> Unit,
     onSave: () -> Unit,
     onClose: () -> Unit,
     onDuplicate: (Int) -> Unit
 ) {
-    var duplicateProfileOpen = true
-    var duplicateProfileName = ""
+    var duplicateProfileOpen by remember { mutableStateOf(false) }
+    var toolbarOffsetX by remember { mutableStateOf(0f) }
+    var toolbarOffsetY by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+
     Box(
+        contentAlignment = androidx.compose.ui.Alignment.TopCenter,
         modifier = Modifier
+            .offset(x = toolbarOffsetX.dp, y = toolbarOffsetY.dp)
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(top = 16.dp),
-        contentAlignment = androidx.compose.ui.Alignment.TopCenter
+            .padding(top = 16.dp)
+            .pointerInput(density) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    toolbarOffsetX += dragAmount.x / density.density
+                    toolbarOffsetY += dragAmount.y / density.density
+                }
+            }
     ) {
         Row(
             modifier = Modifier
@@ -1099,8 +1074,17 @@ private fun EditModeToolbar(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                 )
                 .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Drag handle indicator
+            Icon(
+                imageVector = Icons.Default.Menu,
+                contentDescription = "Drag to move",
+                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.padding(end = 4.dp)
+            )
+
             // Add button
             TextButton(onClick = onAdd) {
                 Icon(Icons.Default.Add, contentDescription = "Add", tint = androidx.compose.ui.graphics.Color.White)
@@ -1122,26 +1106,17 @@ private fun EditModeToolbar(
                 Text(stringResource(R.string.delete), color = androidx.compose.ui.graphics.Color.White)
             }
 
-            ExposedDropdownMenuBox(
-                expanded = duplicateProfileOpen,
-                onExpandedChange = { duplicateProfileOpen = it },
-            ) {
-                OutlinedTextField(
-                    value = duplicateProfileName,
-                    onValueChange = { duplicateProfileName = it },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = duplicateProfileOpen)
-                    },
-                    label = { Text(stringResource(R.string.container_config_executable_path)) },
-                    placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
-                    modifier = Modifier
-                        .menuAnchor(),
-                    singleLine = true
-                )
+            // Duplicate button with dropdown
+            Box {
+                TextButton(onClick = { duplicateProfileOpen = !duplicateProfileOpen }) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy From", tint = androidx.compose.ui.graphics.Color.White)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(R.string.copy_from), color = androidx.compose.ui.graphics.Color.White)
+                }
 
                 val knownProfiles = PluviaApp.inputControlsManager!!.getProfiles(false)
                 if (knownProfiles.isNotEmpty()) {
-                    ExposedDropdownMenu(
+                    DropdownMenu(
                         expanded = duplicateProfileOpen,
                         onDismissRequest = { duplicateProfileOpen = false }
                     ) {

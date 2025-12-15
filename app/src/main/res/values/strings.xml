@@ -119,6 +119,7 @@
     <string name="remove">Remove</string>
     <string name="add">Add</string>
     <string name="delete">Delete</string>
+    <string name="copy_from">Copy From</string>
     <string name="ok">Ok</string>
     <string name="storage_info">Storage Info</string>
     <string name="duplicate">Duplicate</string>
@@ -166,7 +167,7 @@
     <string name="dpad_left">D-Pad Left</string>
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
-    <string name="edit_controls">Edit On-Screen Controls</string>
+    <string name="edit_controls">Edit On-screen Controller</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
@@ -280,7 +281,7 @@
     <string name="not_set">Not Set</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controls reset to default</string>
+    <string name="toast_controls_reset">Controls reset</string>
     <string name="toast_failed_log_save">Failed to save logcat to destination</string>
 
     <!-- Settings -->
