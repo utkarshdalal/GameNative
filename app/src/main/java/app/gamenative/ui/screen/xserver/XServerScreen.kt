@@ -809,22 +809,17 @@ fun XServerScreen(
                     // Only auto-show if profile has on-screen elements
                     Timber.d("Profile has ${profile.elements.size} elements loaded")
                     if (profile.elements.isNotEmpty()) {
-                        // Read control visibility settings
-                        val startWithControlsHidden = container.getExtra("startWithControlsHidden", "false").toBoolean()
-
                         // Check for ACTUAL physically connected controllers, not just saved bindings
                         val controllerManager = ControllerManager.getInstance()
                         controllerManager.scanForDevices()
                         val hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
 
-                        Timber.d("Control visibility settings: startWithControlsHidden=$startWithControlsHidden, hasPhysicalController=$hasPhysicalController")
-
                         // Determine if controls should be shown based on priority:
-                        // 1. If startWithControlsHidden is true → always hide (user preference)
+                        // 1. If touchscreen mode is true → always hide
                         // 2. Else if physical controller detected → hide
                         // 3. Else → show
                         val shouldShowControls = when {
-                            startWithControlsHidden -> false
+                            container.isTouchscreenMode -> false
                             hasPhysicalController -> false
                             else -> true
                         }

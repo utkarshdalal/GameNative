@@ -1634,19 +1634,6 @@ fun ContainerConfigDialog(
                                     state = config.touchscreenMode,
                                     onCheckedChange = { config = config.copy(touchscreenMode = it) }
                                 )
-
-                                // Start with on-screen controls hidden
-                                SettingsSwitch(
-                                    colors = settingsTileColorsAlt(),
-                                    title = { Text(text = stringResource(R.string.start_with_controls_hidden)) },
-                                    subtitle = { Text(text = stringResource(R.string.start_with_controls_hidden_description)) },
-                                    state = config.startWithControlsHidden,
-                                    onCheckedChange = {
-                                        config = config.copy(
-                                            startWithControlsHidden = it,
-                                        )
-                                    }
-                                )
                             }
                             if (selectedTab == 4) SettingsGroup() {
                                 // TODO: add desktop settings

@@ -271,7 +271,6 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
-            startWithControlsHidden = container.getExtra("startWithControlsHidden", "false").toBoolean(),
         )
     }
 
@@ -387,7 +386,6 @@ object ContainerUtils {
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
-        container.putExtra("startWithControlsHidden", containerData.startWithControlsHidden.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
