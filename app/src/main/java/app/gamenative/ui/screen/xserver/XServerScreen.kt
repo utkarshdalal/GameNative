@@ -1838,7 +1838,7 @@ private fun getRedistDirectory(
     val commonRedistDir = File(gameDirPath, "_CommonRedist")
 
     if (!commonRedistDir.exists() || !commonRedistDir.isDirectory()) {
-        Timber.i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}")
+        Timber.tag("installRedist").i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}")
         return null
     }
 
@@ -1848,7 +1848,7 @@ private fun getRedistDirectory(
     val driveLetter = if (driveIndex > 1) {
         drives[driveIndex - 2]
     } else {
-        Timber.e("Could not locate game drive for redistributables")
+        Timber.tag("installRedist").e("Could not locate game drive for redistributables")
         return null
     }
 
@@ -1883,12 +1883,12 @@ private fun installVcRedist(context: RedistContext) {
                 val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
                 val version = dir.name.takeIf { it != "vcredist" } ?: "latest"
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributable ($version)..."))
-                Timber.i("Installing vcredist ($version): $winePath")
+                Timber.tag("installRedist").i("Installing vcredist ($version): $winePath")
                 val cmd = "wine $winePath /quiet /norestart && wineserver -k"
                 val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                Timber.i("vcredist ($version) installation output: $output")
+                Timber.tag("installRedist").i("vcredist ($version) installation output: $output")
             } catch (e: Exception) {
-                Timber.e(e, "Failed to install vcredist ${exeFile.name}")
+                Timber.tag("installRedist").e(e, "Failed to install vcredist ${exeFile.name}")
             }
         }
     }
@@ -2060,17 +2060,17 @@ private fun installRedistributables(
         }
 
         if (sharedDepots.isEmpty()) {
-            Timber.i("No shared depots found, skipping redistributable installation")
+            Timber.tag("installRedist").i("No shared depots found, skipping redistributable installation")
             return
         }
 
-        Timber.i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
+        Timber.tag("installRedist").i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
 
         // Get redistributable directory context
         val redistContext = getRedistDirectory(appId, container)?.copy(
             guestProgramLauncherComponent = guestProgramLauncherComponent
         ) ?: run {
-            Timber.i("Could not set up redistributable context, skipping installation")
+            Timber.tag("installRedist").i("Could not set up redistributable context, skipping installation")
             return
         }
 
@@ -2082,9 +2082,9 @@ private fun installRedistributables(
         installPhysX(redistContext)
         installXNAFramework(redistContext)
 
-        Timber.i("Finished checking for redistributables")
+        Timber.tag("installRedist").i("Finished checking for redistributables")
     } catch (e: Exception) {
-        Timber.e(e, "Error in installRedistributables: ${e.message}")
+        Timber.tag("installRedist").e(e, "Error in installRedistributables: ${e.message}")
     }
 }
 
@@ -2116,7 +2116,7 @@ private fun unpackExecutableFile(
         try {
             installRedistributables(context, container, appId, guestProgramLauncherComponent, imageFs)
         } catch (e: Exception) {
-            Timber.e(e, "Error installing redistributables: ${e.message}")
+            Timber.tag("installRedist").e(e, "Error installing redistributables: ${e.message}")
         }
     }
     if (!needsUnpacking){
