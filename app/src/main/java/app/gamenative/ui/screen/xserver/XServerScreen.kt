@@ -1817,7 +1817,229 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
 }
 
 /**
- * Installs redistributables (vcredist, physx, XNA) from _CommonRedist folder
+ * Helper data class to hold redistributable installation context
+ */
+private data class RedistContext(
+    val commonRedistDir: File,
+    val driveLetter: Char,
+    val guestProgramLauncherComponent: GuestProgramLauncherComponent
+)
+
+/**
+ * Gets the _CommonRedist directory and drive letter for the game
+ * @return RedistContext if valid, null otherwise
+ */
+private fun getRedistDirectory(
+    appId: String,
+    container: Container
+): RedistContext? {
+    val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+    val gameDirPath = SteamService.getAppDirPath(steamAppId)
+    val commonRedistDir = File(gameDirPath, "_CommonRedist")
+
+    if (!commonRedistDir.exists() || !commonRedistDir.isDirectory()) {
+        Timber.i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}")
+        return null
+    }
+
+    // Get the drive letter for the game directory
+    val drives = container.drives
+    val driveIndex = drives.indexOf(gameDirPath)
+    val driveLetter = if (driveIndex > 1) {
+        drives[driveIndex - 2]
+    } else {
+        Timber.e("Could not locate game drive for redistributables")
+        return null
+    }
+
+    return null
+}
+
+/**
+ * Installs Visual C++ Redistributables (2005-2022, prefers x64 over x86)
+ */
+private fun installVcRedist(context: RedistContext) {
+    val vcredistDir = File(context.commonRedistDir, "vcredist")
+    if (!vcredistDir.exists() || !vcredistDir.isDirectory()) return
+
+    val vcredistFiles = vcredistDir.walkTopDown()
+        .filter { it.isFile &&
+            (it.name.equals("VC_redist.x64.exe", ignoreCase = true) ||
+             it.name.equals("vcredist_x64.exe", ignoreCase = true) ||
+             it.name.equals("vcredist_x86.exe", ignoreCase = true)) }
+        .toList()
+
+    // Group by directory to handle versioned folders (2005, 2008, 2010, etc.)
+    val byDirectory = vcredistFiles.groupBy { it.parentFile }
+
+    byDirectory.forEach { (dir, files) ->
+        // Prefer x64 over x86
+        val fileToInstall = files.firstOrNull { it.name.contains("x64", ignoreCase = true) }
+            ?: files.firstOrNull()
+
+        fileToInstall?.let { exeFile ->
+            try {
+                val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
+                val version = dir.name.takeIf { it != "vcredist" } ?: "latest"
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributable ($version)..."))
+                Timber.i("Installing vcredist ($version): $winePath")
+                val cmd = "wine $winePath /quiet /norestart && wineserver -k"
+                val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
+                Timber.i("vcredist ($version) installation output: $output")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to install vcredist ${exeFile.name}")
+            }
+        }
+    }
+}
+
+/**
+ * Installs DirectX redistributables (DXSETUP.exe)
+ */
+private fun installDirectX(context: RedistContext) {
+    val directxDirs = listOf("DirectX", "DX", "DXSETUP")
+
+    for (dirName in directxDirs) {
+        val dxDir = File(context.commonRedistDir, dirName)
+        if (!dxDir.exists() || !dxDir.isDirectory()) continue
+
+        val dxSetup = dxDir.walkTopDown()
+            .filter { it.isFile &&
+                (it.name.equals("DXSETUP.exe", ignoreCase = true) ||
+                 it.name.equals("dxwebsetup.exe", ignoreCase = true)) }
+            .firstOrNull()
+
+        dxSetup?.let { exeFile ->
+            try {
+                val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing DirectX..."))
+                Timber.i("Installing DirectX: $winePath")
+                val cmd = "wine $winePath /silent && wineserver -k"
+                val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
+                Timber.i("DirectX installation output: $output")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to install DirectX ${exeFile.name}")
+            }
+        }
+        break // Only install from first found DirectX directory
+    }
+}
+
+/**
+ * Installs .NET Framework redistributables
+ */
+private fun installDotNetFramework(context: RedistContext) {
+    val dotnetDirs = listOf("dotNetFx", "dotnet", "DotNet")
+
+    for (dirName in dotnetDirs) {
+        val dotnetDir = File(context.commonRedistDir, dirName)
+        if (!dotnetDir.exists() || !dotnetDir.isDirectory()) continue
+
+        dotnetDir.walkTopDown()
+            .filter { it.isFile &&
+                (it.name.startsWith("dotNetFx", ignoreCase = true) ||
+                 it.name.contains(".NET Framework", ignoreCase = true) ||
+                 it.name.startsWith("NDP", ignoreCase = true)) &&
+                it.name.endsWith(".exe", ignoreCase = true) }
+            .forEach { exeFile ->
+                try {
+                    val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                    val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
+                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing .NET Framework..."))
+                    Timber.i("Installing .NET Framework: $winePath")
+                    val cmd = "wine $winePath /q /norestart && wineserver -k"
+                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
+                    Timber.i(".NET Framework installation output: $output")
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to install .NET Framework ${exeFile.name}")
+                }
+            }
+    }
+}
+
+/**
+ * Installs OpenAL redistributables (oalinst.exe) (https://www.openal.org/)
+ */
+private fun installOpenAL(context: RedistContext) {
+    val openalDir = File(context.commonRedistDir, "OpenAL")
+    if (!openalDir.exists() || !openalDir.isDirectory()) return
+
+    val openalInstaller = openalDir.walkTopDown()
+        .filter { it.isFile &&
+            (it.name.equals("oalinst.exe", ignoreCase = true) ||
+             it.name.startsWith("OpenAL", ignoreCase = true)) &&
+            it.name.endsWith(".exe", ignoreCase = true) }
+        .firstOrNull()
+
+    openalInstaller?.let { exeFile ->
+        try {
+            val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+            val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
+            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing OpenAL..."))
+            Timber.i("Installing OpenAL: $winePath")
+            val cmd = "wine $winePath /s && wineserver -k"
+            val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
+            Timber.i("OpenAL installation output: $output")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to install OpenAL ${exeFile.name}")
+        }
+    }
+}
+
+/**
+ * Installs PhysX redistributables (.msi files)
+ */
+private fun installPhysX(context: RedistContext) {
+    val physxDir = File(context.commonRedistDir, "PhysX")
+    if (!physxDir.exists() || !physxDir.isDirectory()) return
+
+    physxDir.walkTopDown()
+        .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
+                 it.name.endsWith(".msi", ignoreCase = true) }
+        .forEach { msiFile ->
+            try {
+                val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
+                Timber.i("Installing PhysX: $winePath")
+                val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
+                val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
+                Timber.i("PhysX installation output: $output")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to install PhysX ${msiFile.name}")
+            }
+        }
+}
+
+/**
+ * Installs XNA Framework redistributables (.msi files)
+ */
+private fun installXNAFramework(context: RedistContext) {
+    val xnaDir = File(context.commonRedistDir, "xnafx")
+    if (!xnaDir.exists() || !xnaDir.isDirectory()) return
+
+    xnaDir.walkTopDown()
+        .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
+                 it.name.endsWith(".msi", ignoreCase = true) }
+        .forEach { msiFile ->
+            try {
+                val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
+                Timber.i("Installing XNA: $winePath")
+                val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
+                val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
+                Timber.i("XNA installation output: $output")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to install XNA ${msiFile.name}")
+            }
+        }
+}
+
+/**
+ * Installs redistributables (vcredist, DirectX, .NET Framework, OpenAL, PhysX, XNA) from _CommonRedist folder
  * if shared depots are present and the redistributable executables exist.
  */
 private fun installRedistributables(
@@ -1844,86 +2066,21 @@ private fun installRedistributables(
 
         Timber.i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
 
-        // Get game directory path
-        val gameDirPath = SteamService.getAppDirPath(steamAppId)
-        val commonRedistDir = File(gameDirPath, "_CommonRedist")
-
-        if (!commonRedistDir.exists() || !commonRedistDir.isDirectory()) {
-            Timber.i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}, skipping redistributable installation")
+        // Get redistributable directory context
+        val redistContext = getRedistDirectory(appId, container)?.copy(
+            guestProgramLauncherComponent = guestProgramLauncherComponent
+        ) ?: run {
+            Timber.i("Could not set up redistributable context, skipping installation")
             return
         }
 
-        // Get the drive letter for the game directory
-        val drives = container.drives
-        val driveIndex = drives.indexOf(gameDirPath)
-        val drive = if (driveIndex > 1) {
-            drives[driveIndex - 2]
-        } else {
-            Timber.e("Could not locate game drive for redistributables")
-            return
-        }
-
-        // Find and install vcredist executables (only 64-bit: VC_redist.x64.exe)
-        val vcredistDir = File(commonRedistDir, "vcredist")
-        if (vcredistDir.exists() && vcredistDir.isDirectory()) {
-            vcredistDir.walkTopDown()
-                .filter { it.isFile && it.name.equals("VC_redist.x64.exe", ignoreCase = true) }
-                .forEach { exeFile ->
-                    try {
-                        val relativePath = exeFile.relativeTo(commonRedistDir).path.replace('/', '\\')
-                        val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributable..."))
-                        Timber.i("Installing vcredist: $winePath")
-                        val cmd = "wine $winePath /quiet /norestart && wineserver -k"
-                        val output = guestProgramLauncherComponent.execShellCommand(cmd)
-                        Timber.i("vcredist installation output: $output")
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install vcredist ${exeFile.name}")
-                    }
-                }
-        }
-
-        // Find and install PhysX redistributables (.msi files starting with "PhysX")
-        val physxDir = File(commonRedistDir, "PhysX")
-        if (physxDir.exists() && physxDir.isDirectory()) {
-            physxDir.walkTopDown()
-                .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
-                         it.name.endsWith(".msi", ignoreCase = true) }
-                .forEach { msiFile ->
-                    try {
-                        val relativePath = msiFile.relativeTo(commonRedistDir).path.replace('/', '\\')
-                        val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
-                        Timber.i("Installing PhysX: $winePath")
-                        val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                        val output = guestProgramLauncherComponent.execShellCommand(cmd)
-                        Timber.i("PhysX installation output: $output")
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install PhysX ${msiFile.name}")
-                    }
-                }
-        }
-
-        // Find and install XNA Framework redistributables (.msi files starting with "xna")
-        val xnaDir = File(commonRedistDir, "xnafx")
-        if (xnaDir.exists() && xnaDir.isDirectory()) {
-            xnaDir.walkTopDown()
-                .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
-                         it.name.endsWith(".msi", ignoreCase = true) }
-                .forEach { msiFile ->
-                    try {
-                        val relativePath = msiFile.relativeTo(commonRedistDir).path.replace('/', '\\')
-                        val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
-                        Timber.i("Installing XNA: $winePath")
-                        val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                        val output = guestProgramLauncherComponent.execShellCommand(cmd)
-                        Timber.i("XNA installation output: $output")
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install XNA ${msiFile.name}")
-                    }
-                }
-        }
+        // Install each redistributable type
+        installVcRedist(redistContext)
+        installDirectX(redistContext)
+        installDotNetFramework(redistContext)
+        installOpenAL(redistContext)
+        installPhysX(redistContext)
+        installXNAFramework(redistContext)
 
         Timber.i("Finished checking for redistributables")
     } catch (e: Exception) {
