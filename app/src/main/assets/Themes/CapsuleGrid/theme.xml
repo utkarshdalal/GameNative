@@ -4,16 +4,24 @@
         <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
-                   anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}" />
+                   anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}"
+                   highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                   highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
         <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
                        iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
-                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}" />
+                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}"
+                       highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                       highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
     
     <!-- Bottom action buttons -->
     <fixed id="bottomBar">
-        <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true" />
-        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight" />
+        <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true"
+                      highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                      highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight"
+                   highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                   highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
 
     <!-- Card definitions - Capsule style (portrait 2:3 ratio) -->

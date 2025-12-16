@@ -6,6 +6,12 @@
     <var name="searchBarBg" value="#FF1E1E1E" />
     <var name="overlayColor" value="#99000000" />
     <var name="borderColor" value="#22FFFFFF" />
+    
+    <!-- Highlight styling for controller navigation -->
+    <var name="highlightColor" value="#4CAF50" />
+    <var name="highlightOpacity" value="0.9" />
+    <var name="highlightBorderWidth" value="2" />
+    <var name="highlightTransitionSpeed" value="200" />
 
     <!-- Dimensions -->
     <var name="cornerRadius" value="20" />

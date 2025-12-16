@@ -109,16 +109,42 @@ object ThemeXmlMapper {
         }
     }
 
+    /**
+     * Helper class holding common base properties shared by all fixed element types.
+     */
+    private data class FixedElementBase(
+        val position: DimOffset,
+        val anchor: Anchor,
+        val visibility: Visibility,
+        val highlightColor: Int?,
+        val highlightOpacity: Float,
+        val highlightBorderWidth: Float,
+        val highlightTransitionSpeed: Int,
+    )
+    
+    /** Extract common base properties from an XML node for fixed elements. */
+    private fun parseFixedElementBase(n: XmlNode, tree: ThemeTree) = FixedElementBase(
+        position = DimOffset(pxResolved(n, "x", tree), pxResolved(n, "y", tree)),
+        anchor = Anchor.fromString(n.attributes["anchor"]),
+        visibility = Visibility.fromString(n.attributes["visibility"]),
+        highlightColor = resolveColorAttr(n, "highlightColor", tree),
+        highlightOpacity = resolveFloat(n, "highlightOpacity", 0.8f, tree),
+        highlightBorderWidth = resolveFloat(n, "highlightBorderWidth", 2f, tree),
+        highlightTransitionSpeed = resolveInt(n, "highlightTransitionSpeed", tree) ?: 200,
+    )
+
     private fun parseFixedElement(n: XmlNode, tree: ThemeTree): FixedElement? {
-        val position = DimOffset(pxResolved(n, "x", tree), pxResolved(n, "y", tree))
-        val anchor = Anchor.fromString(n.attributes["anchor"])
-        val visibility = Visibility.fromString(n.attributes["visibility"])
+        val base = parseFixedElementBase(n, tree)
         
         return when (n.name.lowercase()) {
             "header" -> FixedElement.Header(
-                position = position,
-                anchor = anchor,
-                visibility = visibility,
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
                 textColor = resolveColorAttr(n, "textColor", tree) ?: 0xFFFFFFFF.toInt(),
                 showAppName = n.attributes["showAppName"]?.toBooleanStrictOrNull() 
                     ?: n.children.any { it.name.equals("appName", true) && it.attributes["visible"]?.toBooleanStrictOrNull() != false }
@@ -131,18 +157,26 @@ object ThemeXmlMapper {
                     ?: true,
             )
             "searchbar" -> FixedElement.SearchBar(
-                position = position,
-                anchor = anchor,
-                visibility = visibility,
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
                 size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(400f), Dimension.Px(48f)),
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
                 borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
                 collapsible = n.attributes["collapsible"]?.toBooleanStrictOrNull() ?: false,
             )
             "profilebutton" -> FixedElement.ProfileButton(
-                position = position,
-                anchor = anchor,
-                visibility = visibility,
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
                 size = resolveFloat(n, "size", 48f, tree),
                 iconSize = resolveFloat(n, "iconSize", 24f, tree),
                 padding = resolveFloat(n, "padding", 8f, tree),
@@ -150,15 +184,23 @@ object ThemeXmlMapper {
                 cornerRadius = resolveFloat(n, "cornerRadius", 12f, tree),
             )
             "filterbutton" -> FixedElement.FilterButton(
-                position = position,
-                anchor = anchor,
-                visibility = visibility,
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
                 expanded = n.attributes["expanded"]?.toBooleanStrictOrNull() ?: true,
             )
             "addbutton" -> FixedElement.AddButton(
-                position = position,
-                anchor = anchor,
-                visibility = visibility,
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
             )
             else -> null
         }

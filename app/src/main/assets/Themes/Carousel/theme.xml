@@ -5,16 +5,24 @@
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
                    anchor="topRight" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}"
-                   collapsible="true" />
+                   collapsible="true"
+                   highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                   highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
         <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
                        iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
-                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}" />
+                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}"
+                       highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                       highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
 
     <!-- Bottom action buttons -->
     <fixed id="bottomBar">
-        <filterButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomLeft" expanded="true" />
-        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight" />
+        <filterButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomLeft" expanded="true"
+                      highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                      highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight"
+                   highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                   highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
 
     <!-- Card definition - Carousel style hero card -->
@@ -52,15 +60,15 @@
 
     <!-- Center-focused horizontal carousel -->
     <layout>
-        <carousel
+        <carousel 
             centerFocus="true"
             highlightScale="@{vars.highlightScale}"
             verticalAlign="center"
             verticalOffset="@{vars.carouselOffsetY}"
-            itemWidth="@{vars.cardWidth}"
+            itemWidth="@{vars.cardWidth}" 
             itemHeight="@{vars.cardHeight}"
             itemSpacing="@{vars.itemSpacing}"
-            selectionMode="stationary"
+            selectionMode="stationary" 
             itemCard="carousel"
             focusedBackground="@{game.libraryHero}"
             backgroundOpacity="@{vars.bgOpacity}"

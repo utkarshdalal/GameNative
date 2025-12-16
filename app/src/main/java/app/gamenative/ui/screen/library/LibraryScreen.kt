@@ -44,6 +44,7 @@ import app.gamenative.ui.enums.PaneType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
@@ -107,7 +108,15 @@ fun HomeLibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-
+    // Read configuration from MainActivity state (not LocalConfiguration)
+    // This is needed because android:configChanges prevents LocalConfiguration from updating
+    val currentOrientation = app.gamenative.MainActivity.currentOrientation.value
+    val currentScreenWidthDp = app.gamenative.MainActivity.currentScreenWidthDp.value
+    val configChangeCount = app.gamenative.MainActivity.configurationChangeCounter.value
+    val orientationTrigger = "$currentOrientation-$currentScreenWidthDp-$configChangeCount"
+    
+    // Key on orientation to force full recomposition when configuration changes
+    key(orientationTrigger) {
     LibraryScreenContent(
         state = state,
         listState = viewModel.listState,
@@ -128,6 +137,7 @@ fun HomeLibraryScreen(
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         isOffline = isOffline,
     )
+    } // end key(orientationTrigger)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
@@ -233,6 +243,9 @@ private fun LibraryScreenContent(
 
     // Trigger theme remapping when orientation changes (for breakpoint-aware variables)
     app.gamenative.theme.runtime.OrientationAwareThemeEffect()
+    
+    // Get orientation key for forcing recomposition when orientation changes
+    val orientationKey = app.gamenative.theme.runtime.rememberOrientationKey()
 
     // Focus manager for clearing search bar focus when tapping elsewhere
     val focusManager = LocalFocusManager.current
@@ -252,6 +265,9 @@ private fun LibraryScreenContent(
             val def = activeTheme
             val useThemeUi = PrefManager.useThemeEngineUi
             if (useThemeUi && def != null) {
+                // Key on orientation to force full recomposition when orientation changes
+                // This ensures all positioning from theme breakpoints is properly applied
+                key(orientationKey, reloadTick) {
                 // Render themed layout using the Theme Engine (experimental)
                 val cards = remember(def.cards, reloadTick) { def.cards.associateBy { it.id } }
 
@@ -357,6 +373,50 @@ private fun LibraryScreenContent(
                     }
                 }
 
+                // Fixed element callbacks (shared by top and bottom)
+                val fixedCallbacks = FixedElementCallbacks(
+                    onNavigateRoute = onNavigateRoute,
+                    onLogout = onLogout,
+                    onGoOnline = onGoOnline,
+                    onFilterClick = { onModalBottomSheet(true) },
+                    onAddClick = onAddCustomGameClick,
+                    onSearchQuery = onSearchQuery,
+                    isOffline = isOffline,
+                    filterExpanded = filterFabExpanded,
+                    isSearching = state.isSearching,
+                )
+                
+                val accountButtonContent: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { iconSize ->
+                    app.gamenative.ui.component.topbar.AccountButton(
+                        onNavigateRoute = onNavigateRoute,
+                        onLogout = onLogout,
+                        onGoOnline = onGoOnline,
+                        isOffline = isOffline,
+                        iconSize = iconSize,
+                    )
+                }
+                
+                val searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit = { style ->
+                    app.gamenative.ui.screen.library.components.LibrarySearchBar(
+                        state = state,
+                        listState = listState,
+                        onSearchQuery = onSearchQuery,
+                        style = style,
+                    )
+                }
+                
+                // Render TOP fixed elements first (for proper focus traversal order)
+                RenderFixedElements(
+                    fixedContainers = def.fixedContainers,
+                    state = state,
+                    listState = listState,
+                    themeName = def.manifest.id,
+                    callbacks = fixedCallbacks,
+                    accountButtonContent = accountButtonContent,
+                    searchBarContent = searchBarContent,
+                    position = app.gamenative.theme.runtime.FixedContainerPosition.TOP,
+                )
+
                 // Render themed layout based on type
                 val layout = def.layout
                 when (layout) {
@@ -419,45 +479,21 @@ private fun LibraryScreenContent(
                             .padding(8.dp),
                         itemBindingProvider = itemBindingProvider,
                     )
-                    }
+                }
                 }
 
-                // Render fixed UI elements from theme config (or defaults if not specified)
-                val fixedCallbacks = FixedElementCallbacks(
-                    onNavigateRoute = onNavigateRoute,
-                    onLogout = onLogout,
-                    onGoOnline = onGoOnline,
-                    onFilterClick = { onModalBottomSheet(true) },
-                    onAddClick = onAddCustomGameClick,
-                    onSearchQuery = onSearchQuery,
-                    isOffline = isOffline,
-                    filterExpanded = filterFabExpanded,
-                    isSearching = state.isSearching,
-                )
+                // Render BOTTOM fixed elements last (for proper focus traversal order)
                 RenderFixedElements(
                     fixedContainers = def.fixedContainers,
                     state = state,
                     listState = listState,
                     themeName = def.manifest.id,
                     callbacks = fixedCallbacks,
-                    accountButtonContent = { iconSize ->
-                        app.gamenative.ui.component.topbar.AccountButton(
-                            onNavigateRoute = onNavigateRoute,
-                            onLogout = onLogout,
-                            onGoOnline = onGoOnline,
-                            isOffline = isOffline,
-                            iconSize = iconSize,
-                        )
-                    },
-                    searchBarContent = { style ->
-                        app.gamenative.ui.screen.library.components.LibrarySearchBar(
-                            state = state,
-                            listState = listState,
-                            onSearchQuery = onSearchQuery,
-                            style = style,
-                        )
-                    },
+                    accountButtonContent = accountButtonContent,
+                    searchBarContent = searchBarContent,
+                    position = app.gamenative.theme.runtime.FixedContainerPosition.BOTTOM,
                 )
+                } // end key(orientationKey)
             } else {
                 // Legacy interactive Library list
                 LibraryListPane(

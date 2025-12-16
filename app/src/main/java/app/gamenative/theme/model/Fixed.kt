@@ -31,6 +31,16 @@ sealed class FixedElement {
     abstract val anchor: Anchor
     /** Visibility condition based on orientation. */
     abstract val visibility: Visibility
+    
+    // Highlight styling properties for controller navigation (theme-only feature)
+    /** Highlight border color (ARGB), null = use system primary. */
+    abstract val highlightColor: Int?
+    /** Highlight border opacity (0.0 - 1.0). */
+    abstract val highlightOpacity: Float
+    /** Highlight border width in pixels. */
+    abstract val highlightBorderWidth: Float
+    /** Highlight transition animation duration in milliseconds. */
+    abstract val highlightTransitionSpeed: Int
 
     /**
      * App header showing app name, theme name, and game count.
@@ -39,6 +49,10 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
         /** Text color (ARGB). */
         val textColor: Int = 0xFFFFFFFF.toInt(),
         /** Whether to show the app name. */
@@ -56,6 +70,10 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
         /** Size of the search bar. */
         val size: DimSize,
         /** Background color (ARGB), null for default. */
@@ -73,6 +91,10 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
         /** Size of the button container in pixels. */
         val size: Float = 48f,
         /** Size of the icon inside the button in pixels. */
@@ -92,6 +114,10 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.BOTTOM_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
         /** Whether to show expanded text label. */
         val expanded: Boolean = true,
     ) : FixedElement()
@@ -103,6 +129,10 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.BOTTOM_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
     ) : FixedElement()
 }
 

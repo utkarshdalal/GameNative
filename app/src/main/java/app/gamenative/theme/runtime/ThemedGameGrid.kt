@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -235,9 +236,30 @@ fun ThemedGameCarousel(
         // Focus requester for controller navigation
         val focusRequester = remember { FocusRequester() }
         
+        // Track if carousel has focus (for fading effect)
+        // Default to TRUE - carousel is considered focused until explicitly unfocused
+        var carouselHasFocus by remember { mutableStateOf(true) }
+        
+        // Track if carousel has ever had focus (to know if unfocus is intentional)
+        var hasEverHadFocus by remember { mutableStateOf(false) }
+        
+        // Animate carousel opacity based on focus state
+        // Only fade if we've had focus before and now lost it
+        val carouselAlpha by animateFloatAsState(
+            targetValue = if (carouselHasFocus || !hasEverHadFocus) 1f else 0.5f,
+            animationSpec = tween(durationMillis = 200),
+            label = "carouselFocusAlpha"
+        )
+        
         // Request focus when carousel is first displayed
         LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
+            // Small delay to ensure layout is complete
+            kotlinx.coroutines.delay(100)
+            try {
+                focusRequester.requestFocus()
+            } catch (e: Exception) {
+                // Focus request can fail if not attached yet, ignore
+            }
         }
         
         // Notify when focused item changes and save position
@@ -287,6 +309,18 @@ fun ThemedGameCarousel(
                 .offset(y = verticalOffset)
                 .focusRequester(focusRequester)
                 .focusable()
+                .onFocusChanged { focusState ->
+                    // Track if this exact element has focus
+                    val nowHasFocus = focusState.isFocused
+                    carouselHasFocus = nowHasFocus
+                    
+                    // Once we've gained focus, mark it so we know future unfocus is intentional
+                    if (nowHasFocus) {
+                        hasEverHadFocus = true
+                    }
+                }
+                // Apply alpha AFTER focus setup so changes are visible
+                .graphicsLayer { alpha = carouselAlpha }
                 .onKeyEvent { keyEvent ->
                     if (keyEvent.type == KeyEventType.KeyDown) {
                         when (keyEvent.key) {

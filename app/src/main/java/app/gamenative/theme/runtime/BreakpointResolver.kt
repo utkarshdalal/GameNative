@@ -27,6 +27,7 @@ object BreakpointResolver {
     /**
      * Composable that resolves variables based on current screen configuration.
      * Automatically recomposes when orientation or screen size changes.
+     * Uses MainActivity's configuration state instead of LocalConfiguration.
      * 
      * @param baseVariables Default variable values from theme
      * @param breakpoints List of breakpoints that may override variables
@@ -37,9 +38,9 @@ object BreakpointResolver {
         baseVariables: Map<String, String>,
         breakpoints: List<Breakpoint>
     ): Map<String, String> {
-        val config = LocalConfiguration.current
-        val isPortrait = config.screenHeightDp > config.screenWidthDp
-        val screenWidthDp = config.screenWidthDp
+        val orientation = app.gamenative.MainActivity.currentOrientation.value
+        val screenWidthDp = app.gamenative.MainActivity.currentScreenWidthDp.value
+        val isPortrait = orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
 
         return remember(isPortrait, screenWidthDp, baseVariables, breakpoints) {
             VariableResolver.resolveWithBreakpoints(baseVariables, breakpoints, isPortrait, screenWidthDp)
@@ -48,12 +49,13 @@ object BreakpointResolver {
 
     /**
      * Composable that returns whether the current screen is in portrait mode.
+     * Uses MainActivity's configuration state instead of LocalConfiguration.
      */
     @Composable
     fun rememberIsPortrait(): Boolean {
-        val config = LocalConfiguration.current
-        return remember(config.orientation) {
-            config.screenHeightDp > config.screenWidthDp
+        val orientation = app.gamenative.MainActivity.currentOrientation.value
+        return remember(orientation) {
+            orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
         }
     }
 
@@ -94,18 +96,40 @@ fun shouldShowElement(visibility: Visibility): Boolean = BreakpointResolver.shou
  * 
  * This automatically triggers ThemeManager.remapForOrientation() when the 
  * screen configuration changes, ensuring breakpoint-aware variable resolution.
+ * 
+ * IMPORTANT: This uses MainActivity's configuration state instead of LocalConfiguration
+ * because android:configChanges prevents LocalConfiguration from updating.
  */
 @Composable
 fun OrientationAwareThemeEffect() {
-    val config = LocalConfiguration.current
-    val isPortrait = config.screenHeightDp > config.screenWidthDp
-    val screenWidthDp = config.screenWidthDp
+    // Use MainActivity's configuration state instead of LocalConfiguration
+    // LocalConfiguration doesn't update when android:configChanges is set
+    val orientation = app.gamenative.MainActivity.currentOrientation.value
+    val screenWidthDp = app.gamenative.MainActivity.currentScreenWidthDp.value
+    val isPortrait = orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
     
-    LaunchedEffect(isPortrait, screenWidthDp) {
-        // Only remap if theme has breakpoints
+    // Use remember to trigger remapping synchronously during composition
+    // This ensures theme values are updated BEFORE the UI renders
+    remember(isPortrait, screenWidthDp) {
         if (ThemeManager.hasBreakpoints()) {
             ThemeManager.remapForOrientation(isPortrait, screenWidthDp)
         }
+        Unit
+    }
+}
+
+/**
+ * Returns a stable key that changes when orientation changes.
+ * Use this with key() to force recomposition of themed content.
+ * Uses MainActivity's configuration state instead of LocalConfiguration.
+ */
+@Composable
+fun rememberOrientationKey(): String {
+    val orientation = app.gamenative.MainActivity.currentOrientation.value
+    val screenWidthDp = app.gamenative.MainActivity.currentScreenWidthDp.value
+    val isPortrait = orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+    return remember(isPortrait, screenWidthDp) {
+        "$isPortrait-$screenWidthDp"
     }
 }
 

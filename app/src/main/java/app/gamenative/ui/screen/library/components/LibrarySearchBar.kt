@@ -2,14 +2,20 @@ package app.gamenative.ui.screen.library.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -72,6 +78,15 @@ data class SearchBarStyle(
     val anchorRight: Boolean = false,
     /** Full width of the search bar when expanded (for animation). */
     val expandedWidth: Dp = 0.dp,
+    // Highlight styling for controller navigation (theme-only, null = no highlight)
+    /** Highlight border color, null = no highlight border (non-theme mode). */
+    val highlightColor: Color? = null,
+    /** Highlight border opacity (0.0 - 1.0). */
+    val highlightOpacity: Float = 0.8f,
+    /** Highlight border width. */
+    val highlightBorderWidth: Dp = 2.dp,
+    /** Highlight transition animation duration in milliseconds. */
+    val highlightTransitionSpeed: Int = 200,
 )
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
@@ -104,8 +119,12 @@ internal fun LibrarySearchBar(
     // Prevent focus by default, so it doesn't scoop up every controller input for focus
     val allowFocusing = remember { mutableStateOf(false) }
     
+    // Track if user has activated the search (clicked/tapped) - separate from focus highlight
+    var isActivated by remember { mutableStateOf(false) }
+    
     // Determine if search bar should be expanded (not collapsed)
-    val isExpanded = !style.collapsible || isFocused || state.searchQuery.isNotEmpty()
+    // Only expand when activated (clicked) or has text, NOT just from controller focus highlight
+    val isExpanded = !style.collapsible || isActivated || state.searchQuery.isNotEmpty()
     
     // Background color from theme or default
     val bgColor = style.backgroundColor ?: MaterialTheme.colorScheme.surfaceVariant
@@ -128,6 +147,23 @@ internal fun LibrarySearchBar(
     
     // Alignment based on anchor
     val contentAlignment = if (style.anchorRight) Alignment.CenterEnd else Alignment.CenterStart
+    
+    // Highlight border animation for controller navigation (theme-only feature)
+    val hasHighlightStyling = style.highlightColor != null
+    val highlightAlpha by animateFloatAsState(
+        targetValue = if (isFocused && hasHighlightStyling) style.highlightOpacity else 0f,
+        animationSpec = tween(durationMillis = style.highlightTransitionSpeed),
+        label = "searchBarHighlightAlpha"
+    )
+    val highlightBorderModifier = if (hasHighlightStyling && highlightAlpha > 0f) {
+        Modifier.border(
+            width = style.highlightBorderWidth,
+            color = style.highlightColor!!.copy(alpha = highlightAlpha),
+            shape = RoundedCornerShape(cornerRadius)
+        )
+    } else {
+        Modifier
+    }
 
     // Modern search field with rounded corners
     Box(
@@ -139,13 +175,20 @@ internal fun LibrarySearchBar(
                     Modifier.fillMaxWidth()
                 }
             )
+            // Use focusGroup to track child focus for highlight border
+            .focusGroup()
+            .onFocusChanged { focusState ->
+                // Update isFocused when any child gains/loses focus
+                isFocused = focusState.hasFocus
+            }
+            .then(highlightBorderModifier)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
-                // When tapped, allow and request focus
+                // When tapped, activate and expand the search bar
                 allowFocusing.value = true
-                isFocused = true
+                isActivated = true
             },
         contentAlignment = contentAlignment
     ) {
@@ -160,14 +203,36 @@ internal fun LibrarySearchBar(
             ) { expanded ->
                 if (!expanded) {
                     // Collapsed mode - show only the search icon
+                    // Make it focusable for controller navigation (highlight only, not expand)
                     Box(
                         modifier = Modifier
                             .size(iconSize)
                             .clip(RoundedCornerShape(cornerRadius))
                             .background(bgColor)
+                            .focusable()
+                            .onFocusChanged { focusState ->
+                                // Only update highlight state, don't expand
+                                isFocused = focusState.isFocused || focusState.hasFocus
+                            }
+                            .onKeyEvent { keyEvent ->
+                                // Activate on Enter/A button press
+                                if (keyEvent.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                                    when (keyEvent.key) {
+                                        androidx.compose.ui.input.key.Key.Enter,
+                                        androidx.compose.ui.input.key.Key.DirectionCenter,
+                                        androidx.compose.ui.input.key.Key.ButtonA -> {
+                                            allowFocusing.value = true
+                                            isActivated = true
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                } else false
+                            }
                             .clickable {
+                                // Activate on tap/click
                                 allowFocusing.value = true
-                                isFocused = true
+                                isActivated = true
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -179,6 +244,7 @@ internal fun LibrarySearchBar(
                     }
                 } else {
                     // Expanded mode - show full search field
+                    var hasHadFocus by remember { mutableStateOf(false) }
                     TextField(
                         value = state.searchQuery,
                         onValueChange = onSearchText,
@@ -190,9 +256,13 @@ internal fun LibrarySearchBar(
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
                                 isFocused = focusState.isFocused
-                                if (!focusState.isFocused && state.searchQuery.isEmpty()) {
-                                    // Lost focus and no text - collapse if collapsible
+                                if (focusState.isFocused) {
+                                    hasHadFocus = true
+                                }
+                                // Only collapse if TextField had focus before and now lost it
+                                if (!focusState.isFocused && hasHadFocus && state.searchQuery.isEmpty()) {
                                     allowFocusing.value = false
+                                    isActivated = false
                                 }
                             },
                         placeholder = {
@@ -234,10 +304,8 @@ internal fun LibrarySearchBar(
                     )
                     
                     // Request focus when expanded in collapsible mode
-                    if (isFocused) {
-                        LaunchedEffect(Unit) {
-                            focusRequester.requestFocus()
-                        }
+                    LaunchedEffect(Unit) {
+                        focusRequester.requestFocus()
                     }
                 }
             }

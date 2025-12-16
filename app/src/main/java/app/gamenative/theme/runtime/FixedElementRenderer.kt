@@ -1,6 +1,11 @@
 package app.gamenative.theme.runtime
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,10 +14,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -46,8 +55,89 @@ data class FixedElementCallbacks(
 )
 
 /**
+ * Data class holding highlight styling configuration for controller navigation.
+ */
+data class HighlightStyle(
+    val color: Color,
+    val opacity: Float,
+    val borderWidth: Dp,
+    val transitionSpeed: Int,
+)
+
+/**
+ * Extract highlight style from a FixedElement using its highlight properties.
+ */
+@Composable
+private fun FixedElement.toHighlightStyle(): HighlightStyle = HighlightStyle(
+    color = highlightColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primary,
+    opacity = highlightOpacity,
+    borderWidth = highlightBorderWidth.dp,
+    transitionSpeed = highlightTransitionSpeed,
+)
+
+/**
+ * A composable wrapper that adds animated highlight border indication for controller navigation.
+ * Used only for themed fixed elements (not default layout).
+ * Uses hasFocus to detect focus on any descendant (like buttons inside).
+ */
+@Composable
+private fun HighlightableBox(
+    highlightStyle: HighlightStyle,
+    cornerRadius: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    // Use hasFocus to detect focus on this element OR any descendant
+    var hasFocus by remember { mutableStateOf(false) }
+    
+    val highlightAlpha by animateFloatAsState(
+        targetValue = if (hasFocus) highlightStyle.opacity else 0f,
+        animationSpec = tween(durationMillis = highlightStyle.transitionSpeed),
+        label = "highlightBorderAlpha"
+    )
+    
+    val borderColor = highlightStyle.color.copy(alpha = highlightAlpha)
+    
+    Box(
+        modifier = modifier
+            // Use focusGroup to make this box a focus group that can track child focus
+            .focusGroup()
+            .onFocusChanged { focusState ->
+                // hasFocus is true if this element or any child has focus
+                hasFocus = focusState.hasFocus
+            }
+            .then(
+                if (highlightAlpha > 0f) {
+                    Modifier.border(
+                        width = highlightStyle.borderWidth,
+                        color = borderColor,
+                        shape = RoundedCornerShape(cornerRadius)
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        content = content
+    )
+}
+
+/**
+ * Enum to specify which position of fixed containers to render.
+ * Used to split rendering for proper focus traversal order.
+ */
+enum class FixedContainerPosition {
+    TOP,     // Containers with "top" in their id
+    BOTTOM,  // Containers with "bottom" in their id
+    ALL      // All containers (original behavior)
+}
+
+/**
  * Renders fixed UI elements from theme configuration.
  * Falls back to default positioning if no fixed containers are defined.
+ * 
+ * @param position Filter which containers to render based on their visual position.
+ *                 This enables rendering top elements before the main content and
+ *                 bottom elements after, ensuring proper focus traversal order.
  */
 @Composable
 fun BoxScope.RenderFixedElements(
@@ -58,25 +148,40 @@ fun BoxScope.RenderFixedElements(
     callbacks: FixedElementCallbacks,
     accountButtonContent: @Composable (iconSize: Dp) -> Unit,
     searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
+    position: FixedContainerPosition = FixedContainerPosition.ALL,
 ) {
     if (fixedContainers.isEmpty()) {
         // Fallback to default positioning when no fixed containers are defined
-        RenderDefaultFixedElements(
-            state = state,
-            listState = listState,
-            themeName = themeName,
-            callbacks = callbacks,
-            accountButtonContent = accountButtonContent,
-            searchBarContent = searchBarContent,
-        )
+        // Render when ALL is requested, or when TOP is requested (since we render top first in split mode)
+        if (position == FixedContainerPosition.ALL || position == FixedContainerPosition.TOP) {
+            RenderDefaultFixedElements(
+                state = state,
+                listState = listState,
+                themeName = themeName,
+                callbacks = callbacks,
+                accountButtonContent = accountButtonContent,
+                searchBarContent = searchBarContent,
+            )
+        }
         return
     }
 
     // Determine current orientation for visibility filtering (centralized)
     val isPortrait = rememberIsPortrait()
 
+    // Filter containers based on requested position
+    val containersToRender = when (position) {
+        FixedContainerPosition.TOP -> fixedContainers.filter { 
+            it.id.contains("top", ignoreCase = true) 
+        }
+        FixedContainerPosition.BOTTOM -> fixedContainers.filter { 
+            it.id.contains("bottom", ignoreCase = true) 
+        }
+        FixedContainerPosition.ALL -> fixedContainers
+    }
+
     // Render each fixed container with optional background
-    fixedContainers.forEach { container ->
+    containersToRender.forEach { container ->
         // Check container visibility first - skip entire container if not visible
         if (!container.visibility.isVisible(isPortrait)) return@forEach
         
@@ -209,19 +314,24 @@ private fun BoxScope.RenderFixedElement(
             val bgColor = element.backgroundColor?.let { Color(it) }
             val radius = element.borderRadius
             val expandedWidth = dimToDp(element.size.width, parentWidth, parentHeight)
+            val highlightStyle = element.toHighlightStyle()
             
             // Check if anchor is on the right side
             val isAnchorRight = element.anchor == Anchor.TOP_RIGHT ||
                 element.anchor == Anchor.CENTER_RIGHT ||
                 element.anchor == Anchor.BOTTOM_RIGHT
             
-            // Create style from theme element
+            // Create style from theme element with highlight properties
             val searchStyle = app.gamenative.ui.screen.library.components.SearchBarStyle(
                 backgroundColor = bgColor,
                 borderRadius = radius,
                 collapsible = element.collapsible,
                 anchorRight = isAnchorRight,
                 expandedWidth = expandedWidth,
+                highlightColor = highlightStyle.color,
+                highlightOpacity = highlightStyle.opacity,
+                highlightBorderWidth = highlightStyle.borderWidth,
+                highlightTransitionSpeed = highlightStyle.transitionSpeed,
             )
             
             Box(
@@ -241,8 +351,11 @@ private fun BoxScope.RenderFixedElement(
             val buttonSize = element.size.dp
             val buttonPadding = element.padding.dp
             val iconSize = element.iconSize.dp
+            val highlightStyle = element.toHighlightStyle()
             
-            Box(
+            HighlightableBox(
+                highlightStyle = highlightStyle,
+                cornerRadius = radius,
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
@@ -250,41 +363,59 @@ private fun BoxScope.RenderFixedElement(
                     .clip(RoundedCornerShape(radius))
                     .background(bgColor)
                     .padding(buttonPadding),
-                contentAlignment = Alignment.Center
             ) {
-                accountButtonContent(iconSize)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    accountButtonContent(iconSize)
+                }
             }
         }
 
         is FixedElement.FilterButton -> {
             if (!callbacks.isSearching) {
-                ExtendedFloatingActionButton(
-                    text = { Text(text = "Filters") },
-                    icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
-                    expanded = element.expanded && callbacks.filterExpanded,
-                    onClick = callbacks.onFilterClick,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                val highlightStyle = element.toHighlightStyle()
+                HighlightableBox(
+                    highlightStyle = highlightStyle,
+                    cornerRadius = 16.dp, // Material FAB default radius
                     modifier = Modifier
                         .align(alignment)
                         .offset(x = offsetX, y = offsetY)
-                )
+                ) {
+                    ExtendedFloatingActionButton(
+                        modifier = Modifier.focusable(), // Ensure FAB is focusable for controller
+                        text = { Text(text = "Filters") },
+                        icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
+                        expanded = element.expanded && callbacks.filterExpanded,
+                        onClick = callbacks.onFilterClick,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
             }
         }
 
         is FixedElement.AddButton -> {
-            FloatingActionButton(
-                onClick = callbacks.onAddClick,
-                containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
+            val highlightStyle = element.toHighlightStyle()
+            HighlightableBox(
+                highlightStyle = highlightStyle,
+                cornerRadius = 16.dp, // Material FAB default radius
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add custom game",
-                )
+                FloatingActionButton(
+                    modifier = Modifier.focusable(), // Ensure FAB is focusable for controller
+                    onClick = callbacks.onAddClick,
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add custom game",
+                    )
+                }
             }
             }
         }

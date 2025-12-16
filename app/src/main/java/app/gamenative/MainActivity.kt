@@ -60,6 +60,13 @@ class MainActivity : ComponentActivity() {
         private var currentOrientationChangeValue: Int = 0
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
 
+        // Configuration state to trigger Compose recomposition
+        // This is needed because android:configChanges prevents automatic recreation
+        // and LocalConfiguration doesn't update automatically
+        val configurationChangeCounter = mutableStateOf(0)
+        val currentOrientation = mutableStateOf(Configuration.ORIENTATION_UNDEFINED)
+        val currentScreenWidthDp = mutableStateOf(0)
+
         // Store pending launch request to be processed after UI is ready
         @Volatile
         private var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null
@@ -128,6 +135,11 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        
+        // Initialize configuration state for Compose
+        val config = resources.configuration
+        currentOrientation.value = config.orientation
+        currentScreenWidthDp.value = config.screenWidthDp
 
         // Initialize the controller management system
         ControllerManager.getInstance().init(getApplicationContext());
@@ -339,7 +351,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Log.d("MainActivity", "Requested orientation: $requestedOrientation => ${Orientation.fromActivityInfoValue(requestedOrientation)}")
+        // Update configuration state to trigger Compose recomposition
+        // This is needed because LocalConfiguration doesn't update with android:configChanges
+        currentOrientation.value = newConfig.orientation
+        currentScreenWidthDp.value = newConfig.screenWidthDp
+        configurationChangeCounter.value++
     }
 
     private fun startOrientator() {
