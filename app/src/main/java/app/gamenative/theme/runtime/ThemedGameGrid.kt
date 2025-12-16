@@ -29,9 +29,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -236,6 +238,9 @@ fun ThemedGameCarousel(
         // Focus requester for controller navigation
         val focusRequester = remember { FocusRequester() }
         
+        // Focus manager for moving focus to other elements (e.g., bottom buttons)
+        val focusManager = LocalFocusManager.current
+        
         // Track if carousel has focus (for fading effect)
         // Default to TRUE - carousel is considered focused until explicitly unfocused
         var carouselHasFocus by remember { mutableStateOf(true) }
@@ -338,6 +343,16 @@ fun ThemedGameCarousel(
                                         pagerState.animateScrollToPage(pagerState.currentPage + 1)
                                     }
                                 }
+                                true
+                            }
+                            Key.DirectionDown -> {
+                                // Move focus to elements below (e.g., bottom buttons)
+                                focusManager.moveFocus(FocusDirection.Down)
+                                true
+                            }
+                            Key.DirectionUp -> {
+                                // Move focus to elements above (e.g., search bar, profile)
+                                focusManager.moveFocus(FocusDirection.Up)
                                 true
                             }
                             Key.Enter, Key.DirectionCenter, Key.ButtonA -> {

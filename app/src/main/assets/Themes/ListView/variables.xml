@@ -9,7 +9,7 @@
     <var name="separatorColor" value="#22FFFFFF" />
     
     <!-- Highlight styling for controller navigation -->
-    <var name="highlightColor" value="#4CAF50" />
+    <var name="highlightColor" value="#9575CD" />
     <var name="highlightOpacity" value="0.9" />
     <var name="highlightBorderWidth" value="2" />
     <var name="highlightTransitionSpeed" value="200" />

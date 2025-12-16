@@ -4,8 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -100,10 +98,9 @@ private fun HighlightableBox(
     
     Box(
         modifier = modifier
-            // Use focusGroup to make this box a focus group that can track child focus
-            .focusGroup()
+            // Track focus on this element or any child for highlight border
+            // Don't use focusGroup() as it can interfere with focus traversal
             .onFocusChanged { focusState ->
-                // hasFocus is true if this element or any child has focus
                 hasFocus = focusState.hasFocus
             }
             .then(
@@ -383,8 +380,8 @@ private fun BoxScope.RenderFixedElement(
                         .align(alignment)
                         .offset(x = offsetX, y = offsetY)
                 ) {
+                    // FABs are focusable by default - no extra focusable() modifier needed
                     ExtendedFloatingActionButton(
-                        modifier = Modifier.focusable(), // Ensure FAB is focusable for controller
                         text = { Text(text = "Filters") },
                         icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
                         expanded = element.expanded && callbacks.filterExpanded,
@@ -405,8 +402,8 @@ private fun BoxScope.RenderFixedElement(
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
             ) {
+                // FABs are focusable by default - no extra focusable() modifier needed
                 FloatingActionButton(
-                    modifier = Modifier.focusable(), // Ensure FAB is focusable for controller
                     onClick = callbacks.onAddClick,
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
