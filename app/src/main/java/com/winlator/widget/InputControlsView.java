@@ -73,10 +73,6 @@ public class InputControlsView extends View {
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
-    public void setOnOpenNavigationMenu(Runnable callback) {
-        this.onOpenNavigationMenu = callback;
-    }
-
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
         invalidate(); // Trigger redraw to show/hide grid background immediately
