@@ -90,7 +90,10 @@ import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.theme.runtime.FixedElementCallbacks
+import app.gamenative.theme.runtime.LocalSpatialFocusManager
 import app.gamenative.theme.runtime.RenderFixedElements
+import app.gamenative.theme.runtime.SpatialFocusManager
+import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.EnumSet
@@ -268,6 +271,11 @@ private fun LibraryScreenContent(
                 // Key on orientation to force full recomposition when orientation changes
                 // This ensures all positioning from theme breakpoints is properly applied
                 key(orientationKey, reloadTick) {
+                // Create spatial focus manager for position-based controller navigation
+                val spatialFocusManager = remember { SpatialFocusManager() }
+                
+                // Provide spatial focus manager to all themed components
+                CompositionLocalProvider(LocalSpatialFocusManager provides spatialFocusManager) {
                 // Render themed layout using the Theme Engine (experimental)
                 val cards = remember(def.cards, reloadTick) { def.cards.associateBy { it.id } }
 
@@ -493,6 +501,7 @@ private fun LibraryScreenContent(
                     searchBarContent = searchBarContent,
                     position = app.gamenative.theme.runtime.FixedContainerPosition.BOTTOM,
                 )
+                } // end CompositionLocalProvider
                 } // end key(orientationKey)
             } else {
                 // Legacy interactive Library list

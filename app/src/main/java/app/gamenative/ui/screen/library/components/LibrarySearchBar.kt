@@ -50,6 +50,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import app.gamenative.theme.runtime.LocalSpatialFocusManager
+import app.gamenative.theme.runtime.SpatialFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -87,6 +91,8 @@ data class SearchBarStyle(
     val highlightBorderWidth: Dp = 2.dp,
     /** Highlight transition animation duration in milliseconds. */
     val highlightTransitionSpeed: Int = 200,
+    /** Unique element ID for spatial focus navigation (theme-only). */
+    val elementId: String = "search-bar",
 )
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
@@ -99,8 +105,11 @@ internal fun LibrarySearchBar(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val internalSearchText = remember { MutableStateFlow(state.searchQuery) }
-    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
+    
+    // Spatial focus manager for position-based navigation (null in non-theme mode)
+    val spatialFocusManager = LocalSpatialFocusManager.current
 
     val scope = rememberCoroutineScope()
 
@@ -175,11 +184,22 @@ internal fun LibrarySearchBar(
                     Modifier.fillMaxWidth()
                 }
             )
+            // Register with spatial focus manager for position-based navigation
+            .onGloballyPositioned { coordinates ->
+                spatialFocusManager?.register(
+                    id = style.elementId,
+                    bounds = coordinates.boundsInRoot(),
+                    focusRequester = focusRequester
+                )
+            }
             // Use focusGroup to track child focus for highlight border
             .focusGroup()
             .onFocusChanged { focusState ->
                 // Update isFocused when any child gains/loses focus
                 isFocused = focusState.hasFocus
+                if (focusState.hasFocus) {
+                    spatialFocusManager?.setFocused(style.elementId)
+                }
             }
             .then(highlightBorderModifier)
             .clickable(
@@ -209,21 +229,50 @@ internal fun LibrarySearchBar(
                             .size(iconSize)
                             .clip(RoundedCornerShape(cornerRadius))
                             .background(bgColor)
+                            .focusRequester(focusRequester)
                             .focusable()
                             .onFocusChanged { focusState ->
                                 // Only update highlight state, don't expand
                                 isFocused = focusState.isFocused || focusState.hasFocus
+                                if (focusState.isFocused) {
+                                    spatialFocusManager?.setFocused(style.elementId)
+                                }
                             }
                             .onKeyEvent { keyEvent ->
-                                // Activate on Enter/A button press
                                 if (keyEvent.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
                                     when (keyEvent.key) {
+                                        // Activate on Enter/A button press
                                         androidx.compose.ui.input.key.Key.Enter,
                                         androidx.compose.ui.input.key.Key.DirectionCenter,
                                         androidx.compose.ui.input.key.Key.ButtonA -> {
                                             allowFocusing.value = true
                                             isActivated = true
                                             true
+                                        }
+                                        // Handle D-pad navigation using spatial focus manager
+                                        androidx.compose.ui.input.key.Key.DirectionUp -> {
+                                            spatialFocusManager?.navigateInDirection(
+                                                style.elementId,
+                                                SpatialFocusManager.Direction.UP
+                                            ) ?: false
+                                        }
+                                        androidx.compose.ui.input.key.Key.DirectionDown -> {
+                                            spatialFocusManager?.navigateInDirection(
+                                                style.elementId,
+                                                SpatialFocusManager.Direction.DOWN
+                                            ) ?: false
+                                        }
+                                        androidx.compose.ui.input.key.Key.DirectionLeft -> {
+                                            spatialFocusManager?.navigateInDirection(
+                                                style.elementId,
+                                                SpatialFocusManager.Direction.LEFT
+                                            ) ?: false
+                                        }
+                                        androidx.compose.ui.input.key.Key.DirectionRight -> {
+                                            spatialFocusManager?.navigateInDirection(
+                                                style.elementId,
+                                                SpatialFocusManager.Direction.RIGHT
+                                            ) ?: false
                                         }
                                         else -> false
                                     }

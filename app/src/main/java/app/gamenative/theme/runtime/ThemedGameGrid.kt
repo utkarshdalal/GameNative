@@ -29,11 +29,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -238,8 +238,8 @@ fun ThemedGameCarousel(
         // Focus requester for controller navigation
         val focusRequester = remember { FocusRequester() }
         
-        // Focus manager for moving focus to other elements (e.g., bottom buttons)
-        val focusManager = LocalFocusManager.current
+        // Spatial focus manager for directional navigation based on screen position
+        val spatialFocusManager = LocalSpatialFocusManager.current
         
         // Track if carousel has focus (for fading effect)
         // Default to TRUE - carousel is considered focused until explicitly unfocused
@@ -322,6 +322,7 @@ fun ThemedGameCarousel(
                     // Once we've gained focus, mark it so we know future unfocus is intentional
                     if (nowHasFocus) {
                         hasEverHadFocus = true
+                        spatialFocusManager?.setFocused("carousel")
                     }
                 }
                 // Apply alpha AFTER focus setup so changes are visible
@@ -346,14 +347,18 @@ fun ThemedGameCarousel(
                                 true
                             }
                             Key.DirectionDown -> {
-                                // Move focus to elements below (e.g., bottom buttons)
-                                focusManager.moveFocus(FocusDirection.Down)
-                                true
+                                // Move focus to elements below using spatial navigation
+                                spatialFocusManager?.navigateInDirection(
+                                    "carousel", 
+                                    SpatialFocusManager.Direction.DOWN
+                                ) ?: false
                             }
                             Key.DirectionUp -> {
-                                // Move focus to elements above (e.g., search bar, profile)
-                                focusManager.moveFocus(FocusDirection.Up)
-                                true
+                                // Move focus to elements above using spatial navigation
+                                spatialFocusManager?.navigateInDirection(
+                                    "carousel", 
+                                    SpatialFocusManager.Direction.UP
+                                ) ?: false
                             }
                             Key.Enter, Key.DirectionCenter, Key.ButtonA -> {
                                 items.getOrNull(pagerState.currentPage)?.let { onItemClick(it) }
@@ -372,7 +377,15 @@ fun ThemedGameCarousel(
                 state = pagerState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(scaledItemHeight),
+                    .height(scaledItemHeight)
+                    // Register with spatial focus manager using actual pager bounds (not full-screen Column)
+                    .onGloballyPositioned { coordinates ->
+                        spatialFocusManager?.register(
+                            id = "carousel",
+                            bounds = coordinates.boundsInRoot(),
+                            focusRequester = focusRequester
+                        )
+                    },
                 contentPadding = PaddingValues(horizontal = horizontalContentPadding),
                 pageSpacing = spacing,
                 flingBehavior = PagerDefaults.flingBehavior(state = pagerState),

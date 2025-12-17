@@ -19,8 +19,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -77,14 +86,27 @@ private fun FixedElement.toHighlightStyle(): HighlightStyle = HighlightStyle(
  * A composable wrapper that adds animated highlight border indication for controller navigation.
  * Used only for themed fixed elements (not default layout).
  * Uses hasFocus to detect focus on any descendant (like buttons inside).
+ * 
+ * When a SpatialFocusManager is available (via LocalSpatialFocusManager), this box
+ * registers itself for spatial navigation and handles D-pad key events.
+ * 
+ * @param id Unique identifier for spatial navigation registration
+ * @param highlightStyle Visual styling for the highlight border
+ * @param cornerRadius Border corner radius
+ * @param modifier Additional modifiers
+ * @param content The content to render inside the box
  */
 @Composable
 private fun HighlightableBox(
+    id: String,
     highlightStyle: HighlightStyle,
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val spatialFocusManager = LocalSpatialFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    
     // Use hasFocus to detect focus on this element OR any descendant
     var hasFocus by remember { mutableStateOf(false) }
     
@@ -98,10 +120,40 @@ private fun HighlightableBox(
     
     Box(
         modifier = modifier
+            .focusRequester(focusRequester)
+            // Register with spatial focus manager when positioned
+            .onGloballyPositioned { coordinates ->
+                spatialFocusManager?.register(
+                    id = id,
+                    bounds = coordinates.boundsInRoot(),
+                    focusRequester = focusRequester
+                )
+            }
             // Track focus on this element or any child for highlight border
-            // Don't use focusGroup() as it can interfere with focus traversal
             .onFocusChanged { focusState ->
                 hasFocus = focusState.hasFocus
+                if (focusState.hasFocus) {
+                    spatialFocusManager?.setFocused(id)
+                }
+            }
+            // Handle D-pad navigation using spatial focus manager
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown && spatialFocusManager != null) {
+                    val direction = when (keyEvent.key) {
+                        Key.DirectionUp -> SpatialFocusManager.Direction.UP
+                        Key.DirectionDown -> SpatialFocusManager.Direction.DOWN
+                        Key.DirectionLeft -> SpatialFocusManager.Direction.LEFT
+                        Key.DirectionRight -> SpatialFocusManager.Direction.RIGHT
+                        else -> null
+                    }
+                    if (direction != null) {
+                        spatialFocusManager.navigateInDirection(id, direction)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
             }
             .then(
                 if (highlightAlpha > 0f) {
@@ -209,10 +261,13 @@ fun BoxScope.RenderFixedElements(
             )
         }
         
-        // Render visible elements
-        visibleElements.forEach { element ->
+        // Render visible elements with unique IDs for spatial focus navigation
+        visibleElements.forEachIndexed { index, element ->
+            // Generate unique ID based on container, element type, and index
+            val elementId = generateElementId(container.id, element, index)
             RenderFixedElement(
                 element = element,
+                elementId = elementId,
                 state = state,
                 listState = listState,
                 themeName = themeName,
@@ -224,9 +279,25 @@ fun BoxScope.RenderFixedElements(
     }
 }
 
+/**
+ * Generate a unique ID for a fixed element for spatial focus navigation.
+ * Uses container ID, element type, and index to ensure uniqueness.
+ */
+private fun generateElementId(containerId: String, element: FixedElement, index: Int): String {
+    val typePrefix = when (element) {
+        is FixedElement.Header -> "header"
+        is FixedElement.SearchBar -> "search-bar"
+        is FixedElement.ProfileButton -> "profile-button"
+        is FixedElement.FilterButton -> "filter-button"
+        is FixedElement.AddButton -> "add-button"
+    }
+    return "$containerId-$typePrefix-$index"
+}
+
 @Composable
 private fun BoxScope.RenderFixedElement(
     element: FixedElement,
+    elementId: String,
     state: LibraryState,
     listState: LazyGridState,
     themeName: String,
@@ -329,6 +400,7 @@ private fun BoxScope.RenderFixedElement(
                 highlightOpacity = highlightStyle.opacity,
                 highlightBorderWidth = highlightStyle.borderWidth,
                 highlightTransitionSpeed = highlightStyle.transitionSpeed,
+                elementId = elementId,
             )
             
             Box(
@@ -351,6 +423,7 @@ private fun BoxScope.RenderFixedElement(
             val highlightStyle = element.toHighlightStyle()
             
             HighlightableBox(
+                id = elementId,
                 highlightStyle = highlightStyle,
                 cornerRadius = radius,
                 modifier = Modifier
@@ -374,6 +447,7 @@ private fun BoxScope.RenderFixedElement(
             if (!callbacks.isSearching) {
                 val highlightStyle = element.toHighlightStyle()
                 HighlightableBox(
+                    id = elementId,
                     highlightStyle = highlightStyle,
                     cornerRadius = 16.dp, // Material FAB default radius
                     modifier = Modifier
@@ -396,6 +470,7 @@ private fun BoxScope.RenderFixedElement(
         is FixedElement.AddButton -> {
             val highlightStyle = element.toHighlightStyle()
             HighlightableBox(
+                id = elementId,
                 highlightStyle = highlightStyle,
                 cornerRadius = 16.dp, // Material FAB default radius
                 modifier = Modifier
