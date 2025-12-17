@@ -1038,15 +1038,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
 
                         // @TODO update this 2 values based on user setting of download speed
-                        val downloadRatio = 1.5 // Seems like higher value will have much better download throughput
-                        val fileWritesRatio = 0.5 // It is always better not to occupy all cpu on storage I/O, leaving rooms for UI and other tasks
+                        val downloadRatio = 1.0 // Seems like higher value will have much better download throughput
+                        val decompressRatio = 1.0 // It is always better not to occupy all cpu on storage I/O, leaving rooms for UI and other tasks
 
                         val cpuCores = Runtime.getRuntime().availableProcessors()
                         val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
-                        val maxFileWrites = (cpuCores * fileWritesRatio).toInt().coerceAtLeast(1)
+                        val maxDecompress = (cpuCores * decompressRatio).toInt().coerceAtLeast(1)
+                        val maxFileWrites = 1
 
                         Timber.i("CPU Cores: $cpuCores")
                         Timber.i("maxDownloads: $maxDownloads")
+                        Timber.i("maxDecompress: $maxDecompress")
                         Timber.i("maxFileWrites: $maxFileWrites")
 
                         // Create DepotDownloader instance
@@ -1056,6 +1058,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             debug = false,
                             androidEmulation = true,
                             maxDownloads = maxDownloads,
+                            maxDecompress = maxDecompress,
                             maxFileWrites = maxFileWrites,
                         )
 
