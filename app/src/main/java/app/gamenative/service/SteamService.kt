@@ -1039,7 +1039,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // @TODO update this 2 values based on user setting of download speed
                         val downloadRatio = 1.0 // Seems like higher value will have much better download throughput
-                        val decompressRatio = 1.0 // It is always better not to occupy all cpu on storage I/O, leaving rooms for UI and other tasks
+                        val decompressRatio = 0.5 // It is always better not to occupy all cpu on decompression, leaving rooms for UI and other tasks
 
                         val cpuCores = Runtime.getRuntime().availableProcessors()
                         val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
