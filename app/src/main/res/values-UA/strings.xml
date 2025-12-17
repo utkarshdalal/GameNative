@@ -292,7 +292,7 @@
     <string name="settings_language">Мова</string>
     <string name="settings_select_language">Обрати мову</string>
     <string name="settings_language_restart_title">Необхідний перезапуск</string>
-    <string name="settings_language_restart_message">Зміна мови потребує перезапуску. Продовжити?.</string>
+    <string name="settings_language_restart_message">Зміна мови потребує перезапуску. Продовжити?</string>
     <string name="settings_language_restart_confirm">Перезапустити</string>
     <string name="settings_language_changing">Зміна мови та перезапуск...</string>
 
