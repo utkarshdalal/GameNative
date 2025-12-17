@@ -93,6 +93,7 @@ private fun FixedElement.toHighlightStyle(): HighlightStyle = HighlightStyle(
  * @param id Unique identifier for spatial navigation registration
  * @param highlightStyle Visual styling for the highlight border
  * @param cornerRadius Border corner radius
+ * @param navigationLinks Optional explicit navigation overrides
  * @param modifier Additional modifiers
  * @param content The content to render inside the box
  */
@@ -101,6 +102,7 @@ private fun HighlightableBox(
     id: String,
     highlightStyle: HighlightStyle,
     cornerRadius: Dp,
+    navigationLinks: SpatialFocusManager.NavigationLinks = SpatialFocusManager.NavigationLinks(),
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -126,7 +128,8 @@ private fun HighlightableBox(
                 spatialFocusManager?.register(
                     id = id,
                     bounds = coordinates.boundsInRoot(),
-                    focusRequester = focusRequester
+                    focusRequester = focusRequester,
+                    navigationLinks = navigationLinks
                 )
             }
             // Track focus on this element or any child for highlight border
@@ -169,6 +172,16 @@ private fun HighlightableBox(
         content = content
     )
 }
+
+/**
+ * Create NavigationLinks from a FixedElement's navigation properties.
+ */
+private fun FixedElement.toNavigationLinks() = SpatialFocusManager.NavigationLinks(
+    up = navigateUp,
+    down = navigateDown,
+    left = navigateLeft,
+    right = navigateRight,
+)
 
 /**
  * Enum to specify which position of fixed containers to render.
@@ -261,10 +274,10 @@ fun BoxScope.RenderFixedElements(
             )
         }
         
-        // Render visible elements with unique IDs for spatial focus navigation
+        // Render visible elements with IDs for spatial focus navigation
         visibleElements.forEachIndexed { index, element ->
-            // Generate unique ID based on container, element type, and index
-            val elementId = generateElementId(container.id, element, index)
+            // Use custom navigationId if set, otherwise generate a unique ID
+            val elementId = getNavigationId(container.id, element, index)
             RenderFixedElement(
                 element = element,
                 elementId = elementId,
@@ -280,10 +293,15 @@ fun BoxScope.RenderFixedElements(
 }
 
 /**
- * Generate a unique ID for a fixed element for spatial focus navigation.
- * Uses container ID, element type, and index to ensure uniqueness.
+ * Get the navigation ID for a fixed element.
+ * Uses the custom navigationId if set, otherwise generates a unique ID
+ * based on container ID, element type, and index.
  */
-private fun generateElementId(containerId: String, element: FixedElement, index: Int): String {
+private fun getNavigationId(containerId: String, element: FixedElement, index: Int): String {
+    // Use custom navigationId if set by theme creator
+    element.navigationId?.let { return it }
+    
+    // Otherwise generate a unique ID
     val typePrefix = when (element) {
         is FixedElement.Header -> "header"
         is FixedElement.SearchBar -> "search-bar"
@@ -389,7 +407,7 @@ private fun BoxScope.RenderFixedElement(
                 element.anchor == Anchor.CENTER_RIGHT ||
                 element.anchor == Anchor.BOTTOM_RIGHT
             
-            // Create style from theme element with highlight properties
+            // Create style from theme element with highlight properties and navigation links
             val searchStyle = app.gamenative.ui.screen.library.components.SearchBarStyle(
                 backgroundColor = bgColor,
                 borderRadius = radius,
@@ -400,7 +418,11 @@ private fun BoxScope.RenderFixedElement(
                 highlightOpacity = highlightStyle.opacity,
                 highlightBorderWidth = highlightStyle.borderWidth,
                 highlightTransitionSpeed = highlightStyle.transitionSpeed,
-                elementId = elementId,
+                navigationId = elementId,
+                navigateUp = element.navigateUp,
+                navigateDown = element.navigateDown,
+                navigateLeft = element.navigateLeft,
+                navigateRight = element.navigateRight,
             )
             
             Box(
@@ -421,11 +443,13 @@ private fun BoxScope.RenderFixedElement(
             val buttonPadding = element.padding.dp
             val iconSize = element.iconSize.dp
             val highlightStyle = element.toHighlightStyle()
+            val navigationLinks = element.toNavigationLinks()
             
             HighlightableBox(
                 id = elementId,
                 highlightStyle = highlightStyle,
                 cornerRadius = radius,
+                navigationLinks = navigationLinks,
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
@@ -446,10 +470,12 @@ private fun BoxScope.RenderFixedElement(
         is FixedElement.FilterButton -> {
             if (!callbacks.isSearching) {
                 val highlightStyle = element.toHighlightStyle()
+                val navigationLinks = element.toNavigationLinks()
                 HighlightableBox(
                     id = elementId,
                     highlightStyle = highlightStyle,
                     cornerRadius = 16.dp, // Material FAB default radius
+                    navigationLinks = navigationLinks,
                     modifier = Modifier
                         .align(alignment)
                         .offset(x = offsetX, y = offsetY)
@@ -469,10 +495,12 @@ private fun BoxScope.RenderFixedElement(
 
         is FixedElement.AddButton -> {
             val highlightStyle = element.toHighlightStyle()
+            val navigationLinks = element.toNavigationLinks()
             HighlightableBox(
                 id = elementId,
                 highlightStyle = highlightStyle,
                 cornerRadius = 16.dp, // Material FAB default radius
+                navigationLinks = navigationLinks,
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)

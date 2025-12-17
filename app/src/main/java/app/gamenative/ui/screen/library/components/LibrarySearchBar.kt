@@ -91,9 +91,31 @@ data class SearchBarStyle(
     val highlightBorderWidth: Dp = 2.dp,
     /** Highlight transition animation duration in milliseconds. */
     val highlightTransitionSpeed: Int = 200,
-    /** Unique element ID for spatial focus navigation (theme-only). */
-    val elementId: String = "search-bar",
-)
+    /** 
+     * Navigation ID for this element. Used for registration with SpatialFocusManager
+     * and for navigation references from other elements.
+     */
+    val navigationId: String = "search-bar",
+    // Navigation overrides for controller navigation (theme-only)
+    /** Element navigationId to navigate to when pressing UP, null = use spatial navigation. */
+    val navigateUp: String? = null,
+    /** Element navigationId to navigate to when pressing DOWN, null = use spatial navigation. */
+    val navigateDown: String? = null,
+    /** Element navigationId to navigate to when pressing LEFT, null = use spatial navigation. */
+    val navigateLeft: String? = null,
+    /** Element navigationId to navigate to when pressing RIGHT, null = use spatial navigation. */
+    val navigateRight: String? = null,
+) {
+    /**
+     * Convert navigation properties to NavigationLinks for the SpatialFocusManager.
+     */
+    fun toNavigationLinks() = SpatialFocusManager.NavigationLinks(
+        up = navigateUp,
+        down = navigateDown,
+        left = navigateLeft,
+        right = navigateRight,
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -174,6 +196,9 @@ internal fun LibrarySearchBar(
         Modifier
     }
 
+    // Navigation links for explicit navigation overrides
+    val navigationLinks = style.toNavigationLinks()
+
     // Modern search field with rounded corners
     Box(
         modifier = Modifier
@@ -187,9 +212,10 @@ internal fun LibrarySearchBar(
             // Register with spatial focus manager for position-based navigation
             .onGloballyPositioned { coordinates ->
                 spatialFocusManager?.register(
-                    id = style.elementId,
+                    id = style.navigationId,
                     bounds = coordinates.boundsInRoot(),
-                    focusRequester = focusRequester
+                    focusRequester = focusRequester,
+                    navigationLinks = navigationLinks
                 )
             }
             // Use focusGroup to track child focus for highlight border
@@ -198,7 +224,7 @@ internal fun LibrarySearchBar(
                 // Update isFocused when any child gains/loses focus
                 isFocused = focusState.hasFocus
                 if (focusState.hasFocus) {
-                    spatialFocusManager?.setFocused(style.elementId)
+                    spatialFocusManager?.setFocused(style.navigationId)
                 }
             }
             .then(highlightBorderModifier)
@@ -235,7 +261,7 @@ internal fun LibrarySearchBar(
                                 // Only update highlight state, don't expand
                                 isFocused = focusState.isFocused || focusState.hasFocus
                                 if (focusState.isFocused) {
-                                    spatialFocusManager?.setFocused(style.elementId)
+                                    spatialFocusManager?.setFocused(style.navigationId)
                                 }
                             }
                             .onKeyEvent { keyEvent ->
@@ -252,25 +278,25 @@ internal fun LibrarySearchBar(
                                         // Handle D-pad navigation using spatial focus manager
                                         androidx.compose.ui.input.key.Key.DirectionUp -> {
                                             spatialFocusManager?.navigateInDirection(
-                                                style.elementId,
+                                                style.navigationId,
                                                 SpatialFocusManager.Direction.UP
                                             ) ?: false
                                         }
                                         androidx.compose.ui.input.key.Key.DirectionDown -> {
                                             spatialFocusManager?.navigateInDirection(
-                                                style.elementId,
+                                                style.navigationId,
                                                 SpatialFocusManager.Direction.DOWN
                                             ) ?: false
                                         }
                                         androidx.compose.ui.input.key.Key.DirectionLeft -> {
                                             spatialFocusManager?.navigateInDirection(
-                                                style.elementId,
+                                                style.navigationId,
                                                 SpatialFocusManager.Direction.LEFT
                                             ) ?: false
                                         }
                                         androidx.compose.ui.input.key.Key.DirectionRight -> {
                                             spatialFocusManager?.navigateInDirection(
-                                                style.elementId,
+                                                style.navigationId,
                                                 SpatialFocusManager.Direction.RIGHT
                                             ) ?: false
                                         }
@@ -360,55 +386,55 @@ internal fun LibrarySearchBar(
             }
         } else {
             // Non-collapsible mode - always show full search field
-            TextField(
-                value = state.searchQuery,
-                onValueChange = onSearchText,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+        TextField(
+            value = state.searchQuery,
+            onValueChange = onSearchText,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
                     .clip(RoundedCornerShape(cornerRadius))
                     .focusable(allowFocusing.value)
                     .focusRequester(focusRequester)
                     .onFocusChanged { focusState ->
                         isFocused = focusState.isFocused
                     },
-                placeholder = {
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            placeholder = {
+                Text(
+                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            trailingIcon = {
+                if (state.searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onSearchText("") },
+                        content = {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    if (state.searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = { onSearchText("") },
-                            content = {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        )
-                    }
-                },
-                colors = TextFieldDefaults.colors(
+                }
+            },
+            colors = TextFieldDefaults.colors(
                     focusedContainerColor = bgColor,
                     unfocusedContainerColor = bgColor,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
-            )
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+        )
         }
     }
 

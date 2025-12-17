@@ -41,6 +41,21 @@ sealed class FixedElement {
     abstract val highlightBorderWidth: Float
     /** Highlight transition animation duration in milliseconds. */
     abstract val highlightTransitionSpeed: Int
+    
+    // Navigation configuration for controller navigation
+    /** 
+     * Custom navigation ID for this element. Used for navigation references (navigateUp/Down/Left/Right).
+     * If null, an auto-generated ID is used internally, but cannot be referenced by other elements.
+     */
+    abstract val navigationId: String?
+    /** Element navigationId to navigate to when pressing UP, null = use spatial navigation. */
+    abstract val navigateUp: String?
+    /** Element navigationId to navigate to when pressing DOWN, null = use spatial navigation. */
+    abstract val navigateDown: String?
+    /** Element navigationId to navigate to when pressing LEFT, null = use spatial navigation. */
+    abstract val navigateLeft: String?
+    /** Element navigationId to navigate to when pressing RIGHT, null = use spatial navigation. */
+    abstract val navigateRight: String?
 
     /**
      * App header showing app name, theme name, and game count.
@@ -53,6 +68,11 @@ sealed class FixedElement {
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
         override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
         /** Text color (ARGB). */
         val textColor: Int = 0xFFFFFFFF.toInt(),
         /** Whether to show the app name. */
@@ -74,6 +94,11 @@ sealed class FixedElement {
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
         override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
         /** Size of the search bar. */
         val size: DimSize,
         /** Background color (ARGB), null for default. */
@@ -95,6 +120,11 @@ sealed class FixedElement {
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
         override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
         /** Size of the button container in pixels. */
         val size: Float = 48f,
         /** Size of the icon inside the button in pixels. */
@@ -118,6 +148,11 @@ sealed class FixedElement {
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
         override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
         /** Whether to show expanded text label. */
         val expanded: Boolean = true,
     ) : FixedElement()
@@ -133,6 +168,11 @@ sealed class FixedElement {
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
         override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
     ) : FixedElement()
 }
 

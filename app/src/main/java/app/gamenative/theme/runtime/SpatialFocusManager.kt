@@ -16,10 +16,22 @@ import timber.log.Timber
  */
 class SpatialFocusManager {
     
+    /**
+     * Explicit navigation overrides for an element.
+     * When set, these take priority over spatial navigation.
+     */
+    data class NavigationLinks(
+        val up: String? = null,
+        val down: String? = null,
+        val left: String? = null,
+        val right: String? = null,
+    )
+    
     data class FocusableElement(
         val id: String,
         val bounds: Rect,
-        val focusRequester: FocusRequester
+        val focusRequester: FocusRequester,
+        val navigationLinks: NavigationLinks = NavigationLinks()
     )
     
     enum class Direction {
@@ -32,10 +44,20 @@ class SpatialFocusManager {
     /**
      * Register a focusable element with its screen bounds.
      * Should be called from onGloballyPositioned modifier.
+     * 
+     * @param id Unique identifier for the element
+     * @param bounds Screen bounds of the element
+     * @param focusRequester FocusRequester to request focus on this element
+     * @param navigationLinks Optional explicit navigation overrides
      */
-    fun register(id: String, bounds: Rect, focusRequester: FocusRequester) {
-        elements[id] = FocusableElement(id, bounds, focusRequester)
-        Timber.tag(TAG).d("Registered '$id' at bounds: left=${bounds.left.toInt()}, top=${bounds.top.toInt()}, right=${bounds.right.toInt()}, bottom=${bounds.bottom.toInt()}")
+    fun register(
+        id: String,
+        bounds: Rect,
+        focusRequester: FocusRequester,
+        navigationLinks: NavigationLinks = NavigationLinks()
+    ) {
+        elements[id] = FocusableElement(id, bounds, focusRequester, navigationLinks)
+        Timber.tag(TAG).d("Registered '$id' at bounds: left=${bounds.left.toInt()}, top=${bounds.top.toInt()}, right=${bounds.right.toInt()}, bottom=${bounds.bottom.toInt()}, links=${navigationLinks}")
     }
     
     /**
@@ -62,6 +84,7 @@ class SpatialFocusManager {
     
     /**
      * Navigate from the specified element in the given direction.
+     * First checks for explicit navigation links, then falls back to spatial navigation.
      * Returns true if navigation was successful.
      */
     fun navigateInDirection(fromId: String, direction: Direction): Boolean {
@@ -72,20 +95,52 @@ class SpatialFocusManager {
         
         Timber.tag(TAG).d("Navigate from '$fromId' $direction (bounds: ${fromElement.bounds})")
         
+        // Check for explicit navigation link first
+        val explicitTargetId = getExplicitTarget(fromElement, direction)
+        if (explicitTargetId != null) {
+            val explicitTarget = elements[explicitTargetId]
+            if (explicitTarget != null) {
+                Timber.tag(TAG).d("Using explicit navigation link to '$explicitTargetId'")
+                return requestFocusOn(explicitTarget)
+            } else {
+                Timber.tag(TAG).w("Explicit navigation target '$explicitTargetId' not found, falling back to spatial")
+            }
+        }
+        
+        // Fall back to spatial navigation
         val target = findNearestInDirection(fromElement.bounds, direction, fromId)
         
         return if (target != null) {
-            Timber.tag(TAG).d("Found target '${target.id}' for $direction navigation")
-            try {
-                target.focusRequester.requestFocus()
-                currentFocusedId = target.id
-                true
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "Failed to request focus on '${target.id}'")
-                false
-            }
+            Timber.tag(TAG).d("Found target '${target.id}' for $direction navigation (spatial)")
+            requestFocusOn(target)
         } else {
             Timber.tag(TAG).d("No target found for $direction navigation from '$fromId'")
+            false
+        }
+    }
+    
+    /**
+     * Get the explicit navigation target ID for the given direction, if set.
+     */
+    private fun getExplicitTarget(element: FocusableElement, direction: Direction): String? {
+        return when (direction) {
+            Direction.UP -> element.navigationLinks.up
+            Direction.DOWN -> element.navigationLinks.down
+            Direction.LEFT -> element.navigationLinks.left
+            Direction.RIGHT -> element.navigationLinks.right
+        }
+    }
+    
+    /**
+     * Request focus on the target element.
+     */
+    private fun requestFocusOn(target: FocusableElement): Boolean {
+        return try {
+            target.focusRequester.requestFocus()
+            currentFocusedId = target.id
+            true
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to request focus on '${target.id}'")
             false
         }
     }

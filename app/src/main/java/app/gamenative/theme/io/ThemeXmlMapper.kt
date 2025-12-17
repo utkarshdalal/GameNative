@@ -120,6 +120,11 @@ object ThemeXmlMapper {
         val highlightOpacity: Float,
         val highlightBorderWidth: Float,
         val highlightTransitionSpeed: Int,
+        val navigationId: String?,
+        val navigateUp: String?,
+        val navigateDown: String?,
+        val navigateLeft: String?,
+        val navigateRight: String?,
     )
     
     /** Extract common base properties from an XML node for fixed elements. */
@@ -131,6 +136,11 @@ object ThemeXmlMapper {
         highlightOpacity = resolveFloat(n, "highlightOpacity", 0.8f, tree),
         highlightBorderWidth = resolveFloat(n, "highlightBorderWidth", 2f, tree),
         highlightTransitionSpeed = resolveInt(n, "highlightTransitionSpeed", tree) ?: 200,
+        navigationId = n.attributes["navigationId"],
+        navigateUp = n.attributes["navigateUp"],
+        navigateDown = n.attributes["navigateDown"],
+        navigateLeft = n.attributes["navigateLeft"],
+        navigateRight = n.attributes["navigateRight"],
     )
 
     private fun parseFixedElement(n: XmlNode, tree: ThemeTree): FixedElement? {
@@ -145,6 +155,11 @@ object ThemeXmlMapper {
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
                 highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
                 textColor = resolveColorAttr(n, "textColor", tree) ?: 0xFFFFFFFF.toInt(),
                 showAppName = n.attributes["showAppName"]?.toBooleanStrictOrNull() 
                     ?: n.children.any { it.name.equals("appName", true) && it.attributes["visible"]?.toBooleanStrictOrNull() != false }
@@ -164,6 +179,11 @@ object ThemeXmlMapper {
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
                 highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
                 size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(400f), Dimension.Px(48f)),
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
                 borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
@@ -177,6 +197,11 @@ object ThemeXmlMapper {
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
                 highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
                 size = resolveFloat(n, "size", 48f, tree),
                 iconSize = resolveFloat(n, "iconSize", 24f, tree),
                 padding = resolveFloat(n, "padding", 8f, tree),
@@ -191,6 +216,11 @@ object ThemeXmlMapper {
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
                 highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
                 expanded = n.attributes["expanded"]?.toBooleanStrictOrNull() ?: true,
             )
             "addbutton" -> FixedElement.AddButton(
@@ -201,6 +231,11 @@ object ThemeXmlMapper {
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
                 highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
             )
             else -> null
         }
