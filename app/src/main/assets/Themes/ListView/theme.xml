@@ -1,6 +1,6 @@
 <theme>
     <!-- Compact top bar with header, search, and profile in one row -->
-    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}">
+    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}" zIndex="100">
         <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
@@ -17,9 +17,11 @@
     <!-- Bottom action buttons -->
     <fixed id="bottomBar">
         <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true"
+                      cornerRadius="16" size="56" iconSize="24"
                       highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                       highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
         <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight"
+                   cornerRadius="16" size="56" iconSize="24"
                    highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                    highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>

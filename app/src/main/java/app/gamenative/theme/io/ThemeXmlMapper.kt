@@ -99,12 +99,16 @@ object ThemeXmlMapper {
             val backgroundColor = resolveColorAttr(containerNode, "backgroundColor", tree)
             val height = resolveFloatOrNull(containerNode, "height", tree)
             val visibility = Visibility.fromString(containerNode.attributes["visibility"])
+            val padding = resolveStringAttr(containerNode, "padding", tree)
+            val cornerRadius = resolveFloat(containerNode, "cornerRadius", 0f, tree)
             FixedContainer(
                 id = id, 
                 elements = elements, 
                 backgroundColor = backgroundColor, 
                 height = height,
                 visibility = visibility,
+                padding = padding,
+                cornerRadius = cornerRadius,
             )
         }
     }
@@ -170,6 +174,12 @@ object ThemeXmlMapper {
                 showGameCount = n.attributes["showGameCount"]?.toBooleanStrictOrNull()
                     ?: n.children.any { it.name.equals("gameCount", true) && it.attributes["visible"]?.toBooleanStrictOrNull() != false }
                     ?: true,
+                size = sizeResolved(n, tree),
+                backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
+                cornerRadius = resolveFloat(n, "cornerRadius", 0f, tree),
+                padding = resolveFloat(n, "padding", 8f, tree),
+                textSize = resolveFloat(n, "textSize", 14f, tree),
+                fontWeight = n.attributes["fontWeight"] ?: "bold",
             )
             "searchbar" -> FixedElement.SearchBar(
                 position = base.position,
@@ -222,6 +232,11 @@ object ThemeXmlMapper {
                 navigateLeft = base.navigateLeft,
                 navigateRight = base.navigateRight,
                 expanded = n.attributes["expanded"]?.toBooleanStrictOrNull() ?: true,
+                size = resolveFloat(n, "size", 56f, tree),
+                iconSize = resolveFloat(n, "iconSize", 24f, tree),
+                backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
+                iconColor = resolveColorAttr(n, "iconColor", tree),
+                cornerRadius = resolveFloat(n, "cornerRadius", 16f, tree),
             )
             "addbutton" -> FixedElement.AddButton(
                 position = base.position,
@@ -236,6 +251,52 @@ object ThemeXmlMapper {
                 navigateDown = base.navigateDown,
                 navigateLeft = base.navigateLeft,
                 navigateRight = base.navigateRight,
+                size = resolveFloat(n, "size", 56f, tree),
+                iconSize = resolveFloat(n, "iconSize", 24f, tree),
+                backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
+                iconColor = resolveColorAttr(n, "iconColor", tree),
+                cornerRadius = resolveFloat(n, "cornerRadius", 16f, tree),
+            )
+            "image" -> FixedElement.Image(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(100f), Dimension.Px(100f)),
+                src = resolveStringAttr(n, "src", tree) ?: "",
+                scaleType = n.attributes["scaleType"] ?: "cover",
+                cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+                opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
+            "video" -> FixedElement.Video(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(200f), Dimension.Px(150f)),
+                src = resolveStringAttr(n, "src", tree) ?: "",
+                poster = resolveStringAttr(n, "poster", tree),
+                autoplay = n.attributes["autoplay"]?.toBooleanStrictOrNull() ?: false,
+                loop = n.attributes["loop"]?.toBooleanStrictOrNull() ?: true,
+                muted = n.attributes["muted"]?.toBooleanStrictOrNull() ?: true,
+                cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+                opacity = resolveFloat(n, "opacity", 1f, tree),
             )
             else -> null
         }
@@ -320,7 +381,7 @@ object ThemeXmlMapper {
                 },
                 fallbackImage = stringBinding(n.attributes["fallbackImage"]),
             ),
-            cornerRadius = floatBindingResolved(n.attributes["cornerRadius"], tree),
+            cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
         )
         // Support both "rect" (new) and "overlay" (legacy) for rectangle shapes
         "rect", "overlay" -> Layer.RectLayer(
@@ -338,6 +399,9 @@ object ThemeXmlMapper {
             cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
             borderWidth = floatBindingResolved(n.attributes["borderWidth"], tree),
             borderColor = intBindingResolved(n.attributes["borderColor"], tree),
+            gradientStart = intBindingResolved(n.attributes["gradientStart"], tree),
+            gradientEnd = intBindingResolved(n.attributes["gradientEnd"], tree),
+            gradientAngle = floatBindingResolved(n.attributes["gradientAngle"], tree),
         )
         "shadow" -> Layer.ShadowLayer(
             id = base.id,
@@ -353,6 +417,7 @@ object ThemeXmlMapper {
             radius = floatBindingResolved(n.attributes["radius"], tree) ?: FloatOrBinding.Literal(8f),
             color = intBindingResolved(n.attributes["color"], tree) ?: IntOrBinding.Literal(0x80000000.toInt()),
             offset = DimOffset(pxResolved(n, "dx", tree), pxResolved(n, "dy", tree)),
+            cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
         )
         "border" -> Layer.BorderLayer(
             id = base.id,
@@ -387,6 +452,9 @@ object ThemeXmlMapper {
             textAlign = n.attributes["textAlign"] ?: "left",
             fontWeight = n.attributes["fontWeight"] ?: "normal",
             fontStyle = n.attributes["fontStyle"] ?: "normal",
+            lineHeight = floatBindingResolved(n.attributes["lineHeight"], tree),
+            letterSpacing = floatBindingResolved(n.attributes["letterSpacing"], tree),
+            textDecoration = n.attributes["textDecoration"] ?: "none",
         )
         "backdrop" -> Layer.BackdropLayer(
             id = base.id,
@@ -418,6 +486,9 @@ object ThemeXmlMapper {
             textColor = intBindingResolved(n.attributes["textColor"], tree) ?: IntOrBinding.Literal(0xFFFFFFFF.toInt()),
             textSize = floatBindingResolved(n.attributes["textSize"], tree) ?: FloatOrBinding.Literal(14f),
             cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+            borderWidth = floatBindingResolved(n.attributes["borderWidth"], tree),
+            borderColor = intBindingResolved(n.attributes["borderColor"], tree),
+            fontWeight = n.attributes["fontWeight"] ?: "normal",
         )
         else -> null
         }
@@ -515,6 +586,7 @@ object ThemeXmlMapper {
             contentPaddingStart = paddingStart,
             contentPaddingEnd = paddingEnd,
             separator = separator,
+            verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"]),
         )
     }
 

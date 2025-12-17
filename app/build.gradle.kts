@@ -228,6 +228,9 @@ dependencies {
     implementation(libs.landscapist.coil)
     debugImplementation(libs.androidx.ui.tooling)
 
+    // Media3 (ExoPlayer) for video playback
+    implementation(libs.bundles.media3)
+
     // Support
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

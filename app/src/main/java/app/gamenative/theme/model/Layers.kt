@@ -86,13 +86,19 @@ sealed class Layer {
         override val visibleWhen: String? = null,
         /** Source video with playback options. */
         val source: MediaSource.Video,
-        /** Optional corner radius. */
-        val cornerRadius: FloatOrBinding? = null,
+        /**
+         * Corner radius in CSS-like syntax (consistent with other layers):
+         * - "8" = all corners 8
+         * - "8 4" = top-left/bottom-right 8, top-right/bottom-left 4
+         * - "8 4 2" = top-left 8, top-right/bottom-left 4, bottom-right 2
+         * - "8 4 2 1" = top-left 8, top-right 4, bottom-right 2, bottom-left 1
+         */
+        val cornerRadius: String? = null,
     ) : Layer()
 
     /**
      * A drawable rectangle shape. Can be used as background, overlay, or any filled rectangle.
-     * Supports fill color, optional border, and rounded corners.
+     * Supports fill color, optional border, rounded corners, and gradient fills.
      */
     data class RectLayer(
         override val id: String? = null,
@@ -105,7 +111,7 @@ sealed class Layer {
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
-        /** Fill color (ARGB). */
+        /** Fill color (ARGB). Used as solid fill if no gradient is defined. */
         val color: IntOrBinding,
         /**
          * Corner radius in CSS-like syntax:
@@ -119,6 +125,12 @@ sealed class Layer {
         val borderWidth: FloatOrBinding? = null,
         /** Border/stroke color (ARGB). Only used if borderWidth > 0. */
         val borderColor: IntOrBinding? = null,
+        /** Gradient start color (ARGB). If set with gradientEnd, renders gradient instead of solid color. */
+        val gradientStart: IntOrBinding? = null,
+        /** Gradient end color (ARGB). Required if gradientStart is set. */
+        val gradientEnd: IntOrBinding? = null,
+        /** Gradient angle in degrees (0 = left to right, 90 = top to bottom). Default 0. */
+        val gradientAngle: FloatOrBinding? = null,
     ) : Layer()
 
     /**
@@ -141,6 +153,13 @@ sealed class Layer {
         val color: IntOrBinding,
         /** Shadow offset relative to [position]. */
         val offset: DimOffset = DimOffset(Dimension.Px(0f), Dimension.Px(0f)),
+        /**
+         * Corner radius in CSS-like syntax for rounded shadow shapes:
+         * - "8" = all corners 8
+         * - "8 4" = top-left/bottom-right 8, top-right/bottom-left 4
+         * - etc.
+         */
+        val cornerRadius: String? = null,
     ) : Layer()
 
     /**
@@ -199,6 +218,12 @@ sealed class Layer {
         val fontWeight: String = "normal",
         /** Font style: "normal" or "italic". */
         val fontStyle: String = "normal",
+        /** Line height multiplier (e.g., 1.5 = 150% of font size). Null uses default. */
+        val lineHeight: FloatOrBinding? = null,
+        /** Letter spacing in sp (can be negative for tighter spacing). Null uses default. */
+        val letterSpacing: FloatOrBinding? = null,
+        /** Text decoration: "none", "underline", or "lineThrough". */
+        val textDecoration: String = "none",
     ) : Layer()
 
     /**
@@ -245,5 +270,11 @@ sealed class Layer {
         val textSize: FloatOrBinding = FloatOrBinding.Literal(14f),
         /** Corner radius for button shape. */
         val cornerRadius: String? = null,
+        /** Border width in pixels, 0 = no border. */
+        val borderWidth: FloatOrBinding? = null,
+        /** Border color (ARGB). */
+        val borderColor: IntOrBinding? = null,
+        /** Font weight: "normal", "bold", "medium", "semibold", etc. */
+        val fontWeight: String = "normal",
     ) : Layer()
 }

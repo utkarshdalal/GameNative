@@ -66,6 +66,8 @@ sealed class LayoutNode {
         val contentPaddingEnd: Float = 0f,
         /** Optional separator rendered between items. Contains static layers (no game bindings). */
         val separator: GridSeparator? = null,
+        /** Vertical alignment of items within each cell. */
+        val verticalAlign: VerticalAlign = VerticalAlign.TOP,
     ) : LayoutNode()
 
     /**

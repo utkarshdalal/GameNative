@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest>
+    <!-- Theme identity -->
+    <id>TestTheme</id>
+    <name>Test Theme</name>
+    <author>GameNative</author>
+    <version>1.0.0</version>
+    <description>Comprehensive test theme demonstrating all available styling options and element types.</description>
+    
+    <!-- Compatibility -->
+    <engineVersion>1</engineVersion>
+    <minAppVersion>0.0.0</minAppVersion>
+</manifest>
+

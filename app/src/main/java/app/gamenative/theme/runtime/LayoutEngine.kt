@@ -53,40 +53,16 @@ class MapBindingContext(
     }
 }
 
-/** Convert Dimension to Dp relative to the given max width/height. */
-private fun dimToDp(d: Dimension, maxW: Dp, maxH: Dp): Dp = when (d) {
-    is Dimension.Px -> d.value.dp // treat px as dp for simplicity in preview
-    is Dimension.RelW -> maxW * d.fraction
-    is Dimension.RelH -> maxH * d.fraction
-}
+// Utility functions imported from ThemeUtils (same package)
 
-/** Compute positioned size and offset for a child within a parent box. */
-private data class BoxPlacement(val size: DpSize, val offsetX: Dp, val offsetY: Dp)
-
-@Composable
+/** Compute positioned size and offset for a child within a parent box, using ThemeUtils. */
 private fun computePlacement(
     parentSize: DpSize,
     pos: DimOffset,
     size: DimSize?,
     defaultSize: DpSize,
     anchor: Anchor,
-): BoxPlacement {
-    val w = size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: defaultSize.width
-    val h = size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: defaultSize.height
-    val x = dimToDp(pos.x, parentSize.width, parentSize.height)
-    val y = dimToDp(pos.y, parentSize.width, parentSize.height)
-    val offX = when (anchor) {
-        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> x
-        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> (parentSize.width - w) / 2 + x
-        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> parentSize.width - x - w
-    }
-    val offY = when (anchor) {
-        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> y
-        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> (parentSize.height - h) / 2 + y
-        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> parentSize.height - y - h
-    }
-    return BoxPlacement(size = DpSize(w, h), offsetX = offX, offsetY = offY)
-}
+): ThemeUtils.Placement = ThemeUtils.calculatePlacement(parentSize, pos, size, defaultSize, anchor)
 
 /** Render a full layout tree. */
 @Composable
@@ -128,8 +104,8 @@ private fun CanvasLayout(
             val place = computePlacement(canvasSize, child.position, child.size, card.canvas.toDpSize(canvasSize), anchor)
             Box(
                 modifier = Modifier
-                    .offset(x = place.offsetX, y = place.offsetY)
-                    .size(place.size.width, place.size.height)
+                    .offset(x = place.x, y = place.y)
+                    .size(place.width, place.height)
             ) {
                 RenderCard(card, binding, anchor, canvasSize)
             }
@@ -157,9 +133,17 @@ private fun GridLayout(
     // Default to 1 column if not specified
     val columns = node.columns ?: 1
     val rows = node.rows ?: 3
+    
+    // Vertical alignment for items within cells
+    val verticalAlignment = when (node.verticalAlign) {
+        VerticalAlign.TOP -> Alignment.Top
+        VerticalAlign.CENTER -> Alignment.CenterVertically
+        VerticalAlign.BOTTOM -> Alignment.Bottom
+    }
+    
     Column(modifier = modifier) {
         repeat(rows) { r ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = verticalAlignment) {
                 repeat(columns) { c ->
                     val index = r * columns + c
                     val itemBinding = itemBindingProvider?.invoke(index) ?: binding
@@ -332,8 +316,8 @@ private fun RenderCard(
     }
 }
 
-// -- FocusEngine integration helpers --
-internal fun gridFocusConfig(node: LayoutNode.Grid): FocusEngine.Config = FocusEngine.Config(
+// -- SelectionEngine integration helpers --
+internal fun gridSelectionConfig(node: LayoutNode.Grid): SelectionEngine.Config = SelectionEngine.Config(
     rows = node.rows ?: 1,
     cols = node.columns ?: 1,
     wrapX = true,
@@ -344,7 +328,7 @@ internal fun gridFocusConfig(node: LayoutNode.Grid): FocusEngine.Config = FocusE
     centeredSelection = false,
 )
 
-internal fun carouselFocusConfig(node: LayoutNode.Carousel): FocusEngine.Config = FocusEngine.Config(
+internal fun carouselSelectionConfig(node: LayoutNode.Carousel): SelectionEngine.Config = SelectionEngine.Config(
     rows = 1,
     cols = maxOf(1, node.pageSize ?: 1),
     wrapX = true,

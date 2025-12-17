@@ -7,15 +7,18 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Focus & navigation engine. Pure index math + lightweight Compose state helpers.
+ * Selection & index navigation engine. Pure index math + lightweight Compose state helpers.
+ * 
+ * This engine manages selection state within scrollable content (grids, carousels) - 
+ * NOT to be confused with SpatialFocusManager which handles inter-element focus navigation.
  *
  * Supports:
  * - Stationary vs moving selection
  * - Rows/cols (grids), wrap, snap-to-cell
  * - Page size and centered selection for carousels
- * - Persisting last focus per container key
+ * - Persisting last selection per container key
  */
-object FocusEngine {
+object SelectionEngine {
 
     // ---- Public Config/State types ----
 
@@ -77,13 +80,13 @@ object FocusEngine {
         }
     }
 
-    // ---- Persist last focus per container ----
+    // ---- Persist last selection per container ----
 
-    private val lastFocusByKey = mutableStateMapOf<String, Int>()
+    private val lastSelectionByKey = mutableStateMapOf<String, Int>()
 
-    fun readLastFocus(containerKey: String): Int? = lastFocusByKey[containerKey]
-    fun writeLastFocus(containerKey: String, index: Int) {
-        lastFocusByKey[containerKey] = index
+    fun readLastSelection(containerKey: String): Int? = lastSelectionByKey[containerKey]
+    fun writeLastSelection(containerKey: String, index: Int) {
+        lastSelectionByKey[containerKey] = index
     }
 
     // ---- Navigation operations ----
@@ -129,7 +132,7 @@ object FocusEngine {
         }
 
         // Persist
-        s.containerKey?.let { writeLastFocus(it, newState.selectedIndex) }
+        s.containerKey?.let { writeLastSelection(it, newState.selectedIndex) }
         return newState
     }
 
@@ -204,12 +207,12 @@ object FocusEngine {
     // ---- Compose helpers ----
 
     @Composable
-    fun rememberFocusState(
+    fun rememberSelectionState(
         containerKey: String,
         totalItems: Int,
         config: Config,
     ): MutableState<State> {
-        val initialIndex = readLastFocus(containerKey) ?: 0
+        val initialIndex = readLastSelection(containerKey) ?: 0
         val state = remember(containerKey, totalItems, config) {
             mutableStateOf(State(totalItems, config, containerKey, selectedIndex = initialIndex, firstVisibleIndex = 0))
         }
@@ -227,3 +230,4 @@ object FocusEngine {
     fun rowOf(index: Int, cols: Int): Int = index / cols
     fun colOf(index: Int, cols: Int): Int = index % cols
 }
+

@@ -1087,18 +1087,9 @@ private fun parseColorString(s: String): Int? {
     }
 }
 
-/**
- * Calculate actual x,y position based on anchor (CSS-like positioning).
- * 
- * With anchor="topLeft" (default): x is from left edge, y is from top edge
- * With anchor="topRight": x is from right edge (inward), y is from top edge
- * With anchor="bottomRight": x is from right edge (inward), y is from bottom edge (inward)
- * etc.
- * 
- * Positive values always mean "inset" from the anchor edge.
- */
-private data class AnchoredPosition(val x: Dp, val y: Dp)
+// Utility functions imported from ThemeUtils - see ThemeUtils.kt for implementations
 
+/** Alias for ThemeUtils.calculateAnchoredPosition with cleaner return type access */
 private fun calculateAnchoredPosition(
     rawX: Dp,
     rawY: Dp,
@@ -1107,73 +1098,7 @@ private fun calculateAnchoredPosition(
     parentWidth: Dp,
     parentHeight: Dp,
     anchor: Anchor
-): AnchoredPosition {
-    val x = when (anchor) {
-        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> rawX
-        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> 
-            (parentWidth - elementWidth) / 2 + rawX
-        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> 
-            parentWidth - elementWidth - rawX
-    }
-    
-    val y = when (anchor) {
-        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
-        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> 
-            (parentHeight - elementHeight) / 2 + rawY
-        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> 
-            parentHeight - elementHeight - rawY
-    }
-    
-    return AnchoredPosition(x, y)
-}
-
-/**
- * Convert a Dimension to Dp, handling pixels and percentages.
- * @param d The dimension to convert
- * @param parentW The parent width for percentage calculations
- * @param parentH The parent height for percentage calculations
- */
-private fun dimToDp(d: Dimension, parentW: Dp, parentH: Dp): Dp = when (d) {
-    is Dimension.Px -> d.value.dp
-    is Dimension.RelW -> parentW * d.fraction
-    is Dimension.RelH -> parentH * d.fraction
-}
-
-/**
- * Parse CSS-like corner radius string into a RoundedCornerShape.
- * - "8" = all corners 8dp
- * - "8 4" = top-left/bottom-right 8dp, top-right/bottom-left 4dp
- * - "8 4 2" = top-left 8dp, top-right/bottom-left 4dp, bottom-right 2dp
- * - "8 4 2 1" = top-left 8dp, top-right 4dp, bottom-right 2dp, bottom-left 1dp
- */
-private fun parseCornerRadius(value: String?): RoundedCornerShape {
-    if (value.isNullOrBlank()) return RoundedCornerShape(0.dp)
-    
-    val parts = value.trim().split("\\s+".toRegex()).mapNotNull { it.toFloatOrNull() }
-    
-    return when (parts.size) {
-        0 -> RoundedCornerShape(0.dp)
-        1 -> RoundedCornerShape(parts[0].dp)
-        2 -> RoundedCornerShape(
-            topStart = parts[0].dp,
-            topEnd = parts[1].dp,
-            bottomEnd = parts[0].dp,
-            bottomStart = parts[1].dp
-        )
-        3 -> RoundedCornerShape(
-            topStart = parts[0].dp,
-            topEnd = parts[1].dp,
-            bottomEnd = parts[2].dp,
-            bottomStart = parts[1].dp
-        )
-        else -> RoundedCornerShape(
-            topStart = parts[0].dp,
-            topEnd = parts[1].dp,
-            bottomEnd = parts[2].dp,
-            bottomStart = parts[3].dp
-        )
-    }
-}
+): ThemeUtils.Placement = ThemeUtils.calculateAnchoredPosition(rawX, rawY, elementWidth, elementHeight, parentWidth, parentHeight, anchor)
 
 // endregion
 

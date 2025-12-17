@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<variables>
+    <!-- ==================== COLORS ==================== -->
+    <!-- Background colors -->
+    <var name="bgColor" value="#FF1A1A2E" />
+    <var name="cardBgColor" value="#FF16213E" />
+    <var name="overlayColor" value="#CC000000" />
+    <var name="transparentColor" value="#00000000" />
+    
+    <!-- Text colors -->
+    <var name="textColor" value="#FFFFFFFF" />
+    <var name="textColorMuted" value="#AAFFFFFF" />
+    <var name="textColorAccent" value="#FF00D9FF" />
+    
+    <!-- UI element colors -->
+    <var name="searchBarBg" value="#BB16213E" />
+    <var name="profileButtonBg" value="#BB16213E" />
+    <var name="borderColor" value="#4400D9FF" />
+    <var name="accentColor" value="#FF00D9FF" />
+    
+    <!-- ==================== HIGHLIGHT (Controller Focus) ==================== -->
+    <var name="highlightColor" value="#FF00D9FF" />
+    <var name="highlightOpacity" value="0.9" />
+    <var name="highlightBorderWidth" value="3" />
+    <var name="highlightTransitionSpeed" value="200" />
+    
+    <!-- ==================== TOP BAR ==================== -->
+    <var name="topBarHeight" value="120" />
+    <var name="topBarBg" value="#DD1A1A2E" />
+    
+    <!-- Search bar -->
+    <var name="searchBarX" value="16" />
+    <var name="searchBarY" value="64" />
+    <var name="searchBarWidth" value="400" />
+    <var name="searchBarHeight" value="48" />
+    <var name="searchBarRadius" value="24" />
+    
+    <!-- Profile button -->
+    <var name="profileButtonX" value="16" />
+    <var name="profileButtonY" value="16" />
+    <var name="profileButtonSize" value="48" />
+    <var name="profileButtonIconSize" value="24" />
+    <var name="profileButtonPadding" value="8" />
+    <var name="profileButtonRadius" value="24" />
+    
+    <!-- ==================== SPACING ==================== -->
+    <var name="paddingSmall" value="8" />
+    <var name="paddingMedium" value="16" />
+    <var name="paddingLarge" value="24" />
+    <var name="bottomOffset" value="24" />
+    
+    <!-- ==================== GRID LAYOUT ==================== -->
+    <var name="gridPaddingTop" value="136" />
+    <var name="cellWidth" value="320" />
+    <var name="cellHeight" value="240" />
+    <var name="hSpacing" value="16" />
+    <var name="vSpacing" value="16" />
+    
+    <!-- ==================== CARD STYLING ==================== -->
+    <var name="cornerRadius" value="12" />
+    <var name="shadowRadius" value="8" />
+    <var name="shadowColor" value="#80000000" />
+    
+    <!-- ==================== TEXT SIZES ==================== -->
+    <var name="textSizeTitle" value="16" />
+    <var name="textSizeBody" value="14" />
+    <var name="textSizeSmall" value="12" />
+    <var name="textSizeButton" value="14" />
+    
+    <!-- ==================== LAYER POSITIONS ==================== -->
+    <!-- Image area -->
+    <var name="imageHeight" value="160" />
+    
+    <!-- Info area (below image) -->
+    <var name="infoY" value="168" />
+    <var name="titleHeight" value="24" />
+    <var name="statusY" value="192" />
+    <var name="buttonY" value="200" />
+    
+    <!-- Separator -->
+    <var name="separatorColor" value="#3300D9FF" />
+    <var name="separatorMargin" value="8" />
+    
+    <!-- ==================== ANIMATION ==================== -->
+    <var name="transitionSpeed" value="300" />
+    <var name="focusTransitionSpeed" value="200" />
+    
+    <!-- ==================== TEST ASSETS ==================== -->
+    <var name="testImage" value="assets/Atomic Bomberman.jpg" />
+    <var name="testVideo" value="assets/sample.mp4" />
+    
+    <!-- ==================== PORTRAIT BREAKPOINT ==================== -->
+    <breakpoint orientation="portrait">
+        <!-- Adjust top bar for portrait -->
+        <var name="topBarHeight" value="160" />
+        <var name="searchBarY" value="100" />
+        <var name="searchBarWidth" value="90%" />
+        
+        <!-- Smaller grid cells -->
+        <var name="cellWidth" value="280" />
+        <var name="cellHeight" value="220" />
+        <var name="imageHeight" value="140" />
+        <var name="infoY" value="148" />
+        <var name="statusY" value="172" />
+        <var name="buttonY" value="180" />
+        
+        <!-- Larger padding top for portrait top bar -->
+        <var name="gridPaddingTop" value="176" />
+    </breakpoint>
+</variables>
+

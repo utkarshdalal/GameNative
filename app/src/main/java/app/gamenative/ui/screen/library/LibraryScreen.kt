@@ -243,6 +243,7 @@ private fun LibraryScreenContent(
     // Collect the active ThemeDefinition and dev reload tick (DEBUG only)
     val activeTheme by app.gamenative.theme.ThemeManager.activeTheme.collectAsStateWithLifecycle()
     val reloadTick by app.gamenative.theme.ThemeManager.reloadTick.collectAsStateWithLifecycle()
+    val themeRootDir by app.gamenative.theme.ThemeManager.activeThemeRootDir.collectAsStateWithLifecycle()
 
     // Trigger theme remapping when orientation changes (for breakpoint-aware variables)
     app.gamenative.theme.runtime.OrientationAwareThemeEffect()
@@ -423,6 +424,7 @@ private fun LibraryScreenContent(
                     accountButtonContent = accountButtonContent,
                     searchBarContent = searchBarContent,
                     position = app.gamenative.theme.runtime.FixedContainerPosition.TOP,
+                    themeRootDir = themeRootDir,
                 )
 
                 // Render themed layout based on type
@@ -500,6 +502,7 @@ private fun LibraryScreenContent(
                     accountButtonContent = accountButtonContent,
                     searchBarContent = searchBarContent,
                     position = app.gamenative.theme.runtime.FixedContainerPosition.BOTTOM,
+                    themeRootDir = themeRootDir,
                 )
                 } // end CompositionLocalProvider
                 } // end key(orientationKey)

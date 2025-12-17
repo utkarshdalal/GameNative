@@ -1,5 +1,8 @@
 package app.gamenative.theme.runtime.layers
 
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,8 +21,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,8 +30,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import app.gamenative.theme.model.*
 import app.gamenative.theme.runtime.BindingContext
+import app.gamenative.theme.runtime.ThemeUtils
+import app.gamenative.theme.runtime.parseCornerRadius
 
 /** Dispatcher for rendering a single template layer. */
 @Composable
@@ -46,52 +59,9 @@ fun BoxScope.RenderLayer(layer: Layer, parentSize: DpSize, binding: BindingConte
 
 // --- Helpers ---
 
-@Composable
-private fun dimToDp(d: Dimension, maxW: Dp, maxH: Dp): Dp = when (d) {
-    is Dimension.Px -> d.value.dp
-    is Dimension.RelW -> maxW * d.fraction
-    is Dimension.RelH -> maxH * d.fraction
-}
-
-/**
- * Parse CSS-like corner radius string.
- * - "8" = all corners 8dp
- * - "8 4" = top-left/bottom-right 8dp, top-right/bottom-left 4dp
- * - "8 4 2" = top-left 8dp, top-right/bottom-left 4dp, bottom-right 2dp
- * - "8 4 2 1" = top-left 8dp, top-right 4dp, bottom-right 2dp, bottom-left 1dp
- */
-private fun parseCornerRadius(value: String?): RoundedCornerShape {
-    if (value.isNullOrBlank()) return RoundedCornerShape(0.dp)
-    val parts = value.trim().split("\\s+".toRegex()).mapNotNull { it.toFloatOrNull() }
-    return when (parts.size) {
-        0 -> RoundedCornerShape(0.dp)
-        1 -> RoundedCornerShape(parts[0].dp)
-        2 -> RoundedCornerShape(topStart = parts[0].dp, topEnd = parts[1].dp, bottomEnd = parts[0].dp, bottomStart = parts[1].dp)
-        3 -> RoundedCornerShape(topStart = parts[0].dp, topEnd = parts[1].dp, bottomEnd = parts[2].dp, bottomStart = parts[1].dp)
-        else -> RoundedCornerShape(topStart = parts[0].dp, topEnd = parts[1].dp, bottomEnd = parts[2].dp, bottomStart = parts[3].dp)
-    }
-}
-
-private data class Placement(val x: Dp, val y: Dp, val w: Dp, val h: Dp)
-
-@Composable
-private fun place(parent: DpSize, pos: DimOffset, size: DimSize?, defaultSize: DpSize, anchor: Anchor): Placement {
-    val w = size?.let { dimToDp(it.width, parent.width, parent.height) } ?: defaultSize.width
-    val h = size?.let { dimToDp(it.height, parent.width, parent.height) } ?: defaultSize.height
-    val x = dimToDp(pos.x, parent.width, parent.height)
-    val y = dimToDp(pos.y, parent.width, parent.height)
-    val px = when (anchor) {
-        Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> x
-        Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> (parent.width - w) / 2 + x
-        Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> parent.width - x - w
-    }
-    val py = when (anchor) {
-        Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> y
-        Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> (parent.height - h) / 2 + y
-        Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> parent.height - y - h
-    }
-    return Placement(px, py, w, h)
-}
+/** Alias for ThemeUtils.calculatePlacement for cleaner code */
+private fun place(parent: DpSize, pos: DimOffset, size: DimSize?, defaultSize: DpSize, anchor: Anchor): ThemeUtils.Placement =
+    ThemeUtils.calculatePlacement(parent, pos, size, defaultSize, anchor)
 
 @Composable
 private fun BindingContext.or(value: FloatOrBinding?, default: Float): Float = when (value) {
@@ -105,6 +75,13 @@ private fun BindingContext.or(value: IntOrBinding?, default: Int): Int = when (v
     null -> default
     is IntOrBinding.Literal -> value.value
     is IntOrBinding.Ref -> resolveInt(value) ?: default
+}
+
+@Composable
+private fun BindingContext.or(value: StringOrBinding?, default: String): String = when (value) {
+    null -> default
+    is StringOrBinding.Literal -> value.value
+    is StringOrBinding.Ref -> resolveString(value) ?: default
 }
 
 // --- Layer views ---
@@ -134,7 +111,7 @@ private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize,
         Box(
             modifier = Modifier
                 .offset(p.x, p.y)
-                .size(p.w, p.h)
+                .size(p.width, p.height)
                 .clip(shape)
                 .graphicsLayer(alpha = alpha)
                 .background(tint ?: Color(0xFF555555))
@@ -153,7 +130,7 @@ private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize,
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .clip(shape)
             .graphicsLayer(alpha = alpha)
     ) {
@@ -175,22 +152,85 @@ private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize,
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun BoxScope.VideoLayerView(layer: Layer.VideoLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
-    val corner = binding.or(layer.cornerRadius, 0f).dp
-    val shape = if (corner > 0.dp) RoundedCornerShape(corner) else RectangleShape
+    val shape = parseCornerRadius(layer.cornerRadius)
+    val context = LocalContext.current
+
+    // Resolve video source from binding
+    val mediaManager = remember { app.gamenative.theme.media.MediaSourceManager() }
+    val videoSrc = binding.or(layer.source.src, "")
+    val posterSrc = layer.source.poster?.let { binding.or(it, "") }
+
+    // If no video source, show placeholder with poster if available
+    if (videoSrc.isEmpty()) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .offset(p.x, p.y)
+                .size(p.width, p.height)
+                .clip(shape)
+                .graphicsLayer(alpha = alpha)
+                .background(Color(0xFF303030))
+        ) {
+            if (!posterSrc.isNullOrEmpty()) {
+                com.skydoves.landscapist.coil.CoilImage(
+                    modifier = Modifier.fillMaxSize(),
+                    imageModel = { posterSrc },
+                    imageOptions = com.skydoves.landscapist.ImageOptions(
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        contentDescription = "Video poster",
+                    ),
+                )
+            }
+            Text("▶", color = Color.White, fontSize = 24.sp)
+        }
+        return
+    }
+
+    // Create and remember ExoPlayer instance
+    val exoPlayer = remember(videoSrc) {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(videoSrc)
+            setMediaItem(mediaItem)
+            repeatMode = if (layer.source.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+            volume = if (layer.source.muted) 0f else 1f
+            playWhenReady = layer.source.autoplay
+            prepare()
+        }
+    }
+
+    // Clean up player when composable leaves composition
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
     Box(
-        contentAlignment = Alignment.Center,
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .clip(shape)
             .graphicsLayer(alpha = alpha)
-            .background(Color(0xFF303030))
     ) {
-        Text("VIDEO", color = Color.White, fontSize = 12.sp)
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false // Hide playback controls
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -202,13 +242,43 @@ private fun BoxScope.RectLayerView(layer: Layer.RectLayer, parentSize: DpSize, b
     val fillColor = Color(binding.or(layer.color, 0x66000000.toInt()))
     val borderWidth = binding.or(layer.borderWidth, 0f)
     val borderColor = Color(binding.or(layer.borderColor, 0xFFFFFFFF.toInt()))
+    
+    // Gradient support
+    val gradientStartInt = binding.or(layer.gradientStart, 0)
+    val gradientEndInt = binding.or(layer.gradientEnd, 0)
+    val gradientAngle = binding.or(layer.gradientAngle, 0f)
+    val hasGradient = gradientStartInt != 0 && gradientEndInt != 0
+    
+    // Calculate gradient direction based on angle
+    val gradientBrush = if (hasGradient) {
+        val angleRad = Math.toRadians(gradientAngle.toDouble())
+        val cos = kotlin.math.cos(angleRad).toFloat()
+        val sin = kotlin.math.sin(angleRad).toFloat()
+        // Normalize to 0-1 range for Offset
+        val startX = 0.5f - cos * 0.5f
+        val startY = 0.5f + sin * 0.5f
+        val endX = 0.5f + cos * 0.5f
+        val endY = 0.5f - sin * 0.5f
+        androidx.compose.ui.graphics.Brush.linearGradient(
+            colors = listOf(Color(gradientStartInt), Color(gradientEndInt)),
+            start = androidx.compose.ui.geometry.Offset(startX * p.width.value, startY * p.height.value),
+            end = androidx.compose.ui.geometry.Offset(endX * p.width.value, endY * p.height.value),
+        )
+    } else null
+    
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .clip(shape)
             .graphicsLayer(alpha = alpha)
-            .background(fillColor)
+            .then(
+                if (gradientBrush != null) {
+                    Modifier.background(gradientBrush)
+                } else {
+                    Modifier.background(fillColor)
+                }
+            )
             .then(
                 if (borderWidth > 0f) {
                     Modifier.border(borderWidth.dp, borderColor, shape)
@@ -225,11 +295,12 @@ private fun BoxScope.ShadowLayerView(layer: Layer.ShadowLayer, parentSize: DpSiz
     val alpha = binding.or(layer.opacity, 1f)
     val radius = binding.or(layer.radius, 0f).dp
     val color = Color(binding.or(layer.color, 0x88000000.toInt()))
+    val shape = layer.cornerRadius?.let { parseCornerRadius(it) } ?: RectangleShape
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
-            .shadow(elevation = if (radius > 0.dp) radius / 2 else 0.dp, shape = RectangleShape, ambientColor = color, spotColor = color)
+            .size(p.width, p.height)
+            .shadow(elevation = if (radius > 0.dp) radius / 2 else 0.dp, shape = shape, ambientColor = color, spotColor = color)
             .graphicsLayer(alpha = alpha)
             .background(Color.Transparent)
     ) {}
@@ -245,7 +316,7 @@ private fun BoxScope.BorderLayerView(layer: Layer.BorderLayer, parentSize: DpSiz
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .clip(shape)
             .graphicsLayer(alpha = alpha)
             .border(width = width, color = color, shape = shape)
@@ -278,10 +349,20 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
         "italic" -> androidx.compose.ui.text.font.FontStyle.Italic
         else -> androidx.compose.ui.text.font.FontStyle.Normal
     }
+    
+    // New text styling attributes
+    val lineHeightSp = binding.or(layer.lineHeight, 0f).let { if (it > 0f) (it * px / d).sp else androidx.compose.ui.unit.TextUnit.Unspecified }
+    val letterSpacingSp = binding.or(layer.letterSpacing, 0f).let { if (it != 0f) it.sp else androidx.compose.ui.unit.TextUnit.Unspecified }
+    val textDecoration = when (layer.textDecoration.lowercase()) {
+        "underline" -> androidx.compose.ui.text.style.TextDecoration.Underline
+        "linethrough", "line-through", "strikethrough" -> androidx.compose.ui.text.style.TextDecoration.LineThrough
+        else -> androidx.compose.ui.text.style.TextDecoration.None
+    }
+    
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .graphicsLayer(alpha = alpha)
     ) {
         Text(
@@ -292,6 +373,9 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
             fontStyle = fontStyle,
             maxLines = layer.maxLines ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
+            lineHeight = lineHeightSp,
+            letterSpacing = letterSpacingSp,
+            textDecoration = textDecoration,
             modifier = Modifier.align(Alignment.TopStart)
         )
     }
@@ -307,7 +391,7 @@ private fun BoxScope.BackdropLayerView(layer: Layer.BackdropLayer, parentSize: D
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .graphicsLayer(alpha = alpha)
             .blur(radius = blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
             .background(tint)
@@ -327,19 +411,40 @@ private fun BoxScope.ButtonLayerView(layer: Layer.ButtonLayer, parentSize: DpSiz
         is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
     }
     
+    // New border attributes
+    val borderWidth = binding.or(layer.borderWidth, 0f)
+    val borderColorInt = binding.or(layer.borderColor, 0xFFFFFFFF.toInt())
+    val fontWeight = when (layer.fontWeight.lowercase()) {
+        "bold" -> androidx.compose.ui.text.font.FontWeight.Bold
+        "semibold" -> androidx.compose.ui.text.font.FontWeight.SemiBold
+        "medium" -> androidx.compose.ui.text.font.FontWeight.Medium
+        "light" -> androidx.compose.ui.text.font.FontWeight.Light
+        "thin" -> androidx.compose.ui.text.font.FontWeight.Thin
+        "extrabold", "black" -> androidx.compose.ui.text.font.FontWeight.ExtraBold
+        else -> androidx.compose.ui.text.font.FontWeight.Normal
+    }
+    
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.w, p.h)
+            .size(p.width, p.height)
             .graphicsLayer(alpha = alpha)
             .clip(shape)
-            .background(Color(bgColorInt)),
+            .background(Color(bgColorInt))
+            .then(
+                if (borderWidth > 0f) {
+                    Modifier.border(borderWidth.dp, Color(borderColorInt), shape)
+                } else {
+                    Modifier
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             color = Color(textColorInt),
             fontSize = textSizeSp,
+            fontWeight = fontWeight,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

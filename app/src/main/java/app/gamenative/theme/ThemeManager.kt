@@ -81,6 +81,10 @@ object ThemeManager {
     private var activeThemeTree: app.gamenative.theme.model.ThemeTree? = null
     private var lastMappedIsPortrait: Boolean? = null
     private var lastMappedScreenWidth: Int? = null
+    
+    // Store the root directory of the active theme for asset resolution
+    private val _activeThemeRootDir = MutableStateFlow<String?>(null)
+    val activeThemeRootDir: StateFlow<String?> = _activeThemeRootDir.asStateFlow()
 
     private const val ASSETS_THEMES_ROOT = "Themes"
     private const val FALLBACK_THEME_ID = "list_view"
@@ -410,10 +414,13 @@ object ThemeManager {
                     lastMappedIsPortrait = null
                     lastMappedScreenWidth = null
                     
+                    // Store theme root directory for asset resolution
+                    _activeThemeRootDir.value = loadDir.absolutePath
+                    
                     // Map to runtime model (initial mapping without orientation context)
                     val def: ThemeDefinition = ThemeXmlMapper.map(res.tree)
                     _activeTheme.value = def
-                    Timber.i("Theme activated: %s (%s)", entry.id, entry.source)
+                    Timber.i("Theme activated: %s (%s) at %s", entry.id, entry.source, loadDir.absolutePath)
                 }
                 is ThemeLoadResult.Failure -> {
                     Timber.w("Failed to load theme %s: %s", entry.id, res.errors.joinToString { it.code })

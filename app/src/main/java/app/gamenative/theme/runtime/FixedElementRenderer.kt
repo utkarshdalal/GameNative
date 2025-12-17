@@ -1,5 +1,6 @@
 package app.gamenative.theme.runtime
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -30,11 +32,27 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.annotation.OptIn
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.DownloadService
@@ -86,10 +104,10 @@ private fun FixedElement.toHighlightStyle(): HighlightStyle = HighlightStyle(
  * A composable wrapper that adds animated highlight border indication for controller navigation.
  * Used only for themed fixed elements (not default layout).
  * Uses hasFocus to detect focus on any descendant (like buttons inside).
- * 
+ *
  * When a SpatialFocusManager is available (via LocalSpatialFocusManager), this box
  * registers itself for spatial navigation and handles D-pad key events.
- * 
+ *
  * @param id Unique identifier for spatial navigation registration
  * @param highlightStyle Visual styling for the highlight border
  * @param cornerRadius Border corner radius
@@ -108,18 +126,18 @@ private fun HighlightableBox(
 ) {
     val spatialFocusManager = LocalSpatialFocusManager.current
     val focusRequester = remember { FocusRequester() }
-    
+
     // Use hasFocus to detect focus on this element OR any descendant
     var hasFocus by remember { mutableStateOf(false) }
-    
+
     val highlightAlpha by animateFloatAsState(
         targetValue = if (hasFocus) highlightStyle.opacity else 0f,
         animationSpec = tween(durationMillis = highlightStyle.transitionSpeed),
         label = "highlightBorderAlpha"
     )
-    
+
     val borderColor = highlightStyle.color.copy(alpha = highlightAlpha)
-    
+
     Box(
         modifier = modifier
             .focusRequester(focusRequester)
@@ -196,7 +214,7 @@ enum class FixedContainerPosition {
 /**
  * Renders fixed UI elements from theme configuration.
  * Falls back to default positioning if no fixed containers are defined.
- * 
+ *
  * @param position Filter which containers to render based on their visual position.
  *                 This enables rendering top elements before the main content and
  *                 bottom elements after, ensuring proper focus traversal order.
@@ -211,6 +229,7 @@ fun BoxScope.RenderFixedElements(
     accountButtonContent: @Composable (iconSize: Dp) -> Unit,
     searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
     position: FixedContainerPosition = FixedContainerPosition.ALL,
+    themeRootDir: String? = null,
 ) {
     if (fixedContainers.isEmpty()) {
         // Fallback to default positioning when no fixed containers are defined
@@ -233,11 +252,11 @@ fun BoxScope.RenderFixedElements(
 
     // Filter containers based on requested position
     val containersToRender = when (position) {
-        FixedContainerPosition.TOP -> fixedContainers.filter { 
-            it.id.contains("top", ignoreCase = true) 
+        FixedContainerPosition.TOP -> fixedContainers.filter {
+            it.id.contains("top", ignoreCase = true)
         }
-        FixedContainerPosition.BOTTOM -> fixedContainers.filter { 
-            it.id.contains("bottom", ignoreCase = true) 
+        FixedContainerPosition.BOTTOM -> fixedContainers.filter {
+            it.id.contains("bottom", ignoreCase = true)
         }
         FixedContainerPosition.ALL -> fixedContainers
     }
@@ -246,23 +265,28 @@ fun BoxScope.RenderFixedElements(
     containersToRender.forEach { container ->
         // Check container visibility first - skip entire container if not visible
         if (!container.visibility.isVisible(isPortrait)) return@forEach
-        
+
         // Filter elements by visibility
         // Elements inherit container's visibility unless they specify their own
-        val visibleElements = container.elements.filter { element -> 
-            element.visibility.isVisible(isPortrait) 
+        val visibleElements = container.elements.filter { element ->
+            element.visibility.isVisible(isPortrait)
         }
-        
+
         // Skip container if no elements are visible
         if (visibleElements.isEmpty()) return@forEach
-        
+
         // Determine container alignment based on id (topBar at top, bottomBar at bottom)
         val containerAlignment = when {
             container.id.contains("top", ignoreCase = true) -> Alignment.TopCenter
             container.id.contains("bottom", ignoreCase = true) -> Alignment.BottomCenter
             else -> Alignment.TopCenter
         }
-        
+
+        // Parse CSS-style padding: "all" or "top right bottom left" (1-4 values)
+        val paddingValues = container.padding?.let { parseCssPadding(it) } ?: PaddingValues(0.dp)
+        val cornerRadius = container.cornerRadius.dp
+        val shape = if (cornerRadius > 0.dp) RoundedCornerShape(cornerRadius) else RectangleShape
+
         // Render container background if specified
         if (container.backgroundColor != null) {
             Box(
@@ -270,10 +294,12 @@ fun BoxScope.RenderFixedElements(
                     .align(containerAlignment)
                     .fillMaxWidth()
                     .height(container.height?.dp ?: 80.dp)
+                    .clip(shape)
                     .background(Color(container.backgroundColor))
+                    .padding(paddingValues)
             )
         }
-        
+
         // Render visible elements with IDs for spatial focus navigation
         visibleElements.forEachIndexed { index, element ->
             // Use custom navigationId if set, otherwise generate a unique ID
@@ -287,6 +313,7 @@ fun BoxScope.RenderFixedElements(
                 callbacks = callbacks,
                 accountButtonContent = accountButtonContent,
                 searchBarContent = searchBarContent,
+                themeRootDir = themeRootDir,
             )
         }
     }
@@ -300,7 +327,7 @@ fun BoxScope.RenderFixedElements(
 private fun getNavigationId(containerId: String, element: FixedElement, index: Int): String {
     // Use custom navigationId if set by theme creator
     element.navigationId?.let { return it }
-    
+
     // Otherwise generate a unique ID
     val typePrefix = when (element) {
         is FixedElement.Header -> "header"
@@ -308,10 +335,13 @@ private fun getNavigationId(containerId: String, element: FixedElement, index: I
         is FixedElement.ProfileButton -> "profile-button"
         is FixedElement.FilterButton -> "filter-button"
         is FixedElement.AddButton -> "add-button"
+        is FixedElement.Image -> "image"
+        is FixedElement.Video -> "video"
     }
     return "$containerId-$typePrefix-$index"
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun BoxScope.RenderFixedElement(
     element: FixedElement,
@@ -322,12 +352,13 @@ private fun BoxScope.RenderFixedElement(
     callbacks: FixedElementCallbacks,
     accountButtonContent: @Composable (iconSize: Dp) -> Unit,
     searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
+    themeRootDir: String? = null,
 ) {
     // Use BoxWithConstraints to get parent dimensions for relative size calculations
     BoxWithConstraints(modifier = Modifier.matchParentSize()) {
         val parentWidth = maxWidth
         val parentHeight = maxHeight
-        
+
     val alignment = element.anchor.toComposeAlignment()
         val rawX = dimToDp(element.position.x, parentWidth, parentHeight)
         val rawY = dimToDp(element.position.y, parentWidth, parentHeight)
@@ -355,17 +386,49 @@ private fun BoxScope.RenderFixedElement(
                 }
             }
 
+            // Header styling from theme
+            val bgColor = element.backgroundColor?.let { Color(it) }
+            val cornerRadius = element.cornerRadius.dp
+            val padding = element.padding.dp
+            val textColor = Color(element.textColor)
+            val textSizeSp = element.textSize.sp
+            val fontWeight = when (element.fontWeight.lowercase()) {
+                "bold" -> FontWeight.Bold
+                "semibold" -> FontWeight.SemiBold
+                "medium" -> FontWeight.Medium
+                "light" -> FontWeight.Light
+                "thin" -> FontWeight.Thin
+                "extrabold", "black" -> FontWeight.ExtraBold
+                else -> FontWeight.Normal
+            }
+
+            // Calculate size if specified
+            val sizeModifier = element.size?.let { size ->
+                Modifier.size(
+                    width = dimToDp(size.width, parentWidth, parentHeight),
+                    height = dimToDp(size.height, parentWidth, parentHeight)
+                )
+            } ?: Modifier
+
             Column(
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
-                    .padding(8.dp)
+                    .then(sizeModifier)
+                    .then(
+                        if (bgColor != null) {
+                            Modifier
+                                .clip(RoundedCornerShape(cornerRadius))
+                                .background(bgColor)
+                        } else Modifier
+                    )
+                    .padding(padding)
             ) {
                 if (element.showAppName) {
                     Text(
                         text = "GameNative",
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = fontWeight,
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
                                     MaterialTheme.colorScheme.primary,
@@ -378,8 +441,8 @@ private fun BoxScope.RenderFixedElement(
                 if (element.showThemeName) {
                     Text(
                         text = "Theme: $themeName",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = textSizeSp),
+                        color = textColor.copy(alpha = 0.7f)
                     )
                 }
                 if (element.showGameCount) {
@@ -389,8 +452,8 @@ private fun BoxScope.RenderFixedElement(
                             state.totalAppsInFilter,
                             installedCount
                         ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = textSizeSp),
+                        color = textColor.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -401,12 +464,12 @@ private fun BoxScope.RenderFixedElement(
             val radius = element.borderRadius
             val expandedWidth = dimToDp(element.size.width, parentWidth, parentHeight)
             val highlightStyle = element.toHighlightStyle()
-            
+
             // Check if anchor is on the right side
             val isAnchorRight = element.anchor == Anchor.TOP_RIGHT ||
                 element.anchor == Anchor.CENTER_RIGHT ||
                 element.anchor == Anchor.BOTTOM_RIGHT
-            
+
             // Create style from theme element with highlight properties and navigation links
             val searchStyle = app.gamenative.ui.screen.library.components.SearchBarStyle(
                 backgroundColor = bgColor,
@@ -424,7 +487,7 @@ private fun BoxScope.RenderFixedElement(
                 navigateLeft = element.navigateLeft,
                 navigateRight = element.navigateRight,
             )
-            
+
             Box(
                 modifier = Modifier
                     .align(alignment)
@@ -444,7 +507,7 @@ private fun BoxScope.RenderFixedElement(
             val iconSize = element.iconSize.dp
             val highlightStyle = element.toHighlightStyle()
             val navigationLinks = element.toNavigationLinks()
-            
+
             HighlightableBox(
                 id = elementId,
                 highlightStyle = highlightStyle,
@@ -471,10 +534,16 @@ private fun BoxScope.RenderFixedElement(
             if (!callbacks.isSearching) {
                 val highlightStyle = element.toHighlightStyle()
                 val navigationLinks = element.toNavigationLinks()
+                val buttonSize = element.size.dp
+                val iconSize = element.iconSize.dp
+                val bgColor = element.backgroundColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+                val iconTint = element.iconColor?.let { Color(it) } ?: MaterialTheme.colorScheme.onPrimary
+                val cornerRadius = element.cornerRadius.dp
+
                 HighlightableBox(
                     id = elementId,
                     highlightStyle = highlightStyle,
-                    cornerRadius = 16.dp, // Material FAB default radius
+                    cornerRadius = cornerRadius,
                     navigationLinks = navigationLinks,
                     modifier = Modifier
                         .align(alignment)
@@ -483,11 +552,19 @@ private fun BoxScope.RenderFixedElement(
                     // FABs are focusable by default - no extra focusable() modifier needed
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Filters") },
-                        icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = iconTint,
+                            )
+                        },
                         expanded = element.expanded && callbacks.filterExpanded,
                         onClick = callbacks.onFilterClick,
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = bgColor,
+                        contentColor = iconTint,
+                        modifier = Modifier.defaultMinSize(minWidth = buttonSize, minHeight = buttonSize),
                     )
                 }
             }
@@ -496,10 +573,16 @@ private fun BoxScope.RenderFixedElement(
         is FixedElement.AddButton -> {
             val highlightStyle = element.toHighlightStyle()
             val navigationLinks = element.toNavigationLinks()
+            val buttonSize = element.size.dp
+            val iconSize = element.iconSize.dp
+            val bgColor = element.backgroundColor?.let { Color(it) } ?: MaterialTheme.colorScheme.secondary
+            val iconTint = element.iconColor?.let { Color(it) } ?: MaterialTheme.colorScheme.onSecondary
+            val cornerRadius = element.cornerRadius.dp
+
             HighlightableBox(
                 id = elementId,
                 highlightStyle = highlightStyle,
-                cornerRadius = 16.dp, // Material FAB default radius
+                cornerRadius = cornerRadius,
                 navigationLinks = navigationLinks,
                 modifier = Modifier
                     .align(alignment)
@@ -508,16 +591,73 @@ private fun BoxScope.RenderFixedElement(
                 // FABs are focusable by default - no extra focusable() modifier needed
                 FloatingActionButton(
                     onClick = callbacks.onAddClick,
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                    containerColor = bgColor,
+                    contentColor = iconTint,
+                    modifier = Modifier.size(buttonSize),
+                    shape = RoundedCornerShape(cornerRadius),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add custom game",
+                        modifier = Modifier.size(iconSize),
+                        tint = iconTint,
                     )
                 }
             }
+        }
+
+        is FixedElement.Image -> {
+            val width = dimToDp(element.size.width, parentWidth, parentHeight)
+            val height = dimToDp(element.size.height, parentWidth, parentHeight)
+            val shape = ThemeUtils.parseCornerRadius(element.cornerRadius)
+            val contentScale = when (element.scaleType.lowercase()) {
+                "contain", "fit" -> ContentScale.Fit
+                "stretch", "fill" -> ContentScale.FillBounds
+                "none" -> ContentScale.None
+                else -> ContentScale.Crop // "cover" is default
             }
+            // Resolve asset path
+            val resolvedSrc = resolveAssetPath(element.src, themeRootDir)
+
+            Box(
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY)
+                    .size(width, height)
+                    .clip(shape)
+                    .graphicsLayer(alpha = element.opacity)
+            ) {
+                if (resolvedSrc.isNotEmpty()) {
+                    com.skydoves.landscapist.coil.CoilImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModel = { resolvedSrc },
+                        imageOptions = com.skydoves.landscapist.ImageOptions(
+                            contentScale = contentScale,
+                            contentDescription = "Fixed image",
+                        ),
+                    )
+                } else {
+                    // Placeholder when no src is provided
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF555555))
+                    )
+                }
+            }
+        }
+
+        is FixedElement.Video -> {
+            FixedVideoElement(
+                element = element,
+                width = dimToDp(element.size.width, parentWidth, parentHeight),
+                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                themeRootDir = themeRootDir,
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY)
+            )
+        }
         }
     }
 }
@@ -655,7 +795,7 @@ private fun Anchor.toComposeAlignment(): Alignment = when (this) {
 /**
  * Convert CSS-like positioning to Compose offset.
  * With CSS-like positioning, positive values always mean "inward" from the anchor edge.
- * 
+ *
  * For example, with anchor=topRight and x=16, y=8:
  * - x=16 means 16px from the right edge (so Compose offsetX = -16)
  * - y=8 means 8px from the top edge (so Compose offsetY = 8)
@@ -666,21 +806,147 @@ private fun calculateCssLikeOffset(rawX: Dp, rawY: Dp, anchor: Anchor): Pair<Dp,
         Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> rawX
         Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> -rawX
     }
-    
+
     val offsetY = when (anchor) {
         Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
         Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> rawY
         Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> -rawY
     }
-    
+
     return Pair(offsetX, offsetY)
 }
 
 /**
- * Convert a Dimension to Dp, resolving relative dimensions using parent size.
+ * Parse CSS-style padding string into Compose PaddingValues.
+ * - "8" = 8dp all sides
+ * - "8 16" = 8dp top/bottom, 16dp left/right
+ * - "8 16 8" = 8dp top, 16dp left/right, 8dp bottom
+ * - "8 16 8 16" = top, right, bottom, left
  */
-private fun dimToDp(d: Dimension, parentW: Dp, parentH: Dp): Dp = when (d) {
-    is Dimension.Px -> d.value.dp
-    is Dimension.RelW -> parentW * d.fraction
-    is Dimension.RelH -> parentH * d.fraction
+private fun parseCssPadding(value: String): PaddingValues {
+    val parts = value.trim().split("\\s+".toRegex()).mapNotNull { it.toFloatOrNull() }
+    return when (parts.size) {
+        0 -> PaddingValues(0.dp)
+        1 -> PaddingValues(parts[0].dp)
+        2 -> PaddingValues(vertical = parts[0].dp, horizontal = parts[1].dp)
+        3 -> PaddingValues(top = parts[0].dp, start = parts[1].dp, bottom = parts[2].dp, end = parts[1].dp)
+        else -> PaddingValues(top = parts[0].dp, end = parts[1].dp, bottom = parts[2].dp, start = parts[3].dp)
+    }
+}
+
+// dimToDp is imported from ThemeUtils (same package)
+
+/**
+ * Resolves a relative asset path to a full URI.
+ * - If path starts with "http://" or "https://", returns as-is
+ * - If path starts with "file://", returns as-is
+ * - If path starts with "assets/", resolves relative to theme root directory
+ * - Otherwise returns as-is (assumes it's a full path)
+ */
+private fun resolveAssetPath(path: String, themeRootDir: String?): String {
+    if (path.isEmpty()) return path
+    if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("file://")) {
+        return path
+    }
+    // Resolve relative paths (like "assets/sample.mp4") using theme root
+    if (themeRootDir != null && !path.contains("://")) {
+        val fullPath = java.io.File(themeRootDir, path)
+        if (fullPath.exists()) {
+            return "file://${fullPath.absolutePath}"
+        }
+    }
+    return path
+}
+
+/**
+ * Renders a fixed video element with ExoPlayer.
+ * Shows poster image with play indicator if no video source is provided,
+ * otherwise plays the video with the specified settings.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+private fun FixedVideoElement(
+    element: FixedElement.Video,
+    width: Dp,
+    height: Dp,
+    themeRootDir: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val shape = ThemeUtils.parseCornerRadius(element.cornerRadius)
+
+    // Resolve asset paths
+    val resolvedSrc = resolveAssetPath(element.src, themeRootDir)
+    val resolvedPoster = element.poster?.let { resolveAssetPath(it, themeRootDir) }
+
+    // If no video source, show placeholder with poster
+    if (resolvedSrc.isEmpty()) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = modifier
+                .size(width, height)
+                .clip(shape)
+                .graphicsLayer(alpha = element.opacity)
+                .background(Color(0xFF303030))
+        ) {
+            if (!resolvedPoster.isNullOrEmpty()) {
+                com.skydoves.landscapist.coil.CoilImage(
+                    modifier = Modifier.fillMaxSize(),
+                    imageModel = { resolvedPoster },
+                    imageOptions = com.skydoves.landscapist.ImageOptions(
+                        contentScale = ContentScale.Crop,
+                        contentDescription = "Video poster",
+                    ),
+                )
+            }
+            Text(
+                text = "▶",
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        return
+    }
+
+    // Create and remember ExoPlayer instance
+    val exoPlayer = remember(resolvedSrc) {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(resolvedSrc)
+            setMediaItem(mediaItem)
+            repeatMode = if (element.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+            volume = if (element.muted) 0f else 1f
+            playWhenReady = element.autoplay
+            prepare()
+        }
+    }
+
+    // Clean up player when composable leaves composition
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(width, height)
+            .clip(shape)
+            .graphicsLayer(alpha = element.opacity)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false // Hide playback controls
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }

@@ -19,6 +19,15 @@ data class FixedContainer(
      * Child elements can still override with their own visibility.
      */
     val visibility: Visibility = Visibility.ALWAYS,
+    /** 
+     * Padding in CSS-style shorthand: "all" or "top right bottom left" (1-4 values).
+     * - "8" = 8px all sides
+     * - "8 16" = 8px top/bottom, 16px left/right
+     * - "8 16 8 16" = top, right, bottom, left
+     */
+    val padding: String? = null,
+    /** Corner radius in pixels for the container background. */
+    val cornerRadius: Float = 0f,
 )
 
 /**
@@ -81,6 +90,18 @@ sealed class FixedElement {
         val showThemeName: Boolean = true,
         /** Whether to show the game count. */
         val showGameCount: Boolean = true,
+        /** Optional explicit size for the header area. */
+        val size: DimSize? = null,
+        /** Background color (ARGB), null for transparent. */
+        val backgroundColor: Int? = null,
+        /** Corner radius in pixels for background. */
+        val cornerRadius: Float = 0f,
+        /** Internal padding in pixels. */
+        val padding: Float = 8f,
+        /** Text size for header text elements in pixels. */
+        val textSize: Float = 14f,
+        /** Font weight: "normal", "bold", "medium", "semibold", etc. */
+        val fontWeight: String = "bold",
     ) : FixedElement()
 
     /**
@@ -155,6 +176,16 @@ sealed class FixedElement {
         override val navigateRight: String? = null,
         /** Whether to show expanded text label. */
         val expanded: Boolean = true,
+        /** Button size in pixels (diameter for circular, side for square). */
+        val size: Float = 56f,
+        /** Icon size in pixels inside the button. */
+        val iconSize: Float = 24f,
+        /** Background color (ARGB), null uses Material theme primary. */
+        val backgroundColor: Int? = null,
+        /** Icon tint color (ARGB), null uses Material theme onPrimary. */
+        val iconColor: Int? = null,
+        /** Corner radius in pixels, 0 = square, size/2 = circular. */
+        val cornerRadius: Float = 16f,
     ) : FixedElement()
 
     /**
@@ -173,6 +204,80 @@ sealed class FixedElement {
         override val navigateDown: String? = null,
         override val navigateLeft: String? = null,
         override val navigateRight: String? = null,
+        /** Button size in pixels (diameter for circular, side for square). */
+        val size: Float = 56f,
+        /** Icon size in pixels inside the button. */
+        val iconSize: Float = 24f,
+        /** Background color (ARGB), null uses Material theme primary. */
+        val backgroundColor: Int? = null,
+        /** Icon tint color (ARGB), null uses Material theme onPrimary. */
+        val iconColor: Int? = null,
+        /** Corner radius in pixels, 0 = square, size/2 = circular. */
+        val cornerRadius: Float = 16f,
+    ) : FixedElement()
+
+    /**
+     * Static image element (not bound to game data).
+     * Use for decorative images, logos, backgrounds, etc.
+     */
+    data class Image(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size of the image (required). */
+        val size: DimSize,
+        /** Image source URL or asset path. */
+        val src: String,
+        /** How to scale the image: "cover", "contain", "fill", "none". */
+        val scaleType: String = "cover",
+        /** CSS-style corner radius (e.g., "8" or "8 8 0 0"). */
+        val cornerRadius: String? = null,
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
+    ) : FixedElement()
+
+    /**
+     * Static video element (not bound to game data).
+     * Use for background videos, promotional content, etc.
+     */
+    data class Video(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size of the video (required). */
+        val size: DimSize,
+        /** Video source URL or asset path. */
+        val src: String,
+        /** Poster/thumbnail image to show while loading. */
+        val poster: String? = null,
+        /** Whether to autoplay the video. */
+        val autoplay: Boolean = false,
+        /** Whether to loop the video. */
+        val loop: Boolean = true,
+        /** Whether to mute the video. */
+        val muted: Boolean = true,
+        /** CSS-style corner radius (e.g., "8" or "8 8 0 0"). */
+        val cornerRadius: String? = null,
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
     ) : FixedElement()
 }
 
