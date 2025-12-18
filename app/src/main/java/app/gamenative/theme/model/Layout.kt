@@ -107,6 +107,16 @@ sealed class LayoutNode {
         val separator: GridSeparator? = null,
         /** Vertical alignment of items within each cell. */
         val verticalAlign: VerticalAlign = VerticalAlign.TOP,
+        /** Navigation ID for this grid (used by other elements to navigate to it). */
+        val navigationId: String? = null,
+        /** Navigation target when pressing up at the edge. */
+        val navigateUp: String? = null,
+        /** Navigation target when pressing down at the edge. */
+        val navigateDown: String? = null,
+        /** Navigation target when pressing left at the edge. */
+        val navigateLeft: String? = null,
+        /** Navigation target when pressing right at the edge. */
+        val navigateRight: String? = null,
     ) : LayoutNode()
 
     /**
@@ -151,6 +161,16 @@ sealed class LayoutNode {
         val backgroundOpacity: Float = 0.3f,
         /** Duration in ms for background crossfade transition. */
         val backgroundTransitionSpeed: Int = 400,
+        /** Navigation ID for this carousel (used by other elements to navigate to it). */
+        val navigationId: String? = null,
+        /** Navigation target when pressing up at the edge. */
+        val navigateUp: String? = null,
+        /** Navigation target when pressing down at the edge. */
+        val navigateDown: String? = null,
+        /** Navigation target when pressing left at the edge. */
+        val navigateLeft: String? = null,
+        /** Navigation target when pressing right at the edge. */
+        val navigateRight: String? = null,
     ) : LayoutNode()
 }
 

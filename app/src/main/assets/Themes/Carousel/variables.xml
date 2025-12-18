@@ -7,7 +7,7 @@
     <var name="highlightOpacity" value="0.9" />
     <var name="highlightBorderWidth" value="2" />
     <var name="highlightTransitionSpeed" value="200" />
-    
+
     <!-- Shared spacing -->
     <var name="paddingMedium" value="16" />
     <var name="bottomOffset" value="24" />

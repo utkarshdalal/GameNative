@@ -27,6 +27,7 @@ object ThemeUtils {
         is Dimension.Px -> d.value.dp
         is Dimension.RelW -> parentW * d.fraction
         is Dimension.RelH -> parentH * d.fraction
+        is Dimension.Unspecified -> Dp.Unspecified
     }
 
     /**
@@ -106,21 +107,31 @@ object ThemeUtils {
         defaultSize: DpSize,
         anchor: Anchor
     ): Placement {
-        val w = size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: defaultSize.width
-        val h = size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: defaultSize.height
+        // Resolve dimensions - keep Dp.Unspecified for unspecified dimensions
+        val resolvedW = size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+        val resolvedH = size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+        
+        // For anchor calculations, use defaultSize when dimension is unspecified
+        val wForCalc = if (resolvedW == null || resolvedW == Dp.Unspecified) defaultSize.width else resolvedW
+        val hForCalc = if (resolvedH == null || resolvedH == Dp.Unspecified) defaultSize.height else resolvedH
+        
+        // Final dimensions: use resolved value if specified, otherwise null markers via Dp.Unspecified
+        val w = resolvedW ?: defaultSize.width
+        val h = resolvedH ?: defaultSize.height
+        
         val rawX = dimToDp(position.x, parentSize.width, parentSize.height)
         val rawY = dimToDp(position.y, parentSize.width, parentSize.height)
 
         val x = when (anchor) {
             Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> rawX
-            Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> (parentSize.width - w) / 2 + rawX
-            Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> parentSize.width - rawX - w
+            Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> (parentSize.width - wForCalc) / 2 + rawX
+            Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> parentSize.width - rawX - wForCalc
         }
 
         val y = when (anchor) {
             Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> rawY
-            Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> (parentSize.height - h) / 2 + rawY
-            Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> parentSize.height - rawY - h
+            Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> (parentSize.height - hForCalc) / 2 + rawY
+            Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> parentSize.height - rawY - hForCalc
         }
 
         return Placement(x, y, w, h)

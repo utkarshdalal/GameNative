@@ -83,6 +83,19 @@ class SpatialFocusManager {
     fun getCurrentFocusedId(): String? = currentFocusedId
     
     /**
+     * Navigate directly to a specific element by ID.
+     * Returns true if navigation was successful.
+     */
+    fun navigateTo(targetId: String): Boolean {
+        val target = elements[targetId] ?: run {
+            Timber.tag(TAG).d("Navigate to '$targetId' - element not found! Registered: ${elements.keys}")
+            return false
+        }
+        Timber.tag(TAG).d("Navigate directly to '$targetId'")
+        return requestFocusOn(target)
+    }
+    
+    /**
      * Navigate from the specified element in the given direction.
      * First checks for explicit navigation links, then falls back to spatial navigation.
      * Returns true if navigation was successful.

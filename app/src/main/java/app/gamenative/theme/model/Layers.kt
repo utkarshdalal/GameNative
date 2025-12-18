@@ -224,6 +224,8 @@ sealed class Layer {
         val letterSpacing: FloatOrBinding? = null,
         /** Text decoration: "none", "underline", or "lineThrough". */
         val textDecoration: String = "none",
+        /** Text overflow behavior: "ellipsis", "clip", or "visible". Defaults to "ellipsis". */
+        val overflow: String = "ellipsis",
     ) : Layer()
 
     /**
@@ -276,5 +278,7 @@ sealed class Layer {
         val borderColor: IntOrBinding? = null,
         /** Font weight: "normal", "bold", "medium", "semibold", etc. */
         val fontWeight: String = "normal",
+        /** Padding inside button: "vertical horizontal" or single value. */
+        val padding: String? = null,
     ) : Layer()
 }

@@ -13,7 +13,7 @@
                   maxLines="1" textAlign="center" fontWeight="medium" anchor="topLeft"
                   focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}" />
 
-            <text id="compatLabel" x="0" y="@{vars.compatY}" width="85%"
+            <text id="compatLabel" x="0" y="@{vars.compatY}" width="100%"
                   text="@{game.compatibility.label}" textSize="@{vars.textSizeSmall}"
                   color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="normal"
                   anchor="topLeft" focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}" opacity="0.7" />

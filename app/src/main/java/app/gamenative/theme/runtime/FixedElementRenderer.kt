@@ -443,12 +443,16 @@ private fun BoxScope.RenderFixedElement(
                 element.anchor == Anchor.BOTTOM_RIGHT
 
             // Create style from theme element with highlight properties and navigation links
+            val textColor = element.textColor?.let { Color(it) }
+            val searchHeight = dimToDp(element.size.height, parentWidth, parentHeight)
             val searchStyle = app.gamenative.ui.screen.library.components.SearchBarStyle(
                 backgroundColor = bgColor,
+                textColor = textColor,
                 borderRadius = radius,
                 collapsible = element.collapsible,
                 anchorRight = isAnchorRight,
                 expandedWidth = expandedWidth,
+                height = searchHeight,
                 highlightColor = highlightStyle.color,
                 highlightOpacity = highlightStyle.opacity,
                 highlightBorderWidth = highlightStyle.borderWidth,
@@ -663,6 +667,7 @@ private fun BoxScope.RenderFixedElement(
                 textAlign = element.textAlign,
                 fontWeight = element.fontWeight,
                 fontStyle = element.fontStyle,
+                overflow = element.overflow,
                 opacity = element.opacity,
             )
         }

@@ -345,11 +345,13 @@ private fun DimSize.toDpSize(parent: DpSize): DpSize = DpSize(
         is Dimension.Px -> with(LocalDensity.current) { w.value.dp }
         is Dimension.RelW -> parent.width * w.fraction
         is Dimension.RelH -> parent.height * w.fraction
+        is Dimension.Unspecified -> Dp.Unspecified
     },
     height = when (val h = this.height) {
         is Dimension.Px -> with(LocalDensity.current) { h.value.dp }
         is Dimension.RelW -> parent.width * h.fraction
         is Dimension.RelH -> parent.height * h.fraction
+        is Dimension.Unspecified -> Dp.Unspecified
     }
 )
 

@@ -35,15 +35,15 @@
               verticalAlign="center"
               selectionMode="moving" itemCard="hero" />
 
-        <fixed id="topBar" backgroundColor="#FF000000" height="@{vars.topBarHeight}">
+        <fixed id="topBar" backgroundColor="#CC000000" height="@{vars.topBarHeight}">
             <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
             <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="56"
                 anchor="topLeft" backgroundColor="#FF1E1E1E" borderRadius="24"
                 highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                 highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-            <profileButton x="12" y="@{vars.profileButtonY}" anchor="topRight" size="48"
-                iconSize="32" padding="8"
+            <profileButton x="@{vars.paddingMedium}" y="@{vars.profileButtonY}" anchor="topRight" size="56"
+                iconSize="36" padding="10"
                 backgroundColor="#66808080" cornerRadius="12"
                 highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                 highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />

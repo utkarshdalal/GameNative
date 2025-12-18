@@ -2,18 +2,19 @@
     <!-- Colors (used multiple times) -->
     <var name="textColor" value="#FFFFFFFF" />
     <var name="highlightColor" value="#9575CD" />
-    
+
     <!-- Highlight styling (used by multiple elements) -->
     <var name="highlightOpacity" value="0.9" />
     <var name="highlightBorderWidth" value="2" />
     <var name="highlightTransitionSpeed" value="200" />
-    
+
     <!-- Shared dimensions -->
     <var name="cornerRadius" value="15" />
     <var name="rowHeight" value="92" />
     <var name="coverSize" value="60" />
     <var name="textSizeTitle" value="16" />
-    
+    <var name="titleWidth" value="65%" />
+
     <!-- Shared spacing -->
     <var name="paddingMedium" value="16" />
     <var name="bottomOffset" value="24" />
@@ -33,6 +34,7 @@
         <var name="searchBarWidth" value="90%" />
         <var name="searchBarX" value="5%" />
         <var name="searchBarY" value="80" />
-        <var name="profileButtonY" value="0" />
+        <var name="profileButtonY" value="10" />
+        <var name="titleWidth" value="45%" />
     </breakpoint>
 </variables>

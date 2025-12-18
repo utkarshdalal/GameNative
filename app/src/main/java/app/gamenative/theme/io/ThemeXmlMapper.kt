@@ -250,6 +250,7 @@ object ThemeXmlMapper {
                 navigateRight = base.navigateRight,
                 size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(400f), Dimension.Px(48f)),
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
+                textColor = resolveColorAttr(n, "textColor", tree),
                 borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
                 collapsible = n.attributes["collapsible"]?.toBooleanStrictOrNull() ?: false,
             )
@@ -396,6 +397,7 @@ object ThemeXmlMapper {
                 textAlign = n.attributes["textAlign"] ?: "left",
                 fontWeight = n.attributes["fontWeight"] ?: "normal",
                 fontStyle = n.attributes["fontStyle"] ?: "normal",
+                overflow = n.attributes["overflow"] ?: "ellipsis",
                 opacity = resolveFloat(n, "opacity", 1f, tree),
             )
             "shadow" -> FixedElement.Shadow(
@@ -614,6 +616,7 @@ object ThemeXmlMapper {
             lineHeight = floatBindingResolved(n.attributes["lineHeight"], tree),
             letterSpacing = floatBindingResolved(n.attributes["letterSpacing"], tree),
             textDecoration = n.attributes["textDecoration"] ?: "none",
+            overflow = n.attributes["overflow"] ?: "ellipsis",
         )
         "backdrop" -> Layer.BackdropLayer(
             id = base.id,
@@ -648,6 +651,7 @@ object ThemeXmlMapper {
             borderWidth = floatBindingResolved(n.attributes["borderWidth"], tree),
             borderColor = intBindingResolved(n.attributes["borderColor"], tree),
             fontWeight = n.attributes["fontWeight"] ?: "normal",
+            padding = n.attributes["padding"],
         )
         else -> null
         }
@@ -849,6 +853,13 @@ object ThemeXmlMapper {
                 marginEnd = marginEnd,
             )
         }
+
+        // Navigation attributes
+        val navigationId = node.attributes["navigationId"]
+        val navigateUp = node.attributes["navigateUp"]
+        val navigateDown = node.attributes["navigateDown"]
+        val navigateLeft = node.attributes["navigateLeft"]
+        val navigateRight = node.attributes["navigateRight"]
         
         return LayoutNode.Grid(
             columns = cols,
@@ -866,6 +877,11 @@ object ThemeXmlMapper {
             contentPaddingEnd = paddingEnd,
             separator = separator,
             verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"]),
+            navigationId = navigationId,
+            navigateUp = navigateUp,
+            navigateDown = navigateDown,
+            navigateLeft = navigateLeft,
+            navigateRight = navigateRight,
         )
     }
 
@@ -994,7 +1010,7 @@ object ThemeXmlMapper {
             val sepLayers = sepNode.children.mapNotNull { parseLayer(it, tree) }
             val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
             GridSeparator(
-                height = sepHeight, 
+                height = sepHeight,
                 layers = sepLayers,
                 marginTop = marginTop,
                 marginBottom = marginBottom,
@@ -1002,7 +1018,14 @@ object ThemeXmlMapper {
                 marginEnd = marginEnd,
             )
         }
-        
+
+        // Navigation attributes
+        val navigationId = node.attributes["navigationId"]
+        val navigateUp = node.attributes["navigateUp"]
+        val navigateDown = node.attributes["navigateDown"]
+        val navigateLeft = node.attributes["navigateLeft"]
+        val navigateRight = node.attributes["navigateRight"]
+
         return LayoutNode.Grid(
             columns = cols,
             rows = rows,
@@ -1019,9 +1042,14 @@ object ThemeXmlMapper {
             contentPaddingEnd = paddingEnd,
             separator = separator,
             verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"]),
+            navigationId = navigationId,
+            navigateUp = navigateUp,
+            navigateDown = navigateDown,
+            navigateLeft = navigateLeft,
+            navigateRight = navigateRight,
         )
     }
-    
+
     /**
      * Parse a carousel node with support for inline card definitions.
      * If a <card> child is found inside the carousel, it will be parsed and used as the item card.
@@ -1089,7 +1117,14 @@ object ThemeXmlMapper {
         val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
         val backgroundOpacity = resolveFloat(node, "backgroundOpacity", default = 0.3f, tree)
         val backgroundTransitionSpeed = resolveInt(node, "backgroundTransitionSpeed", tree) ?: 400
-        
+
+        // Navigation attributes
+        val navigationId = node.attributes["navigationId"]
+        val navigateUp = node.attributes["navigateUp"]
+        val navigateDown = node.attributes["navigateDown"]
+        val navigateLeft = node.attributes["navigateLeft"]
+        val navigateRight = node.attributes["navigateRight"]
+
         return LayoutNode.Carousel(
             direction = dir,
             orientation = orientation,
@@ -1110,6 +1145,11 @@ object ThemeXmlMapper {
             focusedBackground = focusedBackground,
             backgroundOpacity = backgroundOpacity,
             backgroundTransitionSpeed = backgroundTransitionSpeed,
+            navigationId = navigationId,
+            navigateUp = navigateUp,
+            navigateDown = navigateDown,
+            navigateLeft = navigateLeft,
+            navigateRight = navigateRight,
         )
     }
     // endregion
@@ -1291,14 +1331,23 @@ object ThemeXmlMapper {
         }
     }
 
-    /** Resolve size with variable support. */
+    /** Resolve size with variable support. Returns null only if BOTH width and height are missing. */
     private fun sizeResolved(n: XmlNode, tree: ThemeTree): DimSize? {
-        val wResolved = resolveRawValue(n.attributes["width"], tree) ?: return null
-        val hResolved = resolveRawValue(n.attributes["height"], tree) ?: return null
+        val wResolved = resolveRawValue(n.attributes["width"], tree)
+        val hResolved = resolveRawValue(n.attributes["height"], tree)
         
-        val w = parseDimensionWidth(wResolved) ?: return null
-        val h = parseDimensionHeight(hResolved) ?: return null
-        return DimSize(w, h)
+        // If both are missing, return null
+        if (wResolved == null && hResolved == null) return null
+
+        // Parse dimensions, using null for unspecified values (will use Dimension.Unspecified)
+        val w = wResolved?.let { parseDimensionWidth(it) }
+        val h = hResolved?.let { parseDimensionHeight(it) }
+        
+        // Return size with available dimensions (Dimension.Unspecified for missing ones)
+        return DimSize(
+            w ?: Dimension.Unspecified,
+            h ?: Dimension.Unspecified
+        )
     }
 
     /** Create a FloatOrBinding, resolving variable references to literal values. */

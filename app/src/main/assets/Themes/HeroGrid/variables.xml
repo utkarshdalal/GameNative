@@ -3,17 +3,17 @@
     <var name="textColor" value="#FFFFFFFF" />
     <var name="overlayColor" value="#99000000" />
     <var name="highlightColor" value="#9575CD" />
-    
+
     <!-- Highlight styling (used by multiple elements) -->
     <var name="highlightOpacity" value="0.9" />
     <var name="highlightBorderWidth" value="2" />
     <var name="highlightTransitionSpeed" value="200" />
-    
+
     <!-- Shared dimensions -->
     <var name="cornerRadius" value="20" />
     <var name="badgeHeight" value="20" />
     <var name="textSizeSmall" value="11" />
-    
+
     <!-- Shared spacing -->
     <var name="paddingSmall" value="8" />
     <var name="paddingMedium" value="16" />
@@ -25,7 +25,7 @@
     <var name="searchBarX" value="200" />
     <var name="searchBarY" value="12" />
     <var name="profileButtonY" value="12" />
-    
+
     <!-- Grid (in breakpoint) -->
     <var name="gridPaddingTop" value="80" />
     <var name="hSpacing" value="12" />
@@ -36,7 +36,7 @@
         <var name="searchBarWidth" value="90%" />
         <var name="searchBarX" value="5%" />
         <var name="searchBarY" value="80" />
-        <var name="profileButtonY" value="0" />
+        <var name="profileButtonY" value="10" />
         <var name="gridPaddingTop" value="160" />
         <var name="hSpacing" value="6" />
     </breakpoint>

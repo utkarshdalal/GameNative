@@ -124,6 +124,8 @@ sealed class FixedElement {
         val size: DimSize,
         /** Background color (ARGB), null for default. */
         val backgroundColor: Int? = null,
+        /** Text/icon color (ARGB), null for default. */
+        val textColor: Int? = null,
         /** Corner radius in pixels. */
         val borderRadius: Float = 8f,
         /** If true, shows only an icon that expands when focused/has text. */
@@ -350,6 +352,8 @@ sealed class FixedElement {
         val fontWeight: String = "normal",
         /** Font style: "normal" or "italic". */
         val fontStyle: String = "normal",
+        /** Text overflow behavior: "ellipsis", "clip", or "visible". Defaults to "ellipsis". */
+        val overflow: String = "ellipsis",
         /** Opacity (0.0 - 1.0). */
         val opacity: Float = 1f,
     ) : FixedElement()

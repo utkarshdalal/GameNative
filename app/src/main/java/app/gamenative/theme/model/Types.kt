@@ -14,6 +14,8 @@ sealed class Dimension {
     data class RelW(val fraction: Float) : Dimension()
     /** Relative to container height [0..1]. */
     data class RelH(val fraction: Float) : Dimension()
+    /** Unspecified - use default or intrinsic size. */
+    data object Unspecified : Dimension()
 }
 
 /** Simple 2D size in [Dimension] units. */

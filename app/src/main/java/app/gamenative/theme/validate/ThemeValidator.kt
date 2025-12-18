@@ -205,16 +205,16 @@ object ThemeValidator {
                     }
                 } else {
                     // Non-inline cards must have an id
-                    if (id.isEmpty()) {
-                        out += ValidationIssue(
-                            ValidationCode.REQUIRED_FIELD_MISSING, Severity.ERROR,
-                            "Card must declare non-empty id.", node.source
-                        )
-                    } else if (!cardIds.add(id)) {
-                        out += ValidationIssue(
-                            ValidationCode.DUPLICATE_ID, Severity.ERROR,
-                            "Duplicate card id '$id'.", node.source
-                        )
+                if (id.isEmpty()) {
+                    out += ValidationIssue(
+                        ValidationCode.REQUIRED_FIELD_MISSING, Severity.ERROR,
+                        "Card must declare non-empty id.", node.source
+                    )
+                } else if (!cardIds.add(id)) {
+                    out += ValidationIssue(
+                        ValidationCode.DUPLICATE_ID, Severity.ERROR,
+                        "Duplicate card id '$id'.", node.source
+                    )
                     }
                 }
                 validateLayers(node, out)

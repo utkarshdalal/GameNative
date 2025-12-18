@@ -9,11 +9,12 @@
                    width="@{vars.coverSize}" height="@{vars.coverSize}"
                    src="@{game.cover}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
 
-            <text id="title" x="88" y="18" width="650" height="24"
+            <text id="title" x="88" y="18" width="@{vars.titleWidth}" height="24"
                   text="@{game.title}" textSize="@{vars.textSizeTitle}"
-                  color="@{vars.textColor}" maxLines="1" fontWeight="bold" />
+                  color="@{vars.textColor}" maxLines="1" fontWeight="bold"
+                  overflow="ellipsis" />
 
-            <text id="installIndicator" x="88" y="42" width="16" height="16"
+            <text id="installIndicator" x="88" y="40" width="16" height="16"
                   text="●" textSize="@{vars.textSizeTitle}"
                   color="@{game.installStatus.color}" fontWeight="bold" />
 
@@ -25,7 +26,7 @@
                   text="@{game.compatibility.label}" textSize="13"
                   color="@{game.compatibility.color}" fontStyle="italic" />
 
-            <button id="openBtn" x="26" y="26" height="40" anchor="topRight"
+            <button id="openBtn" x="26" y="26" height="40" padding="0 20" anchor="topRight"
                     text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
                     textSize="14" cornerRadius="@{vars.cornerRadius}" />
         </card>
@@ -40,15 +41,15 @@
             </separator>
         </grid>
 
-        <fixed id="topBar" backgroundColor="#FF000000" height="@{vars.topBarHeight}">
+        <fixed id="topBar" backgroundColor="#CC000000" height="@{vars.topBarHeight}">
             <header x="@{vars.paddingMedium}" y="8" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
             <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="56"
                 anchor="topLeft" backgroundColor="#FF1E1E1E" borderRadius="24"
                 highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                 highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-            <profileButton x="12" y="@{vars.profileButtonY}" anchor="topRight" size="48"
-                iconSize="32" padding="8"
+            <profileButton x="@{vars.paddingMedium}" y="@{vars.profileButtonY}" anchor="topRight" size="56"
+                iconSize="36" padding="10"
                 backgroundColor="#66808080" cornerRadius="12"
                 highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                 highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />

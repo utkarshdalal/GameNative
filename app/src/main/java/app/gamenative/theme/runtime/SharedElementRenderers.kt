@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,6 +88,8 @@ object SharedElementRenderers {
 
     /**
      * Render static text with styling.
+     * 
+     * @param overflow Text overflow behavior: "ellipsis" (add ...), "clip" (hard cut), or "visible" (show all)
      */
     @Composable
     fun RenderText(
@@ -102,12 +106,14 @@ object SharedElementRenderers {
         lineHeight: Float? = null,
         letterSpacing: Float? = null,
         textDecoration: String? = null,
+        overflow: String = "ellipsis",
         opacity: Float,
     ) {
         val fontWeightValue = parseFontWeight(fontWeight)
         val fontStyleValue = parseFontStyle(fontStyle)
         val textAlignValue = parseTextAlign(textAlign)
         val textDecorationValue = parseTextDecoration(textDecoration)
+        val textOverflow = parseTextOverflow(overflow)
         
         val lineHeightSp = lineHeight?.let { if (it > 0f) (it * textSize).sp else TextUnit.Unspecified } ?: TextUnit.Unspecified
         val letterSpacingSp = letterSpacing?.let { if (it != 0f) it.sp else TextUnit.Unspecified } ?: TextUnit.Unspecified
@@ -115,7 +121,7 @@ object SharedElementRenderers {
         val sizeModifier = if (width != null && height != null) {
             Modifier.size(width, height)
         } else if (width != null) {
-            Modifier.size(width, Dp.Unspecified)
+            Modifier.width(width)
         } else {
             Modifier
         }
@@ -133,12 +139,22 @@ object SharedElementRenderers {
                 fontStyle = fontStyleValue,
                 textAlign = textAlignValue,
                 maxLines = maxLines ?: Int.MAX_VALUE,
-                overflow = TextOverflow.Ellipsis,
+                overflow = textOverflow,
                 lineHeight = lineHeightSp,
                 letterSpacing = letterSpacingSp,
                 textDecoration = textDecorationValue,
+                modifier = if (width != null) Modifier.fillMaxWidth() else Modifier,
             )
         }
+    }
+    
+    /**
+     * Parse text overflow mode from string.
+     */
+    fun parseTextOverflow(overflow: String?): TextOverflow = when (overflow?.lowercase()) {
+        "clip" -> TextOverflow.Clip
+        "visible" -> TextOverflow.Visible
+        else -> TextOverflow.Ellipsis  // Default to ellipsis
     }
 
     /**

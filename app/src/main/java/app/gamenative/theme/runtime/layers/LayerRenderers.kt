@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,7 +91,7 @@ private fun BindingContext.or(value: StringOrBinding?, default: String): String 
 
 @Composable
 private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val shape = parseCornerRadius(layer.cornerRadius)
     val tintInt = binding.or(layer.tintColor, 0)
@@ -156,7 +158,7 @@ private fun BoxScope.ImageLayerView(layer: Layer.ImageLayer, parentSize: DpSize,
 @OptIn(UnstableApi::class)
 @Composable
 private fun BoxScope.VideoLayerView(layer: Layer.VideoLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val shape = parseCornerRadius(layer.cornerRadius)
     val context = LocalContext.current
@@ -237,7 +239,7 @@ private fun BoxScope.VideoLayerView(layer: Layer.VideoLayer, parentSize: DpSize,
 
 @Composable
 private fun BoxScope.RectLayerView(layer: Layer.RectLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val fillColor = Color(binding.or(layer.color, 0x66000000.toInt()))
     val borderWidth = binding.or(layer.borderWidth, 0f)
@@ -263,7 +265,7 @@ private fun BoxScope.RectLayerView(layer: Layer.RectLayer, parentSize: DpSize, b
 
 @Composable
 private fun BoxScope.ShadowLayerView(layer: Layer.ShadowLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val radius = binding.or(layer.radius, 0f)
     val color = Color(binding.or(layer.color, 0x88000000.toInt()))
@@ -285,7 +287,7 @@ private fun BoxScope.ShadowLayerView(layer: Layer.ShadowLayer, parentSize: DpSiz
 
 @Composable
 private fun BoxScope.BorderLayerView(layer: Layer.BorderLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val strokeWidth = binding.or(layer.strokeWidth, 1f)
     val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
@@ -303,7 +305,7 @@ private fun BoxScope.BorderLayerView(layer: Layer.BorderLayer, parentSize: DpSiz
 
 @Composable
 private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
     val textSize = binding.or(layer.textSize, 16f)
@@ -314,10 +316,14 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
     val lineHeight = binding.or(layer.lineHeight, 0f).let { if (it > 0f) it else null }
     val letterSpacing = binding.or(layer.letterSpacing, 0f).let { if (it != 0f) it else null }
     
+    // Convert Dp.Unspecified to null for RenderText
+    val width = if (p.width == Dp.Unspecified) null else p.width
+    val height = if (p.height == Dp.Unspecified) null else p.height
+    
     SharedElementRenderers.RenderText(
         modifier = Modifier.offset(p.x, p.y),
-        width = p.width,
-        height = p.height,
+        width = width,
+        height = height,
         text = text,
         color = color,
         textSize = textSize,
@@ -328,13 +334,14 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
         lineHeight = lineHeight,
         letterSpacing = letterSpacing,
         textDecoration = layer.textDecoration,
+        overflow = layer.overflow,
         opacity = alpha,
     )
 }
 
 @Composable
 private fun BoxScope.BackdropLayerView(layer: Layer.BackdropLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val blurRadius = binding.or(layer.blurRadius, 0f)
     val tintInt = binding.or(layer.tintColor, 0)
@@ -353,7 +360,7 @@ private fun BoxScope.BackdropLayerView(layer: Layer.BackdropLayer, parentSize: D
 
 @Composable
 private fun BoxScope.ButtonLayerView(layer: Layer.ButtonLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(80.dp, 40.dp), anchor)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(80.dp, 40.dp), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val shape = parseCornerRadius(layer.cornerRadius)
     val bgColorInt = binding.or(layer.backgroundColor, 0xFFE91E63.toInt())
@@ -363,15 +370,39 @@ private fun BoxScope.ButtonLayerView(layer: Layer.ButtonLayer, parentSize: DpSiz
         is StringOrBinding.Literal -> t.value
         is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
     }
-    
+
     val borderWidth = binding.or(layer.borderWidth, 0f)
     val borderColorInt = binding.or(layer.borderColor, 0xFFFFFFFF.toInt())
     val fontWeight = SharedElementRenderers.parseFontWeight(layer.fontWeight)
-    
+
+    // Parse padding: "vertical horizontal" or single value
+    val (paddingVertical, paddingHorizontal) = layer.padding?.let { paddingStr ->
+        val parts = paddingStr.trim().split("\\s+".toRegex())
+        when (parts.size) {
+            1 -> {
+                val value = parts[0].toFloatOrNull() ?: 0f
+                Pair(value.dp, value.dp)
+            }
+            2 -> {
+                val vertical = parts[0].toFloatOrNull() ?: 0f
+                val horizontal = parts[1].toFloatOrNull() ?: 0f
+                Pair(vertical.dp, horizontal.dp)
+            }
+            else -> Pair(0.dp, 0.dp)
+        }
+    } ?: Pair(0.dp, 0.dp)
+
+    // Calculate size modifier - if no explicit size, use wrapContent with padding
+    val sizeModifier = if (p.width == Dp.Unspecified || p.height == Dp.Unspecified) {
+        Modifier
+    } else {
+        Modifier.size(p.width, p.height)
+    }
+
     Box(
         modifier = Modifier
             .offset(p.x, p.y)
-            .size(p.width, p.height)
+            .then(sizeModifier)
             .graphicsLayer(alpha = alpha)
             .clip(shape)
             .background(Color(bgColorInt))
@@ -381,7 +412,8 @@ private fun BoxScope.ButtonLayerView(layer: Layer.ButtonLayer, parentSize: DpSiz
                 } else {
                     Modifier
                 }
-            ),
+            )
+            .padding(horizontal = paddingHorizontal, vertical = paddingVertical),
         contentAlignment = Alignment.Center
     ) {
         Text(

@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
@@ -35,8 +37,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,12 +78,16 @@ import kotlinx.coroutines.launch
  */
 data class SearchBarStyle(
     val backgroundColor: Color? = null,
+    /** Text and icon color, null = use default theme colors. */
+    val textColor: Color? = null,
     val borderRadius: Float = 16f,
     val collapsible: Boolean = false,
     /** Whether the anchor is on the right side (for collapsed icon positioning). */
     val anchorRight: Boolean = false,
     /** Full width of the search bar when expanded (for animation). */
     val expandedWidth: Dp = 0.dp,
+    /** Height of the search bar. */
+    val height: Dp = 56.dp,
     // Highlight styling for controller navigation (theme-only, null = no highlight)
     /** Highlight border color, null = no highlight border (non-theme mode). */
     val highlightColor: Color? = null,
@@ -159,6 +165,8 @@ internal fun LibrarySearchBar(
     
     // Background color from theme or default
     val bgColor = style.backgroundColor ?: MaterialTheme.colorScheme.surfaceVariant
+    // Text/icon color from theme or default
+    val iconColor = style.textColor ?: MaterialTheme.colorScheme.onSurfaceVariant
     val cornerRadius = style.borderRadius.dp
     
     // Icon size for collapsed mode
@@ -318,19 +326,21 @@ internal fun LibrarySearchBar(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = iconColor
                         )
                     }
                 } else {
                     // Expanded mode - show full search field
                     var hasHadFocus by remember { mutableStateOf(false) }
-                    TextField(
+                    val interactionSource = remember { MutableInteractionSource() }
+                    BasicTextField(
                         value = state.searchQuery,
                         onValueChange = onSearchText,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(style.height)
                             .clip(RoundedCornerShape(cornerRadius))
+                            .background(bgColor, RoundedCornerShape(cornerRadius))
                             .focusable(allowFocusing.value)
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
@@ -344,42 +354,56 @@ internal fun LibrarySearchBar(
                                     isActivated = false
                                 }
                             },
-                        placeholder = {
-                            Text(
-                                text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        trailingIcon = {
-                            if (state.searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { onSearchText("") },
-                                    content = {
-                                        Icon(
-                                            Icons.Default.Clear,
-                                            contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                )
-                            }
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = bgColor,
-                            unfocusedContainerColor = bgColor,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor),
+                        cursorBrush = SolidColor(iconColor),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                        interactionSource = interactionSource,
+                        decorationBox = { innerTextField ->
+                            TextFieldDefaults.DecorationBox(
+                                value = state.searchQuery,
+                                innerTextField = innerTextField,
+                                enabled = true,
+                                singleLine = true,
+                                visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+                                interactionSource = interactionSource,
+                                placeholder = {
+                                    Text(
+                                        text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
+                                        color = iconColor.copy(alpha = 0.7f)
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                                        tint = iconColor
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (state.searchQuery.isNotEmpty()) {
+                                        IconButton(
+                                            onClick = { onSearchText("") },
+                                            content = {
+                                                Icon(
+                                                    Icons.Default.Clear,
+                                                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
+                                                    tint = iconColor
+                                                )
+                                            }
+                                        )
+                                    }
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                ),
+                                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
+                            )
+                        }
                     )
                     
                     // Request focus when expanded in collapsible mode
@@ -390,55 +414,71 @@ internal fun LibrarySearchBar(
             }
         } else {
             // Non-collapsible mode - always show full search field
-        TextField(
-            value = state.searchQuery,
-            onValueChange = onSearchText,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
+            val interactionSource = remember { MutableInteractionSource() }
+            BasicTextField(
+                value = state.searchQuery,
+                onValueChange = onSearchText,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(style.height)
                     .clip(RoundedCornerShape(cornerRadius))
+                    .background(bgColor, RoundedCornerShape(cornerRadius))
                     .focusable(allowFocusing.value)
                     .focusRequester(focusRequester)
                     .onFocusChanged { focusState ->
                         isFocused = focusState.isFocused
                     },
-            placeholder = {
-                Text(
-                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            trailingIcon = {
-                if (state.searchQuery.isNotEmpty()) {
-                    IconButton(
-                        onClick = { onSearchText("") },
-                        content = {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor),
+                cursorBrush = SolidColor(iconColor),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                interactionSource = interactionSource,
+                decorationBox = { innerTextField ->
+                    TextFieldDefaults.DecorationBox(
+                        value = state.searchQuery,
+                        innerTextField = innerTextField,
+                        enabled = true,
+                        singleLine = true,
+                        visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+                        interactionSource = interactionSource,
+                        placeholder = {
+                            Text(
+                                text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
+                                color = iconColor.copy(alpha = 0.7f)
                             )
-                        }
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                                tint = iconColor
+                            )
+                        },
+                        trailingIcon = {
+                            if (state.searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { onSearchText("") },
+                                    content = {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
+                                            tint = iconColor
+                                        )
+                                    }
+                                )
+                            }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
                     )
                 }
-            },
-            colors = TextFieldDefaults.colors(
-                    focusedContainerColor = bgColor,
-                    unfocusedContainerColor = bgColor,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
-        )
+            )
         }
     }
 

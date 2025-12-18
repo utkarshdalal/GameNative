@@ -96,11 +96,6 @@
     </elements>
 
     <layout>
-        <!-- White background -->
-        <fixed id="background">
-            <rect x="0" y="0" width="100%" height="100%" color="#FFFFFFFF" />
-        </fixed>
-
         <!-- Vertical carousel with backdrop image -->
         <carousel navigationId="carousel"
                   orientation="vertical"
@@ -131,8 +126,9 @@
                        x="76" y="@{vars.searchBarY}"
                        width="@{vars.searchBarWidth}" height="48"
                        anchor="topRight"
-                       backgroundColor="#DDFFFFFF"
-                       textColor="#FF000000"
+                       backgroundColor="#22FFFFFF"
+                       textColor="#FFFFFFFF"
+                       hintTextColor="#88FFFFFF"
                        borderRadius="24"
                        collapsible="true"
                        highlightColor="@{vars.highlightColor}"
@@ -146,7 +142,7 @@
                            size="44"
                            iconSize="44"
                            padding="2"
-                           backgroundColor="#DDFFFFFF"
+                           backgroundColor="#22FFFFFF"
                            cornerRadius="22"
                            highlightColor="@{vars.highlightColor}"
                            highlightOpacity="@{vars.highlightOpacity}"

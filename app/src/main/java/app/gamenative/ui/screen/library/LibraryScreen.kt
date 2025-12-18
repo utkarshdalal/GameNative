@@ -441,67 +441,67 @@ private fun LibraryScreenContent(
                         is app.gamenative.theme.model.LayoutElement.Content -> {
                             // Render content (grid/carousel/canvas)
                             when (val layout = element.node) {
-                                is app.gamenative.theme.model.LayoutNode.Grid -> {
-                                    val card = cards[layout.itemCard]
-                                    if (card != null) {
-                                        app.gamenative.theme.runtime.ThemedGameGrid(
-                                            items = state.appInfoList,
-                                            gridConfig = layout,
-                                            card = card,
-                                            listState = listState,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .then(safePaddingModifier),
-                                            onItemClick = { item -> selectedAppId = item.appId },
-                                            onItemFocus = { /* Can be used for preview pane later */ },
-                                            bindingProvider = bindingProvider,
-                                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
-                                        )
-                                    }
-                                }
-                                is app.gamenative.theme.model.LayoutNode.Carousel -> {
-                                    val card = cards[layout.itemCard]
-                                    if (card != null) {
-                                        app.gamenative.theme.runtime.ThemedGameCarousel(
-                                            items = state.appInfoList,
-                                            carouselConfig = layout,
-                                            card = card,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .then(safePaddingModifier),
-                                            initialPage = carouselPageIndex,
-                                            onPageChanged = onCarouselPageChanged,
-                                            onItemClick = { item -> selectedAppId = item.appId },
-                                            onItemFocus = { /* Can be used for preview pane later */ },
-                                            bindingProvider = bindingProvider,
-                                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
-                                        )
-                                    }
-                                }
+                    is app.gamenative.theme.model.LayoutNode.Grid -> {
+                    val card = cards[layout.itemCard]
+                    if (card != null) {
+                        app.gamenative.theme.runtime.ThemedGameGrid(
+                            items = state.appInfoList,
+                            gridConfig = layout,
+                            card = card,
+                            listState = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(safePaddingModifier),
+                            onItemClick = { item -> selectedAppId = item.appId },
+                            onItemFocus = { /* Can be used for preview pane later */ },
+                            bindingProvider = bindingProvider,
+                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                        )
+                    }
+                    }
+                    is app.gamenative.theme.model.LayoutNode.Carousel -> {
+                        val card = cards[layout.itemCard]
+                        if (card != null) {
+                            app.gamenative.theme.runtime.ThemedGameCarousel(
+                                items = state.appInfoList,
+                                carouselConfig = layout,
+                                card = card,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(safePaddingModifier),
+                                initialPage = carouselPageIndex,
+                                onPageChanged = onCarouselPageChanged,
+                                onItemClick = { item -> selectedAppId = item.appId },
+                                onItemFocus = { /* Can be used for preview pane later */ },
+                                bindingProvider = bindingProvider,
+                                themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                            )
+                        }
+                    }
                                 is app.gamenative.theme.model.LayoutNode.Canvas -> {
-                                    // Fallback to basic ThemeLayout for Canvas layouts
-                                    val baseBinding = remember(reloadTick) {
-                                        app.gamenative.theme.runtime.MapBindingContext()
-                                    }
-                                    val itemBindingProvider = remember(state.appInfoList, reloadTick) {
-                                        { index: Int ->
-                                            val item = state.appInfoList.getOrNull(index)
-                                            val bindings = item?.let { bindingProvider(it) } ?: emptyMap()
-                                            app.gamenative.theme.runtime.MapBindingContext(strings = bindings)
-                                        }
-                                    }
-                                    app.gamenative.theme.runtime.ThemeLayout(
-                                        layout = layout,
-                                        cards = cards,
-                                        binding = baseBinding,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .then(safePaddingModifier)
-                                            .padding(8.dp),
-                                        itemBindingProvider = itemBindingProvider,
-                                    )
-                                }
-                            }
+                        // Fallback to basic ThemeLayout for Canvas layouts
+                    val baseBinding = remember(reloadTick) {
+                        app.gamenative.theme.runtime.MapBindingContext()
+                    }
+                    val itemBindingProvider = remember(state.appInfoList, reloadTick) {
+                        { index: Int ->
+                            val item = state.appInfoList.getOrNull(index)
+                            val bindings = item?.let { bindingProvider(it) } ?: emptyMap()
+                            app.gamenative.theme.runtime.MapBindingContext(strings = bindings)
+                        }
+                    }
+                    app.gamenative.theme.runtime.ThemeLayout(
+                        layout = layout,
+                        cards = cards,
+                        binding = baseBinding,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(safePaddingModifier)
+                            .padding(8.dp),
+                        itemBindingProvider = itemBindingProvider,
+                    )
+                }
+                }
                         }
                     }
                 }

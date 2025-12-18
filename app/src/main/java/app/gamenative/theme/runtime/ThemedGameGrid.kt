@@ -246,6 +246,9 @@ fun ThemedGameCarousel(
         // Spatial focus manager for directional navigation based on screen position
         val spatialFocusManager = LocalSpatialFocusManager.current
         
+        // Use configured navigationId or default to "carousel"
+        val carouselNavId = carouselConfig.navigationId ?: "carousel"
+        
         // Track if carousel has focus (for fading effect)
         // Default to TRUE - carousel is considered focused until explicitly unfocused
         var carouselHasFocus by remember { mutableStateOf(true) }
@@ -320,6 +323,15 @@ fun ThemedGameCarousel(
             HorizontalAlign.START -> Arrangement.Start
         }
         
+        // Helper to navigate using explicit target or spatial navigation
+        fun navigateToTarget(explicitTarget: String?, direction: SpatialFocusManager.Direction): Boolean {
+            return if (explicitTarget != null) {
+                spatialFocusManager?.navigateTo(explicitTarget) ?: false
+            } else {
+                spatialFocusManager?.navigateInDirection(carouselNavId, direction) ?: false
+            }
+        }
+        
         // Key event handler - swap primary/secondary directions based on orientation
         val keyEventHandler: (androidx.compose.ui.input.key.KeyEvent) -> Boolean = { keyEvent ->
             if (keyEvent.type == KeyEventType.KeyDown) {
@@ -331,12 +343,9 @@ fun ThemedGameCarousel(
                                 pagerState.animateScrollToPage(pagerState.currentPage - 1)
                             }
                             true
-                        } else if (isVertical) {
-                            // For vertical carousel, Left navigates to elements on the left
-                            spatialFocusManager?.navigateInDirection(
-                                "carousel",
-                                SpatialFocusManager.Direction.LEFT
-                            ) ?: false
+                        } else if (isVertical || pagerState.currentPage == 0) {
+                            // For vertical carousel or at start of horizontal, navigate left
+                            navigateToTarget(carouselConfig.navigateLeft, SpatialFocusManager.Direction.LEFT)
                         } else false
                     }
                     Key.DirectionRight -> {
@@ -345,12 +354,9 @@ fun ThemedGameCarousel(
                                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
                             }
                             true
-                        } else if (isVertical) {
-                            // For vertical carousel, Right navigates to elements on the right
-                            spatialFocusManager?.navigateInDirection(
-                                "carousel",
-                                SpatialFocusManager.Direction.RIGHT
-                            ) ?: false
+                        } else if (isVertical || pagerState.currentPage >= items.size - 1) {
+                            // For vertical carousel or at end of horizontal, navigate right
+                            navigateToTarget(carouselConfig.navigateRight, SpatialFocusManager.Direction.RIGHT)
                         } else false
                     }
                     Key.DirectionUp -> {
@@ -359,12 +365,9 @@ fun ThemedGameCarousel(
                                 pagerState.animateScrollToPage(pagerState.currentPage - 1)
                             }
                             true
-                        } else if (!isVertical) {
-                            // For horizontal carousel, Up navigates to elements above
-                            spatialFocusManager?.navigateInDirection(
-                                "carousel",
-                                SpatialFocusManager.Direction.UP
-                            ) ?: false
+                        } else if (!isVertical || pagerState.currentPage == 0) {
+                            // For horizontal carousel or at start of vertical, navigate up
+                            navigateToTarget(carouselConfig.navigateUp, SpatialFocusManager.Direction.UP)
                         } else false
                     }
                     Key.DirectionDown -> {
@@ -373,12 +376,9 @@ fun ThemedGameCarousel(
                                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
                             }
                             true
-                        } else if (!isVertical) {
-                            // For horizontal carousel, Down navigates to elements below
-                            spatialFocusManager?.navigateInDirection(
-                                "carousel",
-                                SpatialFocusManager.Direction.DOWN
-                            ) ?: false
+                        } else if (!isVertical || pagerState.currentPage >= items.size - 1) {
+                            // For horizontal carousel or at end of vertical, navigate down
+                            navigateToTarget(carouselConfig.navigateDown, SpatialFocusManager.Direction.DOWN)
                         } else false
                     }
                     Key.Enter, Key.DirectionCenter, Key.ButtonA -> {
@@ -398,7 +398,7 @@ fun ThemedGameCarousel(
             carouselHasFocus = nowHasFocus
             if (nowHasFocus) {
                 hasEverHadFocus = true
-                spatialFocusManager?.setFocused("carousel")
+                spatialFocusManager?.setFocused(carouselNavId)
             }
         }
         
@@ -493,7 +493,7 @@ fun ThemedGameCarousel(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset(x = horizontalOffset)
+                    .offset(x = horizontalOffset, y = verticalOffset)
                     .focusRequester(focusRequester)
                     .focusable()
                     .onFocusChanged(focusChangeHandler)
@@ -509,7 +509,7 @@ fun ThemedGameCarousel(
                         .fillMaxHeight()
                         .onGloballyPositioned { coordinates ->
                             spatialFocusManager?.register(
-                                id = "carousel",
+                                id = carouselNavId,
                                 bounds = coordinates.boundsInRoot(),
                                 focusRequester = focusRequester
                             )
@@ -528,7 +528,7 @@ fun ThemedGameCarousel(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset(y = verticalOffset)
+                    .offset(x = horizontalOffset, y = verticalOffset)
                     .focusRequester(focusRequester)
                     .focusable()
                     .onFocusChanged(focusChangeHandler)
@@ -544,7 +544,7 @@ fun ThemedGameCarousel(
                         .height(scaledItemHeight)
                         .onGloballyPositioned { coordinates ->
                             spatialFocusManager?.register(
-                                id = "carousel",
+                                id = carouselNavId,
                                 bounds = coordinates.boundsInRoot(),
                                 focusRequester = focusRequester
                             )
@@ -841,8 +841,10 @@ private fun BoxScope.RenderThemedLayer(
             val shape = parseCornerRadius(layer.cornerRadius)
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) parentSize.height else rawH
             val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
 
@@ -900,8 +902,10 @@ private fun BoxScope.RenderThemedLayer(
         is Layer.RectLayer -> {
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) parentSize.height else rawH
             val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val shape = parseCornerRadius(layer.cornerRadius)
             val fillColor = resolveIntBinding(layer.color, 0x66000000, bindings)
@@ -932,8 +936,11 @@ private fun BoxScope.RenderThemedLayer(
             val text = stringResolver.resolve(rawText, themePath)
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: 24.dp
+            // Handle Dp.Unspecified properly - use default if unspecified
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) 24.dp else rawH
             val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val textSize = resolveFloatBinding(layer.textSize, 14f)
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
@@ -990,8 +997,10 @@ private fun BoxScope.RenderThemedLayer(
         is Layer.BorderLayer -> {
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) parentSize.height else rawH
             val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val shape = parseCornerRadius(layer.cornerRadius)
             val borderWidth = resolveFloatBinding(layer.strokeWidth, 1f).dp
@@ -1012,8 +1021,10 @@ private fun BoxScope.RenderThemedLayer(
             // Shadows are complex in Compose - simplified implementation
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) parentSize.height else rawH
             // Note: anchor support added but shadow rendering is simplified/skipped
             // val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
         }
@@ -1022,8 +1033,10 @@ private fun BoxScope.RenderThemedLayer(
             // Video not supported in grid tiles - show poster or placeholder
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) parentSize.height else rawH
             val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
 
             Box(
@@ -1042,8 +1055,10 @@ private fun BoxScope.RenderThemedLayer(
             // Backdrop blur effects - simplified
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: parentSize.width
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: parentSize.height
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) parentSize.height else rawH
             val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
             val tint = resolveIntBinding(layer.tintColor, 0, bindings)
 
@@ -1061,8 +1076,11 @@ private fun BoxScope.RenderThemedLayer(
         is Layer.ButtonLayer -> {
             val x = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val y = dimToDp(layer.position.y, parentSize.width, parentSize.height)
-            val w = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) } ?: 80.dp
-            val h = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) } ?: 40.dp
+            // Handle Dp.Unspecified properly - use default if unspecified
+            val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
+            val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
+            val w = if (rawW == null || rawW == Dp.Unspecified) 80.dp else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) 40.dp else rawH
             val pos = calculateAnchoredPosition(x, y, w, h, parentSize.width, parentSize.height, layer.anchor)
             val shape = parseCornerRadius(layer.cornerRadius)
             // Use color resolver for system color support (@color/primary, etc.)
@@ -1073,6 +1091,23 @@ private fun BoxScope.RenderThemedLayer(
             val textSizeSp = resolveFloatBinding(layer.textSize, 14f).sp
             val alpha = resolveFloatBinding(layer.opacity, 1f)
 
+            // Parse padding: "vertical horizontal" or single value
+            val (paddingVertical, paddingHorizontal) = layer.padding?.let { paddingStr ->
+                val parts = paddingStr.trim().split("\\s+".toRegex())
+                when (parts.size) {
+                    1 -> {
+                        val value = parts[0].toFloatOrNull() ?: 0f
+                        Pair(value.dp, value.dp)
+                    }
+                    2 -> {
+                        val vertical = parts[0].toFloatOrNull() ?: 0f
+                        val horizontal = parts[1].toFloatOrNull() ?: 0f
+                        Pair(vertical.dp, horizontal.dp)
+                    }
+                    else -> Pair(0.dp, 0.dp)
+                }
+            } ?: Pair(0.dp, 0.dp)
+
             Box(
                 modifier = Modifier
                     .zIndex(layer.zIndex)
@@ -1080,7 +1115,8 @@ private fun BoxScope.RenderThemedLayer(
                     .size(w, h)
                     .alpha(alpha)
                     .clip(shape)
-                    .background(bgColor),
+                    .background(bgColor)
+                    .padding(horizontal = paddingHorizontal, vertical = paddingVertical),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
