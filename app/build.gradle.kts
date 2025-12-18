@@ -81,8 +81,9 @@ android {
             "en",      // English (default)
             "da",      // Danish
             "pt-rBR",  // Portuguese (Brazilian)
-            "zh-rTW",   // Traditional Chinese
-            "zh-rCN",   // Simplified Chinese
+            "zh-rTW",  // Traditional Chinese
+            "zh-rCN",  // Simplified Chinese
+            "fr",      // French
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
