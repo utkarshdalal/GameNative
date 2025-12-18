@@ -414,84 +414,97 @@ private fun LibraryScreenContent(
                     )
                 }
                 
-                // Render themed layout FIRST (at the back, so fixed elements are on top)
-                val layout = def.layout
-                when (layout) {
-                    is app.gamenative.theme.model.LayoutNode.Grid -> {
-                    val card = cards[layout.itemCard]
-                    if (card != null) {
-                        app.gamenative.theme.runtime.ThemedGameGrid(
-                            items = state.appInfoList,
-                            gridConfig = layout,
-                            card = card,
-                            listState = listState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(safePaddingModifier),
-                            onItemClick = { item -> selectedAppId = item.appId },
-                            onItemFocus = { /* Can be used for preview pane later */ },
-                            bindingProvider = bindingProvider,
-                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
-                        )
-                    }
-                    }
-                    is app.gamenative.theme.model.LayoutNode.Carousel -> {
-                        val card = cards[layout.itemCard]
-                        if (card != null) {
-                            app.gamenative.theme.runtime.ThemedGameCarousel(
-                                items = state.appInfoList,
-                                carouselConfig = layout,
-                                card = card,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .then(safePaddingModifier),
-                                initialPage = carouselPageIndex,
-                                onPageChanged = onCarouselPageChanged,
-                                onItemClick = { item -> selectedAppId = item.appId },
-                                onItemFocus = { /* Can be used for preview pane later */ },
-                                bindingProvider = bindingProvider,
-                                themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
-                            )
-                        }
-                    }
-                    else -> {
-                        // Fallback to basic ThemeLayout for Canvas layouts
-                    val baseBinding = remember(reloadTick) {
-                        app.gamenative.theme.runtime.MapBindingContext()
-                    }
-                    val itemBindingProvider = remember(state.appInfoList, reloadTick) {
-                        { index: Int ->
-                            val item = state.appInfoList.getOrNull(index)
-                            val bindings = item?.let { bindingProvider(it) } ?: emptyMap()
-                            app.gamenative.theme.runtime.MapBindingContext(strings = bindings)
-                        }
-                    }
-                    app.gamenative.theme.runtime.ThemeLayout(
-                        layout = layout,
-                        cards = cards,
-                        binding = baseBinding,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .then(safePaddingModifier)
-                            .padding(8.dp),
-                        itemBindingProvider = itemBindingProvider,
+                // Sort layout elements by z-index (if specified) or declaration order
+                val sortedElements = remember(def.layoutElements) {
+                    def.layoutElements.sortedWith(
+                        compareBy<app.gamenative.theme.model.LayoutElement> { it.zIndex ?: Int.MAX_VALUE }
+                            .thenBy { it.declarationOrder }
                     )
                 }
-                }
 
-                // Render fixed elements ON TOP of the content (later in Box = higher z-order)
-                // All containers are rendered in declaration order
-                RenderFixedElements(
-                    fixedContainers = def.fixedContainers,
-                    state = state,
-                    listState = listState,
-                    themeName = def.manifest.id,
-                    callbacks = fixedCallbacks,
-                    accountButtonContent = accountButtonContent,
-                    searchBarContent = searchBarContent,
-                    position = app.gamenative.theme.runtime.FixedContainerPosition.ALL,
-                    themeRootDir = themeRootDir,
-                )
+                // Render all layout elements in z-order
+                sortedElements.forEach { element ->
+                    when (element) {
+                        is app.gamenative.theme.model.LayoutElement.Fixed -> {
+                            // Render fixed container
+                            RenderFixedElements(
+                                fixedContainers = listOf(element.container),
+                                state = state,
+                                listState = listState,
+                                themeName = def.manifest.id,
+                                callbacks = fixedCallbacks,
+                                accountButtonContent = accountButtonContent,
+                                searchBarContent = searchBarContent,
+                                themeRootDir = themeRootDir,
+                            )
+                        }
+                        is app.gamenative.theme.model.LayoutElement.Content -> {
+                            // Render content (grid/carousel/canvas)
+                            when (val layout = element.node) {
+                                is app.gamenative.theme.model.LayoutNode.Grid -> {
+                                    val card = cards[layout.itemCard]
+                                    if (card != null) {
+                                        app.gamenative.theme.runtime.ThemedGameGrid(
+                                            items = state.appInfoList,
+                                            gridConfig = layout,
+                                            card = card,
+                                            listState = listState,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .then(safePaddingModifier),
+                                            onItemClick = { item -> selectedAppId = item.appId },
+                                            onItemFocus = { /* Can be used for preview pane later */ },
+                                            bindingProvider = bindingProvider,
+                                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                                        )
+                                    }
+                                }
+                                is app.gamenative.theme.model.LayoutNode.Carousel -> {
+                                    val card = cards[layout.itemCard]
+                                    if (card != null) {
+                                        app.gamenative.theme.runtime.ThemedGameCarousel(
+                                            items = state.appInfoList,
+                                            carouselConfig = layout,
+                                            card = card,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .then(safePaddingModifier),
+                                            initialPage = carouselPageIndex,
+                                            onPageChanged = onCarouselPageChanged,
+                                            onItemClick = { item -> selectedAppId = item.appId },
+                                            onItemFocus = { /* Can be used for preview pane later */ },
+                                            bindingProvider = bindingProvider,
+                                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                                        )
+                                    }
+                                }
+                                is app.gamenative.theme.model.LayoutNode.Canvas -> {
+                                    // Fallback to basic ThemeLayout for Canvas layouts
+                                    val baseBinding = remember(reloadTick) {
+                                        app.gamenative.theme.runtime.MapBindingContext()
+                                    }
+                                    val itemBindingProvider = remember(state.appInfoList, reloadTick) {
+                                        { index: Int ->
+                                            val item = state.appInfoList.getOrNull(index)
+                                            val bindings = item?.let { bindingProvider(it) } ?: emptyMap()
+                                            app.gamenative.theme.runtime.MapBindingContext(strings = bindings)
+                                        }
+                                    }
+                                    app.gamenative.theme.runtime.ThemeLayout(
+                                        layout = layout,
+                                        cards = cards,
+                                        binding = baseBinding,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .then(safePaddingModifier)
+                                            .padding(8.dp),
+                                        itemBindingProvider = itemBindingProvider,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 } // end CompositionLocalProvider
                 } // end key(orientationKey)
             } else {

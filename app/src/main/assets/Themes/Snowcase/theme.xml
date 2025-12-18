@@ -1,0 +1,170 @@
+<theme>
+    <elements>
+        <!-- Square card for vertical carousel - shows info when focused -->
+        <card id="gameCard" width="@{vars.cardWidth}" height="@{vars.cardHeight}">
+            <!-- Game image (square) -->
+            <image id="cover"
+                   x="0" y="0"
+                   width="@{vars.imageSize}" height="@{vars.imageSize}"
+                   src="@{game.hero}"
+                   fallback="@{game.capsule}"
+                   cornerRadius="@{vars.cornerRadius}"
+                   scaleType="cover" />
+
+            <!-- Border overlay -->
+            <rect id="border"
+                  x="0" y="0"
+                  width="@{vars.imageSize}" height="@{vars.imageSize}"
+                  color="#00000000"
+                  borderWidth="2"
+                  borderColor="#33000000"
+                  cornerRadius="@{vars.cornerRadius}" />
+
+            <!-- Focus highlight border -->
+            <rect id="focusBorder"
+                  x="0" y="0"
+                  width="@{vars.imageSize}" height="@{vars.imageSize}"
+                  color="#00000000"
+                  borderWidth="@{vars.highlightBorderWidth}"
+                  borderColor="@{vars.highlightColor}"
+                  cornerRadius="@{vars.cornerRadius}"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+
+            <!-- Installed indicator badge -->
+            <rect id="installedBadge"
+                  x="10" y="10"
+                  width="24" height="24"
+                  color="#FF4CAF50"
+                  cornerRadius="12"
+                  anchor="topLeft"
+                  visibleWhen="game.isInstalled" />
+            <text id="installedCheck"
+                  x="10" y="7"
+                  width="24" height="24"
+                  text="✓"
+                  textSize="14"
+                  color="#FFFFFFFF"
+                  textAlign="center"
+                  anchor="topLeft"
+                  visibleWhen="game.isInstalled" />
+
+            <!-- Game title - large and bold, shown when focused -->
+            <text id="title"
+                  x="@{vars.infoX}" y="15"
+                  width="@{vars.infoWidth}"
+                  text="@{game.title}"
+                  textSize="@{vars.titleSize}"
+                  color="@{vars.textColor}"
+                  maxLines="2"
+                  fontWeight="bold"
+                  anchor="topLeft"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+
+            <!-- Compatibility label - smaller subtitle style -->
+            <text id="compatLabel"
+                  x="@{vars.infoX}" y="55"
+                  width="@{vars.infoWidth}"
+                  text="@{game.compatibility.label}"
+                  textSize="@{vars.subtitleSize}"
+                  color="@{game.compatibility.color}"
+                  maxLines="1"
+                  fontWeight="semibold"
+                  anchor="topLeft"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+
+            <!-- Install status - small info text -->
+            <text id="installStatus"
+                  x="@{vars.infoX}" y="72"
+                  width="@{vars.infoWidth}"
+                  text="@{game.installStatus}"
+                  textSize="@{vars.statusSize}"
+                  color="#FF666666"
+                  fontWeight="medium"
+                  maxLines="1"
+                  anchor="topLeft"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+        </card>
+    </elements>
+
+    <layout>
+        <!-- White background -->
+        <fixed id="background">
+            <rect x="0" y="0" width="100%" height="100%" color="#FFFFFFFF" />
+        </fixed>
+
+        <!-- Vertical carousel with backdrop image -->
+        <carousel
+            orientation="vertical"
+            centerFocus="true"
+            horizontalAlign="start"
+            horizontalOffset="@{vars.carouselOffset}"
+            itemWidth="@{vars.cardWidth}"
+            itemHeight="@{vars.cardHeight}"
+            itemSpacing="@{vars.itemSpacing}"
+            focusedScale="@{vars.focusedScale}"
+            selectionMode="stationary"
+            itemCard="gameCard"
+            focusedBackground="@{game.hero}"
+            backgroundOpacity="@{vars.bgOpacity}"
+            focusedOffsetX="@{vars.focusedOffsetX}"
+            focusedSpacing="@{vars.focusedSpacing}"
+            backgroundTransitionSpeed="400" />
+
+        <!-- Top bar -->
+        <fixed id="topBar" height="@{vars.topBarHeight}">
+            <header x="@{vars.paddingMedium}" y="8"
+                anchor="topLeft"
+                textColor="@{vars.textColor}"
+                showAppName="true"
+                showGameCount="true" />
+            <searchBar x="76" y="@{vars.searchBarY}"
+                width="@{vars.searchBarWidth}" height="48"
+                anchor="topRight"
+                backgroundColor="#DDFFFFFF"
+                borderRadius="24"
+                collapsible="true"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+            <profileButton x="16" y="@{vars.profileButtonY}"
+                anchor="topRight"
+                size="44"
+                iconSize="44"
+                padding="2"
+                backgroundColor="#DDFFFFFF"
+                cornerRadius="22"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+
+        <!-- Bottom bar -->
+        <fixed id="bottomBar">
+            <filterButton x="88" y="@{vars.bottomOffset}"
+                          anchor="bottomRight"
+                          expanded="true"
+                          cornerRadius="16"
+                          size="56"
+                          iconSize="24"
+                          highlightColor="@{vars.highlightColor}"
+                          highlightOpacity="@{vars.highlightOpacity}"
+                          highlightBorderWidth="@{vars.highlightBorderWidth}"
+                          highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+            <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}"
+                       anchor="bottomRight"
+                       cornerRadius="16"
+                       size="56"
+                       iconSize="24"
+                       highlightColor="@{vars.highlightColor}"
+                       highlightOpacity="@{vars.highlightOpacity}"
+                       highlightBorderWidth="@{vars.highlightBorderWidth}"
+                       highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+    </layout>
+</theme>

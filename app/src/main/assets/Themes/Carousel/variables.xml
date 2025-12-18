@@ -1,82 +1,58 @@
 <variables>
-    <!-- Colors -->
-    <var name="bgColor" value="#FF000000" />
-    <var name="textColor" value="#FFFFFFFF" />
+    <!-- Colors (used multiple times) -->
     <var name="infoTextColor" value="#AAFFFFFF" />
-    <var name="searchBarBg" value="#CC1E1E1E" />
-    <var name="profileButtonBg" value="#CC1E1E1E" />
-    <var name="borderColor" value="#33FFFFFF" />
-
-    <!-- Highlight styling for controller navigation -->
     <var name="highlightColor" value="#9575CD" />
+    
+    <!-- Highlight styling (used by multiple elements) -->
     <var name="highlightOpacity" value="0.9" />
     <var name="highlightBorderWidth" value="2" />
     <var name="highlightTransitionSpeed" value="200" />
-
-    <!-- Top bar -->
-    <var name="topBarHeight" value="72" />
-    <var name="searchBarRadius" value="24" />
-    <var name="searchBarWidth" value="300" />
-    <var name="searchBarHeight" value="56" />
-    <var name="searchBarX" value="76" />
-    <var name="searchBarY" value="12" />
-    <var name="profileButtonSize" value="48" />
-    <var name="profileButtonIconSize" value="48" />
-    <var name="profileButtonPadding" value="2" />
-    <var name="profileButtonX" value="12" />
-    <var name="profileButtonY" value="12" />
-    <var name="profileButtonRadius" value="27" />
-
-    <!-- Spacing -->
-    <var name="paddingSmall" value="8" />
+    
+    <!-- Shared spacing -->
     <var name="paddingMedium" value="16" />
-    <var name="paddingLarge" value="24" />
     <var name="bottomOffset" value="24" />
+    <var name="transitionSpeed" value="400" />
 
     <!-- Card dimensions -->
-    <!-- Total card area includes hero + info space below -->
     <var name="cardWidth" value="360" />
     <var name="cardHeight" value="228" />
     <var name="heroHeight" value="168" />
     <var name="cornerRadius" value="8" />
     <var name="itemSpacing" value="24" />
 
-    <!-- Info positioning (below hero image) -->
+    <!-- Info positioning -->
     <var name="infoY" value="170" />
     <var name="compatY" value="182" />
-    <var name="installedY" value="170" />
-    <var name="installedX" value="4" />
 
     <!-- Carousel settings -->
-    <var name="highlightScale" value="1.4" />
+    <var name="focusedScale" value="1.4" />
     <var name="carouselOffsetY" value="42" />
-    <var name="bgOpacity" value="0.2" />
-    <var name="transitionSpeed" value="400" />
 
     <!-- Text -->
     <var name="textSizeTitle" value="12" />
     <var name="textSizeSmall" value="10" />
 
-    <!-- Portrait breakpoint overrides -->
+    <!-- Top bar -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarWidth" value="300" />
+    <var name="profileButtonY" value="12" />
+
+    <!-- Portrait overrides -->
     <breakpoint orientation="portrait">
-        <!-- Top bar -->
         <var name="topBarHeight" value="130" />
         <var name="searchBarWidth" value="90%" />
         <var name="profileButtonY" value="0" />
 
-        <!-- Card dimensions (smaller for portrait) -->
         <var name="cardWidth" value="220" />
         <var name="cardHeight" value="142" />
         <var name="heroHeight" value="103" />
         <var name="itemSpacing" value="12" />
         <var name="carouselOffsetY" value="30" />
-        <var name="highlightScale" value="1.3" />
+        <var name="focusedScale" value="1.3" />
 
-        <!-- Info positioning (below hero image) -->
         <var name="infoY" value="108" />
         <var name="compatY" value="125" />
 
-        <!-- Text sizes -->
         <var name="textSizeTitle" value="11" />
         <var name="textSizeSmall" value="8" />
     </breakpoint>

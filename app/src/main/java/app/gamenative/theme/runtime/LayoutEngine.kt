@@ -203,7 +203,7 @@ private fun CarouselLayout(
 
 /**
  * Center-focused carousel using HorizontalPager with snap-to-center behavior.
- * The focused item scales up based on highlightScale.
+ * The focused item scales up based on focusedScale.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -219,11 +219,11 @@ private fun CenterFocusCarouselLayout(
     itemBindingProvider: ((Int) -> BindingContext)? = null,
 ) {
     val itemCount = node.pageSize ?: 10
-    val highlightScale = node.highlightScale
-    
-    // Account for scale when calculating item size - the highlight item will be larger
-    val scaledItemWidth = itemWidth * highlightScale
-    val scaledItemHeight = itemHeight * highlightScale
+    val focusedScale = node.focusedScale
+
+    // Account for scale when calculating item size - the focused item will be larger
+    val scaledItemWidth = itemWidth * focusedScale
+    val scaledItemHeight = itemHeight * focusedScale
     
     val pagerState = rememberPagerState(
         initialPage = 0,
@@ -272,9 +272,9 @@ private fun CenterFocusCarouselLayout(
                 (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
             ).absoluteValue.coerceIn(0f, 1f)
             
-            // Scale from highlightScale (at center) to 1.0 (at edges)
+            // Scale from focusedScale (at center) to 1.0 (at edges)
             val scale = lerp(
-                start = highlightScale,
+                start = focusedScale,
                 stop = 1f,
                 fraction = pageOffset
             )

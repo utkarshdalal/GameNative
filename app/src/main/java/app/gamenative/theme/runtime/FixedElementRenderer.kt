@@ -202,28 +202,13 @@ private fun FixedElement.toNavigationLinks() = SpatialFocusManager.NavigationLin
 )
 
 /**
- * Enum to specify which position of fixed containers to render.
- * @deprecated No longer used - fixed containers are now rendered in declaration order from <layout>.
- * Kept for backwards compatibility with existing code that may reference it.
- */
-@Deprecated("Use ALL - containers are now ordered by declaration in <layout>")
-enum class FixedContainerPosition {
-    TOP,     // Legacy: Containers with "top" in their id
-    BOTTOM,  // Legacy: Containers with "bottom" in their id
-    ALL      // All containers in declaration order (recommended)
-}
-
-/**
  * Renders fixed UI elements from theme configuration.
  * Falls back to default positioning if no fixed containers are defined.
  * 
- * Fixed containers are rendered in their declaration order from the <layout> section,
- * giving theme authors full control over z-ordering and positioning.
- *
- * @param position Deprecated parameter kept for backwards compatibility. 
- *                 Always uses ALL - containers are rendered in declaration order.
+ * Fixed containers are rendered in their declaration order from the <layout> section.
+ * Z-ordering is controlled by the caller (LibraryScreen) which iterates through
+ * layout elements in sorted z-order.
  */
-@Suppress("DEPRECATION")
 @Composable
 fun BoxScope.RenderFixedElements(
     fixedContainers: List<FixedContainer>,
@@ -233,7 +218,6 @@ fun BoxScope.RenderFixedElements(
     callbacks: FixedElementCallbacks,
     accountButtonContent: @Composable (iconSize: Dp) -> Unit,
     searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit,
-    position: FixedContainerPosition = FixedContainerPosition.ALL,
     themeRootDir: String? = null,
 ) {
     if (fixedContainers.isEmpty()) {
@@ -252,8 +236,7 @@ fun BoxScope.RenderFixedElements(
     // Determine current orientation for visibility filtering (centralized)
     val isPortrait = rememberIsPortrait()
 
-    // Render all containers in declaration order (from <layout>)
-    // The position parameter is deprecated - we always render all containers
+    // Render all containers in declaration order
     fixedContainers.forEach { container ->
         // Check container visibility first - skip entire container if not visible
         if (!container.visibility.isVisible(isPortrait)) return@forEach
@@ -329,6 +312,11 @@ private fun getNavigationId(containerId: String, element: FixedElement, index: I
         is FixedElement.AddButton -> "add-button"
         is FixedElement.Image -> "image"
         is FixedElement.Video -> "video"
+        is FixedElement.Rect -> "rect"
+        is FixedElement.Text -> "text"
+        is FixedElement.Shadow -> "shadow"
+        is FixedElement.Border -> "border"
+        is FixedElement.Backdrop -> "backdrop"
     }
     return "$containerId-$typePrefix-$index"
 }
@@ -384,15 +372,7 @@ private fun BoxScope.RenderFixedElement(
             val padding = element.padding.dp
             val textColor = Color(element.textColor)
             val textSizeSp = element.textSize.sp
-            val fontWeight = when (element.fontWeight.lowercase()) {
-                "bold" -> FontWeight.Bold
-                "semibold" -> FontWeight.SemiBold
-                "medium" -> FontWeight.Medium
-                "light" -> FontWeight.Light
-                "thin" -> FontWeight.Thin
-                "extrabold", "black" -> FontWeight.ExtraBold
-                else -> FontWeight.Normal
-            }
+            val fontWeight = SharedElementRenderers.parseFontWeight(element.fontWeight)
 
             // Calculate size if specified
             val sizeModifier = element.size?.let { size ->
@@ -648,6 +628,86 @@ private fun BoxScope.RenderFixedElement(
                 modifier = Modifier
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
+            )
+        }
+
+        is FixedElement.Rect -> {
+            SharedElementRenderers.RenderRect(
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY),
+                width = dimToDp(element.size.width, parentWidth, parentHeight),
+                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                color = Color(element.color),
+                cornerRadius = element.cornerRadius,
+                borderWidth = element.borderWidth,
+                borderColor = Color(element.borderColor),
+                gradientStart = element.gradientStart?.let { Color(it) },
+                gradientEnd = element.gradientEnd?.let { Color(it) },
+                gradientAngle = element.gradientAngle,
+                opacity = element.opacity,
+            )
+        }
+
+        is FixedElement.Text -> {
+            SharedElementRenderers.RenderText(
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY),
+                width = element.size?.let { dimToDp(it.width, parentWidth, parentHeight) },
+                height = element.size?.let { dimToDp(it.height, parentWidth, parentHeight) },
+                text = element.text,
+                color = Color(element.color),
+                textSize = element.textSize,
+                maxLines = element.maxLines,
+                textAlign = element.textAlign,
+                fontWeight = element.fontWeight,
+                fontStyle = element.fontStyle,
+                opacity = element.opacity,
+            )
+        }
+
+        is FixedElement.Shadow -> {
+            SharedElementRenderers.RenderShadow(
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX + element.offsetX.dp, y = offsetY + element.offsetY.dp),
+                width = dimToDp(element.size.width, parentWidth, parentHeight),
+                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                radius = element.radius,
+                color = Color(element.color),
+                offsetX = element.offsetX,
+                offsetY = element.offsetY,
+                cornerRadius = element.cornerRadius,
+                opacity = element.opacity,
+            )
+        }
+
+        is FixedElement.Border -> {
+            SharedElementRenderers.RenderBorder(
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY),
+                width = dimToDp(element.size.width, parentWidth, parentHeight),
+                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                strokeWidth = element.strokeWidth,
+                color = Color(element.color),
+                cornerRadius = element.cornerRadius,
+                opacity = element.opacity,
+            )
+        }
+
+        is FixedElement.Backdrop -> {
+            SharedElementRenderers.RenderBackdrop(
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY),
+                width = dimToDp(element.size.width, parentWidth, parentHeight),
+                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                blurRadius = element.blurRadius,
+                tintColor = element.tintColor?.let { Color(it) },
+                cornerRadius = element.cornerRadius,
+                opacity = element.opacity,
             )
         }
         }

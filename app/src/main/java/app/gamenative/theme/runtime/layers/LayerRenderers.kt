@@ -39,6 +39,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import app.gamenative.theme.model.*
 import app.gamenative.theme.runtime.BindingContext
+import app.gamenative.theme.runtime.SharedElementRenderers
 import app.gamenative.theme.runtime.ThemeUtils
 import app.gamenative.theme.runtime.parseCornerRadius
 
@@ -238,89 +239,66 @@ private fun BoxScope.VideoLayerView(layer: Layer.VideoLayer, parentSize: DpSize,
 private fun BoxScope.RectLayerView(layer: Layer.RectLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
-    val shape = parseCornerRadius(layer.cornerRadius)
     val fillColor = Color(binding.or(layer.color, 0x66000000.toInt()))
     val borderWidth = binding.or(layer.borderWidth, 0f)
     val borderColor = Color(binding.or(layer.borderColor, 0xFFFFFFFF.toInt()))
-    
-    // Gradient support
     val gradientStartInt = binding.or(layer.gradientStart, 0)
     val gradientEndInt = binding.or(layer.gradientEnd, 0)
     val gradientAngle = binding.or(layer.gradientAngle, 0f)
-    val hasGradient = gradientStartInt != 0 && gradientEndInt != 0
     
-    // Calculate gradient direction based on angle
-    val gradientBrush = if (hasGradient) {
-        val angleRad = Math.toRadians(gradientAngle.toDouble())
-        val cos = kotlin.math.cos(angleRad).toFloat()
-        val sin = kotlin.math.sin(angleRad).toFloat()
-        // Normalize to 0-1 range for Offset
-        val startX = 0.5f - cos * 0.5f
-        val startY = 0.5f + sin * 0.5f
-        val endX = 0.5f + cos * 0.5f
-        val endY = 0.5f - sin * 0.5f
-        androidx.compose.ui.graphics.Brush.linearGradient(
-            colors = listOf(Color(gradientStartInt), Color(gradientEndInt)),
-            start = androidx.compose.ui.geometry.Offset(startX * p.width.value, startY * p.height.value),
-            end = androidx.compose.ui.geometry.Offset(endX * p.width.value, endY * p.height.value),
-        )
-    } else null
-    
-    Box(
-        modifier = Modifier
-            .offset(p.x, p.y)
-            .size(p.width, p.height)
-            .clip(shape)
-            .graphicsLayer(alpha = alpha)
-            .then(
-                if (gradientBrush != null) {
-                    Modifier.background(gradientBrush)
-                } else {
-                    Modifier.background(fillColor)
-                }
-            )
-            .then(
-                if (borderWidth > 0f) {
-                    Modifier.border(borderWidth.dp, borderColor, shape)
-                } else {
-                    Modifier
-                }
-            )
-    ) {}
+    SharedElementRenderers.RenderRect(
+        modifier = Modifier.offset(p.x, p.y),
+        width = p.width,
+        height = p.height,
+        color = fillColor,
+        cornerRadius = layer.cornerRadius,
+        borderWidth = borderWidth,
+        borderColor = borderColor,
+        gradientStart = if (gradientStartInt != 0) Color(gradientStartInt) else null,
+        gradientEnd = if (gradientEndInt != 0) Color(gradientEndInt) else null,
+        gradientAngle = gradientAngle,
+        opacity = alpha,
+    )
 }
 
 @Composable
 private fun BoxScope.ShadowLayerView(layer: Layer.ShadowLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
-    val radius = binding.or(layer.radius, 0f).dp
+    val radius = binding.or(layer.radius, 0f)
     val color = Color(binding.or(layer.color, 0x88000000.toInt()))
-    val shape = layer.cornerRadius?.let { parseCornerRadius(it) } ?: RectangleShape
-    Box(
-        modifier = Modifier
-            .offset(p.x, p.y)
-            .size(p.width, p.height)
-            .shadow(elevation = if (radius > 0.dp) radius / 2 else 0.dp, shape = shape, ambientColor = color, spotColor = color)
-            .graphicsLayer(alpha = alpha)
-            .background(Color.Transparent)
-    ) {}
+    val offsetX = ThemeUtils.dimToDp(layer.offset.x, parentSize.width, parentSize.height)
+    val offsetY = ThemeUtils.dimToDp(layer.offset.y, parentSize.width, parentSize.height)
+    
+    SharedElementRenderers.RenderShadow(
+        modifier = Modifier.offset(p.x + offsetX, p.y + offsetY),
+        width = p.width,
+        height = p.height,
+        radius = radius,
+        color = color,
+        offsetX = 0f, // Already applied in modifier
+        offsetY = 0f,
+        cornerRadius = layer.cornerRadius,
+        opacity = alpha,
+    )
 }
 
 @Composable
 private fun BoxScope.BorderLayerView(layer: Layer.BorderLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
-    val width = binding.or(layer.strokeWidth, 1f).dp
+    val strokeWidth = binding.or(layer.strokeWidth, 1f)
     val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
-    val shape = parseCornerRadius(layer.cornerRadius)
-    Box(
-        modifier = Modifier
-            .offset(p.x, p.y)
-            .size(p.width, p.height)
-            .clip(shape)
-            .graphicsLayer(alpha = alpha)
-            .border(width = width, color = color, shape = shape)
-    ) {}
+    
+    SharedElementRenderers.RenderBorder(
+        modifier = Modifier.offset(p.x, p.y),
+        width = p.width,
+        height = p.height,
+        strokeWidth = strokeWidth,
+        color = color,
+        cornerRadius = layer.cornerRadius,
+        opacity = alpha,
+    )
 }
 
 @Composable
@@ -328,74 +306,49 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
-    val px = binding.or(layer.textSize, 16f)
-    val density = LocalDensity.current
-    val d = density.density
-    val spSize = with(density) { (px / d).sp }
+    val textSize = binding.or(layer.textSize, 16f)
     val text = when (val t = layer.text) {
         is StringOrBinding.Literal -> t.value
         is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
     }
-    val fontWeight = when (layer.fontWeight.lowercase()) {
-        "bold" -> androidx.compose.ui.text.font.FontWeight.Bold
-        "semibold" -> androidx.compose.ui.text.font.FontWeight.SemiBold
-        "medium" -> androidx.compose.ui.text.font.FontWeight.Medium
-        "light" -> androidx.compose.ui.text.font.FontWeight.Light
-        "thin" -> androidx.compose.ui.text.font.FontWeight.Thin
-        "extrabold", "black" -> androidx.compose.ui.text.font.FontWeight.ExtraBold
-        else -> androidx.compose.ui.text.font.FontWeight.Normal
-    }
-    val fontStyle = when (layer.fontStyle.lowercase()) {
-        "italic" -> androidx.compose.ui.text.font.FontStyle.Italic
-        else -> androidx.compose.ui.text.font.FontStyle.Normal
-    }
+    val lineHeight = binding.or(layer.lineHeight, 0f).let { if (it > 0f) it else null }
+    val letterSpacing = binding.or(layer.letterSpacing, 0f).let { if (it != 0f) it else null }
     
-    // New text styling attributes
-    val lineHeightSp = binding.or(layer.lineHeight, 0f).let { if (it > 0f) (it * px / d).sp else androidx.compose.ui.unit.TextUnit.Unspecified }
-    val letterSpacingSp = binding.or(layer.letterSpacing, 0f).let { if (it != 0f) it.sp else androidx.compose.ui.unit.TextUnit.Unspecified }
-    val textDecoration = when (layer.textDecoration.lowercase()) {
-        "underline" -> androidx.compose.ui.text.style.TextDecoration.Underline
-        "linethrough", "line-through", "strikethrough" -> androidx.compose.ui.text.style.TextDecoration.LineThrough
-        else -> androidx.compose.ui.text.style.TextDecoration.None
-    }
-    
-    Box(
-        modifier = Modifier
-            .offset(p.x, p.y)
-            .size(p.width, p.height)
-            .graphicsLayer(alpha = alpha)
-    ) {
-        Text(
-            text = text,
-            color = color,
-            fontSize = spSize,
-            fontWeight = fontWeight,
-            fontStyle = fontStyle,
-            maxLines = layer.maxLines ?: Int.MAX_VALUE,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = lineHeightSp,
-            letterSpacing = letterSpacingSp,
-            textDecoration = textDecoration,
-            modifier = Modifier.align(Alignment.TopStart)
-        )
-    }
+    SharedElementRenderers.RenderText(
+        modifier = Modifier.offset(p.x, p.y),
+        width = p.width,
+        height = p.height,
+        text = text,
+        color = color,
+        textSize = textSize,
+        maxLines = layer.maxLines,
+        textAlign = layer.textAlign,
+        fontWeight = layer.fontWeight,
+        fontStyle = layer.fontStyle,
+        lineHeight = lineHeight,
+        letterSpacing = letterSpacing,
+        textDecoration = layer.textDecoration,
+        opacity = alpha,
+    )
 }
 
 @Composable
 private fun BoxScope.BackdropLayerView(layer: Layer.BackdropLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
     val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), anchor)
     val alpha = binding.or(layer.opacity, 1f)
-    val blurRadius = binding.or(layer.blurRadius, 0f).dp
+    val blurRadius = binding.or(layer.blurRadius, 0f)
     val tintInt = binding.or(layer.tintColor, 0)
-    val tint = if (tintInt != 0) Color(tintInt) else Color.Transparent
-    Box(
-        modifier = Modifier
-            .offset(p.x, p.y)
-            .size(p.width, p.height)
-            .graphicsLayer(alpha = alpha)
-            .blur(radius = blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-            .background(tint)
-    ) {}
+    val tintColor = if (tintInt != 0) Color(tintInt) else null
+    
+    SharedElementRenderers.RenderBackdrop(
+        modifier = Modifier.offset(p.x, p.y),
+        width = p.width,
+        height = p.height,
+        blurRadius = blurRadius,
+        tintColor = tintColor,
+        cornerRadius = null, // BackdropLayer doesn't have cornerRadius in the model
+        opacity = alpha,
+    )
 }
 
 @Composable
@@ -411,18 +364,9 @@ private fun BoxScope.ButtonLayerView(layer: Layer.ButtonLayer, parentSize: DpSiz
         is StringOrBinding.Ref -> binding.resolveString(t) ?: ""
     }
     
-    // New border attributes
     val borderWidth = binding.or(layer.borderWidth, 0f)
     val borderColorInt = binding.or(layer.borderColor, 0xFFFFFFFF.toInt())
-    val fontWeight = when (layer.fontWeight.lowercase()) {
-        "bold" -> androidx.compose.ui.text.font.FontWeight.Bold
-        "semibold" -> androidx.compose.ui.text.font.FontWeight.SemiBold
-        "medium" -> androidx.compose.ui.text.font.FontWeight.Medium
-        "light" -> androidx.compose.ui.text.font.FontWeight.Light
-        "thin" -> androidx.compose.ui.text.font.FontWeight.Thin
-        "extrabold", "black" -> androidx.compose.ui.text.font.FontWeight.ExtraBold
-        else -> androidx.compose.ui.text.font.FontWeight.Normal
-    }
+    val fontWeight = SharedElementRenderers.parseFontWeight(layer.fontWeight)
     
     Box(
         modifier = Modifier

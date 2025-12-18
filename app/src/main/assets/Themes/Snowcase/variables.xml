@@ -1,0 +1,71 @@
+<variables>
+    <!-- Colors (used multiple times) -->
+    <var name="textColor" value="#FF000000" />
+    <var name="highlightColor" value="#FF9C27B0" />
+
+    <!-- Highlight styling (used by multiple elements) -->
+    <var name="highlightOpacity" value="1.0" />
+    <var name="highlightBorderWidth" value="4" />
+    <var name="highlightTransitionSpeed" value="200" />
+
+    <!-- Shared spacing -->
+    <var name="paddingMedium" value="16" />
+    <var name="bottomOffset" value="24" />
+
+    <!-- Animation -->
+    <var name="transitionSpeed" value="200" />
+
+    <!-- Card layout -->
+    <var name="cardWidth" value="600" />
+    <var name="cardHeight" value="100" />
+    <var name="imageSize" value="100" />
+    <var name="cornerRadius" value="12" />
+    <!-- Text info appears to the right when focused (positions scale with card) -->
+    <var name="infoX" value="115" />
+    <var name="infoWidth" value="280" />
+
+    <!-- Text (sizes scale with focusedScale) -->
+    <var name="titleSize" value="18" />
+    <var name="subtitleSize" value="12" />
+    <var name="statusSize" value="10" />
+
+    <!-- Top bar -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarWidth" value="280" />
+    <var name="searchBarY" value="12" />
+    <var name="profileButtonY" value="14" />
+
+    <!-- Carousel -->
+    <var name="bgOpacity" value="0.12" />
+    <var name="carouselOffset" value="-75" />
+    <var name="itemSpacing" value="10" />
+    <var name="focusedScale" value="2" />
+    <var name="focusedOffsetX" value="300" />
+    <var name="focusedSpacing" value="50" />
+
+    <!-- Portrait overrides -->
+    <breakpoint orientation="portrait">
+        <var name="topBarHeight" value="120" />
+        <var name="searchBarWidth" value="85%" />
+        <var name="searchBarY" value="60" />
+        <var name="profileButtonY" value="8" />
+
+        <var name="cardWidth" value="340" />
+        <var name="cardHeight" value="140" />
+        <var name="imageSize" value="140" />
+        <var name="cornerRadius" value="12" />
+        <var name="infoX" value="155" />
+        <var name="infoWidth" value="170" />
+
+        <var name="carouselOffset" value="20" />
+        <var name="itemSpacing" value="14" />
+        <var name="focusedScale" value="1.12" />
+        <var name="focusedOffsetX" value="20" />
+        <var name="focusedSpacing" value="10" />
+        <var name="bgOpacity" value="0.10" />
+
+        <var name="titleSize" value="16" />
+        <var name="subtitleSize" value="11" />
+        <var name="statusSize" value="10" />
+    </breakpoint>
+</variables>

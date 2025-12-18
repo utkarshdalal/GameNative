@@ -46,22 +46,30 @@ object ThemeXmlMapper {
         // Parse cards from both <elements> and legacy <cards> section
         val legacyCards = parseCards(root, effectiveTree)
         
-        // Parse layout and extract fixed containers and inline cards in declaration order
+        // Parse layout and extract layout elements and inline cards in declaration order
         val layoutResult = parseLayoutWithFixedContainers(root, effectiveTree, fixedContainerLookup)
-        val layout = layoutResult.layout
-        val layoutFixedContainers = layoutResult.fixedContainers
         val inlineCards = layoutResult.inlineCards
         
         // Combine all cards: elements + legacy + inline (inline cards take precedence for same ID)
         val cards = (elementCards + legacyCards + inlineCards).distinctBy { it.id }
         
-        // Determine which fixed containers to use:
-        // - If layout contains fixed/element tags, use those (new format)
-        // - Otherwise fall back to root-level <fixed> tags (backwards compat)
-        val fixedContainers = if (layoutFixedContainers.isNotEmpty()) {
-            layoutFixedContainers
+        // Determine which layout elements to use:
+        // - If layout contains fixed/element/content tags, use those (new format)
+        // - Otherwise fall back to root-level <fixed> tags (backwards compat) + just the content node
+        val layoutElements = if (layoutResult.layoutElements.any { it is LayoutElement.Fixed }) {
+            layoutResult.layoutElements
         } else {
-            parseFixedContainers(root, effectiveTree)
+            // Legacy mode: parse root-level fixed containers and combine with content node
+            val legacyFixed = parseFixedContainers(root, effectiveTree)
+            val contentElements = layoutResult.layoutElements.filterIsInstance<LayoutElement.Content>()
+            // Put fixed containers at the end (legacy behavior: UI elements on top)
+            contentElements + legacyFixed.mapIndexed { index, container ->
+                LayoutElement.Fixed(
+                    container = container,
+                    zIndex = null,
+                    declarationOrder = contentElements.size + index,
+                )
+            }
         }
         
         val manifest = buildManifest(tree)
@@ -71,8 +79,7 @@ object ThemeXmlMapper {
             variables = variables,
             breakpoints = tree.breakpoints,
             cards = cards,
-            fixedContainers = fixedContainers,
-            layout = layout,
+            layoutElements = layoutElements,
         )
     }
 
@@ -345,6 +352,111 @@ object ThemeXmlMapper {
                 cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
                 opacity = resolveFloat(n, "opacity", 1f, tree),
             )
+            "rect" -> FixedElement.Rect(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(100f), Dimension.Px(100f)),
+                color = resolveColorAttr(n, "color", tree) ?: 0x00000000,
+                cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+                borderWidth = resolveFloat(n, "borderWidth", 0f, tree),
+                borderColor = resolveColorAttr(n, "borderColor", tree) ?: 0x00000000,
+                gradientStart = resolveColorAttr(n, "gradientStart", tree),
+                gradientEnd = resolveColorAttr(n, "gradientEnd", tree),
+                gradientAngle = resolveFloat(n, "gradientAngle", 0f, tree),
+                opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
+            "text" -> FixedElement.Text(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree),
+                text = resolveStringAttr(n, "text", tree) ?: "",
+                color = resolveColorAttr(n, "color", tree) ?: 0xFFFFFFFF.toInt(),
+                textSize = resolveFloat(n, "textSize", 14f, tree),
+                maxLines = resolveInt(n, "maxLines", tree),
+                textAlign = n.attributes["textAlign"] ?: "left",
+                fontWeight = n.attributes["fontWeight"] ?: "normal",
+                fontStyle = n.attributes["fontStyle"] ?: "normal",
+                opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
+            "shadow" -> FixedElement.Shadow(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(100f), Dimension.Px(100f)),
+                radius = resolveFloat(n, "radius", 8f, tree),
+                color = resolveColorAttr(n, "color", tree) ?: 0x66000000,
+                offsetX = resolveFloat(n, "offsetX", 0f, tree),
+                offsetY = resolveFloat(n, "offsetY", 4f, tree),
+                cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+                opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
+            "border" -> FixedElement.Border(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(100f), Dimension.Px(100f)),
+                strokeWidth = resolveFloat(n, "strokeWidth", 1f, tree),
+                color = resolveColorAttr(n, "color", tree) ?: 0xFFFFFFFF.toInt(),
+                cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+                opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
+            "backdrop" -> FixedElement.Backdrop(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                size = sizeResolved(n, tree) ?: DimSize(Dimension.Px(100f), Dimension.Px(100f)),
+                blurRadius = resolveFloat(n, "blurRadius", 16f, tree),
+                tintColor = resolveColorAttr(n, "tintColor", tree),
+                cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
+                opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
             else -> null
         }
     }
@@ -545,12 +657,11 @@ object ThemeXmlMapper {
     // region Layout
     
     /**
-     * Result of parsing the layout section, containing the layout node, fixed containers,
+     * Result of parsing the layout section, containing ordered layout elements
      * and any inline card definitions found inside grid/carousel elements.
      */
     private data class LayoutParseResult(
-        val layout: LayoutNode,
-        val fixedContainers: List<FixedContainer>,
+        val layoutElements: List<LayoutElement>,
         val inlineCards: List<Card>,
     )
     
@@ -564,11 +675,13 @@ object ThemeXmlMapper {
     )
     
     /**
-     * Parse layout and extract fixed containers and inline cards from the layout in declaration order.
+     * Parse layout and extract elements in declaration order.
      * This supports the new format where <fixed> and <element ref="..."> can appear inside <layout>,
      * and <card> can be defined inline inside <grid> or <carousel>.
      * 
-     * @return LayoutParseResult containing the layout node, fixed containers, and inline cards
+     * Elements are returned in declaration order with optional zIndex for explicit z-ordering.
+     * 
+     * @return LayoutParseResult containing ordered layout elements and inline cards
      */
     private fun parseLayoutWithFixedContainers(
         root: XmlNode, 
@@ -578,16 +691,24 @@ object ThemeXmlMapper {
         val layoutRoot = root.children.firstOrNull { it.name.equals("layout", ignoreCase = true) }
             ?: error("<layout> element not found in theme.xml")
         
-        val fixedContainers = mutableListOf<FixedContainer>()
+        val layoutElements = mutableListOf<LayoutElement>()
         val inlineCards = mutableListOf<Card>()
-        var layoutNode: LayoutNode? = null
+        var declarationIndex = 0
+        var hasContentNode = false
         
         // Process children in declaration order
         for (child in layoutRoot.children) {
+            val zIndex = child.attributes["zIndex"]?.toIntOrNull()
+            
             when (child.name.lowercase()) {
                 // Inline <fixed> container definition
                 "fixed" -> {
-                    fixedContainers.add(parseFixedContainerNode(child, tree))
+                    val container = parseFixedContainerNode(child, tree)
+                    layoutElements.add(LayoutElement.Fixed(
+                        container = container,
+                        zIndex = zIndex,
+                        declarationOrder = declarationIndex++,
+                    ))
                 }
                 // Reference to pre-defined element: <element ref="id" />
                 "element" -> {
@@ -595,7 +716,11 @@ object ThemeXmlMapper {
                     if (ref != null) {
                         val referencedContainer = fixedContainerLookup[ref]
                         if (referencedContainer != null) {
-                            fixedContainers.add(referencedContainer)
+                            layoutElements.add(LayoutElement.Fixed(
+                                container = referencedContainer,
+                                zIndex = zIndex,
+                                declarationOrder = declarationIndex++,
+                            ))
                         } else {
                             // Element reference not found - could log warning here
                         }
@@ -603,19 +728,36 @@ object ThemeXmlMapper {
                 }
                 // Layout nodes (only one expected)
                 "canvas" -> {
-                    if (layoutNode == null) layoutNode = parseCanvas(child, tree)
+                    if (!hasContentNode) {
+                        hasContentNode = true
+                        layoutElements.add(LayoutElement.Content(
+                            node = parseCanvas(child, tree),
+                            zIndex = zIndex,
+                            declarationOrder = declarationIndex++,
+                        ))
+                    }
                 }
                 "grid" -> {
-                    if (layoutNode == null) {
+                    if (!hasContentNode) {
+                        hasContentNode = true
                         val result = parseGridWithInlineCard(child, tree)
-                        layoutNode = result.node
+                        layoutElements.add(LayoutElement.Content(
+                            node = result.node,
+                            zIndex = zIndex,
+                            declarationOrder = declarationIndex++,
+                        ))
                         result.inlineCard?.let { inlineCards.add(it) }
                     }
                 }
                 "carousel" -> {
-                    if (layoutNode == null) {
+                    if (!hasContentNode) {
+                        hasContentNode = true
                         val result = parseCarouselWithInlineCard(child, tree)
-                        layoutNode = result.node
+                        layoutElements.add(LayoutElement.Content(
+                            node = result.node,
+                            zIndex = zIndex,
+                            declarationOrder = declarationIndex++,
+                        ))
                         result.inlineCard?.let { inlineCards.add(it) }
                     }
                 }
@@ -623,11 +765,12 @@ object ThemeXmlMapper {
             }
         }
         
-        // If no layout node was found in children, this is an error
-        val finalLayoutNode = layoutNode 
-            ?: error("<layout> must contain a layout node (canvas/grid/carousel)")
+        // Ensure at least one content node was found
+        if (!hasContentNode) {
+            error("<layout> must contain a layout node (canvas/grid/carousel)")
+        }
         
-        return LayoutParseResult(finalLayoutNode, fixedContainers, inlineCards)
+        return LayoutParseResult(layoutElements, inlineCards)
     }
     
     /** Legacy layout parser (backwards compatibility). */
@@ -750,9 +893,21 @@ object ThemeXmlMapper {
         
         // Center-focus carousel attributes
         val centerFocus = node.attributes["centerFocus"]?.toBooleanStrictOrNull() ?: false
-        val highlightScale = resolveFloat(node, "highlightScale", default = 1.0f, tree)
+        // Support both "focusedScale" (new) and "highlightScale" (legacy) attribute names
+        val focusedScale = resolveFloatOrNull(node, "focusedScale", tree)
+            ?: resolveFloat(node, "highlightScale", default = 1.0f, tree)
         val verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"])
         val verticalOffset = resolveDimensionWidth(node, "verticalOffset", tree) ?: Dimension.Px(0f)
+        
+        // Orientation and alignment (for vertical carousels)
+        val orientation = CarouselOrientation.fromString(node.attributes["orientation"])
+        val horizontalAlign = HorizontalAlign.fromString(node.attributes["horizontalAlign"])
+        val horizontalOffset = resolveDimensionWidth(node, "horizontalOffset", tree) ?: Dimension.Px(0f)
+        
+        // Focused item offset and spacing
+        val focusedOffsetX = resolveFloat(node, "focusedOffsetX", default = 0f, tree)
+        val focusedOffsetY = resolveFloat(node, "focusedOffsetY", default = 0f, tree)
+        val focusedSpacing = resolveFloat(node, "focusedSpacing", default = 0f, tree)
         
         // Background image attributes
         val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
@@ -761,15 +916,21 @@ object ThemeXmlMapper {
         
         return LayoutNode.Carousel(
             direction = dir,
+            orientation = orientation,
             itemSize = DimSize(itemW, itemH),
             itemSpacing = spacing,
             selectionMode = sel,
             itemCard = itemCard,
             pageSize = pageSize,
             centerFocus = centerFocus,
-            highlightScale = highlightScale,
+            focusedScale = focusedScale,
             verticalAlign = verticalAlign,
             verticalOffset = verticalOffset,
+            horizontalAlign = horizontalAlign,
+            horizontalOffset = horizontalOffset,
+            focusedOffsetX = focusedOffsetX,
+            focusedOffsetY = focusedOffsetY,
+            focusedSpacing = focusedSpacing,
             focusedBackground = focusedBackground,
             backgroundOpacity = backgroundOpacity,
             backgroundTransitionSpeed = backgroundTransitionSpeed,
@@ -900,6 +1061,7 @@ object ThemeXmlMapper {
             "down" -> Direction.DOWN
             else -> Direction.RIGHT
         }
+        val orientation = CarouselOrientation.fromString(node.attributes["orientation"])
         val itemW = resolveDimensionWidth(node, "itemWidth", tree) ?: Dimension.Px(200f)
         val itemH = resolveDimensionHeight(node, "itemHeight", tree) ?: Dimension.Px(200f)
         val spacing = resolveFloat(node, "itemSpacing", default = 0f, tree)
@@ -912,9 +1074,17 @@ object ThemeXmlMapper {
         val pageSize = resolveInt(node, "pageSize", tree)
         
         val centerFocus = node.attributes["centerFocus"]?.toBooleanStrictOrNull() ?: false
-        val highlightScale = resolveFloat(node, "highlightScale", default = 1.0f, tree)
+        // Support both "focusedScale" (new) and "highlightScale" (legacy) attribute names
+        val focusedScale = resolveFloatOrNull(node, "focusedScale", tree)
+            ?: resolveFloat(node, "highlightScale", default = 1.0f, tree)
         val verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"])
         val verticalOffset = resolveDimensionWidth(node, "verticalOffset", tree) ?: Dimension.Px(0f)
+        val horizontalAlign = HorizontalAlign.fromString(node.attributes["horizontalAlign"])
+        val horizontalOffset = resolveDimensionWidth(node, "horizontalOffset", tree) ?: Dimension.Px(0f)
+        
+        val focusedOffsetX = resolveFloat(node, "focusedOffsetX", default = 0f, tree)
+        val focusedOffsetY = resolveFloat(node, "focusedOffsetY", default = 0f, tree)
+        val focusedSpacing = resolveFloat(node, "focusedSpacing", default = 0f, tree)
         
         val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
         val backgroundOpacity = resolveFloat(node, "backgroundOpacity", default = 0.3f, tree)
@@ -922,15 +1092,21 @@ object ThemeXmlMapper {
         
         return LayoutNode.Carousel(
             direction = dir,
+            orientation = orientation,
             itemSize = DimSize(itemW, itemH),
             itemSpacing = spacing,
             selectionMode = sel,
             itemCard = itemCardId,
             pageSize = pageSize,
             centerFocus = centerFocus,
-            highlightScale = highlightScale,
+            focusedScale = focusedScale,
             verticalAlign = verticalAlign,
             verticalOffset = verticalOffset,
+            horizontalAlign = horizontalAlign,
+            horizontalOffset = horizontalOffset,
+            focusedOffsetX = focusedOffsetX,
+            focusedOffsetY = focusedOffsetY,
+            focusedSpacing = focusedSpacing,
             focusedBackground = focusedBackground,
             backgroundOpacity = backgroundOpacity,
             backgroundTransitionSpeed = backgroundTransitionSpeed,

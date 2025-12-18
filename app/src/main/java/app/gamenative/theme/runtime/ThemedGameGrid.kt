@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -185,11 +186,12 @@ fun ThemedGameGrid(
 }
 
 /**
- * A themed game carousel that renders library items in a center-focused horizontal pager.
+ * A themed game carousel that renders library items in a center-focused pager.
+ * Supports both horizontal and vertical orientations.
  * Features:
  * - Center-focused scrolling with snap-to-center behavior
  * - Highlighted/focused item scales up
- * - Vertically centered on screen
+ * - Configurable alignment within container
  * - Supports touch swipe and controller navigation
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -210,6 +212,8 @@ fun ThemedGameCarousel(
     val stringResolver = remember(themePath) {
         ThemeStringResolver(context, context.assets)
     }
+    
+    val isVertical = carouselConfig.orientation == CarouselOrientation.VERTICAL
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val viewportWidth = maxWidth
@@ -219,10 +223,11 @@ fun ThemedGameCarousel(
         val itemWidth = dimToDp(carouselConfig.itemSize.width, viewportWidth, viewportHeight)
         val itemHeight = dimToDp(carouselConfig.itemSize.height, viewportWidth, viewportHeight)
         val spacing = carouselConfig.itemSpacing.dp
-        val highlightScale = carouselConfig.highlightScale
-        
+        val focusedScale = carouselConfig.focusedScale
+
         // Maximum scaled size for layout calculations
-        val scaledItemHeight = itemHeight * highlightScale
+        val scaledItemWidth = itemWidth * focusedScale
+        val scaledItemHeight = itemHeight * focusedScale
         
         // Clamp initial page to valid range
         val safeInitialPage = initialPage.coerceIn(0, (items.size - 1).coerceAtLeast(0))
@@ -294,116 +299,129 @@ fun ThemedGameCarousel(
             )
         }
         
-        // Calculate content padding to center items horizontally
-        // The center of the current page should be at the center of the screen
+        // Calculate content padding to center items
         val horizontalContentPadding = (viewportWidth - itemWidth) / 2
+        val verticalContentPadding = (viewportHeight - itemHeight) / 2
         
-        // Calculate vertical offset
+        // Calculate offsets
         val verticalOffset = dimToDp(carouselConfig.verticalOffset, viewportWidth, viewportHeight)
+        val horizontalOffset = dimToDp(carouselConfig.horizontalOffset, viewportWidth, viewportHeight)
         
-        // Vertical alignment based on config
+        // Alignment based on config
         val verticalArrangement = when (carouselConfig.verticalAlign) {
             VerticalAlign.CENTER -> Arrangement.Center
             VerticalAlign.BOTTOM -> Arrangement.Bottom
             VerticalAlign.TOP -> Arrangement.Top
         }
         
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset(y = verticalOffset)
-                .focusRequester(focusRequester)
-                .focusable()
-                .onFocusChanged { focusState ->
-                    // Track if this exact element has focus
-                    val nowHasFocus = focusState.isFocused
-                    carouselHasFocus = nowHasFocus
-                    
-                    // Once we've gained focus, mark it so we know future unfocus is intentional
-                    if (nowHasFocus) {
-                        hasEverHadFocus = true
-                        spatialFocusManager?.setFocused("carousel")
+        val horizontalArrangement = when (carouselConfig.horizontalAlign) {
+            HorizontalAlign.CENTER -> Arrangement.Center
+            HorizontalAlign.END -> Arrangement.End
+            HorizontalAlign.START -> Arrangement.Start
+        }
+        
+        // Key event handler - swap primary/secondary directions based on orientation
+        val keyEventHandler: (androidx.compose.ui.input.key.KeyEvent) -> Boolean = { keyEvent ->
+            if (keyEvent.type == KeyEventType.KeyDown) {
+                when (keyEvent.key) {
+                    // Primary scroll direction (Left/Right for horizontal, Up/Down for vertical)
+                    Key.DirectionLeft -> {
+                        if (!isVertical && pagerState.currentPage > 0) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                            }
+                            true
+                        } else if (isVertical) {
+                            // For vertical carousel, Left navigates to elements on the left
+                            spatialFocusManager?.navigateInDirection(
+                                "carousel",
+                                SpatialFocusManager.Direction.LEFT
+                            ) ?: false
+                        } else false
                     }
+                    Key.DirectionRight -> {
+                        if (!isVertical && pagerState.currentPage < items.size - 1) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                            true
+                        } else if (isVertical) {
+                            // For vertical carousel, Right navigates to elements on the right
+                            spatialFocusManager?.navigateInDirection(
+                                "carousel",
+                                SpatialFocusManager.Direction.RIGHT
+                            ) ?: false
+                        } else false
+                    }
+                    Key.DirectionUp -> {
+                        if (isVertical && pagerState.currentPage > 0) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                            }
+                            true
+                        } else if (!isVertical) {
+                            // For horizontal carousel, Up navigates to elements above
+                            spatialFocusManager?.navigateInDirection(
+                                "carousel",
+                                SpatialFocusManager.Direction.UP
+                            ) ?: false
+                        } else false
+                    }
+                    Key.DirectionDown -> {
+                        if (isVertical && pagerState.currentPage < items.size - 1) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                            true
+                        } else if (!isVertical) {
+                            // For horizontal carousel, Down navigates to elements below
+                            spatialFocusManager?.navigateInDirection(
+                                "carousel",
+                                SpatialFocusManager.Direction.DOWN
+                            ) ?: false
+                        } else false
+                    }
+                    Key.Enter, Key.DirectionCenter, Key.ButtonA -> {
+                        items.getOrNull(pagerState.currentPage)?.let { onItemClick(it) }
+                        true
+                    }
+                    else -> false
                 }
-                // Apply alpha AFTER focus setup so changes are visible
-                .graphicsLayer { alpha = carouselAlpha }
-                .onKeyEvent { keyEvent ->
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        when (keyEvent.key) {
-                            Key.DirectionLeft -> {
-                                if (pagerState.currentPage > 0) {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                                    }
-                                }
-                                true
-                            }
-                            Key.DirectionRight -> {
-                                if (pagerState.currentPage < items.size - 1) {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                                    }
-                                }
-                                true
-                            }
-                            Key.DirectionDown -> {
-                                // Move focus to elements below using spatial navigation
-                                spatialFocusManager?.navigateInDirection(
-                                    "carousel", 
-                                    SpatialFocusManager.Direction.DOWN
-                                ) ?: false
-                            }
-                            Key.DirectionUp -> {
-                                // Move focus to elements above using spatial navigation
-                                spatialFocusManager?.navigateInDirection(
-                                    "carousel", 
-                                    SpatialFocusManager.Direction.UP
-                                ) ?: false
-                            }
-                            Key.Enter, Key.DirectionCenter, Key.ButtonA -> {
-                                items.getOrNull(pagerState.currentPage)?.let { onItemClick(it) }
-                                true
-                            }
-                            else -> false
-                        }
-                    } else {
-                        false
-                    }
-                },
-            verticalArrangement = verticalArrangement,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(scaledItemHeight)
-                    // Register with spatial focus manager using actual pager bounds (not full-screen Column)
-                    .onGloballyPositioned { coordinates ->
-                        spatialFocusManager?.register(
-                            id = "carousel",
-                            bounds = coordinates.boundsInRoot(),
-                            focusRequester = focusRequester
-                        )
-                    },
-                contentPadding = PaddingValues(horizontal = horizontalContentPadding),
-                pageSpacing = spacing,
-                flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
-                verticalAlignment = Alignment.CenterVertically,
-                // Disable user scroll gesture to prevent conflicts with controller input
-                userScrollEnabled = true,
-            ) { page ->
-                val item = items.getOrNull(page) ?: return@HorizontalPager
+            } else {
+                false
+            }
+        }
+        
+        // Focus change handler
+        val focusChangeHandler: (androidx.compose.ui.focus.FocusState) -> Unit = { focusState ->
+            val nowHasFocus = focusState.isFocused
+            carouselHasFocus = nowHasFocus
+            if (nowHasFocus) {
+                hasEverHadFocus = true
+                spatialFocusManager?.setFocused("carousel")
+            }
+        }
+        
+        // Get focused item offsets from config
+        val focusedOffsetX = carouselConfig.focusedOffsetX.dp
+        val focusedOffsetY = carouselConfig.focusedOffsetY.dp
+        val focusedSpacing = carouselConfig.focusedSpacing.dp
+        
+        // Render pager content
+        val renderPageContent: @Composable (Int) -> Unit = { page ->
+            val item = items.getOrNull(page)
+            if (item != null) {
                 val bindings = bindingProvider(item)
                 
-                // Calculate scale based on distance from current page
-                val pageOffset = (
-                    (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                ).absoluteValue.coerceIn(0f, 1f)
+                // Calculate signed offset from current page (negative = before, positive = after)
+                val signedPageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                 
-                // Scale from highlightScale (at center) to 1.0 (at edges)
+                // Calculate absolute distance for scale/alpha calculations
+                val pageOffset = signedPageOffset.absoluteValue.coerceIn(0f, 1f)
+                
+                // Scale from focusedScale (at center) to 1.0 (at edges)
                 val scale = lerp(
-                    start = highlightScale,
+                    start = focusedScale,
                     stop = 1f,
                     fraction = pageOffset
                 )
@@ -421,10 +439,29 @@ fun ThemedGameCarousel(
                 // Determine if this page is focused (near-zero offset from current)
                 val isFocused = pageOffset < 0.5f
                 
+                // Calculate focused offset (smoothly interpolated based on focus)
+                val focusProgress = 1f - pageOffset
+                val offsetX = focusedOffsetX * focusProgress
+                val offsetY = focusedOffsetY * focusProgress
+                
+                // Calculate spacing offset to push items away from the focused item
+                // Uses signed offset directly for smooth, continuous transitions:
+                // - signedPageOffset > 0 (item before focus) → push backward (negative)
+                // - signedPageOffset < 0 (item after focus) → push forward (positive)
+                // - signedPageOffset = 0 (focused item) → no push
+                // Clamp to [-1, 1] so items far away don't get excessive push
+                val clampedSignedOffset = signedPageOffset.coerceIn(-1f, 1f)
+                val spacingOffset = -focusedSpacing * clampedSignedOffset
+                
+                // Apply spacing offset based on carousel orientation
+                val finalOffsetX = offsetX + if (!isVertical) spacingOffset else 0.dp
+                val finalOffsetY = offsetY + if (isVertical) spacingOffset else 0.dp
+                
                 Box(
                     modifier = Modifier
                         .zIndex(zIndex)
                         .size(itemWidth, itemHeight)
+                        .offset(x = finalOffsetX, y = finalOffsetY)
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
@@ -444,9 +481,81 @@ fun ThemedGameCarousel(
                                 stringResolver = stringResolver,
                                 themePath = themePath,
                                 isFocused = isFocused,
-                                focusProgress = 1f - pageOffset, // 1 when focused, 0 when not
+                                focusProgress = 1f - pageOffset,
                             )
                         }
+                }
+            }
+        }
+        
+        if (isVertical) {
+            // Vertical carousel layout
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(x = horizontalOffset)
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onFocusChanged(focusChangeHandler)
+                    .graphicsLayer { alpha = carouselAlpha }
+                    .onKeyEvent(keyEventHandler),
+                horizontalArrangement = horizontalArrangement,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                VerticalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .width(scaledItemWidth)
+                        .fillMaxHeight()
+                        .onGloballyPositioned { coordinates ->
+                            spatialFocusManager?.register(
+                                id = "carousel",
+                                bounds = coordinates.boundsInRoot(),
+                                focusRequester = focusRequester
+                            )
+                        },
+                    contentPadding = PaddingValues(vertical = verticalContentPadding),
+                    pageSpacing = spacing,
+                    flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    userScrollEnabled = true,
+                ) { page ->
+                    renderPageContent(page)
+                }
+            }
+        } else {
+            // Horizontal carousel layout (original behavior)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = verticalOffset)
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onFocusChanged(focusChangeHandler)
+                    .graphicsLayer { alpha = carouselAlpha }
+                    .onKeyEvent(keyEventHandler),
+                verticalArrangement = verticalArrangement,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(scaledItemHeight)
+                        .onGloballyPositioned { coordinates ->
+                            spatialFocusManager?.register(
+                                id = "carousel",
+                                bounds = coordinates.boundsInRoot(),
+                                focusRequester = focusRequester
+                            )
+                        },
+                    contentPadding = PaddingValues(horizontal = horizontalContentPadding),
+                    pageSpacing = spacing,
+                    flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
+                    verticalAlignment = Alignment.CenterVertically,
+                    userScrollEnabled = true,
+                ) { page ->
+                    renderPageContent(page)
                 }
             }
         }

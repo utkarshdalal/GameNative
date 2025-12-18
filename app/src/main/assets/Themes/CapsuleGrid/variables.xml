@@ -1,53 +1,34 @@
 <variables>
-    <!-- Colors -->
-    <var name="bgColor" value="#FF000000" />
-    <var name="transparentColor" value="#00000000" />
+    <!-- Colors (used multiple times) -->
     <var name="textColor" value="#FFFFFFFF" />
-    <var name="searchBarBg" value="#FF1E1E1E" />
     <var name="overlayColor" value="#99000000" />
-    <var name="borderColor" value="#22FFFFFF" />
-
-    <!-- Highlight styling for controller navigation -->
     <var name="highlightColor" value="#9575CD" />
+    
+    <!-- Highlight styling (used by multiple elements) -->
     <var name="highlightOpacity" value="0.9" />
     <var name="highlightBorderWidth" value="2" />
     <var name="highlightTransitionSpeed" value="200" />
-
-    <!-- Dimensions -->
+    
+    <!-- Shared dimensions -->
     <var name="cornerRadius" value="20" />
     <var name="badgeHeight" value="20" />
-
-    <!-- Top bar -->
-    <var name="topBarHeight" value="72" />
-    <var name="searchBarRadius" value="24" />
-    <var name="searchBarWidth" value="600" />
-    <var name="searchBarHeight" value="56" />
-    <var name="searchBarX" value="200" />
-    <var name="searchBarY" value="12" />
-    <var name="profileButtonSize" value="48" />
-    <var name="profileButtonIconSize" value="32" />
-    <var name="profileButtonPadding" value="8" />
-    <var name="profileButtonX" value="12" />
-    <var name="profileButtonY" value="12" />
-    <var name="profileButtonBg" value="#66808080" />
-    <var name="profileButtonRadius" value="12" />
-
-    <!-- Spacing -->
+    <var name="gridSpacing" value="12" />
+    <var name="textSizeSmall" value="11" />
+    
+    <!-- Shared spacing -->
     <var name="paddingSmall" value="8" />
     <var name="paddingMedium" value="16" />
-    <var name="paddingLarge" value="20" />
-    <var name="gridSpacing" value="12" />
     <var name="bottomOffset" value="24" />
 
-    <!-- Grid settings -->
-    <var name="cellWidth" value="150" />
-    <var name="aspectRatio" value="0.67" />
+    <!-- Top bar (in breakpoint) -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarWidth" value="600" />
+    <var name="searchBarX" value="200" />
+    <var name="searchBarY" value="12" />
+    <var name="profileButtonY" value="12" />
     <var name="gridPaddingTop" value="80" />
 
-    <!-- Text -->
-    <var name="textSizeSmall" value="11" />
-
-    <!-- Portrait breakpoint overrides -->
+    <!-- Portrait overrides -->
     <breakpoint orientation="portrait">
         <var name="topBarHeight" value="130" />
         <var name="gridPaddingTop" value="160" />
@@ -57,4 +38,3 @@
         <var name="profileButtonY" value="0" />
     </breakpoint>
 </variables>
-

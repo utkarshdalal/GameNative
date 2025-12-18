@@ -1,7 +1,7 @@
 package app.gamenative.theme.model
 
 /**
- * Root theme definition aggregating manifest, variables, cards, fixed containers, and the layout tree.
+ * Root theme definition aggregating manifest, variables, cards, and layout elements.
  * This is a pure data model; no parsing or rendering logic is included here.
  */
 data class ThemeDefinition(
@@ -13,11 +13,50 @@ data class ThemeDefinition(
     val breakpoints: List<Breakpoint> = emptyList(),
     /** Card definitions for rendering individual items (games). */
     val cards: List<Card> = emptyList(),
-    /** Fixed UI containers with app elements (header, search, etc.). */
-    val fixedContainers: List<FixedContainer> = emptyList(),
-    /** Root layout node describing the arrangement of cards on screen. */
-    val layout: LayoutNode,
-)
+    /** 
+     * Ordered list of layout elements (fixed containers and content).
+     * Rendered in declaration order unless zIndex overrides it.
+     */
+    val layoutElements: List<LayoutElement> = emptyList(),
+) {
+    // Convenience accessors for backwards compatibility
+    /** All fixed containers from layout elements. */
+    val fixedContainers: List<FixedContainer>
+        get() = layoutElements.filterIsInstance<LayoutElement.Fixed>().map { it.container }
+    
+    /** The main layout node (Grid/Carousel), or null if not present. */
+    val layout: LayoutNode?
+        get() = layoutElements.filterIsInstance<LayoutElement.Content>().firstOrNull()?.node
+}
+
+/**
+ * A single element in the layout, either a fixed container or content (grid/carousel).
+ * Elements are rendered in declaration order unless zIndex overrides it.
+ */
+sealed class LayoutElement {
+    /** Optional z-index for explicit z-ordering. Null = use declaration order. */
+    abstract val zIndex: Int?
+    /** Declaration order index (set during parsing). Used for stable sorting. */
+    abstract val declarationOrder: Int
+    
+    /**
+     * A fixed container with UI elements (backgrounds, buttons, etc.).
+     */
+    data class Fixed(
+        val container: FixedContainer,
+        override val zIndex: Int? = null,
+        override val declarationOrder: Int = 0,
+    ) : LayoutElement()
+    
+    /**
+     * The main content area (Grid or Carousel).
+     */
+    data class Content(
+        val node: LayoutNode,
+        override val zIndex: Int? = null,
+        override val declarationOrder: Int = 0,
+    ) : LayoutElement()
+}
 
 /**
  * A node in the layout tree.
@@ -76,6 +115,8 @@ sealed class LayoutNode {
     data class Carousel(
         /** Scroll direction for the carousel. */
         val direction: Direction = Direction.RIGHT,
+        /** Scroll orientation: horizontal or vertical. */
+        val orientation: CarouselOrientation = CarouselOrientation.HORIZONTAL,
         /** Size of each item in the carousel. */
         val itemSize: DimSize,
         /** Spacing between items. */
@@ -88,12 +129,22 @@ sealed class LayoutNode {
         val pageSize: Int? = null,
         /** Whether the carousel centers on the focused item with snap behavior. */
         val centerFocus: Boolean = false,
-        /** Scale factor for the highlighted/focused item (1.0 = no scaling). */
-        val highlightScale: Float = 1.0f,
-        /** Vertical alignment within parent container. */
+        /** Scale factor for the focused item (1.0 = no scaling). */
+        val focusedScale: Float = 1.0f,
+        /** Vertical alignment within parent container (for horizontal carousels). */
         val verticalAlign: VerticalAlign = VerticalAlign.TOP,
-        /** Vertical offset from the aligned position (positive = down). */
+        /** Vertical offset from the aligned position (positive = down, for horizontal carousels). */
         val verticalOffset: Dimension = Dimension.Px(0f),
+        /** Horizontal alignment within parent container (for vertical carousels). */
+        val horizontalAlign: HorizontalAlign = HorizontalAlign.START,
+        /** Horizontal offset from the aligned position (positive = right, for vertical carousels). */
+        val horizontalOffset: Dimension = Dimension.Px(0f),
+        /** X offset applied to the focused item (positive = right). */
+        val focusedOffsetX: Float = 0f,
+        /** Y offset applied to the focused item (positive = down). */
+        val focusedOffsetY: Float = 0f,
+        /** Extra spacing around the focused item to account for scaling (added to itemSpacing). */
+        val focusedSpacing: Float = 0f,
         /** Background image binding for focused item (e.g., "@{game.hero}"). Null = no background. */
         val focusedBackground: StringOrBinding? = null,
         /** Opacity for the focused background image (0.0-1.0). */
@@ -116,6 +167,38 @@ enum class VerticalAlign {
             "center" -> CENTER
             "bottom" -> BOTTOM
             else -> TOP
+        }
+    }
+}
+
+/**
+ * Horizontal alignment options for layout elements.
+ */
+enum class HorizontalAlign {
+    START,
+    CENTER,
+    END;
+
+    companion object {
+        fun fromString(value: String?): HorizontalAlign = when (value?.lowercase()) {
+            "center" -> CENTER
+            "end", "right" -> END
+            else -> START
+        }
+    }
+}
+
+/**
+ * Carousel scroll orientation.
+ */
+enum class CarouselOrientation {
+    HORIZONTAL,
+    VERTICAL;
+
+    companion object {
+        fun fromString(value: String?): CarouselOrientation = when (value?.lowercase()) {
+            "vertical" -> VERTICAL
+            else -> HORIZONTAL
         }
     }
 }

@@ -279,5 +279,168 @@ sealed class FixedElement {
         /** Opacity (0.0 - 1.0). */
         val opacity: Float = 1f,
     ) : FixedElement()
+
+    /**
+     * Rectangle element for backgrounds, overlays, dividers, etc.
+     * Supports solid colors, gradients, borders, and rounded corners.
+     */
+    data class Rect(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size of the rectangle (required). */
+        val size: DimSize,
+        /** Fill color (ARGB). */
+        val color: Int = 0x00000000,
+        /** CSS-style corner radius (e.g., "8" or "8 8 0 0"). */
+        val cornerRadius: String? = null,
+        /** Border width in pixels, 0 = no border. */
+        val borderWidth: Float = 0f,
+        /** Border color (ARGB). */
+        val borderColor: Int = 0x00000000,
+        /** Gradient start color (ARGB), null for solid fill. */
+        val gradientStart: Int? = null,
+        /** Gradient end color (ARGB). */
+        val gradientEnd: Int? = null,
+        /** Gradient angle in degrees (0 = left-to-right, 90 = top-to-bottom). */
+        val gradientAngle: Float = 0f,
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
+    ) : FixedElement()
+
+    /**
+     * Static text element (not bound to game data).
+     * Use for decorative text, labels, titles, etc.
+     */
+    data class Text(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size constraint for text wrapping. */
+        val size: DimSize? = null,
+        /** Text content to display. */
+        val text: String,
+        /** Text color (ARGB). */
+        val color: Int = 0xFFFFFFFF.toInt(),
+        /** Text size in sp. */
+        val textSize: Float = 14f,
+        /** Max lines for text wrapping, null = unlimited. */
+        val maxLines: Int? = null,
+        /** Text alignment: "left", "center", or "right". */
+        val textAlign: String = "left",
+        /** Font weight: "normal", "bold", "medium", "semibold", etc. */
+        val fontWeight: String = "normal",
+        /** Font style: "normal" or "italic". */
+        val fontStyle: String = "normal",
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
+    ) : FixedElement()
+
+    /**
+     * Drop shadow element for visual depth effects.
+     */
+    data class Shadow(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size of the shadow area. */
+        val size: DimSize,
+        /** Shadow blur radius in pixels. */
+        val radius: Float = 8f,
+        /** Shadow color (ARGB). */
+        val color: Int = 0x66000000,
+        /** Shadow X offset in pixels. */
+        val offsetX: Float = 0f,
+        /** Shadow Y offset in pixels. */
+        val offsetY: Float = 4f,
+        /** CSS-style corner radius (e.g., "8" or "8 8 0 0"). */
+        val cornerRadius: String? = null,
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
+    ) : FixedElement()
+
+    /**
+     * Border/stroke element around a rectangular area.
+     */
+    data class Border(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size of the bordered area. */
+        val size: DimSize,
+        /** Border stroke width in pixels. */
+        val strokeWidth: Float = 1f,
+        /** Border color (ARGB). */
+        val color: Int = 0xFFFFFFFF.toInt(),
+        /** CSS-style corner radius (e.g., "8" or "8 8 0 0"). */
+        val cornerRadius: String? = null,
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
+    ) : FixedElement()
+
+    /**
+     * Backdrop blur effect element.
+     * Creates a frosted glass effect by blurring content behind it.
+     */
+    data class Backdrop(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_LEFT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Size of the backdrop area. */
+        val size: DimSize,
+        /** Blur radius in pixels. */
+        val blurRadius: Float = 16f,
+        /** Optional tint color (ARGB) overlay. */
+        val tintColor: Int? = null,
+        /** CSS-style corner radius (e.g., "8" or "8 8 0 0"). */
+        val cornerRadius: String? = null,
+        /** Opacity (0.0 - 1.0). */
+        val opacity: Float = 1f,
+    ) : FixedElement()
 }
 

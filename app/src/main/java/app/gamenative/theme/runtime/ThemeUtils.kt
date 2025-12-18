@@ -1,7 +1,6 @@
 package app.gamenative.theme.runtime
 
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -162,6 +161,7 @@ object ThemeUtils {
 
         return Placement(x, y, elementWidth, elementHeight)
     }
+
 }
 
 // Convenience top-level function aliases for cleaner imports
