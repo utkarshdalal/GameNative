@@ -414,20 +414,7 @@ private fun LibraryScreenContent(
                     )
                 }
                 
-                // Render TOP fixed elements first (for proper focus traversal order)
-                RenderFixedElements(
-                    fixedContainers = def.fixedContainers,
-                    state = state,
-                    listState = listState,
-                    themeName = def.manifest.id,
-                    callbacks = fixedCallbacks,
-                    accountButtonContent = accountButtonContent,
-                    searchBarContent = searchBarContent,
-                    position = app.gamenative.theme.runtime.FixedContainerPosition.TOP,
-                    themeRootDir = themeRootDir,
-                )
-
-                // Render themed layout based on type
+                // Render themed layout FIRST (at the back, so fixed elements are on top)
                 val layout = def.layout
                 when (layout) {
                     is app.gamenative.theme.model.LayoutNode.Grid -> {
@@ -492,7 +479,21 @@ private fun LibraryScreenContent(
                 }
                 }
 
-                // Render BOTTOM fixed elements last (for proper focus traversal order)
+                // Render fixed elements ON TOP of the content (later in Box = higher z-order)
+                // TOP fixed elements (header, search, profile)
+                RenderFixedElements(
+                    fixedContainers = def.fixedContainers,
+                    state = state,
+                    listState = listState,
+                    themeName = def.manifest.id,
+                    callbacks = fixedCallbacks,
+                    accountButtonContent = accountButtonContent,
+                    searchBarContent = searchBarContent,
+                    position = app.gamenative.theme.runtime.FixedContainerPosition.TOP,
+                    themeRootDir = themeRootDir,
+                )
+
+                // BOTTOM fixed elements (filter, add buttons)
                 RenderFixedElements(
                     fixedContainers = def.fixedContainers,
                     state = state,

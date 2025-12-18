@@ -200,11 +200,15 @@ internal fun LibrarySearchBar(
     val navigationLinks = style.toNavigationLinks()
 
     // Modern search field with rounded corners
+    // Use explicit width if specified (> 0), otherwise fill width
+    val hasExplicitWidth = style.expandedWidth > 0.dp
     Box(
         modifier = Modifier
             .then(
                 if (style.collapsible) {
                     Modifier.width(animatedWidth)
+                } else if (hasExplicitWidth) {
+                    Modifier.width(style.expandedWidth)
                 } else {
                     Modifier.fillMaxWidth()
                 }

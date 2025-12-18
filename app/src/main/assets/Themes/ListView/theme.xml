@@ -1,6 +1,6 @@
 <theme>
     <!-- Compact top bar with header, search, and profile in one row -->
-    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}" zIndex="100">
+    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}" zIndex="100" zIndex="10">
         <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"

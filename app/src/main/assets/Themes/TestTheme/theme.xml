@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     TEST THEME - Comprehensive demonstration of all theme engine features
-    
+
     This theme showcases:
     - All fixed element types (Header, SearchBar, ProfileButton, FilterButton, AddButton)
     - All layer types (Image, Video, Rect, Shadow, Border, Text, Backdrop, Button)
@@ -13,86 +13,86 @@
     <!-- ================================================================
          FIXED ELEMENTS - UI elements that don't scroll with content
          ================================================================ -->
-    
+
     <!-- TOP BAR: Header, Search, and Profile (demonstrating new container attributes) -->
     <fixed id="topBar" backgroundColor="@{vars.topBarBg}" height="@{vars.topBarHeight}"
            padding="8" cornerRadius="0">
-        
+
         <!-- HEADER: App name, theme name, game count -->
-        <header 
-            x="@{vars.paddingMedium}" 
-            y="@{vars.paddingSmall}" 
+        <header
+            x="@{vars.paddingMedium}"
+            y="@{vars.paddingSmall}"
             anchor="topLeft"
-            textColor="@{vars.textColor}" 
-            showAppName="true" 
-            showThemeName="true" 
+            textColor="@{vars.textColor}"
+            showAppName="true"
+            showThemeName="true"
             showGameCount="true"
-            highlightColor="@{vars.highlightColor}" 
+            highlightColor="@{vars.highlightColor}"
             highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}" 
+            highlightBorderWidth="@{vars.highlightBorderWidth}"
             highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-        
+
         <!-- SEARCH BAR: With full styling options -->
-        <searchBar 
-            x="@{vars.searchBarX}" 
-            y="@{vars.searchBarY}" 
-            width="@{vars.searchBarWidth}" 
+        <searchBar
+            x="@{vars.searchBarX}"
+            y="@{vars.searchBarY}"
+            width="@{vars.searchBarWidth}"
             height="@{vars.searchBarHeight}"
-            anchor="topLeft" 
-            backgroundColor="@{vars.searchBarBg}" 
+            anchor="topLeft"
+            backgroundColor="@{vars.searchBarBg}"
             borderRadius="@{vars.searchBarRadius}"
             collapsible="false"
-            highlightColor="@{vars.highlightColor}" 
+            highlightColor="@{vars.highlightColor}"
             highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}" 
+            highlightBorderWidth="@{vars.highlightBorderWidth}"
             highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-        
+
         <!-- PROFILE BUTTON: User account access -->
-        <profileButton 
-            x="@{vars.profileButtonX}" 
-            y="@{vars.profileButtonY}" 
-            anchor="topRight" 
+        <profileButton
+            x="@{vars.profileButtonX}"
+            y="@{vars.profileButtonY}"
+            anchor="topRight"
             size="@{vars.profileButtonSize}"
-            iconSize="@{vars.profileButtonIconSize}" 
+            iconSize="@{vars.profileButtonIconSize}"
             padding="@{vars.profileButtonPadding}"
-            backgroundColor="@{vars.profileButtonBg}" 
+            backgroundColor="@{vars.profileButtonBg}"
             cornerRadius="@{vars.profileButtonRadius}"
-            highlightColor="@{vars.highlightColor}" 
+            highlightColor="@{vars.highlightColor}"
             highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}" 
+            highlightBorderWidth="@{vars.highlightBorderWidth}"
             highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
 
     <!-- BOTTOM BAR: Action buttons -->
     <fixed id="bottomBar">
         <!-- FILTER BUTTON: Opens filter bottom sheet (demonstrating new styling attributes) -->
-        <filterButton 
-            x="100" 
-            y="@{vars.bottomOffset}" 
-            anchor="bottomRight" 
+        <filterButton
+            x="100"
+            y="@{vars.bottomOffset}"
+            anchor="bottomRight"
             expanded="true"
             size="56"
             iconSize="24"
             cornerRadius="16"
-            highlightColor="@{vars.highlightColor}" 
+            highlightColor="@{vars.highlightColor}"
             highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}" 
+            highlightBorderWidth="@{vars.highlightBorderWidth}"
             highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-        
+
         <!-- ADD BUTTON: Add custom games (demonstrating new styling attributes) -->
-        <addButton 
-            x="@{vars.paddingMedium}" 
-            y="@{vars.bottomOffset}" 
+        <addButton
+            x="@{vars.paddingMedium}"
+            y="@{vars.bottomOffset}"
             anchor="bottomRight"
             size="56"
             iconSize="24"
             cornerRadius="16"
-            highlightColor="@{vars.highlightColor}" 
+            highlightColor="@{vars.highlightColor}"
             highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}" 
+            highlightBorderWidth="@{vars.highlightBorderWidth}"
             highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
-    
+
     <!-- DECORATIVE ELEMENTS: Demonstrating fixed image and video elements -->
     <fixed id="decorativeBar" visibility="landscape">
         <!-- FIXED IMAGE: Static decorative image (not bound to game data) -->
@@ -107,7 +107,7 @@
             cornerRadius="12"
             opacity="0.9"
             visibility="landscape" />
-        
+
         <!-- FIXED VIDEO: Local video with local poster -->
         <video
             x="16"
@@ -123,7 +123,7 @@
             cornerRadius="8"
             opacity="0.95"
             visibility="landscape" />
-        
+
         <!-- FIXED VIDEO: External video with external poster (Big Buck Bunny) -->
         <video
             x="150"
@@ -145,154 +145,154 @@
          CARD DEFINITIONS - Templates for rendering game items
          ================================================================ -->
     <cards>
-        
+
         <!-- MAIN CARD: Demonstrates all layer types -->
         <card id="mainCard" width="@{vars.cellWidth}" height="@{vars.cellHeight}">
-            
+
             <!-- LAYER 1: Shadow (renders behind everything) - now supports cornerRadius -->
-            <shadow 
+            <shadow
                 id="cardShadow"
-                x="4" y="4" 
+                x="4" y="4"
                 width="100%" height="100%"
-                radius="@{vars.shadowRadius}" 
+                radius="@{vars.shadowRadius}"
                 color="@{vars.shadowColor}"
                 cornerRadius="@{vars.cornerRadius}"
                 zIndex="-2" />
-            
+
             <!-- LAYER 2: Background rect with border -->
-            <rect 
+            <rect
                 id="cardBg"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
-                color="@{vars.cardBgColor}" 
+                color="@{vars.cardBgColor}"
                 cornerRadius="@{vars.cornerRadius}"
-                borderWidth="1" 
+                borderWidth="1"
                 borderColor="@{vars.borderColor}"
                 zIndex="-1" />
-            
+
             <!-- LAYER 3: Game hero/cover image -->
-            <image 
+            <image
                 id="gameImage"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="@{vars.imageHeight}"
-                src="@{game.hero}" 
+                src="@{game.hero}"
                 fallback="@{game.capsule}"
                 cornerRadius="@{vars.cornerRadius} @{vars.cornerRadius} 0 0"
                 scaleType="cover"
                 zIndex="0" />
-            
+
             <!-- LAYER 4: Gradient overlay on image (for text readability) -->
-            <rect 
+            <rect
                 id="imageOverlay"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="@{vars.imageHeight}"
                 color="#00000000"
                 cornerRadius="@{vars.cornerRadius} @{vars.cornerRadius} 0 0"
                 zIndex="1" />
-            
+
             <!-- LAYER 5: Compatibility badge (top-left) -->
-            <rect 
+            <rect
                 id="compatBadgeBg"
-                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}" 
+                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}"
                 width="80" height="20"
-                color="@{vars.overlayColor}" 
+                color="@{vars.overlayColor}"
                 cornerRadius="4"
                 anchor="topLeft"
                 zIndex="2" />
-            
-            <text 
+
+            <text
                 id="compatLabel"
-                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}" 
+                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}"
                 width="80" height="20"
-                text="@{game.compatibility.label}" 
+                text="@{game.compatibility.label}"
                 textSize="@{vars.textSizeSmall}"
-                color="@{game.compatibility.color}" 
+                color="@{game.compatibility.color}"
                 textAlign="center"
                 fontWeight="bold"
                 anchor="topLeft"
                 zIndex="3" />
-            
+
             <!-- LAYER 6: Installed indicator (top-right, conditional) -->
-            <text 
+            <text
                 id="installedBadge"
-                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}" 
-                text="✓ Installed" 
+                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}"
+                text="✓ Installed"
                 textSize="@{vars.textSizeSmall}"
                 color="#FF4CAF50"
                 fontWeight="bold"
                 anchor="topRight"
                 visibleWhen="game.isInstalled"
                 zIndex="3" />
-            
+
             <!-- LAYER 7: Game title -->
-            <text 
+            <text
                 id="gameTitle"
-                x="@{vars.paddingSmall}" y="@{vars.infoY}" 
+                x="@{vars.paddingSmall}" y="@{vars.infoY}"
                 width="280" height="@{vars.titleHeight}"
-                text="@{game.title}" 
+                text="@{game.title}"
                 textSize="@{vars.textSizeTitle}"
-                color="@{vars.textColor}" 
+                color="@{vars.textColor}"
                 maxLines="1"
                 fontWeight="bold"
                 textAlign="left"
                 anchor="topLeft"
                 zIndex="2" />
-            
+
             <!-- LAYER 8: Installation status (demonstrating new text attributes) -->
-            <text 
+            <text
                 id="installStatus"
-                x="@{vars.paddingSmall}" y="@{vars.statusY}" 
+                x="@{vars.paddingSmall}" y="@{vars.statusY}"
                 width="200" height="20"
-                text="@{game.installStatus}" 
+                text="@{game.installStatus}"
                 textSize="@{vars.textSizeSmall}"
                 color="@{vars.textColorMuted}"
                 fontStyle="italic"
                 letterSpacing="0.5"
                 anchor="topLeft"
                 zIndex="2" />
-            
+
             <!-- LAYER 9: Focus-only border (appears when card is focused) -->
-            <border 
+            <border
                 id="focusBorder"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
-                strokeWidth="3" 
+                strokeWidth="3"
                 color="@{vars.accentColor}"
                 cornerRadius="@{vars.cornerRadius}"
                 focusOnly="true"
                 focusTransitionSpeed="@{vars.focusTransitionSpeed}"
                 zIndex="10" />
-            
+
             <!-- LAYER 10: Focus-only title highlight -->
-            <rect 
+            <rect
                 id="focusHighlight"
-                x="0" y="@{vars.infoY}" 
+                x="0" y="@{vars.infoY}"
                 width="100%" height="72"
                 color="#2200D9FF"
                 cornerRadius="0 0 @{vars.cornerRadius} @{vars.cornerRadius}"
                 focusOnly="true"
                 focusTransitionSpeed="@{vars.focusTransitionSpeed}"
                 zIndex="1" />
-                
+
         </card>
 
         <!-- ALTERNATE CARD: Shows different layer combinations -->
         <card id="compactCard" width="@{vars.cellWidth}" height="180">
-            
+
             <!-- Full-bleed image background -->
-            <image 
+            <image
                 id="bgImage"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
                 src="@{game.hero}"
                 cornerRadius="@{vars.cornerRadius}"
                 scaleType="cover"
                 zIndex="0" />
-            
+
             <!-- Dark gradient overlay for text (demonstrating new gradient support) -->
-            <rect 
+            <rect
                 id="gradient"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
                 color="#00000000"
                 gradientStart="#00000000"
@@ -300,38 +300,38 @@
                 gradientAngle="90"
                 cornerRadius="@{vars.cornerRadius}"
                 zIndex="1" />
-            
+
             <!-- Title at bottom -->
-            <text 
+            <text
                 id="title"
-                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}" 
+                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}"
                 width="95%" height="24"
-                text="@{game.title}" 
+                text="@{game.title}"
                 textSize="@{vars.textSizeTitle}"
                 color="@{vars.textColor}"
                 fontWeight="bold"
                 anchor="bottomLeft"
                 zIndex="2" />
-            
+
             <!-- Subtle border -->
-            <border 
+            <border
                 id="border"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
-                strokeWidth="1" 
+                strokeWidth="1"
                 color="@{vars.borderColor}"
                 cornerRadius="@{vars.cornerRadius}"
                 zIndex="3" />
-                
+
         </card>
 
         <!-- VIDEO CARD: Demonstrates video layer -->
         <card id="videoCard" width="@{vars.cellWidth}" height="@{vars.cellHeight}">
-            
+
             <!-- Video background -->
-            <video 
+            <video
                 id="bgVideo"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="@{vars.imageHeight}"
                 src="@{vars.testVideo}"
                 poster="@{game.hero}"
@@ -340,66 +340,66 @@
                 muted="true"
                 preload="metadata"
                 cornerRadius="@{vars.cornerRadius} @{vars.cornerRadius} 0 0" />
-            
+
             <!-- Info area background -->
-            <rect 
+            <rect
                 id="infoBg"
-                x="0" y="@{vars.imageHeight}" 
+                x="0" y="@{vars.imageHeight}"
                 width="100%" height="80"
                 color="@{vars.cardBgColor}"
                 cornerRadius="0 0 @{vars.cornerRadius} @{vars.cornerRadius}"
                 anchor="topLeft" />
-            
+
             <!-- Title -->
-            <text 
+            <text
                 id="title"
-                x="@{vars.paddingSmall}" y="@{vars.infoY}" 
+                x="@{vars.paddingSmall}" y="@{vars.infoY}"
                 width="95%"
-                text="@{game.title}" 
+                text="@{game.title}"
                 textSize="@{vars.textSizeTitle}"
                 color="@{vars.textColor}"
                 fontWeight="bold"
                 maxLines="1" />
-                
+
         </card>
 
         <!-- BUTTON CARD: Demonstrates button layer -->
         <card id="buttonCard" width="@{vars.cellWidth}" height="@{vars.cellHeight}">
-            
+
             <!-- Background -->
-            <rect 
+            <rect
                 id="bg"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
                 color="@{vars.cardBgColor}"
                 cornerRadius="@{vars.cornerRadius}"
                 borderWidth="1"
                 borderColor="@{vars.borderColor}" />
-            
+
             <!-- Game image -->
-            <image 
+            <image
                 id="image"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="@{vars.imageHeight}"
                 src="@{game.hero}"
                 cornerRadius="@{vars.cornerRadius} @{vars.cornerRadius} 0 0"
                 scaleType="cover" />
-            
+
             <!-- Title -->
-            <text 
+            <text
                 id="title"
-                x="@{vars.paddingSmall}" y="@{vars.infoY}" 
+                x="@{vars.paddingSmall}" y="@{vars.infoY}"
                 width="60%"
-                text="@{game.title}" 
+                text="@{game.title}"
                 textSize="@{vars.textSizeBody}"
                 color="@{vars.textColor}"
                 fontWeight="bold"
                 maxLines="1" />
-            
+
             <!-- Action button using system colors (now with border and fontWeight) -->
-            <button 
+            <button
                 id="playButton"
-                x="@{vars.paddingSmall}" y="@{vars.buttonY}" 
+                x="@{vars.paddingSmall}" y="@{vars.buttonY}"
                 width="80" height="32"
                 anchor="topRight"
                 text="Play"
@@ -410,68 +410,68 @@
                 borderWidth="1"
                 borderColor="@color/onPrimary"
                 fontWeight="bold" />
-                
+
         </card>
 
         <!-- BACKDROP CARD: Demonstrates backdrop/blur layer -->
         <card id="backdropCard" width="@{vars.cellWidth}" height="180">
-            
+
             <!-- Full image -->
-            <image 
+            <image
                 id="bgImage"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
                 src="@{game.hero}"
                 cornerRadius="@{vars.cornerRadius}"
                 scaleType="cover"
                 zIndex="0" />
-            
+
             <!-- Backdrop blur effect at bottom -->
-            <backdrop 
+            <backdrop
                 id="blur"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="60"
                 blurRadius="10"
                 tintColor="#88000000"
                 anchor="bottomLeft"
                 zIndex="1" />
-            
+
             <!-- Title over blur -->
-            <text 
+            <text
                 id="title"
-                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}" 
+                x="@{vars.paddingSmall}" y="@{vars.paddingSmall}"
                 width="95%"
-                text="@{game.title}" 
+                text="@{game.title}"
                 textSize="@{vars.textSizeTitle}"
                 color="@{vars.textColor}"
                 fontWeight="bold"
                 anchor="bottomLeft"
                 zIndex="2" />
-            
+
             <!-- Border -->
-            <border 
+            <border
                 id="border"
-                x="0" y="0" 
+                x="0" y="0"
                 width="100%" height="100%"
-                strokeWidth="1" 
+                strokeWidth="1"
                 color="@{vars.borderColor}"
                 cornerRadius="@{vars.cornerRadius}"
                 zIndex="3" />
-                
+
         </card>
 
         <!-- VIDEO CARD: Demonstrates video layer -->
         <card id="testCard" width="300" height="300">
-            
-            <image 
+
+            <image
                 id="image"
-                x="0" y="0" 
+                x="0" y="0"
                 width="200" height="200"
                 src="@{game.hero}"
                 cornerRadius="@{vars.cornerRadius}"
                 scaleType="cover"
                 zIndex="0" />
-            
+
         </card>
 
     </cards>
@@ -481,24 +481,24 @@
          ================================================================ -->
     <layout>
         <!-- GRID LAYOUT with all options demonstrated (now includes verticalAlign) -->
-        <grid 
-            cellWidth="@{vars.cellWidth}" 
+        <grid
+            cellWidth="@{vars.cellWidth}"
             cellHeight="@{vars.cellHeight}"
-            hSpacing="@{vars.hSpacing}" 
+            hSpacing="@{vars.hSpacing}"
             vSpacing="@{vars.vSpacing}"
             padding="@{vars.gridPaddingTop} @{vars.paddingLarge} 80 @{vars.paddingLarge}"
             verticalAlign="center"
-            selectionMode="moving" 
-            itemCard="videoCtestCardard">
-            
+            selectionMode="moving"
+            itemCard="testCard">
+
             <!-- SEPARATOR: Decorative line between rows -->
             <separator height="1" margin="@{vars.separatorMargin} 0">
-                <rect 
-                    x="0" y="0" 
-                    width="100%" height="1" 
+                <rect
+                    x="0" y="0"
+                    width="100%" height="1"
                     color="@{vars.separatorColor}" />
             </separator>
-            
+
         </grid>
     </layout>
 

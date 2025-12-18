@@ -1,6 +1,6 @@
 <theme>
     <!-- Compact top bar with header, search, and profile in one row -->
-    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}">
+    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}" zIndex="10">
         <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
                 textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
         <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
@@ -13,7 +13,7 @@
                        highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
                        highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
     </fixed>
-    
+
     <!-- Bottom action buttons -->
     <fixed id="bottomBar">
         <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true"
@@ -32,14 +32,14 @@
             <!-- Game capsule art - fills entire cell -->
             <image id="art" x="0" y="0" width="100%" height="100%"
                    src="@{game.capsule}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
-            
+
             <!-- Compatibility badge at top -->
             <rect id="compatBadge" x="0" y="0" width="100%" height="@{vars.badgeHeight}"
                   color="@{vars.overlayColor}" cornerRadius="@{vars.cornerRadius} @{vars.cornerRadius} 0 0" />
             <text id="compatLabel" x="0" y="0" width="100%" height="@{vars.badgeHeight}"
                   text="@{game.compatibility.label}" textSize="@{vars.textSizeSmall}"
                   color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="bold" />
-            
+
             <!-- Title footer at bottom -->
             <rect id="footer" x="0" y="0" width="100%" height="@{vars.badgeHeight}"
                   color="@{vars.overlayColor}" cornerRadius="0 0 @{vars.cornerRadius} @{vars.cornerRadius}"
@@ -47,7 +47,7 @@
             <text id="title" x="@{vars.paddingSmall}" y="2" width="80%" height="@{vars.badgeHeight}"
                   text="@{game.title}" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
                   maxLines="1" textAlign="left" fontWeight="bold" anchor="bottomLeft" />
-            
+
             <!-- Installed checkmark - bottom right -->
             <text id="installedCheck" x="@{vars.paddingSmall}" y="2" height="@{vars.badgeHeight}"
                   text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
@@ -60,7 +60,7 @@
                 cornerRadius="@{vars.cornerRadius}" />
         </card>
     </cards>
-    
+
     <!-- Layout - adaptive capsule grid -->
     <layout>
         <grid cellWidth="@{vars.cellWidth}" aspectRatio="@{vars.aspectRatio}"
