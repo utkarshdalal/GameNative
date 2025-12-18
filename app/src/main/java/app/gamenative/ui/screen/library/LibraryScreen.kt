@@ -480,7 +480,7 @@ private fun LibraryScreenContent(
                 }
 
                 // Render fixed elements ON TOP of the content (later in Box = higher z-order)
-                // TOP fixed elements (header, search, profile)
+                // All containers are rendered in declaration order
                 RenderFixedElements(
                     fixedContainers = def.fixedContainers,
                     state = state,
@@ -489,20 +489,7 @@ private fun LibraryScreenContent(
                     callbacks = fixedCallbacks,
                     accountButtonContent = accountButtonContent,
                     searchBarContent = searchBarContent,
-                    position = app.gamenative.theme.runtime.FixedContainerPosition.TOP,
-                    themeRootDir = themeRootDir,
-                )
-
-                // BOTTOM fixed elements (filter, add buttons)
-                RenderFixedElements(
-                    fixedContainers = def.fixedContainers,
-                    state = state,
-                    listState = listState,
-                    themeName = def.manifest.id,
-                    callbacks = fixedCallbacks,
-                    accountButtonContent = accountButtonContent,
-                    searchBarContent = searchBarContent,
-                    position = app.gamenative.theme.runtime.FixedContainerPosition.BOTTOM,
+                    position = app.gamenative.theme.runtime.FixedContainerPosition.ALL,
                     themeRootDir = themeRootDir,
                 )
                 } // end CompositionLocalProvider

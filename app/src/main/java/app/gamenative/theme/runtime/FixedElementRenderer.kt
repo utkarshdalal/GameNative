@@ -203,22 +203,27 @@ private fun FixedElement.toNavigationLinks() = SpatialFocusManager.NavigationLin
 
 /**
  * Enum to specify which position of fixed containers to render.
- * Used to split rendering for proper focus traversal order.
+ * @deprecated No longer used - fixed containers are now rendered in declaration order from <layout>.
+ * Kept for backwards compatibility with existing code that may reference it.
  */
+@Deprecated("Use ALL - containers are now ordered by declaration in <layout>")
 enum class FixedContainerPosition {
-    TOP,     // Containers with "top" in their id
-    BOTTOM,  // Containers with "bottom" in their id
-    ALL      // All containers (original behavior)
+    TOP,     // Legacy: Containers with "top" in their id
+    BOTTOM,  // Legacy: Containers with "bottom" in their id
+    ALL      // All containers in declaration order (recommended)
 }
 
 /**
  * Renders fixed UI elements from theme configuration.
  * Falls back to default positioning if no fixed containers are defined.
+ * 
+ * Fixed containers are rendered in their declaration order from the <layout> section,
+ * giving theme authors full control over z-ordering and positioning.
  *
- * @param position Filter which containers to render based on their visual position.
- *                 This enables rendering top elements before the main content and
- *                 bottom elements after, ensuring proper focus traversal order.
+ * @param position Deprecated parameter kept for backwards compatibility. 
+ *                 Always uses ALL - containers are rendered in declaration order.
  */
+@Suppress("DEPRECATION")
 @Composable
 fun BoxScope.RenderFixedElements(
     fixedContainers: List<FixedContainer>,
@@ -233,36 +238,23 @@ fun BoxScope.RenderFixedElements(
 ) {
     if (fixedContainers.isEmpty()) {
         // Fallback to default positioning when no fixed containers are defined
-        // Render when ALL is requested, or when TOP is requested (since we render top first in split mode)
-        if (position == FixedContainerPosition.ALL || position == FixedContainerPosition.TOP) {
-            RenderDefaultFixedElements(
-                state = state,
-                listState = listState,
-                themeName = themeName,
-                callbacks = callbacks,
-                accountButtonContent = accountButtonContent,
-                searchBarContent = searchBarContent,
-            )
-        }
+        RenderDefaultFixedElements(
+            state = state,
+            listState = listState,
+            themeName = themeName,
+            callbacks = callbacks,
+            accountButtonContent = accountButtonContent,
+            searchBarContent = searchBarContent,
+        )
         return
     }
 
     // Determine current orientation for visibility filtering (centralized)
     val isPortrait = rememberIsPortrait()
 
-    // Filter containers based on requested position
-    val containersToRender = when (position) {
-        FixedContainerPosition.TOP -> fixedContainers.filter {
-            it.id.contains("top", ignoreCase = true)
-        }
-        FixedContainerPosition.BOTTOM -> fixedContainers.filter {
-            it.id.contains("bottom", ignoreCase = true)
-        }
-        FixedContainerPosition.ALL -> fixedContainers
-    }
-
-    // Render each fixed container with optional background
-    containersToRender.forEach { container ->
+    // Render all containers in declaration order (from <layout>)
+    // The position parameter is deprecated - we always render all containers
+    fixedContainers.forEach { container ->
         // Check container visibility first - skip entire container if not visible
         if (!container.visibility.isVisible(isPortrait)) return@forEach
 

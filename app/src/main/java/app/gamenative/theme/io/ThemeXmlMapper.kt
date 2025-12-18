@@ -35,9 +35,35 @@ object ThemeXmlMapper {
             Variable(id = k, type = ValueType.STRING, defaultValue = v)
         }
 
-        val cards = parseCards(root, effectiveTree)
-        val fixedContainers = parseFixedContainers(root, effectiveTree)
-        val layout = parseLayout(root, effectiveTree)
+        // Parse <elements> section (new format) for pre-defined cards and fixed containers
+        val elementsNode = root.children.firstOrNull { it.name.equals("elements", ignoreCase = true) }
+        val elementCards = elementsNode?.let { parseCardsFromContainer(it, effectiveTree) } ?: emptyList()
+        val elementFixedContainers = elementsNode?.let { parseFixedContainersFromContainer(it, effectiveTree) } ?: emptyList()
+        
+        // Build lookup maps for element references
+        val fixedContainerLookup = elementFixedContainers.associateBy { it.id }
+        
+        // Parse cards from both <elements> and legacy <cards> section
+        val legacyCards = parseCards(root, effectiveTree)
+        
+        // Parse layout and extract fixed containers and inline cards in declaration order
+        val layoutResult = parseLayoutWithFixedContainers(root, effectiveTree, fixedContainerLookup)
+        val layout = layoutResult.layout
+        val layoutFixedContainers = layoutResult.fixedContainers
+        val inlineCards = layoutResult.inlineCards
+        
+        // Combine all cards: elements + legacy + inline (inline cards take precedence for same ID)
+        val cards = (elementCards + legacyCards + inlineCards).distinctBy { it.id }
+        
+        // Determine which fixed containers to use:
+        // - If layout contains fixed/element tags, use those (new format)
+        // - Otherwise fall back to root-level <fixed> tags (backwards compat)
+        val fixedContainers = if (layoutFixedContainers.isNotEmpty()) {
+            layoutFixedContainers
+        } else {
+            parseFixedContainers(root, effectiveTree)
+        }
+        
         val manifest = buildManifest(tree)
 
         return ThemeDefinition(
@@ -73,8 +99,15 @@ object ThemeXmlMapper {
             ?: root.children.firstOrNull { it.name.equals("templates", ignoreCase = true) }
             ?: return emptyList()
         
-        val cardTagName = if (cardsRoot.name.equals("cards", ignoreCase = true)) "card" else "template"
-        return cardsRoot.children.filter { it.name.equals(cardTagName, ignoreCase = true) }.map { n ->
+        return parseCardsFromContainer(cardsRoot, tree)
+    }
+    
+    /** Parse card definitions from a container node (either <cards> or <elements>). */
+    private fun parseCardsFromContainer(container: XmlNode, tree: ThemeTree): List<Card> {
+        // Support both "card" and "template" tag names for backwards compatibility
+        return container.children.filter { 
+            it.name.equals("card", ignoreCase = true) || it.name.equals("template", ignoreCase = true)
+        }.map { n ->
             val id = n.attributes["id"] ?: "card_${System.nanoTime()}"
             // Default to 100% width/height if not specified
             val width = resolveDimensionWidth(n, "width", tree) ?: Dimension.RelW(1f)
@@ -92,25 +125,39 @@ object ThemeXmlMapper {
     }
 
     // region Fixed Containers
+    
+    /** Parse root-level <fixed> containers (backwards compatibility). */
     private fun parseFixedContainers(root: XmlNode, tree: ThemeTree): List<FixedContainer> {
         return root.children.filter { it.name.equals("fixed", ignoreCase = true) }.map { containerNode ->
-            val id = containerNode.attributes["id"] ?: "default"
-            val elements = containerNode.children.mapNotNull { parseFixedElement(it, tree) }
-            val backgroundColor = resolveColorAttr(containerNode, "backgroundColor", tree)
-            val height = resolveFloatOrNull(containerNode, "height", tree)
-            val visibility = Visibility.fromString(containerNode.attributes["visibility"])
-            val padding = resolveStringAttr(containerNode, "padding", tree)
-            val cornerRadius = resolveFloat(containerNode, "cornerRadius", 0f, tree)
-            FixedContainer(
-                id = id, 
-                elements = elements, 
-                backgroundColor = backgroundColor, 
-                height = height,
-                visibility = visibility,
-                padding = padding,
-                cornerRadius = cornerRadius,
-            )
+            parseFixedContainerNode(containerNode, tree)
         }
+    }
+    
+    /** Parse <fixed> containers from a container node (e.g., <elements>). */
+    private fun parseFixedContainersFromContainer(container: XmlNode, tree: ThemeTree): List<FixedContainer> {
+        return container.children.filter { it.name.equals("fixed", ignoreCase = true) }.map { containerNode ->
+            parseFixedContainerNode(containerNode, tree)
+        }
+    }
+    
+    /** Parse a single <fixed> container node into a FixedContainer. */
+    private fun parseFixedContainerNode(containerNode: XmlNode, tree: ThemeTree): FixedContainer {
+        val id = containerNode.attributes["id"] ?: "default"
+        val elements = containerNode.children.mapNotNull { parseFixedElement(it, tree) }
+        val backgroundColor = resolveColorAttr(containerNode, "backgroundColor", tree)
+        val height = resolveFloatOrNull(containerNode, "height", tree)
+        val visibility = Visibility.fromString(containerNode.attributes["visibility"])
+        val padding = resolveStringAttr(containerNode, "padding", tree)
+        val cornerRadius = resolveFloat(containerNode, "cornerRadius", 0f, tree)
+        return FixedContainer(
+            id = id, 
+            elements = elements, 
+            backgroundColor = backgroundColor, 
+            height = height,
+            visibility = visibility,
+            padding = padding,
+            cornerRadius = cornerRadius,
+        )
     }
 
     /**
@@ -496,12 +543,101 @@ object ThemeXmlMapper {
     // endregion
 
     // region Layout
+    
+    /**
+     * Result of parsing the layout section, containing the layout node, fixed containers,
+     * and any inline card definitions found inside grid/carousel elements.
+     */
+    private data class LayoutParseResult(
+        val layout: LayoutNode,
+        val fixedContainers: List<FixedContainer>,
+        val inlineCards: List<Card>,
+    )
+    
+    /**
+     * Result of parsing a grid or carousel node, containing the layout node and
+     * any inline card definition found inside it.
+     */
+    private data class LayoutNodeWithCard(
+        val node: LayoutNode,
+        val inlineCard: Card?,
+    )
+    
+    /**
+     * Parse layout and extract fixed containers and inline cards from the layout in declaration order.
+     * This supports the new format where <fixed> and <element ref="..."> can appear inside <layout>,
+     * and <card> can be defined inline inside <grid> or <carousel>.
+     * 
+     * @return LayoutParseResult containing the layout node, fixed containers, and inline cards
+     */
+    private fun parseLayoutWithFixedContainers(
+        root: XmlNode, 
+        tree: ThemeTree,
+        fixedContainerLookup: Map<String, FixedContainer>
+    ): LayoutParseResult {
+        val layoutRoot = root.children.firstOrNull { it.name.equals("layout", ignoreCase = true) }
+            ?: error("<layout> element not found in theme.xml")
+        
+        val fixedContainers = mutableListOf<FixedContainer>()
+        val inlineCards = mutableListOf<Card>()
+        var layoutNode: LayoutNode? = null
+        
+        // Process children in declaration order
+        for (child in layoutRoot.children) {
+            when (child.name.lowercase()) {
+                // Inline <fixed> container definition
+                "fixed" -> {
+                    fixedContainers.add(parseFixedContainerNode(child, tree))
+                }
+                // Reference to pre-defined element: <element ref="id" />
+                "element" -> {
+                    val ref = child.attributes["ref"]
+                    if (ref != null) {
+                        val referencedContainer = fixedContainerLookup[ref]
+                        if (referencedContainer != null) {
+                            fixedContainers.add(referencedContainer)
+                        } else {
+                            // Element reference not found - could log warning here
+                        }
+                    }
+                }
+                // Layout nodes (only one expected)
+                "canvas" -> {
+                    if (layoutNode == null) layoutNode = parseCanvas(child, tree)
+                }
+                "grid" -> {
+                    if (layoutNode == null) {
+                        val result = parseGridWithInlineCard(child, tree)
+                        layoutNode = result.node
+                        result.inlineCard?.let { inlineCards.add(it) }
+                    }
+                }
+                "carousel" -> {
+                    if (layoutNode == null) {
+                        val result = parseCarouselWithInlineCard(child, tree)
+                        layoutNode = result.node
+                        result.inlineCard?.let { inlineCards.add(it) }
+                    }
+                }
+                // Ignore other nodes (like include which is handled by IncludeResolver)
+            }
+        }
+        
+        // If no layout node was found in children, this is an error
+        val finalLayoutNode = layoutNode 
+            ?: error("<layout> must contain a layout node (canvas/grid/carousel)")
+        
+        return LayoutParseResult(finalLayoutNode, fixedContainers, inlineCards)
+    }
+    
+    /** Legacy layout parser (backwards compatibility). */
     private fun parseLayout(root: XmlNode, tree: ThemeTree): LayoutNode {
         val layoutRoot = root.children.firstOrNull { it.name.equals("layout", ignoreCase = true) }
             ?: error("<layout> element not found in theme.xml")
         // Only one root layout child is supported (canvas/grid/carousel)
-        val child = layoutRoot.children.firstOrNull()
-            ?: error("<layout> must contain a root layout node (canvas/grid/carousel)")
+        val child = layoutRoot.children.firstOrNull { 
+            it.name.lowercase() in listOf("canvas", "grid", "carousel")
+        } ?: error("<layout> must contain a root layout node (canvas/grid/carousel)")
         return when (child.name.lowercase()) {
             "canvas" -> parseCanvas(child, tree)
             "grid" -> parseGrid(child, tree)
@@ -629,6 +765,167 @@ object ThemeXmlMapper {
             itemSpacing = spacing,
             selectionMode = sel,
             itemCard = itemCard,
+            pageSize = pageSize,
+            centerFocus = centerFocus,
+            highlightScale = highlightScale,
+            verticalAlign = verticalAlign,
+            verticalOffset = verticalOffset,
+            focusedBackground = focusedBackground,
+            backgroundOpacity = backgroundOpacity,
+            backgroundTransitionSpeed = backgroundTransitionSpeed,
+        )
+    }
+    
+    /**
+     * Parse a grid node with support for inline card definitions.
+     * If a <card> child is found inside the grid, it will be parsed and used as the item card.
+     * Otherwise, the itemCard attribute is used to reference a pre-defined card.
+     */
+    private fun parseGridWithInlineCard(node: XmlNode, tree: ThemeTree): LayoutNodeWithCard {
+        // Check for inline <card> definition
+        val inlineCardNode = node.children.firstOrNull { it.name.equals("card", ignoreCase = true) }
+        
+        val inlineCard = inlineCardNode?.let { cardNode ->
+            // Generate ID: use explicit id attribute, or auto-generate from grid context
+            val cardId = cardNode.attributes["id"] ?: "inline_grid_card_${System.nanoTime()}"
+            val width = resolveDimensionWidth(cardNode, "width", tree) ?: Dimension.RelW(1f)
+            val height = resolveDimensionHeight(cardNode, "height", tree) ?: Dimension.RelH(1f)
+            val layers = cardNode.children.mapNotNull { parseLayer(it, tree) }
+            Card(id = cardId, canvas = DimSize(width, height), layers = layers)
+        }
+        
+        // Parse the grid, using inline card's ID if present, otherwise use the attribute
+        val effectiveItemCard = inlineCard?.id 
+            ?: node.attributes["itemCard"] 
+            ?: node.attributes["itemTemplate"] 
+            ?: "default"
+        
+        // Parse grid with the effective item card ID
+        val grid = parseGridInternal(node, tree, effectiveItemCard)
+        
+        return LayoutNodeWithCard(grid, inlineCard)
+    }
+    
+    /** Internal grid parser that takes the item card ID as a parameter. */
+    private fun parseGridInternal(node: XmlNode, tree: ThemeTree, itemCardId: String): LayoutNode.Grid {
+        val cols = resolveInt(node, "columns", tree)
+        val rows = resolveInt(node, "rows", tree)
+        val cellW = resolveDimensionWidth(node, "cellWidth", tree) ?: Dimension.RelW(1f)
+        val cellH = resolveDimensionHeight(node, "cellHeight", tree)
+        val aspectRatio = resolveFloatOrNull(node, "aspectRatio", tree)
+        
+        val cellSpacing = resolveFloat(node, "cellSpacing", default = 0f, tree)
+        val hSpacing = resolveFloat(node, "hSpacing", default = cellSpacing, tree)
+        val vSpacing = resolveFloat(node, "vSpacing", default = cellSpacing, tree)
+        
+        val sel = when (node.attributes["selectionMode"]?.lowercase()) {
+            "stationary" -> SelectionMode.STATIONARY
+            "moving" -> SelectionMode.MOVING
+            null -> SelectionMode.MOVING
+            else -> SelectionMode.MOVING
+        }
+        
+        val (paddingTop, paddingEnd, paddingBottom, paddingStart) = parsePadding(node.attributes["padding"], tree)
+        
+        // Parse optional separator (skip <card> children)
+        val separator = node.children.firstOrNull { it.name.equals("separator", ignoreCase = true) }?.let { sepNode ->
+            val sepHeight = resolveDimensionHeight(sepNode, "height", tree) ?: Dimension.Px(1f)
+            val sepLayers = sepNode.children.mapNotNull { parseLayer(it, tree) }
+            val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
+            GridSeparator(
+                height = sepHeight, 
+                layers = sepLayers,
+                marginTop = marginTop,
+                marginBottom = marginBottom,
+                marginStart = marginStart,
+                marginEnd = marginEnd,
+            )
+        }
+        
+        return LayoutNode.Grid(
+            columns = cols,
+            rows = rows,
+            cellWidth = cellW,
+            cellHeight = cellH,
+            aspectRatio = aspectRatio,
+            hSpacing = hSpacing,
+            vSpacing = vSpacing,
+            selectionMode = sel,
+            itemCard = itemCardId,
+            contentPaddingTop = paddingTop,
+            contentPaddingBottom = paddingBottom,
+            contentPaddingStart = paddingStart,
+            contentPaddingEnd = paddingEnd,
+            separator = separator,
+            verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"]),
+        )
+    }
+    
+    /**
+     * Parse a carousel node with support for inline card definitions.
+     * If a <card> child is found inside the carousel, it will be parsed and used as the item card.
+     * Otherwise, the itemCard attribute is used to reference a pre-defined card.
+     */
+    private fun parseCarouselWithInlineCard(node: XmlNode, tree: ThemeTree): LayoutNodeWithCard {
+        // Check for inline <card> definition
+        val inlineCardNode = node.children.firstOrNull { it.name.equals("card", ignoreCase = true) }
+        
+        val inlineCard = inlineCardNode?.let { cardNode ->
+            // Generate ID: use explicit id attribute, or auto-generate from carousel context
+            val cardId = cardNode.attributes["id"] ?: "inline_carousel_card_${System.nanoTime()}"
+            val width = resolveDimensionWidth(cardNode, "width", tree) ?: Dimension.RelW(1f)
+            val height = resolveDimensionHeight(cardNode, "height", tree) ?: Dimension.RelH(1f)
+            val layers = cardNode.children.mapNotNull { parseLayer(it, tree) }
+            Card(id = cardId, canvas = DimSize(width, height), layers = layers)
+        }
+        
+        // Parse the carousel, using inline card's ID if present, otherwise use the attribute
+        val effectiveItemCard = inlineCard?.id 
+            ?: node.attributes["itemCard"] 
+            ?: node.attributes["itemTemplate"] 
+            ?: "default"
+        
+        // Parse carousel with the effective item card ID
+        val carousel = parseCarouselInternal(node, tree, effectiveItemCard)
+        
+        return LayoutNodeWithCard(carousel, inlineCard)
+    }
+    
+    /** Internal carousel parser that takes the item card ID as a parameter. */
+    private fun parseCarouselInternal(node: XmlNode, tree: ThemeTree, itemCardId: String): LayoutNode.Carousel {
+        val dir = when (node.attributes["direction"]?.lowercase()) {
+            "left" -> Direction.LEFT
+            "right" -> Direction.RIGHT
+            "up" -> Direction.UP
+            "down" -> Direction.DOWN
+            else -> Direction.RIGHT
+        }
+        val itemW = resolveDimensionWidth(node, "itemWidth", tree) ?: Dimension.Px(200f)
+        val itemH = resolveDimensionHeight(node, "itemHeight", tree) ?: Dimension.Px(200f)
+        val spacing = resolveFloat(node, "itemSpacing", default = 0f, tree)
+        val sel = when (node.attributes["selectionMode"]?.lowercase()) {
+            "stationary" -> SelectionMode.STATIONARY
+            "moving" -> SelectionMode.MOVING
+            null -> SelectionMode.STATIONARY
+            else -> SelectionMode.STATIONARY
+        }
+        val pageSize = resolveInt(node, "pageSize", tree)
+        
+        val centerFocus = node.attributes["centerFocus"]?.toBooleanStrictOrNull() ?: false
+        val highlightScale = resolveFloat(node, "highlightScale", default = 1.0f, tree)
+        val verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"])
+        val verticalOffset = resolveDimensionWidth(node, "verticalOffset", tree) ?: Dimension.Px(0f)
+        
+        val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
+        val backgroundOpacity = resolveFloat(node, "backgroundOpacity", default = 0.3f, tree)
+        val backgroundTransitionSpeed = resolveInt(node, "backgroundTransitionSpeed", tree) ?: 400
+        
+        return LayoutNode.Carousel(
+            direction = dir,
+            itemSize = DimSize(itemW, itemH),
+            itemSpacing = spacing,
+            selectionMode = sel,
+            itemCard = itemCardId,
             pageSize = pageSize,
             centerFocus = centerFocus,
             highlightScale = highlightScale,

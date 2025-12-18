@@ -177,21 +177,45 @@ object ThemeValidator {
         // Collect card/template IDs (support both new "card" and legacy "template" naming)
         val cardIds = LinkedHashSet<String>()
         val cardNodes = mutableListOf<XmlNode>()
-        traverse(root) { node ->
+        // Track grids/carousels with inline cards
+        val layoutNodesWithInlineCards = mutableSetOf<XmlNode>()
+        
+        traverseWithParent(root) { node, parent ->
             // Support both <card> (new) and <template> (legacy)
             if (node.name.equals("card", ignoreCase = true) || node.name.equals("template", ignoreCase = true)) {
                 cardNodes += node
                 val id = node.attributes["id"]?.trim().orEmpty()
-                if (id.isEmpty()) {
-                    out += ValidationIssue(
-                        ValidationCode.REQUIRED_FIELD_MISSING, Severity.ERROR,
-                        "Card must declare non-empty id.", node.source
-                    )
-                } else if (!cardIds.add(id)) {
-                    out += ValidationIssue(
-                        ValidationCode.DUPLICATE_ID, Severity.ERROR,
-                        "Duplicate card id '$id'.", node.source
-                    )
+                
+                // Check if this is an inline card (direct child of grid/carousel)
+                val isInlineCard = parent != null && 
+                    (parent.name.equals("grid", ignoreCase = true) || parent.name.equals("carousel", ignoreCase = true))
+                
+                if (isInlineCard) {
+                    // Inline cards don't require an explicit id (one will be auto-generated)
+                    // Track this grid/carousel as having an inline card
+                    layoutNodesWithInlineCards.add(parent)
+                    if (id.isNotEmpty()) {
+                        // If id is provided, add it to the set for reference validation
+                        if (!cardIds.add(id)) {
+                            out += ValidationIssue(
+                                ValidationCode.DUPLICATE_ID, Severity.ERROR,
+                                "Duplicate card id '$id'.", node.source
+                            )
+                        }
+                    }
+                } else {
+                    // Non-inline cards must have an id
+                    if (id.isEmpty()) {
+                        out += ValidationIssue(
+                            ValidationCode.REQUIRED_FIELD_MISSING, Severity.ERROR,
+                            "Card must declare non-empty id.", node.source
+                        )
+                    } else if (!cardIds.add(id)) {
+                        out += ValidationIssue(
+                            ValidationCode.DUPLICATE_ID, Severity.ERROR,
+                            "Duplicate card id '$id'.", node.source
+                        )
+                    }
                 }
                 validateLayers(node, out)
                 validateStatesTransitions(node, out)
@@ -258,6 +282,9 @@ object ThemeValidator {
         traverse(root) { node ->
             when (node.name.lowercase(Locale.ROOT)) {
                 "grid" -> {
+                    // Skip validation if this grid has an inline card
+                    if (layoutNodesWithInlineCards.contains(node)) return@traverse
+                    
                     // Support both "itemCard" (new) and "itemTemplate" (legacy)
                     val ref = node.attributes["itemCard"] ?: node.attributes["itemTemplate"]
                     if (ref.isNullOrBlank() || !cardIds.contains(ref)) {
@@ -265,6 +292,9 @@ object ThemeValidator {
                     }
                 }
                 "carousel" -> {
+                    // Skip validation if this carousel has an inline card
+                    if (layoutNodesWithInlineCards.contains(node)) return@traverse
+                    
                     // Support both "itemCard" (new) and "itemTemplate" (legacy)
                     val ref = node.attributes["itemCard"] ?: node.attributes["itemTemplate"]
                     if (ref.isNullOrBlank() || !cardIds.contains(ref)) {
@@ -458,6 +488,15 @@ object ThemeValidator {
             n.children.forEach { walk(it) }
         }
         walk(node)
+    }
+    
+    /** Traverse the XML tree with parent context for each node. */
+    private fun traverseWithParent(node: XmlNode, block: (node: XmlNode, parent: XmlNode?) -> Unit) {
+        fun walk(n: XmlNode, parent: XmlNode?) {
+            block(n, parent)
+            n.children.forEach { walk(it, n) }
+        }
+        walk(node, null)
     }
     // endregion
 }

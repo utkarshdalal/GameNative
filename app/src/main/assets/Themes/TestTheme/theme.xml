@@ -8,143 +8,13 @@
     - All common attributes (anchor, visibility, opacity, focusOnly, visibleWhen, zIndex)
     - Breakpoint-responsive variables
     - Grid layout with separator
+    - New layout-centric architecture with <elements> and <layout>
 -->
 <theme>
     <!-- ================================================================
-         FIXED ELEMENTS - UI elements that don't scroll with content
+         ELEMENTS - Reusable definitions for cards and fixed containers
          ================================================================ -->
-
-    <!-- TOP BAR: Header, Search, and Profile (demonstrating new container attributes) -->
-    <fixed id="topBar" backgroundColor="@{vars.topBarBg}" height="@{vars.topBarHeight}"
-           padding="8" cornerRadius="0">
-
-        <!-- HEADER: App name, theme name, game count -->
-        <header
-            x="@{vars.paddingMedium}"
-            y="@{vars.paddingSmall}"
-            anchor="topLeft"
-            textColor="@{vars.textColor}"
-            showAppName="true"
-            showThemeName="true"
-            showGameCount="true"
-            highlightColor="@{vars.highlightColor}"
-            highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}"
-            highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-
-        <!-- SEARCH BAR: With full styling options -->
-        <searchBar
-            x="@{vars.searchBarX}"
-            y="@{vars.searchBarY}"
-            width="@{vars.searchBarWidth}"
-            height="@{vars.searchBarHeight}"
-            anchor="topLeft"
-            backgroundColor="@{vars.searchBarBg}"
-            borderRadius="@{vars.searchBarRadius}"
-            collapsible="false"
-            highlightColor="@{vars.highlightColor}"
-            highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}"
-            highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-
-        <!-- PROFILE BUTTON: User account access -->
-        <profileButton
-            x="@{vars.profileButtonX}"
-            y="@{vars.profileButtonY}"
-            anchor="topRight"
-            size="@{vars.profileButtonSize}"
-            iconSize="@{vars.profileButtonIconSize}"
-            padding="@{vars.profileButtonPadding}"
-            backgroundColor="@{vars.profileButtonBg}"
-            cornerRadius="@{vars.profileButtonRadius}"
-            highlightColor="@{vars.highlightColor}"
-            highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}"
-            highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-    </fixed>
-
-    <!-- BOTTOM BAR: Action buttons -->
-    <fixed id="bottomBar">
-        <!-- FILTER BUTTON: Opens filter bottom sheet (demonstrating new styling attributes) -->
-        <filterButton
-            x="100"
-            y="@{vars.bottomOffset}"
-            anchor="bottomRight"
-            expanded="true"
-            size="56"
-            iconSize="24"
-            cornerRadius="16"
-            highlightColor="@{vars.highlightColor}"
-            highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}"
-            highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-
-        <!-- ADD BUTTON: Add custom games (demonstrating new styling attributes) -->
-        <addButton
-            x="@{vars.paddingMedium}"
-            y="@{vars.bottomOffset}"
-            anchor="bottomRight"
-            size="56"
-            iconSize="24"
-            cornerRadius="16"
-            highlightColor="@{vars.highlightColor}"
-            highlightOpacity="@{vars.highlightOpacity}"
-            highlightBorderWidth="@{vars.highlightBorderWidth}"
-            highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-    </fixed>
-
-    <!-- DECORATIVE ELEMENTS: Demonstrating fixed image and video elements -->
-    <fixed id="decorativeBar" visibility="landscape">
-        <!-- FIXED IMAGE: Static decorative image (not bound to game data) -->
-        <image
-            x="16"
-            y="50%"
-            width="80"
-            height="80"
-            anchor="centerLeft"
-            src="https://via.placeholder.com/80x80/6200EE/FFFFFF?text=Logo"
-            scaleType="cover"
-            cornerRadius="12"
-            opacity="0.9"
-            visibility="landscape" />
-
-        <!-- FIXED VIDEO: Local video with local poster -->
-        <video
-            x="16"
-            y="50%"
-            width="120"
-            height="80"
-            anchor="centerRight"
-            src="assets/sample.mp4"
-            poster="assets/sample-poster.png"
-            autoplay="true"
-            loop="true"
-            muted="true"
-            cornerRadius="8"
-            opacity="0.95"
-            visibility="landscape" />
-
-        <!-- FIXED VIDEO: External video with external poster (Big Buck Bunny) -->
-        <video
-            x="150"
-            y="50%"
-            width="160"
-            height="90"
-            anchor="centerRight"
-            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-            poster="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/800px-Big_buck_bunny_poster_big.jpg"
-            autoplay="true"
-            loop="true"
-            muted="true"
-            cornerRadius="12"
-            opacity="1.0"
-            visibility="landscape" />
-    </fixed>
-
-    <!-- ================================================================
-         CARD DEFINITIONS - Templates for rendering game items
-         ================================================================ -->
-    <cards>
+    <elements>
 
         <!-- MAIN CARD: Demonstrates all layer types -->
         <card id="mainCard" width="@{vars.cellWidth}" height="@{vars.cellHeight}">
@@ -460,27 +330,110 @@
 
         </card>
 
-        <!-- VIDEO CARD: Demonstrates video layer -->
-        <card id="testCard" width="300" height="300">
-
-            <image
-                id="image"
-                x="0" y="0"
-                width="200" height="200"
-                src="@{game.hero}"
-                cornerRadius="@{vars.cornerRadius}"
-                scaleType="cover"
-                zIndex="0" />
-
-        </card>
-
-    </cards>
+    </elements>
 
     <!-- ================================================================
-         LAYOUT - How cards are arranged on screen
+         LAYOUT - What's actually rendered on screen (in declaration order)
          ================================================================ -->
     <layout>
-        <!-- GRID LAYOUT with all options demonstrated (now includes verticalAlign) -->
+        <!-- TOP BAR: Header, Search, and Profile (inline definition) -->
+        <fixed id="topBar" backgroundColor="@{vars.topBarBg}" height="@{vars.topBarHeight}"
+               padding="8" cornerRadius="0">
+
+            <!-- HEADER: App name, theme name, game count -->
+            <header
+                x="@{vars.paddingMedium}"
+                y="@{vars.paddingSmall}"
+                anchor="topLeft"
+                textColor="@{vars.textColor}"
+                showAppName="true"
+                showThemeName="true"
+                showGameCount="true"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+
+            <!-- SEARCH BAR: With full styling options -->
+            <searchBar
+                x="@{vars.searchBarX}"
+                y="@{vars.searchBarY}"
+                width="@{vars.searchBarWidth}"
+                height="@{vars.searchBarHeight}"
+                anchor="topLeft"
+                backgroundColor="@{vars.searchBarBg}"
+                borderRadius="@{vars.searchBarRadius}"
+                collapsible="false"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+
+            <!-- PROFILE BUTTON: User account access -->
+            <profileButton
+                x="@{vars.profileButtonX}"
+                y="@{vars.profileButtonY}"
+                anchor="topRight"
+                size="@{vars.profileButtonSize}"
+                iconSize="@{vars.profileButtonIconSize}"
+                padding="@{vars.profileButtonPadding}"
+                backgroundColor="@{vars.profileButtonBg}"
+                cornerRadius="@{vars.profileButtonRadius}"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+
+        <!-- DECORATIVE ELEMENTS: Demonstrating fixed image and video elements -->
+        <fixed id="decorativeBar" visibility="landscape">
+            <!-- FIXED IMAGE: Static decorative image (not bound to game data) -->
+            <image
+                x="20"
+                y="20"
+                width="100"
+                height="100"
+                anchor="topRight"
+                src="assets/Atomic Bomberman.jpg"
+                scaleType="cover"
+                cornerRadius="12"
+                opacity="0.9"
+                visibility="landscape" />
+
+            <!-- FIXED VIDEO: Local video with local poster -->
+            <video
+                x="20"
+                y="120"
+                width="120"
+                height="80"
+                anchor="topRight"
+                src="assets/sample.mp4"
+                poster="assets/sample-poster.png"
+                autoplay="true"
+                loop="true"
+                muted="true"
+                cornerRadius="8"
+                opacity="0.95"
+                visibility="landscape" />
+
+            <!-- FIXED VIDEO: External video with external poster (Big Buck Bunny) -->
+            <video
+                x="20"
+                y="250"
+                width="160"
+                height="90"
+                anchor="topRight"
+                src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                poster="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/800px-Big_buck_bunny_poster_big.jpg"
+                autoplay="true"
+                loop="true"
+                muted="true"
+                cornerRadius="12"
+                opacity="1.0"
+                visibility="landscape" />
+        </fixed>
+
+        <!-- GRID LAYOUT with inline card definition (demonstrates new inline card feature) -->
         <grid
             cellWidth="@{vars.cellWidth}"
             cellHeight="@{vars.cellHeight}"
@@ -488,8 +441,19 @@
             vSpacing="@{vars.vSpacing}"
             padding="@{vars.gridPaddingTop} @{vars.paddingLarge} 80 @{vars.paddingLarge}"
             verticalAlign="center"
-            selectionMode="moving"
-            itemCard="testCard">
+            selectionMode="moving">
+
+            <!-- INLINE CARD: Defined directly inside grid (no itemCard attribute needed) -->
+            <card width="300" height="300">
+                <image
+                    id="image"
+                    x="0" y="0"
+                    width="200" height="200"
+                    src="@{game.hero}"
+                    cornerRadius="@{vars.cornerRadius}"
+                    scaleType="cover"
+                    zIndex="0" />
+            </card>
 
             <!-- SEPARATOR: Decorative line between rows -->
             <separator height="1" margin="@{vars.separatorMargin} 0">
@@ -500,7 +464,37 @@
             </separator>
 
         </grid>
+
+        <!-- BOTTOM BAR: Action buttons -->
+        <fixed id="bottomBar">
+            <!-- FILTER BUTTON: Opens filter bottom sheet -->
+            <filterButton
+                x="100"
+                y="@{vars.bottomOffset}"
+                anchor="bottomRight"
+                expanded="true"
+                size="56"
+                iconSize="24"
+                cornerRadius="16"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+
+            <!-- ADD BUTTON: Add custom games -->
+            <addButton
+                x="@{vars.paddingMedium}"
+                y="@{vars.bottomOffset}"
+                anchor="bottomRight"
+                size="56"
+                iconSize="24"
+                cornerRadius="16"
+                highlightColor="@{vars.highlightColor}"
+                highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}"
+                highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+
     </layout>
 
 </theme>
-

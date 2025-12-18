@@ -1,79 +1,85 @@
 <theme>
-    <!-- Compact top bar with header, search, and profile in one row -->
-    <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}" zIndex="100" zIndex="10">
-        <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
-                textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
-        <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
-                   anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}"
-                   highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
-                   highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-        <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
-                       iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
-                       backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}"
-                       highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
-                       highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-    </fixed>
-
-    <!-- Bottom action buttons -->
-    <fixed id="bottomBar">
-        <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true"
-                      cornerRadius="16" size="56" iconSize="24"
-                      highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
-                      highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-        <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight"
-                   cornerRadius="16" size="56" iconSize="24"
-                   highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
-                   highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
-    </fixed>
-
-    <!-- Card definitions - List item style -->
-    <cards>
+    <!-- ================================================================
+         ELEMENTS - Card definitions
+         ================================================================ -->
+    <elements>
+        <!-- Card definitions - List item style -->
         <card id="listItem" width="100%" height="@{vars.rowHeight}">
             <!-- Row background with rounded corners and subtle border -->
             <rect id="rowBg" x="0" y="0" width="100%" height="@{vars.rowHeight}"
-                  color="@{vars.rowBgColor}" cornerRadius="@{vars.cornerRadius}"
-                  borderWidth="1" borderColor="@{vars.borderColor}" />
+                    color="@{vars.rowBgColor}" cornerRadius="@{vars.cornerRadius}"
+                    borderWidth="1" borderColor="@{vars.borderColor}" />
 
             <!-- Game cover image -->
             <image id="cover" x="@{vars.paddingMedium}" y="@{vars.paddingMedium}"
-                   width="@{vars.coverSize}" height="@{vars.coverSize}"
-                   src="@{game.cover}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
+                    width="@{vars.coverSize}" height="@{vars.coverSize}"
+                    src="@{game.cover}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
 
             <!-- Game title -->
             <text id="title" x="88" y="18" width="650" height="24"
-                  text="@{game.title}" textSize="@{vars.textSizeTitle}"
-                  color="@{vars.textColor}" maxLines="1" fontWeight="bold" />
+                    text="@{game.title}" textSize="@{vars.textSizeTitle}"
+                    color="@{vars.textColor}" maxLines="1" fontWeight="bold" />
 
             <!-- Installation status indicator (bullet) - color based on install status -->
             <text id="installIndicator" x="88" y="42" width="16" height="16"
-                  text="●" textSize="@{vars.textSizeTitle}"
-                  color="@{game.installStatus.color}" fontWeight="bold" />
+                    text="●" textSize="@{vars.textSizeTitle}"
+                    color="@{game.installStatus.color}" fontWeight="bold" />
 
             <!-- Installation status text -->
             <text id="installStatus" x="100" y="42" width="300" height="16"
-                  text="@{game.installStatus}" textSize="@{vars.textSizeSmall}"
-                  color="@{vars.textColorMuted}" />
+                    text="@{game.installStatus}" textSize="@{vars.textSizeSmall}"
+                    color="@{vars.textColorMuted}" />
 
             <!-- Compatibility status -->
             <text id="compatStatus" x="88" y="60" width="300" height="18"
-                  text="@{game.compatibility.label}" textSize="@{vars.textSizeBody}"
-                  color="@{game.compatibility.color}" fontStyle="italic" />
+                    text="@{game.compatibility.label}" textSize="@{vars.textSizeBody}"
+                    color="@{game.compatibility.color}" fontStyle="italic" />
 
             <!-- Open button - pill shaped, anchored right -->
             <button id="openBtn" x="26" y="26" height="40" anchor="topRight"
                     text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
                     textSize="@{vars.textSizeButton}" cornerRadius="@{vars.cornerRadius}" />
         </card>
-    </cards>
+    </elements>
 
-    <!-- Layout - single column list with separators -->
+    <!-- ================================================================
+         LAYOUT - What's rendered on screen (in declaration order)
+         ================================================================ -->
     <layout>
+        <!-- Compact top bar with header, search, and profile in one row -->
+        <fixed id="topBar" backgroundColor="@{vars.bgColor}" height="@{vars.topBarHeight}" zIndex="10">
+            <header x="@{vars.paddingMedium}" y="@{vars.paddingSmall}" anchor="topLeft"
+                    textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
+            <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="@{vars.searchBarHeight}"
+                    anchor="topLeft" backgroundColor="@{vars.searchBarBg}" borderRadius="@{vars.searchBarRadius}"
+                    highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                    highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+            <profileButton x="@{vars.profileButtonX}" y="@{vars.profileButtonY}" anchor="topRight" size="@{vars.profileButtonSize}"
+                    iconSize="@{vars.profileButtonIconSize}" padding="@{vars.profileButtonPadding}"
+                    backgroundColor="@{vars.profileButtonBg}" cornerRadius="@{vars.profileButtonRadius}"
+                    highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                    highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+
+        <!-- Layout - single column list with separators -->
         <grid columns="1" cellWidth="100%" cellSpacing="0"
-              padding="@{vars.gridPaddingTop} @{vars.paddingLarge}"
-              selectionMode="moving" itemCard="listItem">
+                    padding="@{vars.gridPaddingTop} @{vars.paddingLarge}"
+                    selectionMode="moving" itemCard="listItem">
             <separator height="1" margin="@{vars.separatorMargin} 0">
                 <rect x="0" y="0" width="100%" height="1" color="@{vars.separatorColor}" />
             </separator>
         </grid>
+
+        <!-- Bottom action buttons -->
+        <fixed id="bottomBar">
+            <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true"
+                    cornerRadius="16" size="56" iconSize="24"
+                    highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                    highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+            <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight"
+                    cornerRadius="16" size="56" iconSize="24"
+                    highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                    highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
     </layout>
 </theme>
