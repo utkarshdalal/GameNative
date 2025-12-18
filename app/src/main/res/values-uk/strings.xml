@@ -165,7 +165,7 @@
     <string name="app_filter_family">Сімейна бібліотека</string>
 
     <!-- Login & Connection -->
-    <string name="no_connection_to_steam">Немає з'єднання зі Steam</string>
+    <string name="no_connection_to_steam">Немає з\'єднання зі Steam</string>
     <string name="retry_steam_connection">Спробувати</string>
     <string name="continue_offline">Продовжити офлайн</string>
 
@@ -214,7 +214,7 @@
     <string name="graphics_driver">Графічний драйвер</string>
     <string name="graphics_driver_version">Версія графічного драйвера</string>
     <string name="exposed_vulkan_extensions">Відкриті розширення Vulkan</string>
-    <string name="max_device_memory">Максимальна пам'ять пристрою</string>
+    <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
     <string name="frame_synchronization">Синхронізація кадрів</string>
     <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
     <string name="vulkan_version">Версія Vulkan</string>
@@ -250,7 +250,7 @@
     <string name="renderer">Рушій візуалізації</string>
     <string name="gpu_name">Назва GPU</string>
     <string name="offscreen_rendering_mode">Режим позаекранного рендерингу</string>
-    <string name="video_memory_size">Розмір відеопам'яті</string>
+    <string name="video_memory_size">Розмір відеопам\'яті</string>
     <string name="enable_csmt">Увімкнути CSMT (Command Stream Multi-Thread)</string>
     <string name="enable_strict_shader_math">Увімкнути сувору математику шейдерів</string>
     <string name="mouse_warp_override">Примусове позиціонування курсора</string>
@@ -365,7 +365,7 @@
     <string name="login_subtitle">Увійдіть, щоб отримати доступ до бібліотеки Steam</string>
     <string name="login_username">Ім’я користувача</string>
     <string name="login_password">Пароль</string>
-    <string name="login_remember_session">Запам'ятати мене</string>
+    <string name="login_remember_session">Запам\'ятати мене</string>
     <string name="login_sign_in">Увійти</string>
     <string name="login_qr_failed">Помилка QR-коду</string>
     <string name="login_retry_qr">Спробувати ще раз</string>
@@ -380,7 +380,7 @@
     <string name="connect_to_remote_server">Підключення до віддалених серверів...</string>
 
     <!-- LibraryAppScreen: Dialogs -->
-    <string name="library_not_enough_space_message">Для інсталяції застосунку потрібно %1$s пам'яті, але на пристрої доступно лише %2$s.</string>
+    <string name="library_not_enough_space_message">Для інсталяції застосунку потрібно %1$s пам\'яті, але на пристрої доступно лише %2$s.</string>
     <string name="library_download_prompt_message">Для інсталяції застосунку потрібні такі вимоги до місця. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tМісце на диску: %2$s\n\tДоступне місце: %3$s</string>
     <string name="library_cancel_download_message">Ви впевнені, що хочете скасувати завантаження цього застосунку?</string>
     <string name="library_delete_download_message">Видалити всі завантажені дані для цієї гри?</string>
