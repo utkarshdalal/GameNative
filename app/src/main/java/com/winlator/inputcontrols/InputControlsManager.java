@@ -86,6 +86,12 @@ public class InputControlsManager {
                     FileUtils.copy(context, assetPath, targetFile);
                 }
             }
+
+            // Fix if controls-0.icp not exists
+            File file = ControlsProfile.getProfileFile(context, 0);
+            if (!file.isFile()) {
+                FileUtils.copy(context, "inputcontrols/profiles/controls-0.icp", file);
+            }
         }
         catch (IOException e) {}
     }
