@@ -1060,6 +1060,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDownloads = maxDownloads,
                             maxDecompress = maxDecompress,
                             maxFileWrites = maxFileWrites,
+                            parentJob = coroutineContext[Job]
                         )
 
                         // Create listener
