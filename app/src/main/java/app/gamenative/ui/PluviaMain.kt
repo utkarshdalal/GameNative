@@ -1073,19 +1073,22 @@ fun preLaunchApp(
                     "proton-9.0-x86_64.txz"
                 ).await()
             }
-            val protonVersion = container.wineVersion
-            val imageFs = ImageFs.find(context)
-            val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
-            val binDir = File(outFile, "bin")
-            if (!binDir.exists() || !binDir.isDirectory) {
-                Timber.i("Extracting $protonVersion to /opt/")
-                setLoadingMessage("Extracting $protonVersion")
-                val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.XZ,
-                    downloaded,
-                    outFile
-                )
+            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
+                val protonVersion = container.wineVersion
+                val imageFs = ImageFs.find(context)
+                val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
+                val binDir = File(outFile, "bin")
+                if (!binDir.exists() || !binDir.isDirectory) {
+                    Timber.i("Extracting $protonVersion to /opt/")
+                    setLoadingMessage("Extracting $protonVersion")
+                    setLoadingProgress(-1f)
+                    val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.XZ,
+                        downloaded,
+                        outFile,
+                    )
+                }
             }
         }
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm.tzst")) {
