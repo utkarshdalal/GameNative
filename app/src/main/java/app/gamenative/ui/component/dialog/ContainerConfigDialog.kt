@@ -1946,6 +1946,7 @@ private fun ExecutablePathDropdown(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            readOnly = true,
             label = { Text(stringResource(R.string.container_config_executable_path)) },
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {
