@@ -27,6 +27,7 @@
         <item>Wrapper</item>
         <item>Wrapper-v2</item>
         <item>Wrapper-leegao</item>
+        <item>Wrapper-legacy</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>

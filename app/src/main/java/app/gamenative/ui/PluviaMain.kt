@@ -79,6 +79,8 @@ import app.gamenative.utils.UpdateInstaller
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
+import com.winlator.core.TarCompressorUtils
+import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import kotlinx.coroutines.CoroutineScope
@@ -86,6 +88,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
@@ -1069,6 +1072,20 @@ fun preLaunchApp(
                     context = context,
                     "proton-9.0-x86_64.txz"
                 ).await()
+            }
+            val protonVersion = container.wineVersion
+            val imageFs = ImageFs.find(context)
+            val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
+            val binDir = File(outFile, "bin")
+            if (!binDir.exists() || !binDir.isDirectory) {
+                Timber.i("Extracting $protonVersion to /opt/")
+                setLoadingMessage("Extracting $protonVersion")
+                val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.XZ,
+                    downloaded,
+                    outFile
+                )
             }
         }
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm.tzst")) {
