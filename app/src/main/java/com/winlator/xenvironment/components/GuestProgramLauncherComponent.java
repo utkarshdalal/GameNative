@@ -371,15 +371,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     }
 
     public void suspendProcess() {
-        synchronized (lock) {
-            if (pid != -1) ProcessHelper.suspendProcess(pid);
-        }
+        ProcessHelper.pauseAllWineProcesses();
     }
 
     public void resumeProcess() {
-        synchronized (lock) {
-            if (pid != -1) ProcessHelper.resumeProcess(pid);
-        }
+        ProcessHelper.resumeAllWineProcesses();
     }
 
     public String execShellCommand(String command){

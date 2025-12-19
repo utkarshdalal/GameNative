@@ -10,6 +10,7 @@ enum class AppOptionMenuType(val text: String) {
     GetSupport("Get support"),
     SubmitFeedback("Submit feedback"),
     ResetDrm("Reset DRM"),
+    UseKnownConfig("Use known config"),
     Uninstall("Uninstall"),
     VerifyFiles("Verify files"),
     Update("Update"),
@@ -17,5 +18,6 @@ enum class AppOptionMenuType(val text: String) {
     MoveToInternalStorage("Move to internal storage"),
     ForceCloudSync("Force cloud sync"),
     ForceDownloadRemote("Force download remote saves"),
-    ForceUploadLocal("Force upload local saves")
+    ForceUploadLocal("Force upload local saves"),
+    FetchSteamGridDBImages("Fetch game images")
 }

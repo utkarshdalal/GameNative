@@ -10,6 +10,7 @@ import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
+import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
 
@@ -25,14 +26,15 @@ public class Container {
         THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
     }
 
-    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60";
+    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
-    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1";
-    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "version=" + DefaultVersion.WRAPPER + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";adrenotoolsTurnip=1" + ";frameSync=Normal";
+    public static final String DEFAULT_DDRAWRAPPER = "none";
+    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
+    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=software" + ",bcnEmulationCache=0";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
@@ -81,10 +83,12 @@ public class Container {
     private String box86Preset = Box86_64Preset.PERFORMANCE;
     private String box64Preset = Box86_64Preset.PERFORMANCE;
     private String fexcoreVersion = DefaultVersion.FEXCORE;
+    private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
     private String emulator = DEFAULT_EMULATOR;
     private File rootDir;
     private String installPath = "";
     private JSONObject extraData;
+    private JSONObject sessionMetadata;
     private int rcfileId = 0;
     private String midiSoundFont = "";
     private int inputType = WinHandler.PreferredInputApi.BOTH.ordinal();
@@ -113,13 +117,11 @@ public class Container {
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
     private String steamType = DefaultVersion.STEAM_TYPE;
 
-    // Emulate keyboard/mouse using controller: left stick=WASD, right stick=mouse
-    private boolean emulateKeyboardMouse = false;
-    // Serialized as JSON object: logical button name -> Binding enum name
-    private JSONObject controllerEmulationBindings;
     private boolean gstreamerWorkaround = false;
 
     private boolean forceDlc = false;
+
+    private boolean useLegacyDRM = false;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -340,7 +342,7 @@ public class Container {
     }
 
     public String getCPUList() {
-        return getCPUList(false);
+        return getCPUList(true);
     }
 
     public String getCPUList(boolean allowFallback) {
@@ -352,7 +354,7 @@ public class Container {
     }
 
     public String getCPUListWoW64() {
-        return getCPUListWoW64(false);
+        return getCPUListWoW64(true);
     }
 
     public String getCPUListWoW64(boolean allowFallback) {
@@ -398,6 +400,10 @@ public class Container {
     public String getFEXCoreVersion() { return this.fexcoreVersion; }
 
     public void setFEXCoreVersion(String version) { this.fexcoreVersion = version; }
+
+    public void setFEXCorePreset(String preset) { this.fexcorePreset = preset; }
+
+    public String getFEXCorePreset() { return fexcorePreset; }
 
     public File getRootDir() {
         return rootDir;
@@ -459,6 +465,36 @@ public class Container {
         catch (JSONException e) {
             Log.e("Container", "Failed to put extra: " + e);
         }
+    }
+
+    public String getSessionMetadata(String name) {
+        return getSessionMetadata(name, "");
+    }
+
+    public String getSessionMetadata(String name, String fallback) {
+        try {
+            return sessionMetadata != null && sessionMetadata.has(name) ? sessionMetadata.getString(name) : fallback;
+        }
+        catch (JSONException e) {
+            return fallback;
+        }
+    }
+
+    public void putSessionMetadata(String name, Object value) {
+        if (sessionMetadata == null) sessionMetadata = new JSONObject();
+        try {
+            if (value != null) {
+                sessionMetadata.put(name, value);
+            }
+            else sessionMetadata.remove(name);
+        }
+        catch (JSONException e) {
+            Log.e("Container", "Failed to put session metadata: " + e);
+        }
+    }
+
+    public void clearSessionMetadata() {
+        sessionMetadata = null;
     }
 
     public String getWineVersion() {
@@ -593,8 +629,10 @@ public class Container {
             data.put("box64Version", box64Version);
             data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
+            data.put("fexcorePreset", fexcorePreset);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
+            data.put("sessionMetadata", sessionMetadata);
             data.put("rcfileId", rcfileId);
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
@@ -616,14 +654,11 @@ public class Container {
             data.put("emulator", emulator);
             data.put("fexcoreVersion", fexcoreVersion);
 
-            // Emulated keyboard/mouse controller mappings
-            data.put("emulateKeyboardMouse", emulateKeyboardMouse);
-            if (controllerEmulationBindings != null) {
-                data.put("controllerEmulationBindings", controllerEmulationBindings);
-            }
-
             // Force DLC setting
             data.put("forceDlc", forceDlc);
+
+            // Use Legacy DRM setting
+            data.put("useLegacyDRM", useLegacyDRM);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -712,6 +747,15 @@ public class Container {
                     setExtraData(extraData);
                     break;
                 }
+                case "sessionMetadata" : {
+                    try {
+                        JSONObject sessionMetadata = data.getJSONObject(key);
+                        this.sessionMetadata = sessionMetadata;
+                    } catch (JSONException e) {
+                        this.sessionMetadata = null;
+                    }
+                    break;
+                }
                 case "wineVersion" :
                     setWineVersion(data.getString(key));
                     break;
@@ -729,6 +773,9 @@ public class Container {
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
+                    break;
+                case "fexcorePreset":
+                    setFEXCorePreset(data.getString(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
@@ -778,14 +825,11 @@ public class Container {
                 case "installPath":
                     setInstallPath(data.getString(key));
                     break;
-                case "emulateKeyboardMouse":
-                    this.emulateKeyboardMouse = data.getBoolean(key);
-                    break;
-                case "controllerEmulationBindings":
-                    this.controllerEmulationBindings = data.getJSONObject(key);
-                    break;
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
+                    break;
+                case "useLegacyDRM":
+                    this.useLegacyDRM = data.getBoolean(key);
                     break;
             }
         }
@@ -836,45 +880,10 @@ public class Container {
             }
 
             data.put("wincomponents", result);
-
-            // Initialize defaults for new emulate keyboard/mouse fields if missing
-            if (!data.has("emulateKeyboardMouse")) {
-                data.put("emulateKeyboardMouse", false);
-            }
-            if (!data.has("controllerEmulationBindings")) {
-                JSONObject defaults = new JSONObject();
-                // Defaults per request
-                defaults.put("L2", "MOUSE_LEFT_BUTTON");
-                defaults.put("R2", "MOUSE_RIGHT_BUTTON");
-                defaults.put("A", "KEY_SPACE");
-                defaults.put("B", "KEY_E");
-                defaults.put("X", "KEY_Q");
-                defaults.put("Y", "KEY_TAB");
-                defaults.put("SELECT", "KEY_ESC");
-                // All others default to NONE
-                defaults.put("L1", "KEY_SHIFT_L");
-                defaults.put("L3", "NONE");
-                defaults.put("R1", "KEY_CTRL_R");
-                defaults.put("R3", "NONE");
-                defaults.put("DPAD_UP", "KEY_UP");
-                defaults.put("DPAD_DOWN", "KEY_DOWN");
-                defaults.put("DPAD_LEFT", "KEY_LEFT");
-                defaults.put("DPAD_RIGHT", "KEY_RIGHT");
-                defaults.put("START", "KEY_ENTER");
-                data.put("controllerEmulationBindings", defaults);
-            }
         }
         catch (JSONException e) {
             Log.e("Container", "Failed to check obsolete or missing properties: " + e);
         }
-    }
-
-    public boolean isEmulateKeyboardMouse() {
-        return emulateKeyboardMouse;
-    }
-
-    public void setEmulateKeyboardMouse(boolean emulate) {
-        this.emulateKeyboardMouse = emulate;
     }
 
     public boolean isForceDlc() {
@@ -885,12 +894,21 @@ public class Container {
         this.forceDlc = forceDlc;
     }
 
-    public JSONObject getControllerEmulationBindings() {
-        return controllerEmulationBindings;
+    public boolean isUseLegacyDRM() {
+        return useLegacyDRM;
     }
 
-    public void setControllerEmulationBindings(JSONObject bindings) {
-        this.controllerEmulationBindings = bindings;
+    public void setUseLegacyDRM(boolean useLegacyDRM) {
+        this.useLegacyDRM = useLegacyDRM;
+    }
+
+    public String getContainerJson() {
+        String content = FileUtils.readString(getConfigFile());
+        if (content == null) {
+            Log.e("Container", "Failed to read container config file");
+            return "{}";
+            }
+        return content.replace("\\u0000", "").replace("\u0000", "");
     }
 
     public static String getFallbackCPUList() {
@@ -901,11 +919,10 @@ public class Container {
     }
 
     public static String getFallbackCPUListWoW64() {
-//        String cpuList = "";
-//        int numProcessors = Runtime.getRuntime().availableProcessors();
-//        for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
-//        return cpuList;
-        return getFallbackCPUList();
+        String cpuList = "";
+        int numProcessors = Runtime.getRuntime().availableProcessors();
+        for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
+        return cpuList;
     }
 
     // Disable external mouse input

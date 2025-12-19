@@ -412,7 +412,11 @@ object SteamAutoCloud {
 
                     val uploadInfo = steamCloud.beginFileUpload(
                         appId = appInfo.id,
-                        filename = file.prefixPath,
+                        filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
+                            file.path + file.filename
+                        } else {
+                            file.prefixPath
+                        },
                         fileSize = fileSize,
                         rawFileSize = fileSize,
                         fileSha = file.sha,
@@ -455,7 +459,11 @@ object SteamAutoCloud {
 
                             Timber.i("Read $bytesRead byte(s) for block")
 
-                            val mediaType = "application/octet-stream".toMediaTypeOrNull()
+                            val mediaType = if (blockRequest.requestHeaders.any { it.name.equals("Content-Type", ignoreCase = true) }) {
+                                blockRequest.requestHeaders.first { it.name.equals("Content-Type", ignoreCase = true) }.value.toMediaTypeOrNull()
+                            } else {
+                                "application/octet-stream".toMediaTypeOrNull()
+                            }
 
                             val requestBody = byteArray.toRequestBody(mediaType)
 
@@ -509,7 +517,11 @@ object SteamAutoCloud {
                         transferSucceeded = uploadFileSuccess,
                         appId = appInfo.id,
                         fileSha = file.sha,
-                        filename = file.prefixPath,
+                        filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
+                            file.path + file.filename
+                        } else {
+                            file.prefixPath
+                        },
                     ).await()
 
                     Timber.i("File ${file.prefixPath} commit success: $commitSuccess")

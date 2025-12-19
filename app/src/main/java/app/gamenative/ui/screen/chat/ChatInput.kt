@@ -278,7 +278,7 @@ private fun UserInputTextField(
         maxLines = 3,
         textStyle = LocalTextStyle.current.copy(color = LocalContentColor.current),
         placeholder = {
-            Text(text = "Send a message")
+            Text(text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.chat_send_message))
         },
         leadingIcon = {
             val colors = if (isEmoticonShowing == EmojiStickerSelector.NONE) {
@@ -319,7 +319,7 @@ private fun UserInputTextField(
                 contentPadding = PaddingValues(0.dp),
                 content = {
                     Text(
-                        text = "Send",
+                        text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.chat_send),
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 },
@@ -348,13 +348,13 @@ fun EmojiSelector(
                 .padding(horizontal = 8.dp),
         ) {
             ExtendedSelectorInnerButton(
-                text = "Emoticons",
+                text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.chat_emoticons),
                 onClick = { onInnerSelection(EmojiStickerSelector.EMOJI) },
                 selected = emojiSelector == EmojiStickerSelector.EMOJI,
                 modifier = Modifier.weight(1f),
             )
             ExtendedSelectorInnerButton(
-                text = "Stickers",
+                text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.chat_stickers),
                 onClick = { onInnerSelection(EmojiStickerSelector.STICKER) },
                 selected = emojiSelector == EmojiStickerSelector.STICKER,
                 modifier = Modifier.weight(1f),

@@ -51,29 +51,34 @@ public class ContainerManager {
     private void loadContainers() {
         containers.clear();
 
-        try {
-            File[] files = homeDir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        if (file.getName().startsWith(ImageFs.USER+"-")) {
-                            String containerId = file.getName().replace(ImageFs.USER+"-", "");
-                            Container container = new Container(containerId);
-                            container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
-                            try {
-                                JSONObject data = new JSONObject(FileUtils.readString(container.getConfigFile()));
-                                container.loadData(data);
-                                containers.add(container);
-                            } catch (NullPointerException e){
-                                Log.w("ContainerManager", "Could not load container: " + e);
+        File[] files = homeDir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    if (file.getName().startsWith(ImageFs.USER+"-")) {
+                        String containerId = file.getName().replace(ImageFs.USER+"-", "");
+                        Container container = new Container(containerId);
+                        container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
+                        try {
+                            File configFile = container.getConfigFile();
+                            String configContent = FileUtils.readString(configFile);
+                            
+                            if (configContent == null || configContent.trim().isEmpty()) {
+                                Log.w("ContainerManager", "Container config file is null or empty, skipping: " + containerId);
+                                continue;
                             }
+                            
+                            JSONObject data = new JSONObject(configContent);
+                            container.loadData(data);
+                            containers.add(container);
+                        } catch (Exception e) {
+                            // Catch ALL exceptions (NullPointerException, JSONException, etc.)
+                            Log.w("ContainerManager", "Could not load container " + containerId + ": " + e.getMessage());
+                            // Continue loading other containers
                         }
                     }
                 }
             }
-        }
-        catch (JSONException e) {
-            Log.e("ContainerManager", "Failed to load containers: " + e);
         }
     }
 
@@ -173,6 +178,7 @@ public class ContainerManager {
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
             if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+                Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
             }
@@ -275,6 +281,33 @@ public class ContainerManager {
         return null;
     }
 
+    /**
+     * Extracts the Wine prefix pack from a custom Wine installation.
+     * Checks for prefixPack.tzst or prefixPack.txz and uses the appropriate decompression algorithm.
+     *
+     * @param wineInstallPath Path to the Wine installation root directory
+     * @param destinationDir Directory where the prefix should be extracted
+     * @return true if extraction succeeded, false otherwise
+     */
+    private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
+        if (wineInstallPath == null || wineInstallPath.isEmpty()) {
+            return false;
+        }
+
+        File tzstFile = new File(wineInstallPath, "prefixPack.tzst");
+        if (tzstFile.exists()) {
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
+        }
+
+        File txzFile = new File(wineInstallPath, "prefixPack.txz");
+        if (txzFile.exists()) {
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
+        }
+
+        Log.d("ContainerManager", "No prefixPack found, returning false");
+        return false;
+    }
+
     private void deleteCommonDlls(String dstName,
                                   JSONObject commonDlls,
                                   File containerDir) throws JSONException {
@@ -366,8 +399,7 @@ public class ContainerManager {
             Log.d("Extraction", "exctracting " + containerPattern);
             boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
             if (!result) {
-                File containerPatternFile = new File(wineInfo.path + "/prefixPack.txz");
-                result = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, containerPatternFile, containerDir);
+                result = extractPrefixPack(wineInfo.path, containerDir);
             }
 
             if (result) {

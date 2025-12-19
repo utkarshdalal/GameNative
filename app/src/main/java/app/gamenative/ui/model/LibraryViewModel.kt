@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
+import app.gamenative.PluviaApp
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.data.GameSource
@@ -15,14 +16,25 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
+import app.gamenative.events.AndroidEvent
+import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.GameCompatibilityCache
+import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.data.GameCompatibilityStatus
+import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import java.io.File
 import java.util.EnumSet
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.max
@@ -31,13 +43,24 @@ import kotlin.math.min
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(LibraryState())
+    private val _state = MutableStateFlow(LibraryState(isLoading = true))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
+
+    private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
+    private val onCustomGameImagesFetched: (AndroidEvent.CustomGameImagesFetched) -> Unit = {
+        // Increment refresh counter and refresh the library list to pick up newly fetched images
+        _state.update { it.copy(imageRefreshCounter = it.imageRefreshCounter + 1) }
+        onFilterApps(paginationCurrentPage)
+    }
 
     // How many items loaded on one page of results
     private var paginationCurrentPage: Int = 0;
@@ -45,6 +68,26 @@ class LibraryViewModel @Inject constructor(
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
+
+    // Track if this is the first load to apply minimum load time
+    private var isFirstLoad = true
+
+    // Cache GPU name to avoid repeated calls
+    private val gpuName: String by lazy {
+        try {
+            val gpu = GPUInformation.getRenderer(context)
+            if (gpu.isNullOrEmpty()) {
+                Timber.tag("LibraryViewModel").w("GPU name is null or empty")
+                "Unknown GPU"
+            } else {
+                Timber.tag("LibraryViewModel").d("Retrieved GPU name: $gpu")
+                gpu
+            }
+        } catch (e: Exception) {
+            Timber.tag("LibraryViewModel").e(e, "Failed to get GPU name")
+            "Unknown GPU"
+        }
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -61,6 +104,15 @@ class LibraryViewModel @Inject constructor(
                 }
             }
         }
+
+        PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
+    }
+
+    override fun onCleared() {
+        PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
+        super.onCleared()
     }
 
     fun onModalBottomSheet(value: Boolean) {
@@ -72,6 +124,23 @@ class LibraryViewModel @Inject constructor(
         if (!value) {
             onSearchQuery("")
         }
+    }
+
+    fun onSourceToggle(source: GameSource) {
+        val current = _state.value
+        when (source) {
+            GameSource.STEAM -> {
+                val newValue = !current.showSteamInLibrary
+                PrefManager.showSteamInLibrary = newValue
+                _state.update { it.copy(showSteamInLibrary = newValue) }
+            }
+            GameSource.CUSTOM_GAME -> {
+                val newValue = !current.showCustomGamesInLibrary
+                PrefManager.showCustomGamesInLibrary = newValue
+                _state.update { it.copy(showCustomGamesInLibrary = newValue) }
+            }
+        }
+        onFilterApps(paginationCurrentPage)
     }
 
     fun onSearchQuery(value: String) {
@@ -105,16 +174,59 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(toPage)
     }
 
-    private fun onFilterApps(paginationPage: Int = 0) {
-        // May be filtering 1000+ apps - in future should paginate at the point of DAO request
-        Timber.tag("LibraryViewModel").d("onFilterApps")
+    fun onRefresh() {
         viewModelScope.launch {
+            _state.update { it.copy(isRefreshing = true) }
+
+            try {
+                val newApps = SteamService.refreshOwnedGamesFromServer()
+                if (newApps > 0) {
+                    Timber.tag("LibraryViewModel").i("Queued $newApps newly owned games for PICS sync")
+                } else {
+                    Timber.tag("LibraryViewModel").d("No newly owned games discovered during refresh")
+                }
+            } catch (e: Exception) {
+                Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
+            } finally {
+                onFilterApps(0).join()
+                _state.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+    fun addCustomGameFolder(path: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val normalizedPath = File(path).absolutePath
+            val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
+            if (libraryItem == null) {
+                Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
+                return@launch
+            }
+
+            val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
+            if (!manualFolders.contains(normalizedPath)) {
+                manualFolders.add(normalizedPath)
+                PrefManager.customGameManualFolders = manualFolders
+            }
+
+            CustomGameScanner.invalidateCache()
+            onFilterApps(paginationCurrentPage)
+        }
+    }
+
+    private fun onFilterApps(paginationPage: Int = 0): Job {
+        // May be filtering 1000+ apps - in future should paginate at the point of DAO request
+        Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
+        return viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
 
-            var filteredList = appList
+            // Filter Steam apps first (no pagination yet)
+            val downloadDirectorySet = downloadDirectoryApps.toHashSet()
+            val filteredSteamApps: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
                     SteamService.familyMembers.ifEmpty {
@@ -155,42 +267,179 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .sortedWith(
-                    // Comes from DAO in alphabetical order
-                    compareByDescending<SteamApp> { downloadDirectoryApps.contains(SteamService.getAppDirName(it)) }
-                );
+                    compareByDescending<SteamApp> {
+                        downloadDirectorySet.contains(SteamService.getAppDirName(it))
+                    }.thenBy { it.name.lowercase() }
+                )
+                .toList()
+
+            // Map Steam apps to UI items
+            data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
+            val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
+                val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
+                LibraryEntry(
+                    item = LibraryItem(
+                        index = 0, // temporary, will be re-indexed after combining and paginating
+                        appId = "${GameSource.STEAM.name}_${item.id}",
+                        name = item.name,
+                        iconHash = item.clientIconHash,
+                        isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+                    ),
+                    isInstalled = isInstalled,
+                )
+            }
+
+            // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
+            // Only include custom games if GAME filter is selected
+            val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
+                CustomGameScanner.scanAsLibraryItems(
+                    query = currentState.searchQuery
+                )
+            } else {
+                emptyList()
+            }
+            val customEntries = customGameItems.map { LibraryEntry(it, true) }
+
+            // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
+            // This needs to happen before filtering by source, so we save the total counts
+            if (currentState.searchQuery.isEmpty()) {
+                PrefManager.customGamesCount = customGameItems.size
+                PrefManager.steamGamesCount = filteredSteamApps.size
+                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}")
+            }
+
+            // Apply App Source filters
+            val includeSteam = _state.value.showSteamInLibrary
+            val includeOpen = _state.value.showCustomGamesInLibrary
+
+            // Combine both lists
+            val combined = buildList<LibraryEntry> {
+                if (includeSteam) addAll(steamEntries)
+                if (includeOpen) addAll(customEntries)
+            }.sortedWith(
+                // Always sort by installed status first (installed games at top), then alphabetically within each group
+                compareBy<LibraryEntry> { entry ->
+                    if (entry.isInstalled) 0 else 1
+                }.thenBy { it.item.name.lowercase() } // Alphabetical sorting within installed and uninstalled groups
+            ).mapIndexed { idx, entry -> entry.item.copy(index = idx) }
 
             // Total count for the current filter
-            val totalFound = filteredList.count()
+            val totalFound = combined.size
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
             // Update internal pagination state
             paginationCurrentPage = paginationPage
-            lastPageInCurrentFilter = (totalFound - 1) / pageSize
+            lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
-            val pagedSequence = filteredList.take(endIndex)
-            // Map to UI model
-            val filteredListPage = pagedSequence
-                .mapIndexed { idx, item ->
-                    LibraryItem(
-                        index = idx,
-                        appId = "${GameSource.STEAM.name}_${item.id}",
-                        name = item.name,
-                        iconHash = item.clientIconHash,
-                        isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
-                    )
-                }
-                .toList()
+            val pagedList = combined.take(endIndex)
 
-            Timber.tag("LibraryViewModel").d("Filtered list size: ${totalFound}")
+            Timber.tag("LibraryViewModel").d("Filtered list size (with Custom Games): ${totalFound}")
+
+            if (isFirstLoad) {
+                isFirstLoad = false
+            }
+
+            // Fetch compatibility for current page games
+            fetchCompatibilityForPage(pagedList.map { it.name })
+
             _state.update {
                 it.copy(
-                    appInfoList = filteredListPage,
+                    appInfoList = pagedList,
                     currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
-                    )
+                    isLoading = false, // Loading complete
+                )
+            }
+        }
+    }
+
+    /**
+     * Fetches compatibility information for games in paginated batches.
+     * Checks cache first, then fetches uncached games in batches of 50.
+     */
+    private fun fetchCompatibilityForPage(gameNames: List<String>) {
+        if (gameNames.isEmpty()) {
+            Timber.tag("LibraryViewModel").d("fetchCompatibilityForPage: No game names provided")
+            return
+        }
+
+        Timber.tag("LibraryViewModel").d("fetchCompatibilityForPage: Fetching compatibility for ${gameNames.size} games, GPU: $gpuName")
+
+        // Don't make API calls if GPU name is unknown
+        if (gpuName == "Unknown GPU") {
+            Timber.tag("LibraryViewModel").w("Skipping compatibility fetch - GPU name is unknown")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Separate cached and uncached games
+                val uncachedGames = mutableListOf<String>()
+                val cachedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
+
+                for (gameName in gameNames) {
+                    val cached = GameCompatibilityCache.getCached(gameName)
+                    if (cached != null) {
+                        cachedResults[gameName] = cached
+                        Timber.tag("LibraryViewModel").d("Using cached result for: $gameName")
+                    } else {
+                        uncachedGames.add(gameName)
+                    }
+                }
+
+                Timber.tag("LibraryViewModel").d("Cached: ${cachedResults.size}, Uncached: ${uncachedGames.size}")
+
+                // Fetch uncached games in batches of 50
+                val batchSize = 50
+                val fetchedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
+
+                for (i in uncachedGames.indices step batchSize) {
+                    val batch = uncachedGames.subList(i, min(i + batchSize, uncachedGames.size))
+                    Timber.tag("LibraryViewModel").d("Fetching batch ${i / batchSize + 1} with ${batch.size} games")
+                    val batchResults = GameCompatibilityService.fetchCompatibility(batch, gpuName)
+
+                    if (batchResults != null) {
+                        Timber.tag("LibraryViewModel").d("Received ${batchResults.size} results from API")
+                        // Cache all results
+                        batchResults.forEach { (gameName, response) ->
+                            GameCompatibilityCache.cache(gameName, response)
+                            fetchedResults[gameName] = response
+                        }
+                    } else {
+                        Timber.tag("LibraryViewModel").w("API returned null for batch")
+                    }
+                }
+
+                // Combine cached and fetched results
+                val allResults = cachedResults + fetchedResults
+                Timber.tag("LibraryViewModel").d("Total results: ${allResults.size}")
+
+                // Convert to compatibility status map
+                val compatibilityMap = allResults.mapValues { (gameName, response) ->
+                    val status = when {
+                        response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
+                        !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
+                        response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                        response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
+                        else -> GameCompatibilityStatus.UNKNOWN
+                    }
+                    Timber.tag("LibraryViewModel").d("$gameName -> $status (totalPlayable: ${response.totalPlayableCount}, gpuPlayable: ${response.gpuPlayableCount}, isNotWorking: ${response.isNotWorking}, hasBeenTried: ${response.hasBeenTried})")
+                    status
+                }
+
+                // Update state with compatibility map (merge with existing)
+                _state.update { currentState ->
+                    val mergedMap = currentState.compatibilityMap.toMutableMap()
+                    mergedMap.putAll(compatibilityMap)
+                    Timber.tag("LibraryViewModel").d("Updating state with ${compatibilityMap.size} new entries, total: ${mergedMap.size}")
+                    currentState.copy(compatibilityMap = mergedMap)
+                }
+            } catch (e: Exception) {
+                Timber.tag("LibraryViewModel").e(e, "Error fetching compatibility data: ${e.message}")
+                e.printStackTrace()
             }
         }
     }

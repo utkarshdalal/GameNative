@@ -51,8 +51,8 @@ android {
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 6
-        versionName = "0.5.2"
+        versionCode = 7
+        versionName = "0.6.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -62,6 +62,7 @@ android {
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
         buildConfigField("String", "SUPABASE_URL",  "\"${secret("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_KEY",  "\"${secret("SUPABASE_KEY")}\"")
+        buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -74,6 +75,16 @@ android {
         ndk {
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
+
+        // Localization support - specify which languages to include
+        resourceConfigurations += listOf(
+            "en",      // English (default)
+            "da",      // Danish
+            "pt-rBR",  // Portuguese (Brazilian)
+            "zh-rTW",   // Traditional Chinese
+            "zh-rCN",   // Simplified Chinese
+            // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -152,6 +163,11 @@ android {
             useLegacyPackaging = true
         }
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
     dynamicFeatures += setOf(":ubuntufs")
 
     kotlinter {
@@ -184,15 +200,18 @@ android {
 
 dependencies {
     implementation(libs.material)
-    // JavaSteaml
+    // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.6.1-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {
             isChanging = version?.contains("SNAPSHOT") ?: false
         }
+        implementation("io.github.utkarshdalal:javasteam-depotdownloader:1.8.0-SNAPSHOT")
+//        implementation("in.dragonbra:javasteam-depotdownloader:1.8.0-SNAPSHOT")
     }
     implementation(libs.spongycastle)
 
@@ -243,9 +262,14 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.zstd.jni)
 
     // Add PostHog Android SDK dependency
-    implementation("com.posthog:posthog-android:3.+")
+    implementation("com.posthog:posthog-android:3.8.0")
 
     // 1) import the platform – it pins *every* Supabase + Ktor module
     implementation(platform("io.github.jan-tennert.supabase:bom:3.1.4"))

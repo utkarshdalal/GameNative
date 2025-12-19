@@ -5,6 +5,7 @@ import com.winlator.box86_64.Box86_64Preset
 import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
+import com.winlator.fexcore.FEXCorePreset
 import kotlin.String
 
 data class ContainerData(
@@ -47,6 +48,8 @@ data class ContainerData(
     val fexcoreTSOMode: String = "Fast",
     val fexcoreX87Mode: String = "Fast",
     val fexcoreMultiBlock: String = "Disabled",
+    // FEXCore preset (arm64ec)
+    val fexcorePreset: String = FEXCorePreset.INTERMEDIATE,
     // wine registry
     val renderer: String = "gl",
     val csmt: Boolean = true,
@@ -71,11 +74,11 @@ data class ContainerData(
     val touchscreenMode: Boolean = false,
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
-    /** Emulate keyboard/mouse using controller sticks and button bindings **/
-    val emulateKeyboardMouse: Boolean = false,
-    /** Button->Binding name map (JSON string) for emulation UI persistence **/
-    val controllerEmulationBindings: String = "",
     val forceDlc: Boolean = false,
+    val useLegacyDRM: Boolean = false,
+    val sharpnessEffect: String = "None",
+    val sharpnessLevel: Int = 100,
+    val sharpnessDenoise: Int = 100,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -115,6 +118,7 @@ data class ContainerData(
                     "fexcoreTSOMode" to state.fexcoreTSOMode,
                     "fexcoreX87Mode" to state.fexcoreX87Mode,
                     "fexcoreMultiBlock" to state.fexcoreMultiBlock,
+                    "fexcorePreset" to state.fexcorePreset,
                     "sdlControllerAPI" to state.sdlControllerAPI,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
@@ -123,9 +127,11 @@ data class ContainerData(
                     "touchscreenMode" to state.touchscreenMode,
                     "useDRI3" to state.useDRI3,
                     "language" to state.language,
-                    "emulateKeyboardMouse" to state.emulateKeyboardMouse,
-                    "controllerEmulationBindings" to state.controllerEmulationBindings,
                     "forceDlc" to state.forceDlc,
+                    "useLegacyDRM" to state.useLegacyDRM,
+                    "sharpnessEffect" to state.sharpnessEffect,
+                    "sharpnessLevel" to state.sharpnessLevel,
+                    "sharpnessDenoise" to state.sharpnessDenoise,
                 )
             },
             restore = { savedMap ->
@@ -164,6 +170,7 @@ data class ContainerData(
                     fexcoreTSOMode = (savedMap["fexcoreTSOMode"] as? String) ?: "Fast",
                     fexcoreX87Mode = (savedMap["fexcoreX87Mode"] as? String) ?: "Fast",
                     fexcoreMultiBlock = (savedMap["fexcoreMultiBlock"] as? String) ?: "Disabled",
+                    fexcorePreset = (savedMap["fexcorePreset"] as? String) ?: FEXCorePreset.INTERMEDIATE,
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,
@@ -172,9 +179,11 @@ data class ContainerData(
                     touchscreenMode = savedMap["touchscreenMode"] as Boolean,
                     useDRI3 = (savedMap["useDRI3"] as? Boolean) ?: true,
                     language = (savedMap["language"] as? String) ?: "english",
-                    emulateKeyboardMouse = (savedMap["emulateKeyboardMouse"] as? Boolean) ?: false,
-                    controllerEmulationBindings = (savedMap["controllerEmulationBindings"] as? String) ?: "",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,
+                    useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
+                    sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
+                    sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
+                    sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                 )
             },
         )

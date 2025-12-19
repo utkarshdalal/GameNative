@@ -30,9 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
+import app.gamenative.R
 import app.gamenative.utils.KofiSupporter
 import app.gamenative.utils.fetchKofiSupporters
 import kotlinx.coroutines.Dispatchers
@@ -67,9 +69,9 @@ fun SupportersDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
-        title = { Text("Hall of Fame") },
+        title = { Text(stringResource(R.string.hall_of_fame)) },
         text = {
             Column(
                 modifier = Modifier
@@ -96,27 +98,27 @@ fun SupportersDialog(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Art Credits",
+                                text = stringResource(R.string.supporters_art_credits),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                        
+
                         Divider(modifier = Modifier.padding(vertical = 4.dp))
-                        
+
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = "App Icon: Hachi",
+                                text = stringResource(R.string.supporters_app_icon),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = "Alternate App Icon: rhapsody_mdr",
+                                text = stringResource(R.string.supporters_alt_icon),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
                 }
-                
+
                 if (isLoading) {
                     Box(
                         modifier = Modifier
@@ -124,7 +126,7 @@ fun SupportersDialog(
                             .padding(vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Loading supporters...",
+                            text = stringResource(R.string.supporters_loading),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 16.dp)
                         )
@@ -149,18 +151,18 @@ fun SupportersDialog(
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
-                                        text = "Members",
+                                        text = stringResource(R.string.supporters_members),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                                
+
                                 Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                
+
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     members.forEach { sup ->
                                         Text(
-                                            text = (sup.name ?: "Anonymous"),
+                                            text = (sup.name ?: stringResource(R.string.supporters_anonymous)),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -189,18 +191,18 @@ fun SupportersDialog(
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
-                                        text = "Supporters",
+                                        text = stringResource(R.string.supporters_supporters),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                                
+
                                 Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                
+
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     oneOffs.forEach { sup ->
                                         Text(
-                                            text = (sup.name ?: "Anonymous"),
+                                            text = (sup.name ?: stringResource(R.string.supporters_anonymous)),
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                     }
@@ -216,7 +218,7 @@ fun SupportersDialog(
                                 .padding(vertical = 16.dp)
                         ) {
                             Text(
-                                text = "No supporters yet.",
+                                text = stringResource(R.string.supporters_none),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -235,9 +237,9 @@ fun SupportersDialogPreview() {
         AlertDialog(
             onDismissRequest = {},
             confirmButton = {
-                TextButton(onClick = {}) { Text("Close") }
+                TextButton(onClick = {}) { Text(stringResource(R.string.close)) }
             },
-            title = { Text("Hall of Fame") },
+            title = { Text(stringResource(R.string.hall_of_fame)) },
             text = {
                 Column(
                     modifier = Modifier
@@ -264,27 +266,27 @@ fun SupportersDialogPreview() {
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Art Credits",
+                                    text = stringResource(R.string.supporters_art_credits),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            
+
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
-                            
+
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "App Icon: Hachi",
+                                    text = stringResource(R.string.supporters_app_icon),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text(
-                                    text = "Alternate App Icon: rhapsody_mdr",
+                                    text = stringResource(R.string.supporters_alt_icon),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
                     }
-                    
+
                     // Members Section
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -304,14 +306,14 @@ fun SupportersDialogPreview() {
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Members",
+                                    text = stringResource(R.string.supporters_members),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            
+
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
-                            
+
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
                                     text = "Supporter 1",
@@ -324,7 +326,7 @@ fun SupportersDialogPreview() {
                             }
                         }
                     }
-                    
+
                     // Supporters Section
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -344,14 +346,14 @@ fun SupportersDialogPreview() {
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Supporters",
+                                    text = stringResource(R.string.supporters_supporters),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            
+
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
-                            
+
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
                                     text = "One-off Supporter 1",

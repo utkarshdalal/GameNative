@@ -9,6 +9,7 @@ data class SaveFilePattern(
     val root: PathType,
     val path: String,
     val pattern: String,
+    val recursive: Int = 0,
 ) {
     val prefix: String
         get() = "%${root.name}%$path"

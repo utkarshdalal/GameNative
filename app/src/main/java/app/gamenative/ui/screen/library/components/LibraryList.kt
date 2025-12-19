@@ -26,6 +26,7 @@ internal fun LibraryList(
     listState: LazyListState,
     list: List<LibraryItem>,
     onItemClick: (String) -> Unit,
+    imageRefreshCounter: Long = 0L,
 ) {
     if (list.isEmpty()) {
         Box(
@@ -40,7 +41,7 @@ internal fun LibraryList(
             ) {
                 Text(
                     modifier = Modifier.padding(24.dp),
-                    text = "No items listed with selection",
+                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_no_items),
                 )
             }
         }
@@ -57,6 +58,7 @@ internal fun LibraryList(
                     modifier = Modifier.animateItem(),
                     appInfo = item,
                     onClick = { onItemClick(item.appId) },
+                    imageRefreshCounter = imageRefreshCounter,
                 )
 
                 if (item.index < list.lastIndex) {

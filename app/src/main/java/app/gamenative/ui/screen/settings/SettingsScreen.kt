@@ -17,8 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.theme.PluviaTheme
@@ -60,7 +62,7 @@ private fun SettingsScreenContent(
         snackbarHost = { SnackbarHost(hostState = snackBarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Settings") },
+                title = { Text(text = stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     BackButton(onClick = onBack)
                 },

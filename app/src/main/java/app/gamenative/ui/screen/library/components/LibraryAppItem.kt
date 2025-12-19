@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -47,12 +50,17 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
@@ -60,6 +68,9 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.CustomGameScanner
+import java.io.File
+import android.net.Uri
 
 @Composable
 internal fun AppItem(
@@ -68,13 +79,25 @@ internal fun AppItem(
     onClick: () -> Unit,
     paneType: PaneType = PaneType.LIST,
     onFocus: () -> Unit = {},
+    isRefreshing: Boolean = false,
+    imageRefreshCounter: Long = 0L,
+    compatibilityStatus: GameCompatibilityStatus? = null,
 ) {
+    val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
     var alpha by remember { mutableFloatStateOf(1f) }
 
     LaunchedEffect(paneType) {
         hideText = true
         alpha = 1f
+    }
+
+    // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
+    LaunchedEffect(imageRefreshCounter) {
+        if (paneType != PaneType.LIST) {
+            hideText = true
+            alpha = 1f
+        }
     }
 
     // True when selected, e.g. with controller
@@ -139,28 +162,130 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
+                    val iconUrl = remember(appInfo.appId) {
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
+                            if (!path.isNullOrEmpty()) {
+                                if (path.startsWith("file://")) path else "file://$path"
+                            } else {
+                                appInfo.clientIconUrl
+                            }
+                        } else appInfo.clientIconUrl
+                    }
                     ListItemImage(
                         modifier = Modifier.size(56.dp),
                         imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        image = { appInfo.clientIconUrl }
+                        image = { iconUrl }
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
-                    val imageUrl = if (paneType == PaneType.GRID_CAPSULE) {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                    } else {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+
+                    // Helper function to find SteamGridDB images for Custom Games
+                    fun findSteamGridDBImage(imageType: String): String? {
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                            gameFolderPath?.let { path ->
+                                val folder = java.io.File(path)
+                                val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                    file.name.startsWith("steamgriddb_$imageType") &&
+                                    (file.name.endsWith(".png", ignoreCase = true) ||
+                                     file.name.endsWith(".jpg", ignoreCase = true) ||
+                                     file.name.endsWith(".webp", ignoreCase = true))
+                                }
+                                return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                            }
+                        }
+                        return null
                     }
 
-                    ListItemImage(
-                        modifier = Modifier.aspectRatio(aspectRatio),
-                        imageModifier = Modifier.clip(RoundedCornerShape(3.dp)).alpha(alpha),
-                        image = { imageUrl },
-                        onFailure = {
-                            hideText = false
-                            alpha = 0.1f
+                    val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            // For Custom Games, use SteamGridDB images
+                            when (paneType) {
+                                PaneType.GRID_CAPSULE -> {
+                                    // Vertical grid for capsule
+                                    findSteamGridDBImage("grid_capsule")
+                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                                }
+                                PaneType.GRID_HERO -> {
+                                    // Horizontal grid for hero view
+                                    findSteamGridDBImage("grid_hero")
+                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
+                                else -> {
+                                    // For list view, use heroes endpoint (not grid_hero)
+                                    val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                                    val heroUrl = gameFolderPath?.let { path ->
+                                        val folder = java.io.File(path)
+                                        val heroFile = folder.listFiles()?.firstOrNull { file ->
+                                            file.name.startsWith("steamgriddb_hero") &&
+                                            !file.name.contains("grid") &&
+                                            (file.name.endsWith(".png", ignoreCase = true) ||
+                                             file.name.endsWith(".jpg", ignoreCase = true) ||
+                                             file.name.endsWith(".webp", ignoreCase = true))
+                                        }
+                                        heroFile?.let { android.net.Uri.fromFile(it).toString() }
+                                    }
+                                    heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
+                            }
+                        } else {
+                            // For Steam games, use standard Steam URLs
+                            if (paneType == PaneType.GRID_CAPSULE) {
+                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                            } else {
+                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                            }
                         }
-                    )
+                    }
+
+                    // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
+                    LaunchedEffect(imageUrl) {
+                        if (paneType != PaneType.LIST) {
+                            hideText = true
+                            alpha = 1f
+                        }
+                    }
+
+                    Box {
+                        ListItemImage(
+                            modifier = Modifier.aspectRatio(aspectRatio),
+                            imageModifier = Modifier
+                                .clip(RoundedCornerShape(3.dp))
+                                .alpha(alpha),
+                            image = { imageUrl },
+                            onFailure = {
+                                hideText = false
+                                alpha = 0.1f
+                            }
+                        )
+
+                        // Header overlay with compatibility status
+                        compatibilityStatus?.let { status ->
+                            val (text, color) = when (status) {
+                                GameCompatibilityStatus.COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                                GameCompatibilityStatus.GPU_COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                                GameCompatibilityStatus.UNKNOWN -> stringResource(R.string.library_compatibility_unknown) to Color.Gray
+                                GameCompatibilityStatus.NOT_COMPATIBLE -> stringResource(R.string.library_not_compatible) to Color.Red
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = color,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
 
                     // Only display text if the image loading has failed
                     if (! hideText) {
@@ -169,28 +294,79 @@ internal fun AppItem(
                                 .align(Alignment.BottomStart)
                                 .padding(8.dp),
                             appInfo = appInfo,
+                            isRefreshing = isRefreshing,
+                            compatibilityStatus = compatibilityStatus,
                         )
                     } else {
-                        val isInstalled = remember(appInfo.appId) {
-                            SteamService.isAppInstalled(appInfo.gameId)
+                        var isInstalled by remember(appInfo.appId, appInfo.gameSource) {
+                            when (appInfo.gameSource) {
+                                GameSource.STEAM -> mutableStateOf(SteamService.isAppInstalled(appInfo.gameId))
+                                GameSource.CUSTOM_GAME -> mutableStateOf(true) // Custom Games are always considered installed
+                                else -> mutableStateOf(false)
+                            }
                         }
-                        // Cute floating icons for install status/family share
-                        if (isInstalled || appInfo.isShared) {
-                            Row(
-                                modifier = Modifier
-                                    .align(alignment = Alignment.BottomEnd)
-                                    .padding(4.dp) // Padding from the outer card
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // Mid tone colour that shows up on light and dark images
-                                    .height(24.dp)
-                                    .padding(2.dp), // Padding for inner icons
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                if (isInstalled) {
-                                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSurface)
+                        // Update installation status when refresh completes
+                        LaunchedEffect(isRefreshing) {
+                            if (!isRefreshing) {
+                                // Refresh just completed, check installation status
+                                isInstalled = when (appInfo.gameSource) {
+                                    GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                    GameSource.CUSTOM_GAME -> true
+                                    else -> false
                                 }
-                                if (appInfo.isShared) {
-                                    Icon(Icons.Filled.Face4, null, tint = MaterialTheme.colorScheme.tertiary)
+                            }
+                        }
+
+                        // Calculate padding for text to prevent overlap with icons
+                        val hasIcons = isInstalled || appInfo.isShared
+                        val iconWidth = when {
+                            isInstalled && appInfo.isShared -> 44.dp // Two icons + spacing
+                            hasIcons -> 22.dp // One icon + spacing
+                            else -> 0.dp
+                        }
+
+                        // Black footer overlay with game title
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = appInfo.name,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(end = iconWidth)
+                            )
+
+                            // Status icons for install status/family share
+                            if (hasIcons) {
+                                Row(
+                                    modifier = Modifier.align(alignment = Alignment.CenterEnd),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isInstalled) {
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = stringResource(R.string.library_installed),
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    if (appInfo.isShared) {
+                                        Icon(
+                                            Icons.Filled.Face4,
+                                            contentDescription = stringResource(R.string.library_family_shared),
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -202,6 +378,8 @@ internal fun AppItem(
                 GameInfoBlock(
                     modifier = Modifier.weight(1f),
                     appInfo = appInfo,
+                    isRefreshing = isRefreshing,
+                    compatibilityStatus = compatibilityStatus,
                 )
 
                 // Play/Open button
@@ -214,7 +392,7 @@ internal fun AppItem(
                     modifier = Modifier.height(40.dp)
                 ) {
                     Text(
-                        text = "Open",
+                        text = stringResource(R.string.library_open),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -229,15 +407,50 @@ internal fun AppItem(
 internal fun GameInfoBlock(
     modifier: Modifier,
     appInfo: LibraryItem,
+    isRefreshing: Boolean = false,
+    compatibilityStatus: GameCompatibilityStatus? = null,
 ) {
     // For text displayed in list view, or as override if image loading fails
 
-    // Determine download and install state
-    val downloadInfo = remember(appInfo.appId) { SteamService.getAppDownloadInfo(appInfo.gameId) }
-    val downloadProgress = remember(downloadInfo) { downloadInfo?.getProgress() ?: 0f }
+    // Determine download and install state for Steam games only
+    val isSteam = appInfo.gameSource == GameSource.STEAM
+    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
+    var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
-    val isInstalled = remember(appInfo.appId) {
-        SteamService.isAppInstalled(appInfo.gameId)
+    var isInstalledSteam by remember(appInfo.appId) { mutableStateOf(if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false) }
+
+    // Update installation status when refresh completes
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing) {
+            if (isSteam) {
+                // Refresh just completed, check installation status
+                isInstalledSteam = SteamService.isAppInstalled(appInfo.gameId)
+            }
+        }
+    }
+
+    // Function to refresh progress from downloadInfo - can be called from remember and LaunchedEffect
+    val refreshProgress: () -> Unit = {
+        downloadProgress = downloadInfo?.getProgress() ?: 0f
+    }
+
+    // Refresh progress when list reloads (for downloading games) or when downloadInfo changes
+    LaunchedEffect(appInfo.appId, downloadInfo, isRefreshing) {
+        if (downloadInfo != null) {
+            refreshProgress()
+        }
+    }
+
+    // Listen to real-time progress updates via listener
+    DisposableEffect(downloadInfo) {
+        val onDownloadProgress: (Float) -> Unit = { progress ->
+            downloadProgress = progress
+        }
+        downloadInfo?.addProgressListener(onDownloadProgress)
+
+        onDispose {
+            downloadInfo?.removeProgressListener(onDownloadProgress)
+        }
     }
 
     var appSizeOnDisk by remember { mutableStateOf("") }
@@ -245,8 +458,8 @@ internal fun GameInfoBlock(
     var hideText by remember { mutableStateOf(true) }
     var alpha = remember(Int) {1f}
 
-    LaunchedEffect(Unit) {
-        if (isInstalled) {
+    LaunchedEffect(isSteam, isInstalledSteam) {
+        if (isSteam && isInstalledSteam) {
             appSizeOnDisk = "..."
             DownloadService.getSizeOnDiskDisplay(appInfo.gameId) {  appSizeOnDisk = it }
         }
@@ -267,16 +480,23 @@ internal fun GameInfoBlock(
             modifier = Modifier.padding(top = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Status indicator: Installing / Installed / Not installed
-            val statusText = when {
-                isDownloading -> "Installing"
-                isInstalled -> "Installed"
-                else -> "Not installed"
+            // Status indicator
+            val (statusText, statusColor) = if (isSteam) {
+                val text = when {
+                    isDownloading -> stringResource(R.string.library_installing)
+                    isInstalledSteam -> stringResource(R.string.library_installed)
+                    else -> stringResource(R.string.library_not_installed)
+                }
+                val color = when {
+                    isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
+                text to color
+            } else {
+                // Custom Games are considered ready (no Steam install tracking)
+                stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
             }
-            val statusColor = when {
-                isDownloading || isInstalled -> MaterialTheme.colorScheme.tertiary
-                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -303,8 +523,8 @@ internal fun GameInfoBlock(
                 }
             }
 
-            // Game size on its own line for installed games
-            if (isInstalled) {
+            // Game size on its own line for installed Steam games only
+            if (isSteam && isInstalledSteam) {
                 Text(
                     text = "$appSizeOnDisk",
                     style = MaterialTheme.typography.bodyMedium,
@@ -315,9 +535,24 @@ internal fun GameInfoBlock(
             // Family share indicator on its own line if needed
             if (appInfo.isShared) {
                 Text(
-                    text = "Family Shared",
+                    text = stringResource(R.string.library_family_shared),
                     style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
                     color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+
+            // Compatibility status indicator on its own line if needed
+            compatibilityStatus?.let { status ->
+                val (text, color) = when (status) {
+                    GameCompatibilityStatus.COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                    GameCompatibilityStatus.GPU_COMPATIBLE -> stringResource(R.string.library_compatible) to Color.Green
+                    GameCompatibilityStatus.UNKNOWN -> stringResource(R.string.library_compatibility_unknown) to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    GameCompatibilityStatus.NOT_COMPATIBLE -> stringResource(R.string.library_not_compatible) to Color.Red
+                }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                    color = color
                 )
             }
         }
@@ -349,7 +584,18 @@ private fun Preview_AppItem() {
                         )
                     },
                     itemContent = {
-                        AppItem(appInfo = it, onClick = {})
+                        // Show different compatibility states in preview
+                        val status = when (it.index % 4) {
+                            0 -> GameCompatibilityStatus.COMPATIBLE
+                            1 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                            2 -> GameCompatibilityStatus.NOT_COMPATIBLE
+                            else -> GameCompatibilityStatus.UNKNOWN
+                        }
+                        AppItem(
+                            appInfo = it,
+                            onClick = {},
+                            compatibilityStatus = status
+                        )
                     },
                 )
             }
@@ -387,10 +633,18 @@ private fun Preview_AppItemGrid() {
                     ),
                 ) {
                     items(items = appInfoList, key = { it.index }) { item ->
+                        // Show different compatibility states in preview
+                        val status = when (item.index % 4) {
+                            0 -> GameCompatibilityStatus.COMPATIBLE
+                            1 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                            2 -> GameCompatibilityStatus.NOT_COMPATIBLE
+                            else -> GameCompatibilityStatus.UNKNOWN
+                        }
                         AppItem(
                             appInfo = item,
                             onClick = { },
                             paneType = PaneType.GRID_HERO,
+                            compatibilityStatus = status
                         )
                     }
                 }
@@ -406,10 +660,18 @@ private fun Preview_AppItemGrid() {
                     ),
                 ) {
                     items(items = appInfoList, key = { it.index }) { item ->
+                        // Show different compatibility states in preview
+                        val status = when (item.index % 4) {
+                            0 -> GameCompatibilityStatus.COMPATIBLE
+                            1 -> GameCompatibilityStatus.GPU_COMPATIBLE
+                            2 -> GameCompatibilityStatus.NOT_COMPATIBLE
+                            else -> GameCompatibilityStatus.UNKNOWN
+                        }
                         AppItem(
                             appInfo = item,
                             onClick = { },
                             paneType = PaneType.GRID_CAPSULE,
+                            compatibilityStatus = status
                         )
                     }
                 }

@@ -11,6 +11,8 @@ import app.gamenative.data.FriendMessage
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamFriend
 import app.gamenative.data.SteamLicense
+import app.gamenative.data.CachedLicense
+import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.db.converters.AppConverter
 import app.gamenative.db.converters.ByteArrayConverter
 import app.gamenative.db.converters.FriendConverter
@@ -25,6 +27,8 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.SteamFriendDao
 import app.gamenative.db.dao.SteamLicenseDao
 import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.db.dao.CachedLicenseDao
+import app.gamenative.db.dao.EncryptedAppTicketDao
 
 const val DATABASE_NAME = "pluvia.db"
 
@@ -38,8 +42,10 @@ const val DATABASE_NAME = "pluvia.db"
         FriendMessage::class,
         Emoticon::class,
         AppInfo::class,
+        CachedLicense::class,
+        EncryptedAppTicket::class,
     ],
-    version = 5,
+    version = 7,
     exportSchema = false, // Should export once stable.
 )
 @TypeConverters(
@@ -67,4 +73,8 @@ abstract class PluviaDatabase : RoomDatabase() {
     abstract fun emoticonDao(): EmoticonDao
 
     abstract fun appInfoDao(): AppInfoDao
+
+    abstract fun cachedLicenseDao(): CachedLicenseDao
+
+    abstract fun encryptedAppTicketDao(): EncryptedAppTicketDao
 }

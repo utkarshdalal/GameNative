@@ -223,6 +223,10 @@ public abstract class AppUtils {
     //     showPopupWindow(anchor, textView, 300, textView.getMeasuredHeight());
     // }
 
+    public static String getNativeLibDir(Context context) {
+        return context.getApplicationInfo().nativeLibraryDir;
+    }
+
     public static int getVersionCode(Context context) {
         try {
             PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);

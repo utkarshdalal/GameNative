@@ -34,9 +34,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.box86_64.Box86_64Preset
@@ -67,7 +69,7 @@ fun Box64PresetsDialog(
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
-                            title = { Text(text = "Box64 Presets") },
+                            title = { Text(text = stringResource(R.string.box64_presets)) },
                             actions = {
                                 IconButton(
                                     onClick = onDismissRequest,
@@ -104,7 +106,7 @@ fun Box64PresetsDialog(
                                 presetName = it.replace("|", "")
                                 Box86_64PresetManager.editPreset(prefix, context, presetId, presetName, EnvVars(envVars))
                             },
-                            label = { Text("Preset name") },
+                            label = { Text(stringResource(R.string.preset_name)) },
                             trailingIcon = {
                                 IconButton(
                                     colors = IconButtonDefaults.iconButtonColors()
@@ -145,7 +147,7 @@ fun Box64PresetsDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Environment Variables")
+                            Text(stringResource(R.string.environment_variables))
                             Row {
                                 IconButton(
                                     onClick = {

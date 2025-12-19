@@ -12,10 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.R
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 
 @OptIn(
@@ -51,7 +53,7 @@ fun GameFeedbackDialog(
                 ) {
                     // Title
                     Text(
-                        text = "How did the game run?",
+                        text = stringResource(R.string.game_feedback_game_run),
                         style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -81,7 +83,7 @@ fun GameFeedbackDialog(
 
                     // Tags Selection
                     Text(
-                        text = "Select any issues you encountered:",
+                        text = stringResource(R.string.game_feedback_issues_question),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .align(Alignment.Start)
@@ -120,7 +122,7 @@ fun GameFeedbackDialog(
                     OutlinedTextField(
                         value = state.feedbackText,
                         onValueChange = { onStateChange(state.copy(feedbackText = it)) },
-                        label = { Text("Describe what happened") },
+                        label = { Text(stringResource(R.string.describe_what_happened)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
@@ -133,7 +135,7 @@ fun GameFeedbackDialog(
                         onClick = onDiscordSupport,
                         modifier = Modifier.padding(bottom = 16.dp)
                     ) {
-                        Text("Get support on Discord")
+                        Text(stringResource(R.string.get_support_on_discord))
                     }
 
                     // Dialog action buttons
