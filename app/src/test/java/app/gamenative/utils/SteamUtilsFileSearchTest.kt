@@ -587,7 +587,7 @@ class SteamUtilsFileSearchTest {
         assertTrue("configs.user.ini should contain account_name field", userIniContent.contains("account_name="))
         assertTrue("configs.user.ini should contain account_steamid field", userIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini should contain language field", userIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field", userIniContent.contains("ticket="))
+        assertFalse("configs.user.ini should not contain ticket field", userIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content
         val appIniContent = configsAppIni.readText()
@@ -666,7 +666,7 @@ class SteamUtilsFileSearchTest {
             appUserIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini in app directory should contain language field",
             appUserIniContent.contains("language="))
-        assertTrue("configs.user.ini in app directory should contain ticket field",
+        assertFalse("configs.user.ini in app directory should not contain ticket field",
             appUserIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content in app directory
@@ -863,7 +863,7 @@ class SteamUtilsFileSearchTest {
         assertTrue("configs.user.ini should contain account_name field", userIniContent.contains("account_name="))
         assertTrue("configs.user.ini should contain account_steamid field", userIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini should contain language field", userIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field", userIniContent.contains("ticket="))
+        assertFalse("configs.user.ini should not contain ticket field", userIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content
         val appIniContent = configsAppIni.readText()
@@ -959,7 +959,7 @@ class SteamUtilsFileSearchTest {
             appUserIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini should contain language field",
             appUserIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field",
+        assertFalse("configs.user.ini should not contain ticket field",
             appUserIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content

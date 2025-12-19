@@ -844,12 +844,17 @@ object SteamUtils {
                 appendLine("create_specific_dirs=1")
                 appendLine()
                 appendLine("[app::cloud_save::win]")
-                windowsPatterns.forEachIndexed { index, pattern ->
-                    val root = pattern.root.name
+                val uniqueDirs = LinkedHashSet<String>()
+                windowsPatterns.forEach { pattern ->
+                    val root = if (pattern.root.name == "GameInstall") "gameinstall" else pattern.root.name
                     val path = pattern.path
                         .replace("{64BitSteamID}", "{::64BitSteamID::}")
                         .replace("{Steam3AccountID}", "{::Steam3AccountID::}")
-                    appendLine("dir${index + 1}={::$root::}/$path")
+                    uniqueDirs.add("{::$root::}/$path")
+                }
+                
+                uniqueDirs.forEachIndexed { index, dir ->
+                    appendLine("dir${index + 1}=$dir")
                 }
             }
         }
