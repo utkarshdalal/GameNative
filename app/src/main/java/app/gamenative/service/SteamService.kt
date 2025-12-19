@@ -1045,8 +1045,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         when (PrefManager.downloadSpeed) {
                             8 -> {
-                                downloadRatio = 0.2
-                                decompressRatio = 0.2
+                                downloadRatio = 0.3
+                                decompressRatio = 0.3
                             }
                             16 -> {
                                 downloadRatio = 0.5
