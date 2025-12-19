@@ -243,9 +243,10 @@ fun BoxScope.RenderFixedElements(
 
         // Filter elements by visibility
         // Elements inherit container's visibility unless they specify their own
-        val visibleElements = container.elements.filter { element ->
-            element.visibility.isVisible(isPortrait)
-        }
+        val visibleElements = container.elements
+            .filter { element -> element.visibility.isVisible(isPortrait) }
+            // Sort by zIndex first (default 0), then by declaration order for stable z-ordering
+            .sortedWith(compareBy<FixedElement> { it.zIndex }.thenBy { it.declarationOrder })
 
         // Skip container if no elements are visible
         if (visibleElements.isEmpty()) return@forEach

@@ -119,8 +119,8 @@ object ThemeXmlMapper {
             // Default to 100% width/height if not specified
             val width = resolveDimensionWidth(n, "width", tree) ?: Dimension.RelW(1f)
             val height = resolveDimensionHeight(n, "height", tree) ?: Dimension.RelH(1f)
-            val layers = n.children.mapNotNull { child ->
-                parseLayer(child, tree)
+            val layers = n.children.mapIndexedNotNull { index, child ->
+                parseLayer(child, tree, index)
             }
             Card(
                 id = id,
@@ -150,7 +150,9 @@ object ThemeXmlMapper {
     /** Parse a single <fixed> container node into a FixedContainer. */
     private fun parseFixedContainerNode(containerNode: XmlNode, tree: ThemeTree): FixedContainer {
         val id = containerNode.attributes["id"] ?: "default"
-        val elements = containerNode.children.mapNotNull { parseFixedElement(it, tree) }
+        val elements = containerNode.children.mapIndexedNotNull { index, child -> 
+            parseFixedElement(child, tree, index) 
+        }
         val backgroundColor = resolveColorAttr(containerNode, "backgroundColor", tree)
         val height = resolveFloatOrNull(containerNode, "height", tree)
         val visibility = Visibility.fromString(containerNode.attributes["visibility"])
@@ -174,6 +176,8 @@ object ThemeXmlMapper {
         val position: DimOffset,
         val anchor: Anchor,
         val visibility: Visibility,
+        val zIndex: Float,
+        val declarationOrder: Int,
         val highlightColor: Int?,
         val highlightOpacity: Float,
         val highlightBorderWidth: Float,
@@ -186,10 +190,12 @@ object ThemeXmlMapper {
     )
     
     /** Extract common base properties from an XML node for fixed elements. */
-    private fun parseFixedElementBase(n: XmlNode, tree: ThemeTree) = FixedElementBase(
+    private fun parseFixedElementBase(n: XmlNode, tree: ThemeTree, declarationOrder: Int) = FixedElementBase(
         position = DimOffset(pxResolved(n, "x", tree), pxResolved(n, "y", tree)),
         anchor = Anchor.fromString(n.attributes["anchor"]),
         visibility = Visibility.fromString(n.attributes["visibility"]),
+        zIndex = resolveFloat(n, "zIndex", default = 0f, tree),
+        declarationOrder = declarationOrder,
         highlightColor = resolveColorAttr(n, "highlightColor", tree),
         highlightOpacity = resolveFloat(n, "highlightOpacity", 0.8f, tree),
         highlightBorderWidth = resolveFloat(n, "highlightBorderWidth", 2f, tree),
@@ -201,14 +207,16 @@ object ThemeXmlMapper {
         navigateRight = n.attributes["navigateRight"],
     )
 
-    private fun parseFixedElement(n: XmlNode, tree: ThemeTree): FixedElement? {
-        val base = parseFixedElementBase(n, tree)
+    private fun parseFixedElement(n: XmlNode, tree: ThemeTree, declarationOrder: Int): FixedElement? {
+        val base = parseFixedElementBase(n, tree, declarationOrder)
         
         return when (n.name.lowercase()) {
             "header" -> FixedElement.Header(
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -239,6 +247,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -258,6 +268,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -277,6 +289,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -297,6 +311,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -316,6 +332,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -335,6 +353,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -357,6 +377,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -380,6 +402,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -404,6 +428,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -425,6 +451,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -444,6 +472,8 @@ object ThemeXmlMapper {
                 position = base.position,
                 anchor = base.anchor,
                 visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
                 highlightColor = base.highlightColor,
                 highlightOpacity = base.highlightOpacity,
                 highlightBorderWidth = base.highlightBorderWidth,
@@ -476,13 +506,14 @@ object ThemeXmlMapper {
         val anchor: Anchor,
         val visibility: Visibility,
         val zIndex: Float,
+        val declarationOrder: Int,
         val focusOnly: Boolean,
         val focusTransitionSpeed: Int,
         val visibleWhen: String?,
     )
     
     /** Extract common base properties from an XML node. */
-    private fun parseLayerBase(n: XmlNode, tree: ThemeTree) = LayerBase(
+    private fun parseLayerBase(n: XmlNode, tree: ThemeTree, declarationOrder: Int) = LayerBase(
         id = n.attributes["id"],
         position = DimOffset(pxResolved(n, "x", tree), pxResolved(n, "y", tree)),
         size = sizeResolved(n, tree),
@@ -490,13 +521,14 @@ object ThemeXmlMapper {
         anchor = Anchor.fromString(n.attributes["anchor"]),
         visibility = Visibility.fromString(n.attributes["visibility"]),
         zIndex = resolveFloat(n, "zIndex", default = 0f, tree),
+        declarationOrder = declarationOrder,
         focusOnly = n.attributes["focusOnly"]?.toBooleanStrictOrNull() ?: false,
         focusTransitionSpeed = resolveInt(n, "focusTransitionSpeed", tree) ?: 150,
         visibleWhen = n.attributes["visibleWhen"],
     )
 
-    private fun parseLayer(n: XmlNode, tree: ThemeTree): Layer? {
-        val base = parseLayerBase(n, tree)
+    private fun parseLayer(n: XmlNode, tree: ThemeTree, declarationOrder: Int): Layer? {
+        val base = parseLayerBase(n, tree, declarationOrder)
         
         return when (n.name.lowercase()) {
         "image" -> Layer.ImageLayer(
@@ -507,6 +539,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -526,6 +559,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -553,6 +587,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -572,6 +607,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -588,6 +624,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -603,6 +640,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -626,6 +664,7 @@ object ThemeXmlMapper {
             anchor = base.anchor,
             visibility = base.visibility,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -639,6 +678,7 @@ object ThemeXmlMapper {
             opacity = base.opacity,
             anchor = base.anchor,
             zIndex = base.zIndex,
+            declarationOrder = base.declarationOrder,
             focusOnly = base.focusOnly,
             focusTransitionSpeed = base.focusTransitionSpeed,
             visibleWhen = base.visibleWhen,
@@ -841,7 +881,7 @@ object ThemeXmlMapper {
         val separator = node.children.firstOrNull { it.name.equals("separator", ignoreCase = true) }?.let { sepNode ->
             // Separator height defaults to 1px if not specified
             val sepHeight = resolveDimensionHeight(sepNode, "height", tree) ?: Dimension.Px(1f)
-            val sepLayers = sepNode.children.mapNotNull { parseLayer(it, tree) }
+            val sepLayers = sepNode.children.mapIndexedNotNull { index, child -> parseLayer(child, tree, index) }
             // Parse margin - supports CSS-like shorthand
             val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
             GridSeparator(
@@ -967,7 +1007,7 @@ object ThemeXmlMapper {
             val cardId = cardNode.attributes["id"] ?: "inline_grid_card_${System.nanoTime()}"
             val width = resolveDimensionWidth(cardNode, "width", tree) ?: Dimension.RelW(1f)
             val height = resolveDimensionHeight(cardNode, "height", tree) ?: Dimension.RelH(1f)
-            val layers = cardNode.children.mapNotNull { parseLayer(it, tree) }
+            val layers = cardNode.children.mapIndexedNotNull { index, child -> parseLayer(child, tree, index) }
             Card(id = cardId, canvas = DimSize(width, height), layers = layers)
         }
         
@@ -1007,7 +1047,7 @@ object ThemeXmlMapper {
         // Parse optional separator (skip <card> children)
         val separator = node.children.firstOrNull { it.name.equals("separator", ignoreCase = true) }?.let { sepNode ->
             val sepHeight = resolveDimensionHeight(sepNode, "height", tree) ?: Dimension.Px(1f)
-            val sepLayers = sepNode.children.mapNotNull { parseLayer(it, tree) }
+            val sepLayers = sepNode.children.mapIndexedNotNull { index, child -> parseLayer(child, tree, index) }
             val (marginTop, marginEnd, marginBottom, marginStart) = parsePadding(sepNode.attributes["margin"], tree)
             GridSeparator(
                 height = sepHeight,
@@ -1064,7 +1104,7 @@ object ThemeXmlMapper {
             val cardId = cardNode.attributes["id"] ?: "inline_carousel_card_${System.nanoTime()}"
             val width = resolveDimensionWidth(cardNode, "width", tree) ?: Dimension.RelW(1f)
             val height = resolveDimensionHeight(cardNode, "height", tree) ?: Dimension.RelH(1f)
-            val layers = cardNode.children.mapNotNull { parseLayer(it, tree) }
+            val layers = cardNode.children.mapIndexedNotNull { index, child -> parseLayer(child, tree, index) }
             Card(id = cardId, canvas = DimSize(width, height), layers = layers)
         }
         

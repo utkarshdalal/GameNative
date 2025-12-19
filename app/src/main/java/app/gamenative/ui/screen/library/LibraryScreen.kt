@@ -414,10 +414,10 @@ private fun LibraryScreenContent(
                     )
                 }
                 
-                // Sort layout elements by z-index (if specified) or declaration order
+                // Sort layout elements by z-index (treat null as 0), then by declaration order
                 val sortedElements = remember(def.layoutElements) {
                     def.layoutElements.sortedWith(
-                        compareBy<app.gamenative.theme.model.LayoutElement> { it.zIndex ?: Int.MAX_VALUE }
+                        compareBy<app.gamenative.theme.model.LayoutElement> { it.zIndex ?: 0 }
                             .thenBy { it.declarationOrder }
                     )
                 }

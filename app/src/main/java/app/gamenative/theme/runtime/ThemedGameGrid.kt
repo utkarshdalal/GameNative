@@ -469,10 +469,11 @@ fun ThemedGameCarousel(
                         }
                         .clickable { onItemClick(item) },
                 ) {
-                    // Render each layer from the card
+                    // Render each layer from the card, sorted by zIndex then declarationOrder
                     val isPortrait = rememberIsPortrait()
                     card.layers
                         .filter { layer -> layer.visibility.isVisible(isPortrait) }
+                        .sortedWith(compareBy<Layer> { it.zIndex }.thenBy { it.declarationOrder })
                         .forEach { layer ->
                             RenderCarouselLayer(
                                 layer = layer,
@@ -721,8 +722,10 @@ private fun SeparatorView(
             // Get current orientation for visibility filtering (centralized)
             val isPortrait = rememberIsPortrait()
             
+            // Sort layers by zIndex then declarationOrder for proper stacking
             separator.layers
                 .filter { layer -> layer.visibility.isVisible(isPortrait) }
+                .sortedWith(compareBy<Layer> { it.zIndex }.thenBy { it.declarationOrder })
                 .forEach { layer ->
                     RenderThemedLayer(
                         layer = layer,
@@ -783,9 +786,10 @@ private fun ThemedGameTile(
         // Get current orientation for visibility filtering (centralized)
         val isPortrait = rememberIsPortrait()
         
-        // Render each layer from the card, filtering by visibility
+        // Render each layer from the card, filtering by visibility, sorted by zIndex then declarationOrder
         card.layers
             .filter { layer -> layer.visibility.isVisible(isPortrait) }
+            .sortedWith(compareBy<Layer> { it.zIndex }.thenBy { it.declarationOrder })
             .forEach { layer ->
                 RenderThemedLayer(
                     layer = layer,

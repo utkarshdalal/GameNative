@@ -40,6 +40,10 @@ sealed class FixedElement {
     abstract val anchor: Anchor
     /** Visibility condition based on orientation. */
     abstract val visibility: Visibility
+    /** Z-index for stacking order. Higher values render on top. Default is 0. */
+    abstract val zIndex: Float
+    /** Declaration order index (set during parsing). Used for stable sorting when zIndex is equal. */
+    abstract val declarationOrder: Int
     
     // Highlight styling properties for controller navigation (theme-only feature)
     /** Highlight border color (ARGB), null = use system primary. */
@@ -73,6 +77,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -111,6 +117,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -139,6 +147,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -167,6 +177,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.BOTTOM_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -197,6 +209,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.BOTTOM_RIGHT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -226,6 +240,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -255,6 +271,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -290,6 +308,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -327,6 +347,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -365,6 +387,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -397,6 +421,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,
@@ -426,6 +452,8 @@ sealed class FixedElement {
         override val position: DimOffset,
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val highlightColor: Int? = null,
         override val highlightOpacity: Float = 0.8f,
         override val highlightBorderWidth: Float = 2f,

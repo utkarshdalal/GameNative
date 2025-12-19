@@ -26,6 +26,9 @@ sealed class Layer {
     /** Z-index for stacking order. Higher values render on top. Default is 0. */
     abstract val zIndex: Float
 
+    /** Declaration order index (set during parsing). Used for stable sorting when zIndex is equal. */
+    abstract val declarationOrder: Int
+
     /** If true, this layer is only visible when the card is focused/highlighted. */
     abstract val focusOnly: Boolean
 
@@ -46,6 +49,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -81,6 +85,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -108,6 +113,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -144,6 +150,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -173,6 +180,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -201,6 +209,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -239,6 +248,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
@@ -259,6 +269,7 @@ sealed class Layer {
         override val anchor: Anchor = Anchor.TOP_LEFT,
         override val visibility: Visibility = Visibility.ALWAYS,
         override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
         override val focusOnly: Boolean = false,
         override val focusTransitionSpeed: Int = 150,
         override val visibleWhen: String? = null,
