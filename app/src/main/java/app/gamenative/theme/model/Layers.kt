@@ -129,8 +129,10 @@ sealed class Layer {
         val cornerRadius: String? = null,
         /** Border/stroke width in dp. If null or 0, no border is drawn. */
         val borderWidth: FloatOrBinding? = null,
-        /** Border/stroke color (ARGB). Only used if borderWidth > 0. */
+        /** Border/stroke color (ARGB). Only used if borderWidth > 0 and borderGradient is false. */
         val borderColor: IntOrBinding? = null,
+        /** If true, uses the theme's default gradient (tertiary to primary) for the border. */
+        val borderGradient: Boolean = false,
         /** Gradient start color (ARGB). If set with gradientEnd, renders gradient instead of solid color. */
         val gradientStart: IntOrBinding? = null,
         /** Gradient end color (ARGB). Required if gradientStart is set. */

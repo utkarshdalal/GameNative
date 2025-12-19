@@ -10,6 +10,9 @@
     <var name="highlightBorderWidth" value="4" />
     <var name="highlightTransitionSpeed" value="200" />
 
+    <!-- Focus border for carousel items -->
+    <var name="focusBorderWidth" value="3" />
+
     <!-- Shared spacing -->
     <var name="paddingMedium" value="16" />
     <var name="bottomOffset" value="24" />

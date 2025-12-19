@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -188,16 +189,23 @@ internal fun LibrarySearchBar(
     val contentAlignment = if (style.anchorRight) Alignment.CenterEnd else Alignment.CenterStart
     
     // Highlight border animation for controller navigation (theme-only feature)
+    // Use gradient brush for default focus styling (matching grid behavior)
     val hasHighlightStyling = style.highlightColor != null
     val highlightAlpha by animateFloatAsState(
         targetValue = if (isFocused && hasHighlightStyling) style.highlightOpacity else 0f,
         animationSpec = tween(durationMillis = style.highlightTransitionSpeed),
         label = "searchBarHighlightAlpha"
     )
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.tertiary.copy(alpha = highlightAlpha),
+            MaterialTheme.colorScheme.primary.copy(alpha = highlightAlpha),
+        )
+    )
     val highlightBorderModifier = if (hasHighlightStyling && highlightAlpha > 0f) {
         Modifier.border(
             width = style.highlightBorderWidth,
-            color = style.highlightColor!!.copy(alpha = highlightAlpha),
+            brush = gradientBrush,
             shape = RoundedCornerShape(cornerRadius)
         )
     } else {
@@ -413,72 +421,151 @@ internal fun LibrarySearchBar(
                 }
             }
         } else {
-            // Non-collapsible mode - always show full search field
+            // Non-collapsible mode - show search field but don't activate until user presses Enter/A
+            var isTextFieldActive by remember { mutableStateOf(false) }
+            val textFieldFocusRequester = remember { FocusRequester() }
             val interactionSource = remember { MutableInteractionSource() }
-            BasicTextField(
-                value = state.searchQuery,
-                onValueChange = onSearchText,
+            
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(style.height)
                     .clip(RoundedCornerShape(cornerRadius))
                     .background(bgColor, RoundedCornerShape(cornerRadius))
-                    .focusable(allowFocusing.value)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { focusState ->
-                        isFocused = focusState.isFocused
-                    },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor),
-                cursorBrush = SolidColor(iconColor),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                interactionSource = interactionSource,
-                decorationBox = { innerTextField ->
-                    TextFieldDefaults.DecorationBox(
-                        value = state.searchQuery,
-                        innerTextField = innerTextField,
-                        enabled = true,
-                        singleLine = true,
-                        visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
-                        interactionSource = interactionSource,
-                        placeholder = {
-                            Text(
-                                text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                                color = iconColor.copy(alpha = 0.7f)
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
-                                tint = iconColor
-                            )
-                        },
-                        trailingIcon = {
-                            if (state.searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { onSearchText("") },
-                                    content = {
-                                        Icon(
-                                            Icons.Default.Clear,
-                                            contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
-                                            tint = iconColor
-                                        )
+                    .then(
+                        if (!isTextFieldActive) {
+                            // When not active, the outer box is focusable for navigation
+                            Modifier
+                                .focusRequester(focusRequester)
+                                .focusable()
+                                .onFocusChanged { focusState ->
+                                    isFocused = focusState.isFocused
+                                    if (focusState.isFocused) {
+                                        spatialFocusManager?.setFocused(style.navigationId)
                                     }
-                                )
+                                }
+                                .onKeyEvent { keyEvent ->
+                                    if (keyEvent.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                                        when (keyEvent.key) {
+                                            // Activate text input on Enter/A button
+                                            androidx.compose.ui.input.key.Key.Enter,
+                                            androidx.compose.ui.input.key.Key.DirectionCenter,
+                                            androidx.compose.ui.input.key.Key.ButtonA -> {
+                                                isTextFieldActive = true
+                                                true
+                                            }
+                                            // Handle D-pad navigation
+                                            androidx.compose.ui.input.key.Key.DirectionUp -> {
+                                                spatialFocusManager?.navigateInDirection(
+                                                    style.navigationId,
+                                                    SpatialFocusManager.Direction.UP
+                                                ) ?: false
+                                            }
+                                            androidx.compose.ui.input.key.Key.DirectionDown -> {
+                                                spatialFocusManager?.navigateInDirection(
+                                                    style.navigationId,
+                                                    SpatialFocusManager.Direction.DOWN
+                                                ) ?: false
+                                            }
+                                            androidx.compose.ui.input.key.Key.DirectionLeft -> {
+                                                spatialFocusManager?.navigateInDirection(
+                                                    style.navigationId,
+                                                    SpatialFocusManager.Direction.LEFT
+                                                ) ?: false
+                                            }
+                                            androidx.compose.ui.input.key.Key.DirectionRight -> {
+                                                spatialFocusManager?.navigateInDirection(
+                                                    style.navigationId,
+                                                    SpatialFocusManager.Direction.RIGHT
+                                                ) ?: false
+                                            }
+                                            else -> false
+                                        }
+                                    } else false
+                                }
+                                .clickable {
+                                    // Activate on tap/click
+                                    isTextFieldActive = true
+                                }
+                        } else Modifier
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                BasicTextField(
+                    value = state.searchQuery,
+                    onValueChange = onSearchText,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(textFieldFocusRequester)
+                        .onFocusChanged { focusState ->
+                            // Deactivate when text field loses focus
+                            if (!focusState.isFocused && isTextFieldActive) {
+                                isTextFieldActive = false
                             }
+                            isFocused = focusState.isFocused || focusState.hasFocus
                         },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
-                    )
+                    enabled = isTextFieldActive,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor),
+                    cursorBrush = SolidColor(iconColor),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                    interactionSource = interactionSource,
+                    decorationBox = { innerTextField ->
+                        TextFieldDefaults.DecorationBox(
+                            value = state.searchQuery,
+                            innerTextField = innerTextField,
+                            enabled = isTextFieldActive,
+                            singleLine = true,
+                            visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+                            interactionSource = interactionSource,
+                            placeholder = {
+                                Text(
+                                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
+                                    color = iconColor.copy(alpha = 0.7f)
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                                    tint = iconColor
+                                )
+                            },
+                            trailingIcon = {
+                                if (state.searchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onSearchText("") },
+                                        content = {
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
+                                                tint = iconColor
+                                            )
+                                        }
+                                    )
+                                }
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                disabledIndicatorColor = Color.Transparent,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
+                        )
+                    }
+                )
+            }
+            
+            // Request focus on text field when activated
+            LaunchedEffect(isTextFieldActive) {
+                if (isTextFieldActive) {
+                    textFieldFocusRequester.requestFocus()
                 }
-            )
+            }
         }
     }
 

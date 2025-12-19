@@ -20,13 +20,13 @@
                   borderColor="#33000000"
                   cornerRadius="@{vars.cornerRadius}" />
 
-            <!-- Focus highlight border -->
+            <!-- Focus border around image only - uses theme gradient -->
             <rect id="focusBorder"
                   x="@{vars.imageX}" y="@{vars.imageY}"
                   width="@{vars.imageSize}" height="@{vars.imageSize}"
                   color="#00000000"
-                  borderWidth="@{vars.highlightBorderWidth}"
-                  borderColor="@{vars.highlightColor}"
+                  borderWidth="@{vars.focusBorderWidth}"
+                  borderGradient="true"
                   cornerRadius="@{vars.cornerRadius}"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}" />
@@ -113,6 +113,7 @@
                   focusedOffsetX="@{vars.focusedOffsetX}"
                   focusedSpacing="@{vars.focusedSpacing}"
                   backgroundTransitionSpeed="400"
+                  highlightBorderWidth="0"
                   navigateRight="filterBtn" />
 
         <!-- Top bar -->

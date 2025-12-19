@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,6 +43,8 @@ object SharedElementRenderers {
 
     /**
      * Render a rectangle with optional fill, gradient, and border.
+     * 
+     * @param borderGradient If true, uses the theme's default gradient (tertiary to primary) for the border
      */
     @Composable
     fun RenderRect(
@@ -52,6 +55,7 @@ object SharedElementRenderers {
         cornerRadius: String?,
         borderWidth: Float,
         borderColor: Color,
+        borderGradient: Boolean = false,
         gradientStart: Color?,
         gradientEnd: Color?,
         gradientAngle: Float,
@@ -62,6 +66,16 @@ object SharedElementRenderers {
         
         val gradientBrush = if (hasGradient && gradientStart != null && gradientEnd != null) {
             createGradientBrush(gradientStart, gradientEnd, gradientAngle, width, height)
+        } else null
+        
+        // Create border brush - either gradient or solid color
+        val borderBrush = if (borderGradient) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.primary,
+                )
+            )
         } else null
         
         Box(
@@ -78,7 +92,11 @@ object SharedElementRenderers {
                 )
                 .then(
                     if (borderWidth > 0f) {
-                        Modifier.border(borderWidth.dp, borderColor, shape)
+                        if (borderBrush != null) {
+                            Modifier.border(borderWidth.dp, borderBrush, shape)
+                        } else {
+                            Modifier.border(borderWidth.dp, borderColor, shape)
+                        }
                     } else {
                         Modifier
                     }

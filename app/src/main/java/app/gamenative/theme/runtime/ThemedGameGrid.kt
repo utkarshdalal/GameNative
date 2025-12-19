@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.PagerDefaults
@@ -87,6 +88,15 @@ fun ThemedGameGrid(
         ThemeStringResolver(context, context.assets)
     }
     
+    // Spatial focus manager for directional navigation
+    val spatialFocusManager = LocalSpatialFocusManager.current
+    
+    // Focus requester for the first grid item - this is what will receive focus when navigating to the grid
+    val firstItemFocusRequester = remember { FocusRequester() }
+    
+    // Use configured navigationId or default to "grid"
+    val gridNavId = gridConfig.navigationId ?: "grid"
+    
     // Use content padding from grid config, with defaults
     val paddingTop = if (gridConfig.contentPaddingTop > 0) gridConfig.contentPaddingTop.dp else 80.dp
     val paddingBottom = if (gridConfig.contentPaddingBottom > 0) gridConfig.contentPaddingBottom.dp else 72.dp
@@ -140,11 +150,43 @@ fun ThemedGameGrid(
         // Total cell height including separator
         val totalCellHeight = cellHeightDp + separatorTotalHeightDp
 
+        // Navigation links for edge navigation
+        val navigationLinks = SpatialFocusManager.NavigationLinks(
+            up = gridConfig.navigateUp,
+            down = gridConfig.navigateDown,
+            left = gridConfig.navigateLeft,
+            right = gridConfig.navigateRight,
+        )
+        
+        // Helper to check if we're at edge and should use explicit navigation
+        fun isAtRightEdge(index: Int): Boolean = (index + 1) % columnCount == 0
+        fun isAtLeftEdge(index: Int): Boolean = index % columnCount == 0
+        fun isAtTopEdge(index: Int): Boolean = index < columnCount
+        fun isAtBottomEdge(index: Int, totalItems: Int): Boolean {
+            val lastRowStart = (totalItems - 1) / columnCount * columnCount
+            return index >= lastRowStart
+        }
+
         // Use Fixed columns for precise control, since we've calculated the exact count
         LazyVerticalGrid(
             columns = GridCells.Fixed(columnCount),
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                // Register the grid with spatial focus manager using the first item's focus requester
+                .onGloballyPositioned { coordinates ->
+                    spatialFocusManager?.register(
+                        id = gridNavId,
+                        bounds = coordinates.boundsInRoot(),
+                        focusRequester = firstItemFocusRequester,
+                        navigationLinks = navigationLinks
+                    )
+                }
+                .onFocusChanged { focusState ->
+                    if (focusState.hasFocus) {
+                        spatialFocusManager?.setFocused(gridNavId)
+                    }
+                },
             contentPadding = PaddingValues(
                 start = paddingStart,
                 end = paddingEnd,
@@ -154,10 +196,10 @@ fun ThemedGameGrid(
             horizontalArrangement = Arrangement.spacedBy(hSpacing),
             verticalArrangement = Arrangement.spacedBy(vSpacing),
         ) {
-            items(
+            itemsIndexed(
                 items = items,
-                key = { it.appId }
-            ) { item ->
+                key = { _, item -> item.appId }
+            ) { index, item ->
                 Column {
                     ThemedGameTile(
                         item = item,
@@ -168,6 +210,28 @@ fun ThemedGameGrid(
                         onFocus = { onItemFocus(item) },
                         stringResolver = stringResolver,
                         themePath = themePath,
+                        highlightBorderWidth = gridConfig.highlightBorderWidth,
+                        highlightCornerRadius = gridConfig.highlightCornerRadius,
+                        // Pass focus requester only for first item
+                        focusRequester = if (index == 0) firstItemFocusRequester else null,
+                        // Edge navigation
+                        onEdgeNavigation = { direction ->
+                            val target = when (direction) {
+                                SpatialFocusManager.Direction.RIGHT -> 
+                                    if (isAtRightEdge(index)) navigationLinks.right else null
+                                SpatialFocusManager.Direction.LEFT -> 
+                                    if (isAtLeftEdge(index)) navigationLinks.left else null
+                                SpatialFocusManager.Direction.UP -> 
+                                    if (isAtTopEdge(index)) navigationLinks.up else null
+                                SpatialFocusManager.Direction.DOWN -> 
+                                    if (isAtBottomEdge(index, items.size)) navigationLinks.down else null
+                            }
+                            if (target != null) {
+                                spatialFocusManager?.navigateTo(target) ?: false
+                            } else {
+                                false
+                            }
+                        },
                     )
                     // Render separator if configured
                     gridConfig.separator?.let { separator ->
@@ -467,7 +531,22 @@ fun ThemedGameCarousel(
                             scaleY = scale
                             this.alpha = alpha
                         }
-                        .clickable { onItemClick(item) },
+                        .clickable { onItemClick(item) }
+                        .then(
+                            // Show focus border if highlightBorderWidth > 0
+                            if (isFocused && carouselConfig.highlightBorderWidth > 0f) {
+                                Modifier.border(
+                                    width = carouselConfig.highlightBorderWidth.dp,
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(carouselConfig.highlightCornerRadius.dp)
+                                )
+                            } else Modifier
+                        ),
                 ) {
                     // Render each layer from the card, sorted by zIndex then declarationOrder
                     val isPortrait = rememberIsPortrait()
@@ -626,6 +705,65 @@ private fun BoxScope.CarouselBackgroundImage(
 }
 
 /**
+ * Render a single theme layer for grid items.
+ * Handles focusOnly layers with fade transitions.
+ */
+@Composable
+private fun BoxScope.RenderGridLayer(
+    layer: Layer,
+    bindings: Map<String, String>,
+    parentSize: DpSize,
+    stringResolver: ThemeStringResolver,
+    themePath: String?,
+    isFocused: Boolean,
+    onImageLoadFailed: () -> Unit = {},
+) {
+    // Check conditional visibility based on binding value
+    layer.visibleWhen?.let { bindingPath ->
+        val bindingValue = bindings[bindingPath] ?: "false"
+        if (bindingValue != "true") return
+    }
+    
+    // If layer is focusOnly, animate based on focus state
+    if (layer.focusOnly) {
+        val targetAlpha = if (isFocused) 1f else 0f
+        val animatedAlpha by animateFloatAsState(
+            targetValue = targetAlpha,
+            animationSpec = tween(durationMillis = layer.focusTransitionSpeed),
+            label = "gridFocusOnlyAlpha"
+        )
+        
+        // Skip rendering entirely if invisible
+        if (animatedAlpha <= 0.01f) return
+        
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = animatedAlpha }
+        ) {
+            RenderThemedLayer(
+                layer = layer,
+                bindings = bindings,
+                parentSize = parentSize,
+                onImageLoadFailed = onImageLoadFailed,
+                stringResolver = stringResolver,
+                themePath = themePath,
+            )
+        }
+    } else {
+        // Regular layer, render normally
+        RenderThemedLayer(
+            layer = layer,
+            bindings = bindings,
+            parentSize = parentSize,
+            onImageLoadFailed = onImageLoadFailed,
+            stringResolver = stringResolver,
+            themePath = themePath,
+        )
+    }
+}
+
+/**
  * Render a single theme layer for carousel items.
  * Handles focusOnly layers with fade transitions.
  */
@@ -752,16 +890,40 @@ private fun ThemedGameTile(
     onFocus: () -> Unit,
     stringResolver: ThemeStringResolver,
     themePath: String?,
+    highlightBorderWidth: Float = 3f,
+    highlightCornerRadius: Float = 8f,
+    focusRequester: FocusRequester? = null,
+    onEdgeNavigation: (SpatialFocusManager.Direction) -> Boolean = { false },
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var imageLoadFailed by remember { mutableStateOf(false) }
-
+    
     Box(
         modifier = Modifier
             .size(cellSize.width, cellSize.height)
+            // Apply focus requester if provided (for first item)
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
                 if (isFocused) onFocus()
+            }
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    val direction = when (keyEvent.key) {
+                        Key.DirectionRight -> SpatialFocusManager.Direction.RIGHT
+                        Key.DirectionLeft -> SpatialFocusManager.Direction.LEFT
+                        Key.DirectionUp -> SpatialFocusManager.Direction.UP
+                        Key.DirectionDown -> SpatialFocusManager.Direction.DOWN
+                        else -> null
+                    }
+                    if (direction != null) {
+                        onEdgeNavigation(direction)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
             }
             .clickable(
                 onClick = onClick,
@@ -769,16 +931,17 @@ private fun ThemedGameTile(
                 indication = null
             )
             .then(
-                if (isFocused) {
+                // Show focus border if highlightBorderWidth > 0
+                if (isFocused && highlightBorderWidth > 0f) {
                     Modifier.border(
-                        width = 3.dp,
+                        width = highlightBorderWidth.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                             )
                         ),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(highlightCornerRadius.dp)
                     )
                 } else Modifier
             )
@@ -791,13 +954,14 @@ private fun ThemedGameTile(
             .filter { layer -> layer.visibility.isVisible(isPortrait) }
             .sortedWith(compareBy<Layer> { it.zIndex }.thenBy { it.declarationOrder })
             .forEach { layer ->
-                RenderThemedLayer(
+                RenderGridLayer(
                     layer = layer,
                     bindings = bindings,
                     parentSize = cellSize,
-                    onImageLoadFailed = { imageLoadFailed = true },
                     stringResolver = stringResolver,
                     themePath = themePath,
+                    isFocused = isFocused,
+                    onImageLoadFailed = { imageLoadFailed = true },
                 )
             }
 
@@ -916,6 +1080,16 @@ private fun BoxScope.RenderThemedLayer(
             val alpha = resolveFloatBinding(layer.opacity, 1f)
             val borderWidth = resolveFloatBinding(layer.borderWidth, 0f)
             val borderColor = resolveIntBinding(layer.borderColor, 0xFFFFFFFF.toInt(), bindings)
+            
+            // Create border brush - either gradient or solid color
+            val borderBrush = if (layer.borderGradient) {
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.primary,
+                    )
+                )
+            } else null
 
             Box(
                 modifier = Modifier
@@ -927,7 +1101,11 @@ private fun BoxScope.RenderThemedLayer(
                     .background(Color(fillColor))
                     .then(
                         if (borderWidth > 0f) {
-                            Modifier.border(borderWidth.dp, Color(borderColor), shape)
+                            if (borderBrush != null) {
+                                Modifier.border(borderWidth.dp, borderBrush, shape)
+                            } else {
+                                Modifier.border(borderWidth.dp, Color(borderColor), shape)
+                            }
                         } else {
                             Modifier
                         }

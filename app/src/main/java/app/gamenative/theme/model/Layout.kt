@@ -117,6 +117,10 @@ sealed class LayoutNode {
         val navigateLeft: String? = null,
         /** Navigation target when pressing right at the edge. */
         val navigateRight: String? = null,
+        /** Focus border width in dp. */
+        val highlightBorderWidth: Float = 3f,
+        /** Focus border corner radius in dp. */
+        val highlightCornerRadius: Float = 8f,
     ) : LayoutNode()
 
     /**
@@ -171,6 +175,10 @@ sealed class LayoutNode {
         val navigateLeft: String? = null,
         /** Navigation target when pressing right at the edge. */
         val navigateRight: String? = null,
+        /** Focus border width in dp. */
+        val highlightBorderWidth: Float = 3f,
+        /** Focus border corner radius in dp. */
+        val highlightCornerRadius: Float = 8f,
     ) : LayoutNode()
 }
 

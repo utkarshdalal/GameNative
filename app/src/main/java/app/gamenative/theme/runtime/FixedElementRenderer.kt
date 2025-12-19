@@ -58,6 +58,8 @@ import app.gamenative.R
 import app.gamenative.service.DownloadService
 import app.gamenative.theme.model.Anchor
 import app.gamenative.theme.model.Dimension
+import app.gamenative.theme.model.DimOffset
+import app.gamenative.theme.model.DimSize
 import app.gamenative.theme.model.FixedContainer
 import app.gamenative.theme.model.FixedElement
 import app.gamenative.theme.model.Visibility
@@ -136,7 +138,13 @@ private fun HighlightableBox(
         label = "highlightBorderAlpha"
     )
 
-    val borderColor = highlightStyle.color.copy(alpha = highlightAlpha)
+    // Use gradient brush for default focus styling (matching grid behavior)
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.tertiary.copy(alpha = highlightAlpha),
+            MaterialTheme.colorScheme.primary.copy(alpha = highlightAlpha),
+        )
+    )
 
     Box(
         modifier = modifier
@@ -180,7 +188,7 @@ private fun HighlightableBox(
                 if (highlightAlpha > 0f) {
                     Modifier.border(
                         width = highlightStyle.borderWidth,
-                        color = borderColor,
+                        brush = gradientBrush,
                         shape = RoundedCornerShape(cornerRadius)
                     )
                 } else {
@@ -339,11 +347,27 @@ private fun BoxScope.RenderFixedElement(
     BoxWithConstraints(modifier = Modifier.matchParentSize()) {
         val parentWidth = maxWidth
         val parentHeight = maxHeight
+        val parentSize = DpSize(parentWidth, parentHeight)
 
-    val alignment = element.anchor.toComposeAlignment()
+        // Calculate raw position
         val rawX = dimToDp(element.position.x, parentWidth, parentHeight)
         val rawY = dimToDp(element.position.y, parentWidth, parentHeight)
-    val (offsetX, offsetY) = calculateCssLikeOffset(rawX, rawY, element.anchor)
+        
+        // For CSS-like elements (buttons, header, searchbar, etc.) use CSS positioning
+        // For decorative elements (rect, text, shadow, border, backdrop, image, video) use absolute positioning
+        val useCssPositioning = element is FixedElement.Header || 
+                                element is FixedElement.SearchBar ||
+                                element is FixedElement.ProfileButton ||
+                                element is FixedElement.FilterButton ||
+                                element is FixedElement.AddButton
+        
+        val alignment = if (useCssPositioning) element.anchor.toComposeAlignment() else Alignment.TopStart
+        val (offsetX, offsetY) = if (useCssPositioning) {
+            calculateCssLikeOffset(rawX, rawY, element.anchor)
+        } else {
+            // For absolute positioning, we'll calculate per-element based on their size
+            Pair(rawX, rawY)  // Placeholder, will be overridden per element
+        }
 
     when (element) {
         is FixedElement.Header -> {
@@ -485,21 +509,41 @@ private fun BoxScope.RenderFixedElement(
             val highlightStyle = element.toHighlightStyle()
             val navigationLinks = element.toNavigationLinks()
 
+            // Use a larger size for the HighlightableBox to account for the border
+            val totalSize = buttonSize + highlightStyle.borderWidth * 2
+            val borderOffset = highlightStyle.borderWidth
+
+            // Adjust offset based on anchor direction so border expands outward
+            val adjustedOffsetX = when (element.anchor) {
+                Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> offsetX + borderOffset
+                Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> offsetX - borderOffset
+                else -> offsetX // Center anchors: no X adjustment
+            }
+            val adjustedOffsetY = when (element.anchor) {
+                Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> offsetY + borderOffset
+                Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> offsetY - borderOffset
+                else -> offsetY // Center anchors: no Y adjustment
+            }
+
             HighlightableBox(
                 id = elementId,
                 highlightStyle = highlightStyle,
-                cornerRadius = radius,
+                cornerRadius = radius + borderOffset,
                 navigationLinks = navigationLinks,
                 modifier = Modifier
                     .align(alignment)
-                    .offset(x = offsetX, y = offsetY)
-                    .size(buttonSize)
-                    .clip(RoundedCornerShape(radius))
-                    .background(bgColor)
-                    .padding(buttonPadding),
+                    .offset(x = adjustedOffsetX, y = adjustedOffsetY)
+                    .size(totalSize),
             ) {
+                // Inner box with the actual background and content
+                // Use padding to leave space for the border, then apply background
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .padding(borderOffset)
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(radius))
+                        .background(bgColor)
+                        .padding(buttonPadding),
                     contentAlignment = Alignment.Center
                 ) {
                     accountButtonContent(iconSize)
@@ -541,6 +585,7 @@ private fun BoxScope.RenderFixedElement(
                         onClick = callbacks.onFilterClick,
                         containerColor = bgColor,
                         contentColor = iconTint,
+                        shape = RoundedCornerShape(cornerRadius),
                         modifier = Modifier.defaultMinSize(minWidth = buttonSize, minHeight = buttonSize),
                     )
                 }
@@ -586,6 +631,7 @@ private fun BoxScope.RenderFixedElement(
         is FixedElement.Image -> {
             val width = dimToDp(element.size.width, parentWidth, parentHeight)
             val height = dimToDp(element.size.height, parentWidth, parentHeight)
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, width, height, element.anchor)
             val shape = ThemeUtils.parseCornerRadius(element.cornerRadius)
             val contentScale = when (element.scaleType.lowercase()) {
                 "contain", "fit" -> ContentScale.Fit
@@ -598,8 +644,8 @@ private fun BoxScope.RenderFixedElement(
 
             Box(
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX, y = offsetY)
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x, y = pos.y)
                     .size(width, height)
                     .clip(shape)
                     .graphicsLayer(alpha = element.opacity)
@@ -625,24 +671,30 @@ private fun BoxScope.RenderFixedElement(
         }
 
         is FixedElement.Video -> {
+            val w = dimToDp(element.size.width, parentWidth, parentHeight)
+            val h = dimToDp(element.size.height, parentWidth, parentHeight)
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, w, h, element.anchor)
             FixedVideoElement(
                 element = element,
-                width = dimToDp(element.size.width, parentWidth, parentHeight),
-                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                width = w,
+                height = h,
                 themeRootDir = themeRootDir,
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX, y = offsetY)
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x, y = pos.y)
             )
         }
 
         is FixedElement.Rect -> {
+            val w = dimToDp(element.size.width, parentWidth, parentHeight)
+            val h = dimToDp(element.size.height, parentWidth, parentHeight)
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, w, h, element.anchor)
             SharedElementRenderers.RenderRect(
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX, y = offsetY),
-                width = dimToDp(element.size.width, parentWidth, parentHeight),
-                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x, y = pos.y),
+                width = w,
+                height = h,
                 color = Color(element.color),
                 cornerRadius = element.cornerRadius,
                 borderWidth = element.borderWidth,
@@ -655,12 +707,18 @@ private fun BoxScope.RenderFixedElement(
         }
 
         is FixedElement.Text -> {
+            val w = element.size?.let { dimToDp(it.width, parentWidth, parentHeight) } ?: Dp.Unspecified
+            val h = element.size?.let { dimToDp(it.height, parentWidth, parentHeight) } ?: Dp.Unspecified
+            // For text, use a reasonable default size for anchor calculation if unspecified
+            val wCalc = if (w == Dp.Unspecified) 100.dp else w
+            val hCalc = if (h == Dp.Unspecified) 20.dp else h
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, wCalc, hCalc, element.anchor)
             SharedElementRenderers.RenderText(
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX, y = offsetY),
-                width = element.size?.let { dimToDp(it.width, parentWidth, parentHeight) },
-                height = element.size?.let { dimToDp(it.height, parentWidth, parentHeight) },
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x, y = pos.y),
+                width = if (w == Dp.Unspecified) null else w,
+                height = if (h == Dp.Unspecified) null else h,
                 text = element.text,
                 color = Color(element.color),
                 textSize = element.textSize,
@@ -674,12 +732,15 @@ private fun BoxScope.RenderFixedElement(
         }
 
         is FixedElement.Shadow -> {
+            val w = dimToDp(element.size.width, parentWidth, parentHeight)
+            val h = dimToDp(element.size.height, parentWidth, parentHeight)
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, w, h, element.anchor)
             SharedElementRenderers.RenderShadow(
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX + element.offsetX.dp, y = offsetY + element.offsetY.dp),
-                width = dimToDp(element.size.width, parentWidth, parentHeight),
-                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x + element.offsetX.dp, y = pos.y + element.offsetY.dp),
+                width = w,
+                height = h,
                 radius = element.radius,
                 color = Color(element.color),
                 offsetX = element.offsetX,
@@ -690,12 +751,15 @@ private fun BoxScope.RenderFixedElement(
         }
 
         is FixedElement.Border -> {
+            val w = dimToDp(element.size.width, parentWidth, parentHeight)
+            val h = dimToDp(element.size.height, parentWidth, parentHeight)
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, w, h, element.anchor)
             SharedElementRenderers.RenderBorder(
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX, y = offsetY),
-                width = dimToDp(element.size.width, parentWidth, parentHeight),
-                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x, y = pos.y),
+                width = w,
+                height = h,
                 strokeWidth = element.strokeWidth,
                 color = Color(element.color),
                 cornerRadius = element.cornerRadius,
@@ -704,12 +768,15 @@ private fun BoxScope.RenderFixedElement(
         }
 
         is FixedElement.Backdrop -> {
+            val w = dimToDp(element.size.width, parentWidth, parentHeight)
+            val h = dimToDp(element.size.height, parentWidth, parentHeight)
+            val pos = ThemeUtils.calculateAbsoluteAnchoredPosition(rawX, rawY, w, h, element.anchor)
             SharedElementRenderers.RenderBackdrop(
                 modifier = Modifier
-                    .align(alignment)
-                    .offset(x = offsetX, y = offsetY),
-                width = dimToDp(element.size.width, parentWidth, parentHeight),
-                height = dimToDp(element.size.height, parentWidth, parentHeight),
+                    .align(Alignment.TopStart)
+                    .offset(x = pos.x, y = pos.y),
+                width = w,
+                height = h,
                 blurRadius = element.blurRadius,
                 tintColor = element.tintColor?.let { Color(it) },
                 cornerRadius = element.cornerRadius,

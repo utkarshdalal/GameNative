@@ -39,7 +39,8 @@
             itemCard="carousel"
             focusedBackground="@{game.libraryHero}"
             backgroundOpacity="0.2"
-            backgroundTransitionSpeed="@{vars.transitionSpeed}" />
+            backgroundTransitionSpeed="@{vars.transitionSpeed}"
+            highlightBorderWidth="0" />
 
         <fixed id="topBar" height="@{vars.topBarHeight}">
             <header x="@{vars.paddingMedium}" y="8" anchor="topLeft"

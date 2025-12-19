@@ -173,6 +173,46 @@ object ThemeUtils {
         return Placement(x, y, elementWidth, elementHeight)
     }
 
+    /**
+     * Calculate element position where x,y represents the ABSOLUTE position of the anchor point.
+     * 
+     * Unlike [calculateAnchoredPosition] which treats x,y as offsets from edges (CSS-like),
+     * this function treats x,y as the exact coordinates where the anchor point should be placed.
+     * 
+     * For example:
+     * - topLeft with x=80, y=100: element's top-left corner is at (80, 100)
+     * - topRight with x=280, y=100: element's top-right corner is at (280, 100), so left edge = 280 - width
+     * - center with x=200, y=150: element's center is at (200, 150)
+     * 
+     * @param anchorX Absolute X coordinate where the anchor point should be
+     * @param anchorY Absolute Y coordinate where the anchor point should be
+     * @param elementWidth Element width
+     * @param elementHeight Element height
+     * @param anchor Which point of the element the coordinates refer to
+     * @return Calculated position for the element's top-left corner
+     */
+    fun calculateAbsoluteAnchoredPosition(
+        anchorX: Dp,
+        anchorY: Dp,
+        elementWidth: Dp,
+        elementHeight: Dp,
+        anchor: Anchor
+    ): Placement {
+        val x = when (anchor) {
+            Anchor.TOP_LEFT, Anchor.CENTER_LEFT, Anchor.BOTTOM_LEFT -> anchorX
+            Anchor.TOP_CENTER, Anchor.CENTER, Anchor.BOTTOM_CENTER -> anchorX - elementWidth / 2
+            Anchor.TOP_RIGHT, Anchor.CENTER_RIGHT, Anchor.BOTTOM_RIGHT -> anchorX - elementWidth
+        }
+
+        val y = when (anchor) {
+            Anchor.TOP_LEFT, Anchor.TOP_CENTER, Anchor.TOP_RIGHT -> anchorY
+            Anchor.CENTER_LEFT, Anchor.CENTER, Anchor.CENTER_RIGHT -> anchorY - elementHeight / 2
+            Anchor.BOTTOM_LEFT, Anchor.BOTTOM_CENTER, Anchor.BOTTOM_RIGHT -> anchorY - elementHeight
+        }
+
+        return Placement(x, y, elementWidth, elementHeight)
+    }
+
 }
 
 // Convenience top-level function aliases for cleaner imports

@@ -256,6 +256,7 @@ private fun BoxScope.RectLayerView(layer: Layer.RectLayer, parentSize: DpSize, b
         cornerRadius = layer.cornerRadius,
         borderWidth = borderWidth,
         borderColor = borderColor,
+        borderGradient = layer.borderGradient,
         gradientStart = if (gradientStartInt != 0) Color(gradientStartInt) else null,
         gradientEnd = if (gradientEndInt != 0) Color(gradientEndInt) else null,
         gradientAngle = gradientAngle,

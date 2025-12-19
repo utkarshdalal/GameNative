@@ -595,6 +595,7 @@ object ThemeXmlMapper {
             cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
             borderWidth = floatBindingResolved(n.attributes["borderWidth"], tree),
             borderColor = intBindingResolved(n.attributes["borderColor"], tree),
+            borderGradient = n.attributes["borderGradient"]?.toBooleanStrictOrNull() ?: false,
             gradientStart = intBindingResolved(n.attributes["gradientStart"], tree),
             gradientEnd = intBindingResolved(n.attributes["gradientEnd"], tree),
             gradientAngle = floatBindingResolved(n.attributes["gradientAngle"], tree),
@@ -1065,6 +1066,10 @@ object ThemeXmlMapper {
         val navigateDown = node.attributes["navigateDown"]
         val navigateLeft = node.attributes["navigateLeft"]
         val navigateRight = node.attributes["navigateRight"]
+        
+        // Highlight styling
+        val highlightBorderWidth = resolveFloat(node, "highlightBorderWidth", default = 3f, tree)
+        val highlightCornerRadius = resolveFloat(node, "highlightCornerRadius", default = 8f, tree)
 
         return LayoutNode.Grid(
             columns = cols,
@@ -1087,6 +1092,8 @@ object ThemeXmlMapper {
             navigateDown = navigateDown,
             navigateLeft = navigateLeft,
             navigateRight = navigateRight,
+            highlightBorderWidth = highlightBorderWidth,
+            highlightCornerRadius = highlightCornerRadius,
         )
     }
 
@@ -1164,6 +1171,10 @@ object ThemeXmlMapper {
         val navigateDown = node.attributes["navigateDown"]
         val navigateLeft = node.attributes["navigateLeft"]
         val navigateRight = node.attributes["navigateRight"]
+        
+        // Highlight styling
+        val highlightBorderWidth = resolveFloat(node, "highlightBorderWidth", default = 3f, tree)
+        val highlightCornerRadius = resolveFloat(node, "highlightCornerRadius", default = 8f, tree)
 
         return LayoutNode.Carousel(
             direction = dir,
@@ -1190,6 +1201,8 @@ object ThemeXmlMapper {
             navigateDown = navigateDown,
             navigateLeft = navigateLeft,
             navigateRight = navigateRight,
+            highlightBorderWidth = highlightBorderWidth,
+            highlightCornerRadius = highlightCornerRadius,
         )
     }
     // endregion
