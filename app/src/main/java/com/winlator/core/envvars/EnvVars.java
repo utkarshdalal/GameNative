@@ -33,6 +33,7 @@ public class EnvVars implements Iterable<String> {
         return (sb == null) ? s : sb.toString();
     }
     
+    public void putAll(String values) {
         if (values == null) return;
         values = values.trim();
         if (values.isEmpty()) return;
