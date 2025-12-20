@@ -1884,7 +1884,7 @@ private fun installRedistributables(
                     try {
                         val relativePath = exeFile.relativeTo(commonRedistDir).path.replace('/', '\\')
                         val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributable..."))
+                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributables..."))
                         Timber.i("Installing vcredist: $winePath")
                         val cmd = "wine $winePath /quiet /norestart && wineserver -k"
                         val output = guestProgramLauncherComponent.execShellCommand(cmd)
