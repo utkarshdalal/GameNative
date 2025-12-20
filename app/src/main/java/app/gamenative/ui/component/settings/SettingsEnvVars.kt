@@ -19,6 +19,14 @@ fun SettingsEnvVars(
     knownEnvVars: Map<String, EnvVarInfo>,
     envVarAction: (@Composable (String) -> Unit)? = null,
 ) {
+    fun stripSpacesOnly(s: String): String {
+        val first = s.indexOf(' ')
+        if (first < 0) return s
+        val sb = StringBuilder(s.length)
+        for (ch in s) if (ch != ' ') sb.append(ch)
+        return sb.toString()
+    }
+
     for (identifier in envVars) {
         val value = envVars.get(identifier)
         val envVarInfo = knownEnvVars[identifier]
@@ -28,7 +36,7 @@ fun SettingsEnvVars(
                     colors = colors,
                     enabled = enabled,
                     title = { Text(identifier) },
-                    state = envVarInfo?.possibleValues?.indexOf(value) != 0,
+                    state = envVarInfo?.possibleValues?.indexOf(stripSpacesOnly(value)) != 0,
                     onCheckedChange = {
                         val newValue = envVarInfo!!.possibleValues[if (it) 1 else 0]
                         envVars.put(identifier, newValue)
@@ -40,7 +48,7 @@ fun SettingsEnvVars(
                 )
             }
             EnvVarSelectionType.MULTI_SELECT -> {
-                val values = value.split(",")
+                val values = stripSpacesOnly(value).split(",")
                     .map { envVarInfo!!.possibleValues.indexOf(it) }
                     .filter { it >= 0 && it < envVarInfo!!.possibleValues.size }
                 SettingsMultiListDropdown(
@@ -73,7 +81,7 @@ fun SettingsEnvVars(
                         colors = colors,
                         enabled = enabled,
                         title = { Text(identifier) },
-                        value = envVarInfo.possibleValues.indexOf(value),
+                        value = envVarInfo.possibleValues.indexOf(stripSpacesOnly(value)),
                         items = envVarInfo.possibleValues,
                         fallbackDisplay = value,
                         onItemSelected = {
@@ -91,7 +99,7 @@ fun SettingsEnvVars(
                         title = { Text(identifier) },
                         value = value,
                         onValueChange = {
-                            envVars.put(identifier, it)
+                            envVars.put(identifier, stripSpacesOnly(it))
                             onEnvVarsChange(envVars)
                         },
                         action = envVarAction?.let {
