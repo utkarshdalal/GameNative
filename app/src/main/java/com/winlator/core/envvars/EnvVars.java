@@ -18,33 +18,14 @@ public class EnvVars implements Iterable<String> {
         data.put(name, String.valueOf(value));
     }
 
-    public static String stripWhitespace(String s) {
-        if (s == null || s.isEmpty()) return "";
-        StringBuilder sb = null;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (!Character.isWhitespace(c)) {
-                if (sb != null) sb.append(c);
-            } else if (sb == null) {
-                sb = new StringBuilder(s.length());
-                sb.append(s, 0, i);
-            }
-        }
-        return (sb == null) ? s : sb.toString();
-    }
-    
     public void putAll(String values) {
-        if (values == null) return;
-        values = values.trim();
-        if (values.isEmpty()) return;
-
-        // tolerate garbage input, but never crash
-        String[] parts = values.split("\\s+");
+        if (values == null || values.isEmpty()) return;
+        String[] parts = values.split(" ");
         for (String part : parts) {
-            if (part.isEmpty()) continue;
-            int index = part.indexOf('=');
-            if (index <= 0) continue;
-            data.put(part.substring(0, index), part.substring(index + 1));
+            int index = part.indexOf("=");
+            String name = part.substring(0, index);
+            String value = part.substring(index+1);
+            data.put(name, value);
         }
     }
 
