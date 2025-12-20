@@ -455,6 +455,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appDao?.findApp(appId) }
         }
 
+        fun getHiddenDlcAppsOf(appId: Int): List<SteamApp>? {
+            return runBlocking(Dispatchers.IO) { instance?.appDao?.findHiddenDLCApps(appId) }
+        }
+
         fun getInstalledDepotsOf(appId: Int): List<Int>? {
             return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledDepots(appId)?.downloadedDepots }
         }

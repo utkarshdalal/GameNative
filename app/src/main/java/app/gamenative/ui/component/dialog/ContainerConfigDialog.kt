@@ -1564,7 +1564,7 @@ fun ContainerConfigDialog(
                                     },
                                 )
                                 // FEXCore Preset (only when Bionic + Wine arm64ec)
-                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true) 
+                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
                                     && config.wineVersion.contains("arm64ec", ignoreCase = true)) {
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),
@@ -1630,64 +1630,10 @@ fun ContainerConfigDialog(
                                 SettingsSwitch(
                                     colors = settingsTileColorsAlt(),
                                     title = { Text(text = stringResource(R.string.touchscreen_mode)) },
+                                    subtitle = { Text(text = stringResource(R.string.touchscreen_mode_description)) },
                                     state = config.touchscreenMode,
                                     onCheckedChange = { config = config.copy(touchscreenMode = it) }
                                 )
-
-                                // Emulate keyboard and mouse
-                                SettingsSwitch(
-                                    colors = settingsTileColorsAlt(),
-                                    title = { Text(text = stringResource(R.string.emulate_keyboard_mouse)) },
-                                    subtitle = { Text(text = stringResource(R.string.emulate_keyboard_mouse_description)) },
-                                    state = config.emulateKeyboardMouse,
-                                    onCheckedChange = { checked ->
-                                        // Initialize defaults on first enable if empty
-                                        var newBindings = config.controllerEmulationBindings
-                                        if (checked && newBindings.isEmpty()) {
-                                            newBindings = """
-                                            {"L2":"MOUSE_LEFT_BUTTON","R2":"MOUSE_RIGHT_BUTTON","A":"KEY_SPACE","B":"KEY_Q","X":"KEY_E","Y":"KEY_TAB","SELECT":"KEY_ESC","L1":"KEY_SHIFT_L","L3":"NONE","R1":"KEY_CTRL_R","R3":"NONE","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT","START":"KEY_ENTER"}
-                                        """.trimIndent()
-                                        }
-                                        config = config.copy(emulateKeyboardMouse = checked, controllerEmulationBindings = newBindings)
-                                    }
-                                )
-
-                                if (config.emulateKeyboardMouse) {
-                                    // Dropdowns for mapping buttons -> bindings
-                                    val buttonOrder = listOf(
-                                        "A", "B", "X", "Y", "L1", "L2", "L3", "R1", "R2", "R3",
-                                        "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT", "START", "SELECT"
-                                    )
-                                    val context = LocalContext.current
-                                    val currentMap = try {
-                                        org.json.JSONObject(config.controllerEmulationBindings)
-                                    } catch (_: Exception) {
-                                        org.json.JSONObject()
-                                    }
-                                    val bindingLabels = com.winlator.inputcontrols.Binding.keyboardBindingLabels().toList() +
-                                            com.winlator.inputcontrols.Binding.mouseBindingLabels().toList()
-                                    val bindingValues =
-                                        com.winlator.inputcontrols.Binding.keyboardBindingValues().map { it.name }.toList() +
-                                                com.winlator.inputcontrols.Binding.mouseBindingValues().map { it.name }.toList()
-
-                                    for (btn in buttonOrder) {
-                                        val currentName = currentMap.optString(btn, "NONE")
-                                        val currentIndex = bindingValues.indexOf(currentName).coerceAtLeast(0)
-                                        SettingsListDropdown(
-                                            colors = settingsTileColors(),
-                                            title = { Text(text = btn.replace('_', ' ')) },
-                                            value = currentIndex,
-                                            items = bindingLabels,
-                                            onItemSelected = { idx ->
-                                                try {
-                                                    currentMap.put(btn, bindingValues[idx])
-                                                    config = config.copy(controllerEmulationBindings = currentMap.toString())
-                                                } catch (_: Exception) {
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
                             }
                             if (selectedTab == 4) SettingsGroup() {
                                 // TODO: add desktop settings
@@ -2000,6 +1946,7 @@ private fun ExecutablePathDropdown(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            readOnly = true,
             label = { Text(stringResource(R.string.container_config_executable_path)) },
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {

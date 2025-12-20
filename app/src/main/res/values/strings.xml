@@ -118,6 +118,8 @@
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
+    <string name="delete">Delete</string>
+    <string name="copy_from">Copy From</string>
     <string name="ok">Ok</string>
     <string name="storage_info">Storage Info</string>
     <string name="duplicate">Duplicate</string>
@@ -150,10 +152,136 @@
     <string name="exit_game">Exit</string>
     <string name="exit">Exit Game</string>
     <string name="keyboard">Keyboard</string>
+    <string name="extra">Extra</string>
+    <string name="clear_search">Clear Search</string>
+    <string name="buttons">Buttons</string>
+    <string name="face_buttons_category">Face Buttons</string>
+    <string name="shoulder_buttons_category">Shoulder Buttons</string>
+    <string name="menu_buttons_category">Menu Buttons</string>
+    <string name="thumbstick_buttons_category">Thumbstick Buttons</string>
+    <string name="left_stick">Left Stick</string>
+    <string name="right_stick">Right Stick</string>
+    <string name="dpad_category">D-Pad</string>
+    <string name="dpad_up">D-Pad Up</string>
+    <string name="dpad_down">D-Pad Down</string>
+    <string name="dpad_left">D-Pad Left</string>
+    <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
+    <string name="edit_controls">Edit On-screen Controller</string>
+    <string name="edit_physical_controller">Edit Physical Controller</string>
+    <string name="controller_disconnected">Disconnected</string>
+    <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
+    <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="touchpad_help">Touchpad Help</string>
+    <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
+    <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
+
+    <!-- Controller Binding Dialog -->
+    <string name="select_binding">Select Binding</string>
+    <string name="bind_button">Bind: %1$s</string>
+    <string name="current_binding">Current: %1$s</string>
+    <string name="search_bindings">Search bindings…</string>
+    <string name="search_placeholder">Search…</string>
+    <string name="search">Search</string>
+    <string name="category">Category</string>
+    <string name="keyboard_bindings">Keyboard</string>
+    <string name="mouse_bindings">Mouse</string>
+    <string name="gamepad_bindings">Gamepad</string>
+    <string name="mouse">Mouse</string>
+    <string name="gamepad">Gamepad</string>
+    <string name="binding_none">None</string>
+    <string name="clear_binding">Clear Binding</string>
+    <string name="no_bindings_found">No bindings found</string>
+
+    <!-- Element Editor Dialog -->
+    <string name="edit_element">Edit %1$s</string>
+    <string name="element_position_size">Position: (%1$d, %2$d) • Size: %3$.2fx</string>
+    <string name="appearance">Appearance</string>
+    <string name="size_subtitle">%.2fx</string>
+    <string name="label_text">Label Text</string>
+    <string name="label_text_subtitle">Custom text for this button</string>
+    <string name="element_type">Element Type</string>
+    <string name="element_type_subtitle">Change the type of this control</string>
+    <string name="shape">Shape</string>
+    <string name="shape_subtitle">Visual appearance</string>
+    <string name="shape_restricted">%1$s is restricted to %2$s shape</string>
+    <string name="bindings">Bindings</string>
+    <string name="bindings_auto_generated">Bindings (Auto-generated)</string>
+    <string name="bindings_auto_generated_subtitle">Range button bindings are automatically generated</string>
+    <string name="primary_action">Primary Action</string>
+    <string name="secondary_action">Secondary Action</string>
+    <string name="direction_up">Up</string>
+    <string name="direction_right">Right</string>
+    <string name="direction_down">Down</string>
+    <string name="direction_left">Left</string>
+    <string name="mouse_suffix"> (Mouse)</string>
+    <string name="slot_number">Slot %1$d</string>
+    <string name="button_slots_help">Buttons support up to 2 bindings: primary (press) and secondary (long press)</string>
+    <string name="properties">Properties</string>
+    <string name="position">Position</string>
+    <string name="position_value">X: %1$d, Y: %2$d</string>
+    <string name="unsaved_changes">Unsaved Changes</string>
+    <string name="unsaved_changes_message">You have unsaved changes. Do you want to save or discard them?</string>
+    <string name="adjust_size">Adjust Size</string>
+    <string name="reset">Reset</string>
+    <string name="done">Done</string>
+    <string name="copy_size_from_element">Copy Size From Element</string>
+    <string name="toast_no_elements_to_copy">No other elements available to copy size from</string>
+    <string name="toast_copied_size">Copied size: %.2fx</string>
+    <string name="on_screen_toast_controls_reset">On-screen controls reset to defaults</string>
+    <string name="quick_presets">Quick Presets</string>
+    <string name="preset_wasd">WASD</string>
+    <string name="preset_arrows">Arrows</string>
+    <string name="preset_mouse">Mouse</string>
+    <string name="preset_dpad">D-Pad</string>
+    <string name="preset_left_stick">Left Stick</string>
+    <string name="preset_right_stick">Right Stick</string>
+
+    <!-- Physical Controller Config -->
+    <string name="physical_controller_config">Physical Controller Bindings Editor</string>
+    <string name="physical_controller_config_subtitle">Configure button mappings for your physical controller</string>
+    <string name="face_buttons">Face Buttons</string>
+    <string name="button_a">A Button</string>
+    <string name="button_a_subtitle">Bottom face button (Confirm)</string>
+    <string name="button_b">B Button</string>
+    <string name="button_b_subtitle">Right face button (Back)</string>
+    <string name="button_x">X Button</string>
+    <string name="button_x_subtitle">Left face button</string>
+    <string name="button_y">Y Button</string>
+    <string name="button_y_subtitle">Top face button</string>
+    <string name="shoulder_buttons">Shoulder Buttons</string>
+    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1_subtitle">Left bumper</string>
+    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1_subtitle">Right bumper</string>
+    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2_subtitle">Left trigger</string>
+    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2_subtitle">Right trigger</string>
+    <string name="menu_buttons">Menu Buttons</string>
+    <string name="button_start">Start / Options</string>
+    <string name="button_select">Select / View / Share</string>
+    <string name="analog_sticks">Analog Sticks</string>
+    <string name="thumbstick_buttons">Thumbstick Buttons</string>
+    <string name="button_l3">L3 (Left Stick Click)</string>
+    <string name="button_r3">R3 (Right Stick Click)</string>
+    <string name="left_analog_stick">Left Analog Stick</string>
+    <string name="left_stick_up">Left Stick Up</string>
+    <string name="left_stick_down">Left Stick Down</string>
+    <string name="left_stick_left">Left Stick Left</string>
+    <string name="left_stick_right">Left Stick Right</string>
+    <string name="right_analog_stick">Right Analog Stick</string>
+    <string name="right_stick_up">Right Stick Up</string>
+    <string name="right_stick_down">Right Stick Down</string>
+    <string name="right_stick_left">Right Stick Left</string>
+    <string name="right_stick_right">Right Stick Right</string>
+    <string name="other">Other</string>
+    <string name="button_home">Home / Guide / PS</string>
+    <string name="reset_to_default_bindings">Reset to Default Bindings</string>
+    <string name="not_set">Not Set</string>
 
     <!-- Toast -->
+    <string name="toast_controls_reset">Controls reset</string>
     <string name="toast_failed_log_save">Failed to save logcat to destination</string>
 
     <!-- Settings -->
@@ -384,6 +512,9 @@
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="touchscreen_mode">Touchscreen Mode</string>
+    <string name="touchscreen_mode_description">Direct touch-to-cursor movement (ON) vs touchpad-style relative movement (OFF)</string>
+    <string name="start_with_controls_hidden">Start With On-Screen Controls Hidden</string>
+    <string name="start_with_controls_hidden_description">On-screen controls will be hidden when the game starts. Toggle via the navigation menu.</string>
     <string name="emulate_keyboard_mouse">Emulate keyboard and mouse</string>
     <string name="emulate_keyboard_mouse_description">Left stick = WASD, Right stick = mouse. L2 = left click, R2 = right click.</string>
 
@@ -421,6 +552,7 @@
     <string name="contents_manager">Contents Manager</string>
     <string name="import_wcp_from_device">Import .wcp from device</string>
     <string name="working">Working...</string>
+    <string name="selected">Selected</string>
     <string name="selected_content">Selected content</string>
     <string name="installed_contents">Installed contents</string>
     <string name="select_type">Select type</string>

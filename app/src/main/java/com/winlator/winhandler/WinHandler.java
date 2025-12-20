@@ -700,8 +700,19 @@ public class WinHandler {
         ExternalController externalController = this.currentController;
         // Adopt newly connected controller if deviceId mismatches
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId()) && ExternalController.isJoystickDevice(event)) {
-            ExternalController adopted = ExternalController.getController(event.getDeviceId());
-            if (adopted != null) {
+            ExternalController adopted = null;
+            // Try to get controller from profile first (has saved bindings)
+            if (inputControlsView != null) {
+                ControlsProfile profile = inputControlsView.getProfile();
+                if (profile != null) {
+                    adopted = profile.getController(event.getDeviceId());
+                }
+            }
+            // Fallback to creating new controller if profile doesn't have one
+            if (adopted == null) {
+                adopted = ExternalController.getController(event.getDeviceId());
+            }
+            if (adopted != null && "*".equals(adopted.getId())) {
                 this.currentController = adopted;
                 externalController = adopted;
                 Timber.d("WinHandler.onGenericMotionEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
@@ -726,8 +737,19 @@ public class WinHandler {
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
                 && device != null && ExternalController.isGameController(device)
                 && event.getRepeatCount() == 0) {
-            ExternalController adopted = ExternalController.getController(event.getDeviceId());
-            if (adopted != null) {
+            ExternalController adopted = null;
+            // Try to get controller from profile first (has saved bindings)
+            if (inputControlsView != null) {
+                ControlsProfile profile = inputControlsView.getProfile();
+                if (profile != null) {
+                    adopted = profile.getController(event.getDeviceId());
+                }
+            }
+            // Fallback to creating new controller if profile doesn't have one
+            if (adopted == null) {
+                adopted = ExternalController.getController(event.getDeviceId());
+            }
+            if (adopted != null && "*".equals(adopted.getId())) {
                 this.currentController = adopted;
                 externalController = adopted;
                 Timber.d("WinHandler.onKeyEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());

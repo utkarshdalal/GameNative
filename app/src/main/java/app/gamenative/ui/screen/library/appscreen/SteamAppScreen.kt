@@ -785,17 +785,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        var containerData = ContainerUtils.toContainerData(container)
-        // Seed FEXCore UI fields from actual per-container config file so values show up when editing
-        try {
-            val fex = FEXCoreManager.readFEXCoreSettings(context, container)
-            containerData = containerData.copy(
-                fexcoreTSOMode = fex[0],
-                fexcoreX87Mode = fex[1],
-                fexcoreMultiBlock = fex[2],
-            )
-        } catch (_: Throwable) { }
-        return containerData
+        return ContainerUtils.toContainerData(container)
     }
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {

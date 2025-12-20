@@ -58,6 +58,8 @@
     <string name="edit">Redigér</string>
     <string name="remove">Fjern</string>
     <string name="add">Tilføj</string>
+    <string name="delete">Slet</string>
+    <string name="copy_from">Kopiér fra</string>
     <string name="ok">Ok</string>
     <string name="storage_info">Lagerinformation</string>
     <string name="duplicate">Duplikér</string>
@@ -90,8 +92,133 @@
     <string name="exit_game">Afslut</string>
     <string name="exit">Afslut spil</string>
     <string name="keyboard">Tastatur</string>
+    <string name="extra">Ekstra</string>
+    <string name="clear_search">Ryd søgning</string>
+    <string name="buttons">Knapper</string>
+    <string name="face_buttons_category">Ansigtsknapper</string>
+    <string name="shoulder_buttons_category">Skulderknapper</string>
+    <string name="menu_buttons_category">Menuknapper</string>
+    <string name="thumbstick_buttons_category">Tommelfingerknapper</string>
+    <string name="left_stick">Venstre stick</string>
+    <string name="right_stick">Højre stick</string>
+    <string name="dpad_category">D-Pad</string>
+    <string name="dpad_up">D-Pad op</string>
+    <string name="dpad_down">D-Pad ned</string>
+    <string name="dpad_left">D-Pad venstre</string>
+    <string name="dpad_right">D-Pad højre</string>
     <string name="input_controls">On-screen-controller</string>
+    <string name="edit_controls">Redigér on-screen-controller</string>
+    <string name="edit_physical_controller">Redigér fysisk controller</string>
+    <string name="controller_disconnected">Afbrudt</string>
+    <string name="reset_onscreen_controls">Nulstil on-screen-kontroller</string>
+    <string name="open_navigation_menu">Åbn navigationsmenu</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
+    <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
+    <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
+
+    <!-- Controller Binding Dialog -->
+    <string name="select_binding">Vælg binding</string>
+    <string name="bind_button">Bind: %1$s</string>
+    <string name="current_binding">Nuværende: %1$s</string>
+    <string name="search_bindings">Søg bindings…</string>
+    <string name="search_placeholder">Søg…</string>
+    <string name="search">Søg</string>
+    <string name="category">Kategori</string>
+    <string name="keyboard_bindings">Tastatur</string>
+    <string name="mouse_bindings">Mus</string>
+    <string name="gamepad_bindings">Gamepad</string>
+    <string name="mouse">Mus</string>
+    <string name="gamepad">Gamepad</string>
+    <string name="binding_none">Ingen</string>
+    <string name="clear_binding">Ryd binding</string>
+    <string name="no_bindings_found">Ingen bindings fundet</string>
+
+    <!-- Element Editor Dialog -->
+    <string name="edit_element">Redigér %1$s</string>
+    <string name="element_position_size">Position: (%1$d, %2$d) • Størrelse: %3$.2fx</string>
+    <string name="appearance">Udseende</string>
+    <string name="size_subtitle">%.2fx</string>
+    <string name="label_text">Etikettekst</string>
+    <string name="label_text_subtitle">Tilpasset tekst til denne knap</string>
+    <string name="element_type">Elementtype</string>
+    <string name="element_type_subtitle">Skift typen af denne kontrol</string>
+    <string name="shape">Form</string>
+    <string name="shape_subtitle">Visuelt udseende</string>
+    <string name="shape_restricted">%1$s er begrænset til %2$s form</string>
+    <string name="bindings">Bindings</string>
+    <string name="bindings_auto_generated">Bindings (Auto-genereret)</string>
+    <string name="bindings_auto_generated_subtitle">Range-knap-bindings genereres automatisk</string>
+    <string name="primary_action">Primær handling</string>
+    <string name="secondary_action">Sekundær handling</string>
+    <string name="direction_up">Op</string>
+    <string name="direction_right">Højre</string>
+    <string name="direction_down">Ned</string>
+    <string name="direction_left">Venstre</string>
+    <string name="mouse_suffix"> (Mus)</string>
+    <string name="slot_number">Slot %1$d</string>
+    <string name="button_slots_help">Knapper understøtter op til 2 bindings: primær (tryk) og sekundær (langt tryk)</string>
+    <string name="properties">Egenskaber</string>
+    <string name="position">Position</string>
+    <string name="position_value">X: %1$d, Y: %2$d</string>
+    <string name="unsaved_changes">Ikke-gemte ændringer</string>
+    <string name="unsaved_changes_message">Du har ikke-gemte ændringer. Vil du gemme eller forkaste dem?</string>
+    <string name="adjust_size">Juster størrelse</string>
+    <string name="reset">Nulstil</string>
+    <string name="done">Færdig</string>
+    <string name="copy_size_from_element">Kopiér størrelse fra element</string>
+    <string name="toast_no_elements_to_copy">Ingen andre elementer tilgængelige til at kopiere størrelse fra</string>
+    <string name="toast_copied_size">Kopieret størrelse: %.2fx</string>
+    <string name="on_screen_toast_controls_reset">On-screen-kontroller nulstillet til standard</string>
+    <string name="quick_presets">Hurtige forudindstillinger</string>
+    <string name="preset_wasd">WASD</string>
+    <string name="preset_arrows">Pile</string>
+    <string name="preset_mouse">Mus</string>
+    <string name="preset_dpad">D-Pad</string>
+    <string name="preset_left_stick">Venstre stick</string>
+    <string name="preset_right_stick">Højre stick</string>
+
+    <!-- Physical Controller Config -->
+    <string name="physical_controller_config">Fysisk Controller Bindings Editor</string>
+    <string name="physical_controller_config_subtitle">Konfigurér knap-mappinger til din fysiske controller</string>
+    <string name="face_buttons">Ansigtsknapper</string>
+    <string name="button_a">A-knap</string>
+    <string name="button_a_subtitle">Bund ansigtsknap (Bekræft)</string>
+    <string name="button_b">B-knap</string>
+    <string name="button_b_subtitle">Højre ansigtsknap (Tilbage)</string>
+    <string name="button_x">X-knap</string>
+    <string name="button_x_subtitle">Venstre ansigtsknap</string>
+    <string name="button_y">Y-knap</string>
+    <string name="button_y_subtitle">Top ansigtsknap</string>
+    <string name="shoulder_buttons">Skulderknapper</string>
+    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1_subtitle">Venstre bumper</string>
+    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1_subtitle">Højre bumper</string>
+    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2_subtitle">Venstre trigger</string>
+    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2_subtitle">Højre trigger</string>
+    <string name="menu_buttons">Menuknapper</string>
+    <string name="button_start">Start / Options</string>
+    <string name="button_select">Select / View / Share</string>
+    <string name="analog_sticks">Analog sticks</string>
+    <string name="thumbstick_buttons">Tommelfingerknapper</string>
+    <string name="button_l3">L3 (Venstre Stick Klik)</string>
+    <string name="button_r3">R3 (Højre Stick Klik)</string>
+    <string name="left_analog_stick">Venstre Analog Stick</string>
+    <string name="left_stick_up">Venstre Stick Op</string>
+    <string name="left_stick_down">Venstre Stick Ned</string>
+    <string name="left_stick_left">Venstre Stick Venstre</string>
+    <string name="left_stick_right">Venstre Stick Højre</string>
+    <string name="right_analog_stick">Højre Analog Stick</string>
+    <string name="right_stick_up">Højre Stick Op</string>
+    <string name="right_stick_down">Højre Stick Ned</string>
+    <string name="right_stick_left">Højre Stick Venstre</string>
+    <string name="right_stick_right">Højre Stick Højre</string>
+    <string name="other">Andet</string>
+    <string name="button_home">Home / Guide / PS</string>
+    <string name="reset_to_default_bindings">Nulstil til standard-bindings</string>
+    <string name="not_set">Ikke sat</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Håndtering af flag på CALL/RET-opcodes<br /><br />
@@ -223,6 +350,9 @@
     <string name="directinput_mapper_type">DirectInput-mappertype</string>
     <string name="disable_mouse_input">Deaktivér musinput</string>
     <string name="touchscreen_mode">Touchskærmstilstand</string>
+    <string name="touchscreen_mode_description">Direkte touch-til-cursor-bevægelse (TIL) vs touchpad-stil relativ bevægelse (FRA)</string>
+    <string name="start_with_controls_hidden">Start med on-screen-kontroller skjult</string>
+    <string name="start_with_controls_hidden_description">On-screen-kontroller vil være skjult når spillet starter. Skift via navigationsmenuen.</string>
     <string name="emulate_keyboard_mouse">Emulér tastatur og mus</string>
     <string name="emulate_keyboard_mouse_description">Venstre stick = WASD, højre stick = mus. L2 = venstre klik, R2 = højre klik.</string>
 
@@ -260,6 +390,7 @@
     <string name="contents_manager">Indholdshåndtering</string>
     <string name="import_wcp_from_device">Importér .wcp fra enhed</string>
     <string name="working">Arbejder...</string>
+    <string name="selected">Valgt</string>
     <string name="selected_content">Valgt indhold</string>
     <string name="installed_contents">Installeret indhold</string>
     <string name="select_type">Vælg type</string>
@@ -642,7 +773,8 @@
     <string name="custom_game_delete_title">Slet spil</string>
     <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
 
-    <!-- Toast messages -->
+    <!-- Toast -->
+    <string name="toast_controls_reset">Kontroller nulstillet</string>
     <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
 
     <!-- Settings additions -->

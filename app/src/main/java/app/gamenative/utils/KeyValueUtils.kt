@@ -107,7 +107,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
         // dlcAppIds = (this["common"]["extended"]["listofdlc"].value).Split(",").Select(uint.Parse).ToArray(),
         dlcAppIds = emptyList(),
         isFreeApp = this["common"]["extended"]["isfreeapp"].asBoolean(),
-        dlcForAppId = this["common"]["extended"]["dlcforappid"].asInteger(),
+        dlcForAppId = this["extended"]["dlcforappid"].asInteger(this["common"]["extended"]["dlcforappid"].asInteger()),
         mustOwnAppToPurchase = this["common"]["extended"]["mustownapptopurchase"].asInteger(),
         dlcAvailableOnStore = this["common"]["extended"]["dlcavailableonstore"].asBoolean(),
         optionalDlc = this["common"]["extended"]["optionaldlc"].asBoolean(),
@@ -152,6 +152,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     root = PathType.from(it["root"].value),
                     path = it["path"].value.orEmpty(),
                     pattern = it["pattern"].value.orEmpty(),
+                    recursive = it["recursive"].asInteger(0),
                 )
             },
         ),
