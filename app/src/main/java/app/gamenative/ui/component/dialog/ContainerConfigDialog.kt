@@ -132,6 +132,14 @@ fun ContainerConfigDialog(
     if (visible) {
         val context = LocalContext.current
 
+        fun stripSpacesOnly(s: String): String {
+            val first = s.indexOf(' ')
+            if (first < 0) return s
+            val sb = StringBuilder(s.length)
+            for (ch in s) if (ch != ' ') sb.append(ch)
+            return sb.toString()
+        }
+
         var config by rememberSaveable(stateSaver = ContainerData.Saver) {
             mutableStateOf(initialConfig)
         }
@@ -717,7 +725,7 @@ fun ContainerConfigDialog(
                         Row {
                             OutlinedTextField(
                                 value = envVarName,
-                                onValueChange = { envVarName = it },
+                                onValueChange = { envVarName = stripSpacesOnly(it) },
                                 label = { Text(text = stringResource(R.string.name)) },
                                 trailingIcon = {
                                     IconButton(
@@ -779,7 +787,7 @@ fun ContainerConfigDialog(
                         } else {
                             OutlinedTextField(
                                 value = envVarValue,
-                                onValueChange = { envVarValue = it },
+                                onValueChange = { envVarValue = stripSpacesOnly(it) },
                                 label = { Text(text = stringResource(R.string.value)) },
                             )
                         }
@@ -796,7 +804,7 @@ fun ContainerConfigDialog(
                         enabled = envVarName.isNotEmpty(),
                         onClick = {
                             val envVars = EnvVars(config.envVars)
-                            envVars.put(envVarName, envVarValue)
+                            envVars.put(stripSpacesOnly(envVarName), stripSpacesOnly(envVarValue))
                             config = config.copy(envVars = envVars.toString())
                             showEnvVarCreateDialog = false
                         },
