@@ -20,15 +20,41 @@ public class EnvVars implements Iterable<String> {
 
     public void putAll(String values) {
         if (values == null || values.isEmpty()) return;
-        String[] parts = values.split(" ");
-        for (String part : parts) {
-            int index = part.indexOf("=");
-            String name = part.substring(0, index);
-            String value = part.substring(index+1);
-            data.put(name, value);
+        final StringBuilder token = new StringBuilder(values.length());
+        final int n = values.length();
+
+        for (int i = 0; i < n; i++) {
+            char ch = values.charAt(i);
+
+            if (ch == '\\' && (i + 1) < n && values.charAt(i + 1) == ' ') {
+                token.append(' ');
+                i++;
+                continue;
+            }
+
+            if (ch == ' ') {
+                parseAndPutToken(token);
+                token.setLength(0);
+                continue;
+            }
+
+            token.append(ch);
         }
+
+        parseAndPutToken(token);
     }
 
+    private void parseAndPutToken(StringBuilder token) {
+        if (token.length() == 0) return;
+        final String part = token.toString();
+        final int index = part.indexOf('=');
+        if (index <= 0) return;
+
+        final String name = part.substring(0, index);
+        final String value = part.substring(index + 1);
+        data.put(name, value);
+    }
+    
     public void putAll(EnvVars envVars) {
         data.putAll(envVars.data);
     }
@@ -60,13 +86,15 @@ public class EnvVars implements Iterable<String> {
     }
 
     public String toEscapedString() {
-        String result = "";
+        StringBuilder sb = new StringBuilder();
         for (String key : data.keySet()) {
-            if (!result.isEmpty()) result += " ";
+            if (sb.length() != 0) sb.append(' ');
             String value = data.get(key);
-            result += key+"="+value.replace(" ", "\\ ");
+            String k = key == null ? "" : key.replace(" ", "\\ ");
+            String v = value == null ? "" : value.replace(" ", "\\ ");
+            sb.append(k).append('=').append(v);
         }
-        return result;
+        return sb.toString();
     }
 
     public String[] toStringArray() {
