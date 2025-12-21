@@ -104,6 +104,9 @@ import kotlin.math.roundToInt
 /**
  * Gets the component title for Win Components settings group.
  */
+
+private fun EnvVars.toPersistedString(): String = toEscapedString()
+
 private fun winComponentsItemTitleRes(string: String): Int {
     return when (string) {
         "direct3d" -> R.string.direct3d
@@ -131,14 +134,6 @@ fun ContainerConfigDialog(
 ) {
     if (visible) {
         val context = LocalContext.current
-
-        fun stripSpacesOnly(s: String): String {
-            val first = s.indexOf(' ')
-            if (first < 0) return s
-            val sb = StringBuilder(s.length)
-            for (ch in s) if (ch != ' ') sb.append(ch)
-            return sb.toString()
-        }
 
         var config by rememberSaveable(stateSaver = ContainerData.Saver) {
             mutableStateOf(initialConfig)
@@ -504,13 +499,12 @@ fun ContainerConfigDialog(
                             val version = StringUtils.parseIdentifier(items[it])
                             val currentConfig = KeyValueSet(config.dxwrapperConfig)
                             currentConfig.put("version", version)
-                            val envVarsSet = EnvVars(config.envVars)
                             if (version.contains("async", ignoreCase = true)) currentConfig.put("async", "1")
                             else currentConfig.put("async", "0")
                             if (version.contains("gplasync", ignoreCase = true)) currentConfig.put("asyncCache", "1")
                             else currentConfig.put("asyncCache", "0")
                             config =
-                                config.copy(dxwrapperConfig = currentConfig.toString(), envVars = envVarsSet.toString())
+                                config.copy(dxwrapperConfig = currentConfig.toString())
                         },
                     )
                 } else {
@@ -626,7 +620,6 @@ fun ContainerConfigDialog(
             val version = if (selectedVersion.isEmpty()) {
                 if (isVortekLike) "async-1.10.3" else StringUtils.parseIdentifier(dxvkVersionsAll.getOrNull(dxvkVersionIndex) ?: DefaultVersion.DXVK)
             } else selectedVersion
-            val envSet = EnvVars(config.envVars)
             // Update dxwrapperConfig version only when DXVK wrapper selected
             val wrapperIsDxvk = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "dxvk"
             val kvs = KeyValueSet(config.dxwrapperConfig)
@@ -643,7 +636,7 @@ fun ContainerConfigDialog(
             } else {
                 kvs.put("asyncCache", "0")
             }
-            config = config.copy(envVars = envSet.toString(), dxwrapperConfig = kvs.toString())
+            config = config.copy(dxwrapperConfig = kvs.toString())
         }
         var audioDriverIndex by rememberSaveable {
             val driverIndex = audioDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.audioDriver }
@@ -725,7 +718,7 @@ fun ContainerConfigDialog(
                         Row {
                             OutlinedTextField(
                                 value = envVarName,
-                                onValueChange = { envVarName = stripSpacesOnly(it) },
+                                onValueChange = { envVarName = it },
                                 label = { Text(text = stringResource(R.string.name)) },
                                 trailingIcon = {
                                     IconButton(
@@ -787,7 +780,7 @@ fun ContainerConfigDialog(
                         } else {
                             OutlinedTextField(
                                 value = envVarValue,
-                                onValueChange = { envVarValue = stripSpacesOnly(it) },
+                                onValueChange = { envVarValue = it },
                                 label = { Text(text = stringResource(R.string.value)) },
                             )
                         }
@@ -804,8 +797,8 @@ fun ContainerConfigDialog(
                         enabled = envVarName.isNotEmpty(),
                         onClick = {
                             val envVars = EnvVars(config.envVars)
-                            envVars.put(stripSpacesOnly(envVarName), stripSpacesOnly(envVarValue))
-                            config = config.copy(envVars = envVars.toString())
+                            envVars.put(envVarName, envVarValue)
+                            config = config.copy(envVars = envVars.toPersistedString())
                             showEnvVarCreateDialog = false
                         },
                         content = { Text(text = stringResource(R.string.ok)) },
@@ -1738,7 +1731,7 @@ fun ContainerConfigDialog(
                                         colors = settingsTileColors(),
                                         envVars = envVars,
                                         onEnvVarsChange = {
-                                            config = config.copy(envVars = it.toString())
+                                            config = config.copy(envVars = it.toPersistedString())
                                         },
                                         knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
                                         envVarAction = {
@@ -1746,7 +1739,7 @@ fun ContainerConfigDialog(
                                                 onClick = {
                                                     envVars.remove(it)
                                                     config = config.copy(
-                                                        envVars = envVars.toString(),
+                                                        envVars = envVars.toPersistedString(),
                                                     )
                                                 },
                                                 content = {
