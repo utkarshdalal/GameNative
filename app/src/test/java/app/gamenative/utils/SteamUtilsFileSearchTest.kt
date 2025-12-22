@@ -4,11 +4,14 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.data.ConfigInfo
+import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
+import app.gamenative.data.UFS
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.enums.AppType
 import app.gamenative.enums.Marker
 import app.gamenative.enums.OS
+import app.gamenative.enums.PathType
 import app.gamenative.enums.ReleaseState
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
@@ -587,7 +590,7 @@ class SteamUtilsFileSearchTest {
         assertTrue("configs.user.ini should contain account_name field", userIniContent.contains("account_name="))
         assertTrue("configs.user.ini should contain account_steamid field", userIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini should contain language field", userIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field", userIniContent.contains("ticket="))
+        assertFalse("configs.user.ini should not contain ticket field", userIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content
         val appIniContent = configsAppIni.readText()
@@ -666,7 +669,7 @@ class SteamUtilsFileSearchTest {
             appUserIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini in app directory should contain language field",
             appUserIniContent.contains("language="))
-        assertTrue("configs.user.ini in app directory should contain ticket field",
+        assertFalse("configs.user.ini in app directory should not contain ticket field",
             appUserIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content in app directory
@@ -863,7 +866,7 @@ class SteamUtilsFileSearchTest {
         assertTrue("configs.user.ini should contain account_name field", userIniContent.contains("account_name="))
         assertTrue("configs.user.ini should contain account_steamid field", userIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini should contain language field", userIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field", userIniContent.contains("ticket="))
+        assertFalse("configs.user.ini should not contain ticket field", userIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content
         val appIniContent = configsAppIni.readText()
@@ -959,7 +962,7 @@ class SteamUtilsFileSearchTest {
             appUserIniContent.contains("account_steamid="))
         assertTrue("configs.user.ini should contain language field",
             appUserIniContent.contains("language="))
-        assertTrue("configs.user.ini should contain ticket field",
+        assertFalse("configs.user.ini should not contain ticket field",
             appUserIniContent.contains("ticket="))
 
         // Verify configs.app.ini contains expected content
@@ -1053,5 +1056,345 @@ class SteamUtilsFileSearchTest {
         // Verify marker was set
         assertTrue("Should add STEAM_DLL_REPLACED marker again",
             MarkerUtils.hasMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED))
+    }
+
+    @Test
+    fun testGenerateCloudSaveConfig_withWindowsPatterns() = runBlocking {
+        // Update test app with Windows saveFilePatterns
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val updatedApp = testApp.copy(
+            ufs = UFS(
+                saveFilePatterns = listOf(
+                    SaveFilePattern(
+                        root = PathType.GameInstall,
+                        path = "saves/game.dat",
+                        pattern = "*.dat"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.WinAppDataLocal,
+                        path = "MyGame/{64BitSteamID}/save.sav",
+                        pattern = "*.sav"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.WinMyDocuments,
+                        path = "MyGame/{Steam3AccountID}/config.ini",
+                        pattern = "*.ini"
+                    )
+                )
+            )
+        )
+        db.steamAppDao().update(updatedApp)
+
+        // Ensure no marker exists
+        MarkerUtils.removeMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED)
+
+        // Create DLL file
+        val dllFile = File(appDir, "steam_api.dll")
+        dllFile.writeBytes("original dll content".toByteArray())
+
+        // Call replaceSteamApi to trigger ensureSteamSettings
+        SteamUtils.replaceSteamApi(context, testAppId)
+
+        // Verify configs.app.ini exists and contains cloud save config
+        // steam_settings is created next to the DLL in app directory
+        val steamSettingsDir = File(appDir, "steam_settings")
+        val appIni = File(steamSettingsDir, "configs.app.ini")
+        assertTrue("configs.app.ini should exist", appIni.exists())
+
+        val appIniContent = appIni.readText()
+        assertTrue("configs.app.ini should contain [app::cloud_save::general] section",
+            appIniContent.contains("[app::cloud_save::general]"))
+        assertTrue("configs.app.ini should contain create_default_dir=1",
+            appIniContent.contains("create_default_dir=1"))
+        assertTrue("configs.app.ini should contain create_specific_dirs=1",
+            appIniContent.contains("create_specific_dirs=1"))
+        assertTrue("configs.app.ini should contain [app::cloud_save::win] section",
+            appIniContent.contains("[app::cloud_save::win]"))
+        
+        // Verify GameInstall is converted to gameinstall
+        assertTrue("configs.app.ini should contain gameinstall (lowercase)",
+            appIniContent.contains("{::gameinstall::}"))
+        assertFalse("configs.app.ini should not contain GameInstall (uppercase)",
+            appIniContent.contains("{::GameInstall::}"))
+        
+        // Verify placeholder replacements
+        assertTrue("configs.app.ini should contain {::64BitSteamID::}",
+            appIniContent.contains("{::64BitSteamID::}"))
+        assertTrue("configs.app.ini should contain {::Steam3AccountID::}",
+            appIniContent.contains("{::Steam3AccountID::}"))
+        assertFalse("configs.app.ini should not contain {64BitSteamID}",
+            appIniContent.contains("{64BitSteamID}"))
+        assertFalse("configs.app.ini should not contain {Steam3AccountID}",
+            appIniContent.contains("{Steam3AccountID}"))
+        
+        // Verify directory entries exist
+        assertTrue("configs.app.ini should contain dir1=", appIniContent.contains("dir1="))
+        assertTrue("configs.app.ini should contain dir2=", appIniContent.contains("dir2="))
+        assertTrue("configs.app.ini should contain dir3=", appIniContent.contains("dir3="))
+    }
+
+    @Test
+    fun testGenerateCloudSaveConfig_deduplication() = runBlocking {
+        // Update test app with duplicate Windows patterns
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val updatedApp = testApp.copy(
+            ufs = UFS(
+                saveFilePatterns = listOf(
+                    SaveFilePattern(
+                        root = PathType.GameInstall,
+                        path = "saves/game.dat",
+                        pattern = "*.dat"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.GameInstall,
+                        path = "saves/game.dat",  // Duplicate
+                        pattern = "*.dat"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.WinAppDataLocal,
+                        path = "MyGame/save.sav",
+                        pattern = "*.sav"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.WinAppDataLocal,
+                        path = "MyGame/save.sav",  // Duplicate
+                        pattern = "*.sav"
+                    )
+                )
+            )
+        )
+        db.steamAppDao().update(updatedApp)
+
+        // Ensure no marker exists
+        MarkerUtils.removeMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED)
+
+        // Create DLL file
+        val dllFile = File(appDir, "steam_api.dll")
+        dllFile.writeBytes("original dll content".toByteArray())
+
+        // Call replaceSteamApi
+        SteamUtils.replaceSteamApi(context, testAppId)
+
+        // Verify configs.app.ini exists
+        // steam_settings is created next to the DLL in app directory
+        val steamSettingsDir = File(appDir, "steam_settings")
+        val appIni = File(steamSettingsDir, "configs.app.ini")
+        assertTrue("configs.app.ini should exist", appIni.exists())
+
+        val appIniContent = appIni.readText()
+        
+        // Verify only unique entries exist
+        val dirLines = appIniContent.lines().filter { it.startsWith("dir") && it.contains("=") }
+        val uniqueDirs = dirLines.toSet()
+        assertEquals("Should have 2 unique directory entries", 2, uniqueDirs.size)
+        
+        // Verify the directory strings are unique (no duplicates)
+        val dirValues = dirLines.map { it.substringAfter("=") }.toSet()
+        assertEquals("Should have 2 unique directory values", 2, dirValues.size)
+    }
+
+    @Test
+    fun testGenerateCloudSaveConfig_noWindowsPatterns() = runBlocking {
+        // Update test app with only non-Windows patterns
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val updatedApp = testApp.copy(
+            ufs = UFS(
+                saveFilePatterns = listOf(
+                    SaveFilePattern(
+                        root = PathType.LinuxHome,
+                        path = ".local/share/game",
+                        pattern = "*.sav"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.MacHome,
+                        path = "Library/Application Support/game",
+                        pattern = "*.sav"
+                    )
+                )
+            )
+        )
+        db.steamAppDao().update(updatedApp)
+
+        // Ensure no marker exists
+        MarkerUtils.removeMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED)
+
+        // Create DLL file
+        val dllFile = File(appDir, "steam_api.dll")
+        dllFile.writeBytes("original dll content".toByteArray())
+
+        // Call replaceSteamApi
+        SteamUtils.replaceSteamApi(context, testAppId)
+
+        // Verify configs.app.ini exists
+        // steam_settings is created next to the DLL in app directory
+        val steamSettingsDir = File(appDir, "steam_settings")
+        val appIni = File(steamSettingsDir, "configs.app.ini")
+        assertTrue("configs.app.ini should exist", appIni.exists())
+
+        val appIniContent = appIni.readText()
+        
+        // Verify cloud save sections are NOT present
+        assertFalse("configs.app.ini should not contain [app::cloud_save::general] section",
+            appIniContent.contains("[app::cloud_save::general]"))
+        assertFalse("configs.app.ini should not contain [app::cloud_save::win] section",
+            appIniContent.contains("[app::cloud_save::win]"))
+        assertFalse("configs.app.ini should not contain create_default_dir",
+            appIniContent.contains("create_default_dir"))
+    }
+
+    @Test
+    fun testGenerateCloudSaveConfig_mixedPatterns() = runBlocking {
+        // Update test app with both Windows and non-Windows patterns
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val updatedApp = testApp.copy(
+            ufs = UFS(
+                saveFilePatterns = listOf(
+                    SaveFilePattern(
+                        root = PathType.GameInstall,
+                        path = "saves/game.dat",
+                        pattern = "*.dat"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.LinuxHome,
+                        path = ".local/share/game",
+                        pattern = "*.sav"
+                    ),
+                    SaveFilePattern(
+                        root = PathType.WinAppDataLocal,
+                        path = "MyGame/save.sav",
+                        pattern = "*.sav"
+                    )
+                )
+            )
+        )
+        db.steamAppDao().update(updatedApp)
+
+        // Ensure no marker exists
+        MarkerUtils.removeMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED)
+
+        // Create DLL file
+        val dllFile = File(appDir, "steam_api.dll")
+        dllFile.writeBytes("original dll content".toByteArray())
+
+        // Call replaceSteamApi
+        SteamUtils.replaceSteamApi(context, testAppId)
+
+        // Verify configs.app.ini exists
+        // steam_settings is created next to the DLL in app directory
+        val steamSettingsDir = File(appDir, "steam_settings")
+        val appIni = File(steamSettingsDir, "configs.app.ini")
+        assertTrue("configs.app.ini should exist", appIni.exists())
+
+        val appIniContent = appIni.readText()
+        
+        // Verify cloud save sections exist
+        assertTrue("configs.app.ini should contain [app::cloud_save::general] section",
+            appIniContent.contains("[app::cloud_save::general]"))
+        assertTrue("configs.app.ini should contain [app::cloud_save::win] section",
+            appIniContent.contains("[app::cloud_save::win]"))
+        
+        // Verify only Windows patterns appear (GameInstall and WinAppDataLocal)
+        assertTrue("configs.app.ini should contain gameinstall",
+            appIniContent.contains("{::gameinstall::}"))
+        assertTrue("configs.app.ini should contain WinAppDataLocal",
+            appIniContent.contains("{::WinAppDataLocal::}"))
+        
+        // Verify non-Windows patterns do NOT appear
+        assertFalse("configs.app.ini should not contain LinuxHome",
+            appIniContent.contains("{::LinuxHome::}"))
+        assertFalse("configs.app.ini should not contain MacHome",
+            appIniContent.contains("{::MacHome::}"))
+        
+        // Should have exactly 2 directory entries (only Windows patterns)
+        val dirLines = appIniContent.lines().filter { it.startsWith("dir") && it.contains("=") }
+        assertEquals("Should have 2 directory entries (only Windows patterns)", 2, dirLines.size)
+    }
+
+    @Test
+    fun testLocalSavePath_noSaveFilePatterns() = runBlocking {
+        // Update test app with empty saveFilePatterns
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val updatedApp = testApp.copy(
+            ufs = UFS(
+                saveFilePatterns = emptyList()
+            )
+        )
+        db.steamAppDao().update(updatedApp)
+
+        // Ensure no marker exists
+        MarkerUtils.removeMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED)
+
+        // Create DLL file
+        val dllFile = File(appDir, "steam_api.dll")
+        dllFile.writeBytes("original dll content".toByteArray())
+
+        // Call replaceSteamApi
+        SteamUtils.replaceSteamApi(context, testAppId)
+
+        // Verify configs.user.ini exists
+        // steam_settings is created next to the DLL in app directory
+        val steamSettingsDir = File(appDir, "steam_settings")
+        val userIni = File(steamSettingsDir, "configs.user.ini")
+        assertTrue("configs.user.ini should exist", userIni.exists())
+
+        val userIniContent = userIni.readText()
+        
+        // Verify [user::saves] section exists
+        assertTrue("configs.user.ini should contain [user::saves] section",
+            userIniContent.contains("[user::saves]"))
+        
+        // Verify local_save_path exists with correct format
+        assertTrue("configs.user.ini should contain local_save_path",
+            userIniContent.contains("local_save_path="))
+        
+        // Verify the path format (accountId will be 0L from mock, but format should be correct)
+        val accountId = SteamService.userSteamId?.accountID ?: 0L
+        val expectedPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
+        assertTrue("configs.user.ini should contain correct local_save_path format",
+            userIniContent.contains("local_save_path=$expectedPath"))
+    }
+
+    @Test
+    fun testLocalSavePath_withSaveFilePatterns() = runBlocking {
+        // Update test app with saveFilePatterns
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val updatedApp = testApp.copy(
+            ufs = UFS(
+                saveFilePatterns = listOf(
+                    SaveFilePattern(
+                        root = PathType.GameInstall,
+                        path = "saves/game.dat",
+                        pattern = "*.dat"
+                    )
+                )
+            )
+        )
+        db.steamAppDao().update(updatedApp)
+
+        // Ensure no marker exists
+        MarkerUtils.removeMarker(appDir.absolutePath, Marker.STEAM_DLL_REPLACED)
+
+        // Create DLL file
+        val dllFile = File(appDir, "steam_api.dll")
+        dllFile.writeBytes("original dll content".toByteArray())
+
+        // Call replaceSteamApi
+        SteamUtils.replaceSteamApi(context, testAppId)
+
+        // Verify configs.user.ini exists
+        // steam_settings is created next to the DLL in app directory
+        val steamSettingsDir = File(appDir, "steam_settings")
+        val userIni = File(steamSettingsDir, "configs.user.ini")
+        assertTrue("configs.user.ini should exist", userIni.exists())
+
+        val userIniContent = userIni.readText()
+        
+        // Verify [user::saves] section does NOT exist
+        assertFalse("configs.user.ini should not contain [user::saves] section",
+            userIniContent.contains("[user::saves]"))
+        
+        // Verify local_save_path does NOT exist
+        assertFalse("configs.user.ini should not contain local_save_path",
+            userIniContent.contains("local_save_path="))
     }
 }

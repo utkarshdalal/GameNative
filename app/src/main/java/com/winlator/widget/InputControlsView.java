@@ -60,8 +60,6 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[17];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
-    private Vibrator vibrator;
-    private VibrationEffect effect;
     private boolean showTouchscreenControls = true;
 
     @SuppressLint("ResourceType")
@@ -73,9 +71,6 @@ public class InputControlsView extends View {
         setBackgroundColor(0x00000000);
         setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-        effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     public void setEditMode(boolean editMode) {
@@ -389,9 +384,7 @@ public class InputControlsView extends View {
                     touchpadView.setPointerButtonLeftEnabled(true);
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
-                            if (vibrator != null) {
-                                vibrator.vibrate(effect);
-                            }
+                            performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                             handled = true;
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {

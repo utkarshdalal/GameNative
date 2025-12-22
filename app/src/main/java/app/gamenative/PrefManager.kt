@@ -17,7 +17,6 @@ import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.enums.Orientation
-import app.gamenative.Constants
 import app.gamenative.ui.enums.PaneType
 import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
@@ -406,23 +405,31 @@ object PrefManager {
     private val XINPUT_ENABLED = booleanPreferencesKey("xinput_enabled")
     var xinputEnabled: Boolean
         get() = getPref(XINPUT_ENABLED, true)
-        set(value) { setPref(XINPUT_ENABLED, value) }
+        set(value) {
+            setPref(XINPUT_ENABLED, value)
+        }
 
     private val DINPUT_ENABLED = booleanPreferencesKey("dinput_enabled")
     var dinputEnabled: Boolean
         get() = getPref(DINPUT_ENABLED, true)
-        set(value) { setPref(DINPUT_ENABLED, value) }
+        set(value) {
+            setPref(DINPUT_ENABLED, value)
+        }
 
     private val DINPUT_MAPPER_TYPE = intPreferencesKey("dinput_mapper_type")
     var dinputMapperType: Int
         get() = getPref(DINPUT_MAPPER_TYPE, 1)
-        set(value) { setPref(DINPUT_MAPPER_TYPE, value) }
+        set(value) {
+            setPref(DINPUT_MAPPER_TYPE, value)
+        }
 
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")
     var disableMouseInput: Boolean
         get() = getPref(DISABLE_MOUSE_INPUT, false)
-        set(value) { setPref(DISABLE_MOUSE_INPUT, value) }
+        set(value) {
+            setPref(DISABLE_MOUSE_INPUT, value)
+        }
 
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
@@ -562,6 +569,25 @@ object PrefManager {
             setPref(STEAM_USER_ACCOUNT_ID, value)
         }
 
+    /**
+     * Get or Set the last known avatar hash for the user.
+     */
+    private val STEAM_USER_AVATAR_HASH = stringPreferencesKey("steam_user_avatar_hash")
+    var steamUserAvatarHash: String
+        get() = getPref(STEAM_USER_AVATAR_HASH, "")
+        set(value) {
+            setPref(STEAM_USER_AVATAR_HASH, value)
+        }
+
+    /**
+     * Get or Set the last known name for the user.
+     */
+    private val STEAM_USER_NAME = stringPreferencesKey("steam_user_name")
+    var steamUserName: String
+        get() = getPref(STEAM_USER_NAME, "")
+        set(value) {
+            setPref(STEAM_USER_NAME, value)
+        }
 
     private val ALLOWED_ORIENTATION = intPreferencesKey("allowed_orientation")
     var allowedOrientation: EnumSet<Orientation>
@@ -738,7 +764,11 @@ object PrefManager {
     var customGamePaths: Set<String>
         get() {
             val value = getPref(CUSTOM_GAME_PATHS, "[]")
-            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
         }
         set(value) {
             setPref(CUSTOM_GAME_PATHS, Json.encodeToString(value))
@@ -748,7 +778,11 @@ object PrefManager {
     var customGameManualFolders: Set<String>
         get() {
             val value = getPref(CUSTOM_GAME_MANUAL_FOLDERS, "[]")
-            return try { Json.decodeFromString<Set<String>>(value) } catch (e: Exception) { emptySet() }
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
         }
         set(value) {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))

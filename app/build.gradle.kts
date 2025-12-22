@@ -51,8 +51,8 @@ android {
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 7
-        versionName = "0.6.0"
+        versionCode = 8
+        versionName = "0.6.1"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -81,8 +81,9 @@ android {
             "en",      // English (default)
             "da",      // Danish
             "pt-rBR",  // Portuguese (Brazilian)
-            "zh-rTW",   // Traditional Chinese
-            "zh-rCN",   // Simplified Chinese
+            "zh-rTW",  // Traditional Chinese
+            "zh-rCN",  // Simplified Chinese
+            "fr",      // French
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
@@ -175,12 +176,12 @@ android {
     }
 
     // build extras needed in libwinlator_bionic.so
-//    externalNativeBuild {
-//        cmake {
-//            path = file("src/main/cpp/extras/CMakeLists.txt")   // the file shown above
-//            version = "3.22.1"
-//        }
-//    }
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/extras/CMakeLists.txt")   // the file shown above
+    //         version = "3.22.1"
+    //     }
+    // }
 
     // cmake on release builds a proot that fails to process ld-2.31.so
     // externalNativeBuild {
@@ -205,13 +206,14 @@ dependencies {
     if (localBuild) {
         implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
         implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
-        implementation(libs.bundles.steamkit.dev)
+        implementation(libs.bundles.javasteam.dev)
     } else {
-        implementation(libs.steamkit) {
+        implementation(libs.javasteam) {
             isChanging = version?.contains("SNAPSHOT") ?: false
         }
-        implementation("io.github.utkarshdalal:javasteam-depotdownloader:1.8.0-SNAPSHOT")
-//        implementation("in.dragonbra:javasteam-depotdownloader:1.8.0-SNAPSHOT")
+        implementation(libs.javasteam.depotdownloader) {
+            isChanging = version?.contains("SNAPSHOT") ?: false
+        }
     }
     implementation(libs.spongycastle)
 

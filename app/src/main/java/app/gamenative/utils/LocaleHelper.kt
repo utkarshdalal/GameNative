@@ -20,8 +20,10 @@ object LocaleHelper {
         "da" to "Dansk (Danish)",
         "en" to "English",
         "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
+		"uk" to "Українська",
         "zh-TW" to "正體中文",
-        "zh-CN" to "简体中文"
+        "zh-CN" to "简体中文",
+        "fr" to "Français"
     )
 
     /**

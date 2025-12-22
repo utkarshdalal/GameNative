@@ -38,19 +38,20 @@ object ContainerUtils {
     fun setContainerDefaults(context: Context){
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
-            DefaultVersion.VARIANT = Container.GLIBC
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "turnip"
-            DefaultVersion.DXVK = "2.6.1-gplasync"
+            DefaultVersion.VARIANT = Container.BIONIC
+            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = "turnip25.3.0_R3_Auto"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
-            DefaultVersion.ASYNC_CACHE = "1"
+            DefaultVersion.ASYNC_CACHE = "0"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper-leegao"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "async-1.10.3"
-            DefaultVersion.VKD3D = "2.6"
+            DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT
             DefaultVersion.ASYNC_CACHE = "0"
         }

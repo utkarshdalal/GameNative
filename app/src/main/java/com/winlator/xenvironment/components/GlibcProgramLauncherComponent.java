@@ -229,17 +229,15 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         String currentBox64Version = PrefManager.getString("current_box64_version", "");
         File rootDir = imageFs.getRootDir();
 
-        if (!box64Version.equals(currentBox64Version) || !container.getWineVersion().equals(imageFs.getArch())) {
-            ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
-            if (profile != null) {
-                contentsManager.applyContent(profile);
-            }
-            else {
-                Log.d("Extraction", "exctracting box64 with box64Version " + box64Version);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
-            }
-            PrefManager.putString("current_box64_version", box64Version);
+        ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
+        if (profile != null) {
+            contentsManager.applyContent(profile);
         }
+        else {
+            Log.d("Extraction", "exctracting box64 with box64Version " + box64Version);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
+        }
+        PrefManager.putString("current_box64_version", box64Version);
     }
 
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {

@@ -63,12 +63,10 @@ import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
-import app.gamenative.ui.screen.chat.ChatScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameFeedbackUtils
@@ -79,6 +77,8 @@ import app.gamenative.utils.UpdateInstaller
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
+import com.winlator.core.TarCompressorUtils
+import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import kotlinx.coroutines.CoroutineScope
@@ -86,6 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
@@ -925,30 +926,6 @@ fun PluviaMain(
                 )
             }
 
-            /** Full Screen Chat **/
-
-            /** Full Screen Chat **/
-            composable(
-                route = "chat/{id}",
-                arguments = listOf(
-                    navArgument(PluviaScreen.Chat.ARG_ID) {
-                        type = NavType.LongType
-                    },
-                ),
-            ) {
-                val id = it.arguments?.getLong(PluviaScreen.Chat.ARG_ID) ?: throw RuntimeException("Unable to get ID to chat")
-                ChatScreen(
-                    friendId = id,
-                    onBack = {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            navController.popBackStack()
-                        }
-                    },
-                )
-            }
-
-            /** Game Screen **/
-
             /** Game Screen **/
             composable(route = PluviaScreen.XServer.route) {
                 XServerScreen(
@@ -1069,6 +1046,23 @@ fun preLaunchApp(
                     context = context,
                     "proton-9.0-x86_64.txz"
                 ).await()
+            }
+            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
+                val protonVersion = container.wineVersion
+                val imageFs = ImageFs.find(context)
+                val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
+                val binDir = File(outFile, "bin")
+                if (!binDir.exists() || !binDir.isDirectory) {
+                    Timber.i("Extracting $protonVersion to /opt/")
+                    setLoadingMessage("Extracting $protonVersion")
+                    setLoadingProgress(-1f)
+                    val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.XZ,
+                        downloaded,
+                        outFile,
+                    )
+                }
             }
         }
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm.tzst")) {

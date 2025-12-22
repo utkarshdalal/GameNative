@@ -27,6 +27,7 @@
         <item>Wrapper</item>
         <item>Wrapper-v2</item>
         <item>Wrapper-leegao</item>
+        <item>Wrapper-legacy</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>
@@ -95,6 +96,7 @@
         <item>2.12</item>
         <item>2.13</item>
         <item>2.14.1</item>
+        <item>3.0b</item>
     </string-array>
     <string-array name="dxvk_max_device_memory_entries">
         <item>0 (Default)</item>
@@ -179,6 +181,7 @@
         <item>2507</item>
         <item>2508</item>
         <item>2511</item>
+        <item>2512</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>

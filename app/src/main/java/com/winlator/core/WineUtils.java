@@ -170,9 +170,8 @@ public abstract class WineUtils {
             setWindowMetrics(registryEditor);
         }
 
-        File wineRoot = wineInfo.path != null ? new File(wineInfo.path) : new File(rootDir, "/opt/wine");
-        File wineSystem32Dir = new File(wineRoot, "lib/wine/x86_64-windows");
-        File wineSysWoW64Dir = new File(wineRoot, "lib/wine/i386-windows");
+        File wineSystem32Dir = new File(rootDir, "/opt/wine/lib/wine/x86_64-windows");
+        File wineSysWoW64Dir = new File(rootDir, "/opt/wine/lib/wine/i386-windows");
         File containerSystem32Dir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows/system32");
         File containerSysWoW64Dir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows/syswow64");
 
