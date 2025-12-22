@@ -1871,18 +1871,19 @@ private fun getRedistDirectory(
  * Installs Visual C++ Redistributables (2005-2022, prefers x64 over x86)
  */
 private fun installVcRedist(context: RedistContext) {
-        val vcredistDir = File(commonRedistDir, "vcredist")
+        val vcredistDir = File(context.commonRedistDir, "vcredist")
         if (vcredistDir.exists() && vcredistDir.isDirectory()) {
             vcredistDir.walkTopDown()
                 .filter { it.isFile && it.name.equals("VC_redist.x64.exe", ignoreCase = true) }
                 .forEach { exeFile ->
                     try {
-                        val relativePath = exeFile.relativeTo(commonRedistDir).path.replace('/', '\\')
+                        val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                        val drive = context.driveLetter
                         val winePath = "$drive:\\_CommonRedist\\$relativePath"
                         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributables..."))
                         Timber.i("Installing vcredist: $winePath")
                         val cmd = "wine $winePath /quiet /norestart && wineserver -k"
-                        val output = guestProgramLauncherComponent.execShellCommand(cmd)
+                        val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
                         Timber.i("vcredist installation output: $output")
                     } catch (e: Exception) {
                         Timber.e(e, "Failed to install vcredist ${exeFile.name}")
@@ -1957,19 +1958,20 @@ private fun installOpenAL(context: RedistContext) {
  * Installs PhysX redistributables (.msi files)
  */
 private fun installPhysX(context: RedistContext) {
-    val physxDir = File(commonRedistDir, "PhysX")
+    val physxDir = File(context.commonRedistDir, "PhysX")
     if (physxDir.exists() && physxDir.isDirectory()) {
         physxDir.walkTopDown()
             .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
                         it.name.endsWith(".msi", ignoreCase = true) }
             .forEach { msiFile ->
                 try {
-                    val relativePath = msiFile.relativeTo(commonRedistDir).path.replace('/', '\\')
+                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                    val drive = context.driveLetter
                     val winePath = "$drive:\\_CommonRedist\\$relativePath"
                     PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
                     Timber.i("Installing PhysX: $winePath")
                     val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = guestProgramLauncherComponent.execShellCommand(cmd)
+                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
                     Timber.i("PhysX installation output: $output")
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to install PhysX ${msiFile.name}")
@@ -1979,19 +1981,20 @@ private fun installPhysX(context: RedistContext) {
 }
 
 private fun installXNAFramework(context: RedistContext) {
-    val xnaDir = File(commonRedistDir, "xnafx")
+    val xnaDir = File(context.commonRedistDir, "xnafx")
     if (xnaDir.exists() && xnaDir.isDirectory()) {
         xnaDir.walkTopDown()
             .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
                         it.name.endsWith(".msi", ignoreCase = true) }
             .forEach { msiFile ->
                 try {
-                    val relativePath = msiFile.relativeTo(commonRedistDir).path.replace('/', '\\')
+                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
+                    val drive = context.driveLetter
                     val winePath = "$drive:\\_CommonRedist\\$relativePath"
                     PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
                     Timber.i("Installing XNA: $winePath")
                     val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = guestProgramLauncherComponent.execShellCommand(cmd)
+                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
                     Timber.i("XNA installation output: $output")
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to install XNA ${msiFile.name}")
