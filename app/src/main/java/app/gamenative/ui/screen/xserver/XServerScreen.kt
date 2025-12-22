@@ -1867,9 +1867,6 @@ private fun getRedistDirectory(
     return null
 }
 
-/**
- * Installs Visual C++ Redistributables (2005-2022, prefers x64 over x86)
- */
 private fun installVcRedist(context: RedistContext) {
         val vcredistDir = File(context.commonRedistDir, "vcredist")
         if (vcredistDir.exists() && vcredistDir.isDirectory()) {
@@ -1892,9 +1889,6 @@ private fun installVcRedist(context: RedistContext) {
         }
 }
 
-/**
- * Installs .NET Framework redistributables
- */
 private fun installDotNetFramework(context: RedistContext) {
     val dotnetDirs = listOf("dotNetFx", "dotnet", "DotNet")
 
@@ -1954,9 +1948,6 @@ private fun installOpenAL(context: RedistContext) {
     }
 }
 
-/**
- * Installs PhysX redistributables (.msi files)
- */
 private fun installPhysX(context: RedistContext) {
     val physxDir = File(context.commonRedistDir, "PhysX")
     if (physxDir.exists() && physxDir.isDirectory()) {
@@ -2004,7 +1995,7 @@ private fun installXNAFramework(context: RedistContext) {
 }
 
 /**
- * Installs redistributables (vcredist, DirectX, .NET Framework, OpenAL, PhysX, XNA) from _CommonRedist folder
+ * Installs redistributables from _CommonRedist folder
  * if shared depots are present and the redistributable executables exist.
  */
 private fun installRedistributables(
