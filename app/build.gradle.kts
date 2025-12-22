@@ -176,12 +176,12 @@ android {
     }
 
     // build extras needed in libwinlator_bionic.so
-//    externalNativeBuild {
-//        cmake {
-//            path = file("src/main/cpp/extras/CMakeLists.txt")   // the file shown above
-//            version = "3.22.1"
-//        }
-//    }
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/extras/CMakeLists.txt")   // the file shown above
+    //         version = "3.22.1"
+    //     }
+    // }
 
     // cmake on release builds a proot that fails to process ld-2.31.so
     // externalNativeBuild {
@@ -206,13 +206,14 @@ dependencies {
     if (localBuild) {
         implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
         implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
-        implementation(libs.bundles.steamkit.dev)
+        implementation(libs.bundles.javasteam.dev)
     } else {
-        implementation(libs.steamkit) {
+        implementation(libs.javasteam) {
             isChanging = version?.contains("SNAPSHOT") ?: false
         }
-        implementation("io.github.utkarshdalal:javasteam-depotdownloader:1.8.0-SNAPSHOT")
-//        implementation("in.dragonbra:javasteam-depotdownloader:1.8.0-SNAPSHOT")
+        implementation(libs.javasteam.depotdownloader) {
+            isChanging = version?.contains("SNAPSHOT") ?: false
+        }
     }
     implementation(libs.spongycastle)
 
