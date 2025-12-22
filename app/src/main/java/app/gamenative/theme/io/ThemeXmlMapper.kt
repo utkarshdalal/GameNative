@@ -263,6 +263,7 @@ object ThemeXmlMapper {
                 textColor = resolveColorAttr(n, "textColor", tree),
                 borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
                 collapsible = n.attributes["collapsible"]?.toBooleanStrictOrNull() ?: false,
+                expandDirection = n.attributes["expandDirection"] ?: "left",
             )
             "profilebutton" -> FixedElement.ProfileButton(
                 position = base.position,
@@ -322,6 +323,7 @@ object ThemeXmlMapper {
                 navigateDown = base.navigateDown,
                 navigateLeft = base.navigateLeft,
                 navigateRight = base.navigateRight,
+                expanded = n.attributes["expanded"]?.toBooleanStrictOrNull() ?: false,
                 size = resolveFloat(n, "size", 56f, tree),
                 iconSize = resolveFloat(n, "iconSize", 24f, tree),
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
@@ -488,6 +490,26 @@ object ThemeXmlMapper {
                 tintColor = resolveColorAttr(n, "tintColor", tree),
                 cornerRadius = resolveStringAttr(n, "cornerRadius", tree),
                 opacity = resolveFloat(n, "opacity", 1f, tree),
+            )
+            "systemtime" -> FixedElement.SystemTime(
+                position = base.position,
+                anchor = base.anchor,
+                visibility = base.visibility,
+                zIndex = base.zIndex,
+                declarationOrder = base.declarationOrder,
+                highlightColor = base.highlightColor,
+                highlightOpacity = base.highlightOpacity,
+                highlightBorderWidth = base.highlightBorderWidth,
+                highlightTransitionSpeed = base.highlightTransitionSpeed,
+                navigationId = base.navigationId,
+                navigateUp = base.navigateUp,
+                navigateDown = base.navigateDown,
+                navigateLeft = base.navigateLeft,
+                navigateRight = base.navigateRight,
+                textSize = resolveFloat(n, "textSize", 16f, tree),
+                textColor = resolveColorAttr(n, "textColor", tree),
+                fontWeight = n.attributes["fontWeight"] ?: "normal",
+                use24Hour = n.attributes["use24Hour"]?.toBooleanStrictOrNull() ?: false,
             )
             else -> null
         }
@@ -953,6 +975,7 @@ object ThemeXmlMapper {
         // Support both "focusedScale" (new) and "highlightScale" (legacy) attribute names
         val focusedScale = resolveFloatOrNull(node, "focusedScale", tree)
             ?: resolveFloat(node, "highlightScale", default = 1.0f, tree)
+        val unfocusedAlpha = resolveFloat(node, "unfocusedAlpha", default = 1.0f, tree)
         val verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"])
         val verticalOffset = resolveDimensionWidth(node, "verticalOffset", tree) ?: Dimension.Px(0f)
         
@@ -981,6 +1004,7 @@ object ThemeXmlMapper {
             pageSize = pageSize,
             centerFocus = centerFocus,
             focusedScale = focusedScale,
+            unfocusedAlpha = unfocusedAlpha,
             verticalAlign = verticalAlign,
             verticalOffset = verticalOffset,
             horizontalAlign = horizontalAlign,
@@ -1152,6 +1176,7 @@ object ThemeXmlMapper {
         // Support both "focusedScale" (new) and "highlightScale" (legacy) attribute names
         val focusedScale = resolveFloatOrNull(node, "focusedScale", tree)
             ?: resolveFloat(node, "highlightScale", default = 1.0f, tree)
+        val unfocusedAlpha = resolveFloat(node, "unfocusedAlpha", default = 1.0f, tree)
         val verticalAlign = VerticalAlign.fromString(node.attributes["verticalAlign"])
         val verticalOffset = resolveDimensionWidth(node, "verticalOffset", tree) ?: Dimension.Px(0f)
         val horizontalAlign = HorizontalAlign.fromString(node.attributes["horizontalAlign"])
@@ -1186,6 +1211,7 @@ object ThemeXmlMapper {
             pageSize = pageSize,
             centerFocus = centerFocus,
             focusedScale = focusedScale,
+            unfocusedAlpha = unfocusedAlpha,
             verticalAlign = verticalAlign,
             verticalOffset = verticalOffset,
             horizontalAlign = horizontalAlign,

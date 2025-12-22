@@ -386,6 +386,10 @@ private fun LibraryScreenContent(
                             neverPlayedText
                         }
 
+                        // Game source bindings
+                        val isSteam = item.gameSource == GameSource.STEAM
+                        val isCustom = item.gameSource == GameSource.CUSTOM_GAME
+
                         mapOf(
                             "game.title" to title,
                             "game.cover" to coverUrl,
@@ -400,6 +404,9 @@ private fun LibraryScreenContent(
                             "game.installStatus" to installStatusLabel,
                             "game.installStatus.color" to installStatusColor,
                             "game.lastPlayed" to lastPlayedText,
+                            "game.isSteam" to isSteam.toString(),
+                            "game.isCustom" to isCustom.toString(),
+                            "game.source" to item.gameSource.name.lowercase(),
                         )
                     }
                 }

@@ -1,0 +1,191 @@
+<theme>
+    <elements>
+        <!-- Card for horizontal carousel - Switch-style square cards -->
+        <card id="gameCard" width="100%" height="200">
+            <!-- Game image - square capsule with hero fallback -->
+            <image id="cover"
+                   x="0" y="0"
+                   width="@{vars.cardImageSize}" height="@{vars.cardImageSize}"
+                   src="@{game.capsule}"
+                   fallback="@{game.hero}"
+                   cornerRadius="@{vars.cornerRadius}"
+                   scaleType="cover" />
+
+            <!-- Focus border - outside the image bounds -->
+            <rect id="focusBorder"
+                  x="-@{vars.focusBorderOffset}" y="-@{vars.focusBorderOffset}"
+                  width="@{vars.focusBorderSize}" height="@{vars.focusBorderSize}"
+                  color="#00000000"
+                  borderWidth="@{vars.focusBorderWidth}"
+                  borderGradient="true"
+                  cornerRadius="@{vars.focusBorderCornerRadius}"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+
+            <!-- Steam icon - shown to the left of title for Steam games -->
+            <image id="steamIcon"
+                   x="@{vars.sourceIconX}" y="@{vars.sourceIconY}"
+                   width="@{vars.sourceIconSize}" height="@{vars.sourceIconSize}"
+                   src="assets/steam.png"
+                   scaleType="contain"
+                   anchor="topLeft"
+                   focusOnly="true"
+                   focusTransitionSpeed="@{vars.transitionSpeed}"
+                   visibleWhen="game.isSteam" />
+
+            <!-- Custom game icon - shown to the left of title for custom games -->
+            <image id="customIcon"
+                   x="@{vars.sourceIconX}" y="@{vars.sourceIconY}"
+                   width="@{vars.sourceIconSize}" height="@{vars.sourceIconSize}"
+                   src="assets/folder.png"
+                   scaleType="contain"
+                   anchor="topLeft"
+                   focusOnly="true"
+                   focusTransitionSpeed="@{vars.transitionSpeed}"
+                   visibleWhen="game.isCustom" />
+
+            <!-- Game title - shown above the card when focused, after source icon -->
+            <text id="title"
+                  x="@{vars.titleX}" y="@{vars.titleY}"
+                  width="100%"
+                  text="@{game.title}"
+                  textSize="@{vars.titleSize}"
+                  color="#FFFFFFFF"
+                  maxLines="1"
+                  overflow="ellipsis"
+                  textAlign="left"
+                  fontWeight="bold"
+                  anchor="topLeft"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+
+            <!-- Installed checkmark - bottom right corner with equal padding -->
+            <text id="installedCheck"
+                  x="22" y="28"
+                  text="✓"
+                  textSize="16"
+                  color="#FFFFFFFF"
+                  fontWeight="bold"
+                  anchor="bottomRight"
+                  visibleWhen="game.isInstalled" />
+        </card>
+    </elements>
+
+    <layout>
+        <!-- Horizontal carousel with focused item at left edge -->
+        <carousel navigationId="carousel"
+                  orientation="horizontal"
+                  centerFocus="false"
+                  horizontalAlign="start"
+                  horizontalOffset="@{vars.carouselOffsetX}"
+                  verticalAlign="center"
+                  verticalOffset="@{vars.carouselY}"
+                  itemWidth="@{vars.itemWidth}"
+                  itemHeight="@{vars.itemHeight}"
+                  itemSpacing="@{vars.itemSpacing}"
+                  focusedScale="@{vars.focusedScale}"
+                  focusedOffsetX="0"
+                  focusedOffsetY="@{vars.focusedYOffset}"
+                  focusedSpacing="@{vars.focusedSpacing}"
+                  selectionMode="stationary"
+                  itemCard="gameCard"
+                  focusedBackground="@{game.libraryHero}"
+                  backgroundOpacity="1.0"
+                  backgroundTransitionSpeed="400"
+                  highlightBorderWidth="0"
+                  navigateRight="filterBtn" navigateDown="filterBtn" navigateUp="profileBtn" />
+
+        <!-- Top bar with profile, search, and clock -->
+        <fixed id="topBar">
+            <!-- Profile button at top left - no padding, just the icon -->
+            <profileButton navigationId="profileBtn"
+                           x="@{vars.bottomPadding}" y="@{vars.bottomPadding}"
+                           anchor="topLeft"
+                           size="@{vars.profileSize}"
+                           iconSize="@{vars.profileIconSize}"
+                           padding="0"
+                           backgroundColor="#00000000"
+                           cornerRadius="24"
+                           highlightOpacity="@{vars.highlightOpacity}"
+                           highlightBorderWidth="@{vars.highlightBorderWidth}"
+                           highlightTransitionSpeed="@{vars.highlightTransitionSpeed}"
+                           navigateRight="searchBtn"
+                           navigateDown="carousel" />
+
+            <!-- Search bar next to profile - expands to the right, round when collapsed -->
+            <searchBar navigationId="searchBtn"
+                       x="80" y="@{vars.bottomPadding}"
+                       width="@{vars.searchBarWidth}" height="@{vars.searchBarSize}"
+                       anchor="topLeft"
+                       backgroundColor="#44FFFFFF"
+                       textColor="#FFFFFFFF"
+                       borderRadius="@{vars.searchBarSize}"
+                       collapsible="true"
+                       expandDirection="right"
+                       highlightOpacity="@{vars.highlightOpacity}"
+                       highlightBorderWidth="@{vars.highlightBorderWidth}"
+                       highlightTransitionSpeed="@{vars.highlightTransitionSpeed}"
+                       navigateLeft="profileBtn"
+                       navigateRight="clock"
+                       navigateDown="carousel" />
+
+            <!-- System time at top right -->
+            <systemTime navigationId="clock"
+                        x="@{vars.topBarPadding}" y="@{vars.topBarPadding}"
+                        anchor="topRight"
+                        textSize="@{vars.clockTextSize}"
+                        textColor="#FFFFFFFF"
+                        fontWeight="medium"
+                        use24Hour="false" />
+        </fixed>
+
+        <!-- Bottom bar with logo, game count, and action buttons -->
+        <fixed id="bottomBar">
+            <!-- Header with app name and game count at bottom left -->
+            <header navigationId="header"
+                    x="@{vars.headerX}" y="@{vars.headerY}"
+                    anchor="bottomLeft"
+                    textColor="#FFFFFFFF"
+                    showAppName="false"
+                    showThemeName="false"
+                    showGameCount="true"
+                    textSize="@{vars.headerTextSize}"
+                    fontWeight="medium"
+                    navigateUp="carousel"
+                    navigateRight="filterBtn" />
+
+            <!-- Filter button at bottom right (expanded with text, transparent) -->
+            <filterButton navigationId="filterBtn"
+                          x="140" y="@{vars.bottomPadding}"
+                          anchor="bottomRight"
+                          expanded="true"
+                          backgroundColor="#00000000"
+                          iconColor="#FFFFFFFF"
+                          cornerRadius="24"
+                          size="48"
+                          iconSize="24"
+                          highlightOpacity="@{vars.highlightOpacity}"
+                          highlightBorderWidth="@{vars.highlightBorderWidth}"
+                          highlightTransitionSpeed="@{vars.highlightTransitionSpeed}"
+                          navigateUp="carousel"
+                          navigateLeft="header"
+                          navigateRight="addBtn" />
+
+            <!-- Add button at bottom right corner (expanded with text, transparent) -->
+            <addButton navigationId="addBtn"
+                       x="@{vars.bottomPadding}" y="@{vars.bottomPadding}"
+                       anchor="bottomRight"
+                       expanded="true"
+                       backgroundColor="#00000000"
+                       iconColor="#FFFFFFFF"
+                       cornerRadius="24"
+                       size="48"
+                       iconSize="24"
+                       highlightOpacity="@{vars.highlightOpacity}"
+                       highlightBorderWidth="@{vars.highlightBorderWidth}"
+                       highlightTransitionSpeed="@{vars.highlightTransitionSpeed}"
+                       navigateUp="carousel"
+                       navigateLeft="filterBtn" />
+        </fixed>
+    </layout>
+</theme>

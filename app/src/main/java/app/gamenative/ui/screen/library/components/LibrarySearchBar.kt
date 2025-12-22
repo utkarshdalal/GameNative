@@ -85,6 +85,8 @@ data class SearchBarStyle(
     val collapsible: Boolean = false,
     /** Whether the anchor is on the right side (for collapsed icon positioning). */
     val anchorRight: Boolean = false,
+    /** Direction to expand when collapsible: "left" or "right". */
+    val expandDirection: String = "left",
     /** Full width of the search bar when expanded (for animation). */
     val expandedWidth: Dp = 0.dp,
     /** Height of the search bar. */
@@ -185,8 +187,14 @@ internal fun LibrarySearchBar(
         label = "searchBarWidth"
     )
     
-    // Alignment based on anchor
-    val contentAlignment = if (style.anchorRight) Alignment.CenterEnd else Alignment.CenterStart
+    // Alignment based on expand direction (when collapsible) or anchor (when not)
+    // expandDirection="right" means icon on left, expands to the right (CenterStart)
+    // expandDirection="left" means icon on right, expands to the left (CenterEnd)
+    val contentAlignment = if (style.collapsible) {
+        if (style.expandDirection.lowercase() == "right") Alignment.CenterStart else Alignment.CenterEnd
+    } else {
+        if (style.anchorRight) Alignment.CenterEnd else Alignment.CenterStart
+    }
     
     // Highlight border animation for controller navigation (theme-only feature)
     // Use gradient brush for default focus styling (matching grid behavior)

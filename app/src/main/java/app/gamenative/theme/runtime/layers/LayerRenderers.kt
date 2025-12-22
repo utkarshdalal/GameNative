@@ -306,7 +306,9 @@ private fun BoxScope.BorderLayerView(layer: Layer.BorderLayer, parentSize: DpSiz
 
 @Composable
 private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, binding: BindingContext, anchor: Anchor) {
-    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(parentSize.width, parentSize.height), layer.anchor)
+    // Use 0.dp as default size for text without explicit dimensions
+    // This ensures anchor calculations work correctly (text grows from anchor point)
+    val p = place(parentSize, layer.position, layer.size, defaultSize = DpSize(0.dp, 0.dp), layer.anchor)
     val alpha = binding.or(layer.opacity, 1f)
     val color = Color(binding.or(layer.color, 0xFFFFFFFF.toInt()))
     val textSize = binding.or(layer.textSize, 16f)

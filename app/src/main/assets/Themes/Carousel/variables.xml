@@ -13,12 +13,13 @@
     <var name="bottomOffset" value="24" />
     <var name="transitionSpeed" value="400" />
 
-    <!-- Card dimensions -->
+    <!-- Card options -->
     <var name="cardWidth" value="360" />
     <var name="cardHeight" value="228" />
     <var name="heroHeight" value="168" />
     <var name="cornerRadius" value="8" />
     <var name="itemSpacing" value="24" />
+    <var name="badgeHeight" value="20" />
 
     <!-- Info positioning -->
     <var name="infoY" value="170" />

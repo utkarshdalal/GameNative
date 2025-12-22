@@ -46,6 +46,7 @@
     <string name="download">Download</string>
     <string name="install">Install</string>
     <string name="install_app">Install</string>
+    <string name="add_game">Add Game</string>
     <string name="delete_app">Delete</string>
     <string name="uninstall">Uninstall</string>
     <string name="run_app">Play</string>

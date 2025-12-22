@@ -1,0 +1,14 @@
+<manifest>
+    <id>switchin-it-up</id>
+    <title>Switchin' It Up</title>
+    <version>1.0.0</version>
+    <engineVersion>1.0.0</engineVersion>
+    <minAppVersion>0.0.0</minAppVersion>
+    <description>A theme with a horizontal game carousel, system clock display, and full-screen hero backgrounds.</description>
+    <author>
+        <name>Mikkel Bjørnmose Bundgaard</name>
+        <github>https://github.com/maaggel</github>
+    </author>
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" />
+</manifest>

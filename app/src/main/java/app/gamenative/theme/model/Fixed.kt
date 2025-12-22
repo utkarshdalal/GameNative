@@ -138,6 +138,8 @@ sealed class FixedElement {
         val borderRadius: Float = 8f,
         /** If true, shows only an icon that expands when focused/has text. */
         val collapsible: Boolean = false,
+        /** Direction to expand when collapsible: "left" or "right". */
+        val expandDirection: String = "left",
     ) : FixedElement()
 
     /**
@@ -220,6 +222,8 @@ sealed class FixedElement {
         override val navigateDown: String? = null,
         override val navigateLeft: String? = null,
         override val navigateRight: String? = null,
+        /** Whether to show expanded text label. */
+        val expanded: Boolean = false,
         /** Button size in pixels (diameter for circular, side for square). */
         val size: Float = 56f,
         /** Icon size in pixels inside the button. */
@@ -473,6 +477,34 @@ sealed class FixedElement {
         val cornerRadius: String? = null,
         /** Opacity (0.0 - 1.0). */
         val opacity: Float = 1f,
+    ) : FixedElement()
+
+    /**
+     * System time display element showing the current device time.
+     */
+    data class SystemTime(
+        override val position: DimOffset,
+        override val anchor: Anchor = Anchor.TOP_RIGHT,
+        override val visibility: Visibility = Visibility.ALWAYS,
+        override val zIndex: Float = 0f,
+        override val declarationOrder: Int = 0,
+        override val highlightColor: Int? = null,
+        override val highlightOpacity: Float = 0.8f,
+        override val highlightBorderWidth: Float = 2f,
+        override val highlightTransitionSpeed: Int = 200,
+        override val navigationId: String? = null,
+        override val navigateUp: String? = null,
+        override val navigateDown: String? = null,
+        override val navigateLeft: String? = null,
+        override val navigateRight: String? = null,
+        /** Text size in sp. */
+        val textSize: Float = 16f,
+        /** Text color (ARGB), null uses theme default white. */
+        val textColor: Int? = null,
+        /** Font weight: "normal", "bold", "medium", "semibold", etc. */
+        val fontWeight: String = "normal",
+        /** Whether to use 24-hour format (false = 12-hour with AM/PM). */
+        val use24Hour: Boolean = false,
     ) : FixedElement()
 }
 

@@ -145,6 +145,8 @@ sealed class LayoutNode {
         val centerFocus: Boolean = false,
         /** Scale factor for the focused item (1.0 = no scaling). */
         val focusedScale: Float = 1.0f,
+        /** Alpha/opacity for unfocused items (0.0-1.0, default 1.0 = no fade). */
+        val unfocusedAlpha: Float = 1.0f,
         /** Vertical alignment within parent container (for horizontal carousels). */
         val verticalAlign: VerticalAlign = VerticalAlign.TOP,
         /** Vertical offset from the aligned position (positive = down, for horizontal carousels). */

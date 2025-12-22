@@ -13,10 +13,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -326,6 +331,7 @@ private fun getNavigationId(containerId: String, element: FixedElement, index: I
         is FixedElement.Shadow -> "shadow"
         is FixedElement.Border -> "border"
         is FixedElement.Backdrop -> "backdrop"
+        is FixedElement.SystemTime -> "system-time"
     }
     return "$containerId-$typePrefix-$index"
 }
@@ -353,13 +359,14 @@ private fun BoxScope.RenderFixedElement(
         val rawX = dimToDp(element.position.x, parentWidth, parentHeight)
         val rawY = dimToDp(element.position.y, parentWidth, parentHeight)
         
-        // For CSS-like elements (buttons, header, searchbar, etc.) use CSS positioning
+        // For CSS-like elements (buttons, header, searchbar, systemtime, etc.) use CSS positioning
         // For decorative elements (rect, text, shadow, border, backdrop, image, video) use absolute positioning
         val useCssPositioning = element is FixedElement.Header || 
                                 element is FixedElement.SearchBar ||
                                 element is FixedElement.ProfileButton ||
                                 element is FixedElement.FilterButton ||
-                                element is FixedElement.AddButton
+                                element is FixedElement.AddButton ||
+                                element is FixedElement.SystemTime
         
         val alignment = if (useCssPositioning) element.anchor.toComposeAlignment() else Alignment.TopStart
         val (offsetX, offsetY) = if (useCssPositioning) {
@@ -476,6 +483,7 @@ private fun BoxScope.RenderFixedElement(
                 borderRadius = radius,
                 collapsible = element.collapsible,
                 anchorRight = isAnchorRight,
+                expandDirection = element.expandDirection,
                 expandedWidth = expandedWidth,
                 height = searchHeight,
                 highlightColor = highlightStyle.color,
@@ -611,20 +619,23 @@ private fun BoxScope.RenderFixedElement(
                     .offset(x = offsetX, y = offsetY)
             ) {
                 // FABs are focusable by default - no extra focusable() modifier needed
-                FloatingActionButton(
+                ExtendedFloatingActionButton(
+                    text = { Text(text = stringResource(R.string.add_game)) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize),
+                            tint = iconTint,
+                        )
+                    },
+                    expanded = element.expanded,
                     onClick = callbacks.onAddClick,
                     containerColor = bgColor,
                     contentColor = iconTint,
-                    modifier = Modifier.size(buttonSize),
                     shape = RoundedCornerShape(cornerRadius),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add custom game",
-                        modifier = Modifier.size(iconSize),
-                        tint = iconTint,
-                    )
-                }
+                    modifier = Modifier.defaultMinSize(minWidth = buttonSize, minHeight = buttonSize),
+                )
             }
         }
 
@@ -781,6 +792,15 @@ private fun BoxScope.RenderFixedElement(
                 tintColor = element.tintColor?.let { Color(it) },
                 cornerRadius = element.cornerRadius,
                 opacity = element.opacity,
+            )
+        }
+
+        is FixedElement.SystemTime -> {
+            SystemTimeElement(
+                element = element,
+                modifier = Modifier
+                    .align(alignment)
+                    .offset(x = offsetX, y = offsetY),
             )
         }
         }
@@ -1074,4 +1094,57 @@ private fun FixedVideoElement(
             modifier = Modifier.fillMaxSize()
         )
     }
+}
+
+/**
+ * Renders a system time element that shows the current device time.
+ * Updates every second to keep the time current.
+ */
+@Composable
+private fun SystemTimeElement(
+    element: FixedElement.SystemTime,
+    modifier: Modifier = Modifier,
+) {
+    // State to hold the current formatted time
+    var currentTime by remember { mutableStateOf("") }
+    
+    // Time format pattern based on use24Hour setting
+    val timeFormat = remember(element.use24Hour) {
+        if (element.use24Hour) {
+            SimpleDateFormat("HH:mm", Locale.getDefault())
+        } else {
+            SimpleDateFormat("h:mm a", Locale.getDefault())
+        }
+    }
+    
+    // Update time every second
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = timeFormat.format(Date())
+            delay(1000L)
+        }
+    }
+    
+    // Determine font weight
+    val fontWeight = when (element.fontWeight.lowercase()) {
+        "bold" -> FontWeight.Bold
+        "medium" -> FontWeight.Medium
+        "semibold" -> FontWeight.SemiBold
+        "light" -> FontWeight.Light
+        "thin" -> FontWeight.Thin
+        "extrabold", "extra-bold" -> FontWeight.ExtraBold
+        "black" -> FontWeight.Black
+        else -> FontWeight.Normal
+    }
+    
+    // Text color - default to white if not specified
+    val textColor = element.textColor?.let { Color(it) } ?: Color.White
+    
+    Text(
+        text = currentTime,
+        color = textColor,
+        fontSize = element.textSize.sp,
+        fontWeight = fontWeight,
+        modifier = modifier,
+    )
 }

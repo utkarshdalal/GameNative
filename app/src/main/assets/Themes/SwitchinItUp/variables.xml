@@ -1,0 +1,95 @@
+<variables>
+    <!-- Highlight styling (used by multiple elements) -->
+    <var name="highlightOpacity" value="1.0" />
+    <var name="highlightBorderWidth" value="3" />
+    <var name="highlightTransitionSpeed" value="200" />
+    
+    <!-- Animation -->
+    <var name="transitionSpeed" value="200" />
+    
+    <!-- Card dimensions -->
+    <var name="cardSize" value="120" />
+    <var name="cardImageSize" value="120" />
+    <var name="cardSpacing" value="0" />
+    <var name="cornerRadius" value="16" />
+    
+    <!-- Focus border (outside the image) -->
+    <var name="focusBorderWidth" value="2" />
+    <var name="focusBorderOffset" value="5" />
+    <var name="focusBorderSize" value="130" />
+    <var name="focusBorderCornerRadius" value="20" />
+    
+    <!-- Source icon (Steam/Custom) positioning -->
+    <var name="sourceIconX" value="130" />
+    <var name="sourceIconY" value="1" />
+    <var name="sourceIconSize" value="16" />
+    
+    <!-- Title positioning (above the card when focused, after source icon) -->
+    <var name="titleX" value="150" />
+    <var name="titleY" value="-3" />
+    <var name="titleSize" value="18" />
+    
+    <!-- Carousel item dimensions (wider than card to accommodate title) -->
+    <var name="itemWidth" value="450" />
+    <var name="itemHeight" value="200" />
+    <var name="itemSpacing" value="-326" />
+    
+    <!-- Carousel settings -->
+    <var name="carouselY" value="120" />
+    <var name="carouselOffsetX" value="80" />
+    <var name="focusedScale" value="1.22" />
+    <var name="focusedSpacing" value="-16" />
+    <var name="focusedYOffset" value="-10" />
+    
+    <!-- Top bar -->
+    <var name="topBarPadding" value="24" />
+    <var name="profileSize" value="48" />
+    <var name="profileIconSize" value="48" />
+    <var name="searchBarWidth" value="200" />
+    <var name="searchBarSize" value="40" />
+    <var name="clockTextSize" value="18" />
+    
+    <!-- Bottom bar -->
+    <var name="headerX" value="16" />
+    <var name="headerY" value="16" />
+    <var name="bottomPadding" value="4" />
+    <var name="headerTextSize" value="14" />
+    
+    <!-- Portrait overrides -->
+    <breakpoint orientation="portrait">
+        <var name="cardSize" value="100" />
+        <var name="cornerRadius" value="12" />
+        
+        <var name="focusBorderWidth" value="2" />
+        <var name="focusBorderOffset" value="5" />
+        <var name="focusBorderSize" value="110" />
+        <var name="focusBorderCornerRadius" value="16" />
+        
+        <var name="sourceIconX" value="110" />
+        <var name="sourceIconY" value="-2" />
+        <var name="sourceIconSize" value="14" />
+        
+        <var name="titleX" value="128" />
+        <var name="titleY" value="-25" />
+        <var name="titleSize" value="14" />
+        
+        <var name="itemWidth" value="350" />
+        <var name="itemHeight" value="160" />
+        <var name="itemSpacing" value="-245" />
+        
+        <var name="carouselY" value="60" />
+        <var name="carouselOffsetX" value="24" />
+        <var name="focusedScale" value="1.0" />
+        <var name="focusedSpacing" value="250" />
+        
+        <var name="topBarPadding" value="16" />
+        <var name="profileSize" value="40" />
+        <var name="profileIconSize" value="40" />
+        <var name="searchBarWidth" value="160" />
+        <var name="searchBarSize" value="36" />
+        <var name="clockTextSize" value="16" />
+        
+        <var name="bottomPadding" value="16" />
+        <var name="headerTextSize" value="12" />
+    </breakpoint>
+</variables>

@@ -91,16 +91,16 @@ fun ThemedGameGrid(
     val stringResolver = remember(themePath) {
         ThemeStringResolver(context, context.assets)
     }
-    
+
     // Spatial focus manager for directional navigation
     val spatialFocusManager = LocalSpatialFocusManager.current
-    
+
     // Focus requester for the first grid item - this is what will receive focus when navigating to the grid
     val firstItemFocusRequester = remember { FocusRequester() }
-    
+
     // Use configured navigationId or default to "grid"
     val gridNavId = gridConfig.navigationId ?: "grid"
-    
+
     // Use content padding from grid config, with defaults
     val paddingTop = if (gridConfig.contentPaddingTop > 0) gridConfig.contentPaddingTop.dp else 80.dp
     val paddingBottom = if (gridConfig.contentPaddingBottom > 0) gridConfig.contentPaddingBottom.dp else 72.dp
@@ -111,19 +111,19 @@ fun ThemedGameGrid(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val viewportWidth = maxWidth
         val viewportHeight = maxHeight
-        
+
         val hSpacing = gridConfig.hSpacing.dp
         val vSpacing = gridConfig.vSpacing.dp
-        
+
         // Calculate minimum cell width from config
         val minCellWidthDp = dimToDp(gridConfig.cellWidth, viewportWidth, viewportHeight)
-        
+
         // Calculate available width for content (excluding padding)
         val availableWidth = viewportWidth - paddingStart - paddingEnd
-        
+
         // Calculate how many columns fit, ensuring at least 1
         val columnCount = maxOf(1, ((availableWidth + hSpacing) / (minCellWidthDp + hSpacing)).toInt())
-        
+
         // Calculate actual cell width to fill the available space evenly
         // Formula: availableWidth = columnCount * cellWidth + (columnCount - 1) * spacing
         // Solving for cellWidth: cellWidth = (availableWidth - (columnCount - 1) * spacing) / columnCount
@@ -132,7 +132,7 @@ fun ThemedGameGrid(
         } else {
             availableWidth // Single column fills entire width
         }
-        
+
         // Calculate cell height:
         // 1. If aspectRatio is specified, use it to calculate from actual cell width
         // 2. Else if cellHeight is specified, use it
@@ -142,15 +142,15 @@ fun ThemedGameGrid(
             gridConfig.cellHeight != null -> dimToDp(gridConfig.cellHeight, viewportWidth, viewportHeight)
             else -> dimToDp(card.canvas.height, viewportWidth, viewportHeight)
         }
-        
+
         // Calculate separator height if present (content height + margins)
-        val separatorContentHeightDp = gridConfig.separator?.let { 
-            dimToDp(it.height, viewportWidth, viewportHeight) 
+        val separatorContentHeightDp = gridConfig.separator?.let {
+            dimToDp(it.height, viewportWidth, viewportHeight)
         } ?: 0.dp
         val separatorTotalHeightDp = gridConfig.separator?.let {
             separatorContentHeightDp + it.marginTop.dp + it.marginBottom.dp
         } ?: 0.dp
-        
+
         // Total cell height including separator
         val totalCellHeight = cellHeightDp + separatorTotalHeightDp
 
@@ -161,7 +161,7 @@ fun ThemedGameGrid(
             left = gridConfig.navigateLeft,
             right = gridConfig.navigateRight,
         )
-        
+
         // Helper to check if we're at edge and should use explicit navigation
         fun isAtRightEdge(index: Int): Boolean = (index + 1) % columnCount == 0
         fun isAtLeftEdge(index: Int): Boolean = index % columnCount == 0
@@ -222,13 +222,13 @@ fun ThemedGameGrid(
                         // Edge navigation
                         onEdgeNavigation = { direction ->
                             val target = when (direction) {
-                                SpatialFocusManager.Direction.RIGHT -> 
+                                SpatialFocusManager.Direction.RIGHT ->
                                     if (isAtRightEdge(index)) navigationLinks.right else null
-                                SpatialFocusManager.Direction.LEFT -> 
+                                SpatialFocusManager.Direction.LEFT ->
                                     if (isAtLeftEdge(index)) navigationLinks.left else null
-                                SpatialFocusManager.Direction.UP -> 
+                                SpatialFocusManager.Direction.UP ->
                                     if (isAtTopEdge(index)) navigationLinks.up else null
-                                SpatialFocusManager.Direction.DOWN -> 
+                                SpatialFocusManager.Direction.DOWN ->
                                     if (isAtBottomEdge(index, items.size)) navigationLinks.down else null
                             }
                             if (target != null) {
@@ -281,13 +281,13 @@ fun ThemedGameCarousel(
     val stringResolver = remember(themePath) {
         ThemeStringResolver(context, context.assets)
     }
-    
+
     val isVertical = carouselConfig.orientation == CarouselOrientation.VERTICAL
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val viewportWidth = maxWidth
         val viewportHeight = maxHeight
-        
+
         // Calculate item dimensions
         val itemWidth = dimToDp(carouselConfig.itemSize.width, viewportWidth, viewportHeight)
         val itemHeight = dimToDp(carouselConfig.itemSize.height, viewportWidth, viewportHeight)
@@ -297,34 +297,34 @@ fun ThemedGameCarousel(
         // Maximum scaled size for layout calculations
         val scaledItemWidth = itemWidth * focusedScale
         val scaledItemHeight = itemHeight * focusedScale
-        
+
         // Clamp initial page to valid range
         val safeInitialPage = initialPage.coerceIn(0, (items.size - 1).coerceAtLeast(0))
-        
+
         val pagerState = rememberPagerState(
             initialPage = safeInitialPage,
             pageCount = { items.size }
         )
-        
+
         // Coroutine scope for animating page changes
         val coroutineScope = rememberCoroutineScope()
-        
+
         // Focus requester for controller navigation
         val focusRequester = remember { FocusRequester() }
-        
+
         // Spatial focus manager for directional navigation based on screen position
         val spatialFocusManager = LocalSpatialFocusManager.current
-        
+
         // Use configured navigationId or default to "carousel"
         val carouselNavId = carouselConfig.navigationId ?: "carousel"
-        
+
         // Track if carousel has focus (for fading effect)
         // Default to TRUE - carousel is considered focused until explicitly unfocused
         var carouselHasFocus by remember { mutableStateOf(true) }
-        
+
         // Track if carousel has ever had focus (to know if unfocus is intentional)
         var hasEverHadFocus by remember { mutableStateOf(false) }
-        
+
         // Animate carousel opacity based on focus state
         // Only fade if we've had focus before and now lost it
         val carouselAlpha by animateFloatAsState(
@@ -332,7 +332,7 @@ fun ThemedGameCarousel(
             animationSpec = tween(durationMillis = 200),
             label = "carouselFocusAlpha"
         )
-        
+
         // Request focus when carousel is first displayed
         LaunchedEffect(Unit) {
             // Small delay to ensure layout is complete
@@ -343,55 +343,84 @@ fun ThemedGameCarousel(
                 // Focus request can fail if not attached yet, ignore
             }
         }
-        
+
         // Notify when focused item changes and save position
         LaunchedEffect(pagerState.currentPage) {
             items.getOrNull(pagerState.currentPage)?.let { onItemFocus(it) }
             onPageChanged(pagerState.currentPage)
         }
-        
+
         // Focused background image with crossfade transition
         carouselConfig.focusedBackground?.let { bgBinding ->
             val focusedItem = items.getOrNull(pagerState.currentPage)
             val focusedBindings = focusedItem?.let { bindingProvider(it) } ?: emptyMap()
             val bgImageUrl = resolveStringBinding(bgBinding, focusedBindings)
-            
+
             // Preload adjacent images for smoother transitions
             val prevItem = items.getOrNull(pagerState.currentPage - 1)
             val nextItem = items.getOrNull(pagerState.currentPage + 1)
             val prevUrl = prevItem?.let { resolveStringBinding(bgBinding, bindingProvider(it)) }
             val nextUrl = nextItem?.let { resolveStringBinding(bgBinding, bindingProvider(it)) }
-            
+
             PreloadImages(urls = listOfNotNull(prevUrl, nextUrl))
-            
+
             CarouselBackgroundImage(
                 imageUrl = bgImageUrl,
                 opacity = carouselConfig.backgroundOpacity,
                 transitionSpeed = carouselConfig.backgroundTransitionSpeed,
             )
         }
-        
-        // Calculate content padding to center items
-        val horizontalContentPadding = (viewportWidth - itemWidth) / 2
-        val verticalContentPadding = (viewportHeight - itemHeight) / 2
-        
-        // Calculate offsets
+
+        // Calculate offsets first (needed for content padding calculation)
         val verticalOffset = dimToDp(carouselConfig.verticalOffset, viewportWidth, viewportHeight)
         val horizontalOffset = dimToDp(carouselConfig.horizontalOffset, viewportWidth, viewportHeight)
-        
+
+        // Calculate content padding based on alignment and centerFocus settings
+        // For centerFocus=true or horizontalAlign=center: center items
+        // For centerFocus=false with horizontalAlign=start: put focused item at start (with offset)
+        // For centerFocus=false with horizontalAlign=end: put focused item at end
+        val horizontalContentPadding = when {
+            carouselConfig.centerFocus || carouselConfig.horizontalAlign == HorizontalAlign.CENTER -> {
+                (viewportWidth - itemWidth) / 2
+            }
+            carouselConfig.horizontalAlign == HorizontalAlign.START -> {
+                // Small padding at start, large padding at end to show i5tems to the right
+                horizontalOffset.coerceAtLeast(16.dp)
+            }
+            carouselConfig.horizontalAlign == HorizontalAlign.END -> {
+                // Large padding at start, small at end to show items to the left
+                viewportWidth - itemWidth - horizontalOffset.coerceAtLeast(16.dp)
+            }
+            else -> (viewportWidth - itemWidth) / 2
+        }
+        val horizontalEndPadding = when {
+            carouselConfig.centerFocus || carouselConfig.horizontalAlign == HorizontalAlign.CENTER -> {
+                horizontalContentPadding
+            }
+            carouselConfig.horizontalAlign == HorizontalAlign.START -> {
+                // End padding to allow scrolling through all items
+                viewportWidth - itemWidth - horizontalOffset.coerceAtLeast(16.dp)
+            }
+            carouselConfig.horizontalAlign == HorizontalAlign.END -> {
+                horizontalOffset.coerceAtLeast(16.dp)
+            }
+            else -> horizontalContentPadding
+        }
+        val verticalContentPadding = (viewportHeight - itemHeight) / 2
+
         // Alignment based on config
         val verticalArrangement = when (carouselConfig.verticalAlign) {
             VerticalAlign.CENTER -> Arrangement.Center
             VerticalAlign.BOTTOM -> Arrangement.Bottom
             VerticalAlign.TOP -> Arrangement.Top
         }
-        
+
         val horizontalArrangement = when (carouselConfig.horizontalAlign) {
             HorizontalAlign.CENTER -> Arrangement.Center
             HorizontalAlign.END -> Arrangement.End
             HorizontalAlign.START -> Arrangement.Start
         }
-        
+
         // Helper to navigate using explicit target or spatial navigation
         fun navigateToTarget(explicitTarget: String?, direction: SpatialFocusManager.Direction): Boolean {
             return if (explicitTarget != null) {
@@ -400,7 +429,7 @@ fun ThemedGameCarousel(
                 spatialFocusManager?.navigateInDirection(carouselNavId, direction) ?: false
             }
         }
-        
+
         // Key event handler - swap primary/secondary directions based on orientation
         val keyEventHandler: (androidx.compose.ui.input.key.KeyEvent) -> Boolean = { keyEvent ->
             if (keyEvent.type == KeyEventType.KeyDown) {
@@ -460,7 +489,7 @@ fun ThemedGameCarousel(
                 false
             }
         }
-        
+
         // Focus change handler
         // Use hasFocus (not isFocused) because focus might be on a child element
         val focusChangeHandler: (androidx.compose.ui.focus.FocusState) -> Unit = { focusState ->
@@ -471,51 +500,51 @@ fun ThemedGameCarousel(
                 spatialFocusManager?.setFocused(carouselNavId)
             }
         }
-        
+
         // Get focused item offsets from config
         val focusedOffsetX = carouselConfig.focusedOffsetX.dp
         val focusedOffsetY = carouselConfig.focusedOffsetY.dp
         val focusedSpacing = carouselConfig.focusedSpacing.dp
-        
+
         // Render pager content
         val renderPageContent: @Composable (Int) -> Unit = { page ->
             val item = items.getOrNull(page)
             if (item != null) {
                 val bindings = bindingProvider(item)
-                
+
                 // Calculate signed offset from current page (negative = before, positive = after)
                 val signedPageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                
+
                 // Calculate absolute distance for scale/alpha calculations
                 val pageOffset = signedPageOffset.absoluteValue.coerceIn(0f, 1f)
-                
+
                 // Scale from focusedScale (at center) to 1.0 (at edges)
                 val scale = lerp(
                     start = focusedScale,
                     stop = 1f,
                     fraction = pageOffset
                 )
-                
-                // Fade non-focused items slightly for depth effect
+
+                // Fade non-focused items based on unfocusedAlpha setting (1.0 = no fade)
                 val alpha = lerp(
                     start = 1f,
-                    stop = 0.6f,
+                    stop = carouselConfig.unfocusedAlpha,
                     fraction = pageOffset
                 )
-                
+
                 // Z-index: focused item (pageOffset=0) gets highest value
                 val zIndex = 1f - pageOffset
-                
+
                 // Determine if this page is focused:
                 // - Must be near center (pageOffset < 0.5)
                 // - Carousel must have focus (otherwise user navigated away to other elements)
                 val isFocused = pageOffset < 0.5f && carouselHasFocus
-                
+
                 // Calculate focused offset (smoothly interpolated based on focus)
                 val focusProgress = 1f - pageOffset
                 val offsetX = focusedOffsetX * focusProgress
                 val offsetY = focusedOffsetY * focusProgress
-                
+
                 // Calculate spacing offset to push items away from the focused item
                 // Uses signed offset directly for smooth, continuous transitions:
                 // - signedPageOffset > 0 (item before focus) → push backward (negative)
@@ -524,11 +553,11 @@ fun ThemedGameCarousel(
                 // Clamp to [-1, 1] so items far away don't get excessive push
                 val clampedSignedOffset = signedPageOffset.coerceIn(-1f, 1f)
                 val spacingOffset = -focusedSpacing * clampedSignedOffset
-                
+
                 // Apply spacing offset based on carousel orientation
                 val finalOffsetX = offsetX + if (!isVertical) spacingOffset else 0.dp
                 val finalOffsetY = offsetY + if (isVertical) spacingOffset else 0.dp
-                
+
                 Box(
                     modifier = Modifier
                         .zIndex(zIndex)
@@ -575,7 +604,7 @@ fun ThemedGameCarousel(
                 }
             }
         }
-        
+
         if (isVertical) {
             // Vertical carousel layout
             Row(
@@ -613,10 +642,16 @@ fun ThemedGameCarousel(
             }
         } else {
             // Horizontal carousel layout (original behavior)
+            // Only apply horizontalOffset for centered alignment (start/end use content padding)
+            val effectiveHorizontalOffset = if (carouselConfig.centerFocus || carouselConfig.horizontalAlign == HorizontalAlign.CENTER) {
+                horizontalOffset
+            } else {
+                0.dp
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset(x = horizontalOffset, y = verticalOffset)
+                    .offset(x = effectiveHorizontalOffset, y = verticalOffset)
                     .focusRequester(focusRequester)
                     .onFocusChanged(focusChangeHandler)
                     .focusable()
@@ -637,7 +672,7 @@ fun ThemedGameCarousel(
                                 focusRequester = focusRequester
                             )
                         },
-                    contentPadding = PaddingValues(horizontal = horizontalContentPadding),
+                    contentPadding = PaddingValues(start = horizontalContentPadding, end = horizontalEndPadding),
                     pageSpacing = spacing,
                     flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
                     verticalAlignment = Alignment.CenterVertically,
@@ -667,7 +702,7 @@ private fun resolveStringBinding(binding: StringOrBinding, bindings: Map<String,
 private fun PreloadImages(urls: List<String>) {
     val context = LocalContext.current
     val imageLoader = remember { coil.ImageLoader(context) }
-    
+
     LaunchedEffect(urls) {
         urls.forEach { url ->
             if (url.isNotBlank()) {
@@ -731,7 +766,7 @@ private fun BoxScope.RenderGridLayer(
         val bindingValue = bindings[bindingPath] ?: "false"
         if (bindingValue != "true") return
     }
-    
+
     // If layer is focusOnly, animate based on focus state
     if (layer.focusOnly) {
         val targetAlpha = if (isFocused) 1f else 0f
@@ -740,10 +775,10 @@ private fun BoxScope.RenderGridLayer(
             animationSpec = tween(durationMillis = layer.focusTransitionSpeed),
             label = "gridFocusOnlyAlpha"
         )
-        
+
         // Skip rendering entirely if invisible
         if (animatedAlpha <= 0.01f) return
-        
+
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -790,7 +825,7 @@ private fun BoxScope.RenderCarouselLayer(
         val bindingValue = bindings[bindingPath] ?: "false"
         if (bindingValue != "true") return
     }
-    
+
     // If layer is focusOnly and not focused, animate opacity
     if (layer.focusOnly) {
         // Animate the alpha based on focus state
@@ -800,10 +835,10 @@ private fun BoxScope.RenderCarouselLayer(
             animationSpec = tween(durationMillis = layer.focusTransitionSpeed),
             label = "focusOnlyAlpha"
         )
-        
+
         // Skip rendering entirely if invisible
         if (animatedAlpha <= 0.01f) return
-        
+
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -848,14 +883,14 @@ private fun SeparatorView(
     val marginBottom = separator.marginBottom.dp
     val marginStart = separator.marginStart.dp
     val marginEnd = separator.marginEnd.dp
-    
+
     // Content area size (excluding margins)
     val contentWidth = width - marginStart - marginEnd
     val parentSize = DpSize(contentWidth, contentHeight)
-    
+
     // Empty bindings - separator doesn't have access to game data
     val emptyBindings = emptyMap<String, String>()
-    
+
     // Total height includes margins
     Box(
         modifier = Modifier
@@ -867,7 +902,7 @@ private fun SeparatorView(
         ) {
             // Get current orientation for visibility filtering (centralized)
             val isPortrait = rememberIsPortrait()
-            
+
             // Sort layers by zIndex then declarationOrder for proper stacking
             separator.layers
                 .filter { layer -> layer.visibility.isVisible(isPortrait) }
@@ -906,13 +941,13 @@ private fun ThemedGameTile(
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var imageLoadFailed by remember { mutableStateOf(false) }
-    
+
     // For scrolling focused items into view (with margin for top bar)
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     var itemHeight by remember { mutableStateOf(0f) }
-    
+
     Box(
         modifier = Modifier
             .size(cellSize.width, cellSize.height)
@@ -977,7 +1012,7 @@ private fun ThemedGameTile(
     ) {
         // Get current orientation for visibility filtering (centralized)
         val isPortrait = rememberIsPortrait()
-        
+
         // Render each layer from the card, filtering by visibility, sorted by zIndex then declarationOrder
         card.layers
             .filter { layer -> layer.visibility.isVisible(isPortrait) }
@@ -1031,7 +1066,7 @@ private fun BoxScope.RenderThemedLayer(
         val bindingValue = bindings[bindingPath] ?: "false"
         if (bindingValue != "true") return
     }
-    
+
     when (layer) {
         is Layer.ImageLayer -> {
             val rawSrc = resolveBinding(layer.source.src, bindings)
@@ -1120,7 +1155,7 @@ private fun BoxScope.RenderThemedLayer(
             val alpha = resolveFloatBinding(layer.opacity, 1f)
             val borderWidth = resolveFloatBinding(layer.borderWidth, 0f)
             val borderColor = resolveIntBinding(layer.borderColor, 0xFFFFFFFF.toInt(), bindings)
-            
+
             // Create border brush - either gradient or solid color
             val borderBrush = if (layer.borderGradient) {
                 Brush.verticalGradient(
@@ -1161,9 +1196,13 @@ private fun BoxScope.RenderThemedLayer(
             // Handle Dp.Unspecified properly - use default if unspecified
             val rawW = layer.size?.let { dimToDp(it.width, parentSize.width, parentSize.height) }
             val rawH = layer.size?.let { dimToDp(it.height, parentSize.width, parentSize.height) }
-            val w = if (rawW == null || rawW == Dp.Unspecified) parentSize.width else rawW
-            val h = if (rawH == null || rawH == Dp.Unspecified) 24.dp else rawH
-            val pos = calculateAnchoredPosition(rawX, rawY, w, h, parentSize.width, parentSize.height, layer.anchor)
+            // For anchor calculations, use 0.dp when unspecified so text positions correctly at anchor point
+            val wForAnchor = if (rawW == null || rawW == Dp.Unspecified) 0.dp else rawW
+            val hForAnchor = if (rawH == null || rawH == Dp.Unspecified) 0.dp else rawH
+            val pos = calculateAnchoredPosition(rawX, rawY, wForAnchor, hForAnchor, parentSize.width, parentSize.height, layer.anchor)
+            // For display, use explicit size if specified, otherwise let text wrap
+            val w = if (rawW == null || rawW == Dp.Unspecified) Dp.Unspecified else rawW
+            val h = if (rawH == null || rawH == Dp.Unspecified) Dp.Unspecified else rawH
             val textSize = resolveFloatBinding(layer.textSize, 14f)
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
@@ -1195,11 +1234,19 @@ private fun BoxScope.RenderThemedLayer(
                 else -> androidx.compose.ui.text.font.FontStyle.Normal
             }
 
+            // Build size modifier conditionally - only apply if dimensions are specified
+            val sizeModifier = when {
+                w != Dp.Unspecified && h != Dp.Unspecified -> Modifier.size(w, h)
+                w != Dp.Unspecified -> Modifier.width(w)
+                h != Dp.Unspecified -> Modifier.height(h)
+                else -> Modifier
+            }
+
             Box(
                 modifier = Modifier
                     .zIndex(layer.zIndex)
                     .offset(x = pos.x, y = pos.y)
-                    .size(w, h)
+                    .then(sizeModifier)
                     .alpha(alpha),
                 contentAlignment = boxAlignment
             ) {
@@ -1393,7 +1440,7 @@ private fun resolveIntBinding(value: IntOrBinding?, default: Int, bindings: Map<
 @Composable
 private fun resolveColorBinding(value: IntOrBinding?, default: Color, bindings: Map<String, String> = emptyMap()): Color {
     val colorScheme = MaterialTheme.colorScheme
-    
+
     return when (value) {
         null -> default
         is IntOrBinding.Literal -> {
