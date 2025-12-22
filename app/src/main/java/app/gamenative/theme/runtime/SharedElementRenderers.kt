@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -108,6 +110,10 @@ object SharedElementRenderers {
      * Render static text with styling.
      * 
      * @param overflow Text overflow behavior: "ellipsis" (add ...), "clip" (hard cut), or "visible" (show all)
+     * @param shadowColor Optional shadow color (null = no shadow)
+     * @param shadowRadius Shadow blur radius
+     * @param shadowOffsetX Shadow horizontal offset
+     * @param shadowOffsetY Shadow vertical offset
      */
     @Composable
     fun RenderText(
@@ -126,6 +132,10 @@ object SharedElementRenderers {
         textDecoration: String? = null,
         overflow: String = "ellipsis",
         opacity: Float,
+        shadowColor: Color? = null,
+        shadowRadius: Float = 0f,
+        shadowOffsetX: Float = 0f,
+        shadowOffsetY: Float = 0f,
     ) {
         val fontWeightValue = parseFontWeight(fontWeight)
         val fontStyleValue = parseFontStyle(fontStyle)
@@ -135,6 +145,15 @@ object SharedElementRenderers {
         
         val lineHeightSp = lineHeight?.let { if (it > 0f) (it * textSize).sp else TextUnit.Unspecified } ?: TextUnit.Unspecified
         val letterSpacingSp = letterSpacing?.let { if (it != 0f) it.sp else TextUnit.Unspecified } ?: TextUnit.Unspecified
+
+        // Create shadow if color is specified
+        val shadow = shadowColor?.let {
+            Shadow(
+                color = it,
+                offset = Offset(shadowOffsetX, shadowOffsetY),
+                blurRadius = shadowRadius
+            )
+        }
 
         val sizeModifier = if (width != null && height != null) {
             Modifier.size(width, height)
@@ -161,6 +180,7 @@ object SharedElementRenderers {
                 lineHeight = lineHeightSp,
                 letterSpacing = letterSpacingSp,
                 textDecoration = textDecorationValue,
+                style = shadow?.let { TextStyle(shadow = it) } ?: TextStyle.Default,
                 modifier = if (width != null) Modifier.fillMaxWidth() else Modifier,
             )
         }

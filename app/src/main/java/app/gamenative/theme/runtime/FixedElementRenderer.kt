@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,8 +42,11 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -405,6 +409,15 @@ private fun BoxScope.RenderFixedElement(
             val textColor = Color(element.textColor)
             val textSizeSp = element.textSize.sp
             val fontWeight = SharedElementRenderers.parseFontWeight(element.fontWeight)
+            
+            // Text shadow
+            val textShadow = element.textShadowColor?.let {
+                Shadow(
+                    color = Color(it),
+                    offset = Offset(element.textShadowOffsetX, element.textShadowOffsetY),
+                    blurRadius = element.textShadowRadius
+                )
+            }
 
             // Calculate size if specified
             val sizeModifier = element.size?.let { size ->
@@ -438,14 +451,15 @@ private fun BoxScope.RenderFixedElement(
                                     MaterialTheme.colorScheme.primary,
                                     MaterialTheme.colorScheme.tertiary
                                 )
-                            )
+                            ),
+                            shadow = textShadow
                         )
                     )
                 }
                 if (element.showThemeName) {
                     Text(
                         text = "Theme: $themeName",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = textSizeSp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = textSizeSp, shadow = textShadow),
                         color = textColor.copy(alpha = 0.7f)
                     )
                 }
@@ -456,7 +470,7 @@ private fun BoxScope.RenderFixedElement(
                             state.totalAppsInFilter,
                             installedCount
                         ),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = textSizeSp),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = textSizeSp, shadow = textShadow),
                         color = textColor.copy(alpha = 0.7f)
                     )
                 }
@@ -495,6 +509,10 @@ private fun BoxScope.RenderFixedElement(
                 navigateDown = element.navigateDown,
                 navigateLeft = element.navigateLeft,
                 navigateRight = element.navigateRight,
+                textShadowColor = element.textShadowColor?.let { Color(it) },
+                textShadowRadius = element.textShadowRadius,
+                textShadowOffsetX = element.textShadowOffsetX,
+                textShadowOffsetY = element.textShadowOffsetY,
             )
 
             Box(
@@ -568,6 +586,16 @@ private fun BoxScope.RenderFixedElement(
                 val bgColor = element.backgroundColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
                 val iconTint = element.iconColor?.let { Color(it) } ?: MaterialTheme.colorScheme.onPrimary
                 val cornerRadius = element.cornerRadius.dp
+                val isTransparent = element.backgroundColor == 0x00000000
+                val buttonPadding = element.padding?.let { parseCssPadding(it) } ?: PaddingValues(0.dp)
+                val textShadow = element.textShadowColor?.let {
+                    Shadow(
+                        color = Color(it),
+                        offset = Offset(element.textShadowOffsetX, element.textShadowOffsetY),
+                        blurRadius = element.textShadowRadius
+                    )
+                }
+                val textStyle = textShadow?.let { TextStyle(shadow = it) } ?: TextStyle.Default
 
                 HighlightableBox(
                     id = elementId,
@@ -578,24 +606,49 @@ private fun BoxScope.RenderFixedElement(
                         .align(alignment)
                         .offset(x = offsetX, y = offsetY)
                 ) {
-                    // FABs are focusable by default - no extra focusable() modifier needed
-                    ExtendedFloatingActionButton(
-                        text = { Text(text = "Filters") },
-                        icon = {
+                    if (isTransparent) {
+                        // Use simple Row for transparent background (no elevation/blur effects)
+                        Row(
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = buttonSize, minHeight = buttonSize)
+                                .padding(buttonPadding)
+                                .clickable(onClick = callbacks.onFilterClick),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.FilterList,
                                 contentDescription = null,
                                 modifier = Modifier.size(iconSize),
                                 tint = iconTint,
                             )
-                        },
-                        expanded = element.expanded && callbacks.filterExpanded,
-                        onClick = callbacks.onFilterClick,
-                        containerColor = bgColor,
-                        contentColor = iconTint,
-                        shape = RoundedCornerShape(cornerRadius),
-                        modifier = Modifier.defaultMinSize(minWidth = buttonSize, minHeight = buttonSize),
-                    )
+                            if (element.expanded && callbacks.filterExpanded) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Filters", color = iconTint, style = textStyle)
+                            }
+                        }
+                    } else {
+                        // FABs are focusable by default - no extra focusable() modifier needed
+                        ExtendedFloatingActionButton(
+                            text = { Text(text = "Filters", style = textStyle) },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(iconSize),
+                                    tint = iconTint,
+                                )
+                            },
+                            expanded = element.expanded && callbacks.filterExpanded,
+                            onClick = callbacks.onFilterClick,
+                            containerColor = bgColor,
+                            contentColor = iconTint,
+                            shape = RoundedCornerShape(cornerRadius),
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = buttonSize, minHeight = buttonSize)
+                                .padding(buttonPadding),
+                        )
+                    }
                 }
             }
         }
@@ -608,6 +661,17 @@ private fun BoxScope.RenderFixedElement(
             val bgColor = element.backgroundColor?.let { Color(it) } ?: MaterialTheme.colorScheme.secondary
             val iconTint = element.iconColor?.let { Color(it) } ?: MaterialTheme.colorScheme.onSecondary
             val cornerRadius = element.cornerRadius.dp
+            val isTransparent = element.backgroundColor == 0x00000000
+            val addGameText = stringResource(R.string.add_game)
+            val buttonPadding = element.padding?.let { parseCssPadding(it) } ?: PaddingValues(0.dp)
+            val textShadow = element.textShadowColor?.let {
+                Shadow(
+                    color = Color(it),
+                    offset = Offset(element.textShadowOffsetX, element.textShadowOffsetY),
+                    blurRadius = element.textShadowRadius
+                )
+            }
+            val textStyle = textShadow?.let { TextStyle(shadow = it) } ?: TextStyle.Default
 
             HighlightableBox(
                 id = elementId,
@@ -618,24 +682,49 @@ private fun BoxScope.RenderFixedElement(
                     .align(alignment)
                     .offset(x = offsetX, y = offsetY)
             ) {
-                // FABs are focusable by default - no extra focusable() modifier needed
-                ExtendedFloatingActionButton(
-                    text = { Text(text = stringResource(R.string.add_game)) },
-                    icon = {
+                if (isTransparent) {
+                    // Use simple Row for transparent background (no elevation/blur effects)
+                    Row(
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = buttonSize, minHeight = buttonSize)
+                            .padding(buttonPadding)
+                            .clickable(onClick = callbacks.onAddClick),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = null,
                             modifier = Modifier.size(iconSize),
                             tint = iconTint,
                         )
-                    },
-                    expanded = element.expanded,
-                    onClick = callbacks.onAddClick,
-                    containerColor = bgColor,
-                    contentColor = iconTint,
-                    shape = RoundedCornerShape(cornerRadius),
-                    modifier = Modifier.defaultMinSize(minWidth = buttonSize, minHeight = buttonSize),
-                )
+                        if (element.expanded) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = addGameText, color = iconTint, style = textStyle)
+                        }
+                    }
+                } else {
+                    // FABs are focusable by default - no extra focusable() modifier needed
+                    ExtendedFloatingActionButton(
+                        text = { Text(text = addGameText, style = textStyle) },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = iconTint,
+                            )
+                        },
+                        expanded = element.expanded,
+                        onClick = callbacks.onAddClick,
+                        containerColor = bgColor,
+                        contentColor = iconTint,
+                        shape = RoundedCornerShape(cornerRadius),
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = buttonSize, minHeight = buttonSize)
+                            .padding(buttonPadding),
+                    )
+                }
             }
         }
 

@@ -319,6 +319,13 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
     val lineHeight = binding.or(layer.lineHeight, 0f).let { if (it > 0f) it else null }
     val letterSpacing = binding.or(layer.letterSpacing, 0f).let { if (it != 0f) it else null }
     
+    // Shadow properties
+    val shadowColorInt = binding.or(layer.shadowColor, 0)
+    val shadowColor = if (shadowColorInt != 0) Color(shadowColorInt) else null
+    val shadowRadius = binding.or(layer.shadowRadius, 0f)
+    val shadowOffsetX = binding.or(layer.shadowOffsetX, 0f)
+    val shadowOffsetY = binding.or(layer.shadowOffsetY, 0f)
+    
     // Convert Dp.Unspecified to null for RenderText
     val width = if (p.width == Dp.Unspecified) null else p.width
     val height = if (p.height == Dp.Unspecified) null else p.height
@@ -339,6 +346,10 @@ private fun BoxScope.TextLayerView(layer: Layer.TextLayer, parentSize: DpSize, b
         textDecoration = layer.textDecoration,
         overflow = layer.overflow,
         opacity = alpha,
+        shadowColor = shadowColor,
+        shadowRadius = shadowRadius,
+        shadowOffsetX = shadowOffsetX,
+        shadowOffsetY = shadowOffsetY,
     )
 }
 

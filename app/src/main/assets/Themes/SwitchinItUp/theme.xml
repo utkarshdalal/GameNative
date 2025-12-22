@@ -57,17 +57,25 @@
                   fontWeight="bold"
                   anchor="topLeft"
                   focusOnly="true"
-                  focusTransitionSpeed="@{vars.transitionSpeed}" />
+                  focusTransitionSpeed="@{vars.transitionSpeed}"
+                  shadowColor="#AA000000"
+                  shadowRadius="4"
+                  shadowOffsetX="1"
+                  shadowOffsetY="2" />
 
             <!-- Installed checkmark - bottom right corner with equal padding -->
             <text id="installedCheck"
-                  x="22" y="28"
+                  x="100" y="95"
                   text="✓"
                   textSize="16"
                   color="#FFFFFFFF"
                   fontWeight="bold"
-                  anchor="bottomRight"
-                  visibleWhen="game.isInstalled" />
+                  anchor="topLeft"
+                  visibleWhen="game.isInstalled"
+                  shadowColor="#BB000000"
+                  shadowRadius="4"
+                  shadowOffsetX="1"
+                  shadowOffsetY="2" />
         </card>
     </elements>
 
@@ -114,7 +122,7 @@
 
             <!-- Search bar next to profile - expands to the right, round when collapsed -->
             <searchBar navigationId="searchBtn"
-                       x="80" y="@{vars.bottomPadding}"
+                       x="75" y="@{vars.searchBarY}"
                        width="@{vars.searchBarWidth}" height="@{vars.searchBarSize}"
                        anchor="topLeft"
                        backgroundColor="#44FFFFFF"
@@ -136,7 +144,11 @@
                         textSize="@{vars.clockTextSize}"
                         textColor="#FFFFFFFF"
                         fontWeight="medium"
-                        use24Hour="false" />
+                        use24Hour="false"
+                        textShadowColor="#AA000000"
+                        textShadowRadius="4"
+                        textShadowOffsetX="1"
+                        textShadowOffsetY="2" />
         </fixed>
 
         <!-- Bottom bar with logo, game count, and action buttons -->
@@ -152,7 +164,11 @@
                     textSize="@{vars.headerTextSize}"
                     fontWeight="medium"
                     navigateUp="carousel"
-                    navigateRight="filterBtn" />
+                    navigateRight="filterBtn"
+                    textShadowColor="#AA000000"
+                    textShadowRadius="4"
+                    textShadowOffsetX="1"
+                    textShadowOffsetY="2" />
 
             <!-- Filter button at bottom right (expanded with text, transparent) -->
             <filterButton navigationId="filterBtn"
@@ -167,9 +183,14 @@
                           highlightOpacity="@{vars.highlightOpacity}"
                           highlightBorderWidth="@{vars.highlightBorderWidth}"
                           highlightTransitionSpeed="@{vars.highlightTransitionSpeed}"
+                          padding="0 20"
                           navigateUp="carousel"
                           navigateLeft="header"
-                          navigateRight="addBtn" />
+                          navigateRight="addBtn"
+                          textShadowColor="#AA000000"
+                          textShadowRadius="4"
+                          textShadowOffsetX="1"
+                          textShadowOffsetY="2" />
 
             <!-- Add button at bottom right corner (expanded with text, transparent) -->
             <addButton navigationId="addBtn"
@@ -184,8 +205,13 @@
                        highlightOpacity="@{vars.highlightOpacity}"
                        highlightBorderWidth="@{vars.highlightBorderWidth}"
                        highlightTransitionSpeed="@{vars.highlightTransitionSpeed}"
+                       padding="0 20"
                        navigateUp="carousel"
-                       navigateLeft="filterBtn" />
+                       navigateLeft="filterBtn"
+                       textShadowColor="#AA000000"
+                       textShadowRadius="4"
+                       textShadowOffsetX="1"
+                       textShadowOffsetY="2" />
         </fixed>
     </layout>
 </theme>

@@ -242,6 +242,10 @@ object ThemeXmlMapper {
                 padding = resolveFloat(n, "padding", 8f, tree),
                 textSize = resolveFloat(n, "textSize", 14f, tree),
                 fontWeight = n.attributes["fontWeight"] ?: "bold",
+                textShadowColor = resolveColorAttr(n, "textShadowColor", tree),
+                textShadowRadius = resolveFloat(n, "textShadowRadius", 0f, tree),
+                textShadowOffsetX = resolveFloat(n, "textShadowOffsetX", 0f, tree),
+                textShadowOffsetY = resolveFloat(n, "textShadowOffsetY", 0f, tree),
             )
             "searchbar" -> FixedElement.SearchBar(
                 position = base.position,
@@ -264,6 +268,10 @@ object ThemeXmlMapper {
                 borderRadius = resolveFloat(n, "borderRadius", 8f, tree),
                 collapsible = n.attributes["collapsible"]?.toBooleanStrictOrNull() ?: false,
                 expandDirection = n.attributes["expandDirection"] ?: "left",
+                textShadowColor = resolveColorAttr(n, "textShadowColor", tree),
+                textShadowRadius = resolveFloat(n, "textShadowRadius", 0f, tree),
+                textShadowOffsetX = resolveFloat(n, "textShadowOffsetX", 0f, tree),
+                textShadowOffsetY = resolveFloat(n, "textShadowOffsetY", 0f, tree),
             )
             "profilebutton" -> FixedElement.ProfileButton(
                 position = base.position,
@@ -307,6 +315,11 @@ object ThemeXmlMapper {
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
                 iconColor = resolveColorAttr(n, "iconColor", tree),
                 cornerRadius = resolveFloat(n, "cornerRadius", 16f, tree),
+                textShadowColor = resolveColorAttr(n, "textShadowColor", tree),
+                textShadowRadius = resolveFloat(n, "textShadowRadius", 0f, tree),
+                textShadowOffsetX = resolveFloat(n, "textShadowOffsetX", 0f, tree),
+                textShadowOffsetY = resolveFloat(n, "textShadowOffsetY", 0f, tree),
+                padding = n.attributes["padding"],
             )
             "addbutton" -> FixedElement.AddButton(
                 position = base.position,
@@ -329,6 +342,11 @@ object ThemeXmlMapper {
                 backgroundColor = resolveColorAttr(n, "backgroundColor", tree),
                 iconColor = resolveColorAttr(n, "iconColor", tree),
                 cornerRadius = resolveFloat(n, "cornerRadius", 16f, tree),
+                textShadowColor = resolveColorAttr(n, "textShadowColor", tree),
+                textShadowRadius = resolveFloat(n, "textShadowRadius", 0f, tree),
+                textShadowOffsetX = resolveFloat(n, "textShadowOffsetX", 0f, tree),
+                textShadowOffsetY = resolveFloat(n, "textShadowOffsetY", 0f, tree),
+                padding = n.attributes["padding"],
             )
             "image" -> FixedElement.Image(
                 position = base.position,
@@ -678,6 +696,10 @@ object ThemeXmlMapper {
             letterSpacing = floatBindingResolved(n.attributes["letterSpacing"], tree),
             textDecoration = n.attributes["textDecoration"] ?: "none",
             overflow = n.attributes["overflow"] ?: "ellipsis",
+            shadowColor = intBindingResolved(n.attributes["shadowColor"], tree),
+            shadowRadius = floatBindingResolved(n.attributes["shadowRadius"], tree),
+            shadowOffsetX = floatBindingResolved(n.attributes["shadowOffsetX"], tree),
+            shadowOffsetY = floatBindingResolved(n.attributes["shadowOffsetY"], tree),
         )
         "backdrop" -> Layer.BackdropLayer(
             id = base.id,

@@ -237,6 +237,14 @@ sealed class Layer {
         val textDecoration: String = "none",
         /** Text overflow behavior: "ellipsis", "clip", or "visible". Defaults to "ellipsis". */
         val overflow: String = "ellipsis",
+        /** Shadow color (ARGB). Null = no shadow. */
+        val shadowColor: IntOrBinding? = null,
+        /** Shadow blur radius. */
+        val shadowRadius: FloatOrBinding? = null,
+        /** Shadow horizontal offset. */
+        val shadowOffsetX: FloatOrBinding? = null,
+        /** Shadow vertical offset. */
+        val shadowOffsetY: FloatOrBinding? = null,
     ) : Layer()
 
     /**

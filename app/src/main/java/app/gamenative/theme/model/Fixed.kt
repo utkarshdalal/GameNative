@@ -108,6 +108,14 @@ sealed class FixedElement {
         val textSize: Float = 14f,
         /** Font weight: "normal", "bold", "medium", "semibold", etc. */
         val fontWeight: String = "bold",
+        /** Text shadow color (ARGB). Null = no shadow. */
+        val textShadowColor: Int? = null,
+        /** Text shadow blur radius. */
+        val textShadowRadius: Float = 0f,
+        /** Text shadow horizontal offset. */
+        val textShadowOffsetX: Float = 0f,
+        /** Text shadow vertical offset. */
+        val textShadowOffsetY: Float = 0f,
     ) : FixedElement()
 
     /**
@@ -140,6 +148,14 @@ sealed class FixedElement {
         val collapsible: Boolean = false,
         /** Direction to expand when collapsible: "left" or "right". */
         val expandDirection: String = "left",
+        /** Text shadow color (ARGB). Null = no shadow. */
+        val textShadowColor: Int? = null,
+        /** Text shadow blur radius. */
+        val textShadowRadius: Float = 0f,
+        /** Text shadow horizontal offset. */
+        val textShadowOffsetX: Float = 0f,
+        /** Text shadow vertical offset. */
+        val textShadowOffsetY: Float = 0f,
     ) : FixedElement()
 
     /**
@@ -202,6 +218,16 @@ sealed class FixedElement {
         val iconColor: Int? = null,
         /** Corner radius in pixels, 0 = square, size/2 = circular. */
         val cornerRadius: Float = 16f,
+        /** Text shadow color (ARGB). Null = no shadow. */
+        val textShadowColor: Int? = null,
+        /** Text shadow blur radius. */
+        val textShadowRadius: Float = 0f,
+        /** Text shadow horizontal offset. */
+        val textShadowOffsetX: Float = 0f,
+        /** Text shadow vertical offset. */
+        val textShadowOffsetY: Float = 0f,
+        /** Padding in CSS-like format: "all", "vertical horizontal", or "top right bottom left". */
+        val padding: String? = null,
     ) : FixedElement()
 
     /**
@@ -234,6 +260,16 @@ sealed class FixedElement {
         val iconColor: Int? = null,
         /** Corner radius in pixels, 0 = square, size/2 = circular. */
         val cornerRadius: Float = 16f,
+        /** Text shadow color (ARGB). Null = no shadow. */
+        val textShadowColor: Int? = null,
+        /** Text shadow blur radius. */
+        val textShadowRadius: Float = 0f,
+        /** Text shadow horizontal offset. */
+        val textShadowOffsetX: Float = 0f,
+        /** Text shadow vertical offset. */
+        val textShadowOffsetY: Float = 0f,
+        /** Padding in CSS-like format: "all", "vertical horizontal", or "top right bottom left". */
+        val padding: String? = null,
     ) : FixedElement()
 
     /**

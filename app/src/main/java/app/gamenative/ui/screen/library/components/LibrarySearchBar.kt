@@ -38,7 +38,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -114,6 +116,14 @@ data class SearchBarStyle(
     val navigateLeft: String? = null,
     /** Element navigationId to navigate to when pressing RIGHT, null = use spatial navigation. */
     val navigateRight: String? = null,
+    /** Text shadow color, null = no shadow. */
+    val textShadowColor: Color? = null,
+    /** Text shadow blur radius. */
+    val textShadowRadius: Float = 0f,
+    /** Text shadow horizontal offset. */
+    val textShadowOffsetX: Float = 0f,
+    /** Text shadow vertical offset. */
+    val textShadowOffsetY: Float = 0f,
 ) {
     /**
      * Convert navigation properties to NavigationLinks for the SpatialFocusManager.
@@ -124,6 +134,17 @@ data class SearchBarStyle(
         left = navigateLeft,
         right = navigateRight,
     )
+    
+    /**
+     * Create a Shadow from the shadow properties, or null if no shadow color is set.
+     */
+    fun toShadow(): Shadow? = textShadowColor?.let {
+        Shadow(
+            color = it,
+            offset = Offset(textShadowOffsetX, textShadowOffsetY),
+            blurRadius = textShadowRadius
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
@@ -171,13 +192,15 @@ internal fun LibrarySearchBar(
     // Text/icon color from theme or default
     val iconColor = style.textColor ?: MaterialTheme.colorScheme.onSurfaceVariant
     val cornerRadius = style.borderRadius.dp
+    // Text shadow from theme
+    val textShadow = style.toShadow()
     
-    // Icon size for collapsed mode
-    val iconSize = 48.dp
+    // Collapsed size equals height (makes it round/square when collapsed)
+    val collapsedSize = style.height
     
     // Animate width for collapsible search bar
     val targetWidth = if (style.collapsible) {
-        if (isExpanded) style.expandedWidth.coerceAtLeast(200.dp) else iconSize
+        if (isExpanded) style.expandedWidth.coerceAtLeast(200.dp) else collapsedSize
     } else {
         style.expandedWidth.coerceAtLeast(200.dp)
     }
@@ -280,7 +303,7 @@ internal fun LibrarySearchBar(
                     // Make it focusable for controller navigation (highlight only, not expand)
                     Box(
                         modifier = Modifier
-                            .size(iconSize)
+                            .size(collapsedSize)
                             .clip(RoundedCornerShape(cornerRadius))
                             .background(bgColor)
                             .focusRequester(focusRequester)
@@ -370,7 +393,7 @@ internal fun LibrarySearchBar(
                                     isActivated = false
                                 }
                             },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor, shadow = textShadow),
                         cursorBrush = SolidColor(iconColor),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -387,7 +410,8 @@ internal fun LibrarySearchBar(
                                 placeholder = {
                                     Text(
                                         text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                                        color = iconColor.copy(alpha = 0.7f)
+                                        color = iconColor.copy(alpha = 0.7f),
+                                        style = textShadow?.let { androidx.compose.ui.text.TextStyle(shadow = it) } ?: androidx.compose.ui.text.TextStyle.Default
                                     )
                                 },
                                 leadingIcon = {
@@ -513,7 +537,7 @@ internal fun LibrarySearchBar(
                             isFocused = focusState.isFocused || focusState.hasFocus
                         },
                     enabled = isTextFieldActive,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = iconColor, shadow = textShadow),
                     cursorBrush = SolidColor(iconColor),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -530,7 +554,8 @@ internal fun LibrarySearchBar(
                             placeholder = {
                                 Text(
                                     text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                                    color = iconColor.copy(alpha = 0.7f)
+                                    color = iconColor.copy(alpha = 0.7f),
+                                    style = textShadow?.let { androidx.compose.ui.text.TextStyle(shadow = it) } ?: androidx.compose.ui.text.TextStyle.Default
                                 )
                             },
                             leadingIcon = {

@@ -47,7 +47,10 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -384,7 +387,7 @@ fun ThemedGameCarousel(
                 (viewportWidth - itemWidth) / 2
             }
             carouselConfig.horizontalAlign == HorizontalAlign.START -> {
-                // Small padding at start, large padding at end to show i5tems to the right
+                // Small padding at start, large padding at end to show items to the right
                 horizontalOffset.coerceAtLeast(16.dp)
             }
             carouselConfig.horizontalAlign == HorizontalAlign.END -> {
@@ -1207,6 +1210,19 @@ private fun BoxScope.RenderThemedLayer(
             val color = resolveIntBinding(layer.color, 0xFFFFFFFF.toInt(), bindings)
             val alpha = resolveFloatBinding(layer.opacity, 1f)
 
+            // Shadow properties
+            val shadowColorInt = resolveIntBinding(layer.shadowColor, 0, bindings)
+            val shadow = if (shadowColorInt != 0) {
+                Shadow(
+                    color = Color(shadowColorInt),
+                    offset = Offset(
+                        resolveFloatBinding(layer.shadowOffsetX, 0f),
+                        resolveFloatBinding(layer.shadowOffsetY, 0f)
+                    ),
+                    blurRadius = resolveFloatBinding(layer.shadowRadius, 0f)
+                )
+            } else null
+
             // Treat textSize as sp directly (theme authors specify logical size)
             val textSizeSp = textSize.sp
 
@@ -1259,6 +1275,7 @@ private fun BoxScope.RenderThemedLayer(
                     maxLines = layer.maxLines ?: 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = textAlignment,
+                    style = shadow?.let { TextStyle(shadow = it) } ?: TextStyle.Default,
                 )
             }
         }

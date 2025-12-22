@@ -15,8 +15,8 @@
     
     <!-- Focus border (outside the image) -->
     <var name="focusBorderWidth" value="2" />
-    <var name="focusBorderOffset" value="5" />
-    <var name="focusBorderSize" value="130" />
+    <var name="focusBorderOffset" value="4" />
+    <var name="focusBorderSize" value="128" />
     <var name="focusBorderCornerRadius" value="20" />
     
     <!-- Source icon (Steam/Custom) positioning -->
@@ -35,24 +35,25 @@
     <var name="itemSpacing" value="-326" />
     
     <!-- Carousel settings -->
-    <var name="carouselY" value="120" />
-    <var name="carouselOffsetX" value="80" />
+    <var name="carouselY" value="105" />
+    <var name="carouselOffsetX" value="70" />
     <var name="focusedScale" value="1.22" />
-    <var name="focusedSpacing" value="-16" />
-    <var name="focusedYOffset" value="-10" />
+    <var name="focusedSpacing" value="-19" />
+    <var name="focusedYOffset" value="-6" />
     
     <!-- Top bar -->
     <var name="topBarPadding" value="24" />
     <var name="profileSize" value="48" />
     <var name="profileIconSize" value="48" />
-    <var name="searchBarWidth" value="200" />
+    <var name="searchBarWidth" value="250" />
     <var name="searchBarSize" value="40" />
+    <var name="searchBarY" value="18" />
     <var name="clockTextSize" value="18" />
     
     <!-- Bottom bar -->
     <var name="headerX" value="16" />
     <var name="headerY" value="16" />
-    <var name="bottomPadding" value="4" />
+    <var name="bottomPadding" value="14" />
     <var name="headerTextSize" value="14" />
     
     <!-- Portrait overrides -->
