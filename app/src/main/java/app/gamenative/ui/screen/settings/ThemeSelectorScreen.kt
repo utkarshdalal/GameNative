@@ -5,7 +5,9 @@ import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +28,12 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -53,10 +60,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -67,11 +82,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.MainActivity
 import app.gamenative.R
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeManager.ThemeEntry
 import app.gamenative.ui.theme.PluviaTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,6 +129,10 @@ fun ThemeSelectorScreen(
         },
         modifier = Modifier.statusBarsPadding(),
     ) { paddingValues ->
+        // Get orientation from MainActivity's tracked state (updates on config change)
+        // This is needed because android:configChanges prevents LocalConfiguration from updating
+        val orientation by MainActivity.currentOrientation
+        
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -120,7 +141,11 @@ fun ThemeSelectorScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item { Spacer(modifier = Modifier.height(4.dp)) }
-            items(themes) { entry ->
+            itemsIndexed(
+                items = themes,
+                // Key on both theme id and orientation to force recomposition on rotation
+                key = { _, entry -> "${entry.id}_$orientation" }
+            ) { _, entry ->
                 ThemeCard(
                     entry = entry,
                     isSelected = entry.id == selectedId,
@@ -147,6 +172,7 @@ fun ThemeSelectorScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ThemeCard(
     entry: ThemeEntry,
@@ -155,33 +181,100 @@ private fun ThemeCard(
     onPreviewClick: (ImageBitmap?) -> Unit,
 ) {
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    // Use both orientation check and dimension comparison for reliability
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
-            configuration.screenWidthDp > configuration.screenHeightDp
+    // Use MainActivity's tracked orientation state (updates on config change)
+    // This is needed because android:configChanges prevents LocalConfiguration from updating
+    val orientation by MainActivity.currentOrientation
+    val screenWidthDp by MainActivity.currentScreenWidthDp
+    val configChangeCounter by MainActivity.configurationChangeCounter
     
-    var previewImage by remember(entry.id) { mutableStateOf<ImageBitmap?>(null) }
+    // Use both orientation check and dimension comparison for reliability
+    val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE ||
+            screenWidthDp > LocalConfiguration.current.screenHeightDp
+    
+    // Key on both entry.id and config change counter to ensure proper recomposition on rotation
+    var previewImage by remember(entry.id, configChangeCounter) { mutableStateOf<ImageBitmap?>(null) }
+    
+    // Focus state for controller navigation highlight
+    var isFocused by remember { mutableStateOf(false) }
+    
+    // For scrolling the focused item into view
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
-    // Load preview image asynchronously
-    LaunchedEffect(entry) {
+    // Load preview image asynchronously, also reload on orientation change
+    LaunchedEffect(entry, configChangeCounter) {
         previewImage = loadThemePreviewImage(context, entry)
     }
+    
+    // Gradient brush for focus highlight (matches theme engine default)
+    val focusBorderBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.primary,
+        )
+    )
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 4.dp else 1.dp,
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+    // Track the item's size for scrolling with margin
+    var itemHeight by remember { mutableStateOf(0f) }
+    
+    // Wrap card in a Box to handle focus border properly
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onGloballyPositioned { coordinates ->
+                itemHeight = coordinates.size.height.toFloat()
+            }
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                if (focusState.isFocused) {
+                    // Scroll into view with extra margin below
+                    coroutineScope.launch {
+                        // Request a rect that includes 60px extra space below the item
+                        val extraMargin = 60f
+                        bringIntoViewRequester.bringIntoView(
+                            Rect(0f, 0f, 0f, itemHeight + extraMargin)
+                        )
+                    }
+                }
+            }
+            .focusable()
+            // Handle controller primary button (A/Enter) to activate theme
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.key) {
+                        Key.Enter, Key.DirectionCenter, Key.NumPadEnter -> {
+                            onActivate()
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+            .clickable { onActivate() }
+            .then(
+                if (isFocused) {
+                    Modifier.border(4.dp, focusBorderBrush, RoundedCornerShape(16.dp))
+                } else {
+                    Modifier
+                }
+            )
     ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSelected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (isSelected) 4.dp else 1.dp,
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+        ) {
         if (isLandscape) {
             // Landscape: horizontal layout - preview on left, content on right
             Row(
@@ -237,6 +330,7 @@ private fun ThemeCard(
                         .padding(16.dp),
                 )
             }
+        }
         }
     }
 }

@@ -19,7 +19,10 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +51,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -212,6 +216,7 @@ fun ThemedGameGrid(
                         themePath = themePath,
                         highlightBorderWidth = gridConfig.highlightBorderWidth,
                         highlightCornerRadius = gridConfig.highlightCornerRadius,
+                        scrollTopMargin = paddingTop,
                         // Pass focus requester only for first item
                         focusRequester = if (index == 0) firstItemFocusRequester else null,
                         // Edge navigation
@@ -457,8 +462,9 @@ fun ThemedGameCarousel(
         }
         
         // Focus change handler
+        // Use hasFocus (not isFocused) because focus might be on a child element
         val focusChangeHandler: (androidx.compose.ui.focus.FocusState) -> Unit = { focusState ->
-            val nowHasFocus = focusState.isFocused
+            val nowHasFocus = focusState.hasFocus || focusState.isFocused
             carouselHasFocus = nowHasFocus
             if (nowHasFocus) {
                 hasEverHadFocus = true
@@ -500,8 +506,10 @@ fun ThemedGameCarousel(
                 // Z-index: focused item (pageOffset=0) gets highest value
                 val zIndex = 1f - pageOffset
                 
-                // Determine if this page is focused (near-zero offset from current)
-                val isFocused = pageOffset < 0.5f
+                // Determine if this page is focused:
+                // - Must be near center (pageOffset < 0.5)
+                // - Carousel must have focus (otherwise user navigated away to other elements)
+                val isFocused = pageOffset < 0.5f && carouselHasFocus
                 
                 // Calculate focused offset (smoothly interpolated based on focus)
                 val focusProgress = 1f - pageOffset
@@ -575,8 +583,8 @@ fun ThemedGameCarousel(
                     .fillMaxSize()
                     .offset(x = horizontalOffset, y = verticalOffset)
                     .focusRequester(focusRequester)
-                    .focusable()
                     .onFocusChanged(focusChangeHandler)
+                    .focusable()
                     .graphicsLayer { alpha = carouselAlpha }
                     .onKeyEvent(keyEventHandler),
                 horizontalArrangement = horizontalArrangement,
@@ -610,8 +618,8 @@ fun ThemedGameCarousel(
                     .fillMaxSize()
                     .offset(x = horizontalOffset, y = verticalOffset)
                     .focusRequester(focusRequester)
-                    .focusable()
                     .onFocusChanged(focusChangeHandler)
+                    .focusable()
                     .graphicsLayer { alpha = carouselAlpha }
                     .onKeyEvent(keyEventHandler),
                 verticalArrangement = verticalArrangement,
@@ -892,20 +900,41 @@ private fun ThemedGameTile(
     themePath: String?,
     highlightBorderWidth: Float = 3f,
     highlightCornerRadius: Float = 8f,
+    scrollTopMargin: Dp = 0.dp,
     focusRequester: FocusRequester? = null,
     onEdgeNavigation: (SpatialFocusManager.Direction) -> Boolean = { false },
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var imageLoadFailed by remember { mutableStateOf(false) }
     
+    // For scrolling focused items into view (with margin for top bar)
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var itemHeight by remember { mutableStateOf(0f) }
+    
     Box(
         modifier = Modifier
             .size(cellSize.width, cellSize.height)
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onGloballyPositioned { coordinates ->
+                itemHeight = coordinates.size.height.toFloat()
+            }
             // Apply focus requester if provided (for first item)
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
-                if (isFocused) onFocus()
+                if (isFocused) {
+                    onFocus()
+                    // Scroll into view with extra margin for top bar (if any)
+                    coroutineScope.launch {
+                        val topMarginPx = with(density) { scrollTopMargin.toPx() }
+                        val bottomMargin = 60f
+                        bringIntoViewRequester.bringIntoView(
+                            Rect(-topMarginPx, -topMarginPx, 0f, itemHeight + bottomMargin)
+                        )
+                    }
+                }
             }
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {

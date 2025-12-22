@@ -32,6 +32,7 @@
         <grid cellWidth="150" aspectRatio="0.67"
               hSpacing="@{vars.gridSpacing}" vSpacing="@{vars.gridSpacing}"
               padding="@{vars.gridPaddingTop} 20"
+              highlightCornerRadius="@{vars.cornerRadius}"
               verticalAlign="center"
               selectionMode="moving" itemCard="capsule" />
 

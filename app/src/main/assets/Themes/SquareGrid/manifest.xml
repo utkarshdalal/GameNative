@@ -6,7 +6,8 @@
     <minAppVersion>0.0.0</minAppVersion>
     <description>A clean grid layout with square game covers. Simple, modern, and easy to browse.</description>
     <author>
-        <name>GameNative</name>
+        <name>Mikkel Bjørnmose Bundgaard</name>
+        <github>https://github.com/maaggel</github>
     </author>
     <preview src="/assets/theme.png" />
     <theme source="/theme.xml" variables="/variables.xml" />
