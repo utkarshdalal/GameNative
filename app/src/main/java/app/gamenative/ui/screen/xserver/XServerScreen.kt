@@ -1925,6 +1925,7 @@ private fun installDotNetFramework(context: RedistContext) {
 
 /**
  * Installs OpenAL redistributables (oalinst.exe) (https://www.openal.org/)
+ * Helps with 3D audio implementations between 2001-2010
  */
 private fun installOpenAL(context: RedistContext) {
     val openalDir = File(context.commonRedistDir, "OpenAL")
