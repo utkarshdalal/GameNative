@@ -18,7 +18,7 @@
                   color="@{game.compatibility.color}" maxLines="1" textAlign="center" fontWeight="normal"
                   anchor="topLeft" focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}" opacity="0.7" />
 
-            <text id="installedCheck" x="4" y="170"
+            <text id="installedCheck" x="10" y="170"
                   text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.infoTextColor}"
                   textAlign="right" fontWeight="bold" anchor="topRight"
                   focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}"
@@ -45,7 +45,7 @@
         <fixed id="topBar" height="@{vars.topBarHeight}">
             <header x="@{vars.paddingMedium}" y="8" anchor="topLeft"
                 textColor="#FFFFFFFF" showAppName="true" showGameCount="true" />
-            <searchBar x="76" y="12" width="@{vars.searchBarWidth}" height="56"
+            <searchBar x="76" y="12" width="@{vars.searchBarWidth}" height="46"
                 anchor="topRight" backgroundColor="#CC1E1E1E" borderRadius="28"
                 collapsible="true"
                 highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"

@@ -508,6 +508,7 @@ fun ThemedGameCarousel(
         val focusedOffsetX = carouselConfig.focusedOffsetX.dp
         val focusedOffsetY = carouselConfig.focusedOffsetY.dp
         val focusedSpacing = carouselConfig.focusedSpacing.dp
+        val beforeFocusOffset = carouselConfig.beforeFocusOffset.dp
 
         // Render pager content
         val renderPageContent: @Composable (Int) -> Unit = { page ->
@@ -556,10 +557,16 @@ fun ThemedGameCarousel(
                 // Clamp to [-1, 1] so items far away don't get excessive push
                 val clampedSignedOffset = signedPageOffset.coerceIn(-1f, 1f)
                 val spacingOffset = -focusedSpacing * clampedSignedOffset
+                
+                // Additional offset for items before focus (positive signedPageOffset = before)
+                // This pushes items on the left further away for asymmetric layouts
+                val beforeOffset = if (signedPageOffset > 0) {
+                    -beforeFocusOffset * clampedSignedOffset.coerceAtLeast(0f)
+                } else 0.dp
 
                 // Apply spacing offset based on carousel orientation
-                val finalOffsetX = offsetX + if (!isVertical) spacingOffset else 0.dp
-                val finalOffsetY = offsetY + if (isVertical) spacingOffset else 0.dp
+                val finalOffsetX = offsetX + if (!isVertical) (spacingOffset + beforeOffset) else 0.dp
+                val finalOffsetY = offsetY + if (isVertical) (spacingOffset + beforeOffset) else 0.dp
 
                 Box(
                     modifier = Modifier

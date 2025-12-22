@@ -40,6 +40,7 @@
     <var name="focusedScale" value="1.22" />
     <var name="focusedSpacing" value="-19" />
     <var name="focusedYOffset" value="-6" />
+    <var name="beforeFocusOffset" value="73" />
     
     <!-- Top bar -->
     <var name="topBarPadding" value="24" />

@@ -94,6 +94,7 @@
                   focusedScale="@{vars.focusedScale}"
                   focusedOffsetX="0"
                   focusedOffsetY="@{vars.focusedYOffset}"
+                  beforeFocusOffset="@{vars.beforeFocusOffset}"
                   focusedSpacing="@{vars.focusedSpacing}"
                   selectionMode="stationary"
                   itemCard="gameCard"

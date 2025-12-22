@@ -161,6 +161,8 @@ sealed class LayoutNode {
         val focusedOffsetY: Float = 0f,
         /** Extra spacing around the focused item to account for scaling (added to itemSpacing). */
         val focusedSpacing: Float = 0f,
+        /** Additional offset for items before (left of / above) the focused item. Useful for asymmetric layouts. */
+        val beforeFocusOffset: Float = 0f,
         /** Background image binding for focused item (e.g., "@{game.hero}"). Null = no background. */
         val focusedBackground: StringOrBinding? = null,
         /** Opacity for the focused background image (0.0-1.0). */

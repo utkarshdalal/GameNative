@@ -60,7 +60,7 @@
     <var name="compatY" value="10" />
     <var name="statusY" value="20" />
     <var name="lastPlayedY" value="30" />
-    <var name="clockIconY" value="39" />
+    <var name="clockIconY" value="31" />
     <var name="clockIconSize" value="6" />
 
     <!-- Footer overlay for portrait mode (text inside card) -->
@@ -87,7 +87,7 @@
         <var name="compatY" value="92" />
         <var name="statusY" value="104" />
         <var name="lastPlayedY" value="116" />
-        <var name="clockIconY" value="125" />
+        <var name="clockIconY" value="118" />
         <var name="clockIconSize" value="6" />
         <var name="titleWidth" value="100" />
 

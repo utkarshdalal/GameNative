@@ -1010,6 +1010,7 @@ object ThemeXmlMapper {
         val focusedOffsetX = resolveFloat(node, "focusedOffsetX", default = 0f, tree)
         val focusedOffsetY = resolveFloat(node, "focusedOffsetY", default = 0f, tree)
         val focusedSpacing = resolveFloat(node, "focusedSpacing", default = 0f, tree)
+        val beforeFocusOffset = resolveFloat(node, "beforeFocusOffset", default = 0f, tree)
         
         // Background image attributes
         val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
@@ -1034,6 +1035,7 @@ object ThemeXmlMapper {
             focusedOffsetX = focusedOffsetX,
             focusedOffsetY = focusedOffsetY,
             focusedSpacing = focusedSpacing,
+            beforeFocusOffset = beforeFocusOffset,
             focusedBackground = focusedBackground,
             backgroundOpacity = backgroundOpacity,
             backgroundTransitionSpeed = backgroundTransitionSpeed,
@@ -1207,6 +1209,7 @@ object ThemeXmlMapper {
         val focusedOffsetX = resolveFloat(node, "focusedOffsetX", default = 0f, tree)
         val focusedOffsetY = resolveFloat(node, "focusedOffsetY", default = 0f, tree)
         val focusedSpacing = resolveFloat(node, "focusedSpacing", default = 0f, tree)
+        val beforeFocusOffset = resolveFloat(node, "beforeFocusOffset", default = 0f, tree)
         
         val focusedBackground = node.attributes["focusedBackground"]?.let { stringBinding(it) }
         val backgroundOpacity = resolveFloat(node, "backgroundOpacity", default = 0.3f, tree)
@@ -1241,6 +1244,7 @@ object ThemeXmlMapper {
             focusedOffsetX = focusedOffsetX,
             focusedOffsetY = focusedOffsetY,
             focusedSpacing = focusedSpacing,
+            beforeFocusOffset = beforeFocusOffset,
             focusedBackground = focusedBackground,
             backgroundOpacity = backgroundOpacity,
             backgroundTransitionSpeed = backgroundTransitionSpeed,
