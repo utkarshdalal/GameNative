@@ -92,6 +92,43 @@
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
                   visibleWhen="game.isInstalled" />
+
+            <!-- Last played clock icon - landscape (dark icon for light theme) -->
+            <image id="lastPlayedIconLandscape"
+                   x="@{vars.infoX}" y="@{vars.clockIconY}"
+                   width="@{vars.clockIconSize}" height="@{vars.clockIconSize}"
+                   scaleType="cover"
+                   src="assets/clock.png"
+                   anchor="topLeft"
+                   focusOnly="true"
+                   focusTransitionSpeed="@{vars.transitionSpeed}"
+                   visibleWhen="game.isInstalled"
+                   visibility="landscape" />
+
+            <!-- Last played clock icon - portrait (white icon for dark overlay) -->
+            <image id="lastPlayedIconPortrait"
+                   x="@{vars.infoX}" y="@{vars.clockIconY}"
+                   width="@{vars.clockIconSize}" height="@{vars.clockIconSize}"
+                   scaleType="cover"
+                   src="assets/clock-white.png"
+                   anchor="topLeft"
+                   focusOnly="true"
+                   focusTransitionSpeed="@{vars.transitionSpeed}"
+                   visibleWhen="game.isInstalled"
+                   visibility="portrait" />
+
+            <!-- Last played time - offset by icon width -->
+            <text id="lastPlayed"
+                  x="@{vars.statusX}" y="@{vars.lastPlayedY}"
+                  width="@{vars.infoWidth}"
+                  text="@{game.lastPlayed}"
+                  textSize="@{vars.statusSize}"
+                  color="@{vars.statusTextColor}"
+                  maxLines="1"
+                  anchor="topLeft"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}"
+                  visibleWhen="game.isInstalled" />
         </card>
     </elements>
 

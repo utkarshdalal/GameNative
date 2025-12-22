@@ -205,7 +205,7 @@ private fun ThemeCard(
     LaunchedEffect(entry, configChangeCounter) {
         previewImage = loadThemePreviewImage(context, entry)
     }
-    
+
     // Gradient brush for focus highlight (matches theme engine default)
     val focusBorderBrush = Brush.verticalGradient(
         colors = listOf(
@@ -260,21 +260,21 @@ private fun ThemeCard(
                 }
             )
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isSelected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isSelected) 4.dp else 1.dp,
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-        ) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 1.dp,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+    ) {
         if (isLandscape) {
             // Landscape: horizontal layout - preview on left, content on right
             Row(
@@ -330,7 +330,7 @@ private fun ThemeCard(
                         .padding(16.dp),
                 )
             }
-        }
+            }
         }
     }
 }

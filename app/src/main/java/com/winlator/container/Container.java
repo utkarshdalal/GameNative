@@ -127,6 +127,8 @@ public class Container {
 
     private boolean useLegacyDRM = false;
 
+    private long lastPlayedTimestamp = 0L;
+
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -670,6 +672,9 @@ public class Container {
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
+            // Last played timestamp
+            data.put("lastPlayedTimestamp", lastPlayedTimestamp);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -847,6 +852,9 @@ public class Container {
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
+                case "lastPlayedTimestamp":
+                    this.lastPlayedTimestamp = data.getLong(key);
+                    break;
             }
         }
     }
@@ -951,6 +959,14 @@ public class Container {
 
     public void setUseLegacyDRM(boolean useLegacyDRM) {
         this.useLegacyDRM = useLegacyDRM;
+    }
+
+    public long getLastPlayedTimestamp() {
+        return lastPlayedTimestamp;
+    }
+
+    public void setLastPlayedTimestamp(long timestamp) {
+        this.lastPlayedTimestamp = timestamp;
     }
 
     public JSONObject getControllerEmulationBindings() {

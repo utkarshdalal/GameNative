@@ -193,6 +193,7 @@ class MainActivity : ComponentActivity() {
                     .components {
                         add(IconDecoder.Factory())
                         add(AnimatedPngDecoder.Factory())
+                        add(coil.decode.SvgDecoder.Factory())
                     }
                     // .logger(logger)
                     .build()

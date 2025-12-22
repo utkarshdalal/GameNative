@@ -19,6 +19,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -158,6 +159,19 @@ class CustomGameAppScreen : BaseAppScreen() {
             }
         }
 
+        // Get last played from container
+        val lastPlayedText = try {
+            val containerManager = ContainerManager(context)
+            val container = containerManager.containers.find { it.id == libraryItem.appId }
+            if (container != null && container.lastPlayedTimestamp > 0) {
+                SteamUtils.fromSteamTime((container.lastPlayedTimestamp / 1000).toInt())
+            } else {
+                context.getString(R.string.library_never_played)
+            }
+        } catch (e: Exception) {
+            context.getString(R.string.library_never_played)
+        }
+
         // Custom Games don't have Steam metadata, so we use basic info
         return GameDisplayInfo(
             name = libraryItem.name,
@@ -170,7 +184,7 @@ class CustomGameAppScreen : BaseAppScreen() {
             installLocation = gameFolderPath,
             sizeOnDisk = sizeOnDisk, // Calculated folder size
             sizeFromStore = null, // No store size info
-            lastPlayedText = null, // Not tracked
+            lastPlayedText = lastPlayedText,
             playtimeText = null, // Not tracked
             logoUrl = logoUrl,
             capsuleUrl = capsuleUrl,

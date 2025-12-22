@@ -162,6 +162,19 @@ fun SettingsGroupInterface(
             },
         )
 
+        // Sort installed games by last played
+        var sortByLastPlayed by rememberSaveable { mutableStateOf(PrefManager.sortInstalledByLastPlayed) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_sort_last_played_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_sort_last_played_subtitle)) },
+            state = sortByLastPlayed,
+            onCheckedChange = {
+                sortByLastPlayed = it
+                PrefManager.sortInstalledByLastPlayed = it
+            },
+        )
+
         // Unified visual icon picker (affects app and notification icons)
         var selectedVariant by rememberSaveable { mutableStateOf(if (PrefManager.useAltLauncherIcon || PrefManager.useAltNotificationIcon) 1 else 0) }
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

@@ -89,6 +89,8 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.SteamUtils
+import com.winlator.container.ContainerManager
 import app.gamenative.theme.runtime.FixedElementCallbacks
 import app.gamenative.theme.runtime.LocalSpatialFocusManager
 import app.gamenative.theme.runtime.RenderFixedElements
@@ -313,8 +315,19 @@ private fun LibraryScreenContent(
                     return null
                 }
 
+                // Load container timestamps for last played info
+                val containerTimestamps: Map<String, Long> = remember {
+                    try {
+                        ContainerManager(context).containers
+                            .associate { container -> container.id to container.lastPlayedTimestamp }
+                    } catch (e: Exception) {
+                        emptyMap()
+                    }
+                }
+                val neverPlayedText = stringResource(R.string.library_never_played)
+
                 // Create binding provider that maps LibraryItem to binding values
-                val bindingProvider: (LibraryItem) -> Map<String, String> = remember(state.compatibilityMap, reloadTick) {
+                val bindingProvider: (LibraryItem) -> Map<String, String> = remember(state.compatibilityMap, reloadTick, containerTimestamps) {
                     { item: LibraryItem ->
                         val title = item.name
                         val capsuleUrl = when (item.gameSource) {
@@ -365,6 +378,14 @@ private fun LibraryScreenContent(
                         }
                         val installStatusColor = if (isInstalled) "#FF00C853" else "#FF888888"
 
+                        // Get last played timestamp from container
+                        val lastPlayedTimestamp = containerTimestamps[item.appId] ?: 0L
+                        val lastPlayedText = if (lastPlayedTimestamp > 0) {
+                            SteamUtils.fromSteamTime((lastPlayedTimestamp / 1000).toInt())
+                        } else {
+                            neverPlayedText
+                        }
+
                         mapOf(
                             "game.title" to title,
                             "game.cover" to coverUrl,
@@ -378,6 +399,7 @@ private fun LibraryScreenContent(
                             "game.isInstalled" to isInstalled.toString(),
                             "game.installStatus" to installStatusLabel,
                             "game.installStatus.color" to installStatusColor,
+                            "game.lastPlayed" to lastPlayedText,
                         )
                     }
                 }
@@ -455,7 +477,7 @@ private fun LibraryScreenContent(
                             onItemClick = { item -> selectedAppId = item.appId },
                             onItemFocus = { /* Can be used for preview pane later */ },
                             bindingProvider = bindingProvider,
-                            themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                            themePath = themeRootDir,
                         )
                     }
                     }
@@ -474,7 +496,7 @@ private fun LibraryScreenContent(
                                 onItemClick = { item -> selectedAppId = item.appId },
                                 onItemFocus = { /* Can be used for preview pane later */ },
                                 bindingProvider = bindingProvider,
-                                themePath = app.gamenative.theme.ThemeManager.getActiveThemeAssetPath(),
+                                themePath = themeRootDir,
                             )
                         }
                     }

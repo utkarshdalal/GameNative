@@ -800,4 +800,10 @@ object PrefManager {
     var useThemeEngineUi: Boolean
         get() = getPref(USE_THEME_ENGINE_UI, false)
         set(value) = setPref(USE_THEME_ENGINE_UI, value)
+
+    // Sort installed games by last played time
+    private val SORT_INSTALLED_BY_LAST_PLAYED = booleanPreferencesKey("sort_installed_by_last_played")
+    var sortInstalledByLastPlayed: Boolean
+        get() = getPref(SORT_INSTALLED_BY_LAST_PLAYED, false)
+        set(value) = setPref(SORT_INSTALLED_BY_LAST_PLAYED, value)
 }

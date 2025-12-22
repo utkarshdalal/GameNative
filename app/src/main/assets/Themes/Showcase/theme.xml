@@ -92,6 +92,30 @@
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
                   visibleWhen="game.isInstalled" />
+
+            <!-- Last played clock icon - positioned same as checkmark -->
+            <image id="lastPlayedIcon"
+                   x="@{vars.infoX}" y="@{vars.clockIconY}"
+                   width="@{vars.clockIconSize}" height="@{vars.clockIconSize}"
+                   scaleType="cover"
+                   src="assets/clock.png"
+                   anchor="topLeft"
+                   focusOnly="true"
+                   focusTransitionSpeed="@{vars.transitionSpeed}"
+                   visibleWhen="game.isInstalled" />
+
+            <!-- Last played time - offset by icon width -->
+            <text id="lastPlayed"
+                  x="@{vars.statusX}" y="@{vars.lastPlayedY}"
+                  width="@{vars.infoWidth}"
+                  text="@{game.lastPlayed}"
+                  textSize="@{vars.statusSize}"
+                  color="@{vars.statusTextColor}"
+                  maxLines="1"
+                  anchor="topLeft"
+                  focusOnly="true"
+                  focusTransitionSpeed="@{vars.transitionSpeed}"
+                  visibleWhen="game.isInstalled" />
         </card>
     </elements>
 

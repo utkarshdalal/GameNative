@@ -263,6 +263,7 @@
     <string name="location">Location</string>
     <string name="developer">Developer</string>
     <string name="release_date">Release Date</string>
+    <string name="last_played">Last Played</string>
     <string name="installed">Installed</string>
     <string name="installing">Installing</string>
     <string name="not_installed">Not Installed</string>
@@ -651,6 +652,7 @@
     <string name="library_installed">Installed</string>
     <string name="library_installing">Installing</string>
     <string name="library_not_installed">Not installed</string>
+    <string name="library_never_played">Never played</string>
     <string name="library_family_shared">Family Shared</string>
     <string name="library_compatible">Compatible</string>
     <string name="library_compatibility_unknown">Compatibility Unknown</string>
@@ -809,6 +811,10 @@
     <!-- Theme Engine UI toggle -->
     <string name="settings_use_theme_engine_ui_title">Use Theme Engine UI (experimental)</string>
     <string name="settings_use_theme_engine_ui_subtitle">Enable the new themed Library screen. May reduce interactivity.</string>
+
+    <!-- Sort by last played -->
+    <string name="settings_interface_sort_last_played_title">Sort installed by last played</string>
+    <string name="settings_interface_sort_last_played_subtitle">Show recently played games first in the library</string>
 
     <!-- Theme Selector Screen -->
     <string name="theme_selector_title">Select Theme</string>

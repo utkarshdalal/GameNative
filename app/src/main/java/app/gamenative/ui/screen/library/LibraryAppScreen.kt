@@ -687,7 +687,7 @@ internal fun AppScreenContent(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             // Setting a fixed height to avoid nested scrolling issues
-                            modifier = Modifier.height(220.dp)
+                            modifier = Modifier.height(280.dp)
                         ) {
                             // Status item
                             item {
@@ -814,6 +814,24 @@ internal fun AppScreenContent(
                                         },
                                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                                     )
+                                }
+                            }
+
+                            // Last Played item (only if installed)
+                            if (isInstalled && !displayInfo.lastPlayedText.isNullOrEmpty()) {
+                                item {
+                                    Column {
+                                        Text(
+                                            text = stringResource(R.string.last_played),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = displayInfo.lastPlayedText,
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        )
+                                    }
                                 }
                             }
                         }

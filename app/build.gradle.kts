@@ -226,6 +226,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.landscapist.coil)
+    implementation(libs.coil.svg)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Media3 (ExoPlayer) for video playback

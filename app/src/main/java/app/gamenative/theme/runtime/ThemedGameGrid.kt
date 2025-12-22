@@ -1034,7 +1034,18 @@ private fun BoxScope.RenderThemedLayer(
     
     when (layer) {
         is Layer.ImageLayer -> {
-            val src = resolveBinding(layer.source.src, bindings)
+            val rawSrc = resolveBinding(layer.source.src, bindings)
+            // Resolve local theme assets (paths without protocol)
+            val src = if (rawSrc.isNotBlank() && !rawSrc.contains("://") && themePath != null) {
+                // Try the path as-is first (e.g., "assets/clock.png"), then with "assets/" prefix
+                val directFile = java.io.File(themePath, rawSrc)
+                val assetFile = java.io.File(themePath, "assets/$rawSrc")
+                when {
+                    directFile.exists() -> "file://${directFile.absolutePath}"
+                    assetFile.exists() -> "file://${assetFile.absolutePath}"
+                    else -> rawSrc
+                }
+            } else rawSrc
             val shape = parseCornerRadius(layer.cornerRadius)
             val rawX = dimToDp(layer.position.x, parentSize.width, parentSize.height)
             val rawY = dimToDp(layer.position.y, parentSize.width, parentSize.height)

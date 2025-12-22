@@ -21,6 +21,7 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.data.GameCompatibilityStatus
+import com.winlator.container.ContainerManager
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -315,15 +316,41 @@ class LibraryViewModel @Inject constructor(
             val includeSteam = _state.value.showSteamInLibrary
             val includeOpen = _state.value.showCustomGamesInLibrary
 
+            // Check if we should sort by last played
+            val sortByLastPlayed = PrefManager.sortInstalledByLastPlayed
+            
+            // Build map of appId -> lastPlayedTimestamp for installed games (if sorting by last played)
+            val lastPlayedMap: Map<String, Long> = if (sortByLastPlayed) {
+                try {
+                    val containerManager = ContainerManager(context)
+                    containerManager.containers
+                        .associate { container -> container.id to container.lastPlayedTimestamp }
+                } catch (e: Exception) {
+                    Timber.tag("LibraryViewModel").e(e, "Error loading container timestamps")
+                    emptyMap()
+                }
+            } else {
+                emptyMap()
+            }
+
             // Combine both lists
             val combined = buildList<LibraryEntry> {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen) addAll(customEntries)
             }.sortedWith(
-                // Always sort by installed status first (installed games at top), then alphabetically within each group
+                if (sortByLastPlayed) {
+                    // Sort: installed first, then by last played (most recent first), then alphabetically
+                    compareBy<LibraryEntry> { entry ->
+                        if (entry.isInstalled) 0 else 1
+                    }.thenByDescending { entry ->
+                        if (entry.isInstalled) lastPlayedMap[entry.item.appId] ?: 0L else 0L
+                    }.thenBy { it.item.name.lowercase() }
+                } else {
+                    // Default: installed first, then alphabetically within each group
                 compareBy<LibraryEntry> { entry ->
                     if (entry.isInstalled) 0 else 1
-                }.thenBy { it.item.name.lowercase() } // Alphabetical sorting within installed and uninstalled groups
+                    }.thenBy { it.item.name.lowercase() }
+                }
             ).mapIndexed { idx, entry -> entry.item.copy(index = idx) }
 
             // Total count for the current filter
