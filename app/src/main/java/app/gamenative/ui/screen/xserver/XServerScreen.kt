@@ -1892,39 +1892,6 @@ private fun installVcRedist(context: RedistContext) {
 }
 
 /**
- * Installs DirectX redistributables (DXSETUP.exe)
- */
-private fun installDirectX(context: RedistContext) {
-    val directxDirs = listOf("DirectX", "DX", "DXSETUP")
-
-    for (dirName in directxDirs) {
-        val dxDir = File(context.commonRedistDir, dirName)
-        if (!dxDir.exists() || !dxDir.isDirectory()) continue
-
-        val dxSetup = dxDir.walkTopDown()
-            .filter { it.isFile &&
-                (it.name.equals("DXSETUP.exe", ignoreCase = true) ||
-                 it.name.equals("dxwebsetup.exe", ignoreCase = true)) }
-            .firstOrNull()
-
-        dxSetup?.let { exeFile ->
-            try {
-                val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing DirectX..."))
-                Timber.i("Installing DirectX: $winePath")
-                val cmd = "wine $winePath /silent && wineserver -k"
-                val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                Timber.i("DirectX installation output: $output")
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to install DirectX ${exeFile.name}")
-            }
-        }
-        break // Only install from first found DirectX directory
-    }
-}
-
-/**
  * Installs .NET Framework redistributables
  */
 private fun installDotNetFramework(context: RedistContext) {
@@ -2069,7 +2036,6 @@ private fun installRedistributables(
         }
 
         installVcRedist(redistContext)
-        installDirectX(redistContext)
         installDotNetFramework(redistContext)
         installOpenAL(redistContext)
         installPhysX(redistContext)
