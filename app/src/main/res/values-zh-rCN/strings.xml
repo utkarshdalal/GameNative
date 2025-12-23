@@ -1,47 +1,47 @@
 <resources>
     <string name="app_name">GameNative</string>
-    <string name="login_user">登入</string>
+    <string name="login_user">登录</string>
     <string name="login_2fa">双重验证</string>
     <string name="home">主页</string>
-    <string name="settings">设定</string>
-    <string name="login_qr">扫码登入</string>
+    <string name="settings">设置</string>
+    <string name="login_qr">扫码登录</string>
     <string name="app_library">游戏库</string>
     <string name="app_downloads">下载</string>
     <string name="unknown_app">未知应用</string>
-    <string name="steam_2fa_incorrect">输入错误的验证码, 请再试一次</string>
-    <string name="steam_2fa_confirmation">使用Steam行动应用程式确认登入…</string>
-    <string name="steam_2fa_device">请输入您的验证器应用程式中的双重验证码</string>
-    <string name="steam_2fa_email">请输入发送至邮件信箱 %s 的验证码</string>
-    <string name="steam_install_space_prompt">正在安装的应用程式有以下空间需求:\n\n\t下载大小: %1$s\n\t磁碟占用空间: %2$s\n\t可用空间: %3$s</string>
-    <string name="steam_install_not_enough_space">正在安装的应用程式需要 %1$s 的空间, 但此设备上只剩下 %2$s 的空间</string>
-    <string name="steam_cancel_download_message">您确定要取消下载此应用程式吗?</string>
-    <string name="steam_delete_download_message">删除此游戏的所有已下载数据?</string>
+    <string name="steam_2fa_incorrect">验证码错误，请重试</string>
+    <string name="steam_2fa_confirmation">正在通过Steam移动应用确认登录…</string>
+    <string name="steam_2fa_device">请输入您验证器应用中的双重验证码</string>
+    <string name="steam_2fa_email">请输入发送至邮箱 %s 的验证码</string>
+    <string name="steam_install_space_prompt">要安装的应用有以下空间要求：\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
+    <string name="steam_install_not_enough_space">要安装的应用需要 %1$s 空间，但设备仅剩 %2$s 可用空间</string>
+    <string name="steam_cancel_download_message">确定要取消下载此应用吗？</string>
+    <string name="steam_delete_download_message">删除此游戏的所有已下载数据？</string>
     <string name="steam_imagefs_download_install_title">下载并安装 ImageFS</string>
-    <string name="steam_imagefs_download_install_message">必须先下载并安装 Ubuntu 映像, 然后才能编辑配置. 此操作可能需要几分钟, 是否继续?</string>
+    <string name="steam_imagefs_download_install_message">必须先下载并安装 Ubuntu 镜像才能编辑配置。此操作可能需要几分钟，是否继续？</string>
     <string name="steam_imagefs_install_title">安装 ImageFS</string>
-    <string name="steam_imagefs_install_message">必须先下载并安装 Ubuntu 映像, 然后才能编辑配置. 此操作可能需要几分钟, 是否继续?</string>
+    <string name="steam_imagefs_install_message">必须先下载并安装 Ubuntu 镜像才能编辑配置。此操作可能需要几分钟，是否继续？</string>
     <string name="steam_reset_container_title">重置容器</string>
-    <string name="steam_reset_container_message">这将把容器重置为预设配置</string>
-    <string name="base_app_reset_container_title">重置容器?</string>
+    <string name="steam_reset_container_message">这将把容器重置为默认配置</string>
+    <string name="base_app_reset_container_title">重置容器？</string>
     <string name="base_app_reset_container_confirm">重置</string>
-    <string name="steam_verify_files_title">验证档案</string>
-    <string name="steam_verify_files_message">请确保您的存档已上传至云端或已备份, 然后再进行验证, 否则存档可能会被覆盖</string>
+    <string name="steam_verify_files_title">验证文件</string>
+    <string name="steam_verify_files_message">验证前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_update_title">更新</string>
-    <string name="steam_update_message">请确保您的存档已上传至云端或已备份, 然后再进行验证, 否则存档可能会被覆盖</string>
-    <string name="steam_cloud_sync_success">云端同步已成功完成</string>
+    <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
+    <string name="steam_cloud_sync_success">云同步已成功完成</string>
     <string name="steam_cloud_sync_up_to_date">游戏存档已是最新版本</string>
-    <string name="steam_cloud_sync_failed">云端同步失败: %s</string>
+    <string name="steam_cloud_sync_failed">云同步失败：%s</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
-    <string name="steam_container_reset_success">容器重设为预设设定</string>
-    <string name="steam_imagefs_installed">已安装 ImageFS, 请尝试再次编辑容器</string>
-    <string name="steam_imagefs_install_failed">ImageFS 安装失败: %s</string>
+    <string name="steam_container_reset_success">容器已重置为默认设置</string>
+    <string name="steam_imagefs_installed">ImageFS 已安装，请重试编辑容器</string>
+    <string name="steam_imagefs_install_failed">ImageFS 安装失败：%s</string>
     <string name="steam_uninstall_game_title">卸载游戏</string>
-    <string name="steam_uninstall_confirmation_message">您确定要卸载 %1$s 吗? 此操作无法撤回</string>
+    <string name="steam_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
     <string name="steam_uninstall_success">%1$s 已卸载</string>
     <string name="steam_uninstall_failed">卸载游戏失败</string>
     <string name="steam_never">从不</string>
     <string name="steam_continue">继续</string>
-    <string name="header_img_desc">App header image</string>
+    <string name="header_img_desc">应用头图</string>
     <string name="download">下载</string>
     <string name="install">安装</string>
     <string name="install_app">安装</string>
@@ -49,7 +49,7 @@
     <string name="uninstall">卸载</string>
     <string name="run_app">开始游戏</string>
     <string name="download_prompt_title">安装应用</string>
-    <string name="calculating_space_requirements">计算空间需求…</string>
+    <string name="calculating_space_requirements">计算空间需求中…</string>
     <string name="delete_prompt_title">删除应用</string>
     <string name="cancel_download_prompt_title">取消下载</string>
     <string name="acknowledge">确定</string>
@@ -64,45 +64,45 @@
     <string name="destination_downloads">下载</string>
     <string name="destination_friends">好友</string>
 
-    <!-- Custom Games -->
-    <string name="custom_games_title">自订游戏</string>
-    <string name="custom_games_no_paths">没有添加路径</string>
-    <string name="custom_games_grant_permission">授予许可</string>
+    <!-- 自定义游戏 -->
+    <string name="custom_games_title">自定义游戏</string>
+    <string name="custom_games_no_paths">未添加路径</string>
+    <string name="custom_games_grant_permission">授予权限</string>
     <string name="custom_games_manual_subtitle">从游戏库添加</string>
     <string name="custom_games_no_manual_entries">尚未手动添加游戏</string>
-    <string name="custom_games_remove_path_title">删除路径</string>
-    <string name="custom_games_remove_path_message">从扫描中删除此路径? 文件夹内容将保留在磁盘上</string>
-    <string name="custom_games_remove_path_content_desc">删除路径</string>
-    <string name="custom_games_path_removed_toast">已从列表中删除路径. 文件夹内容尚未删除</string>
-    <string name="custom_games_remove_manual_title">删除自订游戏</string>
-    <string name="custom_games_remove_manual_message">从您的游戏库中删除这个手动添加的文件夹吗? 这不会删除磁盘上的文件</string>
-    <string name="custom_games_remove_manual_content_desc">删除文件夹</string>
-    <string name="custom_games_manual_removed_toast">已从游戏库中删除文件夹</string>
-    <string name="custom_games_cannot_access">⚠ 无法访问 (检查路径是否存在)</string>
+    <string name="custom_games_remove_path_title">移除路径</string>
+    <string name="custom_games_remove_path_message">从扫描中移除此路径？文件夹内容将保留在磁盘上</string>
+    <string name="custom_games_remove_path_content_desc">移除路径</string>
+    <string name="custom_games_path_removed_toast">路径已从列表中移除。文件夹内容未删除</string>
+    <string name="custom_games_remove_manual_title">移除自定义游戏</string>
+    <string name="custom_games_remove_manual_message">从游戏库中移除此手动添加的文件夹吗？这不会删除磁盘上的文件</string>
+    <string name="custom_games_remove_manual_content_desc">移除文件夹</string>
+    <string name="custom_games_manual_removed_toast">文件夹已从游戏库中移除</string>
+    <string name="custom_games_cannot_access">⚠ 无法访问（检查路径是否存在）</string>
     <string name="custom_games_permission_denied">⚠ 没有权限</string>
     <string name="custom_games_zero_folders">找到 0 个文件夹</string>
     <string name="custom_games_folders_found">找到 %d 个文件夹</string>
-    <string name="custom_games_scan_description">将扫描这些路径中的文件夹中的 .exe 文件并将其列为自定义游戏, 这可能会减慢应用程序的启动时间</string>
+    <string name="custom_games_scan_description">将扫描这些路径中文件夹内的 .exe 文件并将其列为自定义游戏，可能会减慢应用启动速度</string>
     <string name="custom_game_folder_picker_error">无法解析文件夹路径</string>
-    <string name="custom_game_exe_selection_title">需要选择可执行程序</string>
-    <string name="custom_game_exe_selection_message">此游戏有多个可执行文件, 请打开 自定义游戏设置 以选择要启动的游戏</string>
+    <string name="custom_game_exe_selection_title">需要选择可执行文件</string>
+    <string name="custom_game_exe_selection_message">此游戏有多个可执行文件，请打开 自定义游戏设置 以选择要启动的游戏</string>
     <string name="custom_game_settings">自定义游戏设置</string>
     <string name="custom_game_delete_title">删除游戏</string>
-    <string name="custom_game_delete_message">您确定要卸载 %1$s 吗?</string>
+    <string name="custom_game_delete_message">确定要卸载 %1$s 吗？</string>
     <string name="custom_game_unknown_developer">未知</string>
 
-    <!--Winlator-->
+    <!-- Winlator -->
     <string name="disabled">已禁用</string>
     <string name="copy">复制</string>
     <string name="stability">稳定</string>
-    <string name="compatibility">相容性</string>
+    <string name="compatibility">兼容性</string>
     <string name="intermediate">平衡</string>
     <string name="performance">高性能</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
 
-    <!-- Winlator: Win Components -->
+    <!-- Winlator: Win 组件 -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
     <string name="directmusic">DirectMusic</string>
@@ -113,41 +113,41 @@
     <string name="wmdecoder">Windows Media Decoder</string>
     <string name="opengl">OpenGL</string>
     <string name="dxvk_version">DXVK 版本</string>
-    <string name="run">执行</string>
+    <string name="run">运行</string>
     <string name="edit">编辑</string>
-    <string name="remove">删除</string>
+    <string name="remove">移除</string>
     <string name="add">添加</string>
     <string name="delete">删除</string>
-    <string name="copy_from">从...复制</string>
+    <string name="copy_from">从…复制</string>
     <string name="ok">确认</string>
     <string name="storage_info">存储信息</string>
     <string name="duplicate">复制</string>
     <string name="reconfigure">重新配置</string>
     <string name="content_info">内容信息</string>
     <string name="game_not_installed_title">游戏未安装</string>
-    <string name="game_not_installed_message">%s 未安装, 请在启动前先安装游戏</string>
-    <string name="save_container_settings_title">保存容器配置?</string>
-    <string name="save_container_settings_message">此游戏运行已应用修改的配置, 您想保存容器配置吗?</string>
+    <string name="game_not_installed_message">%s 未安装，请在启动前先安装游戏</string>
+    <string name="save_container_settings_title">保存容器配置？</string>
+    <string name="save_container_settings_message">此游戏运行已应用修改的配置，是否保存容器配置？</string>
     <string name="sync_error_title">同步错误</string>
     <string name="save">保存</string>
     <string name="discard">取消</string>
-    <string name="shortcuts">捷径</string>
+    <string name="shortcuts">快捷方式</string>
     <string name="containers">容器</string>
     <string name="box64_rc_file">Box64 RCFile</string>
     <string name="contents">内容</string>
     <string name="about">关于</string>
     <string name="open_file">打开文件</string>
     <string name="download_file">下载文件</string>
-    <string name="processor_affinity">处理器关联</string>
-    <string name="bring_to_front">移到最前面</string>
-    <string name="end_process">结束工作</string>
-    <string name="new_file">新增文件</string>
-    <string name="add_to_home_screen">添加到主画面</string>
+    <string name="processor_affinity">处理器关联性</string>
+    <string name="bring_to_front">置顶</string>
+    <string name="end_process">结束进程</string>
+    <string name="new_file">新建文件</string>
+    <string name="add_to_home_screen">添加到主屏幕</string>
     <string name="toggle_fullscreen">切换全屏</string>
-    <string name="toggle_orientation">切换萤幕方向</string>
-    <string name="task_manager">工作管理员</string>
+    <string name="toggle_orientation">切换屏幕方向</string>
+    <string name="task_manager">任务管理器</string>
     <string name="magnifier">放大镜</string>
-    <string name="logs">应用程序日志</string>
+    <string name="logs">应用日志</string>
     <string name="exit_game">退出</string>
     <string name="exit">退出游戏</string>
     <string name="keyboard">键盘</string>
@@ -165,20 +165,20 @@
     <string name="dpad_down">方向键 下</string>
     <string name="dpad_left">方向键 左</string>
     <string name="dpad_right">方向键 右</string>
-    <string name="input_controls">萤幕控制器</string>
-    <string name="edit_controls">编辑萤幕控制器</string>
+    <string name="input_controls">屏幕控制器</string>
+    <string name="edit_controls">编辑屏幕控制器</string>
     <string name="edit_physical_controller">编辑实体控制器</string>
     <string name="controller_disconnected">已断开</string>
-    <string name="reset_onscreen_controls">重置萤幕控制器</string>
+    <string name="reset_onscreen_controls">重置屏幕控制器</string>
     <string name="open_navigation_menu">打开导航菜单</string>
-    <string name="touchpad_help">触摸板支援</string>
-    <string name="hide_controls_with_controller">使用控制器时隐藏萤幕控制器</string>
-    <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏萤幕控制器</string>
+    <string name="touchpad_help">触摸板支持</string>
+    <string name="hide_controls_with_controller">使用控制器时隐藏屏幕控制器</string>
+    <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏屏幕控制器</string>
 
-    <!-- Controller Binding Dialog -->
+    <!-- 控制器绑定对话框 -->
     <string name="select_binding">选择绑定</string>
-    <string name="bind_button">绑定: %1$s</string>
-    <string name="current_binding">当前: %1$s</string>
+    <string name="bind_button">绑定：%1$s</string>
+    <string name="current_binding">当前：%1$s</string>
     <string name="search_bindings">搜索绑定…</string>
     <string name="search_placeholder">搜索…</string>
     <string name="search">搜索</string>
@@ -192,20 +192,20 @@
     <string name="clear_binding">清除绑定</string>
     <string name="no_bindings_found">找不到绑定</string>
 
-    <!-- Element Editor Dialog -->
+    <!-- 元素编辑对话框 -->
     <string name="edit_element">编辑 %1$s</string>
-    <string name="element_position_size">位置: (%1$d, %2$d) • 大小: %3$.2fx</string>
+    <string name="element_position_size">位置：（%1$d, %2$d）• 大小：%3$.2fx</string>
     <string name="appearance">外观</string>
     <string name="size_subtitle">%.2fx</string>
     <string name="label_text">标签文字</string>
     <string name="label_text_subtitle">此按钮的自定义文字</string>
     <string name="element_type">元素类型</string>
-    <string name="element_type_subtitle">变更此控件的类型</string>
+    <string name="element_type_subtitle">更改此控件的类型</string>
     <string name="shape">形状</string>
     <string name="shape_subtitle">视觉外观</string>
     <string name="shape_restricted">%1$s 仅限于 %2$s 形状</string>
     <string name="bindings">绑定</string>
-    <string name="bindings_auto_generated">绑定 (自动生成)</string>
+    <string name="bindings_auto_generated">绑定（自动生成）</string>
     <string name="bindings_auto_generated_subtitle">范围按钮绑定会自动生成</string>
     <string name="primary_action">主要动作</string>
     <string name="secondary_action">次要动作</string>
@@ -213,21 +213,21 @@
     <string name="direction_right">右</string>
     <string name="direction_down">下</string>
     <string name="direction_left">左</string>
-    <string name="mouse_suffix"> (鼠标)</string>
-    <string name="slot_number">插槽 %1$d</string>
-    <string name="button_slots_help">按钮最多支持 2 个绑定: 主要 (按压) 和次要 (长按)</string>
+    <string name="mouse_suffix">（鼠标）</string>
+    <string name="slot_number">槽位 %1$d</string>
+    <string name="button_slots_help">按钮最多支持 2 个绑定：主要（按压）和次要（长按）</string>
     <string name="properties">属性</string>
     <string name="position">位置</string>
-    <string name="position_value">X: %1$d, Y: %2$d</string>
-    <string name="unsaved_changes">未保存的变更</string>
-    <string name="unsaved_changes_message">您有未保存的变更。您要保存还是舍弃它们？</string>
+    <string name="position_value">X：%1$d，Y：%2$d</string>
+    <string name="unsaved_changes">未保存的更改</string>
+    <string name="unsaved_changes_message">您有未保存的更改。要保存还是放弃它们？</string>
     <string name="adjust_size">调整大小</string>
     <string name="reset">重置</string>
     <string name="done">完成</string>
     <string name="copy_size_from_element">从元素复制大小</string>
-    <string name="toast_no_elements_to_copy">没有其他可用的元素可复制大小</string>
-    <string name="toast_copied_size">已复制大小: %.2fx</string>
-    <string name="on_screen_toast_controls_reset">萤幕控制器已重置为默认值</string>
+    <string name="toast_no_elements_to_copy">没有其他可用元素可复制大小</string>
+    <string name="toast_copied_size">已复制大小：%.2fx</string>
+    <string name="on_screen_toast_controls_reset">屏幕控制器已重置为默认值</string>
     <string name="quick_presets">快速预设</string>
     <string name="preset_wasd">WASD</string>
     <string name="preset_arrows">方向键</string>
@@ -236,14 +236,14 @@
     <string name="preset_left_stick">左摇杆</string>
     <string name="preset_right_stick">右摇杆</string>
 
-    <!-- Physical Controller Config -->
+    <!-- 实体控制器配置 -->
     <string name="physical_controller_config">实体控制器绑定编辑器</string>
-    <string name="physical_controller_config_subtitle">设置实体控制器的按钮对应</string>
+    <string name="physical_controller_config_subtitle">设置实体控制器的按钮映射</string>
     <string name="face_buttons">正面按钮</string>
     <string name="button_a">A 按钮</string>
-    <string name="button_a_subtitle">底部正面按钮 (确认)</string>
+    <string name="button_a_subtitle">底部正面按钮（确认）</string>
     <string name="button_b">B 按钮</string>
-    <string name="button_b_subtitle">右侧正面按钮 (返回)</string>
+    <string name="button_b_subtitle">右侧正面按钮（返回）</string>
     <string name="button_x">X 按钮</string>
     <string name="button_x_subtitle">左侧正面按钮</string>
     <string name="button_y">Y 按钮</string>
@@ -260,16 +260,16 @@
     <string name="menu_buttons">菜单按钮</string>
     <string name="button_start">Start / Options</string>
     <string name="button_select">Select / View / Share</string>
-    <string name="analog_sticks">类比摇杆</string>
+    <string name="analog_sticks">模拟摇杆</string>
     <string name="thumbstick_buttons">摇杆按钮</string>
-    <string name="button_l3">L3 (左摇杆点击)</string>
-    <string name="button_r3">R3 (右摇杆点击)</string>
-    <string name="left_analog_stick">左类比摇杆</string>
+    <string name="button_l3">L3（左摇杆按下）</string>
+    <string name="button_r3">R3（右摇杆按下）</string>
+    <string name="left_analog_stick">左模拟摇杆</string>
     <string name="left_stick_up">左摇杆 上</string>
     <string name="left_stick_down">左摇杆 下</string>
     <string name="left_stick_left">左摇杆 左</string>
     <string name="left_stick_right">左摇杆 右</string>
-    <string name="right_analog_stick">右类比摇杆</string>
+    <string name="right_analog_stick">右模拟摇杆</string>
     <string name="right_stick_up">右摇杆 上</string>
     <string name="right_stick_down">右摇杆 下</string>
     <string name="right_stick_left">右摇杆 左</string>
@@ -279,652 +279,646 @@
     <string name="reset_to_default_bindings">重置为默认绑定</string>
     <string name="not_set">未设置</string>
 
-    <!-- Toast -->
+    <!-- 提示消息 -->
     <string name="toast_controls_reset">控制器已重置</string>
     <string name="toast_failed_log_save">无法将 logcat 保存到目标</string>
 
-    <!-- Settings -->
-    <string name="settings_save_logcat_subtitle">保存此应用程序 PID 的 logcat 快照</string>
+    <!-- 设置 -->
+    <string name="settings_save_logcat_subtitle">保存此应用 PID 的 logcat 快照</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
-        CALL/RET opcodes 的 flags 处理方式<br /><br />
-        <b>0</b> : 将 CALL/RET 视为从不需要处理 (更快, 但不稳定)<br />
-        <b>1</b> : 大多数 RET 需要 flags, 大多数 CALLS 不需要 flags<br />
-        <b>2</b> : 所有 CALL/RET 都需要 flags 处理 (速度较慢)
-    ]]>    </string>
+        CALL/RET 操作码的标志处理方式<br /><br />
+        <b>0</b>：将 CALL/RET 视为从不需要处理（更快，但不稳定）<br />
+        <b>1</b>：大多数 RET 需要标志，大多数 CALLS 不需要标志<br />
+        <b>2</b>：所有 CALL/RET 都需要标志处理（速度较慢）
+    ]]></string>
     <string name="box86_64_env_var_help__dynarec_fastnan">产生类似 x86 架构上的 -NAN 值</string>
-    <string name="box86_64_env_var_help__dynarec_fastround">产生精确的 x86 舍入 / 进位结果</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">产生精确的 x86 舍入/进位结果</string>
     <string name="box86_64_env_var_help__dynarec_x87double">在 x87 模拟中使用的 Float/Double 浮点类型</string>
     <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
         Dynarec 建立 BigBlock<br /><br />
-        <b>0</b> : 不要尝试建立尽可能大的程式码块<br />
-        <b>1</b> : 建立尽可能大的 Dynarec 程式码块<br />
-        <b>2</b> : 建立更大的 Dynarec 块 (允许重叠, 只适用于 ELF 记忆体)<br />
-        <b>3</b> : 建立更大的 Dynarec 块 (允许重叠, 适用于所有记忆体类型)
-    ]]>    </string>
+        <b>0</b>：不尝试建立尽可能大的代码块<br />
+        <b>1</b>：建立尽可能大的 Dynarec 代码块<br />
+        <b>2</b>：建立更大的 Dynarec 块（允许重叠，仅适用于 ELF 内存）<br />
+        <b>3</b>：建立更大的 Dynarec 块（允许重叠，适用于所有内存类型）
+    ]]></string>
     <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
-        强记忆体模型模拟<br /><br />
-        <b>0</b> : 不使用特殊处理<br />
-        <b>1</b> : 启用写入记忆体时的部分 Memory Barrier (针对某些 MOV opcode)<br />
-        <b>2</b> : 包含选项1, 再加上每次使用 MOV 指令写入记忆体时都加入记忆体屏障<br />
-        <b>3</b> : 包含选项1, 再加上从记忆体读取时，以及在某些 SSE/SSE2 opcodes 上使用 Memory Barrier
-    ]]>    </string>
+        强内存模型模拟<br /><br />
+        <b>0</b>：不使用特殊处理<br />
+        <b>1</b>：启用写入内存时的部分内存屏障（针对某些 MOV 操作码）<br />
+        <b>2</b>：包含选项1，再加上每次使用 MOV 指令写入内存时都加入内存屏障<br />
+        <b>3</b>：包含选项1，再加上从内存读取时，以及在某些 SSE/SSE2 操作码上使用内存屏障
+    ]]></string>
     <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
-        调整记忆体屏障以减少强记忆体模拟对效能的影响<br /><br />
-        <b>0</b> : 使用常规安全屏障<br />
-        <b>1</b> : 采用弱屏障以获得轻微的性能提升<br />
-        <b>2</b> : 使用弱屏障，并额外禁用最后写入屏障]]></string>
+        调整内存屏障以减少强内存模拟对性能的影响<br /><br />
+        <b>0</b>：使用常规安全屏障<br />
+        <b>1</b>：采用弱屏障以获得轻微的性能提升<br />
+        <b>2</b>：使用弱屏障，并额外禁用最后写入屏障]]></string>
     <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
-        仅产生对齐原子操作 (目前仅适用于 Arm64 架构)<br /><br />
-        <b>0</b> : 产生非对齐原子操作的处理程式码<br />
-        <b>1</b> : 仅产生对齐的原子操作，此方式速度更快且程式码体积更小，但会导致以 LOCK 为前缀的操作码在对齐资料位址上运作时触发 SIGBUS 异常。]]></string>
+        仅产生对齐原子操作（目前仅适用于 Arm64 架构）<br /><br />
+        <b>0</b>：产生非对齐原子操作的处理代码<br />
+        <b>1</b>：仅产生对齐的原子操作，此方式速度更快且代码体积更小，但会导致以 LOCK 为前缀的操作码在对齐数据地址上运作时触发 SIGBUS 异常。]]></string>
     <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
-        启用或停用延迟标记的使用<br /><br />
-        <b>0</b> : 停用延迟标记的使用<br />
-        <b>1</b> : 启用延迟标记的使用]]></string>
+        启用或停用延迟标志的使用<br /><br />
+        <b>0</b>：停用延迟标志的使用<br />
+        <b>1</b>：启用延迟标志的使用]]></string>
     <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
-        允许继续执行未受保护且可能已遭窜改的区块<br /><br />
-        <b>0</b> : 不允许继续执行未受保护且可能已遭窜改的区块<br />
-        <b>1</b> : 允许继续执行「动态区块」，该机制将资料写入与程式码相同的页面。此做法虽能加快某些游戏的载入速度，但也可能导致意外当机。<br />
-        <b>2</b> : 当侦测到 HotPage 时，亦会将该页面标记为 NEVERCLEAN，因此该页面不会被写入保护，但从该页面建立的区块仍会持续接受测试。此方式可能更为迅速（但某些 SMC 案例可能无法被拦截）。]]></string>
+        允许继续执行未受保护且可能已遭篡改的区块<br /><br />
+        <b>0</b>：不允许继续执行未受保护且可能已遭篡改的区块<br />
+        <b>1</b>：允许继续执行“动态区块”，该机制将数据写入与代码相同的页面。此做法虽能加快某些游戏的加载速度，但也可能导致意外崩溃。<br />
+        <b>2</b>：当检测到 HotPage 时，亦会将该页面标记为 NEVERCLEAN，因此该页面不会被写入保护，但从该页面建立的区块仍会持续接受测试。此方式可能更为迅速（但某些 SMC 案例可能无法被拦截）。]]></string>
     <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
         启用或停用原生标志的使用<br /><br />
-        <b>0</b> : 不使用原生标志<br />
-        <b>1</b> : 尽可能使用原生标志]]></string>
+        <b>0</b>：不使用原生标志<br />
+        <b>1</b>：尽可能使用原生标志]]></string>
     <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
-        启用 x86 PAUSE 模拟功能，可能有助于提升自旋锁的效能<br /><br />
-        <b>0</b> : 忽略 x86 PAUSE 指令<br />
-        <b>1</b> : 使用 YIELD 模拟 x86 的 PAUSE 指令<br />
-        <b>2</b> : 使用 WFI 模拟 x86 PAUSE 指令<br />
-        <b>3</b> : 使用 SEVL+WFE 模拟 x86 PAUSE 指令
+        启用 x86 PAUSE 模拟功能，可能有助于提升自旋锁的性能<br /><br />
+        <b>0</b>：忽略 x86 PAUSE 指令<br />
+        <b>1</b>：使用 YIELD 模拟 x86 的 PAUSE 指令<br />
+        <b>2</b>：使用 WFI 模拟 x86 PAUSE 指令<br />
+        <b>3</b>：使用 SEVL+WFE 模拟 x86 PAUSE 指令
     ]]></string>
     <string name="box86_64_env_var_help__avx"><![CDATA[
-        已实作 AVX 与 AVX2，并包含 BMI1、BMI2、ADX、FMA、F16C 及 RDANDR 扩充功能<br /><br />
-        <b>0</b> : 停用 AVX 扩展功能<br />
-        <b>1</b> : 启用 AVX、BMI1、F16C 及 VAES 扩展功能<br />
-        <b>2</b> : 选项 1 加上启用 AVX2、BMI2、FMA、ADX、VPCLMULQDQ 及 RDRAND<br />\
+        已实现 AVX 与 AVX2，并包含 BMI1、BMI2、ADX、FMA、F16C 及 RDANDR 扩展功能<br /><br />
+        <b>0</b>：禁用 AVX 扩展功能<br />
+        <b>1</b>：启用 AVX、BMI1、F16C 及 VAES 扩展功能<br />
+        <b>2</b>：选项 1 加上启用 AVX2、BMI2、FMA、ADX、VPCLMULQDQ 及 RDRAND<br />
     ]]></string>
-    <string name="box86_64_env_var_help__maxcpu">box64 向程式呈现的最大处理器核心数</string>
-    <string name="box86_64_env_var_help__unityplayer">侦测 UnityPlayer.dll 并套用 strongmem 设定</string>
-    <string name="box86_64_env_var_help__mmap32">强制所有记忆体分配在 32 位元位址空间中执行</string>
+    <string name="box86_64_env_var_help__maxcpu">box64 向程序呈现的最大处理器核心数</string>
+    <string name="box86_64_env_var_help__unityplayer">检测 UnityPlayer.dll 并应用 strongmem 设置</string>
+    <string name="box86_64_env_var_help__mmap32">强制所有内存分配在 32 位地址空间中执行</string>
     <string name="box86_64_env_var_help__dynarec_forward">定义建立区块时允许的最大向前位移</string>
-    <string name="box86_64_env_var_help__dynarec_callret">最佳化 CALL/RET 操作码</string>
+    <string name="box86_64_env_var_help__dynarec_callret">优化 CALL/RET 操作码</string>
     <string name="box86_64_env_var_help__dynarec_wait">定义 Dynarec 是否需等待 FillBlock 准备就绪</string>
-    <string name="fexcore_env_var_help__tsoenabled">启用 TSO IR 操作 (多执行绪应用程式所需)</string>
-    <string name="fexcore_env_var_help__vectortsoenabled">当 TSO 启用时, 使向量载入/储存指令成为原子操作</string>
-    <string name="fexcore_env_var_help__halfbarriertsoenabled">在 TSO 环境下, 使用半屏障原子操作处理未对齐的载入/储存操作</string>
+    <string name="fexcore_env_var_help__tsoenabled">启用 TSO IR 操作（多线程应用程序所需）</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">当 TSO 启用时，使向量加载/存储指令成为原子操作</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">在 TSO 环境下，使用半屏障原子操作处理未对齐的加载/存储操作</string>
     <string name="fexcore_env_var_help__memcpysettsoenabled">使 REP MOVS / REP STOS 在 TSO 环境下成为原子操作</string>
-    <string name="fexcore_env_var_help__multiblock">启用多区块程式码编译, 可能导致JIT编译时间延长及画面卡顿</string>
+    <string name="fexcore_env_var_help__multiblock">启用多区块代码编译，可能导致JIT编译时间延长及画面卡顿</string>
     <string name="fexcore_env_var_help__hostfeatures">控制 CPU 功能强制执行</string>
     <string name="fexcore_env_var_help__smalltscscale">调整低频系统中TSC的系数</string>
-    <string name="fexcore_env_var_help__smc_checks">自我修改程式码检查</string>
-    <string name="fexcore_env_var_help__volatilemetadata">在可用的情况下, 使用PE档案中的挥发性元资料进行TSO作业</string>
-    <string name="fexcore_env_var_help__monohacks">针对 Mono 应用程式侦测的特殊处理 (SMC + JIT block hacks)</string>
-    <string name="fexcore_env_var_help__hidehypervisorbit">隐藏 CPUID 虚拟化管理程式位元 (适用于因该位元导致崩溃的应用程式)</string>
-    <string name="fexcore_env_var_help__disablel2cache">停用 FEXCore JIT L2 快取查询功能，节省记忆体但会导致卡顿</string>
-    <string name="fexcore_env_var_help__dynamicl1cache">将 FEXCore JIT L1 快取切换为动态大小, 节省记忆体但会导致卡顿</string>
-    <string name="fexcore_env_var_help__x87reducedprecision">采用64位元精度模拟X87浮点运算, 此举将降低模拟精度, 并可能导致渲染错误</string>
-    <string name="fexcore_env_var_help__maxinst">每个翻译区块的最大指令预算, 较高的数值可提升效能, 但可能降低稳定性</string>
+    <string name="fexcore_env_var_help__smc_checks">自我修改代码检查</string>
+    <string name="fexcore_env_var_help__volatilemetadata">在可用的情况下，使用PE文件中的易失性元数据进行TSO作业</string>
+    <string name="fexcore_env_var_help__monohacks">针对 Mono 应用程序检测的特殊处理（SMC + JIT block hacks）</string>
+    <string name="fexcore_env_var_help__hidehypervisorbit">隐藏 CPUID 虚拟机管理器位（适用于因该位导致崩溃的应用程序）</string>
+    <string name="fexcore_env_var_help__disablel2cache">禁用 FEXCore JIT L2 缓存查询功能，节省内存但会导致卡顿</string>
+    <string name="fexcore_env_var_help__dynamicl1cache">将 FEXCore JIT L1 缓存切换为动态大小，节省内存但会导致卡顿</string>
+    <string name="fexcore_env_var_help__x87reducedprecision">采用64位精度模拟X87浮点运算，此举将降低模拟精度，并可能导致渲染错误</string>
+    <string name="fexcore_env_var_help__maxinst">每个翻译区块的最大指令预算，较高的数值可提升性能，但可能降低稳定性</string>
     <string name="resume_download">继续下载</string>
     <string name="pause_download">暂停下载</string>
 
-    <!-- Library & Game Management -->
-    <string name="create_shortcut">创建捷径</string>
+    <!-- 库与游戏管理 -->
+    <string name="create_shortcut">创建快捷方式</string>
     <string name="label">标签</string>
-    <string name="icon">图示</string>
+    <string name="icon">图标</string>
     <string name="create">创建</string>
     <string name="update_now">立即更新</string>
-    <string name="moving_files">移动文件</string>
-    <string name="need_internet_to_install">需要网络连线才能安装</string>
+    <string name="moving_files">移动文件中</string>
+    <string name="need_internet_to_install">需要网络连接才能安装</string>
     <string name="install_wifi_only_enabled">仅启用通过 WiFi 安装</string>
     <string name="installation_progress">安装进度</string>
     <string name="downloading">下载中...</string>
     <string name="calculating_time">计算中...</string>
-    <string name="download_failed_try_again">下载失败, 请再试一次</string>
-    <string name="update_available">可用更新</string>
-    <string name="game_information">游戏资讯</string>
+    <string name="download_failed_try_again">下载失败，请重试</string>
+    <string name="update_available">有可用更新</string>
+    <string name="game_information">游戏信息</string>
     <string name="status">状态</string>
     <string name="size">大小</string>
-    <string name="location">档案位置</string>
+    <string name="location">文件位置</string>
     <string name="developer">开发者</string>
     <string name="release_date">发布日期</string>
     <string name="installed">已安装</string>
     <string name="installing">安装中</string>
     <string name="not_installed">未安装</string>
-    <string name="open">开启</string>
+    <string name="open">打开</string>
     <string name="family_shared">家庭共享</string>
     <string name="games">游戏</string>
-    <string name="playtime_last_two_weeks">过去2周的游戏时间: %s 小时</string>
-    <string name="total_playtime">总游戏时间: %s 小时</string>
+    <string name="playtime_last_two_weeks">过去2周的游戏时间：%s 小时</string>
+    <string name="total_playtime">总游戏时间：%s 小时</string>
     <string name="add_custom_game_content_desc">添加自定义游戏</string>
     <string name="add_custom_game_dialog_title">添加自定义游戏</string>
-    <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的游戏的文件夹</string>
+    <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的文件夹</string>
     <string name="add_custom_game_dont_show_again">不再显示</string>
-    <string name="base_app_shortcut_created">已创建捷径</string>
-    <string name="base_app_shortcut_failed">无法创建捷径：%s</string>
-    <string name="base_app_images_fetched">映像获取成功</string>
+    <string name="base_app_shortcut_created">快捷方式已创建</string>
+    <string name="base_app_shortcut_failed">无法创建快捷方式：%s</string>
+    <string name="base_app_images_fetched">图像获取成功</string>
     <string name="base_app_game_folder_not_found">找不到游戏文件夹</string>
-    <string name="base_app_images_fetch_failed">无法获取映像: %s</string>
+    <string name="base_app_images_fetch_failed">无法获取图像：%s</string>
     <string name="base_app_exported">已导出</string>
-    <string name="base_app_export_failed">无法导出: %s</string>
+    <string name="base_app_export_failed">无法导出：%s</string>
     <string name="base_app_export_cancelled">取消导出</string>
 
-
-    <!-- App Filter -->
+    <!-- 应用过滤器 -->
     <string name="app_filter_installed">已安装</string>
     <string name="app_filter_game">游戏</string>
-    <string name="app_filter_application">应用程式</string>
+    <string name="app_filter_application">应用程序</string>
     <string name="app_filter_tool">工具</string>
     <string name="app_filter_demo">试玩版</string>
     <string name="app_filter_family">家庭共享</string>
 
-    <!-- Login & Connection -->
-    <string name="no_connection_to_steam">没有连接到 Steam</string>
-    <string name="retry_steam_connection">重试连接到 Steam</string>
+    <!-- 登录与连接 -->
+    <string name="no_connection_to_steam">未连接到 Steam</string>
+    <string name="retry_steam_connection">重试连接 Steam</string>
     <string name="continue_offline">离线使用</string>
 
+    <!-- 游戏反馈对话框 -->
+    <string name="game_feedback_game_run">游戏运行情况如何？</string>
+    <string name="game_feedback_issues_question">选择您遇到的任何问题：</string>
 
-    <!--Game Feedback Dialog -->
-    <string name="game_feedback_game_run">游戏的运行状况如何?</string>
-    <string name="game_feedback_issues_question">选择您遇到的任何问题:</string>
-
-
-    <!-- Profile & Menu -->
-    <string name="help_and_support">帮助 &amp; 支援</string>
+    <!-- 个人资料与菜单 -->
+    <string name="help_and_support">帮助与支持</string>
     <string name="hall_of_fame">名人堂</string>
     <string name="go_online">进入在线模式</string>
     <string name="go_offline">进入离线模式</string>
     <string name="log_out">登出</string>
     <string name="close">关闭</string>
 
-    <!-- Container Configuration: General -->
-    <string name="new_environment_variable">新增环境变数</string>
+    <!-- 容器配置：通用 -->
+    <string name="new_environment_variable">新建环境变量</string>
     <string name="name">名称</string>
     <string name="value">值</string>
-    <string name="no_more_known_variables">没有更多已知环境变数</string>
+    <string name="no_more_known_variables">没有更多已知环境变量</string>
     <string name="container_variant">容器变体</string>
     <string name="wine_version">Wine版本</string>
     <string name="exec_arguments">执行参数</string>
-    <string name="exec_arguments_example">例子: -dx11</string>
+    <string name="exec_arguments_example">例如：-dx11</string>
     <string name="language">语言</string>
-    <string name="screen_size">萤幕大小</string>
+    <string name="screen_size">屏幕大小</string>
     <string name="width">宽度</string>
     <string name="height">高度</string>
-    <string name="audio_driver">音讯驱动程式</string>
+    <string name="audio_driver">音频驱动程序</string>
     <string name="show_fps">显示帧率</string>
-    <string name="remove_driver_confirmation">您确定要移除驱动程式 "%s"? 此操作无法复原</string>
+    <string name="remove_driver_confirmation">确定要移除驱动程序“%s”？此操作无法撤销</string>
 
-    <!-- Container Configuration: Steam Integration -->
+    <!-- 容器配置：Steam 集成 -->
     <string name="use_legacy_drm">使用旧版 DRM</string>
     <string name="force_dlc">强制开启DLC</string>
-    <string name="force_dlc_description">仅在未侦测到 DLC 或包含 DLC 的存档无法运作时启用</string>
-    <string name="launch_steam_client_beta">启动 Steam 用户端 (Beta)</string>
-    <string name="launch_steam_client_description">降低效能并减慢启动速度\n允许线上游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
+    <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
+    <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
+    <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
-    <string name="allow_steam_updates_description">将 Steam 更新至最新版本, 会显著降低效能</string>
+    <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
     <string name="steam_type">Steam 类型</string>
 
-    <!-- Container Configuration: Graphics -->
-    <string name="graphics_driver">图形驱动程式</string>
-    <string name="graphics_driver_version">图形驱动程式版本</string>
-    <string name="exposed_vulkan_extensions">启用 Vulkan 扩充功能</string>
+    <!-- 容器配置：图形 -->
+    <string name="graphics_driver">图形驱动程序</string>
+    <string name="graphics_driver_version">图形驱动程序版本</string>
+    <string name="exposed_vulkan_extensions">启用 Vulkan 扩展功能</string>
     <string name="max_device_memory">最大内存容量</string>
-    <string name="frame_synchronization">影格同步</string>
-    <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
+    <string name="frame_synchronization">帧同步</string>
+    <string name="use_adrenotools_turnip">使用 Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan 版本</string>
-    <string name="image_cache_size">图像快取大小</string>
-    <string name="dx_wrapper">DX Wrapper</string>
-    <string name="vkd3d_feature_level">VKD3D Feature Level</string>
+    <string name="image_cache_size">图像缓存大小</string>
+    <string name="dx_wrapper">DX 封装器</string>
+    <string name="vkd3d_feature_level">VKD3D 功能级别</string>
     <string name="use_dri3">使用 DRI3</string>
-    <string name="use_dri3_description">在某些装置上停用此功能或许能修复图形故障</string>
-    <string name="sync_frame">同步每帧影像</string>
-    <string name="disable_present_wait">停用 KHR_present_wait</string>
-    <string name="present_modes">当前模式</string>
-    <string name="resource_type">记忆体资源类型</string>
+    <string name="use_dri3_description">在某些设备上禁用此功能或许能修复图形故障</string>
+    <string name="sync_frame">同步每帧图像</string>
+    <string name="disable_present_wait">禁用 KHR_present_wait</string>
+    <string name="present_modes">呈现模式</string>
+    <string name="resource_type">内存资源类型</string>
     <string name="bcn_emulation">BCn 模拟</string>
     <string name="bcn_emulation_type">BCn 模拟类型</string>
-    <string name="bcn_emulation_cache">BCn 模拟快取</string>
-    <string name="sharpness_effect">锐利度增强</string>
-    <string name="sharpness_level">锐利度等级</string>
-    <string name="sharpness_denoise">锐利度去噪</string>
+    <string name="bcn_emulation_cache">BCn 模拟缓存</string>
+    <string name="sharpness_effect">锐度增强</string>
+    <string name="sharpness_level">锐度等级</string>
+    <string name="sharpness_denoise">锐度去噪</string>
 
-    <!-- Container Configuration: Emulation -->
+    <!-- 容器配置：模拟 -->
     <string name="fexcore_version">FEXCore 版本</string>
-    <string name="fexcore_preset">FEXCore Preset</string>
+    <string name="fexcore_preset">FEXCore 预设</string>
     <string name="tso_mode">TSO 模式</string>
     <string name="x87_mode">x87 模式</string>
-    <string name="multiblock">Multiblock</string>
-    <string name="emulator_64bit">64-bit 模拟器</string>
-    <string name="emulator_32bit">32-bit 模拟器</string>
+    <string name="multiblock">多区块</string>
+    <string name="emulator_64bit">64位 模拟器</string>
+    <string name="emulator_32bit">32位 模拟器</string>
     <string name="box64_version">Box64 版本</string>
     <string name="box64_preset">Box64 预设集</string>
     <string name="box64_presets">Box64 预设集</string>
     <string name="fexcore_presets">FEXCore 预设集</string>
-    <string name="fexcore_presets_description">检视、修改及建立 FEXCore 预设集</string>
+    <string name="fexcore_presets_description">查看、修改及创建 FEXCore 预设集</string>
     <string name="preset_name">预设集名称</string>
 
-    <!-- Container Configuration: Input -->
+    <!-- 容器配置：输入 -->
     <string name="use_sdl_api">使用 SDL API</string>
     <string name="enable_xinput_api">启用 XInput API</string>
     <string name="enable_directinput_api">启用 DirectInput API</string>
-    <string name="directinput_mapper_type">DirectInput Mapper 类型</string>
-    <string name="disable_mouse_input">停用滑鼠输入</string>
+    <string name="directinput_mapper_type">DirectInput 映射器类型</string>
+    <string name="disable_mouse_input">禁用鼠标输入</string>
     <string name="touchscreen_mode">触屏模式</string>
-    <string name="touchscreen_mode_description">直接触控到光标移动 (开启) vs 触控板式相对移动 (关闭)</string>
-    <string name="start_with_controls_hidden">开始时隐藏萤幕控制器</string>
-    <string name="start_with_controls_hidden_description">游戏开始时萤幕控制器将被隐藏。可通过导航菜单切换。</string>
-    <string name="emulate_keyboard_mouse">模拟键盘与滑鼠</string>
-    <string name="emulate_keyboard_mouse_description">左摇杆 = WASD, 右摇杆 = 滑鼠, L2 = 滑鼠左键, R2 = 滑鼠右键</string>
+    <string name="touchscreen_mode_description">直接触控到光标移动（开启） vs 触摸板式相对移动（关闭）</string>
+    <string name="start_with_controls_hidden">开始时隐藏屏幕控制器</string>
+    <string name="start_with_controls_hidden_description">游戏开始时屏幕控制器将被隐藏。可通过导航菜单切换。</string>
+    <string name="emulate_keyboard_mouse">模拟键盘与鼠标</string>
+    <string name="emulate_keyboard_mouse_description">左摇杆 = WASD，右摇杆 = 鼠标，L2 = 鼠标左键，R2 = 鼠标右键</string>
 
-    <!-- Container Configuration: Rendering -->
-    <string name="renderer">渲染器 </string>
+    <!-- 容器配置：渲染 -->
+    <string name="renderer">渲染器</string>
     <string name="gpu_name">GPU 名称</string>
-    <string name="offscreen_rendering_mode">萤幕外渲染模式</string>
-    <string name="video_memory_size">显示记忆体大小</string>
-    <string name="enable_csmt">启用 CSMT (Command Stream Multi-Thread)</string>
-    <string name="enable_strict_shader_math">启用 Strict Shader Math</string>
-    <string name="mouse_warp_override">滑鼠跃迁覆写</string>
+    <string name="offscreen_rendering_mode">屏幕外渲染模式</string>
+    <string name="video_memory_size">显存大小</string>
+    <string name="enable_csmt">启用 CSMT（命令流多线程）</string>
+    <string name="enable_strict_shader_math">启用严格着色器数学</string>
+    <string name="mouse_warp_override">鼠标跳转覆盖</string>
 
-    <!-- Container Configuration: Management -->
-    <string name="environment_variables">环境变数</string>
-    <string name="no_environment_variables">没有环境变数</string>
-    <string name="no_drives">未挂载任何储存装置</string>
+    <!-- 容器配置：管理 -->
+    <string name="environment_variables">环境变量</string>
+    <string name="no_environment_variables">没有环境变量</string>
+    <string name="no_drives">未挂载任何存储设备</string>
     <string name="startup_selection">启动选项</string>
-    <string name="processor_affinity_32bit">处理器关联 (32 位元应用程式)</string>
+    <string name="processor_affinity_32bit">处理器关联性（32 位应用程序）</string>
     <string name="executable_path">执行路径</string>
-    <string name="executable_path_placeholder">e.g., path\\to\\exe</string>
+    <string name="executable_path_placeholder">例如：path\\to\\exe</string>
 
-    <!-- Dialogs -->
-    <string name="allowed_orientations">允许的萤幕方向</string>
-    <string name="select_wine_debug_channels">选择 Wine 侦错通道</string>
+    <!-- 对话框 -->
+    <string name="allowed_orientations">允许的屏幕方向</string>
+    <string name="select_wine_debug_channels">选择 Wine 调试通道</string>
     <string name="cpu_label">CPU%d</string>
     <string name="describe_what_happened">描述发生了什么</string>
-    <string name="get_support_on_discord">在 Discord 上获取支援</string>
+    <string name="get_support_on_discord">在 Discord 上获取支持</string>
 
-    <!-- Driver Manager -->
-    <string name="driver_manager">驱动程式管理</string>
-    <string name="select_a_driver">选择驱动程式</string>
-    <string name="import_zip_from_device">从装置汇入ZIP</string>
+    <!-- 驱动程序管理器 -->
+    <string name="driver_manager">驱动程序管理</string>
+    <string name="select_a_driver">选择驱动程序</string>
+    <string name="import_zip_from_device">从设备导入ZIP</string>
 
-    <!-- Contents Manager -->
+    <!-- 内容管理器 -->
     <string name="contents_manager">内容管理</string>
-    <string name="import_wcp_from_device">从装置汇入 .wcp</string>
+    <string name="import_wcp_from_device">从设备导入 .wcp</string>
     <string name="working">正在处理...</string>
     <string name="selected">已选择</string>
     <string name="selected_content">选定的内容</string>
     <string name="installed_contents">已安装的内容</string>
     <string name="select_type">选择类型</string>
-    <string name="untrusted_files_detected">侦测到不受信任的档案</string>
+    <string name="untrusted_files_detected">检测到不受信任的文件</string>
     <string name="install_anyway">继续安装</string>
-    <string name="remove_content">移除内容?</string>
-    <string name="remove_content_confirmation">您确定要移除 %1$s (%2$s)?</string>
+    <string name="remove_content">移除内容？</string>
+    <string name="remove_content_confirmation">确定要移除 %1$s（%2$s）？</string>
 
-    <!-- Settings -->
+    <!-- 设置 -->
     <string name="settings_language">语言</string>
     <string name="settings_select_language">选择语言</string>
     <string name="settings_language_restart_title">需要重新启动</string>
-    <string name="settings_language_restart_message">更改语言需要重新启动应用程式. 是否继续?</string>
+    <string name="settings_language_restart_message">更改语言需要重新启动应用程序。是否继续？</string>
     <string name="settings_language_restart_confirm">重新启动</string>
     <string name="settings_language_changing">切换语言并重新启动中...</string>
 
-    <!-- Settings: Emulation Group -->
-    <string name="settings_emulation_title">模拟设定</string>
-    <string name="settings_emulation_orientations_title">允许的萤幕方向</string>
-    <string name="settings_emulation_orientations_subtitle">选择游戏中可使用的萤幕方向</string>
-    <string name="settings_emulation_default_config_title">修改预设配置</string>
-    <string name="settings_emulation_default_config_subtitle">每款游戏的初始容器设定 (不影响已安装游戏)</string>
-    <string name="settings_emulation_default_config_dialog_title">预设容器设定</string>
+    <!-- 设置：模拟组 -->
+    <string name="settings_emulation_title">模拟设置</string>
+    <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
+    <string name="settings_emulation_orientations_subtitle">选择游戏中可使用的屏幕方向</string>
+    <string name="settings_emulation_default_config_title">修改默认配置</string>
+    <string name="settings_emulation_default_config_subtitle">每款游戏的初始容器设置（不影响已安装游戏）</string>
+    <string name="settings_emulation_default_config_dialog_title">默认容器设置</string>
     <string name="settings_emulation_box64_presets_title">Box64 预设集</string>
-    <string name="settings_emulation_box64_presets_subtitle">检视、修改及建立 Box64 预设集</string>
-    <string name="settings_emulation_driver_manager_title">驱动程式管理员</string>
-    <string name="settings_emulation_driver_manager_subtitle">安装或移除自订显示驱动程式套件</string>
+    <string name="settings_emulation_box64_presets_subtitle">查看、修改及创建 Box64 预设集</string>
+    <string name="settings_emulation_driver_manager_title">驱动程序管理器</string>
+    <string name="settings_emulation_driver_manager_subtitle">安装或移除自定义显示驱动程序包</string>
     <string name="settings_emulation_contents_manager_title">内容管理</string>
-    <string name="settings_emulation_contents_manager_subtitle">安装附加元件 (.wcp)</string>
-    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton 管理员</string>
-    <string name="settings_emulation_wine_proton_manager_subtitle">汇入自订的 Wine/Proton 版本 (仅限 Bionic)</string>
+    <string name="settings_emulation_contents_manager_subtitle">安装附加组件（.wcp）</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton 管理器</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">导入自定义的 Wine/Proton 版本（仅限 Bionic）</string>
 
-    <!-- Settings: Debug Group -->
-    <string name="settings_debug_title">除错</string>
-    <string name="settings_debug_wine_channels_title">选择 Wine 除错频道</string>
-    <string name="settings_debug_wine_logs_title">启用 Wine 除错记录</string>
-    <string name="settings_debug_wine_logs_subtitle">将 Wine 除错输出写入档案</string>
+    <!-- 设置：调试组 -->
+    <string name="settings_debug_title">调试</string>
+    <string name="settings_debug_wine_channels_title">选择 Wine 调试通道</string>
+    <string name="settings_debug_wine_logs_title">启用 Wine 调试日志</string>
+    <string name="settings_debug_wine_logs_subtitle">将 Wine 调试输出写入文件</string>
     <string name="settings_debug_box_logs_title">启用 Box86/64 日志</string>
-    <string name="settings_debug_box_logs_subtitle">将 Box86 与 Box64 的除错输出写入档案</string>
-    <string name="settings_debug_view_crash_title">检视最新崩溃日志</string>
-    <string name="settings_debug_view_log_title">检视游戏除错记录</string>
-    <string name="settings_debug_clear_prefs_title">清除偏好设定</string>
-    <string name="settings_debug_clear_prefs_subtitle">[关闭应用程式] 登出客户端并清除本地偏好设定资料</string>
-    <string name="settings_debug_clear_db_title">清除本地资料库</string>
-    <string name="settings_debug_clear_db_subtitle">[关闭应用程式] 可能有助于修复游戏库项目或讯息相关的问题</string>
-    <string name="settings_debug_clear_cache_title">清除影像缓存</string>
-    <string name="settings_debug_clear_cache_subtitle">移除所有已载入的图片</string>
+    <string name="settings_debug_box_logs_subtitle">将 Box86 与 Box64 的调试输出写入文件</string>
+    <string name="settings_debug_view_crash_title">查看最新崩溃日志</string>
+    <string name="settings_debug_view_log_title">查看游戏调试日志</string>
+    <string name="settings_debug_clear_prefs_title">清除偏好设置</string>
+    <string name="settings_debug_clear_prefs_subtitle">[关闭应用程序] 登出客户端并清除本地偏好设置数据</string>
+    <string name="settings_debug_clear_db_title">清除本地数据库</string>
+    <string name="settings_debug_clear_db_subtitle">[关闭应用程序] 可能有助于修复游戏库项目或信息相关的问题</string>
+    <string name="settings_debug_clear_cache_title">清除图像缓存</string>
+    <string name="settings_debug_clear_cache_subtitle">移除所有已加载的图片</string>
 
-    <!-- Settings: Info Group -->
-    <string name="settings_info_title">资讯</string>
+    <!-- 设置：信息组 -->
+    <string name="settings_info_title">信息</string>
     <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">为持续的应用程式开发贡献力量</string>
-    <string name="settings_info_ask_tip_title">启动时显示捐款讯息</string>
-    <string name="settings_info_ask_tip_subtitle">停止显示捐款讯息</string>
-    <string name="settings_info_source_title">原始码</string>
-    <string name="settings_info_source_subtitle">检视此专案的原始码</string>
-    <string name="settings_info_libraries_title">使用的函式库</string>
-    <string name="settings_info_libraries_subtitle">了解哪些技术让GameNative成为可能</string>
-    <string name="settings_info_privacy_title">隐私权政策</string>
-    <string name="settings_info_privacy_subtitle">开启连结至 GameNative 的隐私权政策</string>
+    <string name="settings_info_send_tip_subtitle">为持续的应用程序开发贡献力量</string>
+    <string name="settings_info_ask_tip_title">启动时显示捐款信息</string>
+    <string name="settings_info_ask_tip_subtitle">停止显示捐款信息</string>
+    <string name="settings_info_source_title">源代码</string>
+    <string name="settings_info_source_subtitle">查看此项目的源代码</string>
+    <string name="settings_info_libraries_title">使用的库</string>
+    <string name="settings_info_libraries_subtitle">了解哪些技术让 GameNative 成为可能</string>
+    <string name="settings_info_privacy_title">隐私政策</string>
+    <string name="settings_info_privacy_subtitle">打开链接至 GameNative 的隐私政策</string>
 
-    <!-- Settings: Interface Group -->
-    <string name="settings_interface_title">介面</string>
-    <string name="settings_interface_external_links_title">在外部开启网页连结</string>
-    <string name="settings_interface_external_links_subtitle">连结将以您的主要网页浏览器开启</string>
-    <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态列</string>
-    <string name="settings_interface_hide_statusbar_subtitle">在游戏清单、设定等介面隐藏 Android 状态列。变更后应用程式将重新启动。</string>
-    <string name="settings_interface_wifi_only_title">仅限透过 Wi-Fi 下载</string>
-    <string name="settings_interface_wifi_only_subtitle">禁止使用行动数据下载</string>
-    <string name="settings_interface_external_storage_title">写入外部储存装置</string>
-    <string name="settings_interface_no_external_storage">未侦测到外部储存装置</string>
-    <string name="settings_interface_external_storage_subtitle">将游戏存档储存至外部储存装置</string>
-    <string name="settings_interface_storage_volume_title">储存容量</string>
-    <string name="settings_interface_download_server_title">Steam 下载伺服器</string>
+    <!-- 设置：界面组 -->
+    <string name="settings_interface_title">界面</string>
+    <string name="settings_interface_external_links_title">在外部打开网页链接</string>
+    <string name="settings_interface_external_links_subtitle">链接将以您的主要网页浏览器打开</string>
+    <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态栏</string>
+    <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
+    <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi 下载</string>
+    <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
+    <string name="settings_interface_external_storage_title">写入外部存储设备</string>
+    <string name="settings_interface_no_external_storage">未检测到外部存储设备</string>
+    <string name="settings_interface_external_storage_subtitle">将游戏存档存储至外部存储设备</string>
+    <string name="settings_interface_storage_volume_title">存储容量</string>
+    <string name="settings_interface_download_server_title">Steam 下载服务器</string>
     <string name="settings_interface_restart_required_title">需要重新启动</string>
 
-    <!-- Settings: Downloads Group -->
+    <!-- 设置：下载组 -->
     <string name="settings_downloads_title">下载</string>
 
-    <!-- Login Screen -->
+    <!-- 登录界面 -->
     <string name="login_app_name">GameNative</string>
-    <string name="login_privacy_policy">隐私权政策</string>
+    <string name="login_privacy_policy">隐私政策</string>
     <string name="login_welcome_back">欢迎回来</string>
-    <string name="login_subtitle">登入以存取您的 Steam 游戏库</string>
-    <string name="login_username">用户名称</string>
+    <string name="login_subtitle">登录以访问您的 Steam 游戏库</string>
+    <string name="login_username">用户名</string>
     <string name="login_password">密码</string>
-    <string name="login_remember_session">记住登入状态</string>
-    <string name="login_sign_in">登入</string>
+    <string name="login_remember_session">记住登录状态</string>
+    <string name="login_sign_in">登录</string>
     <string name="login_qr_failed">QR 码扫描失败</string>
-    <string name="login_retry_qr">重新尝试 QR 码扫描</string>
-    <string name="login_qr_instructions">开启 Steam 行动应用程式，扫描此 QR 码即可立即登入</string>
+    <string name="login_retry_qr">重试 QR 码扫描</string>
+    <string name="login_qr_instructions">打开 Steam 移动应用程序，扫描此 QR 码即可立即登录</string>
 
-    <!-- Generic/Reusable strings -->
+    <!-- 通用/可复用字符串 -->
     <string name="continue_action">继续</string>
-    <string name="settings_text">设定</string>
+    <string name="settings_text">设置</string>
 
+    <!-- 连接至服务器界面 -->
+    <string name="connect_to_remote_server">正在连接到远程服务器...</string>
 
-    <!-- Connecting to Servers Screen -->
-    <string name="connect_to_remote_server">正在连接至远端伺服器...</string>
-
-    <!-- LibraryAppScreen: Dialogs -->
-    <string name="library_not_enough_space_message">正在安装的应用程式需要 %1$s 的空间, 但此装置仅剩 %2$s 可用空间</string>
-    <string name="library_download_prompt_message">正在安装的应用程式需要以下储存空间. 是否继续安装? \n\n\t下载大小: %1$s\n\t磁碟占用空间: %2$s\n\t可用空间: %3$s</string>
-    <string name="library_cancel_download_message">您确定要取消应用程式的下载?</string>
-    <string name="library_delete_download_message">删除此游戏的所有已下载资料?</string>
-    <string name="library_delete_app_message">您确定要删除此应用程式?</string>
+    <!-- 库应用界面：对话框 -->
+    <string name="library_not_enough_space_message">要安装的应用程序需要 %1$s 的空间，但此设备仅剩 %2$s 可用空间</string>
+    <string name="library_download_prompt_message">要安装的应用程序有以下存储空间需求。是否继续安装？\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
+    <string name="library_cancel_download_message">确定要取消应用程序的下载？</string>
+    <string name="library_delete_download_message">删除此游戏的所有已下载数据？</string>
+    <string name="library_delete_app_message">确定要删除此应用程序？</string>
     <string name="library_download_install_imagefs_title">下载并安装 ImageFS</string>
-    <string name="library_download_install_imagefs_message">在编辑设定档之前，需先下载并安装 Ubuntu 映像档. 此操作可能需要数分钟时间. 您要继续吗?</string>
+    <string name="library_download_install_imagefs_message">在编辑配置文件之前，需先下载并安装 Ubuntu 镜像文件。此操作可能需要数分钟时间。您要继续吗？</string>
     <string name="library_install_imagefs_title">安装 ImageFS</string>
-    <string name="library_install_imagefs_message">在编辑设定前, 需先安装 Ubuntu 映像档. 此操作可能需要数分钟时间. 您要继续吗?</string>
+    <string name="library_install_imagefs_message">在编辑设置前，需先安装 Ubuntu 镜像文件。此操作可能需要数分钟时间。您要继续吗？</string>
     <string name="library_reset_container_title">重置容器</string>
-    <string name="library_reset_container_message">此操作将您的容器重设为预设配置</string>
-    <string name="library_verify_files_title">验证档案</string>
-    <string name="library_verify_files_message">请确保您的存档已上传至云端或完成备份后再进行验证, 否则存档可能会被覆写</string>
+    <string name="library_reset_container_message">此操作将您的容器重置为默认配置</string>
+    <string name="library_verify_files_title">验证文件</string>
+    <string name="library_verify_files_message">请确保您的存档已上传至云端或完成备份后再进行验证，否则存档可能会被覆盖</string>
     <string name="library_update_title">更新</string>
-    <string name="library_update_message">请确保您的存档已上传至云端或完成备份后再进行验证, 否则存档可能会被覆写</string>
-    <string name="library_config_title">%s 设定档</string>
+    <string name="library_update_message">请确保您的存档已上传至云端或完成备份后再进行验证，否则存档可能会被覆盖</string>
+    <string name="library_config_title">%s 配置文件</string>
 
-    <!-- LibraryAppScreen: Toast Messages -->
-    <string name="library_storage_permission_required">需要储存权限</string>
-    <string name="library_exported">已汇出</string>
-    <string name="library_failed_to_export">汇出失败：%s</string>
-    <string name="library_export_cancelled">汇出已取消</string>
-    <string name="library_shortcut_created">捷径已建立</string>
-    <string name="library_failed_to_create_shortcut">建立捷径失败: %s</string>
-    <string name="library_cloud_sync_success">云端同步完成</string>
-    <string name="library_cloud_sync_up_to_date">储存档案已更新至最新版本</string>
-    <string name="library_cloud_sync_failed">云端同步失败: %s</string>
+    <!-- 库应用界面：提示消息 -->
+    <string name="library_storage_permission_required">需要存储权限</string>
+    <string name="library_exported">已导出</string>
+    <string name="library_failed_to_export">导出失败：%s</string>
+    <string name="library_export_cancelled">导出已取消</string>
+    <string name="library_shortcut_created">快捷方式已创建</string>
+    <string name="library_failed_to_create_shortcut">创建快捷方式失败：%s</string>
+    <string name="library_cloud_sync_success">云同步完成</string>
+    <string name="library_cloud_sync_up_to_date">存档文件已更新至最新版本</string>
+    <string name="library_cloud_sync_failed">云同步失败：%s</string>
 
-    <!-- LibraryAppScreen: UI Labels -->
-    <string name="library_need_internet">需连网安装</string>
-    <string name="library_wifi_only_enabled">已启用仅透过 Wi-Fi/区域网路安装</string>
-    <string name="library_file_count">档案 %1$d / %2$d 个</string>
+    <!-- 库应用界面：UI标签 -->
+    <string name="library_need_internet">需联网安装</string>
+    <string name="library_wifi_only_enabled">已启用仅通过 Wi-Fi/局域网安装</string>
+    <string name="library_file_count">文件 %1$d / %2$d 个</string>
 
-    <!-- PluviaMain: Update & App Info -->
-    <string name="main_update_available_title">可用更新</string>
-    <string name="main_update_available_message">新版本 (%1$s) 已推出! %2$s</string>
+    <!-- 主界面：更新与应用信息 -->
+    <string name="main_update_available_title">有可用更新</string>
+    <string name="main_update_available_message">新版本（%1$s）已推出！%2$s</string>
     <string name="main_update_button">更新</string>
     <string name="main_later_button">稍后更新</string>
     <string name="main_update_failed_title">更新失败</string>
-    <string name="main_update_failed_message">更新下载或安装失败, 请稍后再试</string>
+    <string name="main_update_failed_message">更新下载或安装失败，请稍后再试</string>
 
-    <!-- PluviaMain: Crash & Support -->
-    <string name="main_recent_crash_title">最近应用程式当机</string>
-    <string name="main_recent_crash_message">若能了解您最近遇到的问题, 将有助于我们改善应用程式.\n您可在应用程式设定中检视并汇出最近的崩溃日志, 将其附加至专案原始码储存库的 Github Issue中\nGithub 原始码储存库的连结亦位于设定页面内</string>
-    <string name="main_thank_you_title">感谢您使用GameNative!</string>
-    <string name="main_thank_you_message">透过与朋友分享应用程式或在Ko-fi成为会员，支持Android平台的开源PC游戏</string>
-    <string name="main_join_kofi">加入Ko-fi</string>
+    <!-- 主界面：崩溃与支持 -->
+    <string name="main_recent_crash_title">最近应用程序崩溃</string>
+    <string name="main_recent_crash_message">若能了解您最近遇到的问题，将有助于我们改善应用程序。\n您可在应用程序设置中查看并导出最近的崩溃日志，将其附加至项目源代码仓库的 Github Issue中\nGithub 源代码仓库的链接亦位于设置页面内</string>
+    <string name="main_thank_you_title">感谢您使用 GameNative！</string>
+    <string name="main_thank_you_message">通过与朋友分享应用程序或在 Ko-fi 成为会员，支持 Android 平台的开源 PC 游戏</string>
+    <string name="main_join_kofi">加入 Ko-fi</string>
     <string name="main_share">分享</string>
-    <string name="main_discord_support_title">游戏运作正常吗?</string>
-    <string name="main_discord_support_message">加入 Discord 社群, 获取游戏修复与效能优化的支援</string>
-    <string name="main_open_discord">开启 Discord</string>
+    <string name="main_discord_support_title">游戏运行正常吗？</string>
+    <string name="main_discord_support_message">加入 Discord 社区，获取游戏修复与性能优化的支持</string>
+    <string name="main_open_discord">打开 Discord</string>
 
-    <!-- PluviaMain: Game Launch -->
+    <!-- 主界面：游戏启动 -->
     <string name="main_downloading_steam">正在下载 Steam...</string>
     <string name="main_installing_glibc">安装 glibc 组件...</string>
-    <string name="main_installing_bionic">安装Bionic元件中...</string>
-    <string name="main_loading">载入中...</string>
+    <string name="main_installing_bionic">安装Bionic组件中...</string>
+    <string name="main_loading">加载中...</string>
 
-    <!-- PluviaMain: Session Conflicts -->
-    <string name="main_app_running_title">应用程式运行中</string>
-    <string name="main_app_running_message">您已在另一台装置登入并正在游玩 %s。\n您仍可继续游玩此游戏，但此操作将导致 Steam 断开另一装置的连线。</string>
-    <string name="main_app_running_other_device">您已在另一台装置 (%1$s) 上登入并正在游玩 %2$s (%3$s)，该存档尚未同步至云端。\n您仍可继续游玩此游戏，但此操作将使另一装置的 Steam 连线中断，且当该装置的进度同步时可能产生存档冲突。</string>
+    <!-- 主界面：会话冲突 -->
+    <string name="main_app_running_title">应用程序运行中</string>
+    <string name="main_app_running_message">您已在另一台设备登录并正在游玩 %s。\n您仍可继续游玩此游戏，但此操作将导致 Steam 断开另一设备的连接。</string>
+    <string name="main_app_running_other_device">您已在另一台设备（%1$s）上登录并正在游玩 %2$s（%3$s），该存档尚未同步至云端。\n您仍可继续游玩此游戏，但此操作将使另一设备的 Steam 连接中断，且当该设备的进度同步时可能产生存档冲突。</string>
     <string name="main_play_anyway">仍要继续</string>
 
-    <!-- PluviaMain: Save Conflicts -->
+    <!-- 主界面：存档冲突 -->
     <string name="main_save_conflict_title">存档冲突</string>
-    <string name="main_save_conflict_message">远端存档与本地存档发生冲突，请选择要保留哪个？\n\n本地存档：\n\t%1$s\n远端存档：\n\t%2$s</string>
+    <string name="main_save_conflict_message"> 远程存档与本地存档发生冲突，请选择要保留哪个？\n\n本地存档：\n\t%1$s\n远程存档：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存档</string>
-    <string name="main_keep_remote">保留远端存档</string>
+    <string name="main_keep_remote">保留远程存档</string>
 
-    <!-- PluviaMain: Sync Errors -->
-    <string name="main_sync_in_progress_retry">同步操作耗时过久, 请稍后重新启动游戏</string>
-    <string name="main_sync_in_progress">同步目前正在进行中, 请稍后再试</string>
-    <string name="main_sync_failed">同步存档案失败：%s</string>
+    <!-- 主界面：同步错误 -->
+    <string name="main_sync_in_progress_retry">同步操作耗时过久，请稍后重新启动游戏</string>
+    <string name="main_sync_in_progress">同步目前正在进行中，请稍后再试</string>
+    <string name="main_sync_failed">同步存档失败：%s</string>
 
-    <!-- PluviaMain: Pending Operations -->
+    <!-- 主界面：待处理操作 -->
     <string name="main_upload_in_progress_title">上传中</string>
-    <string name="main_upload_in_progress_message">您在装置 %2$s (%3$s) 上游玩了 %1$s, 该次游玩进度的储存档案仍在上传中, 请稍后再试</string>
+    <string name="main_upload_in_progress_message">您在设备 %2$s（%3$s）上游玩了 %1$s，该次游玩进度的存档文件仍在上传中，请稍后再试</string>
     <string name="main_pending_upload_title">待上传</string>
-    <string name="main_pending_upload_message">您在装置 %2$s (%3$s) 上游玩了 %1$s, 该存档尚未上传至云端 (尚未开始上传)\n您仍可继续游玩此游戏, 但先前游戏进度成功上传时可能产生冲突</string>
-    <string name="main_app_session_suspended">应用程式工作阶段已暂停, 请重新启动应用程式</string>
-    <string name="main_pending_operation_none">收到待处理的远端操作, 其操作类型为 \'none\', 请重新启动应用程式</string>
-    <string name="main_multiple_pending_operations">有多项远端操作正在处理中, 请稍后再试. 请重新启动应用程式</string>
+    <string name="main_pending_upload_message">您在设备 %2$s（%3$s）上游玩了 %1$s，该存档尚未上传至云端（尚未开始上传）\n您仍可继续游玩此游戏，但先前游戏进度成功上传时可能产生冲突</string>
+    <string name="main_app_session_suspended">应用程序会话已暂停，请重新启动应用程序</string>
+    <string name="main_pending_operation_none">收到待处理的远程操作，其操作类型为“none”，请重新启动应用程序</string>
+    <string name="main_multiple_pending_operations">有多项远程操作正在处理中，请稍后再试。请重新启动应用程序</string>
 
-    <!-- Container Config Dialog -->
-    <string name="container_config_title">设定容器</string>
-    <string name="container_config_unsaved_changes_title">未储存的变更</string>
-    <string name="container_config_unsaved_changes_message">您确定要舍弃您的变更吗?</string>
-    <string name="container_config_tab_general">一般</string>
+    <!-- 容器配置对话框 -->
+    <string name="container_config_title">配置容器</string>
+    <string name="container_config_unsaved_changes_title">未保存的更改</string>
+    <string name="container_config_unsaved_changes_message">确定要放弃您的更改吗？</string>
+    <string name="container_config_tab_general">通用</string>
     <string name="container_config_tab_graphics">图形</string>
     <string name="container_config_tab_emulation">模拟</string>
     <string name="container_config_tab_controller">控制器</string>
     <string name="container_config_tab_wine">Wine</string>
-    <string name="container_config_tab_win_components">Win Components</string>
+    <string name="container_config_tab_win_components">Win 组件</string>
     <string name="container_config_tab_environment">环境</string>
-    <string name="container_config_tab_drives">磁碟机</string>
-    <string name="container_config_tab_advanced">进阶</string>
+    <string name="container_config_tab_drives">驱动器</string>
+    <string name="container_config_tab_advanced">高级</string>
     <string name="container_config_vkd3d_version">VKD3D 版本</string>
-    <string name="container_config_executable_path">可执行档路径</string>
-    <string name="container_config_executable_path_placeholder">e.g., path\\to\\exe</string>
+    <string name="container_config_executable_path">可执行文件路径</string>
+    <string name="container_config_executable_path_placeholder">例如：path\\to\\exe</string>
 
-    <!-- Libraries Dialog -->
-    <string name="libraries_title">使用的函式库</string>
+    <!-- 使用的库对话框 -->
+    <string name="libraries_title">使用的库</string>
     <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
 
-    <!-- Supporters Dialog -->
-    <string name="supporters_art_credits">Art Credits</string>
-    <string name="supporters_app_icon">App Icon: Hachi</string>
-    <string name="supporters_alt_icon">Alternate App Icon: rhapsody_mdr</string>
-    <string name="supporters_loading">Loading supporters…</string>
-    <string name="supporters_members">Members</string>
-    <string name="supporters_supporters">Supporters</string>
-    <string name="supporters_none">No supporters yet.</string>
-    <string name="supporters_anonymous">Anonymous</string>
+    <!-- 支持者对话框 -->
+    <string name="supporters_art_credits">美术鸣谢</string>
+    <string name="supporters_app_icon">应用图标：Hachi</string>
+    <string name="supporters_alt_icon">备用应用图标：rhapsody_mdr</string>
+    <string name="supporters_loading">正在加载支持者…</string>
+    <string name="supporters_members">会员</string>
+    <string name="supporters_supporters">支持者</string>
+    <string name="supporters_none">尚无支持者。</string>
+    <string name="supporters_anonymous">匿名</string>
 
-    <!-- Chat Screen -->
-    <string name="chat_preview_warning">聊天功能仍处于早期阶段, 请将任何问题回报至专案储存库</string>
+    <!-- 聊天界面 -->
+    <string name="chat_preview_warning">聊天功能仍处于早期阶段，请将任何问题报告至项目仓库</string>
     <string name="chat_no_history">没有聊天记录</string>
-    <string name="chat_send_message">发送讯息</string>
+    <string name="chat_send_message">发送消息</string>
     <string name="chat_send">发送</string>
-    <string name="chat_emoticons">Emoticons</string>
-    <string name="chat_stickers">Stickers</string>
+    <string name="chat_emoticons">表情</string>
+    <string name="chat_stickers">贴纸</string>
 
-    <!-- Library Components -->
-    <string name="library_open">开启</string>
+    <!-- 库组件 -->
+    <string name="library_open">打开</string>
     <string name="library_installed">已安装</string>
     <string name="library_installing">安装中</string>
     <string name="library_not_installed">未安装</string>
     <string name="library_family_shared">家庭共享</string>
 
-    <!-- Best Config Compatibility Messages -->
-    <string name="best_config_exact_gpu_match">已知配置可在您的装置上运作</string>
-    <string name="best_config_gpu_family_match">已知配置应该可在您的装置上运作</string>
-    <string name="best_config_fallback_match">已知配置可能可在您的装置上运作</string>
+    <!-- 最佳配置兼容性消息 -->
+    <string name="best_config_exact_gpu_match">已知配置可在您的设备上运行</string>
+    <string name="best_config_gpu_family_match">已知配置应该在您的设备上运行</string>
+    <string name="best_config_fallback_match">已知配置可能在您的设备上运行</string>
     <string name="best_config_compatibility_unknown">没有已知配置</string>
 
-    <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">最佳配置已成功套用</string>
+    <!-- 最佳配置提示消息 -->
+    <string name="best_config_applied_successfully">最佳配置已成功应用</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
-    <string name="best_config_apply_failed">套用配置失败: %s</string>
+    <string name="best_config_apply_failed">应用配置失败：%s</string>
 
-    <string name="library_app_type">应用程式类型</string>
-    <string name="library_app_status">应用程式状态</string>
-    <string name="library_layout">版面配置</string>
-    <string name="library_layout_list">清单</string>
+    <string name="library_app_type">应用程序类型</string>
+    <string name="library_app_status">应用程序状态</string>
+    <string name="library_layout">布局</string>
+    <string name="library_layout_list">列表</string>
     <string name="library_layout_capsule">胶囊</string>
-    <string name="library_layout_hero">Hero</string>
-    <string name="library_search_placeholder">搜寻您的游戏...</string>
-    <string name="library_search_description">搜寻</string>
-    <string name="library_search_clear">清除搜寻</string>
+    <string name="library_layout_hero">英雄</string>
+    <string name="library_search_placeholder">搜索您的游戏...</string>
+    <string name="library_search_description">搜索</string>
+    <string name="library_search_clear">清除搜索</string>
     <string name="library_no_items">没有符合选择条件的项目</string>
     <string name="library_filters">过滤器</string>
     <string name="library_game_count">%1$d 款游戏 • %2$d 款已安装</string>
     <string name="library_source_steam">Steam</string>
-    <string name="library_source_custom">自订游戏</string>
-    <string name="library_layout_title">版面配置</string>
+    <string name="library_source_custom">自定义游戏</string>
+    <string name="library_layout_title">布局</string>
 
-    <!-- Two Factor Auth -->
-    <string name="two_factor_login">登入</string>
+    <!-- 双重验证 -->
+    <string name="two_factor_login">登录</string>
     <string name="two_factor_verification_code">验证码</string>
     <string name="two_factor_enter_code">输入5位数验证码</string>
 
-    <!-- Contents Manager -->
-    <string name="contents_validating">验证内容中...</string>
-    <string name="contents_error_badtar">无法识别档案</string>
-    <string name="contents_error_noprofile">内容中未找到Profile</string>
-    <string name="contents_error_badprofile">无法识别Profile</string>
+    <!-- 内容管理器 -->
+    <string name="contents_validating">正在验证内容...</string>
+    <string name="contents_error_badtar">无法识别文件</string>
+    <string name="contents_error_noprofile">内容中未找到配置文件</string>
+    <string name="contents_error_badprofile">无法识别配置文件</string>
     <string name="contents_error_exist">内容已存在</string>
     <string name="contents_error_missingfiles">内容不完整</string>
     <string name="contents_error_untrustprofile">内容不可信</string>
     <string name="contents_error_nospace">空间不足</string>
     <string name="contents_error_generic">无法安装内容</string>
-    <string name="contents_untrusted_files">此内容包含可信文件以外的档案</string>
-    <string name="contents_install_components">安装附加元件 (.wcp: tar.xz/zst)</string>
+    <string name="contents_untrusted_files">此内容包含受信文件以外的文件</string>
+    <string name="contents_install_components">安装附加组件（.wcp: tar.xz/zst）</string>
     <string name="contents_type">类型</string>
     <string name="contents_version">版本</string>
     <string name="contents_code">代码</string>
     <string name="contents_description">描述</string>
-    <string name="contents_all_trusted">所有档案均受信任, 已准备好安装</string>
+    <string name="contents_all_trusted">所有文件均受信任，已准备好安装</string>
     <string name="contents_no_installed">此类型无已安装内容</string>
     <string name="contents_delete">删除</string>
-    <string name="contents_review_confirm">此内容包含可信文件外的档案, 请确认后再继续操作</string>
+    <string name="contents_review_confirm">此内容包含受信文件外的文件，请确认后再继续操作</string>
     <string name="contents_removed">已移除 %1$s</string>
 
-    <!-- Driver Manager -->
-    <string name="driver_error_manifest">载入驱动程式清单失败: %1$d</string>
-    <string name="driver_error_loading">载入驱动程式清单时发生错误: %1$s</string>
-    <string name="driver_timeout">连线超时, 请检查您的网路并重新尝试</string>
-    <string name="driver_network_error">网路错误: %1$s</string>
+    <!-- 驱动程序管理器 -->
+    <string name="driver_error_manifest">加载驱动程序清单失败：%1$d</string>
+    <string name="driver_error_loading">加载驱动程序清单时发生错误：%1$s</string>
+    <string name="driver_timeout">连接超时，请检查您的网络并重新尝试</string>
+    <string name="driver_network_error">网络错误：%1$s</string>
 
-    <!-- Settings Interface -->
-    <string name="settings_theme_default">预设</string>
+    <!-- 设置界面 -->
+    <string name="settings_theme_default">默认</string>
     <string name="settings_theme_alternate">替代</string>
     <string name="settings_download_slow">缓慢</string>
     <string name="settings_download_medium">中等</string>
     <string name="settings_download_fast">快速</string>
     <string name="settings_download_blazing">极速</string>
     <string name="settings_download_speed">下载速度</string>
-    <string name="settings_download_heat_warning">较高的下载速度可能会导致装置发热</string>
-    <string name="settings_region_default">预设</string>
-    <string name="settings_saving_restarting">储存设定并重新启动中...</string>
+    <string name="settings_download_heat_warning">较高的下载速度可能会导致设备发热</string>
+    <string name="settings_region_default">默认</string>
+    <string name="settings_saving_restarting">正在保存设置并重新启动...</string>
 
-    <!-- Settings Screen -->
-    <string name="settings_title">设定</string>
+    <!-- 设置界面 -->
+    <string name="settings_title">设置</string>
 
-    <!-- Contents Install Finish -->
+    <!-- 内容安装完成 -->
     <string name="contents_install_success">内容已成功安装</string>
     <string name="contents_install_failed">安装内容失败</string>
-    <string name="contents_install_error">安装错误: %1$s</string>
+    <string name="contents_install_error">安装错误：%1$s</string>
 
-    <!-- Library Status -->
+    <!-- 库状态 -->
     <string name="library_status_ready">准备就绪</string>
-    <!-- Wine/Proton Manager -->
-    <string name="wine_proton_manager">Wine/Proton 管理员</string>
-    <string name="wine_proton_bionic_notice_header">仅限 Bionic 映像档</string>
-    <string name="wine_proton_info_description">为 Bionic 容器导入自订 Wine 或 Proton 版本. 档案名称必须以 wine 或 proton 开头 (不区分大小写) 套件必须包含 bin/, lib/ 目录及 prefixPack.txz 档案. 所有导入版本仅相容于 Bionic 环境</string>
-    <string name="win_proton_example">例子: "proton-10.0-ARM64ec.wcp"</string>
-    <string name="wine_proton_import_package">汇入 Wine/Proton 套件</string>
-    <string name="wine_proton_select_file_description">请选择一个 .wcp 档案 (档案名称需以 wine 或 proton 开头)</string>
-    <string name="wine_proton_import_wcp_button">汇入 .wcp 套件</string>
+
+    <!-- Wine/Proton 管理器 -->
+    <string name="wine_proton_manager">Wine/Proton 管理器</string>
+    <string name="wine_proton_bionic_notice_header">仅限 Bionic 镜像</string>
+    <string name="wine_proton_info_description">为 Bionic 容器导入自定义 Wine 或 Proton 版本。文件名称必须以 wine 或 proton 开头（不区分大小写）。包必须包含 bin/、lib/ 目录及 prefixPack.txz 文件。所有导入版本仅兼容于 Bionic 环境</string>
+    <string name="win_proton_example">例如：“proton-10.0-ARM64ec.wcp”</string>
+    <string name="wine_proton_import_package">导入 Wine/Proton 包</string>
+    <string name="wine_proton_select_file_description">请选择一个 .wcp 文件（文件名称需以 wine 或 proton 开头）</string>
+    <string name="wine_proton_import_wcp_button">导入 .wcp 包</string>
     <string name="wine_proton_processing">处理中...</string>
-    <string name="wine_proton_package_details">套件详情</string>
+    <string name="wine_proton_package_details">包详情</string>
     <string name="wine_proton_type">类型</string>
     <string name="wine_proton_version">版本</string>
     <string name="wine_proton_version_code">版本代码</string>
     <string name="wine_proton_bin_path">Bin 路径</string>
     <string name="wine_proton_lib_path">Lib 路径</string>
     <string name="wine_proton_description">描述</string>
-    <string name="wine_proton_all_files_trusted">✓ 所有档案皆属可信, 已准备好进行安装</string>
-    <string name="wine_proton_install_package">安装套件</string>
+    <string name="wine_proton_all_files_trusted">✓ 所有文件皆属可信，已准备好进行安装</string>
+    <string name="wine_proton_install_package">安装包</string>
     <string name="wine_proton_installed_versions">已安装的 Wine/Proton 版本</string>
     <string name="wine_proton_no_versions_found">未发现已安装的 Wine 或 Proton 版本</string>
     <string name="wine_proton_delete_content_desc">删除</string>
-    <string name="wine_proton_untrusted_files_message">此内容包含可信文件外的档案, 请确认后再继续操作</string>
-    <string name="wine_proton_untrusted_files_label">未受信任的档案: </string>
+    <string name="wine_proton_untrusted_files_message">此内容包含受信文件外的文件，请确认后再继续操作</string>
+    <string name="wine_proton_untrusted_files_label">未受信任的文件：</string>
     <string name="wine_proton_remove_title">移除 Wine/Proton 版本</string>
-    <string name="wine_proton_remove_message">您确定要移除 %1$s %2$s (%3$d) 吗? 使用此版本的容器将无法继续运作</string>
+    <string name="wine_proton_remove_message">确定要移除 %1$s %2$s（%3$d）吗？使用此版本的容器将无法继续运行</string>
     <string name="wine_proton_removed_toast">已移除 %s</string>
-    <string name="wine_proton_remove_failed">移除失败: %s</string>
-    <string name="cancel_import_title">取消汇入?</string>
-    <string name="cancel_import_message">汇入作业正在进行中, 取消操作将丢弃所有已提取的档案, 您需要重新开始汇入程序\n\n您确定要取消吗?</string>
-    <string name="cancel_import_confirm">是, 取消汇入</string>
-    <string name="cancel_import_keep">不, 保留汇入</string>
+    <string name="wine_proton_remove_failed">移除失败：%s</string>
+    <string name="cancel_import_title">取消导入？</string>
+    <string name="cancel_import_message">导入作业正在进行中，取消操作将丢弃所有已提取的文件，您需要重新开始导入程序\n\n确定要取消吗？</string>
+    <string name="cancel_import_confirm">是，取消导入</string>
+    <string name="cancel_import_keep">不，保留导入</string>
 
-    <!-- Wine/Proton Manager - Status Messages -->
-    <string name="wine_proton_extracting">正在解压缩及验证套件 (大型档案可能需要 2 至 3 分钟)...</string>
-    <string name="wine_proton_filename_error">档案名称必须以 wine 或 proton 开头 (不区分大小写)</string>
-    <string name="wine_proton_file_empty">档案为空或无法读取</string>
-    <string name="wine_proton_cannot_open">无法开启档案</string>
-    <string name="wine_proton_failed_file_picker">无法开启档案选择器: %s</string>
-    <string name="wine_proton_error_badtar">无法识别此档案为有效的压缩档</string>
-    <string name="wine_proton_error_noprofile">在套件中找不到 profile.json</string>
-    <string name="wine_proton_error_badprofile">profile.json 档案无效</string>
+    <!-- Wine/Proton 管理器 - 状态消息 -->
+    <string name="wine_proton_extracting">正在解压缩及验证包（大型文件可能需要 2 至 3 分钟）...</string>
+    <string name="wine_proton_filename_error">文件名称必须以 wine 或 proton 开头（不区分大小写）</string>
+    <string name="wine_proton_file_empty">文件为空或无法读取</string>
+    <string name="wine_proton_cannot_open">无法打开文件</string>
+    <string name="wine_proton_failed_file_picker">无法打开文件选择器：%s</string>
+    <string name="wine_proton_error_badtar">无法识别此文件为有效的压缩文件</string>
+    <string name="wine_proton_error_noprofile">在包中找不到 profile.json</string>
+    <string name="wine_proton_error_badprofile">profile.json 文件无效</string>
     <string name="wine_proton_error_exist">Wine/Proton 版本已存在</string>
-    <string name="wine_proton_error_missingfiles">套件缺少必需档案 (bin/、lib/ 或 prefixPack.txz)</string>
-    <string name="wine_proton_error_untrustprofile">此套件无法信任</string>
-    <string name="wine_proton_error_nospace">储存空间不足</string>
+    <string name="wine_proton_error_missingfiles">包缺少必需文件（bin/、lib/ 或 prefixPack.txz）</string>
+    <string name="wine_proton_error_untrustprofile">此包无法信任</string>
+    <string name="wine_proton_error_nospace">存储空间不足</string>
     <string name="wine_proton_error_unknown">发生未知错误</string>
-    <string name="wine_proton_error_unable_install">无法安装 Wine/Proton 套件</string>
-    <string name="wine_proton_not_wine_or_proton">此套件并非 Wine 或 Proton (类型: %s)</string>
-    <string name="wine_proton_type_mismatch">档案名称显示 %1$s, 但套件包含 %2$s</string>
-    <string name="wine_proton_untrusted_files_detected">此套件包含可信套件以外的档案</string>
+    <string name="wine_proton_error_unable_install">无法安装 Wine/Proton 包</string>
+    <string name="wine_proton_not_wine_or_proton">此包并非 Wine 或 Proton（类型：%s）</string>
+    <string name="wine_proton_type_mismatch">文件名称显示 %1$s，但包包含 %2$s</string>
+    <string name="wine_proton_untrusted_files_detected">此包包含受信包以外的文件</string>
     <string name="wine_proton_version_already_exists">Wine/Proton 版本已存在</string>
-    <string name="wine_proton_install_failed">安装失败: %s</string>
-    <string name="wine_proton_install_error">安装错误: %s</string>
+    <string name="wine_proton_install_failed">安装失败：%s</string>
+    <string name="wine_proton_install_error">安装错误：%s</string>
     <string name="wine_proton_install_success">%1$s %2$s 已安装成功</string>
-    <string name="wine_proton_glibc_incompatible">此 Wine/Proton 版本需搭配 GLIBC 容器运行, 且不兼容 GameNative.
-        请使用 ARM64/bionic 版本.</string>
-    <string name="wine_proton_containers_in_use">使用此版本的容器:</string>
+    <string name="wine_proton_glibc_incompatible">此 Wine/Proton 版本需搭配 GLIBC 容器运行，且不兼容 GameNative。\n请使用 ARM64/bionic 版本。</string>
+    <string name="wine_proton_containers_in_use">使用此版本的容器：</string>
     <string name="wine_proton_no_containers_warning">目前没有容器使用此版本</string>
-    <string name="wine_proton_containers_will_break">若您继续操作, 这些容器将无法继续运作:</string>
+    <string name="wine_proton_containers_will_break">若您继续操作，这些容器将无法继续运行：</string>
 </resources>
-
-
