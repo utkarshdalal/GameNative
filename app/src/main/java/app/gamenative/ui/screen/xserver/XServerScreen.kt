@@ -1843,7 +1843,8 @@ private data class RedistContext(
  */
 private fun getRedistDirectory(
     appId: String,
-    container: Container
+    container: Container,
+    guestProgramLauncherComponent: GuestProgramLauncherComponent
 ): RedistContext? {
     val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
     val gameDirPath = SteamService.getAppDirPath(steamAppId)
@@ -1864,7 +1865,7 @@ private fun getRedistDirectory(
         return null
     }
 
-    return null
+    return RedistContext(commonRedistDir, driveLetter, guestProgramLauncherComponent)
 }
 
 private fun installVcRedist(context: RedistContext) {
@@ -2023,9 +2024,7 @@ private fun installRedistributables(
         Timber.tag("installRedist").i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
 
         // Get redistributable directory context
-        val redistContext = getRedistDirectory(appId, container)?.copy(
-            guestProgramLauncherComponent = guestProgramLauncherComponent
-        ) ?: run {
+        val redistContext = getRedistDirectory(appId, container, guestProgramLauncherComponent) ?: run {
             Timber.tag("installRedist").i("Could not set up redistributable context, skipping installation")
             return
         }
