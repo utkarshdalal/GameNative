@@ -57,7 +57,7 @@
                   fontWeight="bold"
                   anchor="topLeft"
                   focusOnly="true"
-                  focusTransitionSpeed="@{vars.transitionSpeed}"
+                  focusTransitionSpeed="@{vars.titleTransitionSpeed}"
                   shadowColor="#AA000000"
                   shadowRadius="4"
                   shadowOffsetX="1"
@@ -65,7 +65,7 @@
 
             <!-- Installed checkmark - bottom right corner with equal padding -->
             <text id="installedCheck"
-                  x="100" y="95"
+                  x="@{vars.installedX}" y="@{vars.installedY}"
                   text="✓"
                   textSize="16"
                   color="#FFFFFFFF"
@@ -108,7 +108,7 @@
         <fixed id="topBar">
             <!-- Profile button at top left - no padding, just the icon -->
             <profileButton navigationId="profileBtn"
-                           x="@{vars.bottomPadding}" y="@{vars.bottomPadding}"
+                           x="@{vars.bottomPadding}" y="@{vars.profileButtonY}"
                            anchor="topLeft"
                            size="@{vars.profileSize}"
                            iconSize="@{vars.profileIconSize}"

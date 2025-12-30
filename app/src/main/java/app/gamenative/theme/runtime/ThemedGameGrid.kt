@@ -65,6 +65,7 @@ import androidx.compose.ui.util.lerp
 import app.gamenative.data.LibraryItem
 import app.gamenative.theme.io.ThemeStringResolver
 import app.gamenative.theme.model.*
+import timber.log.Timber
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlin.math.absoluteValue
@@ -98,11 +99,18 @@ fun ThemedGameGrid(
     // Spatial focus manager for directional navigation
     val spatialFocusManager = LocalSpatialFocusManager.current
 
-    // Focus requester for the first grid item - this is what will receive focus when navigating to the grid
-    val firstItemFocusRequester = remember { FocusRequester() }
+    // Focus requesters for grid items - keyed by item index
+    // Using a map allows us to track focus requesters for visible items
+    val itemFocusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
+    
+    // Track screen positions of grid items for dynamic focus calculation
+    val itemPositions = remember { mutableStateMapOf<Int, Rect>() }
 
     // Use configured navigationId or default to "grid"
     val gridNavId = gridConfig.navigationId ?: "grid"
+    
+    // Coroutine scope for scrolling
+    val coroutineScope = rememberCoroutineScope()
 
     // Use content padding from grid config, with defaults
     val paddingTop = if (gridConfig.contentPaddingTop > 0) gridConfig.contentPaddingTop.dp else 80.dp
@@ -174,19 +182,84 @@ fun ThemedGameGrid(
             return index >= lastRowStart
         }
 
+        // Dynamic focus handler that finds the closest visible item to the source element
+        val dynamicFocusHandler = remember(itemPositions, itemFocusRequesters, listState) {
+            SpatialFocusManager.DynamicFocusHandler { sourceBounds ->
+                // Calculate source center
+                val sourceCenterX = sourceBounds.left + sourceBounds.width / 2
+                val sourceCenterY = sourceBounds.top + sourceBounds.height / 2
+                
+                // Get currently visible items from LazyGridState
+                val visibleItems = listState.layoutInfo.visibleItemsInfo
+                if (visibleItems.isEmpty()) {
+                    Timber.tag("GridFocus").d("No visible items")
+                    return@DynamicFocusHandler false
+                }
+                
+                Timber.tag("GridFocus").d("Finding closest item to source center ($sourceCenterX, $sourceCenterY), ${visibleItems.size} visible items")
+                
+                // Find the visible item whose center is closest to the source center
+                var closestIndex: Int? = null
+                var closestDistance = Float.MAX_VALUE
+                
+                for (visibleItem in visibleItems) {
+                    val itemIndex = visibleItem.index
+                    val itemBounds = itemPositions[itemIndex]
+                    
+                    if (itemBounds != null) {
+                        val itemCenterX = itemBounds.left + itemBounds.width / 2
+                        val itemCenterY = itemBounds.top + itemBounds.height / 2
+                        
+                        // Calculate distance (using squared distance to avoid sqrt)
+                        val dx = itemCenterX - sourceCenterX
+                        val dy = itemCenterY - sourceCenterY
+                        val distance = dx * dx + dy * dy
+                        
+                        Timber.tag("GridFocus").d("Item $itemIndex: center=($itemCenterX, $itemCenterY), distance=$distance")
+                        
+                        if (distance < closestDistance) {
+                            closestDistance = distance
+                            closestIndex = itemIndex
+                        }
+                    }
+                }
+                
+                if (closestIndex != null) {
+                    val focusRequester = itemFocusRequesters[closestIndex]
+                    if (focusRequester != null) {
+                        Timber.tag("GridFocus").d("Focusing item $closestIndex (distance=$closestDistance)")
+                        try {
+                            focusRequester.requestFocus()
+                            return@DynamicFocusHandler true
+                        } catch (e: Exception) {
+                            Timber.tag("GridFocus").e(e, "Failed to focus item $closestIndex")
+                        }
+                    } else {
+                        Timber.tag("GridFocus").d("No focus requester for item $closestIndex")
+                    }
+                }
+                
+                false
+            }
+        }
+        
+        // Fallback focus requester (for first item or default focus)
+        val fallbackFocusRequester = remember { FocusRequester() }
+
         // Use Fixed columns for precise control, since we've calculated the exact count
         LazyVerticalGrid(
             columns = GridCells.Fixed(columnCount),
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                // Register the grid with spatial focus manager using the first item's focus requester
+                // Register the grid with spatial focus manager with dynamic focus handler
                 .onGloballyPositioned { coordinates ->
                     spatialFocusManager?.register(
                         id = gridNavId,
                         bounds = coordinates.boundsInRoot(),
-                        focusRequester = firstItemFocusRequester,
-                        navigationLinks = navigationLinks
+                        focusRequester = fallbackFocusRequester,
+                        navigationLinks = navigationLinks,
+                        dynamicFocusHandler = dynamicFocusHandler,
                     )
                 }
                 .onFocusChanged { focusState ->
@@ -207,6 +280,11 @@ fun ThemedGameGrid(
                 items = items,
                 key = { _, item -> item.appId }
             ) { index, item ->
+                // Get or create focus requester for this item
+                val itemFocusRequester = remember {
+                    itemFocusRequesters.getOrPut(index) { FocusRequester() }
+                }
+                
                 Column {
                     ThemedGameTile(
                         item = item,
@@ -220,8 +298,12 @@ fun ThemedGameGrid(
                         highlightBorderWidth = gridConfig.highlightBorderWidth,
                         highlightCornerRadius = gridConfig.highlightCornerRadius,
                         scrollTopMargin = paddingTop,
-                        // Pass focus requester only for first item
-                        focusRequester = if (index == 0) firstItemFocusRequester else null,
+                        // Pass focus requester for all items (enables dynamic focus)
+                        focusRequester = itemFocusRequester,
+                        // Callback to track item position for dynamic focus calculation
+                        onPositioned = { bounds ->
+                            itemPositions[index] = bounds
+                        },
                         // Edge navigation
                         onEdgeNavigation = { direction ->
                             val target = when (direction) {
@@ -382,9 +464,10 @@ fun ThemedGameCarousel(
         // For centerFocus=true or horizontalAlign=center: center items
         // For centerFocus=false with horizontalAlign=start: put focused item at start (with offset)
         // For centerFocus=false with horizontalAlign=end: put focused item at end
+        // Note: All padding values must be coerced to non-negative to avoid crashes
         val horizontalContentPadding = when {
             carouselConfig.centerFocus || carouselConfig.horizontalAlign == HorizontalAlign.CENTER -> {
-                (viewportWidth - itemWidth) / 2
+                ((viewportWidth - itemWidth) / 2).coerceAtLeast(0.dp)
             }
             carouselConfig.horizontalAlign == HorizontalAlign.START -> {
                 // Small padding at start, large padding at end to show items to the right
@@ -392,9 +475,9 @@ fun ThemedGameCarousel(
             }
             carouselConfig.horizontalAlign == HorizontalAlign.END -> {
                 // Large padding at start, small at end to show items to the left
-                viewportWidth - itemWidth - horizontalOffset.coerceAtLeast(16.dp)
+                (viewportWidth - itemWidth - horizontalOffset.coerceAtLeast(16.dp)).coerceAtLeast(0.dp)
             }
-            else -> (viewportWidth - itemWidth) / 2
+            else -> ((viewportWidth - itemWidth) / 2).coerceAtLeast(0.dp)
         }
         val horizontalEndPadding = when {
             carouselConfig.centerFocus || carouselConfig.horizontalAlign == HorizontalAlign.CENTER -> {
@@ -402,14 +485,14 @@ fun ThemedGameCarousel(
             }
             carouselConfig.horizontalAlign == HorizontalAlign.START -> {
                 // End padding to allow scrolling through all items
-                viewportWidth - itemWidth - horizontalOffset.coerceAtLeast(16.dp)
+                (viewportWidth - itemWidth - horizontalOffset.coerceAtLeast(16.dp)).coerceAtLeast(0.dp)
             }
             carouselConfig.horizontalAlign == HorizontalAlign.END -> {
                 horizontalOffset.coerceAtLeast(16.dp)
             }
             else -> horizontalContentPadding
         }
-        val verticalContentPadding = (viewportHeight - itemHeight) / 2
+        val verticalContentPadding = ((viewportHeight - itemHeight) / 2).coerceAtLeast(0.dp)
 
         // Alignment based on config
         val verticalArrangement = when (carouselConfig.verticalAlign) {
@@ -947,6 +1030,7 @@ private fun ThemedGameTile(
     highlightCornerRadius: Float = 8f,
     scrollTopMargin: Dp = 0.dp,
     focusRequester: FocusRequester? = null,
+    onPositioned: ((Rect) -> Unit)? = null,
     onEdgeNavigation: (SpatialFocusManager.Direction) -> Boolean = { false },
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -964,8 +1048,10 @@ private fun ThemedGameTile(
             .bringIntoViewRequester(bringIntoViewRequester)
             .onGloballyPositioned { coordinates ->
                 itemHeight = coordinates.size.height.toFloat()
+                // Track position for dynamic focus calculation
+                onPositioned?.invoke(coordinates.boundsInRoot())
             }
-            // Apply focus requester if provided (for first item)
+            // Apply focus requester if provided
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused

@@ -232,6 +232,9 @@ dependencies {
     // Media3 (ExoPlayer) for video playback
     implementation(libs.bundles.media3)
 
+    // Baseline Profiles - enables precompilation of critical code paths
+    implementation(libs.profileinstaller)
+
     // Support
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

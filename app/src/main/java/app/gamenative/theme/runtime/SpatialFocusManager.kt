@@ -27,11 +27,26 @@ class SpatialFocusManager {
         val right: String? = null,
     )
     
+    /**
+     * Callback interface for dynamic focus handling.
+     * When an element supports dynamic focus (e.g., a grid with many items),
+     * this callback allows the element to determine the best focus target
+     * based on the navigation source's position.
+     * 
+     * @param sourceBounds The bounds of the element requesting navigation to this target
+     * @return true if focus was handled, false to fall back to default behavior
+     */
+    fun interface DynamicFocusHandler {
+        fun handleFocus(sourceBounds: Rect): Boolean
+    }
+    
     data class FocusableElement(
         val id: String,
         val bounds: Rect,
         val focusRequester: FocusRequester,
-        val navigationLinks: NavigationLinks = NavigationLinks()
+        val navigationLinks: NavigationLinks = NavigationLinks(),
+        /** Optional handler for dynamic focus targets (like grids/lists with many items) */
+        val dynamicFocusHandler: DynamicFocusHandler? = null,
     )
     
     enum class Direction {
@@ -49,15 +64,17 @@ class SpatialFocusManager {
      * @param bounds Screen bounds of the element
      * @param focusRequester FocusRequester to request focus on this element
      * @param navigationLinks Optional explicit navigation overrides
+     * @param dynamicFocusHandler Optional callback for dynamic focus handling (e.g., grids)
      */
     fun register(
         id: String,
         bounds: Rect,
         focusRequester: FocusRequester,
-        navigationLinks: NavigationLinks = NavigationLinks()
+        navigationLinks: NavigationLinks = NavigationLinks(),
+        dynamicFocusHandler: DynamicFocusHandler? = null,
     ) {
-        elements[id] = FocusableElement(id, bounds, focusRequester, navigationLinks)
-        Timber.tag(TAG).d("Registered '$id' at bounds: left=${bounds.left.toInt()}, top=${bounds.top.toInt()}, right=${bounds.right.toInt()}, bottom=${bounds.bottom.toInt()}, links=${navigationLinks}")
+        elements[id] = FocusableElement(id, bounds, focusRequester, navigationLinks, dynamicFocusHandler)
+        Timber.tag(TAG).d("Registered '$id' at bounds: left=${bounds.left.toInt()}, top=${bounds.top.toInt()}, right=${bounds.right.toInt()}, bottom=${bounds.bottom.toInt()}, links=${navigationLinks}, hasDynamicHandler=${dynamicFocusHandler != null}")
     }
     
     /**
@@ -85,12 +102,26 @@ class SpatialFocusManager {
     /**
      * Navigate directly to a specific element by ID.
      * Returns true if navigation was successful.
+     * 
+     * @param targetId The ID of the element to navigate to
+     * @param sourceBounds Optional bounds of the source element (used for dynamic focus handlers)
      */
-    fun navigateTo(targetId: String): Boolean {
+    fun navigateTo(targetId: String, sourceBounds: Rect? = null): Boolean {
         val target = elements[targetId] ?: run {
             Timber.tag(TAG).d("Navigate to '$targetId' - element not found! Registered: ${elements.keys}")
             return false
         }
+        
+        // If target has a dynamic focus handler and we have source bounds, use it
+        if (target.dynamicFocusHandler != null && sourceBounds != null) {
+            Timber.tag(TAG).d("Navigate to '$targetId' using dynamic focus handler (source: $sourceBounds)")
+            if (target.dynamicFocusHandler.handleFocus(sourceBounds)) {
+                currentFocusedId = targetId
+                return true
+            }
+            Timber.tag(TAG).d("Dynamic handler returned false, falling back to default")
+        }
+        
         Timber.tag(TAG).d("Navigate directly to '$targetId'")
         return requestFocusOn(target)
     }
@@ -114,7 +145,8 @@ class SpatialFocusManager {
             val explicitTarget = elements[explicitTargetId]
             if (explicitTarget != null) {
                 Timber.tag(TAG).d("Using explicit navigation link to '$explicitTargetId'")
-                return requestFocusOn(explicitTarget)
+                // Use navigateTo to leverage dynamic focus handler if available
+                return navigateTo(explicitTargetId, fromElement.bounds)
             } else {
                 Timber.tag(TAG).w("Explicit navigation target '$explicitTargetId' not found, falling back to spatial")
             }
@@ -125,7 +157,8 @@ class SpatialFocusManager {
         
         return if (target != null) {
             Timber.tag(TAG).d("Found target '${target.id}' for $direction navigation (spatial)")
-            requestFocusOn(target)
+            // Use navigateTo to leverage dynamic focus handler if available
+            navigateTo(target.id, fromElement.bounds)
         } else {
             Timber.tag(TAG).d("No target found for $direction navigation from '$fromId'")
             false

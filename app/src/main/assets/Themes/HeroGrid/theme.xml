@@ -17,7 +17,7 @@
                   text="@{game.title}" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
                   maxLines="1" textAlign="left" fontWeight="bold" anchor="bottomLeft" />
 
-            <text id="installedCheck" x="@{vars.paddingSmall}" y="2" height="@{vars.badgeHeight}"
+            <text id="installedCheck" x="16" y="2" height="@{vars.badgeHeight}"
                   text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
                   textAlign="right" fontWeight="bold" anchor="bottomRight"
                   visibleWhen="game.isInstalled" />
