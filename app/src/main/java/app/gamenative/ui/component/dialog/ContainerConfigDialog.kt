@@ -707,7 +707,7 @@ fun ContainerConfigDialog(
         if (showCustomResolutionDialog) {
             AlertDialog(
                 onDismissRequest = { showCustomResolutionDialog = false },
-                title = { Text("Set Custom Resolution")},
+                title = { Text(text = stringResource(R.string.container_config_custom_resolution_title)) },
                 text = {
                     Column {
                         Row {
@@ -719,13 +719,13 @@ fun ContainerConfigDialog(
                                 },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 label = { Text(text = stringResource(R.string.width)) },
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                modifier = Modifier.align(Alignment.CenterVertically),
-                                text = "x",
-                                style = TextStyle(fontSize = 16.sp),
-                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            modifier = Modifier.align(Alignment.CenterVertically),
+                            text = stringResource(R.string.container_config_custom_resolution_separator),
+                            style = TextStyle(fontSize = 16.sp),
+                        )
                             Spacer(modifier = Modifier.width(8.dp))
                             OutlinedTextField(
                                 modifier = Modifier.width(128.dp),
@@ -737,7 +737,7 @@ fun ContainerConfigDialog(
                                 label = { Text(text = stringResource(R.string.height)) },
                             )
                         }
-                    if (customResolutionValidationError != null) {
+                        if (customResolutionValidationError != null) {
                             Text(
                                 text = customResolutionValidationError!!,
                                 color = MaterialTheme.colorScheme.error,
@@ -752,10 +752,12 @@ fun ContainerConfigDialog(
                         onClick = {
                             val widthInt = customScreenWidth.toIntOrNull() ?: 0
                             val heightInt = customScreenHeight.toIntOrNull() ?: 0
-                            if(widthInt == 0 || heightInt == 0){
-                                customResolutionValidationError = "Width and height must be greater than 0"
+                            if (widthInt == 0 || heightInt == 0) {
+                                customResolutionValidationError =
+                                    stringResource(R.string.container_config_custom_resolution_error_nonzero)
                             } else if (widthInt <= heightInt) {
-                                customResolutionValidationError = "Width must be greater than height"
+                                customResolutionValidationError =
+                                    stringResource(R.string.container_config_custom_resolution_error_aspect)
                             } else {
                                 customResolutionValidationError = null
                                 applyScreenSizeToConfig()
@@ -772,7 +774,7 @@ fun ContainerConfigDialog(
                             showCustomResolutionDialog = false
                         },
                     ) {
-                        Text("Cancel")
+                        Text(text = stringResource(R.string.cancel))
                     }
                 }
             )
