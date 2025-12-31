@@ -3,6 +3,10 @@ package app.gamenative.ui.screen.settings
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.BitmapFactory
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,21 +41,27 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -82,7 +92,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.documentfile.provider.DocumentFile
 import app.gamenative.MainActivity
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeManager.ThemeEntry
@@ -90,6 +102,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +110,7 @@ fun ThemeSelectorScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     // Ensure ThemeManager is initialized
     LaunchedEffect(Unit) {
@@ -106,9 +120,102 @@ fun ThemeSelectorScreen(
     val themes by ThemeManager.availableThemes.collectAsState()
     val selectedId by ThemeManager.selectedThemeId.collectAsState(null)
     
+    // Check for pending toast on screen initialization (after app restart)
+    LaunchedEffect(Unit) {
+        PrefManager.pendingThemeAddedToast?.let { themeName ->
+            Toast.makeText(
+                context,
+                context.getString(R.string.theme_added_toast, themeName),
+                Toast.LENGTH_SHORT
+            ).show()
+            PrefManager.pendingThemeAddedToast = null
+        }
+    }
+    
     // State for fullscreen preview dialog
     var previewDialogImage by remember { mutableStateOf<ImageBitmap?>(null) }
     var previewDialogTitle by remember { mutableStateOf("") }
+    
+    // State for remove confirmation dialog
+    var themeToRemove by remember { mutableStateOf<ThemeEntry?>(null) }
+    
+    // State for add theme info dialog
+    var showAddThemeDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
+
+    // Folder picker launcher for adding external themes
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                // Convert content URI to file path
+                val folderPath = getPathFromUri(context, uri)
+                if (folderPath == null) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.theme_validation_failed, "Could not access folder"),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    return@launch
+                }
+
+                // Validate the theme
+                val validation = ThemeManager.validateThemeFolder(folderPath)
+                when (validation) {
+                    is ThemeManager.ThemeValidationResult.Valid -> {
+                        // Store theme name for toast (in case app restarts during folder selection)
+                        PrefManager.pendingThemeAddedToast = validation.manifest.title
+                        
+                        // Add the theme
+                        val entry = ThemeManager.addExternalTheme(folderPath)
+                        withContext(Dispatchers.Main) {
+                            if (entry != null) {
+                                // Clear pending toast and show immediately since we didn't restart
+                                PrefManager.pendingThemeAddedToast = null
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.theme_added_toast, entry.name),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                    is ThemeManager.ThemeValidationResult.Invalid -> {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.theme_validation_failed, validation.error),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error adding external theme")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.theme_validation_failed, e.message ?: "Unknown error"),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    // Handle opening folder picker (with dialog check)
+    val onAddThemeClick = {
+        if (PrefManager.showAddThemeDialog) {
+            showAddThemeDialog = true
+        } else {
+            folderPickerLauncher.launch(null)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -120,6 +227,17 @@ fun ThemeSelectorScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back)
                         )
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { onAddThemeClick() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.theme_add_external))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -156,6 +274,9 @@ fun ThemeSelectorScreen(
                         previewDialogImage = image
                         previewDialogTitle = entry.name
                     },
+                    onRemove = if (entry.source == ThemeManager.Source.External) {
+                        { themeToRemove = entry }
+                    } else null,
                 )
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -170,6 +291,91 @@ fun ThemeSelectorScreen(
             onDismiss = { previewDialogImage = null },
         )
     }
+    
+    // Remove confirmation dialog
+    themeToRemove?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { themeToRemove = null },
+            title = { Text(stringResource(R.string.theme_remove_title)) },
+            text = { 
+                Text(stringResource(R.string.theme_remove_message, entry.name))
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = entry.name
+                        ThemeManager.removeExternalTheme(entry.id)
+                        themeToRemove = null
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.theme_removed_toast, name),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(stringResource(R.string.theme_remove_confirm))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { themeToRemove = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+    
+    // Add theme info dialog
+    if (showAddThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddThemeDialog = false },
+            title = { Text(stringResource(R.string.theme_add_dialog_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.theme_add_dialog_message),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = dontShowAgain,
+                            onCheckedChange = { dontShowAgain = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.theme_add_dont_show_again),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (dontShowAgain) {
+                            PrefManager.showAddThemeDialog = false
+                        }
+                        showAddThemeDialog = false
+                        folderPickerLauncher.launch(null)
+                    }
+                ) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showAddThemeDialog = false }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -179,6 +385,7 @@ private fun ThemeCard(
     isSelected: Boolean,
     onActivate: () -> Unit,
     onPreviewClick: (ImageBitmap?) -> Unit,
+    onRemove: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     // Use MainActivity's tracked orientation state (updates on config change)
@@ -297,6 +504,7 @@ private fun ThemeCard(
                     entry = entry,
                     isSelected = isSelected,
                     onActivate = onActivate,
+                    onRemove = onRemove,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -324,6 +532,7 @@ private fun ThemeCard(
                     entry = entry,
                     isSelected = isSelected,
                     onActivate = onActivate,
+                    onRemove = onRemove,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 120.dp)
@@ -372,6 +581,7 @@ private fun ThemeCardContent(
     entry: ThemeEntry,
     isSelected: Boolean,
     onActivate: () -> Unit,
+    onRemove: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -408,11 +618,27 @@ private fun ThemeCardContent(
                     text = when (entry.source) {
                         ThemeManager.Source.BuiltIn -> stringResource(R.string.settings_theme_source_builtin)
                         ThemeManager.Source.User -> stringResource(R.string.settings_theme_source_user)
+                        ThemeManager.Source.External -> stringResource(R.string.theme_source_external)
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 )
+            }
+            // Remove button for external themes
+            if (onRemove != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = stringResource(R.string.theme_remove),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
 
@@ -574,8 +800,8 @@ private suspend fun loadThemePreviewImage(context: Context, entry: ThemeEntry): 
                         BitmapFactory.decodeStream(inputStream)?.asImageBitmap()
                     }
                 }
-                ThemeManager.Source.User -> {
-                    // For user themes, load from file system
+                ThemeManager.Source.User, ThemeManager.Source.External -> {
+                    // For user/external themes, load from file system
                     val file = java.io.File(imagePath)
                     if (file.exists()) {
                         BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
@@ -587,6 +813,64 @@ private suspend fun loadThemePreviewImage(context: Context, entry: ThemeEntry): 
         } catch (_: Exception) {
             null
         }
+    }
+}
+
+/**
+ * Get the file system path from a content URI.
+ * Works with SAF (Storage Access Framework) URIs from folder picker.
+ */
+private fun getPathFromUri(context: Context, uri: Uri): String? {
+    return try {
+        // Try to get the path from DocumentFile
+        val docFile = DocumentFile.fromTreeUri(context, uri)
+        if (docFile == null || !docFile.isDirectory) {
+            Timber.w("URI is not a valid directory: %s", uri)
+            return null
+        }
+
+        // For content:// URIs from SAF, we need to decode the path from the URI
+        // Format: content://com.android.externalstorage.documents/tree/primary%3APath%2FTo%2FFolder
+        val uriPath = uri.path ?: return null
+        
+        // Extract the path portion after "tree/"
+        val treePath = if (uriPath.contains("/tree/")) {
+            uriPath.substringAfter("/tree/")
+        } else {
+            uriPath
+        }
+        
+        // Decode the path (e.g., "primary:Path/To/Folder" or "XXXX-XXXX:Path/To/Folder")
+        val decodedPath = Uri.decode(treePath)
+        
+        // Split into storage volume and relative path
+        val parts = decodedPath.split(":", limit = 2)
+        if (parts.size != 2) {
+            Timber.w("Could not parse URI path: %s", decodedPath)
+            return null
+        }
+        
+        val volumeId = parts[0]
+        val relativePath = parts[1]
+        
+        // Build the full path
+        val basePath = when (volumeId.lowercase()) {
+            "primary" -> android.os.Environment.getExternalStorageDirectory().absolutePath
+            else -> "/storage/$volumeId"
+        }
+        
+        val fullPath = "$basePath/$relativePath"
+        val file = java.io.File(fullPath)
+        
+        if (file.exists() && file.isDirectory) {
+            fullPath
+        } else {
+            Timber.w("Path does not exist or is not a directory: %s", fullPath)
+            null
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Error getting path from URI: %s", uri)
+        null
     }
 }
 

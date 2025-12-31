@@ -62,6 +62,7 @@ fun ThemePickerDialog(onDismiss: () -> Unit) {
                             val src = when (entry.source) {
                                 Source.BuiltIn -> stringResource(R.string.settings_theme_source_builtin)
                                 Source.User -> stringResource(R.string.settings_theme_source_user)
+                                Source.External -> stringResource(R.string.theme_source_external)
                             }
                             Text(text = src, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

@@ -806,4 +806,33 @@ object PrefManager {
     var sortInstalledByLastPlayed: Boolean
         get() = getPref(SORT_INSTALLED_BY_LAST_PLAYED, false)
         set(value) = setPref(SORT_INSTALLED_BY_LAST_PLAYED, value)
+
+    // Show dialog when adding external theme
+    private val SHOW_ADD_THEME_DIALOG = booleanPreferencesKey("show_add_theme_dialog")
+    var showAddThemeDialog: Boolean
+        get() = getPref(SHOW_ADD_THEME_DIALOG, true)
+        set(value) = setPref(SHOW_ADD_THEME_DIALOG, value)
+
+    // Pending theme added toast (stores theme name to show toast after app restart)
+    private val PENDING_THEME_ADDED_TOAST = stringPreferencesKey("pending_theme_added_toast")
+    var pendingThemeAddedToast: String?
+        get() = getPref(PENDING_THEME_ADDED_TOAST, "").takeIf { it.isNotBlank() }
+        set(value) = setPref(PENDING_THEME_ADDED_TOAST, value ?: "")
+
+    // External theme paths (comma-separated list of folder paths)
+    private val EXTERNAL_THEME_PATHS = stringPreferencesKey("external_theme_paths")
+    var externalThemePaths: Set<String>
+        get() {
+            val raw = getPref(EXTERNAL_THEME_PATHS, "")
+            return if (raw.isBlank()) emptySet() else raw.split("|||").toSet()
+        }
+        set(value) = setPref(EXTERNAL_THEME_PATHS, value.joinToString("|||"))
+
+    fun addExternalThemePath(path: String) {
+        externalThemePaths = externalThemePaths + path
+    }
+
+    fun removeExternalThemePath(path: String) {
+        externalThemePaths = externalThemePaths - path
+    }
 }

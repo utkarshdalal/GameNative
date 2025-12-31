@@ -33,7 +33,7 @@ import java.nio.file.Paths
  */
 object ThemeManager {
 
-    enum class Source { BuiltIn, User }
+    enum class Source { BuiltIn, User, External }
 
     data class ThemeEntry(
         val id: String,
@@ -158,7 +158,7 @@ object ThemeManager {
     fun getThemeAssetPath(entry: ThemeEntry): String {
         return when (entry.source) {
             Source.BuiltIn -> "$ASSETS_THEMES_ROOT/${entry.location}"
-            Source.User -> entry.location
+            Source.User, Source.External -> entry.location
         }
     }
 
@@ -218,7 +218,8 @@ object ThemeManager {
     private fun scanAllThemes(): List<ThemeEntry> {
         val builtIns = scanBuiltInThemes()
         val users = scanUserThemes()
-        return (builtIns + users)
+        val externals = scanExternalThemes()
+        return (builtIns + users + externals)
             .distinctBy { it.id }
             .sortedWith(compareBy<ThemeEntry> { it.source }.thenBy { it.id.lowercase() })
     }
@@ -276,6 +277,169 @@ object ThemeManager {
         if (ext.isBlank()) return null
         val p = Paths.get(ext, "GameNative", "Themes").toFile()
         return p
+    }
+
+    /**
+     * Scan themes from externally added paths (user-selected folders).
+     */
+    private fun scanExternalThemes(): List<ThemeEntry> {
+        val results = mutableListOf<ThemeEntry>()
+        val paths = PrefManager.externalThemePaths
+        if (paths.isEmpty()) return results
+
+        for (path in paths) {
+            try {
+                val dir = File(path)
+                if (!dir.exists() || !dir.isDirectory) {
+                    Timber.w("External theme path does not exist or is not a directory: %s", path)
+                    continue
+                }
+                val manifestFile = File(dir, "manifest.xml")
+                if (!manifestFile.exists()) {
+                    Timber.w("External theme missing manifest.xml: %s", path)
+                    continue
+                }
+                val manifest = manifestFile.inputStream().use { parseManifest(it) }
+                if (manifest == null) {
+                    Timber.w("Failed to parse manifest for external theme: %s", path)
+                    continue
+                }
+                if (!isCompatible(manifest)) {
+                    Timber.w("External theme not compatible: %s", path)
+                    continue
+                }
+                results += ThemeEntry(
+                    id = manifest.id,
+                    name = manifest.title,
+                    source = Source.External,
+                    location = dir.absolutePath,
+                    manifest = manifest,
+                )
+            } catch (t: Throwable) {
+                Timber.e(t, "Error scanning external theme at %s", path)
+            }
+        }
+        return results
+    }
+
+    /**
+     * Result of validating an external theme folder.
+     */
+    sealed class ThemeValidationResult {
+        data class Valid(val manifest: ManifestLite) : ThemeValidationResult()
+        data class Invalid(val error: String) : ThemeValidationResult()
+    }
+
+    /**
+     * Validate a folder to check if it contains a valid theme.
+     * @param folderPath Absolute path to the theme folder
+     * @return Validation result with manifest info or error message
+     */
+    fun validateThemeFolder(folderPath: String): ThemeValidationResult {
+        return try {
+            val dir = File(folderPath)
+            if (!dir.exists()) {
+                return ThemeValidationResult.Invalid("Folder does not exist")
+            }
+            if (!dir.isDirectory) {
+                return ThemeValidationResult.Invalid("Path is not a directory")
+            }
+
+            val manifestFile = File(dir, "manifest.xml")
+            if (!manifestFile.exists()) {
+                return ThemeValidationResult.Invalid("Missing manifest.xml")
+            }
+
+            val manifest = manifestFile.inputStream().use { parseManifest(it) }
+                ?: return ThemeValidationResult.Invalid("Invalid manifest.xml: missing required fields (id, version, engineVersion, minAppVersion)")
+
+            // Check if theme with same ID already exists
+            val existing = _availableThemes.value.find { it.id == manifest.id }
+            if (existing != null) {
+                return ThemeValidationResult.Invalid("A theme with ID '${manifest.id}' already exists")
+            }
+
+            if (!isCompatible(manifest)) {
+                return ThemeValidationResult.Invalid("Theme is not compatible with this version of the app (engine version: ${manifest.engineVersion})")
+            }
+
+            ThemeValidationResult.Valid(manifest)
+        } catch (t: Throwable) {
+            Timber.e(t, "Error validating theme folder: %s", folderPath)
+            ThemeValidationResult.Invalid("Error reading theme: ${t.message}")
+        }
+    }
+
+    /**
+     * Add an external theme by folder path.
+     * @param folderPath Absolute path to the theme folder
+     * @return The added ThemeEntry on success, null on failure
+     */
+    fun addExternalTheme(folderPath: String): ThemeEntry? {
+        val validation = validateThemeFolder(folderPath)
+        if (validation is ThemeValidationResult.Invalid) {
+            Timber.w("Cannot add external theme: %s", validation.error)
+            return null
+        }
+
+        val manifest = (validation as ThemeValidationResult.Valid).manifest
+
+        // Add to preferences
+        PrefManager.addExternalThemePath(folderPath)
+
+        // Create entry
+        val entry = ThemeEntry(
+            id = manifest.id,
+            name = manifest.title,
+            source = Source.External,
+            location = folderPath,
+            manifest = manifest,
+        )
+
+        // Update available themes list
+        scope.launch(Dispatchers.IO) {
+            val list = scanAllThemes()
+            _availableThemes.value = list
+        }
+
+        Timber.i("Added external theme: %s at %s", manifest.id, folderPath)
+        return entry
+    }
+
+    /**
+     * Remove an external theme.
+     * This removes the theme from the list but does NOT delete the files.
+     * @param themeId The ID of the theme to remove
+     * @return True if removed, false if not found or not an external theme
+     */
+    fun removeExternalTheme(themeId: String): Boolean {
+        val entry = _availableThemes.value.find { it.id == themeId }
+        if (entry == null) {
+            Timber.w("Cannot remove external theme: not found with id=%s", themeId)
+            return false
+        }
+        if (entry.source != Source.External) {
+            Timber.w("Cannot remove theme %s: not an external theme (source=%s)", themeId, entry.source)
+            return false
+        }
+
+        // Remove from preferences
+        PrefManager.removeExternalThemePath(entry.location)
+
+        // Immediately update the list by filtering out the removed theme
+        val updatedList = _availableThemes.value.filter { it.id != themeId }
+        _availableThemes.value = updatedList
+
+        // If this was the selected theme, switch to fallback
+        if (_selectedThemeId.value == themeId) {
+            scope.launch(Dispatchers.IO) {
+                applyFallbackWithToast(updatedList)
+                pickFallback(updatedList)?.let { fb -> loadAndActivateTheme(fb) }
+            }
+        }
+
+        Timber.i("Removed external theme: %s", themeId)
+        return true
     }
 
     private fun parseManifest(input: InputStream): ManifestLite? {
@@ -380,7 +544,7 @@ object ThemeManager {
     private fun loadAndActivateTheme(entry: ThemeEntry) {
         try {
             val loadDir: File = when (entry.source) {
-                Source.User -> File(entry.location)
+                Source.User, Source.External -> File(entry.location)
                 Source.BuiltIn -> {
                     // Copy built-in assets from APK to cache dir
                     val cacheRoot = File(appCtx.cacheDir, "themes_cache")

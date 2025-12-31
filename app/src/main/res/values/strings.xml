@@ -826,6 +826,21 @@
     <string name="theme_active">Active</string>
     <string name="back">Back</string>
     <string name="selected">Selected</string>
+
+    <!-- External Themes -->
+    <string name="theme_add_external">Add Theme</string>
+    <string name="theme_source_external">External</string>
+    <string name="theme_remove">Remove</string>
+    <string name="theme_remove_title">Remove Theme</string>
+    <string name="theme_remove_message">Remove \"%1$s\" from the theme list?\n\nThis will not delete the theme files from your device.</string>
+    <string name="theme_remove_confirm">Remove</string>
+    <string name="theme_added_toast">Theme added: %1$s</string>
+    <string name="theme_removed_toast">Theme removed: %1$s</string>
+    <string name="theme_validation_failed">Invalid theme: %1$s</string>
+    <string name="theme_select_folder">Select a folder containing a theme</string>
+    <string name="theme_add_dialog_title">Add External Theme</string>
+    <string name="theme_add_dialog_message">Please select a folder containing a valid theme.\n\nA valid theme folder must include a manifest.xml file with the required fields (id, version, engineVersion, minAppVersion).\n\nNote: The app may restart after selecting a folder.</string>
+    <string name="theme_add_dont_show_again">Don\'t show this dialog again</string>
 </resources>
 
 
