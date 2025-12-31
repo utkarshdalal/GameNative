@@ -711,6 +711,12 @@ fun ContainerConfigDialog(
             }
         }
 
+        val nonzeroResolutionError = stringResource(
+            R.string.container_config_custom_resolution_error_nonzero
+        )
+        val aspectResolutionError = stringResource(
+            R.string.container_config_custom_resolution_error_aspect
+        )
         if (showCustomResolutionDialog) {
             AlertDialog(
                 onDismissRequest = { showCustomResolutionDialog = false },
@@ -760,13 +766,9 @@ fun ContainerConfigDialog(
                             val widthInt = customScreenWidth.toIntOrNull() ?: 0
                             val heightInt = customScreenHeight.toIntOrNull() ?: 0
                             if (widthInt == 0 || heightInt == 0) {
-                                customResolutionValidationError = context.getString(
-                                    R.string.container_config_custom_resolution_error_nonzero
-                                )
+                                customResolutionValidationError = nonzeroResolutionError
                             } else if (widthInt <= heightInt) {
-                                customResolutionValidationError = context.getString(
-                                    R.string.container_config_custom_resolution_error_aspect
-                                )
+                                customResolutionValidationError = aspectResolutionError
                             } else {
                                 customResolutionValidationError = null
                                 applyScreenSizeToConfig()
