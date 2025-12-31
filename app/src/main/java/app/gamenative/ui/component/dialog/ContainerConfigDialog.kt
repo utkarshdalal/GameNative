@@ -188,7 +188,6 @@ fun ContainerConfigDialog(
         var wowBox64Versions by remember { mutableStateOf(wowBox64VersionsBase) } // reuse existing base list
         var fexcoreVersions by remember { mutableStateOf(fexcoreVersionsBase) }
         var versionsLoaded by remember { mutableStateOf(false) }
-        var openCustomDialog by remember { mutableStateOf(false)}
         var showCustomResolutionDialog by remember { mutableStateOf(false) }
         var customResolutionValidationError by remember { mutableStateOf<String?>(null) }
 
@@ -414,11 +413,19 @@ fun ContainerConfigDialog(
         }
         var customScreenWidth by rememberSaveable {
             val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
-            mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x")[0] else "1280")
+            mutableStateOf(
+                if (searchIndex <= 0) {
+                    config.screenSize.split("x").getOrElse(0) { "1280" }
+                } else "1280"
+            )
         }
         var customScreenHeight by rememberSaveable {
             val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
-            mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x")[1] else "720")
+            mutableStateOf(
+                if (searchIndex <= 0) {
+                    config.screenSize.split("x").getOrElse(1) { "720" }
+                } else "720"
+            )
         }
         var graphicsDriverIndex by rememberSaveable {
             val driverIndex = graphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
