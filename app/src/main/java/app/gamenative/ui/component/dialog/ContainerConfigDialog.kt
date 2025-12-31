@@ -188,6 +188,16 @@ fun ContainerConfigDialog(
         var wowBox64Versions by remember { mutableStateOf(wowBox64VersionsBase) } // reuse existing base list
         var fexcoreVersions by remember { mutableStateOf(fexcoreVersionsBase) }
         var versionsLoaded by remember { mutableStateOf(false) }
+        var openCustomDialog by remember { mutableStateOf(false)}
+        var showCustomResolutionDialog by remember { mutableStateOf(false) }
+        var customResolutionValidationError by remember { mutableStateOf<String?>(null) }
+
+        LaunchedEffect(visible) {
+            if (visible) {
+                showCustomResolutionDialog = false
+                customResolutionValidationError = null
+            }
+        }
 
         LaunchedEffect(Unit) {
             try {
@@ -404,11 +414,11 @@ fun ContainerConfigDialog(
         }
         var customScreenWidth by rememberSaveable {
             val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
-            mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x")[0] else "")
+            mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x")[0] else "1280")
         }
         var customScreenHeight by rememberSaveable {
             val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
-            mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x")[1] else "")
+            mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x")[1] else "720")
         }
         var graphicsDriverIndex by rememberSaveable {
             val driverIndex = graphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
@@ -692,6 +702,80 @@ fun ContainerConfigDialog(
             } else {
                 onDismissRequest()
             }
+        }
+
+        if (showCustomResolutionDialog) {
+            AlertDialog(
+                onDismissRequest = { showCustomResolutionDialog = false },
+                title = { Text("Set Custom Resolution")},
+                text = {
+                    Column {
+                        Row {
+                            OutlinedTextField(
+                                modifier = Modifier.width(128.dp),
+                                value = customScreenWidth,
+                                onValueChange = {
+                                    customScreenWidth = it
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                label = { Text(text = stringResource(R.string.width)) },
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                                text = "x",
+                                style = TextStyle(fontSize = 16.sp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                modifier = Modifier.width(128.dp),
+                                value = customScreenHeight,
+                                onValueChange = {
+                                    customScreenHeight = it
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                label = { Text(text = stringResource(R.string.height)) },
+                            )
+                        }
+                    if (customResolutionValidationError != null) {
+                            Text(
+                                text = customResolutionValidationError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = TextStyle(fontSize = 16.sp),
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val widthInt = customScreenWidth.toIntOrNull() ?: 0
+                            val heightInt = customScreenHeight.toIntOrNull() ?: 0
+                            if(widthInt == 0 || heightInt == 0){
+                                customResolutionValidationError = "Width and height must be greater than 0"
+                            } else if (widthInt <= heightInt) {
+                                customResolutionValidationError = "Width must be greater than height"
+                            } else {
+                                customResolutionValidationError = null
+                                applyScreenSizeToConfig()
+                                showCustomResolutionDialog = false
+                            }
+                        },
+                    ) {
+                        Text(text = stringResource(R.string.ok))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showCustomResolutionDialog = false
+                        },
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         MessageDialog(
@@ -1028,42 +1112,7 @@ fun ContainerConfigDialog(
                                     items = screenSizes,
                                     onItemSelected = {
                                         screenSizeIndex = it
-                                        applyScreenSizeToConfig()
-                                    },
-                                    action = if (screenSizeIndex == 0) {
-                                        {
-                                            Row {
-                                                OutlinedTextField(
-                                                    modifier = Modifier.width(128.dp),
-                                                    value = customScreenWidth,
-                                                    onValueChange = {
-                                                        customScreenWidth = it
-                                                        applyScreenSizeToConfig()
-                                                    },
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                    label = { Text(text = stringResource(R.string.width)) },
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    modifier = Modifier.align(Alignment.CenterVertically),
-                                                    text = "x",
-                                                    style = TextStyle(fontSize = 16.sp),
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                OutlinedTextField(
-                                                    modifier = Modifier.width(128.dp),
-                                                    value = customScreenHeight,
-                                                    onValueChange = {
-                                                        customScreenHeight = it
-                                                        applyScreenSizeToConfig()
-                                                    },
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                    label = { Text(text = stringResource(R.string.height)) },
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        null
+                                        if (it == 0) showCustomResolutionDialog = true
                                     },
                                 )
                                 // Audio Driver Dropdown
