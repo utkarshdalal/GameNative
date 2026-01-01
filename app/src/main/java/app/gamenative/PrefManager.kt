@@ -569,6 +569,13 @@ object PrefManager {
             setPref(STEAM_USER_ACCOUNT_ID, value)
         }
 
+    private val STEAM_USER_STEAM_ID_64 = longPreferencesKey("steam_user_steam_id_64")
+    var steamUserSteamId64: Long
+        get() = getPref(STEAM_USER_STEAM_ID_64, 0L)
+        set(value) {
+            setPref(STEAM_USER_STEAM_ID_64, value)
+        }
+
     /**
      * Get or Set the last known avatar hash for the user.
      */

@@ -724,8 +724,12 @@ object SteamUtils {
 
         val configsIni = settingsDir.resolve("configs.user.ini")
         val accountName   = PrefManager.username
-        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
-        val accountId = SteamService.userSteamId?.accountID ?: 0L
+        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() 
+            ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }?.toString()
+            ?: "0"
+        val accountId = SteamService.userSteamId?.accountID 
+            ?: PrefManager.steamUserAccountId.takeIf { it != 0 }?.toLong()
+            ?: 0L
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val language = runCatching {
             (container.getExtra("language", null)
