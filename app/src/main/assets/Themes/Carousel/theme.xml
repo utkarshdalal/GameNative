@@ -22,7 +22,7 @@
                   text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.infoTextColor}"
                   textAlign="right" fontWeight="bold" anchor="topRight"
                   focusOnly="true" focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
         </card>
     </elements>
 

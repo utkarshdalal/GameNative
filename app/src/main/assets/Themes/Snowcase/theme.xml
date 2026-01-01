@@ -78,7 +78,7 @@
                   anchor="topLeft"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
 
             <!-- Install status - small info text, only shown when installed -->
             <text id="installStatus"
@@ -91,7 +91,7 @@
                   anchor="topLeft"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
 
             <!-- Last played clock icon - landscape (dark icon for light theme) -->
             <image id="lastPlayedIconLandscape"
@@ -102,7 +102,7 @@
                    anchor="topLeft"
                    focusOnly="true"
                    focusTransitionSpeed="@{vars.transitionSpeed}"
-                   visibleWhen="game.isInstalled"
+                   visibleWhen="@{game.isInstalled}"
                    visibility="landscape" />
 
             <!-- Last played clock icon - portrait (white icon for dark overlay) -->
@@ -114,7 +114,7 @@
                    anchor="topLeft"
                    focusOnly="true"
                    focusTransitionSpeed="@{vars.transitionSpeed}"
-                   visibleWhen="game.isInstalled"
+                   visibleWhen="@{game.isInstalled}"
                    visibility="portrait" />
 
             <!-- Last played time - offset by icon width -->
@@ -128,7 +128,7 @@
                   anchor="topLeft"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
         </card>
     </elements>
 

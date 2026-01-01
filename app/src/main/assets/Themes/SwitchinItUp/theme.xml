@@ -31,7 +31,7 @@
                    anchor="topLeft"
                    focusOnly="true"
                    focusTransitionSpeed="@{vars.transitionSpeed}"
-                   visibleWhen="game.isSteam" />
+                   visibleWhen="@{game.isSteam}" />
 
             <!-- Custom game icon - shown to the left of title for custom games -->
             <image id="customIcon"
@@ -42,7 +42,7 @@
                    anchor="topLeft"
                    focusOnly="true"
                    focusTransitionSpeed="@{vars.transitionSpeed}"
-                   visibleWhen="game.isCustom" />
+                   visibleWhen="@{game.isCustom}" />
 
             <!-- Game title - shown above the card when focused, after source icon -->
             <text id="title"
@@ -71,7 +71,7 @@
                   color="#FFFFFFFF"
                   fontWeight="bold"
                   anchor="topLeft"
-                  visibleWhen="game.isInstalled"
+                  visibleWhen="@{game.isInstalled}"
                   shadowColor="#BB000000"
                   shadowRadius="4"
                   shadowOffsetX="1"

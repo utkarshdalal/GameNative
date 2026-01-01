@@ -20,7 +20,7 @@
             <text id="installedCheck" x="16" y="2" height="@{vars.badgeHeight}"
                   text="✓" textSize="@{vars.textSizeSmall}" color="@{vars.textColor}"
                   textAlign="right" fontWeight="bold" anchor="bottomRight"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
 
             <rect id="backdrop" x="0" y="0" width="100%" height="100%"
                   color="#00000000" borderWidth="1" borderColor="#22FFFFFF"

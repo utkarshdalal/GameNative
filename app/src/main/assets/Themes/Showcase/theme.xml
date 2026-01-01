@@ -78,7 +78,7 @@
                   anchor="topLeft"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
 
             <!-- Install status - small info text, only shown when installed -->
             <text id="installStatus"
@@ -91,7 +91,7 @@
                   anchor="topLeft"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
 
             <!-- Last played clock icon - positioned same as checkmark -->
             <image id="lastPlayedIcon"
@@ -102,7 +102,7 @@
                    anchor="topLeft"
                    focusOnly="true"
                    focusTransitionSpeed="@{vars.transitionSpeed}"
-                   visibleWhen="game.isInstalled" />
+                   visibleWhen="@{game.isInstalled}" />
 
             <!-- Last played time - offset by icon width -->
             <text id="lastPlayed"
@@ -115,7 +115,7 @@
                   anchor="topLeft"
                   focusOnly="true"
                   focusTransitionSpeed="@{vars.transitionSpeed}"
-                  visibleWhen="game.isInstalled" />
+                  visibleWhen="@{game.isInstalled}" />
         </card>
     </elements>
 

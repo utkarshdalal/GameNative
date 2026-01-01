@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameNative Theme Documentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        :root {
+            --primary: #6C5CE7;
+            --primary-dark: #5B4BC7;
+            --secondary: #00CEC9;
+            --dark: #1E1E2E;
+            --darker: #14141F;
+            --light: #F8F9FA;
+            --sidebar-width: 280px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--darker); color: #E4E4E7; }
+        a { color: var(--secondary); }
+        a:hover { color: #81ECEC; text-decoration: none; }
+        
+        /* Sidebar */
+        #sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--dark); border-right: 1px solid rgba(255,255,255,0.1); overflow-y: auto; z-index: 1000; padding: 20px 0; }
+        #sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        #sidebar .logo h3 { color: white; font-weight: 700; margin: 0; font-size: 1.4rem; }
+        #sidebar .logo span { color: var(--secondary); font-size: 0.85rem; }
+        #sidebar nav a { display: block; padding: 10px 20px; color: rgba(255,255,255,0.7); font-size: 0.9rem; border-left: 3px solid transparent; transition: all 0.2s; }
+        #sidebar nav a:hover, #sidebar nav a.active { color: white; background: rgba(108,92,231,0.1); border-left-color: var(--primary); }
+        #sidebar nav a.sub-item { padding-left: 35px; font-size: 0.85rem; }
+        
+        /* Main Content */
+        #main { margin-left: var(--sidebar-width); padding: 40px 60px; max-width: 1000px; }
+        section { padding: 30px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        h1, h2, h3, h4, h5 { color: white; font-weight: 600; }
+        h1 { font-size: 2.5rem; margin-bottom: 30px; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { font-size: 1.8rem; margin: 40px 0 20px; padding-top: 20px; }
+        h3 { font-size: 1.3rem; margin: 30px 0 15px; color: #A0A0B0; }
+        h4 { font-size: 1.1rem; margin: 20px 0 10px; }
+        p { line-height: 1.7; color: #B0B0C0; }
+        
+        /* Code */
+        code { background: rgba(108,92,231,0.2); padding: 2px 6px; border-radius: 4px; color: #E879F9; font-size: 0.9em; }
+        pre { background: var(--dark); border-radius: 8px; padding: 20px; margin: 20px 0; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); }
+        pre code { background: transparent; padding: 0; color: inherit; }
+        
+        /* Tables */
+        table { width: 100%; margin: 20px 0; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { background: var(--dark); color: white; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { color: #B0B0C0; }
+        tr:hover td { background: rgba(108,92,231,0.05); }
+        
+        /* Alerts */
+        .alert-tip { background: rgba(0,206,201,0.1); border-left: 4px solid var(--secondary); padding: 15px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+        .alert-warning { background: rgba(253,203,110,0.1); border-left: 4px solid #FDCB6E; padding: 15px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+        .alert-tip strong, .alert-warning strong { color: white; }
+        
+        /* File tree */
+        .file-tree { background: var(--dark); border-radius: 8px; padding: 20px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); }
+        .file-tree .folder { color: var(--secondary); font-weight: bold; }
+        .file-tree .file { color: #FD79A8; }
+        .file-tree .required { color: #FDCB6E; font-weight: bold; }
+        
+        /* Cards */
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0; }
+        .theme-card { background: var(--dark); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; }
+        .theme-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .theme-card h4 { margin: 0 0 10px; font-size: 1.1rem; }
+        .theme-card p { margin: 0; font-size: 0.9rem; }
+        
+        /* Mobile */
+        @media (max-width: 991px) {
+            #sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            #sidebar.show { transform: translateX(0); }
+            #main { margin-left: 0; padding: 20px; }
+            .mobile-toggle { display: block !important; }
+        }
+        .mobile-toggle { display: none; position: fixed; top: 15px; left: 15px; z-index: 1001; background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--darker); }
+        ::-webkit-scrollbar-thumb { background: rgba(108,92,231,0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+    </style>
+</head>
+<body>
+    <button class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('show')">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <aside id="sidebar">
+        <div class="logo">
+            <h3>GameNative</h3>
+            <span>Theme Documentation v1.0</span>
+        </div>
+        <nav>
+            <a href="#introduction">Introduction</a>
+            <a href="#quick-start" class="sub-item">Quick Start</a>
+            <a href="#file-structure">File Structure</a>
+            <a href="#manifest">Manifest</a>
+            <a href="#variables">Variables</a>
+            <a href="#breakpoints" class="sub-item">Breakpoints</a>
+            <a href="#cards">Card Layers</a>
+            <a href="#image-layer" class="sub-item">Image Layer</a>
+            <a href="#text-layer" class="sub-item">Text Layer</a>
+            <a href="#rect-layer" class="sub-item">Rect Layer</a>
+            <a href="#other-layers" class="sub-item">Other Layers</a>
+            <a href="#layouts">Layouts</a>
+            <a href="#grid-layout" class="sub-item">Grid</a>
+            <a href="#grid-separator" class="sub-item">Separator</a>
+            <a href="#carousel-layout" class="sub-item">Carousel</a>
+            <a href="#fixed-elements">Fixed Elements</a>
+            <a href="#header-element" class="sub-item">Header</a>
+            <a href="#search-element" class="sub-item">SearchBar</a>
+            <a href="#button-elements" class="sub-item">Buttons</a>
+            <a href="#other-fixed" class="sub-item">Other Elements</a>
+            <a href="#bindings">Game Bindings</a>
+            <a href="#system-info">System Info</a>
+            <a href="#colors">System Colors</a>
+            <a href="#navigation">Navigation</a>
+            <a href="#positioning">Positioning</a>
+            <a href="#examples">Examples</a>
+            <a href="#built-in-themes">Built-in Themes</a>
+        </nav>
+    </aside>
+
+    <main id="main">
+        <!-- INTRODUCTION -->
+        <section id="introduction">
+            <h1>GameNative Theme Documentation</h1>
+            <p>Welcome to the GameNative theme system documentation. Themes allow you to completely customize the appearance of your game library, from simple color changes to entirely new layouts with carousels, grids, and custom UI elements.</p>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-lightbulb"></i> Tip:</strong> Start by exploring the <a href="#built-in-themes">built-in themes</a> as reference implementations, then modify one to create your own custom theme.
+            </div>
+
+            <h3 id="quick-start">Quick Start</h3>
+            <p>To create a minimal theme, you need three files in a folder:</p>
+            
+            <pre class="file-tree"><span class="folder">MyTheme/</span>
+├── <span class="required">manifest.xml</span>       <span style="color:#888">← Theme metadata (required)</span>
+├── <span class="file">theme.xml</span>          <span style="color:#888">← Layout definition (name configurable in manifest)</span>
+├── <span class="file">variables.xml</span>      <span style="color:#888">← Reusable values (optional)</span>
+└── <span class="folder">assets/</span>
+    ├── <span class="file">theme.png</span>        <span style="color:#888">← Preview image (recommended)</span>
+    └── <span class="file">...</span>              <span style="color:#888">← Images, videos, icons, etc.</span></pre>
+
+            <h4>Installation</h4>
+            <p>To install a custom theme:</p>
+            <ol>
+                <li>Copy your theme folder to your device (e.g., Downloads or any accessible location)</li>
+                <li>In GameNative, go to <strong>Settings → Themes</strong></li>
+                <li>Tap <strong>Add External Theme</strong></li>
+                <li>Navigate to and select your theme folder</li>
+            </ol>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-sd-card"></i> SD Card Users:</strong> If you have external storage enabled, themes placed in <code>[SD Card]/GameNative/Themes/</code> will be automatically detected.
+            </div>
+        </section>
+
+        <!-- FILE STRUCTURE -->
+        <section id="file-structure">
+            <h2>File Structure</h2>
+            <p>A complete theme can include the following files:</p>
+            
+            <table>
+                <tr><th>File</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>manifest.xml</code></td><td>Yes</td><td>Theme identity, version, and compatibility info</td></tr>
+                <tr><td><code>*.xml</code> (theme)</td><td>Yes</td><td>Cards and layout definitions (filename set in manifest)</td></tr>
+                <tr><td><code>*.xml</code> (variables)</td><td>No</td><td>Reusable variables with breakpoint support (filename set in manifest)</td></tr>
+                <tr><td><code>assets/theme.png</code></td><td>No*</td><td>Preview image shown in theme selector</td></tr>
+                <tr><td><code>assets/*</code></td><td>No</td><td>Custom images, videos, icons, and other media</td></tr>
+                <tr><td><code>locales/default.xml</code></td><td>No</td><td>Localized strings</td></tr>
+            </table>
+            <p><small>* Highly recommended for better user experience in the theme selector</small></p>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-info-circle"></i> Note:</strong> The theme and variables file names are configurable via the <code>&lt;theme source="..." variables="..." /&gt;</code> element in manifest.xml. You can name them anything you like.
+            </div>
+        </section>
+
+        <!-- MANIFEST -->
+        <section id="manifest">
+            <h2>Manifest</h2>
+            <p>The <code>manifest.xml</code> file defines your theme's identity and compatibility requirements.</p>
+            
+            <pre><code class="language-xml">&lt;manifest&gt;
+    &lt;id&gt;my-custom-theme&lt;/id&gt;
+    &lt;title&gt;My Custom Theme&lt;/title&gt;
+    &lt;version&gt;1.0.0&lt;/version&gt;
+    &lt;engineVersion&gt;1.0.0&lt;/engineVersion&gt;
+    &lt;minAppVersion&gt;0.0.0&lt;/minAppVersion&gt;
+    &lt;description&gt;A beautiful custom theme for GameNative&lt;/description&gt;
+    &lt;author&gt;
+        &lt;name&gt;Your Name&lt;/name&gt;
+        &lt;github&gt;https://github.com/yourusername&lt;/github&gt;
+    &lt;/author&gt;
+    &lt;preview src="/assets/theme.png" /&gt;
+    &lt;theme source="/theme.xml" variables="/variables.xml" /&gt;
+&lt;/manifest&gt;</code></pre>
+
+            <h3>Manifest Fields</h3>
+            <table>
+                <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>id</code></td><td>Yes</td><td>Unique identifier (lowercase, hyphens allowed)</td></tr>
+                <tr><td><code>title</code></td><td>Yes</td><td>Display name shown to users</td></tr>
+                <tr><td><code>version</code></td><td>Yes</td><td>Theme version (semver format: 1.0.0)</td></tr>
+                <tr><td><code>engineVersion</code></td><td>Yes</td><td>Required theme engine version</td></tr>
+                <tr><td><code>minAppVersion</code></td><td>Yes</td><td>Minimum app version required</td></tr>
+                <tr><td><code>maxAppVersion</code></td><td>No</td><td>Maximum app version supported</td></tr>
+                <tr><td><code>description</code></td><td>No</td><td>Short description of your theme</td></tr>
+                <tr><td><code>author</code></td><td>No</td><td>Author name and GitHub URL</td></tr>
+                <tr><td><code>preview</code></td><td>No</td><td>Path to preview image</td></tr>
+                <tr><td><code>theme</code></td><td>Yes</td><td>Paths to theme.xml and variables.xml</td></tr>
+            </table>
+
+            <h3>Engine Version Constraints</h3>
+            <p>The <code>engineVersion</code> field supports Composer-like constraint syntax:</p>
+            <table>
+                <tr><th>Constraint</th><th>Meaning</th></tr>
+                <tr><td><code>1.0.0</code></td><td>Exact version match</td></tr>
+                <tr><td><code>1.*</code> or <code>1.x</code></td><td>Any version 1.x.x</td></tr>
+                <tr><td><code>^1.0.0</code></td><td>&gt;=1.0.0 and &lt;2.0.0</td></tr>
+                <tr><td><code>~1.2.0</code></td><td>&gt;=1.2.0 and &lt;1.3.0</td></tr>
+                <tr><td><code>&gt;=1.0.0</code></td><td>Greater than or equal</td></tr>
+            </table>
+        </section>
+
+        <!-- VARIABLES -->
+        <section id="variables">
+            <h2>Variables</h2>
+            <p>Variables let you define reusable values that can be referenced throughout your theme. This makes it easy to maintain consistent styling and support responsive designs.</p>
+            
+            <pre><code class="language-xml">&lt;variables&gt;
+    &lt;!-- Colors --&gt;
+    &lt;var name="textColor" value="#FFFFFFFF" /&gt;
+    &lt;var name="highlightColor" value="#9575CD" /&gt;
+    
+    &lt;!-- Dimensions --&gt;
+    &lt;var name="cornerRadius" value="15" /&gt;
+    &lt;var name="cardSize" value="120" /&gt;
+    &lt;var name="spacing" value="16" /&gt;
+    
+    &lt;!-- Portrait mode overrides --&gt;
+    &lt;breakpoint orientation="portrait"&gt;
+        &lt;var name="cardSize" value="100" /&gt;
+        &lt;var name="spacing" value="12" /&gt;
+    &lt;/breakpoint&gt;
+&lt;/variables&gt;</code></pre>
+
+            <h3>Using Variables</h3>
+            <p>Reference variables in your theme using the <code>@{vars.name}</code> syntax:</p>
+            <pre><code class="language-xml">&lt;image width="@{vars.cardSize}" height="@{vars.cardSize}" 
+       cornerRadius="@{vars.cornerRadius}" /&gt;</code></pre>
+
+            <h4>Negative Values</h4>
+            <p>Prefix variable references with <code>-</code> to negate them (useful for offsets):</p>
+            <pre><code class="language-xml">&lt;!-- Position outside the card bounds --&gt;
+&lt;rect x="-@{vars.borderOffset}" y="-@{vars.borderOffset}"
+      width="@{vars.borderSize}" height="@{vars.borderSize}" /&gt;</code></pre>
+
+            <h3 id="breakpoints">Breakpoints</h3>
+            <p>Breakpoints allow you to override variable values based on screen orientation or width:</p>
+            
+            <h4>Orientation-Based Breakpoints</h4>
+            <pre><code class="language-xml">&lt;breakpoint orientation="portrait"&gt;
+    &lt;var name="searchBarWidth" value="90%" /&gt;
+    &lt;var name="columns" value="2" /&gt;
+&lt;/breakpoint&gt;
+
+&lt;breakpoint orientation="landscape"&gt;
+    &lt;var name="searchBarWidth" value="400" /&gt;
+    &lt;var name="columns" value="4" /&gt;
+&lt;/breakpoint&gt;</code></pre>
+
+            <h4>Width-Based Breakpoints</h4>
+            <pre><code class="language-xml">&lt;breakpoint minWidth="600" maxWidth="900"&gt;
+    &lt;var name="columns" value="3" /&gt;
+&lt;/breakpoint&gt;
+
+&lt;breakpoint minWidth="901"&gt;
+    &lt;var name="columns" value="4" /&gt;
+&lt;/breakpoint&gt;</code></pre>
+        </section>
+
+        <!-- CARDS -->
+        <section id="cards">
+            <h2>Card Layers</h2>
+            <p>Cards are reusable templates that define how each game appears in your layout. A card consists of multiple layers stacked from back to front—background shapes, cover images, text overlays, and decorative elements. Each layer can display dynamic game data using bindings like <code>@{game.title}</code> or <code>@{game.capsule}</code>.</p>
+            
+            <h3>Defining Cards</h3>
+            <p>Cards can be defined in two ways:</p>
+            
+            <h4>1. In the Elements Section (Recommended for Reusable Cards)</h4>
+            <p>Define cards in the <code>&lt;elements&gt;</code> section and reference them by <code>id</code> in your layout. This is ideal when you want to reuse the same card design or keep your layout clean.</p>
+            
+            <pre><code class="language-xml">&lt;theme&gt;
+    &lt;elements&gt;
+        &lt;card id="gameCard" width="150" height="225"&gt;
+            &lt;image src="@{game.capsule}" ... /&gt;
+            &lt;text text="@{game.title}" ... /&gt;
+        &lt;/card&gt;
+    &lt;/elements&gt;
+    
+    &lt;layout&gt;
+        &lt;grid itemCard="gameCard" ... /&gt;
+    &lt;/layout&gt;
+&lt;/theme&gt;</code></pre>
+            
+            <h4>2. Inline in the Layout (Convenient for Simple Themes)</h4>
+            <p>Define the card directly inside a <code>&lt;grid&gt;</code> or <code>&lt;carousel&gt;</code>. The card is automatically used by that layout without needing an <code>itemCard</code> reference.</p>
+            
+            <pre><code class="language-xml">&lt;theme&gt;
+    &lt;layout&gt;
+        &lt;grid cellWidth="150" aspectRatio="1.5" ...&gt;
+            &lt;card&gt;
+                &lt;image src="@{game.capsule}" ... /&gt;
+                &lt;text text="@{game.title}" ... /&gt;
+            &lt;/card&gt;
+        &lt;/grid&gt;
+    &lt;/layout&gt;
+&lt;/theme&gt;</code></pre>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-lightbulb"></i> Tip:</strong> Use the <code>&lt;elements&gt;</code> approach for complex themes or when sharing cards between layouts. Use inline cards for simple, single-layout themes where everything stays in one place.
+            </div>
+            
+            <pre><code class="language-xml">&lt;elements&gt;
+    &lt;card id="gameCard" width="150" height="225"&gt;
+        &lt;!-- Background layer --&gt;
+        &lt;rect x="0" y="0" width="100%" height="100%"
+              color="#FF1E1E1E" cornerRadius="12" /&gt;
+        
+        &lt;!-- Game cover image --&gt;
+        &lt;image x="0" y="0" width="100%" height="100%"
+               src="@{game.capsule}"
+               fallback="@{game.hero}"
+               cornerRadius="12" scaleType="cover" /&gt;
+        
+        &lt;!-- Title overlay --&gt;
+        &lt;text x="8" y="8" width="90%"
+              text="@{game.title}"
+              textSize="14" color="#FFFFFFFF"
+              anchor="bottomLeft" maxLines="2" /&gt;
+    &lt;/card&gt;
+&lt;/elements&gt;</code></pre>
+
+            <h3>Common Layer Attributes</h3>
+            <p>All layer types share these positioning and visibility attributes. Use <code>focusOnly</code> to show elements only when a card is selected—great for titles, details, and focus indicators. The <code>visibleWhen</code> attribute enables conditional display based on game properties.</p>
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>id</code></td><td></td><td>String</td><td>Identifier for the layer</td></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Dimension</td><td>Position (pixels or percentage)</td></tr>
+                <tr><td><code>width</code>, <code>height</code></td><td></td><td>Dimension</td><td>Size (pixels, percentage, or 100%)</td></tr>
+                <tr><td><code>anchor</code></td><td></td><td>String</td><td>Reference point for positioning (default: topLeft)</td></tr>
+                <tr><td><code>opacity</code></td><td></td><td>Float</td><td>Transparency (0.0 - 1.0, default: 1.0)</td></tr>
+                <tr><td><code>zIndex</code></td><td></td><td>Float</td><td>Stacking order (default: 0)</td></tr>
+                <tr><td><code>focusOnly</code></td><td></td><td>Boolean</td><td>Only visible when card is focused (default: false)</td></tr>
+                <tr><td><code>focusTransitionSpeed</code></td><td></td><td>Integer</td><td>Fade animation duration in ms (default: 150)</td></tr>
+                <tr><td><code>visibleWhen</code></td><td></td><td>String</td><td>Binding condition for visibility (e.g., "@{game.isInstalled}")</td></tr>
+                <tr><td><code>visibility</code></td><td></td><td>String</td><td>"portrait", "landscape", or "always" (default)</td></tr>
+            </table>
+
+            <h3 id="image-layer">Image Layer</h3>
+            <p>The <code>&lt;image&gt;</code> layer displays images from game data bindings or theme assets. Use it for game covers, icons, backgrounds, and decorative elements. The <code>fallback</code> attribute ensures graceful degradation when primary images aren't available.</p>
+            <pre><code class="language-xml">&lt;image id="cover"
+       x="0" y="0"
+       width="@{vars.imageSize}" height="@{vars.imageSize}"
+       src="@{game.capsule}"
+       fallback="@{game.hero}"
+       cornerRadius="12"
+       scaleType="cover"
+       tintColor="#88000000" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>src</code></td><td>✓</td><td>Image URL or binding (e.g., @{game.capsule})</td></tr>
+                <tr><td><code>fallback</code></td><td></td><td>Fallback image if src fails to load</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>CSS-like radius: "8" or "8 8 0 0"</td></tr>
+                <tr><td><code>scaleType</code></td><td></td><td>"cover" (default), "contain", "fill", "stretch"</td></tr>
+                <tr><td><code>tintColor</code></td><td></td><td>Color overlay (ARGB)</td></tr>
+            </table>
+
+            <h3 id="text-layer">Text Layer</h3>
+            <p>The <code>&lt;text&gt;</code> layer renders text content with full styling control. Use it for game titles, status labels, compatibility indicators, and any dynamic or static text. Supports text shadows for improved readability over images and automatic truncation with ellipsis.</p>
+            <pre><code class="language-xml">&lt;text id="title"
+      x="10" y="10"
+      width="80%"
+      text="@{game.title}"
+      textSize="16"
+      color="#FFFFFFFF"
+      fontWeight="bold"
+      maxLines="1"
+      overflow="ellipsis"
+      textAlign="left"
+      anchor="bottomLeft"
+      shadowColor="#AA000000"
+      shadowRadius="4"
+      shadowOffsetX="1"
+      shadowOffsetY="2" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>text</code></td><td>✓</td><td>Text content or binding</td></tr>
+                <tr><td><code>textSize</code></td><td>✓</td><td>Font size in sp</td></tr>
+                <tr><td><code>color</code></td><td>✓</td><td>Text color (ARGB)</td></tr>
+                <tr><td><code>fontWeight</code></td><td></td><td>"normal" (default), "bold", "light", "medium", "semibold"</td></tr>
+                <tr><td><code>fontStyle</code></td><td></td><td>"normal" (default) or "italic"</td></tr>
+                <tr><td><code>textAlign</code></td><td></td><td>"left" (default), "center", "right"</td></tr>
+                <tr><td><code>maxLines</code></td><td></td><td>Maximum number of lines (default: unlimited)</td></tr>
+                <tr><td><code>overflow</code></td><td></td><td>"ellipsis" (default), "clip", "visible"</td></tr>
+                <tr><td><code>lineHeight</code></td><td></td><td>Line height multiplier (e.g., 1.5 = 150%)</td></tr>
+                <tr><td><code>letterSpacing</code></td><td></td><td>Letter spacing in sp (can be negative)</td></tr>
+                <tr><td><code>textDecoration</code></td><td></td><td>"none" (default), "underline", "lineThrough"</td></tr>
+                <tr><td><code>shadowColor</code></td><td></td><td>Text shadow color (ARGB)</td></tr>
+                <tr><td><code>shadowRadius</code></td><td></td><td>Shadow blur radius</td></tr>
+                <tr><td><code>shadowOffsetX/Y</code></td><td></td><td>Shadow horizontal/vertical offset</td></tr>
+            </table>
+
+            <h3 id="rect-layer">Rect Layer</h3>
+            <p>The <code>&lt;rect&gt;</code> layer draws filled rectangles with optional borders and gradients. Use it for card backgrounds, overlay panels, status badges, and decorative shapes. The <code>borderGradient</code> option uses the app's theme colors for a polished focus indicator effect.</p>
+            <pre><code class="language-xml">&lt;rect id="background"
+      x="0" y="0"
+      width="100%" height="100%"
+      color="#CC1E1E1E"
+      cornerRadius="12"
+      borderWidth="2"
+      borderColor="#33FFFFFF"
+      borderGradient="true"
+      gradientStart="#FF6C5CE7"
+      gradientEnd="#FF00CEC9"
+      gradientAngle="45" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>color</code></td><td>✓</td><td>Fill color (ARGB)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>CSS-like: "8" or "8 8 0 0"</td></tr>
+                <tr><td><code>borderWidth</code></td><td></td><td>Border stroke width (default: 0)</td></tr>
+                <tr><td><code>borderColor</code></td><td></td><td>Border color (ARGB)</td></tr>
+                <tr><td><code>borderGradient</code></td><td></td><td>Use theme gradient for border (default: false)</td></tr>
+                <tr><td><code>gradientStart/End</code></td><td></td><td>Gradient fill colors (overrides color)</td></tr>
+                <tr><td><code>gradientAngle</code></td><td></td><td>Gradient angle in degrees (default: 0)</td></tr>
+            </table>
+
+            <h3 id="other-layers">Other Layer Types</h3>
+            
+            <h4>Border Layer</h4>
+            <p>The <code>&lt;border&gt;</code> layer draws a stroke-only outline without any fill. Use it when you need a border separate from a rect's fill, such as card outlines that overlay images or focus indicators. This is different from using <code>borderWidth</code> on a rect, which includes the fill area.</p>
+            <pre><code class="language-xml">&lt;border x="0" y="0" width="100%" height="100%"
+        strokeWidth="2" color="#33FFFFFF"
+        cornerRadius="12" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>strokeWidth</code></td><td>✓</td><td>Border thickness in dp</td></tr>
+                <tr><td><code>color</code></td><td>✓</td><td>Border color (ARGB)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>CSS-like radius: "8" or "8 8 0 0"</td></tr>
+            </table>
+
+            <h4>Video Layer</h4>
+            <p>The <code>&lt;video&gt;</code> layer embeds video content within cards. Use it for animated backgrounds, promotional content, or game trailers. Videos can autoplay, loop, and are typically muted to avoid audio conflicts. The <code>poster</code> attribute shows a static image while the video loads.</p>
+            <pre><code class="language-xml">&lt;video src="assets/background.mp4"
+       poster="assets/poster.png"
+       autoplay="true" loop="true" muted="true"
+       cornerRadius="8" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>src</code></td><td>✓</td><td>Video file path or URL</td></tr>
+                <tr><td><code>poster</code></td><td></td><td>Thumbnail image while loading</td></tr>
+                <tr><td><code>autoplay</code></td><td></td><td>Auto-start playback (default: false)</td></tr>
+                <tr><td><code>loop</code></td><td></td><td>Loop video continuously (default: true)</td></tr>
+                <tr><td><code>muted</code></td><td></td><td>Mute audio (default: true)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Corner radius</td></tr>
+            </table>
+
+            <h4>Shadow Layer</h4>
+            <p>The <code>&lt;shadow&gt;</code> layer creates drop shadow effects beneath elements. Use it to add depth and visual separation between card elements. Place shadow layers before (below) the elements they should appear behind in the z-order. Combine with <code>cornerRadius</code> to match rounded shapes.</p>
+            <pre><code class="language-xml">&lt;shadow x="0" y="0" width="100%" height="100%"
+        radius="16" color="#66000000"
+        offsetX="0" offsetY="4" cornerRadius="12" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>radius</code></td><td>✓</td><td>Blur radius in dp</td></tr>
+                <tr><td><code>color</code></td><td>✓</td><td>Shadow color (ARGB)</td></tr>
+                <tr><td><code>offsetX/Y</code></td><td></td><td>Shadow offset from element (default: 0)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Match shape of element</td></tr>
+            </table>
+
+            <h4>Backdrop Layer (Blur Effect)</h4>
+            <p>The <code>&lt;backdrop&gt;</code> layer creates a frosted glass effect by blurring content behind it. Use it for overlay panels, status badges, or anywhere you want content to show through with a soft blur. Combine with <code>tintColor</code> to add a semi-transparent color overlay for better contrast.</p>
+            <pre><code class="language-xml">&lt;backdrop x="0" y="0" width="100%" height="100%"
+          blurRadius="20" tintColor="#44000000"
+          cornerRadius="12" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>blurRadius</code></td><td></td><td>Blur strength in dp</td></tr>
+                <tr><td><code>tintColor</code></td><td></td><td>Color overlay (ARGB)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Shape corners</td></tr>
+            </table>
+
+            <h4>Button Layer</h4>
+            <p>The <code>&lt;button&gt;</code> layer renders a styled button with text. Use it for action buttons like "Play", "Install", or "Open". The button is visual only within cards—the card itself handles the click interaction. Use <code>@string/</code> references for localized button labels.</p>
+            <pre><code class="language-xml">&lt;button x="10" y="10" height="40" padding="0 20"
+        text="@string/open_button"
+        backgroundColor="@color/primary"
+        textColor="@color/onPrimary"
+        textSize="14"
+        fontWeight="bold"
+        cornerRadius="20"
+        borderWidth="1"
+        borderColor="#33FFFFFF"
+        anchor="bottomRight" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>text</code></td><td>✓</td><td>Button label text or binding</td></tr>
+                <tr><td><code>backgroundColor</code></td><td>✓</td><td>Background color (ARGB)</td></tr>
+                <tr><td><code>textColor</code></td><td>✓</td><td>Text color (ARGB)</td></tr>
+                <tr><td><code>textSize</code></td><td></td><td>Font size (default: 14)</td></tr>
+                <tr><td><code>fontWeight</code></td><td></td><td>Font weight (default: normal)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Button shape radius</td></tr>
+                <tr><td><code>borderWidth</code></td><td></td><td>Border thickness (default: 0)</td></tr>
+                <tr><td><code>borderColor</code></td><td></td><td>Border color (ARGB)</td></tr>
+                <tr><td><code>padding</code></td><td></td><td>CSS-like padding: "all" or "vertical horizontal"</td></tr>
+            </table>
+        </section>
+
+        <!-- LAYOUTS -->
+        <section id="layouts">
+            <h2>Layouts</h2>
+            <p>Layouts control how your game cards are arranged and how users navigate through them. GameNative offers two layout types with distinct interaction patterns:</p>
+            <ul>
+                <li><strong>Grid</strong> — Traditional scrollable grid for browsing large libraries efficiently</li>
+                <li><strong>Carousel</strong> — Focused browsing with scaling and background effects for immersive experiences</li>
+            </ul>
+            <p>Each theme uses one primary layout. The layout references your card definition by its <code>itemCard</code> ID and handles all scrolling, selection, and navigation behavior automatically.</p>
+
+            <h3 id="grid-layout">Grid Layout</h3>
+            <p>The <code>&lt;grid&gt;</code> layout arranges game cards in a responsive grid pattern. It automatically calculates the number of columns based on screen width and <code>cellWidth</code>. Use grids for traditional library views where users can browse many games at once. The grid supports both portrait (capsule) and landscape (hero) aspect ratios.</p>
+            
+            <pre><code class="language-xml">&lt;layout&gt;
+    &lt;grid cellWidth="150"
+          aspectRatio="1.5"
+          hSpacing="16"
+          vSpacing="16"
+          padding="80 20"
+          verticalAlign="center"
+          selectionMode="moving"
+          itemCard="gameCard"
+          highlightBorderWidth="3"
+          highlightCornerRadius="12" /&gt;
+&lt;/layout&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>cellWidth</code></td><td>✓</td><td>Minimum cell width for auto columns</td></tr>
+                <tr><td><code>itemCard</code></td><td>✓</td><td>Card ID to use for items</td></tr>
+                <tr><td><code>columns</code></td><td></td><td>Fixed column count (omit for auto-calculation)</td></tr>
+                <tr><td><code>cellHeight</code></td><td></td><td>Fixed cell height (or use aspectRatio)</td></tr>
+                <tr><td><code>aspectRatio</code></td><td></td><td>Width/height ratio (e.g., 0.67 for capsule, 2.14 for hero)</td></tr>
+                <tr><td><code>hSpacing</code></td><td></td><td>Horizontal gap between cells (default: 0)</td></tr>
+                <tr><td><code>vSpacing</code></td><td></td><td>Vertical gap between cells (default: 0)</td></tr>
+                <tr><td><code>padding</code></td><td></td><td>Content padding: "top right bottom left"</td></tr>
+                <tr><td><code>selectionMode</code></td><td></td><td>"moving" (default) or "stationary"</td></tr>
+                <tr><td><code>verticalAlign</code></td><td></td><td>"top" (default), "center", "bottom"</td></tr>
+                <tr><td><code>highlightBorderWidth</code></td><td></td><td>Focus border thickness (default: 3)</td></tr>
+                <tr><td><code>highlightCornerRadius</code></td><td></td><td>Focus border corner radius (default: 8)</td></tr>
+            </table>
+
+            <h4 id="grid-separator">Grid Separator</h4>
+            <p>Separators add visual dividers between grid rows. They're particularly useful for single-column list layouts where you want horizontal lines between items. The separator content is defined using standard layer elements (rect, image, text) without game data bindings.</p>
+            <pre><code class="language-xml">&lt;grid columns="1" cellWidth="100%" ...&gt;
+    &lt;separator height="1" margin="12 0"&gt;
+        &lt;rect x="0" y="0" width="100%" height="1" color="#22FFFFFF" /&gt;
+    &lt;/separator&gt;
+&lt;/grid&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>height</code></td><td>✓</td><td>Height of separator content area</td></tr>
+                <tr><td><code>margin</code></td><td></td><td>Margin around separator: "vertical horizontal"</td></tr>
+            </table>
+
+            <h3 id="carousel-layout">Carousel Layout</h3>
+            <p>The <code>&lt;carousel&gt;</code> layout arranges game cards in a horizontal or vertical scrolling list with smooth focus effects. Use carousels for immersive browsing experiences where the focused game takes center stage. Carousels support scaling effects, opacity transitions, and dynamic background images that change as you browse—perfect for console-style interfaces.</p>
+            
+            <pre><code class="language-xml">&lt;layout&gt;
+    &lt;carousel orientation="horizontal"
+              centerFocus="true"
+              horizontalAlign="center"
+              verticalAlign="center"
+              verticalOffset="20"
+              itemWidth="200"
+              itemHeight="300"
+              itemSpacing="16"
+              focusedScale="1.2"
+              unfocusedAlpha="0.7"
+              focusedSpacing="30"
+              beforeFocusOffset="50"
+              focusedBackground="@{game.libraryHero}"
+              backgroundOpacity="0.3"
+              backgroundTransitionSpeed="400"
+              selectionMode="stationary"
+              itemCard="gameCard"
+              highlightBorderWidth="0" /&gt;
+&lt;/layout&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>itemWidth</code></td><td>✓</td><td>Width of each carousel item</td></tr>
+                <tr><td><code>itemHeight</code></td><td>✓</td><td>Height of each carousel item</td></tr>
+                <tr><td><code>itemCard</code></td><td>✓</td><td>Card ID to use for items</td></tr>
+                <tr><td><code>orientation</code></td><td></td><td>"horizontal" (default) or "vertical"</td></tr>
+                <tr><td><code>centerFocus</code></td><td></td><td>Center focused item on screen (default: false)</td></tr>
+                <tr><td><code>itemSpacing</code></td><td></td><td>Spacing between items (default: 0)</td></tr>
+                <tr><td><code>focusedScale</code></td><td></td><td>Scale multiplier for focused item (default: 1.0)</td></tr>
+                <tr><td><code>unfocusedAlpha</code></td><td></td><td>Opacity of non-focused items (default: 1.0)</td></tr>
+                <tr><td><code>focusedSpacing</code></td><td></td><td>Extra spacing around focused item (default: 0)</td></tr>
+                <tr><td><code>beforeFocusOffset</code></td><td></td><td>Offset for items before focus (default: 0)</td></tr>
+                <tr><td><code>focusedOffsetX/Y</code></td><td></td><td>Position offset for focused item (default: 0)</td></tr>
+                <tr><td><code>focusedBackground</code></td><td></td><td>Background image binding for focus</td></tr>
+                <tr><td><code>backgroundOpacity</code></td><td></td><td>Background image opacity (default: 0.3)</td></tr>
+                <tr><td><code>backgroundTransitionSpeed</code></td><td></td><td>Crossfade duration in ms (default: 400)</td></tr>
+                <tr><td><code>selectionMode</code></td><td></td><td>"stationary" (default) or "moving"</td></tr>
+                <tr><td><code>horizontalAlign</code></td><td></td><td>"start" (default), "center", "end"</td></tr>
+                <tr><td><code>verticalAlign</code></td><td></td><td>"top" (default), "center", "bottom"</td></tr>
+                <tr><td><code>horizontalOffset</code></td><td></td><td>Offset from horizontal alignment (default: 0)</td></tr>
+                <tr><td><code>verticalOffset</code></td><td></td><td>Offset from vertical alignment (default: 0)</td></tr>
+                <tr><td><code>highlightBorderWidth</code></td><td></td><td>Focus border thickness (default: 3)</td></tr>
+            </table>
+        </section>
+
+        <!-- FIXED ELEMENTS -->
+        <section id="fixed-elements">
+            <h2>Fixed Elements</h2>
+            <p>Fixed elements are UI components that remain in place while game content scrolls. They provide essential app functionality—searching, filtering, adding games, and accessing settings. Fixed elements are organized into containers (like "topBar" and "bottomBar") that can have their own backgrounds and visibility settings.</p>
+            <p>Unlike card layers, fixed elements are <strong>functional components</strong> that the app renders with built-in behavior. You control their appearance and position, but the app handles their interaction logic.</p>
+            
+            <h3>Defining Fixed Containers</h3>
+            <p>Like cards, fixed containers can be defined in two ways:</p>
+            <ul>
+                <li><strong>Directly in <code>&lt;layout&gt;</code></strong> — Most common approach, keeps everything in one place</li>
+                <li><strong>In <code>&lt;elements&gt;</code></strong> — For complex themes, pre-define containers alongside your cards</li>
+            </ul>
+            
+            <pre><code class="language-xml">&lt;layout&gt;
+    &lt;!-- Main content (grid or carousel) --&gt;
+    &lt;grid ... /&gt;
+    
+    &lt;!-- Top bar --&gt;
+    &lt;fixed id="topBar" backgroundColor="#CC000000" height="72"&gt;
+        &lt;header x="16" y="8" anchor="topLeft" ... /&gt;
+        &lt;searchBar x="200" y="12" ... /&gt;
+        &lt;profileButton x="16" y="12" anchor="topRight" ... /&gt;
+    &lt;/fixed&gt;
+    
+    &lt;!-- Bottom bar --&gt;
+    &lt;fixed id="bottomBar"&gt;
+        &lt;filterButton x="100" y="24" anchor="bottomRight" ... /&gt;
+        &lt;addButton x="16" y="24" anchor="bottomRight" ... /&gt;
+    &lt;/fixed&gt;
+&lt;/layout&gt;</code></pre>
+
+            <h3>Fixed Container Attributes</h3>
+            <p>Fixed containers group related UI elements that stay in place while content scrolls. Typical uses include top bars (header, search, profile) and bottom bars (filter, add buttons). You can have multiple containers with different backgrounds and visibility settings for portrait/landscape modes.</p>
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>id</code></td><td>✓</td><td>Unique identifier for the container</td></tr>
+                <tr><td><code>backgroundColor</code></td><td></td><td>Container background (ARGB, null = transparent)</td></tr>
+                <tr><td><code>height</code></td><td></td><td>Container height (auto if omitted)</td></tr>
+                <tr><td><code>padding</code></td><td></td><td>Internal padding</td></tr>
+                <tr><td><code>visibility</code></td><td></td><td>"portrait", "landscape", or "always" (default)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Background corner radius (default: 0)</td></tr>
+            </table>
+
+            <h3 id="header-element">Header</h3>
+            <p>The <code>&lt;header&gt;</code> element displays app branding and library statistics. It automatically shows the app name with gradient styling, current theme name, and game counts (total and installed). Each part can be toggled on/off. Place it in a top bar container for consistent positioning across orientations.</p>
+            <pre><code class="language-xml">&lt;header x="16" y="8"
+        anchor="topLeft"
+        textColor="#FFFFFFFF"
+        showAppName="true"
+        showThemeName="false"
+        showGameCount="true"
+        textSize="14"
+        fontWeight="bold"
+        textShadowColor="#AA000000"
+        textShadowRadius="4"
+        textShadowOffsetX="1"
+        textShadowOffsetY="2" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>showAppName</code></td><td></td><td>Display "GameNative" with gradient (default: true)</td></tr>
+                <tr><td><code>showThemeName</code></td><td></td><td>Display current theme name (default: true)</td></tr>
+                <tr><td><code>showGameCount</code></td><td></td><td>Display game/installed counts (default: true)</td></tr>
+                <tr><td><code>textColor</code></td><td></td><td>Text color (ARGB, default: white)</td></tr>
+                <tr><td><code>textSize</code></td><td></td><td>Font size (default: 14)</td></tr>
+                <tr><td><code>fontWeight</code></td><td></td><td>"bold" (default), "normal", "medium", etc.</td></tr>
+                <tr><td><code>backgroundColor</code></td><td></td><td>Background color (null = transparent)</td></tr>
+                <tr><td><code>padding</code></td><td></td><td>Internal padding (default: 8)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Background corner radius (default: 0)</td></tr>
+                <tr><td><code>textShadowColor</code></td><td></td><td>Shadow color (ARGB)</td></tr>
+                <tr><td><code>textShadowRadius</code></td><td></td><td>Shadow blur radius (default: 0)</td></tr>
+                <tr><td><code>textShadowOffsetX/Y</code></td><td></td><td>Shadow offset (default: 0)</td></tr>
+            </table>
+
+            <h3 id="search-element">SearchBar</h3>
+            <p>The <code>&lt;searchBar&gt;</code> element provides game filtering functionality. Users can type to filter games by name. The <code>collapsible</code> option shrinks it to an icon when inactive, saving space in compact layouts. It expands when focused or when text is entered.</p>
+            <pre><code class="language-xml">&lt;searchBar navigationId="searchBtn"
+           x="200" y="12"
+           width="400" height="48"
+           anchor="topLeft"
+           backgroundColor="#FF1E1E1E"
+           textColor="#FFFFFFFF"
+           borderRadius="24"
+           collapsible="true"
+           expandDirection="right"
+           highlightOpacity="0.8"
+           highlightBorderWidth="2"
+           navigateRight="profileBtn"
+           navigateDown="grid" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>width</code>, <code>height</code></td><td>✓</td><td>Search bar dimensions</td></tr>
+                <tr><td><code>backgroundColor</code></td><td></td><td>Background color (ARGB)</td></tr>
+                <tr><td><code>textColor</code></td><td></td><td>Text/icon color (ARGB)</td></tr>
+                <tr><td><code>borderRadius</code></td><td></td><td>Corner radius in dp (default: 8)</td></tr>
+                <tr><td><code>collapsible</code></td><td></td><td>Collapse to icon when inactive (default: false)</td></tr>
+                <tr><td><code>expandDirection</code></td><td></td><td>"left" (default) or "right" expansion</td></tr>
+            </table>
+
+            <h3 id="button-elements">Button Elements</h3>
+            <p>Button elements provide the main interactive controls for your theme. Each button has built-in functionality—you customize their appearance and position while the app handles click behavior. All buttons support controller navigation with customizable highlight styling.</p>
+            
+            <h4>ProfileButton</h4>
+            <p>The <code>&lt;profileButton&gt;</code> opens the user profile/settings screen. It displays the user's Steam avatar when logged in, or a default icon otherwise. Typically placed in the top-right corner of the interface.</p>
+            <pre><code class="language-xml">&lt;profileButton navigationId="profileBtn"
+               x="16" y="12"
+               anchor="topRight"
+               size="48"
+               iconSize="36"
+               padding="6"
+               backgroundColor="#66808080"
+               cornerRadius="24"
+               highlightBorderWidth="2"
+               navigateLeft="searchBtn" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>size</code></td><td></td><td>Button container size in dp (default: 48)</td></tr>
+                <tr><td><code>iconSize</code></td><td></td><td>Profile icon size in dp (default: 24)</td></tr>
+                <tr><td><code>padding</code></td><td></td><td>Internal padding (default: 8)</td></tr>
+                <tr><td><code>backgroundColor</code></td><td></td><td>Background color (ARGB)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Corner radius (default: 12, size/2 = circle)</td></tr>
+            </table>
+
+            <h4>FilterButton &amp; AddButton</h4>
+            <p>The <code>&lt;filterButton&gt;</code> opens a bottom sheet for filtering and sorting games by various criteria (installed status, compatibility, etc.). The <code>&lt;addButton&gt;</code> opens a dialog to add custom (non-Steam) games to the library. Both support <code>expanded</code> mode which shows text labels alongside icons.</p>
+            <pre><code class="language-xml">&lt;filterButton navigationId="filterBtn"
+              x="100" y="24"
+              anchor="bottomRight"
+              expanded="true"
+              size="56"
+              iconSize="24"
+              backgroundColor="#00000000"
+              iconColor="#FFFFFFFF"
+              cornerRadius="16"
+              padding="0 20"
+              textShadowColor="#AA000000"
+              textShadowRadius="4"
+              navigateUp="grid"
+              navigateRight="addBtn" /&gt;
+
+&lt;addButton navigationId="addBtn"
+           x="16" y="24"
+           anchor="bottomRight"
+           expanded="false"
+           size="56"
+           iconSize="24"
+           cornerRadius="28"
+           navigateLeft="filterBtn" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>expanded</code></td><td></td><td>Show text label (true) or icon only (default: filterBtn=true, addBtn=false)</td></tr>
+                <tr><td><code>size</code></td><td></td><td>Button size in dp (default: 56)</td></tr>
+                <tr><td><code>iconSize</code></td><td></td><td>Icon size inside button (default: 24)</td></tr>
+                <tr><td><code>backgroundColor</code></td><td></td><td>Background color (ARGB, null = theme primary)</td></tr>
+                <tr><td><code>iconColor</code></td><td></td><td>Icon tint color (ARGB, null = theme onPrimary)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Corner radius (default: 16, size/2 = circle)</td></tr>
+                <tr><td><code>padding</code></td><td></td><td>CSS-like padding: "all" or "vertical horizontal"</td></tr>
+                <tr><td><code>textShadowColor</code></td><td></td><td>Text shadow color (for expanded mode)</td></tr>
+                <tr><td><code>textShadowRadius</code></td><td></td><td>Text shadow blur radius (default: 0)</td></tr>
+                <tr><td><code>textShadowOffsetX/Y</code></td><td></td><td>Text shadow offset (default: 0)</td></tr>
+            </table>
+
+            <h3 id="other-fixed">Other Fixed Elements</h3>
+            <p>Beyond the functional buttons, you can add static decorative and informational elements to your fixed containers. These elements don't have built-in click behavior—they're purely visual, letting you create custom layouts with backgrounds, logos, and additional information.</p>
+
+            <h4>SystemTime</h4>
+            <p>The <code>&lt;systemTime&gt;</code> element displays the device's current time. It updates automatically and supports both 12-hour (with AM/PM) and 24-hour formats. Ideal for console-style interfaces where users want to see the time without leaving the app.</p>
+            <pre><code class="language-xml">&lt;systemTime x="24" y="24"
+            anchor="topRight"
+            textSize="18"
+            textColor="#FFFFFFFF"
+            fontWeight="medium"
+            use24Hour="false"
+            textShadowColor="#AA000000"
+            textShadowRadius="4"
+            textShadowOffsetX="1"
+            textShadowOffsetY="2" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>textSize</code></td><td></td><td>Font size in sp (default: 16)</td></tr>
+                <tr><td><code>textColor</code></td><td></td><td>Text color (ARGB, default: white)</td></tr>
+                <tr><td><code>fontWeight</code></td><td></td><td>"normal" (default), "bold", "medium", etc.</td></tr>
+                <tr><td><code>use24Hour</code></td><td></td><td>24-hour format (true) or 12-hour with AM/PM (default: false)</td></tr>
+                <tr><td><code>textShadowColor</code></td><td></td><td>Shadow color (ARGB)</td></tr>
+                <tr><td><code>textShadowRadius</code></td><td></td><td>Shadow blur radius (default: 0)</td></tr>
+                <tr><td><code>textShadowOffsetX/Y</code></td><td></td><td>Shadow offset (default: 0)</td></tr>
+            </table>
+
+            <h4>Static Image</h4>
+            <p>Static <code>&lt;image&gt;</code> elements in fixed containers display images that don't change with game selection. Use them for logos, decorative graphics, icons, or background elements. Images are loaded from the theme's <code>assets/</code> folder.</p>
+            <pre><code class="language-xml">&lt;image x="16" y="16"
+       width="120" height="40"
+       src="assets/logo.png"
+       scaleType="contain"
+       cornerRadius="8"
+       opacity="0.9"
+       anchor="topLeft" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>width</code>, <code>height</code></td><td>✓</td><td>Image dimensions</td></tr>
+                <tr><td><code>src</code></td><td>✓</td><td>Image path (relative to theme folder)</td></tr>
+                <tr><td><code>scaleType</code></td><td></td><td>"cover" (default), "contain", "fill", "none"</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Corner radius</td></tr>
+                <tr><td><code>opacity</code></td><td></td><td>Transparency (default: 1.0)</td></tr>
+            </table>
+
+            <h4>Static Video</h4>
+            <p>Static <code>&lt;video&gt;</code> elements play video content in fixed positions. Use them for animated backgrounds, promotional loops, or ambient effects. Videos are typically set to autoplay, loop, and mute to run continuously without user interaction.</p>
+            <pre><code class="language-xml">&lt;video x="0" y="0"
+       width="100%" height="100%"
+       src="assets/background.mp4"
+       poster="assets/poster.png"
+       autoplay="true" loop="true" muted="true"
+       cornerRadius="0" /&gt;</code></pre>
+
+            <h4>Static Text</h4>
+            <p>Static <code>&lt;text&gt;</code> elements display fixed text content. Use them for labels, section titles, instructions, or decorative text. Unlike text in cards, these don't use game data bindings—they show the same content regardless of which game is selected.</p>
+            <pre><code class="language-xml">&lt;text x="16" y="16"
+      text="My Library"
+      textSize="24"
+      color="#FFFFFFFF"
+      fontWeight="bold"
+      fontStyle="normal"
+      maxLines="1"
+      overflow="ellipsis"
+      opacity="1.0" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>text</code></td><td>✓</td><td>Text content to display</td></tr>
+                <tr><td><code>textSize</code></td><td></td><td>Font size in sp (default: 14)</td></tr>
+                <tr><td><code>color</code></td><td></td><td>Text color (ARGB, default: white)</td></tr>
+                <tr><td><code>fontWeight</code></td><td></td><td>"normal" (default), "bold", "medium", "semibold"</td></tr>
+                <tr><td><code>fontStyle</code></td><td></td><td>"normal" (default) or "italic"</td></tr>
+                <tr><td><code>textAlign</code></td><td></td><td>"left" (default), "center", "right"</td></tr>
+                <tr><td><code>maxLines</code></td><td></td><td>Maximum lines (null = unlimited)</td></tr>
+                <tr><td><code>overflow</code></td><td></td><td>"ellipsis" (default), "clip", "visible"</td></tr>
+                <tr><td><code>opacity</code></td><td></td><td>Transparency (default: 1.0)</td></tr>
+            </table>
+
+            <h4>Rect (Background/Overlay)</h4>
+            <p>Static <code>&lt;rect&gt;</code> elements draw filled shapes in fixed positions. Use them for full-screen backgrounds, gradient overlays for text readability, divider lines, or decorative shapes. Gradient rects are particularly useful for fading backgrounds from solid to transparent.</p>
+            <pre><code class="language-xml">&lt;rect x="0" y="0"
+      width="100%" height="80"
+      color="#CC000000"
+      cornerRadius="0"
+      borderWidth="1"
+      borderColor="#22FFFFFF"
+      gradientStart="#CC000000"
+      gradientEnd="#00000000"
+      gradientAngle="90"
+      anchor="topLeft" /&gt;</code></pre>
+            
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>x</code>, <code>y</code></td><td>✓</td><td>Position coordinates</td></tr>
+                <tr><td><code>width</code>, <code>height</code></td><td>✓</td><td>Rectangle dimensions</td></tr>
+                <tr><td><code>color</code></td><td></td><td>Fill color (ARGB, default: transparent)</td></tr>
+                <tr><td><code>cornerRadius</code></td><td></td><td>Corner radius</td></tr>
+                <tr><td><code>borderWidth</code></td><td></td><td>Border stroke width (default: 0)</td></tr>
+                <tr><td><code>borderColor</code></td><td></td><td>Border color (ARGB)</td></tr>
+                <tr><td><code>gradientStart</code></td><td></td><td>Gradient start color (overrides color)</td></tr>
+                <tr><td><code>gradientEnd</code></td><td></td><td>Gradient end color</td></tr>
+                <tr><td><code>gradientAngle</code></td><td></td><td>Gradient angle in degrees (default: 0)</td></tr>
+                <tr><td><code>opacity</code></td><td></td><td>Transparency (default: 1.0)</td></tr>
+            </table>
+
+            <h4>Shadow &amp; Backdrop (Fixed)</h4>
+            <p>Static <code>&lt;shadow&gt;</code> and <code>&lt;backdrop&gt;</code> elements work the same as their card layer counterparts but in fixed positions. Use shadows for depth effects on fixed UI elements, and backdrops for frosted glass panels or blur effects over scrolling content.</p>
+            <pre><code class="language-xml">&lt;!-- Drop shadow --&gt;
+&lt;shadow x="0" y="0" width="200" height="100"
+        radius="16" color="#66000000"
+        offsetX="0" offsetY="4" /&gt;
+
+&lt;!-- Blur backdrop --&gt;
+&lt;backdrop x="0" y="0" width="100%" height="100%"
+          blurRadius="20" tintColor="#44000000" /&gt;</code></pre>
+        </section>
+
+        <!-- BINDINGS -->
+        <section id="bindings">
+            <h2>Game Data Bindings</h2>
+            <p>Use these bindings to display dynamic game information in your theme. Reference them with the <code>@{binding.path}</code> syntax.</p>
+            
+            <table>
+                <tr><th>Binding</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>@{game.title}</code></td><td>String</td><td>Game name</td></tr>
+                <tr><td><code>@{game.cover}</code></td><td>URL</td><td>Icon/logo image</td></tr>
+                <tr><td><code>@{game.capsule}</code></td><td>URL</td><td>Portrait cover (600x900)</td></tr>
+                <tr><td><code>@{game.hero}</code></td><td>URL</td><td>Header banner (460x215)</td></tr>
+                <tr><td><code>@{game.libraryHero}</code></td><td>URL</td><td>Large banner (1920x620)</td></tr>
+                <tr><td><code>@{game.appId}</code></td><td>String</td><td>Steam App ID or custom ID</td></tr>
+            </table>
+
+            <h3>Status Bindings</h3>
+            <table>
+                <tr><th>Binding</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>@{game.isInstalled}</code></td><td>Boolean</td><td>"true" if game is installed</td></tr>
+                <tr><td><code>@{game.installStatus}</code></td><td>String</td><td>"Installed" or "Not Installed"</td></tr>
+                <tr><td><code>@{game.installStatus.color}</code></td><td>Color</td><td>Green or gray based on status</td></tr>
+                <tr><td><code>@{game.lastPlayed}</code></td><td>String</td><td>Last played timestamp</td></tr>
+            </table>
+
+            <h3>Compatibility Bindings</h3>
+            <table>
+                <tr><th>Binding</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>@{game.compatibility.label}</code></td><td>String</td><td>"Compatible", "Not Compatible", etc.</td></tr>
+                <tr><td><code>@{game.compatibility.color}</code></td><td>Color</td><td>Status color (green/red/gray)</td></tr>
+                <tr><td><code>@{game.compatibility.visible}</code></td><td>Boolean</td><td>"true" if status is known</td></tr>
+            </table>
+
+            <h3>Source Bindings</h3>
+            <table>
+                <tr><th>Binding</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>@{game.isSteam}</code></td><td>Boolean</td><td>"true" for Steam games</td></tr>
+                <tr><td><code>@{game.isCustom}</code></td><td>Boolean</td><td>"true" for custom games</td></tr>
+                <tr><td><code>@{game.source}</code></td><td>String</td><td>"steam" or "custom_game"</td></tr>
+            </table>
+
+            <h3>Using Bindings for Conditional Visibility</h3>
+            <p>The <code>visibleWhen</code> attribute uses the standard binding syntax. The element is shown only when the binding evaluates to <code>"true"</code>.</p>
+            <pre><code class="language-xml">&lt;!-- Show checkmark only when installed --&gt;
+&lt;text text="✓" visibleWhen="@{game.isInstalled}" /&gt;
+
+&lt;!-- Show Steam icon only for Steam games --&gt;
+&lt;image src="assets/steam.png" visibleWhen="@{game.isSteam}" /&gt;
+
+&lt;!-- Dynamic color from binding (these DO use @{...}) --&gt;
+&lt;text text="@{game.compatibility.label}" 
+      color="@{game.compatibility.color}" /&gt;</code></pre>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-info-circle"></i> Tip:</strong> All binding attributes use the same <code>@{...}</code> syntax consistently—<code>visibleWhen</code>, <code>text</code>, <code>src</code>, <code>color</code>, and more.
+            </div>
+        </section>
+
+        <!-- SYSTEM INFO -->
+        <section id="system-info">
+            <h2>System Information</h2>
+            <p>System-level information is displayed through dedicated UI elements rather than bindings. Here's how to show various system data:</p>
+            
+            <h3>App &amp; Library Info (Header Element)</h3>
+            <p>The <code>&lt;header&gt;</code> element provides built-in display of app and library information:</p>
+            
+            <table>
+                <tr><th>Attribute</th><th>Default</th><th>Description</th></tr>
+                <tr><td><code>showAppName</code></td><td>true</td><td>Displays "GameNative" with gradient styling</td></tr>
+                <tr><td><code>showThemeName</code></td><td>true</td><td>Displays "Theme: {current theme name}"</td></tr>
+                <tr><td><code>showGameCount</code></td><td>true</td><td>Displays "{total} Games • {installed} Installed"</td></tr>
+            </table>
+            
+            <pre><code class="language-xml">&lt;header x="16" y="8" anchor="topLeft"
+        textColor="#FFFFFFFF"
+        showAppName="true"
+        showThemeName="false"
+        showGameCount="true"
+        textSize="14" /&gt;</code></pre>
+
+            <h3>Current Time (SystemTime Element)</h3>
+            <p>The <code>&lt;systemTime&gt;</code> element displays the device's current time:</p>
+            
+            <table>
+                <tr><th>Attribute</th><th>Default</th><th>Description</th></tr>
+                <tr><td><code>textSize</code></td><td>16</td><td>Font size in sp</td></tr>
+                <tr><td><code>textColor</code></td><td>white</td><td>Text color (ARGB)</td></tr>
+                <tr><td><code>fontWeight</code></td><td>normal</td><td>"normal", "bold", "medium", etc.</td></tr>
+                <tr><td><code>use24Hour</code></td><td>false</td><td>Use 24-hour format (true) or 12-hour with AM/PM (false)</td></tr>
+            </table>
+            
+            <pre><code class="language-xml">&lt;systemTime x="24" y="24"
+            anchor="topRight"
+            textSize="18"
+            textColor="#FFFFFFFF"
+            fontWeight="medium"
+            use24Hour="false" /&gt;</code></pre>
+
+            <h3>Localized Strings</h3>
+            <p>Reference localized app strings using the <code>@string/</code> prefix:</p>
+            
+            <pre><code class="language-xml">&lt;button text="@string/open_button" ... /&gt;</code></pre>
+            
+            <p>You can also define custom strings in your theme's <code>locales/</code> folder:</p>
+            
+            <pre><code class="language-xml">&lt;!-- locales/default.xml --&gt;
+&lt;resources&gt;
+    &lt;string name="my_custom_label"&gt;Custom Text&lt;/string&gt;
+&lt;/resources&gt;</code></pre>
+        </section>
+
+        <!-- COLORS -->
+        <section id="colors">
+            <h2>System Colors</h2>
+            <p>Use Material Design system colors that automatically adapt to the app's theme:</p>
+            
+            <table>
+                <tr><th>Color Reference</th><th>Description</th></tr>
+                <tr><td><code>@color/primary</code></td><td>Primary brand color</td></tr>
+                <tr><td><code>@color/onPrimary</code></td><td>Text/icons on primary</td></tr>
+                <tr><td><code>@color/secondary</code></td><td>Secondary accent color</td></tr>
+                <tr><td><code>@color/onSecondary</code></td><td>Text/icons on secondary</td></tr>
+                <tr><td><code>@color/tertiary</code></td><td>Tertiary accent color</td></tr>
+                <tr><td><code>@color/onTertiary</code></td><td>Text/icons on tertiary</td></tr>
+                <tr><td><code>@color/background</code></td><td>Background color</td></tr>
+                <tr><td><code>@color/onBackground</code></td><td>Text/icons on background</td></tr>
+                <tr><td><code>@color/surface</code></td><td>Surface/card color</td></tr>
+                <tr><td><code>@color/onSurface</code></td><td>Text/icons on surface</td></tr>
+                <tr><td><code>@color/error</code></td><td>Error color</td></tr>
+                <tr><td><code>@color/onError</code></td><td>Text/icons on error</td></tr>
+            </table>
+
+            <pre><code class="language-xml">&lt;button backgroundColor="@color/primary"
+        textColor="@color/onPrimary" /&gt;</code></pre>
+
+            <h3>Color Format</h3>
+            <p>Colors use ARGB hex format: <code>#AARRGGBB</code></p>
+            <ul>
+                <li><code>#FFFFFFFF</code> - Opaque white</li>
+                <li><code>#88000000</code> - 53% black overlay</li>
+                <li><code>#00000000</code> - Fully transparent</li>
+                <li><code>#FF6C5CE7</code> - Opaque purple</li>
+            </ul>
+        </section>
+
+        <!-- NAVIGATION -->
+        <section id="navigation">
+            <h2>Navigation System</h2>
+            <p>The theme system supports controller/D-pad navigation between elements. <strong>Navigation is handled automatically</strong> based on element positions—the system determines which element to focus when pressing directional buttons. However, you can <strong>override automatic navigation</strong> when needed by using <code>navigationId</code> to identify elements and navigation attributes to define custom focus flow.</p>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-info-circle"></i> Tip:</strong> For most themes, you don't need to define navigation at all—the automatic system works well. Use custom navigation only when you need specific focus behavior that differs from the spatial default.
+            </div>
+            
+            <pre><code class="language-xml">&lt;!-- Define navigation flow --&gt;
+&lt;carousel navigationId="carousel"
+          navigateUp="profileBtn"
+          navigateRight="filterBtn" /&gt;
+
+&lt;profileButton navigationId="profileBtn"
+               navigateDown="carousel"
+               navigateRight="searchBtn" /&gt;
+
+&lt;searchBar navigationId="searchBtn"
+           navigateLeft="profileBtn"
+           navigateDown="carousel" /&gt;
+
+&lt;filterButton navigationId="filterBtn"
+              navigateUp="carousel"
+              navigateLeft="header"
+              navigateRight="addBtn" /&gt;</code></pre>
+
+            <h3>Navigation Attributes</h3>
+            <p>These attributes are <strong>all optional</strong>—use them only when you need to override automatic navigation behavior.</p>
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>navigationId</code></td><td></td><td>Unique ID for this element (needed only if referenced by other elements)</td></tr>
+                <tr><td><code>navigateUp</code></td><td></td><td>Override: target navigationId when pressing up</td></tr>
+                <tr><td><code>navigateDown</code></td><td></td><td>Override: target navigationId when pressing down</td></tr>
+                <tr><td><code>navigateLeft</code></td><td></td><td>Override: target navigationId when pressing left</td></tr>
+                <tr><td><code>navigateRight</code></td><td></td><td>Override: target navigationId when pressing right</td></tr>
+            </table>
+            <p><small>* Required if you want other elements to navigate to this one</small></p>
+
+            <h3>Highlight Styling</h3>
+            <p>Customize the focus indicator appearance:</p>
+            <table>
+                <tr><th>Attribute</th><th>Required</th><th>Description</th></tr>
+                <tr><td><code>highlightColor</code></td><td></td><td>Border color when focused (ARGB, null = system primary)</td></tr>
+                <tr><td><code>highlightOpacity</code></td><td></td><td>Border opacity (default: 0.8)</td></tr>
+                <tr><td><code>highlightBorderWidth</code></td><td></td><td>Border thickness in dp (default: 2)</td></tr>
+                <tr><td><code>highlightTransitionSpeed</code></td><td></td><td>Animation duration in ms (default: 200)</td></tr>
+            </table>
+        </section>
+
+        <!-- POSITIONING -->
+        <section id="positioning">
+            <h2>Positioning Reference</h2>
+            
+            <h3>Coordinate Systems</h3>
+            <p>Positioning works the same way for both card layers and fixed elements, just with different parent containers:</p>
+            
+            <table>
+                <tr><th>Context</th><th>Parent Container</th><th>Description</th></tr>
+                <tr><td><strong>Card Layers</strong></td><td>Card Canvas</td><td>x/y positions are relative to the card's bounds. Anchors work relative to the card.</td></tr>
+                <tr><td><strong>Fixed Elements</strong></td><td>Screen</td><td>x/y positions are relative to the screen. Anchors work relative to the screen edges.</td></tr>
+            </table>
+            
+            <h3>Anchor Points</h3>
+            <p>The <code>anchor</code> attribute determines the reference point for positioning within the parent container (card or screen). Anchors are fully supported for both card layers and fixed elements.</p>
+            
+            <table>
+                <tr><th>Anchor Value</th><th>Description</th></tr>
+                <tr><td><code>topLeft</code></td><td>Top-left corner (default)</td></tr>
+                <tr><td><code>topCenter</code></td><td>Top edge, centered horizontally</td></tr>
+                <tr><td><code>topRight</code></td><td>Top-right corner</td></tr>
+                <tr><td><code>centerLeft</code></td><td>Left edge, centered vertically</td></tr>
+                <tr><td><code>center</code></td><td>Center of element</td></tr>
+                <tr><td><code>centerRight</code></td><td>Right edge, centered vertically</td></tr>
+                <tr><td><code>bottomLeft</code></td><td>Bottom-left corner</td></tr>
+                <tr><td><code>bottomCenter</code></td><td>Bottom edge, centered horizontally</td></tr>
+                <tr><td><code>bottomRight</code></td><td>Bottom-right corner</td></tr>
+            </table>
+            
+            <pre><code class="language-xml">&lt;!-- Card layer: position from top-left of card --&gt;
+&lt;image x="10" y="20" anchor="topLeft" ... /&gt;
+
+&lt;!-- Card layer: position from bottom-right of card (e.g., installed checkmark) --&gt;
+&lt;text x="8" y="8" anchor="bottomRight" text="✓" ... /&gt;
+
+&lt;!-- Card layer: center horizontally within card --&gt;
+&lt;text x="0" y="10" anchor="topCenter" text="@{game.title}" ... /&gt;
+
+&lt;!-- Fixed element: position at bottom-right of screen, 16px from edges --&gt;
+&lt;addButton x="16" y="16" anchor="bottomRight" ... /&gt;
+
+&lt;!-- Fixed element: center horizontally at top of screen --&gt;
+&lt;header x="0" y="24" anchor="topCenter" ... /&gt;</code></pre>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-info-circle"></i> How anchors work:</strong> With <code>anchor="bottomRight"</code> and <code>x="8" y="8"</code>, the element is positioned 8px from the right edge and 8px from the bottom edge of the parent (card or screen).
+            </div>
+
+            <h3>Dimensions</h3>
+            <p>Sizes and positions can be specified in several formats:</p>
+            
+            <table>
+                <tr><th>Format</th><th>Example</th><th>Description</th></tr>
+                <tr><td>Pixels</td><td><code>120</code></td><td>Absolute pixel value</td></tr>
+                <tr><td>Percentage</td><td><code>50%</code></td><td>Relative to parent size</td></tr>
+                <tr><td>Full</td><td><code>100%</code></td><td>Fill parent dimension</td></tr>
+                <tr><td>Negative</td><td><code>-16</code></td><td>Offset from edge</td></tr>
+            </table>
+
+            <h3>Corner Radius (CSS-like)</h3>
+            <p>Corner radius uses CSS-like shorthand syntax:</p>
+            
+            <table>
+                <tr><th>Format</th><th>Example</th><th>Description</th></tr>
+                <tr><td>1 value</td><td><code>"12"</code></td><td>All corners 12dp</td></tr>
+                <tr><td>2 values</td><td><code>"12 0"</code></td><td>Top-left/bottom-right 12, top-right/bottom-left 0</td></tr>
+                <tr><td>4 values</td><td><code>"12 12 0 0"</code></td><td>Top-left, top-right, bottom-right, bottom-left</td></tr>
+            </table>
+            
+            <pre><code class="language-xml">&lt;!-- Rounded top only --&gt;
+&lt;rect cornerRadius="12 12 0 0" ... /&gt;
+
+&lt;!-- Rounded bottom only --&gt;
+&lt;rect cornerRadius="0 0 12 12" ... /&gt;</code></pre>
+
+            <h3>Visibility</h3>
+            <p>Control element visibility based on orientation:</p>
+            
+            <pre><code class="language-xml">&lt;!-- Only visible in portrait mode --&gt;
+&lt;text visibility="portrait" ... /&gt;
+
+&lt;!-- Only visible in landscape mode --&gt;
+&lt;image visibility="landscape" ... /&gt;
+
+&lt;!-- Always visible (default) --&gt;
+&lt;rect visibility="always" ... /&gt;</code></pre>
+
+            <h3>Z-Index (Stacking Order)</h3>
+            <p>Control which elements appear on top using <code>zIndex</code>. Higher values render on top:</p>
+            
+            <pre><code class="language-xml">&lt;!-- Background (behind everything) --&gt;
+&lt;rect zIndex="-1" ... /&gt;
+
+&lt;!-- Default layer --&gt;
+&lt;image zIndex="0" ... /&gt;
+
+&lt;!-- Overlay (on top) --&gt;
+&lt;text zIndex="1" ... /&gt;</code></pre>
+            
+            <h4>Relative vs Global Stacking</h4>
+            <p>The <code>zIndex</code> is <strong>relative to sibling elements</strong> within the same container, not global:</p>
+            <ul>
+                <li><strong>Card layers:</strong> zIndex determines stacking order among layers within that card</li>
+                <li><strong>Fixed container elements:</strong> zIndex determines stacking order among elements within that fixed container (e.g., topBar or bottomBar)</li>
+            </ul>
+            <p>However, the <strong>parent container's position</strong> in the layout affects overall visibility. For example, elements in a <code>bottomBar</code> fixed container will naturally render on top of elements in the main layout area.</p>
+            
+            <div class="alert-tip">
+                <strong><i class="fas fa-layer-group"></i> Note:</strong> When zIndex values are equal, elements render in declaration order (first declared = behind).
+            </div>
+        </section>
+
+        <!-- EXAMPLES -->
+        <section id="examples">
+            <h2>Complete Examples</h2>
+            
+            <h3>Minimal Grid Theme</h3>
+            <p>A simple theme with a grid of game covers:</p>
+            
+            <pre><code class="language-xml">&lt;!-- manifest.xml --&gt;
+&lt;manifest&gt;
+    &lt;id&gt;minimal-grid&lt;/id&gt;
+    &lt;title&gt;Minimal Grid&lt;/title&gt;
+    &lt;version&gt;1.0.0&lt;/version&gt;
+    &lt;engineVersion&gt;1.*&lt;/engineVersion&gt;
+    &lt;minAppVersion&gt;0.0.0&lt;/minAppVersion&gt;
+    &lt;theme source="/theme.xml" /&gt;
+&lt;/manifest&gt;</code></pre>
+
+            <pre><code class="language-xml">&lt;!-- theme.xml --&gt;
+&lt;theme&gt;
+    &lt;elements&gt;
+        &lt;card id="gameCard" width="100%" height="100%"&gt;
+            &lt;image x="0" y="0" width="100%" height="100%"
+                   src="@{game.capsule}" cornerRadius="8" scaleType="cover" /&gt;
+            &lt;text x="8" y="8" width="90%" anchor="bottomLeft"
+                  text="@{game.title}" textSize="12" color="#FFFFFFFF"
+                  maxLines="1" fontWeight="bold" /&gt;
+        &lt;/card&gt;
+    &lt;/elements&gt;
+    
+    &lt;layout&gt;
+        &lt;grid cellWidth="150" aspectRatio="1.5"
+              hSpacing="16" vSpacing="16"
+              padding="80 16"
+              selectionMode="moving" itemCard="gameCard" /&gt;
+        
+        &lt;fixed id="topBar" backgroundColor="#CC000000" height="72"&gt;
+            &lt;header x="16" y="8" anchor="topLeft"
+                    textColor="#FFFFFFFF" showAppName="true" /&gt;
+            &lt;profileButton x="16" y="12" anchor="topRight" size="48" /&gt;
+        &lt;/fixed&gt;
+        
+        &lt;fixed id="bottomBar"&gt;
+            &lt;filterButton x="80" y="24" anchor="bottomRight" expanded="true" /&gt;
+            &lt;addButton x="16" y="24" anchor="bottomRight" /&gt;
+        &lt;/fixed&gt;
+    &lt;/layout&gt;
+&lt;/theme&gt;</code></pre>
+
+            <h3>Carousel with Hero Background</h3>
+            <p>A focused carousel that displays the selected game's artwork as a background:</p>
+            
+            <pre><code class="language-xml">&lt;theme&gt;
+    &lt;elements&gt;
+        &lt;card id="gameCard" width="200" height="300"&gt;
+            &lt;image x="0" y="0" width="100%" height="250"
+                   src="@{game.capsule}" cornerRadius="12" scaleType="cover" /&gt;
+            &lt;rect x="0" y="0" width="100%" height="250"
+                  color="#00000000" borderWidth="2" borderGradient="true"
+                  cornerRadius="12" focusOnly="true" /&gt;
+            &lt;text x="0" y="260" width="100%"
+                  text="@{game.title}" textSize="14" color="#FFFFFFFF"
+                  textAlign="center" maxLines="1"
+                  focusOnly="true" focusTransitionSpeed="200" /&gt;
+        &lt;/card&gt;
+    &lt;/elements&gt;
+    
+    &lt;layout&gt;
+        &lt;carousel centerFocus="true"
+                  verticalAlign="center"
+                  itemWidth="200" itemHeight="300"
+                  itemSpacing="20"
+                  focusedScale="1.15"
+                  unfocusedAlpha="0.6"
+                  selectionMode="stationary"
+                  itemCard="gameCard"
+                  focusedBackground="@{game.libraryHero}"
+                  backgroundOpacity="0.4"
+                  backgroundTransitionSpeed="400"
+                  highlightBorderWidth="0" /&gt;
+        
+        &lt;fixed id="topBar"&gt;
+            &lt;header x="24" y="24" anchor="topLeft"
+                    textColor="#FFFFFFFF" showGameCount="true"
+                    textShadowColor="#88000000" textShadowRadius="4" /&gt;
+            &lt;systemTime x="24" y="24" anchor="topRight"
+                        textSize="18" textColor="#FFFFFFFF" /&gt;
+        &lt;/fixed&gt;
+        
+        &lt;fixed id="bottomBar"&gt;
+            &lt;filterButton x="100" y="24" anchor="bottomRight" expanded="true"
+                          backgroundColor="#00000000" iconColor="#FFFFFFFF" /&gt;
+            &lt;addButton x="16" y="24" anchor="bottomRight"
+                       backgroundColor="#00000000" iconColor="#FFFFFFFF" /&gt;
+        &lt;/fixed&gt;
+    &lt;/layout&gt;
+&lt;/theme&gt;</code></pre>
+        </section>
+
+        <!-- BUILT-IN THEMES -->
+        <section id="built-in-themes">
+            <h2>Built-in Theme Examples</h2>
+            <p>Explore these built-in themes as reference implementations. Each demonstrates different layout styles and features:</p>
+            
+            <div class="card-grid">
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/ListView" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-list"></i> ListView</h4>
+                    <p>Traditional list layout with game details, install status, and quick actions.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/CapsuleGrid" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-th"></i> CapsuleGrid</h4>
+                    <p>Portrait cover grid layout with compatibility badges.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/HeroGrid" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-image"></i> HeroGrid</h4>
+                    <p>Landscape hero banner grid with title overlays.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/Carousel" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-arrows-alt-h"></i> Carousel</h4>
+                    <p>Horizontal carousel with focused scaling and hero backgrounds.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/Showcase" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-arrows-alt-v"></i> Showcase</h4>
+                    <p>Vertical carousel with detailed game info on focus.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/SwitchinItUp" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-gamepad"></i> SwitchinItUp</h4>
+                    <p>Switch-style horizontal carousel with square covers and gradient borders.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/SquareGrid" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-th-large"></i> SquareGrid</h4>
+                    <p>Square cover grid layout for a clean, uniform appearance.</p>
+                </a>
+                
+                <a href="https://github.com/oxters168/Pluvia/tree/main/app/src/main/assets/Themes/Snowcase" class="theme-card" target="_blank">
+                    <h4><i class="fas fa-snowflake"></i> Snowcase</h4>
+                    <p>Festive variant of Showcase with custom clock icons.</p>
+                </a>
+            </div>
+
+            <div class="alert-tip">
+                <strong><i class="fas fa-download"></i> Getting Started:</strong> Download any built-in theme folder, modify it to your liking, then use the <strong>"Add Theme"</strong> button in the app's theme selector to add your custom theme. Once added, the theme path is remembered—you can make further changes to your theme files and simply restart the app to see updates, without needing to re-add the theme.
+            </div>
+        </section>
+
+        <footer style="padding: 40px 0; text-align: center; color: #666; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px;">
+            <p>GameNative Theme Engine v1.0.0</p>
+            <p><a href="https://github.com/oxters168/Pluvia" target="_blank"><i class="fab fa-github"></i> View on GitHub</a></p>
+        </footer>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+    <script>
+        hljs.highlightAll();
+        
+        // Smooth scroll and active nav
+        document.querySelectorAll('#sidebar nav a').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Mobile: close sidebar
+                    document.getElementById('sidebar').classList.remove('show');
+                }
+            });
+        });
+        
+        // Update active nav on scroll
+        const sections = document.querySelectorAll('section[id]');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const top = section.offsetTop - 100;
+                if (scrollY >= top) current = section.getAttribute('id');
+            });
+            document.querySelectorAll('#sidebar nav a').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

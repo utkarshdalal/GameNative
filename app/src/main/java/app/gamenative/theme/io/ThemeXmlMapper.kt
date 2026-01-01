@@ -564,7 +564,7 @@ object ThemeXmlMapper {
         declarationOrder = declarationOrder,
         focusOnly = n.attributes["focusOnly"]?.toBooleanStrictOrNull() ?: false,
         focusTransitionSpeed = resolveInt(n, "focusTransitionSpeed", tree) ?: 150,
-        visibleWhen = n.attributes["visibleWhen"],
+        visibleWhen = n.attributes["visibleWhen"]?.let { extractBindingPath(it) },
     )
 
     private fun parseLayer(n: XmlNode, tree: ThemeTree, declarationOrder: Int): Layer? {
@@ -1385,6 +1385,11 @@ object ThemeXmlMapper {
     
     private fun isBinding(s: String): Boolean = VariableResolver.isBinding(s)
     private fun bindingPath(s: String): String = VariableResolver.getBindingPath(s)
+    
+    /** Extract binding path from @{...} syntax for visibleWhen attributes. */
+    private fun extractBindingPath(s: String): String {
+        return if (isBinding(s)) bindingPath(s) else s
+    }
     
     /** 
      * Resolve a raw string value using the variable resolver.
