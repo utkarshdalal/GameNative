@@ -1065,13 +1065,13 @@ fun preLaunchApp(
                 }
             }
         }
-        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm.tzst")) {
+        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm-20260101.tzst")) {
             setLoadingMessage("Downloading extras")
             SteamService.downloadFile(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
-                "experimental-drm.tzst"
+                "experimental-drm-20260101.tzst"
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
