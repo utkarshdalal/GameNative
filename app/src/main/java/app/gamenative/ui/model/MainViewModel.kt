@@ -76,17 +76,17 @@ class MainViewModel @Inject constructor(
     }
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
-        Timber.i("Main: Received is connected")
+        Timber.tag("MainViewModel").i("Received is connected")
         _state.update { it.copy(isSteamConnected = true) }
     }
 
     private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = {
-        Timber.i("Main: Received disconnected from Steam")
+        Timber.tag("MainViewModel").i("Received disconnected from Steam")
         _state.update { it.copy(isSteamConnected = false) }
     }
 
     private val onLoggingIn: (SteamEvent.LogonStarted) -> Unit = {
-        Timber.i("Main: Received logon started")
+        Timber.tag("MainViewModel").i("Received logon started")
     }
 
     private val onBackPressed: (AndroidEvent.BackPressed) -> Unit = {
@@ -96,23 +96,23 @@ class MainViewModel @Inject constructor(
     }
 
     private val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = {
-        Timber.i("Main: Received logon ended")
+        Timber.tag("MainViewModel").i("Received logon ended")
         viewModelScope.launch {
             _uiEvent.send(MainUiEvent.OnLogonEnded(it.loginResult))
         }
     }
 
     private val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {
-        Timber.i("Main: Received logged out")
+        Timber.tag("MainViewModel").i("Received logged out")
         viewModelScope.launch {
             _uiEvent.send(MainUiEvent.OnLoggedOut)
         }
     }
 
     private val onExternalGameLaunch: (AndroidEvent.ExternalGameLaunch) -> Unit = {
-        Timber.i("[MainViewModel]: Received external game launch event for app ${it.appId}")
+        Timber.tag("MainViewModel").i("Received external game launch event for app ${it.appId}")
         viewModelScope.launch {
-            Timber.i("[MainViewModel]: Sending ExternalGameLaunch UI event for app ${it.appId}")
+            Timber.tag("MainViewModel").i("Sending ExternalGameLaunch UI event for app ${it.appId}")
             _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId))
         }
     }
@@ -364,7 +364,7 @@ class MainViewModel @Inject constructor(
                         if (!shouldLaunchRealSteam) {
                             SteamService.notifyRunningProcesses(it)
                         } else {
-                            Timber.i("Skipping Steam process notification - real Steam will handle this")
+                            Timber.tag("MainViewModel").i("Skipping Steam process notification - real Steam will handle this")
                         }
                     }
                 }
@@ -380,7 +380,7 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(false)
 
             // You could also show an error dialog here if needed
-            Timber.e("Game launch error: $error")
+            Timber.tag("MainViewModel").e("Game launch error: $error")
         }
     }
 
