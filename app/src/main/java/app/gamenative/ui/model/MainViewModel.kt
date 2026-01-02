@@ -76,17 +76,17 @@ class MainViewModel @Inject constructor(
     }
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
-        Timber.i("Received is connected")
+        Timber.i("Main: Received is connected")
         _state.update { it.copy(isSteamConnected = true) }
     }
 
     private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = {
-        Timber.i("Received disconnected from Steam")
+        Timber.i("Main: Received disconnected from Steam")
         _state.update { it.copy(isSteamConnected = false) }
     }
 
     private val onLoggingIn: (SteamEvent.LogonStarted) -> Unit = {
-        Timber.i("Received logon started")
+        Timber.i("Main: Received logon started")
     }
 
     private val onBackPressed: (AndroidEvent.BackPressed) -> Unit = {
@@ -96,14 +96,14 @@ class MainViewModel @Inject constructor(
     }
 
     private val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = {
-        Timber.i("Received logon ended")
+        Timber.i("Main: Received logon ended")
         viewModelScope.launch {
             _uiEvent.send(MainUiEvent.OnLogonEnded(it.loginResult))
         }
     }
 
     private val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {
-        Timber.i("Received logged out")
+        Timber.i("Main: Received logged out")
         viewModelScope.launch {
             _uiEvent.send(MainUiEvent.OnLoggedOut)
         }
@@ -152,6 +152,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
+        PluviaApp.events.off<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
     }

@@ -96,7 +96,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
-        Timber.i("Received is connected")
+        Timber.i("UserLogin: Received is connected")
 
         _loginState.update { currentState ->
             currentState.copy(
@@ -107,14 +107,14 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = {
-        Timber.i("Received disconnected from Steam")
+        Timber.i("UserLogin: Received disconnected from Steam")
         _loginState.update { currentState ->
             currentState.copy(isSteamConnected = false)
         }
     }
 
     private val onRemoteDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = {
-        Timber.i("Disconnected from steam remotely")
+        Timber.i("UserLogin: Disconnected from steam remotely")
         _loginState.update { it.copy(isSteamConnected = false) }
     }
 
@@ -125,7 +125,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = {
-        Timber.i("Received login result: ${it.loginResult}")
+        Timber.i("UserLogin: Received login result: ${it.loginResult}")
         val prevState = _loginState.value
         _loginState.update { currentState ->
             currentState.copy(
