@@ -74,10 +74,6 @@ data class ContainerData(
     val touchscreenMode: Boolean = false,
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
-    /** Emulate keyboard/mouse using controller sticks and button bindings **/
-    val emulateKeyboardMouse: Boolean = false,
-    /** Button->Binding name map (JSON string) for emulation UI persistence **/
-    val controllerEmulationBindings: String = "",
     val forceDlc: Boolean = false,
     val useLegacyDRM: Boolean = false,
     val sharpnessEffect: String = "None",
@@ -131,8 +127,6 @@ data class ContainerData(
                     "touchscreenMode" to state.touchscreenMode,
                     "useDRI3" to state.useDRI3,
                     "language" to state.language,
-                    "emulateKeyboardMouse" to state.emulateKeyboardMouse,
-                    "controllerEmulationBindings" to state.controllerEmulationBindings,
                     "forceDlc" to state.forceDlc,
                     "useLegacyDRM" to state.useLegacyDRM,
                     "sharpnessEffect" to state.sharpnessEffect,
@@ -185,8 +179,6 @@ data class ContainerData(
                     touchscreenMode = savedMap["touchscreenMode"] as Boolean,
                     useDRI3 = (savedMap["useDRI3"] as? Boolean) ?: true,
                     language = (savedMap["language"] as? String) ?: "english",
-                    emulateKeyboardMouse = (savedMap["emulateKeyboardMouse"] as? Boolean) ?: false,
-                    controllerEmulationBindings = (savedMap["controllerEmulationBindings"] as? String) ?: "",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,
                     useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",

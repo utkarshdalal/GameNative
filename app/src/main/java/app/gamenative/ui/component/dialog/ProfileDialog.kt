@@ -1,11 +1,21 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AirplaneTicket
 import androidx.compose.material.icons.automirrored.filled.Help
@@ -29,12 +39,16 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +81,7 @@ fun ProfileDialog(
 
     var selectedItem by remember(state) { mutableStateOf(state) }
     var showSupporters by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -115,45 +130,103 @@ fun ProfileDialog(
                     }
                 }
 
-                /* Action Buttons */
+                /* Action Buttons - Scrollable */
                 Spacer(modifier = Modifier.height(16.dp))
-                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }) {
-                    Icon(imageVector = Icons.Default.Settings, contentDescription = null)
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = stringResource(R.string.settings_text))
-                }
-
-                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = stringResource(R.string.help_and_support))
-                }
-
-                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = stringResource(R.string.hall_of_fame))
-                }
-
-                if(isOffline) {
-                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
-                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = stringResource(R.string.go_online))
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    val dialogBackgroundColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    val showTopFade = remember {
+                        derivedStateOf { scrollState.value > 0 }
                     }
-                } else {
-                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                        SteamService.stop()
-                        onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
-                    }) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
-                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = stringResource(R.string.go_offline))
+                    val showBottomFade = remember {
+                        derivedStateOf {
+                            scrollState.value < scrollState.maxValue
+                        }
                     }
-                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Text(text = stringResource(R.string.log_out))
+                    
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .verticalScroll(scrollState)
+                            ) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }) {
+                                    Icon(imageVector = Icons.Default.Settings, contentDescription = null)
+                                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                                    Text(text = stringResource(R.string.settings_text))
+                                }
+
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
+                                    Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
+                                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                                    Text(text = stringResource(R.string.help_and_support))
+                                }
+
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }) {
+                                    Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
+                                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                                    Text(text = stringResource(R.string.hall_of_fame))
+                                }
+
+                                if(isOffline) {
+                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
+                                        Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
+                                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                                        Text(text = stringResource(R.string.go_online))
+                                    }
+                                } else {
+                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                                        SteamService.stop()
+                                        onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
+                                    }) {
+                                        Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
+                                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                                        Text(text = stringResource(R.string.go_offline))
+                                    }
+                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
+                                        Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                                        Text(text = stringResource(R.string.log_out))
+                                    }
+                                }
+                            }
+                            
+                            // Top fade gradient
+                            if (showTopFade.value) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .fillMaxWidth()
+                                        .height(24.dp)
+                                        .background(
+                                            brush = Brush.verticalGradient(
+                                                colors = listOf(
+                                                    dialogBackgroundColor,
+                                                    dialogBackgroundColor.copy(alpha = 0f)
+                                                )
+                                            )
+                                        )
+                                )
+                            }
+                            
+                            // Bottom fade gradient
+                            if (showBottomFade.value) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .height(24.dp)
+                                        .background(
+                                            brush = Brush.verticalGradient(
+                                                colors = listOf(
+                                                    dialogBackgroundColor.copy(alpha = 0f),
+                                                    dialogBackgroundColor
+                                                )
+                                            )
+                                        )
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -37,9 +37,7 @@ fun AccountButton(
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
 
     LaunchedEffect(Unit) {
-        SteamService.userSteamId?.let { id ->
-            persona = SteamService.getPersonaStateOf(id)
-        }
+        persona = SteamService.instance?.localPersona?.value
     }
 
     DisposableEffect(true) {

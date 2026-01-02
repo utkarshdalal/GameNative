@@ -60,8 +60,6 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[17];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
-    private Vibrator vibrator;
-    private VibrationEffect effect;
     private boolean showTouchscreenControls = true;
 
     @SuppressLint("ResourceType")
@@ -73,13 +71,11 @@ public class InputControlsView extends View {
         setBackgroundColor(0x00000000);
         setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-        effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
+        invalidate(); // Trigger redraw to show/hide grid background immediately
     }
 
     public void setOverlayOpacity(float overlayOpacity) {
@@ -160,8 +156,11 @@ public class InputControlsView extends View {
     public synchronized boolean addElement() {
         if (editMode && profile != null) {
             ControlElement element = new ControlElement(this);
-            element.setX(cursor.x);
-            element.setY(cursor.y);
+            // Calculate center position, snapped to grid
+            int centerX = (int)Mathf.roundTo(getMaxWidth() * 0.5f, snappingSize);
+            int centerY = (int)Mathf.roundTo(getMaxHeight() * 0.5f, snappingSize);
+            element.setX(centerX);
+            element.setY(centerY);
             profile.addElement(element);
             profile.save();
             selectElement(element);
@@ -360,7 +359,8 @@ public class InputControlsView extends View {
                     }
                     break;
                 }
-                case MotionEvent.ACTION_UP: {
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL: {
                     if (selectedElement != null && profile != null) profile.save();
                     if (moveCursor) cursor.set((int)Mathf.roundTo(event.getX(), snappingSize), (int)Mathf.roundTo(event.getY(), snappingSize));
                     invalidate();
@@ -384,9 +384,7 @@ public class InputControlsView extends View {
                     touchpadView.setPointerButtonLeftEnabled(true);
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
-                            if (vibrator != null) {
-                                vibrator.vibrate(effect);
-                            }
+                            performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                             handled = true;
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
@@ -427,7 +425,6 @@ public class InputControlsView extends View {
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
                 if (controllerBinding != null) {
                     int action = event.getAction();
-
                     if (action == KeyEvent.ACTION_DOWN) {
                         handleInputEvent(controllerBinding.getBinding(), true);
                     }

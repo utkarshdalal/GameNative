@@ -412,7 +412,11 @@ object SteamAutoCloud {
 
                     val uploadInfo = steamCloud.beginFileUpload(
                         appId = appInfo.id,
-                        filename = file.prefixPath,
+                        filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
+                            file.path + file.filename
+                        } else {
+                            file.prefixPath
+                        },
                         fileSize = fileSize,
                         rawFileSize = fileSize,
                         fileSha = file.sha,
@@ -513,7 +517,11 @@ object SteamAutoCloud {
                         transferSucceeded = uploadFileSuccess,
                         appId = appInfo.id,
                         fileSha = file.sha,
-                        filename = file.prefixPath,
+                        filename = if (appInfo.ufs.saveFilePatterns.isEmpty()) {
+                            file.path + file.filename
+                        } else {
+                            file.prefixPath
+                        },
                     ).await()
 
                     Timber.i("File ${file.prefixPath} commit success: $commitSuccess")

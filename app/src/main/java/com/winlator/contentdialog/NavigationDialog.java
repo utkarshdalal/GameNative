@@ -2,6 +2,7 @@ package com.winlator.contentdialog;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
@@ -19,12 +20,15 @@ import androidx.core.content.res.ResourcesCompat;
 
 import com.google.android.material.navigation.NavigationView;
 import app.gamenative.R;
+import com.winlator.inputcontrols.ControllerManager;
 
 public class NavigationDialog extends ContentDialog {
 
     public static final int ACTION_KEYBOARD = 1;
     public static final int ACTION_INPUT_CONTROLS = 2;
     public static final int ACTION_EXIT_GAME = 3;
+    public static final int ACTION_EDIT_CONTROLS = 4;
+    public static final int ACTION_EDIT_PHYSICAL_CONTROLLER = 5;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
@@ -47,12 +51,21 @@ public class NavigationDialog extends ContentDialog {
             grid.setColumnCount(2);
         }
 
-        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener);
-        addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, ACTION_INPUT_CONTROLS, listener);
-        addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener);
+        // Check if physical controller is connected
+        ControllerManager controllerManager = ControllerManager.getInstance();
+        controllerManager.scanForDevices();
+        boolean hasPhysicalController = !controllerManager.getDetectedDevices().isEmpty();
+
+        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, ACTION_INPUT_CONTROLS, listener,1.0f);
+        addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
+        if (hasPhysicalController) {
+            addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
+        }
+        addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }
 
-    private void addMenuItem(Context context, GridLayout grid, int iconRes, int titleRes, int itemId, NavigationListener listener) {
+    private void addMenuItem(Context context, GridLayout grid, int iconRes, int titleRes, int itemId, NavigationListener listener, float alpha) {
         int padding = dpToPx(5, context);
         LinearLayout layout = new LinearLayout(context);
         layout.setPadding(padding, padding, padding, padding);
@@ -68,6 +81,7 @@ public class NavigationDialog extends ContentDialog {
         if (icon.getBackground() != null) {
             icon.getBackground().setTint(context.getColor(R.color.navigation_dialog_item_color));
         }
+        icon.setAlpha(alpha); // Apply alpha for greying out
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
         lp.gravity = Gravity.CENTER_HORIZONTAL;
         icon.setLayoutParams(lp);
@@ -80,6 +94,7 @@ public class NavigationDialog extends ContentDialog {
         text.setGravity(Gravity.CENTER);
         text.setLines(2);
         text.setTextColor(context.getColor(R.color.navigation_dialog_item_color));
+        text.setAlpha(alpha); // Apply alpha for greying out
         Typeface tf = ResourcesCompat.getFont(context, R.font.bricolage_grotesque_regular);
         if (tf != null) {
             text.setTypeface(tf);

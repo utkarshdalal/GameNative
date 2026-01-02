@@ -4,7 +4,6 @@ agp = "8.8.0" # https://mvnrepository.com/artifact/com.android.application/com.a
 apache-compress = "1.27.1" # https://mvnrepository.com/artifact/org.apache.commons/commons-compress
 apng = "3.0.2" # https://mvnrepository.com/artifact/com.github.penfeizhou.android.animation/apng
 composeBom = "2025.01.01" # https://mvnrepository.com/artifact/androidx.compose/compose-bom
-material3Version = "1.3.1" # Minimum version for pull-to-refresh support
 coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
 coroutines = "1.10.1" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
 dagger-hilt = "2.55" # https://mvnrepository.com/artifact/com.google.dagger/hilt-android
@@ -12,6 +11,7 @@ dataStore = "1.1.2" # https://mvnrepository.com/artifact/androidx.datastore/data
 espressoCore = "3.6.1" # https://mvnrepository.com/artifact/androidx.test.espresso/espresso-core
 feature-delivery = "2.1.0" # https://mvnrepository.com/artifact/com.google.android.play/feature-delivery
 hiltNavigationCompose = "1.2.0" # https://mvnrepository.com/artifact/androidx.hilt/hilt-navigation-compose
+javasteam = "1.8.1-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
 json = "1.8.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
 junit = "4.13.2" # https://mvnrepository.com/artifact/junit/junit
 junitVersion = "1.2.1" # https://mvnrepository.com/artifact/androidx.test.ext/junit
@@ -20,24 +20,23 @@ kotlinter = "5.0.1" # https://plugins.gradle.org/plugin/org.jmailen.kotlinter
 ksp = "2.1.21-2.0.2" # https://mvnrepository.com/artifact/com.google.devtools.ksp/symbol-processing-api
 landscapistCoil = "2.4.6" # https://mvnrepository.com/artifact/com.github.skydoves/landscapist-coil
 lifecycleRuntimeKtx = "2.8.7" # https://mvnrepository.com/artifact/androidx.lifecycle/lifecycle-runtime-ktx
+material = "1.12.0" # https://mvnrepository.com/artifact/com.google.android.material/material
 material3Adaptive = "1.0.0" # https://mvnrepository.com/artifact/androidx.compose.material3.adaptive/adaptive-layout
 material3AdaptiveNavSuite = "1.3.1" # https://mvnrepository.com/artifact/androidx.compose.material3/material3-adaptive-navigation-suite
+material3Version = "1.3.1" # Minimum version for pull-to-refresh support
 materialKolor = "2.0.0" # https://mvnrepository.com/artifact/com.materialkolor/material-kolor-android
+mockito = "5.14.2" # https://mvnrepository.com/artifact/org.mockito/mockito-core
+mockitoKotlin = "5.3.1" # https://mvnrepository.com/artifact/org.mockito.kotlin/mockito-kotlin
 navigation-compose = "2.8.6" # https://mvnrepository.com/artifact/androidx.navigation/navigation-compose
 protobuf = "4.31.1" # https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
-robolectric = "4.14"
-mockito = "5.14.2"
-mockitoKotlin = "5.3.1"
+robolectric = "4.14" # https://mvnrepository.com/artifact/org.robolectric/robolectric
 room-runtime = "2.8.0-rc02" # https://mvnrepository.com/artifact/androidx.room/room-runtime
 runner = "1.6.2" # https://mvnrepository.com/artifact/androidx.test/runner
 settings = "2.10.0" # https://github.com/alorma/Compose-Settings/releases
 spongycastle = "1.58.0.0" # https://mvnrepository.com/artifact/com.madgag.spongycastle/prov
-steamkit = "1.8.0-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
 timber = "5.0.1" # https://mvnrepository.com/artifact/com.jakewharton.timber/timber
 zstd-jni = "1.5.7-5" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
-zxing = "3.5.3"
-material = "1.12.0"
-constraintlayoutComposeAndroid = "1.1.1" # https://mvnrepository.com/artifact/com.google.zxing/core
+zxing = "3.5.3" # https://mvnrepository.com/artifact/com.google.zxing/core
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -54,35 +53,32 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room-runtime" }
 androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room-runtime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room-runtime" }
+
 # TODO: Remove 'version' once 1.8.0 is rolled into stable BOM, see https://developer.android.com/jetpack/androidx/releases/compose-ui
 #   This fixes `Placement happened before lookahead` crash when animating lists items.
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version = "1.8.0-beta01" }
+
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-apng = { group = "com.github.penfeizhou.android.animation", name = "apng", version.ref = "apng" }
 apache-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "apache-compress" }
+apng = { group = "com.github.penfeizhou.android.animation", name = "apng", version.ref = "apng" }
 compose-settings-ui = { module = "com.github.alorma.compose-settings:ui-tiles", version.ref = "settings" }
 compose-settings-ui-extended = { module = "com.github.alorma.compose-settings:ui-tiles-extended", version.ref = "settings" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 feature-delivery = { module = "com.google.android.play:feature-delivery-ktx", version.ref = "feature-delivery" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "dagger-hilt" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "dagger-hilt" }
+javasteam = { group = "in.dragonbra", name = "javasteam", version.ref = "javasteam" }
+javasteam-depotdownloader = { group = "in.dragonbra", name = "javasteam-depotdownloader", version.ref = "javasteam" }
 jetbrains-kotlinx-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "json" }
 kotlin-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 landscapist-coil = { module = "com.github.skydoves:landscapist-coil", version.ref = "landscapistCoil" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 spongycastle = { group = "com.madgag.spongycastle", name = "prov", version.ref = "spongycastle" }
-#steamkit = { group = "in.dragonbra", name = "javasteam", version.ref = "steamkit" }
-steamkit = { group = "io.github.utkarshdalal", name = "javasteam", version.ref = "steamkit" }
-steamkit-tf = { group = "in.dragonbra", name = "javasteam-tf", version.ref = "steamkit" }
-steamkit-dota2 = { group = "in.dragonbra", name = "javasteam-dota2", version.ref = "steamkit" }
-#steamkit-depotdownloader = { group = "in.dragonbra", name = "javasteam-depotdownloader", version.ref = "steamkit" }
-steamkit-depotdownloader = { group = "io.github.utkarshdalal", name = "javasteam-depotdownloader", version.ref = "steamkit" }
-steamkit-deadlock = { group = "in.dragonbra", name = "javasteam-deadlock", version.ref = "steamkit" }
-steamkit-cs = { group = "in.dragonbra", name = "javasteam-cs", version.ref = "steamkit" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 zstd-jni = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstd-jni" }
 zxing = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
@@ -94,20 +90,19 @@ androidx-runner = { group = "androidx.test", name = "runner", version.ref = "run
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
-# Dependencies when locally building JavaSteam
+# Dependencies when locally building JavaSteam, check link below for current dependencies.
+# https://github.com/Longi94/JavaSteam/blob/master/gradle/libs.versions.toml
 commons-io = { module = "commons-io:commons-io", version = "2.18.0" } # https://mvnrepository.com/artifact/commons-io/commons-io
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" } # https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
 commons-validator = { module = "commons-validator:commons-validator", version = "1.9.0" } # https://mvnrepository.com/artifact/commons-validator/commons-validator
-okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.1.0"}
-okhttp-coroutines = { module = "com.squareup.okhttp3:okhttp-coroutines", version = "5.1.0"}
 ktor-engine = { module = "io.ktor:ktor-client-cio", version = "3.0.3" } # https://mvnrepository.com/artifact/io.ktor/ktor-client-cio
-xz = { module = "org.tukaani:xz", version = "1.10" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-androidx-constraintlayout-compose-android = { group = "androidx.constraintlayout", name = "constraintlayout-compose-android", version.ref = "constraintlayoutComposeAndroid" } # https://mvnrepository.com/artifact/org.tukaani/xz
+okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.1.0"} # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
+okhttp-coroutines = { module = "com.squareup.okhttp3:okhttp-coroutines", version = "5.1.0"} # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-coroutines
+xz = { module = "org.tukaani:xz", version = "1.10" } # https://mvnrepository.com/artifact/org.tukaani/xz
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -153,7 +148,7 @@ compose = [
 winlator = [
     "apache-compress",
 ]
-steamkit-dev = [
+javasteam-dev = [
     "commons-io",
     "commons-lang3",
     "commons-validator",

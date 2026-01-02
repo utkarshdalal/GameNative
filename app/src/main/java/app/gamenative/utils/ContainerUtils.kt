@@ -38,19 +38,20 @@ object ContainerUtils {
     fun setContainerDefaults(context: Context){
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
-            DefaultVersion.VARIANT = Container.GLIBC
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "turnip"
-            DefaultVersion.DXVK = "2.6.1-gplasync"
+            DefaultVersion.VARIANT = Container.BIONIC
+            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = "turnip25.3.0_R3_Auto"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
-            DefaultVersion.ASYNC_CACHE = "1"
+            DefaultVersion.ASYNC_CACHE = "0"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper-leegao"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "async-1.10.3"
-            DefaultVersion.VKD3D = "2.6"
+            DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT
             DefaultVersion.ASYNC_CACHE = "0"
         }
@@ -261,8 +262,6 @@ object ContainerUtils {
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
-            emulateKeyboardMouse = container.isEmulateKeyboardMouse(),
-            controllerEmulationBindings = container.getControllerEmulationBindings()?.toString() ?: "",
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -383,18 +382,11 @@ object ContainerUtils {
         container.setFEXCorePreset(containerData.fexcorePreset)
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
-        container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
-        try {
-            val bindingsStr = containerData.controllerEmulationBindings
-            if (bindingsStr.isNotEmpty()) {
-                container.setControllerEmulationBindings(org.json.JSONObject(bindingsStr))
-            }
-        } catch (_: Exception) {}
         try {
             container.language = containerData.language
         } catch (e: Exception) {
@@ -444,15 +436,6 @@ object ContainerUtils {
             container.saveData()
         }
         Timber.d("Set container.execArgs to '${containerData.execArgs}'")
-
-        // Generate/update per-container emulation profile when enabled
-        try {
-            if (containerData.emulateKeyboardMouse) {
-                generateOrUpdateEmulationProfile(context, container)
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to generate/update emulation profile for container %s", container.id)
-        }
     }
 
     private fun mapLanguageToLocale(language: String): String {
@@ -838,12 +821,6 @@ object ContainerUtils {
                     if (effectiveConfig != null) {
                         applyToContainer(context, container, effectiveConfig, saveToDisk = false)
                         Timber.i("Applied temporary config override to existing container for app $appId (in-memory only)")
-                        // Also refresh emulation profile in-memory if enabled
-                        try {
-                            if (effectiveConfig.emulateKeyboardMouse) {
-                                generateOrUpdateEmulationProfile(context, container)
-                            }
-                        } catch (_: Exception) {}
                     }
                 }
             }
@@ -859,480 +836,6 @@ object ContainerUtils {
 
             createNewContainer(context, appId, appId, containerManager, overrideConfig)
         }
-    }
-
-    /**
-     * Creates a default Virtual Gamepad profile programmatically when asset profiles are not available.
-     * This profile matches the structure of the Virtual Gamepad profile from assets.
-     */
-    private fun createDefaultVirtualGamepadProfile(context: Context, inputControlsManager: InputControlsManager): ControlsProfile {
-        Timber.w("Creating default Virtual Gamepad profile - asset profiles not available")
-
-        // Create profile with id 3 to match the Virtual Gamepad profile
-        val profile = ControlsProfile(context, 3)
-        profile.setName("Virtual Gamepad")
-        profile.setCursorSpeed(1.0f)
-
-        // Create the JSON structure matching the asset profile
-        val profileJSON = JSONObject().apply {
-            put("id", 3)
-            put("name", "Virtual Gamepad")
-            put("cursorSpeed", 1)
-
-            val elementsArray = JSONArray().apply {
-                // D_PAD element
-                put(JSONObject().apply {
-                    put("type", "D_PAD")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_DPAD_UP")
-                        put("GAMEPAD_DPAD_RIGHT")
-                        put("GAMEPAD_DPAD_DOWN")
-                        put("GAMEPAD_DPAD_LEFT")
-                    })
-                    put("scale", 0.85)
-                    put("x", 0.10784313827753067)
-                    put("y", 0.4)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON X
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_X")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.8133170008659363)
-                    put("y", 0.4)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON Y
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_Y")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.8721405267715454)
-                    put("y", 0.2666666746)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON A
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_A")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.8721405267715454)
-                    put("y", 0.5333333254)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON B
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_B")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.9309640526771545)
-                    put("y", 0.4)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON R2
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "RECT")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_R2")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 2.0)
-                    put("x", 0.93)
-                    put("y", 0.07)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON R1
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "RECT")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_R1")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.97)
-                    put("y", 0.2222222388)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON L1
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "RECT")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_L1")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.03)
-                    put("y", 0.2222222388)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON L2
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "RECT")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_L2")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 2.0)
-                    put("x", 0.07)
-                    put("y", 0.07)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON START
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "ROUND_RECT")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_START")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 0.85)
-                    put("x", 0.538807213306427)
-                    put("y", 0.9111111164093018)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 15)
-                })
-
-                // BUTTON SELECT
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "ROUND_RECT")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_SELECT")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 0.85)
-                    put("x", 0.46078431606292725)
-                    put("y", 0.9111111164093018)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 16)
-                })
-
-                // LEFT STICK
-                put(JSONObject().apply {
-                    put("type", "STICK")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_LEFT_THUMB_UP")
-                        put("GAMEPAD_LEFT_THUMB_RIGHT")
-                        put("GAMEPAD_LEFT_THUMB_DOWN")
-                        put("GAMEPAD_LEFT_THUMB_LEFT")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.21568627655506134)
-                    put("y", 0.7333333492279053)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // RIGHT STICK
-                put(JSONObject().apply {
-                    put("type", "STICK")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_RIGHT_THUMB_UP")
-                        put("GAMEPAD_RIGHT_THUMB_RIGHT")
-                        put("GAMEPAD_RIGHT_THUMB_DOWN")
-                        put("GAMEPAD_RIGHT_THUMB_LEFT")
-                    })
-                    put("scale", 1.0)
-                    put("x", 0.7843137383460999)
-                    put("y", 0.7333333492279053)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON L3
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_L3")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 0.85)
-                    put("x", 0.05)
-                    put("y", 0.7333333492279053)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-
-                // BUTTON R3
-                put(JSONObject().apply {
-                    put("type", "BUTTON")
-                    put("shape", "CIRCLE")
-                    put("bindings", JSONArray().apply {
-                        put("GAMEPAD_BUTTON_R3")
-                        put("NONE")
-                        put("NONE")
-                        put("NONE")
-                    })
-                    put("scale", 0.85)
-                    put("x", 0.95)
-                    put("y", 0.7333333492279053)
-                    put("toggleSwitch", false)
-                    put("text", "")
-                    put("iconId", 0)
-                })
-            }
-            put("elements", elementsArray)
-        }
-
-        // Write the profile file
-        val profileFile = ControlsProfile.getProfileFile(context, 3)
-        FileUtils.writeString(profileFile, profileJSON.toString())
-
-        // Reload profiles to include the new one
-        inputControlsManager.loadProfiles(false)
-
-        return profile
-    }
-
-    /**
-     * Create or update a per-container ControlsProfile that remaps on-screen controls and
-     * adds controller bindings for physical gamepads according to container.controllerEmulationBindings.
-     * The profile name is the container id as a string, so it can be looked up easily at runtime.
-     */
-    fun generateOrUpdateEmulationProfile(context: Context, container: Container): ControlsProfile {
-        val inputControlsManager = InputControlsManager(context)
-        var profiles = inputControlsManager.getProfiles(false)
-
-        // If profiles are empty, try to force reload from assets
-        if (profiles.isEmpty()) {
-            val profilesDir = InputControlsManager.getProfilesDir(context)
-            try {
-                // Force copy from assets if directory is empty
-                if (FileUtils.isEmpty(profilesDir)) {
-                    FileUtils.copy(context, "inputcontrols/profiles", profilesDir)
-                }
-                // Reload profiles
-                profiles = inputControlsManager.getProfiles(false)
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to reload profiles from assets")
-            }
-        }
-
-        // If profiles are still empty, create a default Virtual Gamepad profile
-        if (profiles.isEmpty()) {
-            val defaultProfile = createDefaultVirtualGamepadProfile(context, inputControlsManager)
-            profiles = inputControlsManager.getProfiles(false)
-        }
-
-        // Choose a base profile to clone from (Virtual Gamepad preferred)
-        val baseProfile = profiles.firstOrNull { it.id == 3 || it.name.contains("Virtual Gamepad", true) }
-            ?: profiles.getOrNull(2)
-            ?: profiles.firstOrNull()
-            ?: throw IllegalStateException(
-                "No control profiles available. Please ensure inputcontrols/profiles assets are present."
-            )
-        val baseFile = ControlsProfile.getProfileFile(context, baseProfile.id)
-
-        val profileJSONObject = org.json.JSONObject(FileUtils.readString(baseFile))
-        val elementsJSONArray = profileJSONObject.getJSONArray("elements")
-
-        val emuJson = try {
-            container.controllerEmulationBindings
-        } catch (_: Exception) {
-            null
-        }
-
-        fun optBinding(key: String, fallback: String): String {
-            return emuJson?.optString(key, fallback) ?: fallback
-        }
-
-        // Apply on-screen remaps similar to emulateKeyboardMouseOnscreen
-        for (i in 0 until elementsJSONArray.length()) {
-            val e = elementsJSONArray.getJSONObject(i)
-            val type = e.getString("type")
-            val bindings = e.getJSONArray("bindings")
-            if (type == "D_PAD") {
-                bindings.put(0, optBinding("DPAD_UP", bindings.getString(0)))
-                bindings.put(1, optBinding("DPAD_RIGHT", bindings.getString(1)))
-                bindings.put(2, optBinding("DPAD_DOWN", bindings.getString(2)))
-                bindings.put(3, optBinding("DPAD_LEFT", bindings.getString(3)))
-            } else if (type == "STICK") {
-                val b0 = bindings.getString(0)
-                if (b0.startsWith("GAMEPAD_LEFT_THUMB")) {
-                    bindings.put(0, "KEY_W")
-                    bindings.put(1, "KEY_D")
-                    bindings.put(2, "KEY_S")
-                    bindings.put(3, "KEY_A")
-                } else if (b0.startsWith("GAMEPAD_RIGHT_THUMB")) {
-                    bindings.put(0, "MOUSE_MOVE_UP")
-                    bindings.put(1, "MOUSE_MOVE_RIGHT")
-                    bindings.put(2, "MOUSE_MOVE_DOWN")
-                    bindings.put(3, "MOUSE_MOVE_LEFT")
-                }
-            } else if (type == "BUTTON") {
-                val b0 = bindings.getString(0)
-                val logical = when (b0) {
-                    "GAMEPAD_BUTTON_A" -> "A"
-                    "GAMEPAD_BUTTON_B" -> "B"
-                    "GAMEPAD_BUTTON_X" -> "X"
-                    "GAMEPAD_BUTTON_Y" -> "Y"
-                    "GAMEPAD_BUTTON_L1" -> "L1"
-                    "GAMEPAD_BUTTON_L2" -> "L2"
-                    "GAMEPAD_BUTTON_L3" -> "L3"
-                    "GAMEPAD_BUTTON_R1" -> "R1"
-                    "GAMEPAD_BUTTON_R2" -> "R2"
-                    "GAMEPAD_BUTTON_R3" -> "R3"
-                    "GAMEPAD_BUTTON_START" -> "START"
-                    "GAMEPAD_BUTTON_SELECT" -> "SELECT"
-                    else -> null
-                }
-                if (logical != null) {
-                    val mapped = optBinding(logical, "NONE")
-                    bindings.put(0, mapped)
-                    bindings.put(1, "NONE")
-                    bindings.put(2, "NONE")
-                    bindings.put(3, "NONE")
-                }
-            }
-        }
-
-        // Build controller bindings for connected gamepads
-        val controllersJSONArray = org.json.JSONArray()
-        val connected = com.winlator.inputcontrols.ExternalController.getControllers()
-
-        for (controller in connected) {
-            val controllerJSONObject = org.json.JSONObject()
-            controllerJSONObject.put("id", controller.id)
-            controllerJSONObject.put("name", controller.name)
-
-            val controllerBindingsJSONArray = org.json.JSONArray()
-
-            fun addBinding(keyCode: Int, bindingName: String?) {
-                if (bindingName == null || bindingName == "NONE" || bindingName.isEmpty()) return
-                val obj = org.json.JSONObject()
-                obj.put("keyCode", keyCode)
-                obj.put("binding", bindingName)
-                controllerBindingsJSONArray.put(obj)
-            }
-
-            // Left stick -> WASD
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Y, -1), "KEY_W")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_X, +1), "KEY_D")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Y, +1), "KEY_S")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_X, -1), "KEY_A")
-
-            // Right stick -> mouse
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_RZ, -1), "MOUSE_MOVE_UP")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Z, +1), "MOUSE_MOVE_RIGHT")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_RZ, +1), "MOUSE_MOVE_DOWN")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Z, -1), "MOUSE_MOVE_LEFT")
-
-            // D-Pad from HAT axes, allow overrides
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_Y, -1), optBinding("DPAD_UP", "KEY_UP"))
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_X, +1), optBinding("DPAD_RIGHT", "KEY_RIGHT"))
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_Y, +1), optBinding("DPAD_DOWN", "KEY_DOWN"))
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_X, -1), optBinding("DPAD_LEFT", "KEY_LEFT"))
-
-            // Buttons (allow overrides from emuJson)
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_A, optBinding("A", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_B, optBinding("B", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_X, optBinding("X", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_Y, optBinding("Y", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_L1, optBinding("L1", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_R1, optBinding("R1", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_L2, optBinding("L2", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_R2, optBinding("R2", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_THUMBL, optBinding("L3", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_THUMBR, optBinding("R3", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_START, optBinding("START", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_SELECT, optBinding("SELECT", "NONE"))
-
-            controllerJSONObject.put("controllerBindings", controllerBindingsJSONArray)
-            controllersJSONArray.put(controllerJSONObject)
-        }
-
-        if (controllersJSONArray.length() > 0) {
-            profileJSONObject.put("controllers", controllersJSONArray)
-        }
-
-        // Create/find per-container profile by name = container id as string
-        val profileName = container.id.toString()
-        val targetProfile = profiles.firstOrNull { it.name == profileName }
-            ?: inputControlsManager.createProfile(profileName)
-
-        val targetFile = ControlsProfile.getProfileFile(context, targetProfile.id)
-        FileUtils.writeString(targetFile, profileJSONObject.toString())
-
-        return targetProfile
     }
 
     /**

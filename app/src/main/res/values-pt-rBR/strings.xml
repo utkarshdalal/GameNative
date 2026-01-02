@@ -58,6 +58,8 @@
     <string name="edit">Editar</string>
     <string name="remove">Remover</string>
     <string name="add">Adicionar</string>
+    <string name="delete">Excluir</string>
+    <string name="copy_from">Copiar de</string>
     <string name="ok">Ok</string>
     <string name="storage_info">Info de armazenamento</string>
     <string name="duplicate">Duplicar</string>
@@ -90,9 +92,133 @@
     <string name="exit_game">Sair</string>
     <string name="exit">Sair do Jogo</string>
     <string name="keyboard">Teclado</string>
+    <string name="extra">Extra</string>
+    <string name="clear_search">Limpar pesquisa</string>
+    <string name="buttons">Botões</string>
+    <string name="face_buttons_category">Botões de Face</string>
+    <string name="shoulder_buttons_category">Botões de Ombro</string>
+    <string name="menu_buttons_category">Botões de Menu</string>
+    <string name="thumbstick_buttons_category">Botões de Analógico</string>
+    <string name="left_stick">Analógico Esquerdo</string>
+    <string name="right_stick">Analógico Direito</string>
+    <string name="dpad_category">D-Pad</string>
+    <string name="dpad_up">D-Pad Cima</string>
+    <string name="dpad_down">D-Pad Baixo</string>
+    <string name="dpad_left">D-Pad Esquerda</string>
+    <string name="dpad_right">D-Pad Direita</string>
     <string name="input_controls">Controle On-screen</string>
+    <string name="edit_controls">Editar Controle On-screen</string>
+    <string name="edit_physical_controller">Editar Controle Físico</string>
+    <string name="controller_disconnected">Desconectado</string>
+    <string name="reset_onscreen_controls">Redefinir Controles On-screen</string>
+    <string name="open_navigation_menu">Abrir Menu de Navegação</string>
     <string name="touchpad_help">Ajuda Touchpad</string>
+    <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
+    <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
 
+    <!-- Controller Binding Dialog -->
+    <string name="select_binding">Selecionar Binding</string>
+    <string name="bind_button">Vincular: %1$s</string>
+    <string name="current_binding">Atual: %1$s</string>
+    <string name="search_bindings">Pesquisar bindings…</string>
+    <string name="search_placeholder">Pesquisar…</string>
+    <string name="search">Pesquisar</string>
+    <string name="category">Categoria</string>
+    <string name="keyboard_bindings">Teclado</string>
+    <string name="mouse_bindings">Mouse</string>
+    <string name="gamepad_bindings">Gamepad</string>
+    <string name="mouse">Mouse</string>
+    <string name="gamepad">Gamepad</string>
+    <string name="binding_none">Nenhum</string>
+    <string name="clear_binding">Limpar Binding</string>
+    <string name="no_bindings_found">Nenhum binding encontrado</string>
+
+    <!-- Element Editor Dialog -->
+    <string name="edit_element">Editar %1$s</string>
+    <string name="element_position_size">Posição: (%1$d, %2$d) • Tamanho: %3$.2fx</string>
+    <string name="appearance">Aparência</string>
+    <string name="size_subtitle">%.2fx</string>
+    <string name="label_text">Texto do Rótulo</string>
+    <string name="label_text_subtitle">Texto personalizado para este botão</string>
+    <string name="element_type">Tipo de Elemento</string>
+    <string name="element_type_subtitle">Alterar o tipo deste controle</string>
+    <string name="shape">Forma</string>
+    <string name="shape_subtitle">Aparência visual</string>
+    <string name="shape_restricted">%1$s está restrito à forma %2$s</string>
+    <string name="bindings">Bindings</string>
+    <string name="bindings_auto_generated">Bindings (Auto-gerado)</string>
+    <string name="bindings_auto_generated_subtitle">Bindings de botão de alcance são gerados automaticamente</string>
+    <string name="primary_action">Ação Primária</string>
+    <string name="secondary_action">Ação Secundária</string>
+    <string name="direction_up">Cima</string>
+    <string name="direction_right">Direita</string>
+    <string name="direction_down">Baixo</string>
+    <string name="direction_left">Esquerda</string>
+    <string name="mouse_suffix"> (Mouse)</string>
+    <string name="slot_number">Slot %1$d</string>
+    <string name="button_slots_help">Botões suportam até 2 bindings: primário (pressionar) e secundário (pressionar e segurar)</string>
+    <string name="properties">Propriedades</string>
+    <string name="position">Posição</string>
+    <string name="position_value">X: %1$d, Y: %2$d</string>
+    <string name="unsaved_changes">Alterações não salvas</string>
+    <string name="unsaved_changes_message">Você tem alterações não salvas. Deseja salvá-las ou descartá-las?</string>
+    <string name="adjust_size">Ajustar Tamanho</string>
+    <string name="reset">Redefinir</string>
+    <string name="done">Concluído</string>
+    <string name="copy_size_from_element">Copiar Tamanho do Elemento</string>
+    <string name="toast_no_elements_to_copy">Nenhum outro elemento disponível para copiar tamanho</string>
+    <string name="toast_copied_size">Tamanho copiado: %.2fx</string>
+    <string name="on_screen_toast_controls_reset">Controles on-screen redefinidos para padrão</string>
+    <string name="quick_presets">Predefinições Rápidas</string>
+    <string name="preset_wasd">WASD</string>
+    <string name="preset_arrows">Setas</string>
+    <string name="preset_mouse">Mouse</string>
+    <string name="preset_dpad">D-Pad</string>
+    <string name="preset_left_stick">Analógico Esquerdo</string>
+    <string name="preset_right_stick">Analógico Direito</string>
+
+    <!-- Physical Controller Config -->
+    <string name="physical_controller_config">Editor de Bindings de Controle Físico</string>
+    <string name="physical_controller_config_subtitle">Configurar mapeamentos de botões para seu controle físico</string>
+    <string name="face_buttons">Botões de Face</string>
+    <string name="button_a">Botão A</string>
+    <string name="button_a_subtitle">Botão de face inferior (Confirmar)</string>
+    <string name="button_b">Botão B</string>
+    <string name="button_b_subtitle">Botão de face direito (Voltar)</string>
+    <string name="button_x">Botão X</string>
+    <string name="button_x_subtitle">Botão de face esquerdo</string>
+    <string name="button_y">Botão Y</string>
+    <string name="button_y_subtitle">Botão de face superior</string>
+    <string name="shoulder_buttons">Botões de Ombro</string>
+    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1_subtitle">Gatilho esquerdo superior</string>
+    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1_subtitle">Gatilho direito superior</string>
+    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2_subtitle">Gatilho esquerdo</string>
+    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2_subtitle">Gatilho direito</string>
+    <string name="menu_buttons">Botões de Menu</string>
+    <string name="button_start">Start / Options</string>
+    <string name="button_select">Select / View / Share</string>
+    <string name="analog_sticks">Analógicos</string>
+    <string name="thumbstick_buttons">Botões de Analógico</string>
+    <string name="button_l3">L3 (Clique do Analógico Esquerdo)</string>
+    <string name="button_r3">R3 (Clique do Analógico Direito)</string>
+    <string name="left_analog_stick">Analógico Esquerdo</string>
+    <string name="left_stick_up">Analógico Esquerdo Cima</string>
+    <string name="left_stick_down">Analógico Esquerdo Baixo</string>
+    <string name="left_stick_left">Analógico Esquerdo Esquerda</string>
+    <string name="left_stick_right">Analógico Esquerdo Direita</string>
+    <string name="right_analog_stick">Analógico Direito</string>
+    <string name="right_stick_up">Analógico Direito Cima</string>
+    <string name="right_stick_down">Analógico Direito Baixo</string>
+    <string name="right_stick_left">Analógico Direito Esquerda</string>
+    <string name="right_stick_right">Analógico Direito Direita</string>
+    <string name="other">Outro</string>
+    <string name="button_home">Home / Guide / PS</string>
+    <string name="reset_to_default_bindings">Redefinir para Bindings Padrão</string>
+    <string name="not_set">Não Definido</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
         Tratamento das flags em opcodes CALL/RET<br /><br />
@@ -224,6 +350,9 @@
     <string name="directinput_mapper_type">Tipo de mapeador DirectInput</string>
     <string name="disable_mouse_input">Desabilitar entrada do mouse</string>
     <string name="touchscreen_mode">Modo Touchscreen</string>
+    <string name="touchscreen_mode_description">Movimento direto de toque para cursor (LIGADO) vs movimento relativo estilo touchpad (DESLIGADO)</string>
+    <string name="start_with_controls_hidden">Iniciar com Controles On-screen Ocultos</string>
+    <string name="start_with_controls_hidden_description">Controles on-screen estarão ocultos quando o jogo iniciar. Alterne via o menu de navegação.</string>
     <string name="emulate_keyboard_mouse">Emular teclado e mouse</string>
     <string name="emulate_keyboard_mouse_description">Left stick = WASD, Right stick = mouse. L2 = left click, R2 = right click.</string>
 
@@ -261,6 +390,7 @@
     <string name="contents_manager">Gerenciador de Conteúdos</string>
     <string name="import_wcp_from_device">Importar .wcp do dispositivo</string>
     <string name="working">Processando...</string>
+    <string name="selected">Selecionado</string>
     <string name="selected_content">Conteúdo selecionado</string>
     <string name="installed_contents">Conteúdos instalados</string>
     <string name="select_type">Selecione o tipo</string>
@@ -643,7 +773,8 @@
     <string name="custom_game_delete_title">Excluir jogo</string>
     <string name="custom_game_delete_message">Tem certeza de que deseja excluir este jogo? Isso removerá os arquivos do jogo e todos os dados associados.</string>
 
-    <!-- Mensagens Toast -->
+    <!-- Toast -->
+    <string name="toast_controls_reset">Controles redefinidos</string>
     <string name="toast_failed_log_save">Falha ao salvar logcat no destino</string>
 
     <!-- Adições de configurações -->

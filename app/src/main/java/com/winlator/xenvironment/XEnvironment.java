@@ -110,11 +110,6 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     }
 
     public void onPause() {
-        if (audioCallbackRegistered) {
-            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
-            audioCallbackRegistered = false;
-        }
-
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.suspendProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
@@ -124,11 +119,6 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     }
 
     public void onResume() {
-        if (!audioCallbackRegistered) {
-            audioManager.registerAudioDeviceCallback(audioDeviceCallback, null);
-            audioCallbackRegistered = true;
-        }
-
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.resumeProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);

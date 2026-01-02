@@ -141,6 +141,11 @@ static VkResult create_instance(jstring driverName, JNIEnv *env, jobject context
     PFN_vkGetInstanceProcAddr gip = (PFN_vkGetInstanceProcAddr)dlsym(vulkan_handle, "vkGetInstanceProcAddr");
     PFN_vkCreateInstance createInstance = (PFN_vkCreateInstance)dlsym(vulkan_handle, "vkCreateInstance");
 
+    if (!gip || !createInstance) {
+        status = VK_ERROR_INITIALIZATION_FAILED;
+        goto cleanup;
+    }
+
     VkApplicationInfo app_info = {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "Winlator";

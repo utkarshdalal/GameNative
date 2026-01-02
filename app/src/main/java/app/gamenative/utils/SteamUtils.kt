@@ -6,7 +6,10 @@ import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.SaveFilePattern
+import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
+import app.gamenative.enums.PathType
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
@@ -721,7 +724,12 @@ object SteamUtils {
 
         val configsIni = settingsDir.resolve("configs.user.ini")
         val accountName   = PrefManager.username
-        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
+        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() 
+            ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }?.toString()
+            ?: "0"
+        val accountId = SteamService.userSteamId?.accountID 
+            ?: PrefManager.steamUserAccountId.takeIf { it != 0 }?.toLong()
+            ?: 0L
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val language = runCatching {
             (container.getExtra("language", null)
@@ -729,25 +737,47 @@ object SteamUtils {
                 ?: "english"
         }.getOrDefault("english").lowercase()
 
-        val iniContent = """
-            [user::general]
-            account_name=$accountName
-            account_steamid=$accountSteamId
-            language=$language
-            ticket=$ticketBase64
-        """.trimIndent()
+        // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
+        val appInfo = getAppInfoOf(steamAppId)
+        val hasSaveFilePatterns = appInfo?.ufs?.saveFilePatterns?.isNotEmpty() == true
+
+        val iniContent = buildString {
+            appendLine("[user::general]")
+            appendLine("account_name=$accountName")
+            appendLine("account_steamid=$accountSteamId")
+            appendLine("language=$language")
+            if (!ticketBase64.isNullOrEmpty()) {
+                appendLine("ticket=$ticketBase64")
+            }
+
+            // Only add [user::saves] section if no saveFilePatterns are defined
+            if (!hasSaveFilePatterns) {
+                val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
+                appendLine()
+                appendLine("[user::saves]")
+                appendLine("local_save_path=$steamUserDataPath")
+            }
+        }
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
         configsIni.toFile().writeText(iniContent)
 
         val appIni = settingsDir.resolve("configs.app.ini")
         val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
+        val hiddenDlcApps = SteamService.getHiddenDlcAppsOf(steamAppId)
 
         val forceDlc = container.isForceDlc()
         val appIniContent = buildString {
             appendLine("[app::dlcs]")
             appendLine("unlock_all=${if (forceDlc) 1 else 0}")
             dlcIds?.forEach { appendLine("$it=dlc$it") }
+            hiddenDlcApps?.forEach { appendLine("${it.id}=${it.name}") }
+
+            // Add cloud save config sections if appInfo exists
+            if (appInfo != null) {
+                appendLine()
+                append(generateCloudSaveConfig(appInfo))
+            }
         }
 
         if (Files.notExists(appIni)) Files.createFile(appIni)
@@ -801,6 +831,37 @@ object SteamUtils {
             "vietnamese",
         )
         supportedLanguagesFile.toFile().writeText(supportedLanguages.joinToString("\n"))
+    }
+
+    /**
+     * Generates cloud save configuration sections for configs.app.ini
+     * Returns empty string if no Windows save patterns are found
+     */
+    private fun generateCloudSaveConfig(appInfo: SteamApp): String {
+        // Filter to only Windows save patterns
+        val windowsPatterns = appInfo.ufs.saveFilePatterns.filter { it.root.isWindows }
+
+        return buildString {
+            if (windowsPatterns.isNotEmpty()) {
+                appendLine("[app::cloud_save::general]")
+                appendLine("create_default_dir=1")
+                appendLine("create_specific_dirs=1")
+                appendLine()
+                appendLine("[app::cloud_save::win]")
+                val uniqueDirs = LinkedHashSet<String>()
+                windowsPatterns.forEach { pattern ->
+                    val root = if (pattern.root.name == "GameInstall") "gameinstall" else pattern.root.name
+                    val path = pattern.path
+                        .replace("{64BitSteamID}", "{::64BitSteamID::}")
+                        .replace("{Steam3AccountID}", "{::Steam3AccountID::}")
+                    uniqueDirs.add("{::$root::}/$path")
+                }
+                
+                uniqueDirs.forEachIndexed { index, dir ->
+                    appendLine("dir${index + 1}=$dir")
+                }
+            }
+        }
     }
 
     private fun convertToWindowsPath(unixPath: String): String {
@@ -909,28 +970,32 @@ object SteamUtils {
 
             override fun onResponse(call: Call, res: Response) {
                 res.use {
-                    val body = it.body?.string() ?: run { callback(-1); return }
-                    Timber.i("[DX Fetch] Raw fbody etchDirect3DMajor for body=%s", body)
-                    val arr = JSONObject(body)
-                        .optJSONArray("cargoquery") ?: run { callback(-1); return }
+                    try {
+                        val body = it.body?.string() ?: run { callback(-1); return }
+                        Timber.i("[DX Fetch] Raw body fetchDirect3DMajor for body=%s", body)
+                        val arr = JSONObject(body)
+                            .optJSONArray("cargoquery") ?: run { callback(-1); return }
 
-                    // There should be at most one row; take the first.
-                    val raw = arr.optJSONObject(0)
-                        ?.optJSONObject("title")
-                        ?.optString("Direct3D versions")
-                        ?.trim() ?: ""
+                        // There should be at most one row; take the first.
+                        val raw = arr.optJSONObject(0)
+                            ?.optJSONObject("title")
+                            ?.optString("Direct3D versions")
+                            ?.trim() ?: ""
 
-                    Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
+                        Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
 
-                    // Extract highest DX major number present.
-                    val dx = Regex("\\b(9|10|11|12)\\b")
-                        .findAll(raw)
-                        .map { it.value.toInt() }
-                        .maxOrNull() ?: -1
+                        // Extract highest DX major number present.
+                        val dx = Regex("\\b(9|10|11|12)\\b")
+                            .findAll(raw)
+                            .map { it.value.toInt() }
+                            .maxOrNull() ?: -1
 
-                    Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
+                        Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
 
-                    callback(dx)
+                        callback(dx)
+                    } catch (e: Exception){
+                        callback(-1)
+                    }
                 }
             }
         })
