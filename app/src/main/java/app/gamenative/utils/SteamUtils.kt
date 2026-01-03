@@ -126,15 +126,19 @@ object SteamUtils {
             try {
                 Files.copy(dllPath, backup)
                 Timber.i("Copied original ${dllPath.fileName} to $backup")
-
-                // 2️⃣  return the relative path inside the app directory
-                val relPath = Paths.get(appDirPath).relativize(backup)
-                return relPath.toString()
             } catch (e: IOException) {
                 Timber.w(e, "Failed to back up ${dllPath.fileName}")
+                return null
             }
         }
-        return null
+        // 2️⃣  return the relative path inside the app directory (even if backup already existed)
+        return try {
+            val relPath = Paths.get(appDirPath).relativize(backup)
+            relPath.toString()
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to compute relative path for ${dllPath.fileName}")
+            null
+        }
     }
 
     /**
@@ -1022,3 +1026,4 @@ object SteamUtils {
         return SteamService.userSteamId?.accountID?.toLong()
     }
 }
+
