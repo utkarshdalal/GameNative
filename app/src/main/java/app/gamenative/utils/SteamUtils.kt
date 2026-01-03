@@ -188,6 +188,7 @@ object SteamUtils {
                 Timber.i("Replaced $dllName")
                 if (is64Bit) replaced64Count++ else replaced32Count++
                 ensureSteamSettings(context, path, appId, ticketBase64)
+                generateAchievementsFile(path, appId)
             }
         }
 
@@ -259,7 +260,9 @@ object SteamUtils {
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
-        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64)
+        val path = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath()
+        ensureSteamSettings(context, path, appId, ticketBase64)
+        generateAchievementsFile(path, appId)
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
@@ -1260,6 +1263,16 @@ object SteamUtils {
         } catch (e: Exception) {
             Timber.e(e, "[${mapping.description}] Failed to create save location symlink")
         }
+    }
+
+    suspend fun generateAchievementsFile(dllPath: Path, appId: String) {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val settingsDir = dllPath.parent.resolve("steam_settings")
+        if (Files.notExists(settingsDir)) {
+            Files.createDirectories(settingsDir)
+        }
+
+        SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
     }
 }
 

@@ -151,6 +151,7 @@ import android.util.Base64
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
+import app.gamenative.statsgen.StatsAchievementsGenerator
 import kotlinx.coroutines.flow.update
 import java.io.InputStream
 import java.io.OutputStream
@@ -211,6 +212,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamApps: SteamApps? = null
     private var _steamFriends: SteamFriends? = null
     private var _steamCloud: SteamCloud? = null
+    private var _steamUserStats: SteamUserStats? = null
     private var _steamFamilyGroups: FamilyGroups? = null
 
     private var _loginResult: LoginResult = LoginResult.Failed
@@ -2513,6 +2515,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return emptySet()
             }
         }
+
+        suspend fun generateAchievements(appId: Int, configDirectory: String) {
+            val steamUser = instance!!._steamUser!!
+            val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
+            val generator = StatsAchievementsGenerator()
+            val schemaArray = userStats.schema.toByteArray()
+            generator.generateStatsAchievements(schemaArray, configDirectory)
+        }
     }
 
     override fun onCreate() {
@@ -2618,7 +2628,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 removeHandler(SteamMasterServer::class.java)
                 removeHandler(SteamWorkshop::class.java)
                 removeHandler(SteamScreenshots::class.java)
-                removeHandler(SteamUserStats::class.java)
             }
 
             // create the callback manager which will route callbacks to function calls
@@ -2629,6 +2638,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             _steamApps = steamClient!!.getHandler(SteamApps::class.java)
             _steamFriends = steamClient!!.getHandler(SteamFriends::class.java)
             _steamCloud = steamClient!!.getHandler(SteamCloud::class.java)
+            _steamUserStats = steamClient!!.getHandler(SteamUserStats::class.java)
 
             _unifiedFriends = SteamUnifiedFriends(this)
             _steamFamilyGroups = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<FamilyGroups>()
