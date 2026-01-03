@@ -97,6 +97,30 @@ class ApiHandler:
         """Make an authenticated request with proper headers"""
         return self.session.get(url)
 
+    def does_user_own(self, game_id):
+        """Check if the user owns a specific game
+        
+        Args:
+            game_id: The GOG game ID to check
+            
+        Returns:
+            bool: True if the user owns the game, False otherwise
+        """
+        # If owned games list is populated, check it
+        if self.owned:
+            return str(game_id) in [str(g) for g in self.owned]
+        
+        # Otherwise, try to fetch user data and check
+        try:
+            user_data = self.get_user_data()
+            if user_data and 'owned' in user_data:
+                self.owned = [str(g) for g in user_data['owned']]
+                return str(game_id) in self.owned
+        except Exception as e:
+            self.logger.warning(f"Failed to check game ownership for {game_id}: {e}")
+        
+        # If we can't determine, assume they own it (they're trying to download it)
+        return True
 
     def get_dependencies_repo(self, depot_version=2):
         self.logger.info("Getting Dependencies repository")

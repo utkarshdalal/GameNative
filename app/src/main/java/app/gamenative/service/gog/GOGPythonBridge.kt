@@ -37,9 +37,13 @@ class ProgressCallback(private val downloadInfo: DownloadInfo) {
             // Also set percentage-based progress for compatibility
             downloadInfo.setProgress(progress)
 
-            // Update status message with ETA
+            // Update status message with ETA or progress info
             if (eta.isNotEmpty() && eta != "00:00:00") {
                 downloadInfo.updateStatusMessage("ETA: $eta")
+            } else if (percent > 0f) {
+                downloadInfo.updateStatusMessage(String.format("%.1f%%", percent))
+            } else {
+                downloadInfo.updateStatusMessage("Starting...")
             }
 
             if (percent > 0f) {
@@ -235,30 +239,54 @@ object GOGPythonBridge {
     private suspend fun estimateProgress(downloadInfo: DownloadInfo) {
         try {
             var lastProgress = 0.0f
+            var lastBytesDownloaded = 0L
             val startTime = System.currentTimeMillis()
+            var callbackDetected = false
+            val CHECK_INTERVAL = 3000L
 
             while (downloadInfo.getProgress() < 1.0f && downloadInfo.getProgress() >= 0.0f) {
-                delay(3000L) // Update every 3 seconds
+                delay(CHECK_INTERVAL)
 
-                val elapsed = System.currentTimeMillis() - startTime
-                val estimatedProgress = when {
-                    elapsed < 5000 -> 0.05f
-                    elapsed < 15000 -> 0.15f
-                    elapsed < 30000 -> 0.30f
-                    elapsed < 60000 -> 0.50f
-                    elapsed < 120000 -> 0.70f
-                    elapsed < 180000 -> 0.85f
-                    else -> 0.95f
-                }.coerceAtLeast(lastProgress)
+                val currentBytes = downloadInfo.getBytesDownloaded()
+                val currentProgress = downloadInfo.getProgress()
 
-                // Only update if progress hasn't been set by callback
-                if (downloadInfo.getProgress() <= lastProgress + 0.01f) {
+                // Check if the callback is actively updating (bytes are increasing)
+                if (currentBytes > lastBytesDownloaded) {
+                    if (!callbackDetected) {
+                        Timber.d("Progress callback detected, disabling estimator")
+                        callbackDetected = true
+                    }
+                    lastBytesDownloaded = currentBytes
+                    lastProgress = currentProgress
+                    continue  // Don't override real progress
+                }
+
+                // Also check if progress increased significantly without estimator intervention
+                if (currentProgress > lastProgress + 0.02f) {
+                    if (!callbackDetected) {
+                        Timber.d("Progress callback detected (progress jump), disabling estimator")
+                        callbackDetected = true
+                    }
+                    lastProgress = currentProgress
+                    continue  // Don't override real progress
+                }
+
+                // Only estimate if callback hasn't been detected
+                if (!callbackDetected) {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    val estimatedProgress = when {
+                        elapsed < 5000 -> 0.05f
+                        elapsed < 15000 -> 0.15f
+                        elapsed < 30000 -> 0.30f
+                        elapsed < 60000 -> 0.50f
+                        elapsed < 120000 -> 0.70f
+                        elapsed < 180000 -> 0.85f
+                        else -> 0.95f
+                    }.coerceAtLeast(lastProgress)
+
                     downloadInfo.setProgress(estimatedProgress)
                     lastProgress = estimatedProgress
                     Timber.d("Estimated progress: %.1f%%", estimatedProgress * 100)
-                } else {
-                    // Callback is working, update our tracking
-                    lastProgress = downloadInfo.getProgress()
                 }
             }
         } catch (e: CancellationException) {

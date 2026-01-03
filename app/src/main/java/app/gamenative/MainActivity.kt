@@ -268,6 +268,13 @@ class MainActivity : ComponentActivity() {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
+
+        // Restart GOG service if it went down
+        if (GOGService.hasStoredCredentials(this) && !GOGService.isRunning) {
+            Timber.i("GOG service was down on resume - restarting")
+            GOGService.start(this)
+        }
+
         PostHog.capture(event = "app_foregrounded")
     }
 
