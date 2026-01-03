@@ -1994,21 +1994,7 @@ private fun unpackExecutableFile(
             return
         }
 
-        // Helper function to convert Windows path to Unix dosdevices path
-        fun windowsToUnixPath(winPath: String): String {
-            // Extract drive letter and path: "D:\path\to\file.exe" -> "d:" + "/path/to/file.exe"
-            val driveMatch = Regex("^([A-Za-z]):(.*)$").find(winPath)
-            return if (driveMatch != null) {
-                val driveLetter = driveMatch.groupValues[1].lowercase()
-                val pathPart = driveMatch.groupValues[2].replace('\\', '/')
-                imageFs.wineprefix + "/dosdevices/" + driveLetter + ":" + pathPart
-            } else {
-                // Fallback if no drive letter found
-                imageFs.wineprefix + "/dosdevices/" + winPath.replace('\\', '/')
-            }
-        }
-
-        val exe = File(windowsToUnixPath(executableFile))
+        val exe = File(FileUtils.convertWindowsPathToDosdevices(executableFile, imageFs.wineprefix))
         if (!exe.exists()) {
             Timber.e("Steamless: executable file does not exist at $exe, skipping DRM removal")
             container.setNeedsUnpacking(false)
@@ -2091,7 +2077,7 @@ private fun unpackExecutableFile(
             batchFile.delete()
             
             // Check if Steamless produced an unpacked file
-            val unpackedExe = File(windowsToUnixPath(executableFile) + ".unpacked.exe")
+            val unpackedExe = File(FileUtils.convertWindowsPathToDosdevices(executableFile, imageFs.wineprefix) + ".unpacked.exe")
             
             if (!unpackedExe.exists()) {
                 Timber.w("Steamless: No .unpacked.exe file produced. Game may not use Steam DRM or Steamless failed.")
@@ -2101,8 +2087,8 @@ private fun unpackExecutableFile(
             Timber.e("Error running Steamless: $e")
         }
 
-        val unpackedExe = File(windowsToUnixPath(executableFile) + ".unpacked.exe")
-        val originalExe = File(windowsToUnixPath(executableFile) + ".original.exe")
+        val unpackedExe = File(FileUtils.convertWindowsPathToDosdevices(executableFile, imageFs.wineprefix) + ".unpacked.exe")
+        val originalExe = File(FileUtils.convertWindowsPathToDosdevices(executableFile, imageFs.wineprefix) + ".original.exe")
         Timber.i("Steamless: Checking for unpacked file: ${unpackedExe.absolutePath}")
         try {
             if (exe.exists() && unpackedExe.exists()) {

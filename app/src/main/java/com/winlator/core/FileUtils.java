@@ -484,4 +484,27 @@ public abstract class FileUtils {
             return false;
         }
     }
+
+    /**
+     * Converts a Windows-style path to a Unix dosdevices path.
+     * Example: "D:\path\to\file.exe" -> "/wineprefix/dosdevices/d:/path/to/file.exe"
+     *
+     * @param winPath The Windows path (e.g., "D:\path\to\file.exe")
+     * @param winePrefix The wine prefix path (e.g., "/data/data/.../wineprefix")
+     * @return The Unix dosdevices path
+     */
+    public static String convertWindowsPathToDosdevices(String winPath, String winePrefix) {
+        // Extract drive letter and path: "D:\path\to\file.exe" -> "d:" + "/path/to/file.exe"
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^([A-Za-z]):(.*)$");
+        java.util.regex.Matcher matcher = pattern.matcher(winPath);
+        
+        if (matcher.find()) {
+            String driveLetter = matcher.group(1).toLowerCase();
+            String pathPart = matcher.group(2).replace('\\', '/');
+            return winePrefix + "/dosdevices/" + driveLetter + ":" + pathPart;
+        } else {
+            // Fallback if no drive letter found
+            return winePrefix + "/dosdevices/" + winPath.replace('\\', '/');
+        }
+    }
 }
