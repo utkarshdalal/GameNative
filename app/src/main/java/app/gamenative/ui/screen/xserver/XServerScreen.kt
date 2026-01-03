@@ -1779,7 +1779,12 @@ private fun getSteamlessTarget(
 ): String {
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
     val appDirPath = SteamService.getAppDirPath(gameId)
-    val executablePath = SteamService.getInstalledExe(gameId)
+    // Use container.executablePath if set, otherwise fall back to auto-detection
+    val executablePath = if (container.executablePath.isNotEmpty()) {
+        container.executablePath
+    } else {
+        SteamService.getInstalledExe(gameId)
+    }
     val drives = container.drives
     val driveIndex = drives.indexOf(appDirPath)
     // greater than 1 since there is the drive character and the colon before the app dir path
@@ -1987,35 +1992,44 @@ private fun unpackExecutableFile(
             val origTxtFile  = File("${imageFs.wineprefix}/dosdevices/a:/orig_dll_path.txt")
 
             if (origTxtFile.exists()) {
-                val relDllPath = origTxtFile.readText().trim()
-                if (relDllPath.isNotBlank()) {
-                    val origDll = File("${imageFs.wineprefix}/dosdevices/a:/$relDllPath")
-                    if (origDll.exists()) {
-                        val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
-                        Timber.i("Running generate_interfaces_file $genCmd")
-                        val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
+                val relDllPaths = origTxtFile.readLines().map { it.trim() }.filter { it.isNotBlank() }
+                if (relDllPaths.isNotEmpty()) {
+                    Timber.i("Found ${relDllPaths.size} DLL path(s) in orig_dll_path.txt")
+                    for (relDllPath in relDllPaths) {
+                        try {
+                            val origDll = File("${imageFs.wineprefix}/dosdevices/a:/$relDllPath")
+                            if (origDll.exists()) {
+                                val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
+                                Timber.i("Running generate_interfaces_file $genCmd")
+                                val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
 
-                        val origSteamInterfaces = File("${imageFs.wineprefix}/dosdevices/z:/steam_interfaces.txt")
-                        if (origSteamInterfaces.exists()) {
-                            val finalSteamInterfaces = File(origDll.parent, "steam_interfaces.txt")
-                            try {
-                                Files.copy(
-                                    origSteamInterfaces.toPath(),
-                                    finalSteamInterfaces.toPath(),
-                                    StandardCopyOption.REPLACE_EXISTING,
-                                )
-                                Timber.i("Copied steam_interfaces.txt to ${finalSteamInterfaces.absolutePath}")
-                            } catch (ioe: IOException) {
-                                Timber.w(ioe, "Failed to copy steam_interfaces.txt")
+                                val origSteamInterfaces = File("${imageFs.wineprefix}/dosdevices/z:/steam_interfaces.txt")
+                                if (origSteamInterfaces.exists()) {
+                                    val finalSteamInterfaces = File(origDll.parent, "steam_interfaces.txt")
+                                    try {
+                                        Files.copy(
+                                            origSteamInterfaces.toPath(),
+                                            finalSteamInterfaces.toPath(),
+                                            StandardCopyOption.REPLACE_EXISTING,
+                                        )
+                                        Timber.i("Copied steam_interfaces.txt to ${finalSteamInterfaces.absolutePath}")
+                                    } catch (ioe: IOException) {
+                                        Timber.w(ioe, "Failed to copy steam_interfaces.txt for $relDllPath")
+                                    }
+                                } else {
+                                    Timber.w("steam_interfaces.txt not found at $origSteamInterfaces for $relDllPath")
+                                }
+
+                                Timber.i("Result of generate_interfaces_file command $genOutput")
+                            } else {
+                                Timber.w("DLL specified in orig_dll_path.txt not found: $origDll")
                             }
-                        } else {
-                            Timber.w("steam_interfaces.txt not found at $origSteamInterfaces")
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to process DLL path $relDllPath, continuing with next path")
                         }
-
-                        Timber.i("Result of generate_interfaces_file command $genOutput")
-                    } else {
-                        Timber.w("DLL specified in orig_dll_path.txt not found: $origDll")
                     }
+                } else {
+                    Timber.i("orig_dll_path.txt is empty; skipping interface generation")
                 }
             } else {
                 Timber.i("orig_dll_path.txt not present; skipping interface generation")
