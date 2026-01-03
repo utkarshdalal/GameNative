@@ -1891,7 +1891,7 @@ private fun installRedistributables(
                         val winePath = "$drive:\\_CommonRedist\\$relativePath"
                         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributables..."))
                         Timber.i("Installing vcredist: $winePath")
-                        val cmd = "wine $winePath /quiet /norestart && wineserver -k"
+                        val cmd = "wine \"$winePath\" /quiet /norestart && wineserver -k"
                         val output = guestProgramLauncherComponent.execShellCommand(cmd)
                         Timber.i("vcredist installation output: $output")
                     } catch (e: Exception) {
@@ -1912,7 +1912,7 @@ private fun installRedistributables(
                         val winePath = "$drive:\\_CommonRedist\\$relativePath"
                         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
                         Timber.i("Installing PhysX: $winePath")
-                        val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
+                        val cmd = "wine msiexec /i \"$winePath\" /quiet /norestart && wineserver -k"
                         val output = guestProgramLauncherComponent.execShellCommand(cmd)
                         Timber.i("PhysX installation output: $output")
                     } catch (e: Exception) {
@@ -1933,7 +1933,7 @@ private fun installRedistributables(
                         val winePath = "$drive:\\_CommonRedist\\$relativePath"
                         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
                         Timber.i("Installing XNA: $winePath")
-                        val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
+                        val cmd = "wine msiexec /i \"$winePath\" /quiet /norestart && wineserver -k"
                         val output = guestProgramLauncherComponent.execShellCommand(cmd)
                         Timber.i("XNA installation output: $output")
                     } catch (e: Exception) {
@@ -1986,6 +1986,39 @@ private fun unpackExecutableFile(
         val rootDir: File = imageFs.getRootDir()
         val executableFile = getSteamlessTarget(appId, container, appLaunchInfo)
 
+        // Validate executable path before attempting Steamless
+        if (executableFile.isEmpty()) {
+            Timber.e("Steamless: executable path is empty, skipping DRM removal")
+            container.setNeedsUnpacking(false)
+            container.saveData()
+            return
+        }
+
+        // Helper function to convert Windows path to Unix dosdevices path
+        fun windowsToUnixPath(winPath: String): String {
+            // Extract drive letter and path: "D:\path\to\file.exe" -> "d:" + "/path/to/file.exe"
+            val driveMatch = Regex("^([A-Za-z]):(.*)$").find(winPath)
+            return if (driveMatch != null) {
+                val driveLetter = driveMatch.groupValues[1].lowercase()
+                val pathPart = driveMatch.groupValues[2].replace('\\', '/')
+                imageFs.wineprefix + "/dosdevices/" + driveLetter + ":" + pathPart
+            } else {
+                // Fallback if no drive letter found
+                imageFs.wineprefix + "/dosdevices/" + winPath.replace('\\', '/')
+            }
+        }
+
+        val exe = File(windowsToUnixPath(executableFile))
+        if (!exe.exists()) {
+            Timber.e("Steamless: executable file does not exist at $exe, skipping DRM removal")
+            container.setNeedsUnpacking(false)
+            container.saveData()
+            return
+        }
+
+        Timber.i("Steamless: Processing executable: $executableFile")
+        Timber.i("Steamless: Target file exists at: ${exe.absolutePath}")
+
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
             // a:/.../GameDir/orig_dll_path.txt  (same dir as the EXE inside A:)
@@ -1999,7 +2032,7 @@ private fun unpackExecutableFile(
                         try {
                             val origDll = File("${imageFs.wineprefix}/dosdevices/a:/$relDllPath")
                             if (origDll.exists()) {
-                                val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
+                                val genCmd = "wine z:\\generate_interfaces_file.exe \"A:\\" + relDllPath.replace('/', '\\') + "\""
                                 Timber.i("Running generate_interfaces_file $genCmd")
                                 val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
 
@@ -2041,35 +2074,61 @@ private fun unpackExecutableFile(
         output = StringBuilder()
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
-            val slCmd = "wine z:\\Steamless\\Steamless.CLI.exe $executableFile"
-            Timber.i("Running shell command $slCmd")
+            
+            // Create a batch file that Wine can execute, which will properly handle the path
+            val batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper.bat")
+            batchFile.parentFile?.mkdirs()
+            batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$executableFile\"\r\n")
+            
+            val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
+            Timber.i("Steamless: Running command: $slCmd")
+            Timber.i("Steamless: Batch file contains: z:\\Steamless\\Steamless.CLI.exe \"$executableFile\"")
             val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
             output.append(slOutput)
-            Timber.i("Result of Steamless command " + output)
+            Timber.i("Steamless: Output: $output")
+            
+            // Clean up batch file
+            batchFile.delete()
+            
+            // Check if Steamless produced an unpacked file
+            val unpackedExe = File(windowsToUnixPath(executableFile) + ".unpacked.exe")
+            
+            if (!unpackedExe.exists()) {
+                Timber.w("Steamless: No .unpacked.exe file produced. Game may not use Steam DRM or Steamless failed.")
+                Timber.w("Steamless: Expected file at: ${unpackedExe.absolutePath}")
+            }
         } catch (e: Exception) {
             Timber.e("Error running Steamless: $e")
         }
 
-        val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
-        val unpackedExe = File(
-            imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:")
-                .replace('\\', '/') + ".unpacked.exe",
-        )
-        val originalExe = File(
-            imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:")
-                .replace('\\', '/') + ".original.exe",
-        )
-        Timber.i("Moving " + unpackedExe + " to " + exe)
+        val unpackedExe = File(windowsToUnixPath(executableFile) + ".unpacked.exe")
+        val originalExe = File(windowsToUnixPath(executableFile) + ".original.exe")
+        Timber.i("Steamless: Checking for unpacked file: ${unpackedExe.absolutePath}")
         try {
             if (exe.exists() && unpackedExe.exists()) {
-                Files.copy(exe.toPath(), originalExe.toPath())
+                Timber.i("Steamless: Success! Replacing original with unpacked version")
+                // Backup the original exe (replace if backup already exists from previous run)
+                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                Timber.i("Steamless: Backed up original to ${originalExe.absolutePath}")
+                // Replace original with unpacked version
                 Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                Timber.i("Steamless: Replaced with unpacked version")
+                // Clean up the .unpacked.exe file
+                if (unpackedExe.delete()) {
+                    Timber.i("Steamless: Cleaned up temporary unpacked file")
+                }
             } else {
-                val errorMsg = "Either original exe or unpacked exe does not exist. Original: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                val errorMsg = "Steamless: Cannot replace executable. Original exists: ${exe.exists()}, Unpacked exists: ${unpackedExe.exists()}"
                 Timber.w(errorMsg)
+                if (!unpackedExe.exists()) {
+                    Timber.i("Steamless: Game likely doesn't use Steam DRM or Steamless couldn't process it")
+                }
             }
         } catch (e: IOException) {
-            Timber.e("Could not move files: $e")
+            Timber.e("Steamless: Could not move files: $e")
+            Timber.e("Steamless: Original exe: ${exe.absolutePath}, exists: ${exe.exists()}")
+            Timber.e("Steamless: Unpacked exe: ${unpackedExe.absolutePath}, exists: ${unpackedExe.exists()}")
+            Timber.e("Steamless: Backup exe: ${originalExe.absolutePath}, exists: ${originalExe.exists()}")
         }
 
         output = StringBuilder()
