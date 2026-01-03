@@ -127,7 +127,10 @@ import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -142,6 +145,9 @@ import java.util.Locale
 import kotlin.io.path.name
 import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
+
+private const val GRACEFUL_TERMINATION_DELAY_MS = 500L
+private val bionicTerminationMutex = Mutex()
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -603,56 +609,12 @@ fun XServerScreen(
                             changeFrameRatingVisibility(window, null)
                             onWindowUnmapped?.invoke(window)
                             
-                            // POC: For bionic containers, check if all windows are closed
-                            Timber.i("POC: Container variant = '${container.containerVariant}', BIONIC constant = '${Container.BIONIC}'")
-                            if (container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-                                Timber.i("POC: Bionic container detected, checking for remaining windows")
-                                // Check if there are any remaining application windows (excluding explorer.exe)
+                            // For bionic containers, auto-close when all game windows close
+                            // Only check after the game has actually started
+                            if (xServerState.value.winStarted && 
+                                container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
                                 val windowManager = getxServer().windowManager
-                                val totalChildren = windowManager.rootWindow.children.size
-                                Timber.i("POC: Root window has $totalChildren children")
-                                
-                                var hasApplicationWindows = false
-                                var appWindowCount = 0
-                                for (i in 0 until totalChildren) {
-                                    val child = windowManager.rootWindow.children[i]
-                                    val isAppWindow = child.isApplicationWindow()
-                                    val isExplorer = child.className?.contains("explorer.exe", ignoreCase = true) == true
-                                    if (isAppWindow && !isExplorer) {
-                                        appWindowCount++
-                                        hasApplicationWindows = true
-                                    }
-                                    Timber.i("POC: Child $i: name='${child.name}' class='${child.className}' isAppWindow=$isAppWindow isExplorer=$isExplorer")
-                                }
-                                
-                                Timber.i("POC: Found $appWindowCount application windows (excluding explorer.exe)")
-                                if (!hasApplicationWindows) {
-                                    Timber.i("All windows closed in bionic container - forcing wine process termination")
-                                    try {
-                                        // Send SIGTERM first
-                                        ProcessHelper.terminateAllWineProcesses()
-                                        Timber.i("SIGTERM sent to wine processes")
-                                        
-                                        // Give processes a moment to terminate gracefully
-                                        Thread.sleep(100)
-                                        
-                                        // Force kill any remaining wine processes with SIGKILL
-                                        val remainingProcesses = ProcessHelper.listRunningWineProcesses()
-                                        if (remainingProcesses.isNotEmpty()) {
-                                            Timber.i("Forcing SIGKILL on ${remainingProcesses.size} remaining wine processes")
-                                            for (pidStr in remainingProcesses) {
-                                                val pid = pidStr.toInt()
-                                                android.os.Process.killProcess(pid)
-                                            }
-                                        }
-                                        
-                                        Timber.i("Wine processes terminated, GuestProgramTerminated event should fire")
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Failed to terminate wine processes")
-                                    }
-                                }
-                            } else {
-                                Timber.i("POC: Not a bionic container, skipping auto-close")
+                                terminateBionicContainerIfAllWindowsClosed(windowManager)
                             }
                         }
                     },
@@ -1251,23 +1213,60 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
     PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
     PluviaApp.touchpadView?.setPointerButtonRightEnabled(false)
 
-
     // If the selected profile is a virtual gamepad, we must enable the P1 slot.
     if (container.containerVariant.equals(Container.BIONIC) && profile.isVirtualGamepad()) {
         val controllerManager: ControllerManager = ControllerManager.getInstance()
 
-
         // Ensure Player 1 slot is enabled so a vjoy device is created for it.
         controllerManager.setSlotEnabled(0, true)
-
 
         // Clear any physical device from P1 to prevent conflicts.
         controllerManager.unassignSlot(0)
 
-
         // Tell WinHandler to update its internal state.
         if (winHandler != null) {
             winHandler.refreshControllerMappings()
+        }
+    }
+}
+
+/**
+ * Terminates wine processes for bionic containers when all game windows are closed.
+ * Runs on IO dispatcher to avoid blocking the UI thread.
+ * Uses a mutex to prevent concurrent termination attempts from multiple unmap events.
+ */
+private fun terminateBionicContainerIfAllWindowsClosed(windowManager: WindowManager) {
+    CoroutineScope(Dispatchers.IO).launch {
+        bionicTerminationMutex.withLock {
+            // Check if any application windows remain (excluding explorer.exe)
+            val hasAppWindows = windowManager.rootWindow.children.any { child ->
+                child.isApplicationWindow() && 
+                child.className?.contains("explorer.exe", ignoreCase = true) != true
+            }
+            
+            if (!hasAppWindows) {
+                Timber.i("All game windows closed, terminating wine processes")
+                try {
+                    // Send SIGTERM for graceful shutdown
+                    ProcessHelper.terminateAllWineProcesses()
+                    
+                    // Allow time for graceful termination
+                    delay(GRACEFUL_TERMINATION_DELAY_MS)
+                    
+                    // Force-kill any remaining processes with SIGKILL
+                    val remainingProcesses = ProcessHelper.listRunningWineProcesses()
+                    if (remainingProcesses.isNotEmpty()) {
+                        Timber.i("Force-killing ${remainingProcesses.size} remaining wine processes")
+                        remainingProcesses.forEach { pidStr ->
+                            pidStr.toIntOrNull()?.let { pid ->
+                                android.os.Process.killProcess(pid)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to terminate wine processes")
+                }
+            }
         }
     }
 }
