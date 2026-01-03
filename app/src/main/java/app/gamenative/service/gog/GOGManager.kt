@@ -927,7 +927,16 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val executablePath = runBlocking { getInstalledExe(context, libraryItem) }
+        // Use container's configured executable path if available, otherwise auto-detect
+        val executablePath = if (container.executablePath.isNotEmpty()) {
+            Timber.d("Using configured executable path from container: ${container.executablePath}")
+            container.executablePath
+        } else {
+            val detectedPath = runBlocking { getInstalledExe(context, libraryItem) }
+            Timber.d("Auto-detected executable path: $detectedPath")
+            detectedPath
+        }
+
         if (executablePath.isEmpty()) {
             Timber.w("No executable found, opening file manager")
             return "\"explorer.exe\""
