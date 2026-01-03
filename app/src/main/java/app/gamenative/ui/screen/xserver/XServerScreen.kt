@@ -602,6 +602,58 @@ fun XServerScreen(
                             )
                             changeFrameRatingVisibility(window, null)
                             onWindowUnmapped?.invoke(window)
+                            
+                            // POC: For bionic containers, check if all windows are closed
+                            Timber.i("POC: Container variant = '${container.containerVariant}', BIONIC constant = '${Container.BIONIC}'")
+                            if (container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                                Timber.i("POC: Bionic container detected, checking for remaining windows")
+                                // Check if there are any remaining application windows (excluding explorer.exe)
+                                val windowManager = getxServer().windowManager
+                                val totalChildren = windowManager.rootWindow.children.size
+                                Timber.i("POC: Root window has $totalChildren children")
+                                
+                                var hasApplicationWindows = false
+                                var appWindowCount = 0
+                                for (i in 0 until totalChildren) {
+                                    val child = windowManager.rootWindow.children[i]
+                                    val isAppWindow = child.isApplicationWindow()
+                                    val isExplorer = child.className?.contains("explorer.exe", ignoreCase = true) == true
+                                    if (isAppWindow && !isExplorer) {
+                                        appWindowCount++
+                                        hasApplicationWindows = true
+                                    }
+                                    Timber.i("POC: Child $i: name='${child.name}' class='${child.className}' isAppWindow=$isAppWindow isExplorer=$isExplorer")
+                                }
+                                
+                                Timber.i("POC: Found $appWindowCount application windows (excluding explorer.exe)")
+                                if (!hasApplicationWindows) {
+                                    Timber.i("All windows closed in bionic container - forcing wine process termination")
+                                    try {
+                                        // Send SIGTERM first
+                                        ProcessHelper.terminateAllWineProcesses()
+                                        Timber.i("SIGTERM sent to wine processes")
+                                        
+                                        // Give processes a moment to terminate gracefully
+                                        Thread.sleep(100)
+                                        
+                                        // Force kill any remaining wine processes with SIGKILL
+                                        val remainingProcesses = ProcessHelper.listRunningWineProcesses()
+                                        if (remainingProcesses.isNotEmpty()) {
+                                            Timber.i("Forcing SIGKILL on ${remainingProcesses.size} remaining wine processes")
+                                            for (pidStr in remainingProcesses) {
+                                                val pid = pidStr.toInt()
+                                                android.os.Process.killProcess(pid)
+                                            }
+                                        }
+                                        
+                                        Timber.i("Wine processes terminated, GuestProgramTerminated event should fire")
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Failed to terminate wine processes")
+                                    }
+                                }
+                            } else {
+                                Timber.i("POC: Not a bionic container, skipping auto-close")
+                            }
                         }
                     },
                 )
