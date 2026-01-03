@@ -614,7 +614,9 @@ fun XServerScreen(
                             if (xServerState.value.winStarted && 
                                 container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
                                 val windowManager = getxServer().windowManager
-                                terminateBionicContainerIfAllWindowsClosed(windowManager)
+                                // Capture immutable snapshot on UI thread to avoid ConcurrentModificationException
+                                val windowSnapshot = windowManager.rootWindow.children.toList()
+                                terminateBionicContainerIfAllWindowsClosed(windowSnapshot)
                             }
                         }
                     },
@@ -1235,15 +1237,18 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
  * Runs on IO dispatcher to avoid blocking the UI thread.
  * Uses a mutex to prevent concurrent termination attempts from multiple unmap events.
  * 
+ * @param windowSnapshot Immutable snapshot of rootWindow.children captured on the caller thread
+ *                       to avoid ConcurrentModificationException from X client thread modifications.
+ * 
  * Note: Uses fire-and-forget coroutine scope intentionally. Process termination is a
  * terminal cleanup operation that should complete even if the composable is disposed,
  * preventing orphaned wine processes.
  */
-private fun terminateBionicContainerIfAllWindowsClosed(windowManager: WindowManager) {
+private fun terminateBionicContainerIfAllWindowsClosed(windowSnapshot: List<Window>) {
     CoroutineScope(Dispatchers.IO).launch {
         bionicTerminationMutex.withLock {
             // Check if any application windows remain (excluding system processes)
-            val hasAppWindows = windowManager.rootWindow.children.any { child ->
+            val hasAppWindows = windowSnapshot.any { child ->
                 child.isApplicationWindow() && 
                 child.className?.contains("explorer.exe", ignoreCase = true) != true &&
                 child.className?.contains("dosdevices.exe", ignoreCase = true) != true
