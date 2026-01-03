@@ -492,19 +492,55 @@ public abstract class FileUtils {
      * @param winPath The Windows path (e.g., "D:\path\to\file.exe")
      * @param winePrefix The wine prefix path (e.g., "/data/data/.../wineprefix")
      * @return The Unix dosdevices path
+     * @throws IllegalArgumentException if winPath or winePrefix is null or empty
      */
     public static String convertWindowsPathToDosdevices(String winPath, String winePrefix) {
-        // Extract drive letter and path: "D:\path\to\file.exe" -> "d:" + "/path/to/file.exe"
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^([A-Za-z]):(.*)$");
-        java.util.regex.Matcher matcher = pattern.matcher(winPath);
+        // Validate inputs
+        if (winPath == null || winPath.isEmpty()) {
+            throw new IllegalArgumentException("winPath cannot be null or empty");
+        }
+        if (winePrefix == null || winePrefix.isEmpty()) {
+            throw new IllegalArgumentException("winePrefix cannot be null or empty");
+        }
         
-        if (matcher.find()) {
-            String driveLetter = matcher.group(1).toLowerCase();
-            String pathPart = matcher.group(2).replace('\\', '/');
+        // Trim inputs
+        winPath = winPath.trim();
+        winePrefix = winePrefix.trim();
+        
+        // Validate trimmed inputs are still non-empty
+        if (winPath.isEmpty()) {
+            throw new IllegalArgumentException("winPath cannot be empty after trimming");
+        }
+        if (winePrefix.isEmpty()) {
+            throw new IllegalArgumentException("winePrefix cannot be empty after trimming");
+        }
+        
+        // Normalize backslashes to forward slashes
+        String normalizedPath = winPath.replace('\\', '/');
+        
+        // Extract drive letter and path: "D:/path/to/file.exe" -> "d:" + "/path/to/file.exe"
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^([A-Za-z]):(.*)$");
+        java.util.regex.Matcher matcher = pattern.matcher(normalizedPath);
+        
+        if (matcher.matches() && matcher.groupCount() >= 2) {
+            String driveLetter = matcher.group(1);
+            String pathPart = matcher.group(2);
+            
+            // Validate extracted parts
+            if (driveLetter == null || driveLetter.isEmpty()) {
+                throw new IllegalArgumentException("Extracted drive letter is invalid");
+            }
+            
+            // Default pathPart to "/" if empty or null
+            if (pathPart == null || pathPart.isEmpty()) {
+                pathPart = "/";
+            }
+            
+            driveLetter = driveLetter.toLowerCase();
             return winePrefix + "/dosdevices/" + driveLetter + ":" + pathPart;
         } else {
-            // Fallback if no drive letter found
-            return winePrefix + "/dosdevices/" + winPath.replace('\\', '/');
+            // Fallback if no drive letter found - use normalized path
+            return winePrefix + "/dosdevices/" + normalizedPath;
         }
     }
 }
