@@ -1234,14 +1234,19 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
  * Terminates wine processes for bionic containers when all game windows are closed.
  * Runs on IO dispatcher to avoid blocking the UI thread.
  * Uses a mutex to prevent concurrent termination attempts from multiple unmap events.
+ * 
+ * Note: Uses fire-and-forget coroutine scope intentionally. Process termination is a
+ * terminal cleanup operation that should complete even if the composable is disposed,
+ * preventing orphaned wine processes.
  */
 private fun terminateBionicContainerIfAllWindowsClosed(windowManager: WindowManager) {
     CoroutineScope(Dispatchers.IO).launch {
         bionicTerminationMutex.withLock {
-            // Check if any application windows remain (excluding explorer.exe)
+            // Check if any application windows remain (excluding system processes)
             val hasAppWindows = windowManager.rootWindow.children.any { child ->
                 child.isApplicationWindow() && 
-                child.className?.contains("explorer.exe", ignoreCase = true) != true
+                child.className?.contains("explorer.exe", ignoreCase = true) != true &&
+                child.className?.contains("dosdevices.exe", ignoreCase = true) != true
             }
             
             if (!hasAppWindows) {
