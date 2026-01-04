@@ -118,14 +118,14 @@ object EpicCloudSavesManager {
 
             // 3. Execute sync action
             val result = when (action) {
-                SyncAction.DOWNLOAD -> downloadSaves(context, appId)
+                SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
                 SyncAction.UPLOAD -> {
                     Timber.tag("EPIC").w("[Cloud Saves] Upload not yet implemented")
                     false
                 }
                 SyncAction.CONFLICT -> {
                     Timber.tag("EPIC").w("[Cloud Saves] Conflict detected - preferring download for now") // TODO: We should have proper conflict resolution.
-                    downloadSaves(context, appId)
+                    downloadSaves(context, appId, creds.accountId)
                 }
                 SyncAction.NONE -> {
                     Timber.tag("EPIC").i("[Cloud Saves] No sync needed")
@@ -186,7 +186,7 @@ object EpicCloudSavesManager {
                 return@withContext SyncAction.UPLOAD
             }
 
-            val lastSync = EpicService.getSyncTimestamp(context, appId)
+            val lastSync = getSyncTimestamp(context, appId)
             val cloudTimestamp = manifestInfo.lastModified
 
             // Get local newest file timestamp
@@ -252,7 +252,7 @@ object EpicCloudSavesManager {
             Timber.tag("EPIC").d("[Cloud Saves] Listing saves for $appName (account: $accountId)")
 
             val request = Request.Builder()
-                .url("$baseCloudSyncUrl/api/v1/access/egstore/savesync/$accountId/$appName/")
+                .url("$/api/v1/access/egstore/savesync/$accountId/$appName/")
                 .header("Authorization", "Bearer $accessToken")
                 .get()
                 .build()
@@ -317,7 +317,7 @@ object EpicCloudSavesManager {
     }
 
     // Download saves flow
-    private suspend fun downloadSaves(context: Context, appId: String): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun downloadSaves(context: Context, appId: String, accountId: String): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("EPIC").i("[Cloud Saves] Starting download for $appId")
 
@@ -350,7 +350,7 @@ object EpicCloudSavesManager {
             Timber.tag("EPIC").i("[Cloud Saves] Found manifest: $manifestPath (${manifestInfo.lastModified})")
 
             // 4. Check if we need to download
-            val lastSync = EpicService.getSyncTimestamp(context, appId)
+            val lastSync = getSyncTimestamp(context, appId)
             if (lastSync != null && lastSync >= manifestInfo.lastModified) {
                 Timber.tag("EPIC").i("[Cloud Saves] Local saves are up to date")
                 return@withContext true
@@ -374,7 +374,7 @@ object EpicCloudSavesManager {
             Timber.tag("EPIC").i("[Cloud Saves] Manifest contains ${manifest.fileManifestList?.elements?.size ?: 0} files")
 
             // 7. Download and extract chunks
-            val saveDir = resolveSaveDirectory(context, game) ?: run {
+            val saveDir = resolveSaveDirectory(context, game, accountId) ?: run {
                 Timber.tag("EPIC").e("[Cloud Saves] Failed to resolve save directory")
                 return@withContext false
             }
@@ -425,7 +425,7 @@ object EpicCloudSavesManager {
             }
 
             // 8. Update sync timestamp
-            EpicService.setSyncTimestamp(context, appId, manifestInfo.lastModified)
+            setSyncTimestamp(context, appId, manifestInfo.lastModified)
 
             Timber.tag("EPIC").i("[Cloud Saves] Download complete: $downloadedFiles files")
             true
@@ -436,7 +436,7 @@ object EpicCloudSavesManager {
     }
 
     // Resolve save directory path
-    private fun resolveSaveDirectory(context: Context, game: .EpicGame, accountId: String): File? {
+    private fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
         val cloudSaveFolder = game.saveFolder.ifEmpty { return null }
 
         // TODO: Implement full path variable resolution

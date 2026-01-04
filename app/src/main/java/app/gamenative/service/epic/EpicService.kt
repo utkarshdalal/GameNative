@@ -450,23 +450,7 @@ class EpicService : Service() {
             }
         }
 
-        /**
-         * Get the last sync timestamp for a game's cloud saves
-         */
-        fun getSyncTimestamp(appId: String): String? {
-            val context = getInstance()?.applicationContext ?: return null
-            val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
-            return prefs.getString("sync_timestamp_$appId", null)
-        }
 
-        /**
-         * Set the last sync timestamp for a game's cloud saves
-         */
-        fun setSyncTimestamp(appId: String, timestamp: String) {
-            val context = getInstance()?.applicationContext ?: return
-            val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
-            prefs.edit().putString("sync_timestamp_$appId", timestamp).apply()
-        }
     }
 
     private lateinit var notificationHelper: NotificationHelper
