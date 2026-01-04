@@ -18,12 +18,12 @@ import timber.log.Timber
 
 /**
  *
- * TODO: Download Game, Uninstall Game, Ensure we can track Progress via STDOUT parsing
- * TODO: Launching games using the different execution params that we store.
+ * TODO:
+ * Launching games using the different execution params that we store.
+ * DLC Support (Use DLC manager when its ready)
+ * Finish off Cloud Saves
+ * Deal with how we should work with 3rd party games such as Ubisoft/EA.
  *
- * | Install | `legendary install <APPNAME> --base-path <PATH> --platform Windows` | Progress output |
- * | Launch | `legendary launch <APPNAME> --offline --skip-version-check` | Launch output |
- * TODO: We should see if we need to put any disclaimers around online games not being supported and THEY BETTER NOT TRY FORTNITE.
  */
 
 /**
@@ -137,6 +137,7 @@ class EpicManager @Inject constructor(
         val value: String,
     )
 
+    // So we may have multiple ways that we can determine if there's a 3rd party. So we should just check if either of these are available, we should just try to map it best we can (The EA App -> EA, UbisoftConnect -> Ubisoft, otherwise Uknown if we didnt parse but it exists)
     data class EpicCustomAttributes(
         val canRunOffline: Boolean = false,
         val cloudSaveFolder: String? = null,
@@ -146,6 +147,8 @@ class EpicManager @Inject constructor(
         val monitorPresence: Boolean = false,
         val useAccessControl: Boolean = false,
         val canSkipKoreanIdVerification: Boolean = true,
+        val thirdPartyManagedProvider: String? = null // UbisoftConnect
+        val thirdPartyManagedApp: String? = null // The EA App
     )
 
     data class EpicReleaseInfo(
