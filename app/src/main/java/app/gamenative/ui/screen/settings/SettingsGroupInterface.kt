@@ -69,6 +69,7 @@ import app.gamenative.ui.component.dialog.GOGLoginDialog
 import app.gamenative.ui.component.dialog.EpicLoginDialog
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
+import app.gamenative.service.epic.EpicAuthManager
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import timber.log.Timber
@@ -246,6 +247,10 @@ fun SettingsGroupInterface(
     var epicLoginError by rememberSaveable { mutableStateOf<String?>(null) }
     var epicLoginSuccess by rememberSaveable { mutableStateOf(false) }
 
+    // Epic logout confirmation dialog state
+    var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
+    var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
+
     val coroutineScope = rememberCoroutineScope()
 
     // Listen for GOG OAuth callback
@@ -378,17 +383,30 @@ fun SettingsGroupInterface(
     }
 
     // Epic Games Integration
-    SettingsGroup(title = { Text(text = "Epic Games Integration") }) {
+    SettingsGroup(title = { Text(text = stringResource(R.string.epic_integration_title)) }) {
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Sign in to Epic Games") },
-            subtitle = { Text(text = "Connect your Epic Games account") },
+            title = { Text(text = stringResource(R.string.epic_settings_login_title)) },
+            subtitle = { Text(text = stringResource(R.string.epic_settings_login_subtitle)) },
             onClick = {
                 openEpicLoginDialog = true
                 epicLoginError = null
                 epicLoginSuccess = false
             }
         )
+
+        // Logout button - only show if credentials exist
+        if (EpicAuthManager.hasStoredCredentials(context)) {
+            SettingsMenuLink(
+                icon = { androidx.compose.material3.Icon(Icons.Default.Login, contentDescription = null) },
+                title = { Text(text = stringResource(R.string.epic_settings_logout_title)) },
+                subtitle = { Text(text = stringResource(R.string.epic_settings_logout_subtitle)) },
+                onClick = {
+                    showEpicLogoutDialog = true
+                },
+                colors = settingsTileColorsAlt()
+            )
+        }
     }
 
     // Downloads settings
@@ -794,12 +812,55 @@ fun SettingsGroupInterface(
             visible = true,
             onDismissRequest = { epicLoginSuccess = false },
             onConfirmClick = { epicLoginSuccess = false },
-            confirmBtnText = "OK",
+            confirmBtnText = stringResource(R.string.acknowledge),
             icon = Icons.Default.Login,
-            title = "Login Successful",
-            message = "You are now signed in to Epic Games."
+            title = stringResource(R.string.epic_login_success_title),
+            message = stringResource(R.string.epic_login_success_message)
         )
     }
+
+    // Epic logout confirmation dialog
+    MessageDialog(
+        visible = showEpicLogoutDialog,
+        title = stringResource(R.string.epic_logout_confirm_title),
+        message = stringResource(R.string.epic_logout_confirm_message),
+        confirmBtnText = stringResource(R.string.epic_logout_confirm),
+        dismissBtnText = stringResource(R.string.cancel),
+        onConfirmClick = {
+            showEpicLogoutDialog = false
+            epicLogoutLoading = true
+            coroutineScope.launch {
+                try {
+                    Timber.d("[SettingsEpic]: Starting logout...")
+                    val result = EpicService.logout(context)
+                    withContext(Dispatchers.Main) {
+                        epicLogoutLoading = false
+                        if (result.isSuccess) {
+                            Timber.i("[SettingsEpic]: ✓ Logout successful!")
+                            // Emit library changed event
+                            PluviaApp.events.emitJava(AndroidEvent.LibraryChanged())
+                        } else {
+                            Timber.e("[SettingsEpic]: ✗ Logout failed: ${result.exceptionOrNull()?.message}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "[SettingsEpic]: Logout exception: ${e.message}")
+                    withContext(Dispatchers.Main) {
+                        epicLogoutLoading = false
+                    }
+                }
+            }
+        },
+        onDismissRequest = { showEpicLogoutDialog = false },
+        onDismissClick = { showEpicLogoutDialog = false }
+    )
+
+    // Epic logout loading dialog
+    LoadingDialog(
+        visible = epicLogoutLoading,
+        progress = -1f,
+        message = stringResource(R.string.epic_logout_in_progress)
+    )
 
 }
 

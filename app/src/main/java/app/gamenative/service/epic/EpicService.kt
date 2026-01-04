@@ -75,6 +75,7 @@ class EpicService : Service() {
         }
 
 
+
         // ==========================================================================
         // AUTHENTICATION - Delegate to EpicAuthManager
         // ==========================================================================
@@ -91,8 +92,40 @@ class EpicService : Service() {
             return EpicAuthManager.getStoredCredentials(context)
         }
 
+        /**
+         * Logout from Epic - clears credentials, database, and stops service
+         */
         suspend fun logout(context: Context): Result<Unit> {
-            return EpicAuthManager.logout(context)
+            return withContext(Dispatchers.IO) {
+                try {
+                    Timber.i("Logging out from Epic...")
+
+                    // Get instance first before stopping the service
+                    val instance = getInstance()
+                    if (instance == null) {
+                        Timber.tag("Epic").w("Service not running, clearing credentials anyway")
+                    }
+
+                    // Clear stored credentials
+                    val credentialsCleared = EpicAuthManager.clearStoredCredentials(context)
+                    if (!credentialsCleared) {
+                        Timber.tag("Epic").w("Failed to clear credentials during logout")
+                    }
+
+                    // Clear all Epic games from database
+                    instance?.epicManager?.deleteAllGames()
+                    Timber.tag("Epic").i("All Epic games removed from database")
+
+                    // Stop the service
+                    stop()
+
+                    Timber.tag("Epic").i("Logout completed successfully")
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    Timber.tag("Epic").e(e, "Error during logout")
+                    Result.failure(e)
+                }
+            }
         }
 
         // ==========================================================================

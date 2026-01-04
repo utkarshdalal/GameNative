@@ -621,6 +621,13 @@ class EpicManager @Inject constructor(
         )
     }
 
+
+    suspend fun deleteAllGames() {
+        withContext(Dispatchers.IO) {
+            epicGameDao.deleteAll()
+        }
+    }
+
     /**
      * Extract image URL from keyImages array by type
      */

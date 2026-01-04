@@ -972,5 +972,20 @@
     <string name="gog_logout_success">Logged out from GOG successfully</string>
     <string name="gog_logout_failed">Failed to logout: %s</string>
     <string name="gog_logout_in_progress">Logging out from GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_settings_login_title">Sign in to Epic Games</string>
+    <string name="epic_settings_login_subtitle">Connect your Epic Games account</string>
+    <string name="epic_login_success_title">Login Successful</string>
+    <string name="epic_login_success_message">You are now signed in to Epic Games.</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Logout from Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Disconnect your Epic Games account</string>
+    <string name="epic_logout_confirm_title">Logout from Epic Games?</string>
+    <string name="epic_logout_confirm_message">This will remove all Epic Games from your library and disconnect your account.</string>
+    <string name="epic_logout_confirm">Logout</string>
+    <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
 </resources>
 

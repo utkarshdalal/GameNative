@@ -26,10 +26,28 @@ object EpicAuthManager {
         return File(dir, "credentials.json").absolutePath
     }
 
+
     fun hasStoredCredentials(context: Context): Boolean {
         val credentialsFile = File(getCredentialsFilePath(context))
         return credentialsFile.exists()
     }
+
+        /**
+         * Clear stored credentials (logout)
+         */
+        fun clearStoredCredentials(context: Context): Boolean {
+            return try {
+                val authFile = File(getCredentialsFilePath(context))
+                if (authFile.exists()) {
+                    authFile.delete()
+                } else {
+                    true
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to clear GOG credentials")
+                false
+            }
+        }
 
     /**
      * Extract authorization code from various input formats:
