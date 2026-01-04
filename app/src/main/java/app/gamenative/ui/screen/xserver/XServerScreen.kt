@@ -125,8 +125,10 @@ import com.winlator.xserver.ScreenInfo
 import com.winlator.xserver.Window
 import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -147,7 +149,9 @@ import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
 
 private const val GRACEFUL_TERMINATION_DELAY_MS = 500L
+private const val WINDOW_REOPEN_GRACE_PERIOD_MS = 2000L
 private val bionicTerminationMutex = Mutex()
+private var bionicTerminationJob: Job? = null
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -595,6 +599,18 @@ fun XServerScreen(
                             )
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
+                            
+                            // For bionic containers, cancel pending termination if a window opens
+                            if (xServerState.value.winStarted &&
+                                container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                                bionicTerminationJob?.let { job ->
+                                    if (job.isActive) {
+                                        Timber.i("Window opened during grace period - cancelling container termination")
+                                        job.cancel()
+                                        bionicTerminationJob = null
+                                    }
+                                }
+                            }
                         }
 
                         override fun onUnmapWindow(window: Window) {
@@ -616,7 +632,7 @@ fun XServerScreen(
                                 val windowManager = getxServer().windowManager
                                 // Capture immutable snapshot on UI thread to avoid ConcurrentModificationException
                                 val windowSnapshot = windowManager.rootWindow.children.toList()
-                                terminateBionicContainerIfAllWindowsClosed(windowSnapshot)
+                                terminateBionicContainerIfAllWindowsClosed(windowSnapshot, windowManager)
                             }
                         }
                     },
@@ -1239,44 +1255,74 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
  * 
  * @param windowSnapshot Immutable snapshot of rootWindow.children captured on the caller thread
  *                       to avoid ConcurrentModificationException from X client thread modifications.
+ * @param windowManager The WindowManager to check for new windows after grace period
  * 
  * Note: Uses fire-and-forget coroutine scope intentionally. Process termination is a
  * terminal cleanup operation that should complete even if the composable is disposed,
  * preventing orphaned wine processes.
+ * 
+ * Grace Period: Waits 2 seconds after detecting all windows closed before terminating,
+ * allowing games that briefly close and reopen windows to continue running.
+ * Only starts the timer once when transitioning from "has windows" to "no windows".
  */
-private fun terminateBionicContainerIfAllWindowsClosed(windowSnapshot: List<Window>) {
-    CoroutineScope(Dispatchers.IO).launch {
-        bionicTerminationMutex.withLock {
-            // Check if any application windows remain (excluding system processes)
-            val hasAppWindows = windowSnapshot.any { child ->
-                child.isApplicationWindow() && 
-                child.className?.contains("explorer.exe", ignoreCase = true) != true &&
-                child.className?.contains("dosdevices.exe", ignoreCase = true) != true
-            }
+private fun terminateBionicContainerIfAllWindowsClosed(windowSnapshot: List<Window>, windowManager: WindowManager) {
+    // Check if any application windows remain (excluding system processes)
+    val hasAppWindows = windowSnapshot.any { child ->
+        child.isApplicationWindow() && 
+        child.className?.contains("explorer.exe", ignoreCase = true) != true &&
+        child.className?.contains("dosdevices.exe", ignoreCase = true) != true
+    }
+    
+    if (!hasAppWindows) {
+        // Only start timer if no job is already running (prevents constant retriggering)
+        if (bionicTerminationJob?.isActive != true) {
+            Timber.i("All game windows closed, starting ${WINDOW_REOPEN_GRACE_PERIOD_MS}ms grace period")
             
-            if (!hasAppWindows) {
-                Timber.i("All game windows closed, terminating wine processes")
+            bionicTerminationJob = CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Send SIGTERM for graceful shutdown
-                    ProcessHelper.terminateAllWineProcesses()
+                    delay(WINDOW_REOPEN_GRACE_PERIOD_MS)
                     
-                    // Allow time for graceful termination
-                    delay(GRACEFUL_TERMINATION_DELAY_MS)
-                    
-                    // Force-kill any remaining processes with SIGKILL
-                    val remainingProcesses = ProcessHelper.listRunningWineProcesses()
-                    if (remainingProcesses.isNotEmpty()) {
-                        Timber.i("Force-killing ${remainingProcesses.size} remaining wine processes")
-                        remainingProcesses.forEach { pidStr ->
-                            pidStr.toIntOrNull()?.let { pid ->
-                                android.os.Process.killProcess(pid)
+                    bionicTerminationMutex.withLock {
+                        // Re-check window state after grace period
+                        val currentWindows = windowManager.rootWindow.children.toList()
+                        val stillNoAppWindows = currentWindows.none { child ->
+                            child.isApplicationWindow() && 
+                            child.className?.contains("explorer.exe", ignoreCase = true) != true &&
+                            child.className?.contains("dosdevices.exe", ignoreCase = true) != true
+                        }
+                        
+                        if (stillNoAppWindows) {
+                            Timber.i("Grace period expired, no new windows opened - terminating wine processes")
+                            
+                            // Send SIGTERM for graceful shutdown
+                            ProcessHelper.terminateAllWineProcesses()
+                            
+                            // Allow time for graceful termination
+                            delay(GRACEFUL_TERMINATION_DELAY_MS)
+                            
+                            // Force-kill any remaining processes with SIGKILL
+                            val remainingProcesses = ProcessHelper.listRunningWineProcesses()
+                            if (remainingProcesses.isNotEmpty()) {
+                                Timber.i("Force-killing ${remainingProcesses.size} remaining wine processes")
+                                remainingProcesses.forEach { pidStr ->
+                                    pidStr.toIntOrNull()?.let { pid ->
+                                        android.os.Process.killProcess(pid)
+                                    }
+                                }
                             }
+                        } else {
+                            Timber.i("New window(s) opened during grace period - container continues")
                         }
                     }
+                } catch (e: CancellationException) {
+                    Timber.i("Termination cancelled - window reopened")
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to terminate wine processes")
                 }
             }
+        } else {
+            Timber.v("Grace period already active, not restarting timer")
         }
     }
 }
