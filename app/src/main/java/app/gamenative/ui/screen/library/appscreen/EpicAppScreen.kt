@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.data.AppMenuOption
@@ -28,6 +30,7 @@ import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -561,6 +564,50 @@ class EpicAppScreen : BaseAppScreen() {
         isInstalled: Boolean
     ): List<AppMenuOption> {
         val options = mutableListOf<AppMenuOption>()
+
+        // Add cloud sync option if game supports cloud saves
+        val epicGame = EpicService.getEpicGameOf(libraryItem.appId)
+        if (epicGame?.cloudSaveEnabled == true) {
+            options.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.ForceCloudSync,
+                    onClick = {
+                        val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+                        scope.launch {
+                            try {
+                                Toast.makeText(
+                                    context,
+                                    "Starting cloud save sync...",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                                val result = withContext(Dispatchers.IO) {
+                                    EpicCloudSavesManager.syncCloudSaves(
+                                        context,
+                                        libraryItem.appId,
+                                        preferredAction = "download" // Force download for testing
+                                    )
+                                }
+
+                                Toast.makeText(
+                                    context,
+                                    if (result) "Cloud saves synced successfully" else "Cloud save sync failed",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } catch (e: Exception) {
+                                Timber.tag(TAG).e(e, "[Cloud Saves] Sync failed")
+                                Toast.makeText(
+                                    context,
+                                    "Cloud save sync error: ${e.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                )
+            )
+        }
+
         return options
     }
 

@@ -429,6 +429,44 @@ class EpicService : Service() {
                 Result.failure(Exception("Game not found: $appName"))
             }
         }
+
+        // ==========================================================================
+        // CLOUD SAVES HELPERS
+        // ==========================================================================
+
+        /**
+         * Get the Epic account ID from stored credentials
+         */
+        fun getAccountId(): String? {
+            return try {
+                val context = getInstance()?.applicationContext ?: return null
+                val credentialsResult = kotlinx.coroutines.runBlocking {
+                    EpicAuthManager.getStoredCredentials(context)
+                }
+                credentialsResult.getOrNull()?.accountId
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "Failed to get account ID")
+                null
+            }
+        }
+
+        /**
+         * Get the last sync timestamp for a game's cloud saves
+         */
+        fun getSyncTimestamp(appId: String): String? {
+            val context = getInstance()?.applicationContext ?: return null
+            val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
+            return prefs.getString("sync_timestamp_$appId", null)
+        }
+
+        /**
+         * Set the last sync timestamp for a game's cloud saves
+         */
+        fun setSyncTimestamp(appId: String, timestamp: String) {
+            val context = getInstance()?.applicationContext ?: return
+            val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
+            prefs.edit().putString("sync_timestamp_$appId", timestamp).apply()
+        }
     }
 
     private lateinit var notificationHelper: NotificationHelper
