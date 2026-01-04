@@ -204,17 +204,26 @@ class EpicManager @Inject constructor(
                 return@withContext Result.failure(error ?: Exception("Failed to fetch Epic library"))
             }
 
-            val games = listResult.getOrNull() ?: emptyList()
-            Timber.tag("Epic").i("Successfully fetched ${games.size} games from Epic")
+            val gamesList = listResult.getOrNull() ?: emptyList()
+            Timber.tag("Epic").i("Successfully fetched ${gamesList.size} games from Epic")
 
-            if (games.isEmpty()) {
+            if (gamesList.isEmpty()) {
                 Timber.tag("Epic").w("No games found in Epic library")
                 return@withContext Result.success(0)
             }
 
+            // Get existing game IDs from database to avoid re-fetching
+            val existingGameIds = epicGameDao.getAllGameIds().toSet()
+            Timber.tag("Epic").d("Found ${existingGameIds.size} games already in database")
+
+            // Filter to only new games that need details fetched
+            val newGamesList = gamesList.filter { it.catalogItemId !in existingGameIds }
+            Timber.tag("Epic").d("${newGamesList.size} new games need details fetched")
+
+
             // ! Get the game information and store each one in batches
             val epicGames = mutableListOf<EpicGame>()
-            for ((index, game) in games.withIndex()) {
+            for ((index, game) in newGamesList.withIndex()) {
                 val result = fetchGameInfo(context, game)
 
                 if (result.isSuccess) {
@@ -227,10 +236,10 @@ class EpicManager @Inject constructor(
                     Timber.tag("Epic").w("Epic game ${game.appName} could not be fetched")
                 }
 
-                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == games.size - 1) {
+                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == gamesList.size - 1) {
                     if (epicGames.isNotEmpty()) {
                         epicGameDao.upsertPreservingInstallStatus(epicGames)
-                        Timber.tag("Epic").d("Batch inserted ${epicGames.size} games (processed ${index + 1}/${games.size})")
+                        Timber.tag("Epic").d("Batch inserted ${epicGames.size} games (processed ${index + 1}/${gamesList.size})")
                         epicGames.clear()
                     }
                 }

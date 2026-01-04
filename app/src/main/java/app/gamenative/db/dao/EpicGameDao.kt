@@ -64,6 +64,9 @@ interface EpicGameDao {
     @Query("SELECT COUNT(*) FROM epic_games")
     fun getCount(): Flow<Int>
 
+    @Query("SELECT id FROM epic_games")
+    suspend fun getAllGameIds(): List<String>
+
     @Transaction
     suspend fun replaceAll(games: List<EpicGame>) {
         deleteAll()

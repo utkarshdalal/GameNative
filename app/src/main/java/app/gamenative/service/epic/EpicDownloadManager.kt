@@ -225,7 +225,7 @@ class EpicDownloadManager @Inject constructor(
                     // Note: chunks are downloaded without auth tokens (tokens are only for manifests)
                     // Build full URL: baseUrl + cloudDir + chunkPath
                     val url = "${cdnUrl.baseUrl}${cdnUrl.cloudDir}/$chunkPath"
-                    Timber.tag("Epic").d("Downloading chunk from: $url")
+                    // Timber.tag("Epic").d("Downloading chunk from: $url")
 
                     // TODO: Check whether or not we should provide the user agent.
                     val request = Request.Builder()
@@ -233,14 +233,14 @@ class EpicDownloadManager @Inject constructor(
                         .header("User-Agent", "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit")
                         .build()
 
-                    Timber.tag("Epic").d(
-                        """
-                        |NATIVE Chunk download request:
-                        |  URL: ${request.url}
-                        |  Method: ${request.method}
-                        |  Headers: ${request.headers}
-                        """.trimMargin(),
-                    )
+                    // Timber.tag("Epic").d(
+                    //     """
+                    //     |NATIVE Chunk download request:
+                    //     |  URL: ${request.url}
+                    //     |  Method: ${request.method}
+                    //     |  Headers: ${request.headers}
+                    //     """.trimMargin(),
+                    // )
 
                     val response = okHttpClient.newCall(request).execute()
 
