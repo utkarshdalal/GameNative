@@ -979,6 +979,7 @@
     <string name="epic_settings_login_subtitle">Connect your Epic Games account</string>
     <string name="epic_login_success_title">Login Successful</string>
     <string name="epic_login_success_message">You are now signed in to Epic Games.</string>
+    <string name="epic_logout_success">Logged out from Epic successfully</string>
 
     <!-- Epic Games Logout -->
     <string name="epic_settings_logout_title">Logout from Epic Games</string>

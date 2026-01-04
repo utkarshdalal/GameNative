@@ -837,8 +837,13 @@ fun SettingsGroupInterface(
                         epicLogoutLoading = false
                         if (result.isSuccess) {
                             Timber.i("[SettingsEpic]: ✓ Logout successful!")
-                            // Emit library changed event
-                            PluviaApp.events.emitJava(AndroidEvent.LibraryChanged())
+                            withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                context.getString(R.string.epic_logout_success),
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         } else {
                             Timber.e("[SettingsEpic]: ✗ Logout failed: ${result.exceptionOrNull()?.message}")
                         }

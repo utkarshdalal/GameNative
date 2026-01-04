@@ -613,7 +613,7 @@ class EpicManager @Inject constructor(
             canRunOffline = canRunOffline, // Unknown from catalog API, will need manifest
             requiresOT = false,
             cloudSaveEnabled = cloudSaveEnabled,
-            saveFolder = "",
+            saveFolder = saveFolder,
             thirdPartyManagedApp = "",
             isEAManaged = false,
             lastPlayed = 0,
