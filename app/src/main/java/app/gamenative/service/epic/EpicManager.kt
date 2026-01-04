@@ -137,18 +137,30 @@ class EpicManager @Inject constructor(
         val value: String,
     )
 
-    // So we may have multiple ways that we can determine if there's a 3rd party. So we should just check if either of these are available, we should just try to map it best we can (The EA App -> EA, UbisoftConnect -> Ubisoft, otherwise Uknown if we didnt parse but it exists)
+    // So we may have multiple ways that we can determine if there's a 3rd party. So we should just check if either of these are available,
+    // we should just try to map it best we can (The EA App -> EA, UbisoftConnect -> Ubisoft, otherwise Uknown if we didnt parse but it exists)
+    // Turns out there are multiple fields we COULD see that may check for ubisoft and EA, so we'll need to look around.
     data class EpicCustomAttributes(
         val canRunOffline: Boolean = false,
         val cloudSaveFolder: String? = null,
         val cloudIncludeList: String? = null,
+        val neverUpdate: Boolean = false,
         val folderName: String? = null,
         val presenceId: String? = null,
         val monitorPresence: Boolean = false,
         val useAccessControl: Boolean = false,
         val canSkipKoreanIdVerification: Boolean = true,
-        val thirdPartyManagedProvider: String? = null // UbisoftConnect
-        val thirdPartyManagedApp: String? = null // The EA App
+        val partnerLinkType: String? = null, // Ubisoft
+        val thirdPartyManagedProvider: String? = null, // UbisoftConnect
+        val thirdPartyManagedApp: String? = null, // The EA App | Origin
+        val partnerLinkId: String? = null,
+        val backgroundProcessName: String? = null,
+        val registryPath: String? = null,
+        val registryLocation: String? = null
+        val registryKey: String? = null,
+        val additionalCommandline: String? = null,
+        val processNames: String? = null,
+        val gameId: String? = null,
     )
 
     data class EpicReleaseInfo(
