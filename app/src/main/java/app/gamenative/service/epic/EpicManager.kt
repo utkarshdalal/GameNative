@@ -132,10 +132,22 @@ class EpicManager @Inject constructor(
         val path: String,
     )
 
-    data class EpicCustomAttribute(
+    data class EpicCustomAttributeValue(
         val type: String,
         val value: String,
     )
+
+    data class EpicCustomAttributes(
+        val canRunOffline: Boolean = false,
+        val cloudSaveFolder: String? = null,
+        val cloudIncludeList: String? = null,
+        val folderName: String? = null,
+        val presenceId: String? = null,
+        val monitorPresence: Boolean = false,
+        val useAccessControl: Boolean = false,
+        val canSkipKoreanIdVerification: Boolean = true,
+    )
+
     data class EpicReleaseInfo(
         val id: String,
         val appId: String,
@@ -160,7 +172,7 @@ class EpicManager @Inject constructor(
         val status: String?,
         val creationDate: String?, // "2025-03-04T08:39:07.841Z",
         val lastModifiedDate: String?, // "2025-03-06T07:37:16.597Z",
-        val customAttributes: EpicCustomAttribute?,
+        val customAttributes: EpicCustomAttributes?,
         val entitlementName: String?,
         val entitlementType: String?,
         val itemType: String?,
@@ -421,6 +433,51 @@ class EpicManager @Inject constructor(
     }
 
     /**
+     * Parse customAttributes object from Epic catalog API
+     *
+     * Custom attributes structure:
+     * {
+     *   "CanRunOffline": { "type": "STRING", "value": "true" },
+     *   "CloudSaveFolder": { "type": "STRING", "value": "{UserDir}/GAME_NAME/" },
+     *   "CloudIncludeList": { "type": "STRING", "value": "*.sav,*.key,*.opt" },
+     *   "FolderName": { "type": "STRING", "value": "TwentyXX" },
+     *   ...
+     * }
+     */
+    private fun parseCustomAttributes(customAttributesJson: JSONObject?): EpicCustomAttributes {
+        if (customAttributesJson == null) {
+            return EpicCustomAttributes()
+        }
+
+        // Helper function to extract value from attribute object
+        fun getAttribute(name: String): String? {
+            val attrObj = customAttributesJson.optJSONObject(name)
+            return attrObj?.optString("value")?.takeIf { it.isNotEmpty() }
+        }
+
+        // Helper function to parse boolean attributes
+        fun getBooleanAttribute(name: String, default: Boolean = false): Boolean {
+            val value = getAttribute(name)
+            return when (value?.lowercase()) {
+                "true" -> true
+                "false" -> false
+                else -> default
+            }
+        }
+
+        return EpicCustomAttributes(
+            canRunOffline = getBooleanAttribute("CanRunOffline", false),
+            cloudSaveFolder = getAttribute("CloudSaveFolder"),
+            cloudIncludeList = getAttribute("CloudIncludeList"),
+            folderName = getAttribute("FolderName"),
+            presenceId = getAttribute("PresenceId"),
+            monitorPresence = getBooleanAttribute("MonitorPresence", false),
+            useAccessControl = getBooleanAttribute("UseAccessControl", false),
+            canSkipKoreanIdVerification = getBooleanAttribute("CanSkipKoreanIdVerification", true),
+        )
+    }
+
+    /**
      * Parse Epic catalog JSON into EpicGame object
      *
      * Catalog structure:
@@ -521,6 +578,14 @@ class EpicManager @Inject constructor(
             }
         }
 
+        // Parse custom attributes for cloud saves and offline support
+        val parsedAttributes = parseCustomAttributes(data.optJSONObject("customAttributes"))
+        val canRunOffline = parsedAttributes.canRunOffline
+        val cloudSaveEnabled = !parsedAttributes.cloudSaveFolder.isNullOrEmpty()
+        val saveFolder = parsedAttributes.cloudSaveFolder ?: ""
+
+        Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
+
         return EpicGame(
             id = catalogItemId,
             appName = appName,
@@ -545,9 +610,9 @@ class EpicManager @Inject constructor(
             executable = "",
             installSize = 0,
             downloadSize = 0,
-            canRunOffline = false, // Unknown from catalog API, will need manifest
+            canRunOffline = canRunOffline, // Unknown from catalog API, will need manifest
             requiresOT = false,
-            cloudSaveEnabled = false,
+            cloudSaveEnabled = cloudSaveEnabled,
             saveFolder = "",
             thirdPartyManagedApp = "",
             isEAManaged = false,
