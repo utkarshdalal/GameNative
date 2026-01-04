@@ -1087,7 +1087,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDownloads = maxDownloads,
                             maxDecompress = maxDecompress,
                             maxFileWrites = maxFileWrites,
-                            parentJob = coroutineContext[Job]
+                            parentJob = coroutineContext[Job],
+                            autoStartDownload = false,
                         )
 
                         // Create listener
@@ -1107,6 +1108,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         // Signal that no more items will be added
                         depotDownloader.finishAdding()
 
+                        // Start downloading
+                        depotDownloader.startDownloading();
+
                         Timber.i("Downloading game to " + defaultAppInstallPath)
 
                         // Wait for completion
@@ -1117,6 +1121,29 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Close the downloader
                         depotDownloader.close()
+
+                        // Handle completion: add marker, update database
+                        val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+                        MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
+                        runBlocking {
+                            instance?.appInfoDao?.insert(
+                                AppInfo(
+                                    appId,
+                                    isDownloaded = true,
+                                    downloadedDepots = entitledDepotIds,
+                                    dlcDepots = ownedDlc.values.map { it.dlcAppId }.distinct(),
+                                ),
+                            )
+                        }
+                        MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_COLDCLIENT_USED)
+
+                        // Clear persisted bytes file on successful completion
+                        di.clearPersistedBytesDownloaded(appDirPath)
+
+                        // Remove the job here
+                        removeDownloadJob(appId)
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
@@ -1164,27 +1191,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onDownloadCompleted(item: DownloadItem) {
                 Timber.i("Item ${item.appId} download completed")
-                // Handle completion: add marker, update database
-                val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-                MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
-                runBlocking {
-                    instance?.appInfoDao?.insert(
-                        AppInfo(
-                            appId,
-                            isDownloaded = true,
-                            downloadedDepots = entitledDepotIds,
-                            dlcDepots = ownedDlc.values.map { it.dlcAppId }.distinct(),
-                        ),
-                    )
-                }
-                MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
-                MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_COLDCLIENT_USED)
-
-                // Clear persisted bytes file on successful completion
-                downloadInfo.clearPersistedBytesDownloaded(appDirPath)
-
-                removeDownloadJob(appId)
             }
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
