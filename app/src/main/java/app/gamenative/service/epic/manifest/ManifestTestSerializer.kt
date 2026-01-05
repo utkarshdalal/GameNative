@@ -4,7 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Serializes parsed manifest to JSON for comparison testing between Kotlin and Python implementations
+ * Serializes parsed manifest to JSON for testing and validation
  */
 object ManifestTestSerializer {
 
