@@ -268,14 +268,13 @@ class GOGService : Service() {
         }
 
 
-        suspend fun getInstalledExe(context: Context, libraryItem: LibraryItem): String {
-            return getInstance()?.gogManager?.getInstalledExe(context, libraryItem)
+        suspend fun getInstalledExe(libraryItem: LibraryItem): String {
+            return getInstance()?.gogManager?.getInstalledExe(libraryItem)
                 ?: ""
         }
 
 
         fun getGogWineStartCommand(
-            context: Context,
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,
             bootToContainer: Boolean,
@@ -284,7 +283,7 @@ class GOGService : Service() {
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent
         ): String {
             return getInstance()?.gogManager?.getGogWineStartCommand(
-                context, libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent
+                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent
             ) ?: "\"explorer.exe\""
         }
 

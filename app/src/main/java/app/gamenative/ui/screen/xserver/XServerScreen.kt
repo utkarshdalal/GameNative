@@ -1514,7 +1514,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
+            getWineStartCommand(appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
@@ -1662,7 +1662,6 @@ private fun setupXEnvironment(
     return environment
 }
 private fun getWineStartCommand(
-    context: Context,
     appId: String,
     container: Container,
     bootToContainer: Boolean,
@@ -1710,7 +1709,6 @@ private fun getWineStartCommand(
         )
 
         val gogCommand = GOGService.getGogWineStartCommand(
-            context = context,
             libraryItem = libraryItem,
             container = container,
             bootToContainer = bootToContainer,

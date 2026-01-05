@@ -677,7 +677,7 @@ class GOGManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val gameId = libraryItem.gameId.toString()
-                val installPath = getGameInstallPath(context, gameId, libraryItem.name)
+                val installPath = getGameInstallPath(gameId, libraryItem.name)
                 val installDir = File(installPath)
 
                 // Delete the manifest file
@@ -744,7 +744,7 @@ class GOGManager @Inject constructor(
             val gameId = libraryItem.gameId.toString()
             val game = runBlocking { getGameById(gameId) }
             if (game != null && isInstalled != game.isInstalled) {
-                val installPath = if (isInstalled) getGameInstallPath(context, gameId, libraryItem.name) else ""
+                val installPath = if (isInstalled) getGameInstallPath(gameId, libraryItem.name) else ""
                 val updatedGame = game.copy(isInstalled = isInstalled, installPath = installPath)
                 runBlocking { gogGameDao.update(updatedGame) }
             }
@@ -784,11 +784,11 @@ class GOGManager @Inject constructor(
     }
 
     // Get the exe. There is a v1 and v2 depending on the age of the game.
-    suspend fun getInstalledExe(context: Context, libraryItem: LibraryItem): String = withContext(Dispatchers.IO) {
+    suspend fun getInstalledExe(libraryItem: LibraryItem): String = withContext(Dispatchers.IO) {
         val gameId = libraryItem.gameId.toString()
         try {
             val game = getGameById(gameId) ?: return@withContext ""
-            val installPath = getGameInstallPath(context, game.id, game.title)
+            val installPath = getGameInstallPath(game.id, game.title)
 
             // Try V2 structure first (game_$gameId subdirectory)
             val v2GameDir = File(installPath, "game_$gameId")
@@ -896,7 +896,6 @@ class GOGManager @Inject constructor(
     }
 
     fun getGogWineStartCommand(
-        context: Context,
         libraryItem: LibraryItem,
         container: Container,
         bootToContainer: Boolean,
@@ -919,7 +918,7 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val gameInstallPath = getGameInstallPath(context, gameId.toString(), game.title)
+        val gameInstallPath = getGameInstallPath(gameId.toString(), game.title)
         val gameDir = File(gameInstallPath)
 
         if (!gameDir.exists()) {
@@ -932,7 +931,7 @@ class GOGManager @Inject constructor(
             Timber.d("Using configured executable path from container: ${container.executablePath}")
             container.executablePath
         } else {
-            val detectedPath = runBlocking { getInstalledExe(context, libraryItem) }
+            val detectedPath = runBlocking { getInstalledExe(libraryItem) }
             Timber.d("Auto-detected executable path: $detectedPath")
             detectedPath
         }
@@ -1503,7 +1502,7 @@ class GOGManager @Inject constructor(
         return GOGConstants.defaultGOGGamesPath
     }
 
-    fun getGameInstallPath(context: Context, gameId: String, gameTitle: String): String {
+    fun getGameInstallPath(gameId: String, gameTitle: String): String {
         return GOGConstants.getGameInstallPath(gameTitle)
     }
 
