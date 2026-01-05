@@ -206,6 +206,20 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getTestGraphicsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onTestGraphics: () -> Unit
+    ): AppMenuOption? {
+        return AppMenuOption(
+            AppOptionMenuType.TestGraphics,
+            onClick = {
+                onTestGraphicsClick(context, libraryItem, onTestGraphics)
+            }
+        )
+    }
+
+    @Composable
     protected abstract fun getResetContainerOption(
         context: Context,
         libraryItem: LibraryItem
@@ -372,16 +386,20 @@ abstract class BaseAppScreen {
         )
     }
 
-    /**
-     * Hook method called when RunContainer is clicked.
-     * Override this to add custom behavior (e.g., analytics tracking).
-     */
     protected open fun onRunContainerClick(
         context: Context,
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
         onClickPlay(true)
+    }
+
+    protected open fun onTestGraphicsClick(
+        context: Context,
+        libraryItem: LibraryItem,
+        onTestGraphics: () -> Unit
+    ) {
+        onTestGraphics()
     }
 
     /**
@@ -456,6 +474,7 @@ abstract class BaseAppScreen {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
+        onTestGraphics: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
@@ -467,6 +486,7 @@ abstract class BaseAppScreen {
         if (isInstalled) {
             // Options only available when game is installed
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
+            getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
@@ -501,6 +521,7 @@ abstract class BaseAppScreen {
     fun Content(
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit,
+        onTestGraphics: () -> Unit,
         onBack: () -> Unit,
     ) {
         val context = LocalContext.current
@@ -600,7 +621,7 @@ abstract class BaseAppScreen {
             },
         )
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, exportFrontendLauncher)
+        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {

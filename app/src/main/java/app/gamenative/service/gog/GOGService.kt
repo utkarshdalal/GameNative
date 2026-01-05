@@ -274,7 +274,7 @@ class GOGService : Service() {
         }
 
 
-        fun getWineStartCommand(
+        fun getGogWineStartCommand(
             context: Context,
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,
@@ -283,7 +283,7 @@ class GOGService : Service() {
             envVars: com.winlator.core.envvars.EnvVars,
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent
         ): String {
-            return getInstance()?.gogManager?.getWineStartCommand(
+            return getInstance()?.gogManager?.getGogWineStartCommand(
                 context, libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent
             ) ?: "\"explorer.exe\""
         }

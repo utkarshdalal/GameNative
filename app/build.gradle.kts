@@ -53,7 +53,7 @@ android {
         targetSdk = 28
 
         versionCode = 8
-        versionName = "0.6.1"
+        versionName = "0.6.2"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -86,6 +86,7 @@ android {
             "zh-rCN",  // Simplified Chinese
             "fr",      // French
             "de",      // German
+            "uk",      // Ukrainian
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 

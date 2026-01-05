@@ -895,7 +895,7 @@ class GOGManager @Inject constructor(
         }
     }
 
-    fun getWineStartCommand(
+    fun getGogWineStartCommand(
         context: Context,
         libraryItem: LibraryItem,
         container: Container,
