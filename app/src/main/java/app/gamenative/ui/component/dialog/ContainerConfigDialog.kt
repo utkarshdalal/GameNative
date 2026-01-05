@@ -1129,7 +1129,11 @@ fun ContainerConfigDialog(
                                     items = screenSizes,
                                     onItemSelected = {
                                         screenSizeIndex = it
-                                        if (it == 0) showCustomResolutionDialog = true
+                                        if (it == 0) {
+                                            showCustomResolutionDialog = true
+                                        } else {
+                                            applyScreenSizeToConfig()
+                                        }
                                     },
                                 )
                                 // Audio Driver Dropdown
@@ -2004,7 +2008,7 @@ private fun ExecutablePathDropdown(
     LaunchedEffect(containerData.drives) {
         isLoading = true
         executables = withContext(Dispatchers.IO) {
-            scanExecutablesInADrive(containerData.drives)
+            ContainerUtils.scanExecutablesInADrive(containerData.drives)
         }
         isLoading = false
     }
@@ -2066,113 +2070,3 @@ private fun ExecutablePathDropdown(
     }
 }
 
-/**
- * Scans the container's A: drive for all .exe files
- */
-private fun scanExecutablesInADrive(drives: String): List<String> {
-    val executables = mutableListOf<String>()
-
-    try {
-        // Find the A: drive path from container drives
-        val aDrivePath = getADrivePath(drives)
-        if (aDrivePath == null) {
-            timber.log.Timber.w("No A: drive found in container drives")
-            return emptyList()
-        }
-
-        val aDir = java.io.File(aDrivePath)
-        if (!aDir.exists() || !aDir.isDirectory) {
-            timber.log.Timber.w("A: drive path does not exist or is not a directory: $aDrivePath")
-            return emptyList()
-        }
-
-        timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
-
-        // Recursively scan for .exe files using listFiles with depth limit
-        fun scanRecursive(dir: java.io.File, baseDir: java.io.File, depth: Int = 0, maxDepth: Int = 10) {
-            if (depth > maxDepth) return
-            
-            dir.listFiles()?.forEach { file ->
-                if (file.isDirectory) {
-                    scanRecursive(file, baseDir, depth + 1, maxDepth)
-                } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
-                    // Convert to relative Windows path format
-                    val relativePath = baseDir.toURI().relativize(file.toURI()).path
-                    executables.add(relativePath)
-                }
-            }
-        }
-        
-        scanRecursive(aDir, aDir)
-
-        // Sort alphabetically and prioritize common game executables
-        executables.sortWith { a, b ->
-            val aScore = getExecutablePriority(a)
-            val bScore = getExecutablePriority(b)
-
-            if (aScore != bScore) {
-                bScore.compareTo(aScore) // Higher priority first
-            } else {
-                a.compareTo(b, ignoreCase = true) // Alphabetical
-            }
-        }
-
-        timber.log.Timber.d("Found ${executables.size} executables in A: drive")
-
-    } catch (e: Exception) {
-        timber.log.Timber.e(e, "Error scanning A: drive for executables")
-    }
-
-    return executables
-}
-
-/**
- * Gets the file system path for the container's A: drive
- */
-private fun getADrivePath(drives: String): String? {
-    // Use the existing Container.drivesIterator logic
-    for (drive in Container.drivesIterator(drives)) {
-        if (drive[0] == "A") {
-            return drive[1]
-        }
-    }
-    return null
-}
-
-/**
- * Assigns priority scores to executables for better sorting
- */
-private fun getExecutablePriority(exePath: String): Int {
-    val fileName = exePath.substringAfterLast('\\').lowercase()
-    val baseName = fileName.substringBeforeLast('.')
-
-    return when {
-        // Highest priority: common game executable patterns
-        fileName.contains("game") -> 100
-        fileName.contains("start") -> 85
-        fileName.contains("main") -> 80
-        fileName.contains("launcher") && !fileName.contains("unins") -> 75
-
-        // High priority: probable main executables
-        baseName.length >= 4 && !isSystemExecutable(fileName) -> 70
-
-        // Medium priority: any non-system executable
-        !isSystemExecutable(fileName) -> 50
-
-        // Low priority: system/utility executables
-        else -> 10
-    }
-}
-
-/**
- * Checks if an executable is likely a system/utility file
- */
-private fun isSystemExecutable(fileName: String): Boolean {
-    val systemKeywords = listOf(
-        "unins", "setup", "install", "config", "crash", "handler",
-        "viewer", "compiler", "tool", "redist", "vcredist", "directx",
-        "steam", "origin", "uplay", "epic", "battlenet"
-    )
-
-    return systemKeywords.any { fileName.contains(it) }
-}

@@ -217,17 +217,13 @@ internal fun AppItem(
                                     PaneType.GRID_CAPSULE -> {
                                         // Vertical grid for capsule
                                         findSteamGridDBImage("grid_capsule")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/library_600x900.jpg"
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
                                     }
-
                                     PaneType.GRID_HERO -> {
                                         // Horizontal grid for hero view
                                         findSteamGridDBImage("grid_hero")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/header.jpg"
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
                                     }
-
                                     else -> {
                                         // For list view, use heroes endpoint (not grid_hero)
                                         val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
@@ -235,26 +231,20 @@ internal fun AppItem(
                                             val folder = java.io.File(path)
                                             val heroFile = folder.listFiles()?.firstOrNull { file ->
                                                 file.name.startsWith("steamgriddb_hero") &&
-                                                    !file.name.contains("grid") &&
-                                                    (
-                                                        file.name.endsWith(".png", ignoreCase = true) ||
-                                                            file.name.endsWith(".jpg", ignoreCase = true) ||
-                                                            file.name.endsWith(".webp", ignoreCase = true)
-                                                        )
+                                                !file.name.contains("grid") &&
+                                                (file.name.endsWith(".png", ignoreCase = true) ||
+                                                 file.name.endsWith(".jpg", ignoreCase = true) ||
+                                                 file.name.endsWith(".webp", ignoreCase = true))
                                             }
                                             heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                         }
-                                        heroUrl
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/header.jpg"
+                                        heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
                                     }
                                 }
                             }
-
                             GameSource.GOG -> {
                                 appInfo.iconHash
                             }
-
                             GameSource.EPIC -> {
 
                                 val game = EpicService.getEpicGameOf(appInfo.appId.removePrefix("EPIC_"))
@@ -269,7 +259,6 @@ internal fun AppItem(
                                 }
                                 epicUrl
                             }
-
                             GameSource.STEAM -> {
                                 // For Steam games, use standard Steam URLs
                                 if (paneType == PaneType.GRID_CAPSULE) {

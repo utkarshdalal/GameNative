@@ -21,6 +21,7 @@ fun HomeScreen(
     onChat: (Long) -> Unit,
     onClickExit: () -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
+    onTestGraphics: (String) -> Unit,
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
@@ -36,6 +37,7 @@ fun HomeScreen(
     // Always show the Library screen
     HomeLibraryScreen(
         onClickPlay = onClickPlay,
+        onTestGraphics = onTestGraphics,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
@@ -57,6 +59,7 @@ private fun Preview_HomeScreenContent() {
         HomeScreen(
             onChat = {},
             onClickPlay = { _, _ -> },
+            onTestGraphics = { },
             onLogout = {},
             onNavigateRoute = {},
             onClickExit = {},

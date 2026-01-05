@@ -910,6 +910,23 @@ fun PluviaMain(
                     onClickPlay = { appId, asContainer ->
                         viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(asContainer)
+                        viewModel.setTestGraphics(false)
+                        viewModel.setOffline(isOffline)
+                        preLaunchApp(
+                            context = context,
+                            appId = appId,
+                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                            setLoadingProgress = viewModel::setLoadingDialogProgress,
+                            setLoadingMessage = viewModel::setLoadingDialogMessage,
+                            setMessageDialogState = { msgDialogState = it },
+                            onSuccess = viewModel::launchApp,
+                            isOffline = isOffline,
+                        )
+                    },
+                    onTestGraphics = { appId ->
+                        viewModel.setLaunchedAppId(appId)
+                        viewModel.setBootToContainer(true)
+                        viewModel.setTestGraphics(true)
                         viewModel.setOffline(isOffline)
                         preLaunchApp(
                             context = context,
@@ -946,6 +963,7 @@ fun PluviaMain(
                 XServerScreen(
                     appId = state.launchedAppId,
                     bootToContainer = state.bootToContainer,
+                    testGraphics = state.testGraphics,
                     registerBackAction = { cb ->
                         Timber.d("registerBackAction called: $cb")
                         gameBackAction = cb
@@ -1080,13 +1098,13 @@ fun preLaunchApp(
                 }
             }
         }
-        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm.tzst")) {
+        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm-20260101.tzst")) {
             setLoadingMessage("Downloading extras")
             SteamService.downloadFile(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
-                "experimental-drm.tzst"
+                "experimental-drm-20260101.tzst"
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
@@ -1151,7 +1169,6 @@ fun preLaunchApp(
             val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                 context = context,
                 appId = appId,
-                preferredAction = "download"
             )
 
             if (!syncSuccess) {

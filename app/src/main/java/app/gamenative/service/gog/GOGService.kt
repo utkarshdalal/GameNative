@@ -268,14 +268,13 @@ class GOGService : Service() {
         }
 
 
-        suspend fun getInstalledExe(context: Context, libraryItem: LibraryItem): String {
-            return getInstance()?.gogManager?.getInstalledExe(context, libraryItem)
+        suspend fun getInstalledExe(libraryItem: LibraryItem): String {
+            return getInstance()?.gogManager?.getInstalledExe(libraryItem)
                 ?: ""
         }
 
 
-        fun getWineStartCommand(
-            context: Context,
+        fun getGogWineStartCommand(
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,
             bootToContainer: Boolean,
@@ -283,8 +282,8 @@ class GOGService : Service() {
             envVars: com.winlator.core.envvars.EnvVars,
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent
         ): String {
-            return getInstance()?.gogManager?.getWineStartCommand(
-                context, libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent
+            return getInstance()?.gogManager?.getGogWineStartCommand(
+                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent
             ) ?: "\"explorer.exe\""
         }
 
@@ -446,7 +445,6 @@ class GOGService : Service() {
                                 continue
                             }
 
-                            // Use Kotlin cloud saves manager instead of Python
                             val cloudSavesManager = GOGCloudSavesManager(context)
                             val newTimestamp = cloudSavesManager.syncSaves(
                                 clientId = location.clientId,
@@ -540,8 +538,8 @@ class GOGService : Service() {
         Timber.d("[GOGService] onStartCommand() - action: ${intent?.action}")
 
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("GOG Service running...")
-        startForeground(2, notification) // Use different ID than SteamService (which uses 1)
+        val notification = notificationHelper.createForegroundNotification("Connected")
+        startForeground(1, notification) // Use different ID than SteamService (which uses 1)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {

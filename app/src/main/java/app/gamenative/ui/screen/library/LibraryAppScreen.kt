@@ -181,6 +181,7 @@ private fun SkeletonText(
 fun AppScreen(
     libraryItem: LibraryItem,
     onClickPlay: (Boolean) -> Unit,
+    onTestGraphics: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Get the appropriate screen model based on game source
@@ -197,6 +198,7 @@ fun AppScreen(
     screenModel.Content(
         libraryItem = libraryItem,
         onClickPlay = onClickPlay,
+        onTestGraphics = onTestGraphics,
         onBack = onBack,
     )
 }
