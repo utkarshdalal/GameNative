@@ -156,12 +156,12 @@ class EpicManager @Inject constructor(
         val partnerLinkId: String? = null,
         val backgroundProcessName: String? = null,
         val registryPath: String? = null,
-        val registryLocation: String? = null
+        val registryLocation: String? = null,
         val registryKey: String? = null,
         val additionalCommandline: String? = null,
         val processNames: String? = null,
         val gameId: String? = null,
-        val exeuctableName: String? = null
+        val executableName: String? = null
     )
 
     data class EpicReleaseInfo(
@@ -610,9 +610,10 @@ class EpicManager @Inject constructor(
             parsedAttributes.partnerLinkType
         ).firstOrNull() ?: ""
 
-
         val isEaManaged = if(parsedAttributes.thirdPartyManagedApp != null && parsedAttributes.thirdPartyManagedApp.lowercase() in listOf("origin", "the ea app")){
-            parsedAttributes.thirdPartyManagedApp
+            true
+        } else {
+            false
         }
 
         Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
