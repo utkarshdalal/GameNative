@@ -161,6 +161,7 @@ class EpicManager @Inject constructor(
         val additionalCommandline: String? = null,
         val processNames: String? = null,
         val gameId: String? = null,
+        val exeuctableName: String? = null
     )
 
     data class EpicReleaseInfo(
@@ -489,6 +490,10 @@ class EpicManager @Inject constructor(
             monitorPresence = getBooleanAttribute("MonitorPresence", false),
             useAccessControl = getBooleanAttribute("UseAccessControl", false),
             canSkipKoreanIdVerification = getBooleanAttribute("CanSkipKoreanIdVerification", true),
+            thirdPartyManagedApp = getAttribute("ThirdPartyManagedApp"),
+            thirdPartyManagedProvider = getAttribute("ThirdPartyManagedProvider"),
+            partnerLinkType = getAttribute("PartnerLinkType"),
+            executableName = getAttribute("MainWindowProcessName")
         )
     }
 
@@ -598,6 +603,17 @@ class EpicManager @Inject constructor(
         val canRunOffline = parsedAttributes.canRunOffline
         val cloudSaveEnabled = !parsedAttributes.cloudSaveFolder.isNullOrEmpty()
         val saveFolder = parsedAttributes.cloudSaveFolder ?: ""
+        val executable = parsedAttributes.executableName ?: ""
+        val thirdPartyApp = listOfNotNull(
+            parsedAttributes.thirdPartyManagedApp,
+            parsedAttributes.thirdPartyManagedProvider,
+            parsedAttributes.partnerLinkType
+        ).firstOrNull() ?: ""
+
+
+        val isEaManaged = if(parsedAttributes.thirdPartyManagedApp != null && parsedAttributes.thirdPartyManagedApp.lowercase() in listOf("origin", "the ea app")){
+            parsedAttributes.thirdPartyManagedApp
+        }
 
         Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
 
@@ -622,20 +638,19 @@ class EpicManager @Inject constructor(
             installPath = "",
             platform = "Windows",
             version = "",
-            executable = "",
+            executable = executable,
             installSize = 0,
             downloadSize = 0,
             canRunOffline = canRunOffline, // Unknown from catalog API, will need manifest
             requiresOT = false,
             cloudSaveEnabled = cloudSaveEnabled,
             saveFolder = saveFolder,
-            thirdPartyManagedApp = "",
-            isEAManaged = false,
+            thirdPartyManagedApp = thirdPartyApp,
+            isEAManaged = isEaManaged,
             lastPlayed = 0,
             playTime = 0,
         )
     }
-
 
     suspend fun deleteAllGames() {
         withContext(Dispatchers.IO) {

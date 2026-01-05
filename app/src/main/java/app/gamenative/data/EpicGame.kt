@@ -16,10 +16,9 @@ import app.gamenative.enums.AppType
  */
 @Entity(tableName = "epic_games")
 data class EpicGame(
-    // TODO: Verify whether we should use app_name of the id for the primary key. String as primary key is ick.
     @PrimaryKey
     @ColumnInfo("id")
-    val id: String,  // Epic catalog item ID (hash/UUID) - Primary key for consistency with Steam/GOG
+    val id: String,  // Epic's catalogId
 
     @ColumnInfo("app_name")
     val appName: String = "",  // Legendary CLI identifier (used for all Legendary operations)
@@ -28,7 +27,7 @@ data class EpicGame(
     val title: String = "",
 
     @ColumnInfo("namespace")
-    val namespace: String = "",
+    val namespace: String = "", // Required for many operations
 
     @ColumnInfo("developer")
     val developer: String = "",
@@ -97,7 +96,7 @@ data class EpicGame(
     val isDLC: Boolean = false,
 
     @ColumnInfo("base_game_app_name")
-    val baseGameAppName: String = "",
+    val baseGameAppName: String = "", // Used if the entry is_dlc. This allows us to collect them together.
 
     // Metadata
     @ColumnInfo("description")
