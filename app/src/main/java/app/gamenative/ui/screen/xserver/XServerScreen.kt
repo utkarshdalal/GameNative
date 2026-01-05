@@ -1664,7 +1664,6 @@ private fun setupXEnvironment(
     return environment
 }
 private fun getWineStartCommand(
-    context: Context,
     appId: String,
     container: Container,
     bootToContainer: Boolean,
@@ -1735,7 +1734,6 @@ private fun getWineStartCommand(
         )
 
         val epicCommand = EpicService.getWineStartCommand(
-            context = context,
             libraryItem = libraryItem,
             container = container,
             bootToContainer = bootToContainer,

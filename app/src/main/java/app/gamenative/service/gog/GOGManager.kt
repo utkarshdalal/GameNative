@@ -569,7 +569,7 @@ class GOGManager @Inject constructor(
                 downloadInfo.setProgress(0.0f)
                 downloadInfo.setActive(true)
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, true)
+                    app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, true)
                 )
 
                 val result = GOGPythonBridge.executeCommandWithCallback(
@@ -640,10 +640,10 @@ class GOGManager @Inject constructor(
 
                     // Emit completion events
                     app.gamenative.PluviaApp.events.emitJava(
-                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false)
+                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false)
                     )
                     app.gamenative.PluviaApp.events.emitJava(
-                        app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0)
+                        app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId)
                     )
 
                     Result.success(Unit)
@@ -654,7 +654,7 @@ class GOGManager @Inject constructor(
 
                     // Emit download stopped event on failure
                     app.gamenative.PluviaApp.events.emitJava(
-                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false)
+                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false)
                     )
 
                     Result.failure(error ?: Exception("Download failed"))
@@ -665,7 +665,7 @@ class GOGManager @Inject constructor(
 
                 // Emit download stopped event on exception
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false)
+                    app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false)
                 )
 
                 Result.failure(e)
@@ -719,7 +719,7 @@ class GOGManager @Inject constructor(
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId)
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId.toString())
                 )
 
                 Result.success(Unit)

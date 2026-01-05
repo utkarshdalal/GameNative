@@ -276,7 +276,7 @@ class EpicService : Service() {
             return Pair(false, "Not implemented")
         }
 
-        suspend fun getInstalledExe(context: Context, libraryItem: LibraryItem): String {
+        suspend fun getInstalledExe(libraryItem: LibraryItem): String {
             // Strip EPIC_ prefix to get the raw Epic app name
             val epicAppName = libraryItem.appId.removePrefix("EPIC_")
             val game = getInstance()?.epicManager?.getGameByAppName(epicAppName)
@@ -314,7 +314,6 @@ class EpicService : Service() {
         }
 
         fun getWineStartCommand(
-            context: Context,
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,
             bootToContainer: Boolean,
@@ -336,7 +335,7 @@ class EpicService : Service() {
 
             // Get the executable path
             val exePath = runBlocking {
-                getInstalledExe(context, libraryItem)
+                getInstalledExe(libraryItem)
             }
 
             if (exePath.isEmpty()) {
