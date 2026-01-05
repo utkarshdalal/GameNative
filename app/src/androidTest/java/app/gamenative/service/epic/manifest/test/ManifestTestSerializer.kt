@@ -1,5 +1,6 @@
-package app.gamenative.service.epic.manifest
+package app.gamenative.service.epic.manifest.test
 
+import app.gamenative.service.epic.manifest.*
 import org.json.JSONArray
 import org.json.JSONObject
 

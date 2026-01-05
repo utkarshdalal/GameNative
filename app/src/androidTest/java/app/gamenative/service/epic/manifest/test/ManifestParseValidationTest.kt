@@ -3,7 +3,6 @@ package app.gamenative.service.epic.manifest.test
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import app.gamenative.service.epic.manifest.ManifestTestSerializer
 import app.gamenative.service.epic.manifest.ManifestUtils
 import org.json.JSONArray
 import org.json.JSONObject
@@ -79,7 +78,7 @@ class ManifestParseValidationTest {
             for (i in 0 until minOf(3, actualChunkElements.length(), expectedChunkElements.length())) {
                 val actualChunk = actualChunkElements.getJSONObject(i)
                 val expectedChunk = expectedChunkElements.getJSONObject(i)
-                
+
                 compareField(actualChunk, expectedChunk, "guidStr", differences, "Chunk $i")
                 compareField(actualChunk, expectedChunk, "hash", differences, "Chunk $i")
                 compareField(actualChunk, expectedChunk, "fileSize", differences, "Chunk $i")
@@ -101,7 +100,7 @@ class ManifestParseValidationTest {
                 compareField(actualFile, expectedFile, "filename", differences, "File $i")
                 compareField(actualFile, expectedFile, "hash", differences, "File $i")
                 compareField(actualFile, expectedFile, "fileSize", differences, "File $i")
-                
+
                 // Validate chunk parts
                 val actualChunkParts = actualFile.getJSONArray("chunkParts")
                 val expectedChunkParts = expectedFile.getJSONArray("chunkParts")
@@ -142,31 +141,31 @@ class ManifestParseValidationTest {
     fun testV3ManifestSpecifics() {
         // Detailed test specifically for v3 manifest format - validates against expected JSON
         Timber.i("Running detailed v3 manifest validation...")
-        
+
         val manifestBytes = getManifestBytes("test-v3-manifest.json")
         val manifest = ManifestUtils.loadFromBytes(manifestBytes)
         val expectedJson = getExpectedJson("test-v3-manifest.expected.json")
-        
+
         // Verify manifest is not null and has required properties
         assertNotNull("Manifest should not be null", manifest)
         assertNotNull("Manifest meta should not be null", manifest.meta)
-        
+
         // Validate against expected JSON values (not hardcoded)
         val expectedMeta = expectedJson.getJSONObject("meta")
         assertEquals("App name should match", expectedMeta.getString("appName"), manifest.meta?.appName)
         assertEquals("Build version should match", expectedMeta.getString("buildVersion"), manifest.meta?.buildVersion)
         assertEquals("Launch exe should match", expectedMeta.getString("launchExe"), manifest.meta?.launchExe)
         assertEquals("Manifest version should match", expectedJson.getInt("version"), manifest.version)
-        
+
         // Validate counts
         val chunkCount = manifest.chunkDataList?.elements?.size ?: 0
         val fileCount = manifest.fileManifestList?.elements?.size ?: 0
         val expectedChunkCount = expectedJson.getJSONObject("chunkDataList").getInt("count")
         val expectedFileCount = expectedJson.getJSONObject("fileManifestList").getInt("count")
-        
+
         assertEquals("Chunk count should match", expectedChunkCount, chunkCount)
         assertEquals("File count should match", expectedFileCount, fileCount)
-        
+
         // Validate first file details from expected JSON
         val expectedFiles = expectedJson.getJSONObject("fileManifestList").getJSONArray("files")
         if (expectedFiles.length() > 0) {
@@ -176,7 +175,7 @@ class ManifestParseValidationTest {
             assertEquals("First file name should match", expectedFirstFile.getString("filename"), firstFile?.filename)
             assertEquals("First file size should match", expectedFirstFile.getLong("fileSize"), firstFile?.fileSize)
         }
-        
+
         // Validate first chunk details from expected JSON
         val expectedChunks = expectedJson.getJSONObject("chunkDataList").getJSONArray("chunks")
         if (expectedChunks.length() > 0) {
@@ -187,7 +186,7 @@ class ManifestParseValidationTest {
             assertEquals("First chunk size should match", expectedFirstChunk.getLong("fileSize"), firstChunk?.fileSize)
             assertEquals("First chunk group should match", expectedFirstChunk.getInt("groupNum"), firstChunk?.groupNum)
         }
-        
+
         Timber.i("✅ V3 manifest detailed validation passed!")
         Timber.i("  • App: ${manifest.meta?.appName} v${manifest.meta?.buildVersion}")
         Timber.i("  • Files: $fileCount, Chunks: $chunkCount")
@@ -198,7 +197,7 @@ class ManifestParseValidationTest {
         // Test that JSON serialization produces valid structure
         val manifestBytes = getManifestBytes("test-v3-manifest.json")
         val manifest = ManifestUtils.loadFromBytes(manifestBytes)
-        
+
         val summary = ManifestTestSerializer.createManifestSummary(manifest)
 
         // Verify JSON structure

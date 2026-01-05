@@ -1,6 +1,5 @@
 package app.gamenative.service.epic.manifest.test
 
-import app.gamenative.service.epic.manifest.ManifestTestSerializer
 import app.gamenative.service.epic.manifest.ManifestUtils
 import java.io.File
 
