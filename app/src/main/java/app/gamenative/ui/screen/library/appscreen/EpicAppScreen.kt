@@ -566,7 +566,7 @@ class EpicAppScreen : BaseAppScreen() {
         val options = mutableListOf<AppMenuOption>()
 
         // Add cloud sync option if game supports cloud saves
-        val epicGame = EpicService.getEpicGameOf(libraryItem.appId)
+        val epicGame = EpicService.getEpicGameOf(libraryItem.appId.removePrefix("EPIC_"))
         if (epicGame?.cloudSaveEnabled == true) {
             options.add(
                 AppMenuOption(
@@ -584,7 +584,7 @@ class EpicAppScreen : BaseAppScreen() {
                                 val result = withContext(Dispatchers.IO) {
                                     EpicCloudSavesManager.syncCloudSaves(
                                         context,
-                                        libraryItem.appId,
+                                        libraryItem.appId.removePrefix("EPIC_"),
                                         preferredAction = "download" // Force download for testing
                                     )
                                 }

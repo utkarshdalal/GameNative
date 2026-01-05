@@ -84,12 +84,12 @@ object EpicCloudSavesManager {
         preferredAction: String = "auto"
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            Timber.tag("EPIC").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
+            Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
 
             // Get game info to retrieve appName
             val game = EpicService.getEpicGameOf(appId)
             if (game == null) {
-                Timber.tag("EPIC").e("[Cloud Saves] Game not found: $appId")
+                Timber.tag("Epic").e("[Cloud Saves] Game not found: $appId")
                 return@withContext false
             }
 
@@ -97,49 +97,49 @@ object EpicCloudSavesManager {
 
             // Check if game supports cloud saves
             if (!game.cloudSaveEnabled) {
-                Timber.tag("EPIC").w("[Cloud Saves] Game does not support cloud saves: ${game.title}")
+                Timber.tag("Epic").w("[Cloud Saves] Game does not support cloud saves: ${game.title}")
                 return@withContext false
             }
 
             // 1. Validate and refresh access token if needed (global credentials)
             val credentials = EpicAuthManager.getStoredCredentials(context)
             if (credentials.isFailure) {
-                Timber.tag("EPIC").e("[Cloud Saves] Not logged in to Epic: ${credentials.exceptionOrNull()?.message}")
+                Timber.tag("Epic").e("[Cloud Saves] Not logged in to Epic: ${credentials.exceptionOrNull()?.message}")
                 return@withContext false
             }
 
             val creds = credentials.getOrNull()!!
-            Timber.tag("EPIC").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
+            Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
 
             // 2. Determine sync action
             val action = determineSyncAction(context, appId, creds.accountId, game, preferredAction)
 
-            Timber.tag("EPIC").i("[Cloud Saves] Sync action determined: $action")
+            Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
 
             // 3. Execute sync action
             val result = when (action) {
                 SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
                 SyncAction.UPLOAD -> {
-                    Timber.tag("EPIC").w("[Cloud Saves] Upload not yet implemented")
+                    Timber.tag("Epic").w("[Cloud Saves] Upload not yet implemented")
                     false
                 }
                 SyncAction.CONFLICT -> {
-                    Timber.tag("EPIC").w("[Cloud Saves] Conflict detected - preferring download for now") // TODO: We should have proper conflict resolution.
+                    Timber.tag("Epic").w("[Cloud Saves] Conflict detected - preferring download for now") // TODO: We should have proper conflict resolution.
                     downloadSaves(context, appId, creds.accountId)
                 }
                 SyncAction.NONE -> {
-                    Timber.tag("EPIC").i("[Cloud Saves] No sync needed")
+                    Timber.tag("Epic").i("[Cloud Saves] No sync needed")
                     true
                 }
             }
 
             if (result) {
-                Timber.tag("EPIC").i("[Cloud Saves] Sync completed successfully")
+                Timber.tag("Epic").i("[Cloud Saves] Sync completed successfully")
             }
 
             result
         } catch (e: Exception) {
-            Timber.tag("EPIC").e(e, "[Cloud Saves] Sync failed")
+            Timber.tag("Epic").e(e, "[Cloud Saves] Sync failed")
             false
         }
     }
@@ -166,7 +166,7 @@ object EpicCloudSavesManager {
             // Check cloud saves
             val cloudSavesResult = listCloudSaves(game.appName, context)
             if (cloudSavesResult.isFailure) {
-                Timber.tag("EPIC").w("[Cloud Saves] Failed to list cloud saves, will try upload if local files exist")
+                Timber.tag("Epic").w("[Cloud Saves] Failed to list cloud saves, will try upload if local files exist")
                 return@withContext if (hasLocalFiles) SyncAction.UPLOAD else SyncAction.NONE
             }
 
@@ -182,7 +182,7 @@ object EpicCloudSavesManager {
 
             // Both local and cloud have files - compare timestamps
             val (_, manifestInfo) = findLatestManifest(cloudSaves.files) ?: run {
-                Timber.tag("EPIC").w("[Cloud Saves] No manifest in cloud, will upload")
+                Timber.tag("Epic").w("[Cloud Saves] No manifest in cloud, will upload")
                 return@withContext SyncAction.UPLOAD
             }
 
@@ -196,8 +196,8 @@ object EpicCloudSavesManager {
                     .maxOfOrNull { it.lastModified() }
             }
 
-            Timber.tag("EPIC").d("[Cloud Saves] Cloud timestamp: $cloudTimestamp, Last sync: $lastSync")
-            Timber.tag("EPIC").d("[Cloud Saves] Local newest file: $localNewestTimestamp")
+            Timber.tag("Epic").d("[Cloud Saves] Cloud timestamp: $cloudTimestamp, Last sync: $lastSync")
+            Timber.tag("Epic").d("[Cloud Saves] Local newest file: $localNewestTimestamp")
 
             // If we have a last sync timestamp, use it for conflict detection
             if (lastSync != null) {
@@ -219,7 +219,7 @@ object EpicCloudSavesManager {
                 SyncAction.NONE
             }
         } catch (e: Exception) {
-            Timber.tag("EPIC").e(e, "[Cloud Saves] Error determining sync action")
+            Timber.tag("Epic").e(e, "[Cloud Saves] Error determining sync action")
             SyncAction.NONE
         }
     }
@@ -249,10 +249,10 @@ object EpicCloudSavesManager {
             val accountId = credentials.accountId
             val accessToken = credentials.accessToken
 
-            Timber.tag("EPIC").d("[Cloud Saves] Listing saves for $appName (account: $accountId)")
+            Timber.tag("Epic").d("[Cloud Saves] Listing saves for $appName (account: $accountId)")
 
             val request = Request.Builder()
-                .url("$/api/v1/access/egstore/savesync/$accountId/$appName/")
+                .url("$baseCloudSyncUrl/api/v1/access/egstore/savesync/$accountId/$appName/")
                 .header("Authorization", "Bearer $accessToken")
                 .get()
                 .build()
@@ -280,7 +280,7 @@ object EpicCloudSavesManager {
                 Result.success(CloudSaveFiles(files))
             }
         } catch (e: Exception) {
-            Timber.tag("EPIC").e(e, "Failed to list cloud saves")
+            Timber.tag("Epic").e(e, "Failed to list cloud saves")
             Result.failure(e)
         }
     }
@@ -303,7 +303,7 @@ object EpicCloudSavesManager {
                 Result.success(data)
             }
         } catch (e: Exception) {
-            Timber.tag("EPIC").e(e, "Failed to download file")
+            Timber.tag("Epic").e(e, "Failed to download file")
             Result.failure(e)
         }
     }
@@ -319,118 +319,144 @@ object EpicCloudSavesManager {
     // Download saves flow
     private suspend fun downloadSaves(context: Context, appId: String, accountId: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            Timber.tag("EPIC").i("[Cloud Saves] Starting download for $appId")
+            Timber.tag("Epic").i("[Cloud Saves] Starting download for $appId")
 
             // 1. Get game info
             val game = EpicService.getEpicGameOf(appId)
             if (game?.cloudSaveEnabled != true) {
-                Timber.tag("EPIC").w("[Cloud Saves] Game does not support cloud saves")
+                Timber.tag("Epic").w("[Cloud Saves] Game does not support cloud saves")
                 return@withContext false
             }
 
             // 2. List cloud saves
             val cloudSavesResult = listCloudSaves(game.appName, context)
             if (cloudSavesResult.isFailure) {
-                Timber.tag("EPIC").e("[Cloud Saves] Failed to list saves: ${cloudSavesResult.exceptionOrNull()?.message}")
+                Timber.tag("Epic").e("[Cloud Saves] Failed to list saves: ${cloudSavesResult.exceptionOrNull()?.message}")
                 return@withContext false
             }
 
             val cloudSaves = cloudSavesResult.getOrNull()!!
             if (cloudSaves.files.isEmpty()) {
-                Timber.tag("EPIC").i("[Cloud Saves] No cloud saves found")
+                Timber.tag("Epic").i("[Cloud Saves] No cloud saves found")
                 return@withContext false
             }
 
             // 3. Find latest manifest
             val (manifestPath, manifestInfo) = findLatestManifest(cloudSaves.files) ?: run {
-                Timber.tag("EPIC").w("[Cloud Saves] No manifest found in cloud saves")
+                Timber.tag("Epic").w("[Cloud Saves] No manifest found in cloud saves")
                 return@withContext false
             }
 
-            Timber.tag("EPIC").i("[Cloud Saves] Found manifest: $manifestPath (${manifestInfo.lastModified})")
+            Timber.tag("Epic").i("[Cloud Saves] Found manifest: $manifestPath (${manifestInfo.lastModified})")
 
             // 4. Check if we need to download
             val lastSync = getSyncTimestamp(context, appId)
             if (lastSync != null && lastSync >= manifestInfo.lastModified) {
-                Timber.tag("EPIC").i("[Cloud Saves] Local saves are up to date")
+                Timber.tag("Epic").i("[Cloud Saves] Local saves are up to date")
                 return@withContext true
             }
 
             // 5. Download manifest
             val manifestData = downloadFile(manifestInfo.readLink ?: return@withContext false)
             if (manifestData.isFailure) {
-                Timber.tag("EPIC").e("[Cloud Saves] Failed to download manifest")
+                Timber.tag("Epic").e("[Cloud Saves] Failed to download manifest")
                 return@withContext false
             }
 
             // 6. Parse manifest
+            val manifestBytes = manifestData.getOrNull()!!
             val manifest = try {
-                EpicManifest.readAll(manifestData.getOrNull()!!)
+                EpicManifest.readAll(manifestBytes)
             } catch (e: Exception) {
-                Timber.tag("EPIC").e(e, "[Cloud Saves] Failed to parse manifest")
+                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest")
                 return@withContext false
             }
 
-            Timber.tag("EPIC").i("[Cloud Saves] Manifest contains ${manifest.fileManifestList?.elements?.size ?: 0} files")
+            Timber.tag("Epic").i("[Cloud Saves] Manifest parsed: ${manifest.fileManifestList?.elements?.size ?: 0} files")
 
-            // 7. Download and extract chunks
+            // 7. Download chunks referenced in manifest
+            val chunks = mutableMapOf<String, ByteArray>()
+            val pathPrefix = manifestPath.split("/", limit = 4).take(3).joinToString("/")
+
+            manifest.chunkDataList?.elements?.forEach { chunkInfo ->
+                try {
+                    // Get chunk path using ChunkInfo's getPath method
+                    val chunkPath = "$pathPrefix/${chunkInfo.getPath()}"
+                    val chunkFile = cloudSaves.files[chunkPath]
+
+                    if (chunkFile?.readLink == null) {
+                        Timber.tag("Epic").w("[Cloud Saves] Chunk not found in cloud: $chunkPath")
+                        return@forEach
+                    }
+
+                    Timber.tag("Epic").d("[Cloud Saves] Downloading chunk: ${chunkInfo.getPath()}")
+                    val chunkData = downloadFile(chunkFile.readLink)
+                    if (chunkData.isSuccess) {
+                        // Decompress and extract chunk data
+                        val chunkBytes = chunkData.getOrNull()!!
+                        val decompressedData = decompressChunk(chunkBytes)
+                        chunks[chunkInfo.guidStr] = decompressedData
+                        Timber.tag("Epic").d("[Cloud Saves] Chunk downloaded: ${chunkInfo.guidStr} (${decompressedData.size} bytes)")
+                    } else {
+                        Timber.tag("Epic").e("[Cloud Saves] Failed to download chunk: ${chunkInfo.getPath()}")
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("Epic").e(e, "[Cloud Saves] Error processing chunk: ${chunkInfo.getPath()}")
+                }
+            }
+
+            if (chunks.isEmpty()) {
+                Timber.tag("Epic").e("[Cloud Saves] No chunks were downloaded, aborting")
+                return@withContext false
+            }
+
+            // 8. Reconstruct files from chunks
             val saveDir = resolveSaveDirectory(context, game, accountId) ?: run {
-                Timber.tag("EPIC").e("[Cloud Saves] Failed to resolve save directory")
+                Timber.tag("Epic").e("[Cloud Saves] Failed to resolve save directory")
                 return@withContext false
             }
 
             saveDir.mkdirs()
 
             var downloadedFiles = 0
+
             manifest.fileManifestList?.elements?.forEach { fileManifest ->
                 try {
                     val outputFile = File(saveDir, fileManifest.filename)
                     outputFile.parentFile?.mkdirs()
 
-                    // Download chunks for this file
-                    val fileData = mutableListOf<ByteArray>()
-                    fileManifest.chunkParts.forEach { chunkPart ->
-                        val chunkInfo = manifest.chunkDataList?.elements?.find { it.guid.contentEquals(chunkPart.guid) }
-                        if (chunkInfo == null) {
-                            Timber.tag("EPIC").w("[Cloud Saves] Chunk ${chunkPart.guidStr} not found in manifest")
-                            return@forEach
-                        }
+                    Timber.tag("Epic").d("[Cloud Saves] Reconstructing file: ${fileManifest.filename}")
 
-                        // Find chunk file in cloud saves
-                        val chunkPath = cloudSaves.files.keys.find { it.contains(chunkPart.guidStr) }
-                        val chunkFile = cloudSaves.files[chunkPath]
-                        if (chunkFile?.readLink == null) {
-                            Timber.tag("EPIC").w("[Cloud Saves] Chunk file not found: ${chunkPart.guidStr}")
-                            return@forEach
-                        }
-
-                        // Download chunk
-                        val chunkResult = downloadFile(chunkFile.readLink)
-                        if (chunkResult.isSuccess) {
-                            fileData.add(chunkResult.getOrNull()!!)
+                    outputFile.outputStream().use { output ->
+                        fileManifest.chunkParts.forEach { chunkPart ->
+                            val chunkData = chunks[chunkPart.guidStr]
+                            if (chunkData == null) {
+                                Timber.tag("Epic").e("[Cloud Saves] Chunk missing for ${fileManifest.filename}: ${chunkPart.guidStr}")
+                            } else {
+                                // Extract the specific part of the chunk for this file
+                                val partData = chunkData.copyOfRange(
+                                    chunkPart.offset.toInt(),
+                                    (chunkPart.offset + chunkPart.size).toInt()
+                                )
+                                output.write(partData)
+                            }
                         }
                     }
 
-                    // Write combined file data
-                    if (fileData.isNotEmpty()) {
-                        outputFile.outputStream().use { output ->
-                            fileData.forEach { output.write(it) }
-                        }
-                        downloadedFiles++
-                        Timber.tag("EPIC").d("[Cloud Saves] Downloaded: ${fileManifest.filename}")
-                    }
+                    downloadedFiles++
+                    Timber.tag("Epic").i("[Cloud Saves] Reconstructed: ${fileManifest.filename} (${outputFile.length()} bytes)")
                 } catch (e: Exception) {
-                    Timber.tag("EPIC").e(e, "[Cloud Saves] Failed to download ${fileManifest.filename}")
+                    Timber.tag("Epic").e(e, "[Cloud Saves] Failed to reconstruct file: ${fileManifest.filename}")
                 }
             }
 
-            // 8. Update sync timestamp
+            // 9. Update sync timestamp
             setSyncTimestamp(context, appId, manifestInfo.lastModified)
 
-            Timber.tag("EPIC").i("[Cloud Saves] Download complete: $downloadedFiles files")
-            true
+            Timber.tag("Epic").i("[Cloud Saves] Download complete: $downloadedFiles files reconstructed")
+            downloadedFiles > 0
         } catch (e: Exception) {
-            Timber.tag("EPIC").e(e, "[Cloud Saves] Download failed")
+            Timber.tag("Epic").e(e, "[Cloud Saves] Download failed")
             false
         }
     }
@@ -439,14 +465,55 @@ object EpicCloudSavesManager {
     private fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
         val cloudSaveFolder = game.saveFolder.ifEmpty { return null }
 
-        // TODO: Implement full path variable resolution
-        // For now, use a simple implementation
-        val resolvedPath = cloudSaveFolder
-            .replace("{EpicID}", accountId)
-            .replace("{AppName}", game.appName)
+        // Resolve path variables like Legendary does
+        // Reference: legendary/core.py get_save_path()
+        val pathVars = mutableMapOf<String, String>(
+            "{epicid}" to accountId,
+            "{installdir}" to (game.installPath.ifEmpty { "/data/data/${context.packageName}/files/games/${game.appName}" }),
+            "{appname}" to game.appName,
+        )
 
-        // Return path relative to app files directory
-        return File(context.filesDir, "epic_saves/$resolvedPath")
+        // On Android, we use app-specific storage paths
+        // These map to Wine-like paths for Windows games
+        val appDataPath = File(context.filesDir, "appdata/local").absolutePath
+        val appDataRoamingPath = File(context.filesDir, "appdata/roaming").absolutePath
+        val localLowPath = File(context.filesDir, "appdata/locallow").absolutePath
+        val documentsPath = File(context.filesDir, "documents").absolutePath
+        val savedGamesPath = File(context.filesDir, "saved_games").absolutePath
+
+        pathVars["{appdata}"] = appDataPath
+        pathVars["{userdir}"] = documentsPath
+        pathVars["{usersavedgames}"] = savedGamesPath
+        pathVars["{userprofile}"] = context.filesDir.absolutePath
+
+        // Handle paths with ../ for going up directories (like "../LocalLow")
+        var resolvedPath = cloudSaveFolder
+            .replace("\\", "/") // normalize path separators
+
+        // Replace variables (case-insensitive)
+        pathVars.forEach { (key, value) ->
+            resolvedPath = resolvedPath.replace(key, value, ignoreCase = true)
+        }
+
+        // Handle special cases like LocalLow, Roaming that appear in paths
+        resolvedPath = resolvedPath
+            .replace("../LocalLow/", localLowPath + "/", ignoreCase = true)
+            .replace("../Roaming/", appDataRoamingPath + "/", ignoreCase = true)
+            .replace("/LocalLow/", localLowPath + "/", ignoreCase = true)
+            .replace("/Roaming/", appDataRoamingPath + "/", ignoreCase = true)
+
+        // Resolve the path
+        val finalPath = if (resolvedPath.startsWith("/")) {
+            File(resolvedPath)
+        } else {
+            File(context.filesDir, "epic_saves/$resolvedPath")
+        }
+
+        Timber.tag("Epic").d("[Cloud Saves] Path resolution:")
+        Timber.tag("Epic").d("[Cloud Saves]   Original: $cloudSaveFolder")
+        Timber.tag("Epic").d("[Cloud Saves]   Resolved: ${finalPath.absolutePath}")
+
+        return finalPath
     }
 
         private fun getSyncTimestamp(context: Context, appId: String): String? {
@@ -458,4 +525,76 @@ object EpicCloudSavesManager {
             val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
             prefs.edit().putString("sync_timestamp_$appId", timestamp).apply()
         }
+
+    /**
+     * Decompress data if it's GZIP compressed, otherwise return as-is
+     */
+    private fun decompressIfNeeded(data: ByteArray): ByteArray {
+        return try {
+            // Check for GZIP magic bytes (0x1f 0x8b)
+            if (data.size > 2 && data[0] == 0x1f.toByte() && data[1] == 0x8b.toByte()) {
+                java.io.ByteArrayInputStream(data).use { inputStream ->
+                    GZIPInputStream(inputStream).use { gzipStream ->
+                        gzipStream.readBytes()
+                    }
+                }
+            } else {
+                data
+            }
+        } catch (e: Exception) {
+            Timber.tag("Epic").w(e, "[Cloud Saves] Failed to decompress, using raw data")
+            data
+        }
+    }
+
+    /**
+     * Decompress chunk data similar to Legendary's Chunk.read_buffer
+     * Chunk format: magic (4 bytes) + header + compressed data
+     */
+    private fun decompressChunk(chunkBytes: ByteArray): ByteArray {
+        return try {
+            val buffer = java.nio.ByteBuffer.wrap(chunkBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+
+            // Read chunk header
+            val magic = buffer.int
+            if (magic != 0xB1FE3AA2.toInt()) {
+                Timber.tag("Epic").w("[Cloud Saves] Invalid chunk magic: ${"%08X".format(magic)}, trying direct decompress")
+                return decompressIfNeeded(chunkBytes)
+            }
+
+            val headerVersion = buffer.int
+            val headerSize = buffer.int
+            val compressedSize = buffer.int
+
+            // Skip GUID (16 bytes) and hash (8 bytes)
+            buffer.position(buffer.position() + 24)
+
+            // Read stored_as flag to determine if compressed
+            val storedAs = buffer.get().toInt()
+            val isCompressed = (storedAs and 0x1) != 0
+
+            // Skip hash type and SHA hash (21 bytes total for the flag + hash)
+            buffer.position(buffer.position() + 20)
+
+            // Get remaining data
+            val dataStart = buffer.position()
+            val dataSize = chunkBytes.size - dataStart
+            val data = ByteArray(dataSize)
+            buffer.get(data)
+
+            // Decompress if needed
+            if (isCompressed) {
+                java.io.ByteArrayInputStream(data).use { inputStream ->
+                    java.util.zip.InflaterInputStream(inputStream).use { inflater ->
+                        inflater.readBytes()
+                    }
+                }
+            } else {
+                data
+            }
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse chunk header, trying direct decompress")
+            decompressIfNeeded(chunkBytes)
+        }
+    }
 }
