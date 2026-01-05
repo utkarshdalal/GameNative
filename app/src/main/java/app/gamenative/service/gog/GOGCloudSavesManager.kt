@@ -250,9 +250,69 @@ class GOGCloudSavesManager(
                 }
 
                 SyncAction.CONFLICT -> {
-                    Timber.tag("GOG-CloudSaves").w("Sync conflict detected - manual intervention required")
-                }
+                    Timber.tag("GOG-CloudSaves").w("Sync conflict detected - comparing timestamps")
 
+                    // Compare timestamps for matching files
+                    val localMap = classifier.updatedLocal.associateBy { it.relativePath }
+                    val cloudMap = classifier.updatedCloud.associateBy { it.relativePath }
+
+                    val toUpload = mutableListOf<SyncFile>()
+                    val toDownload = mutableListOf<CloudFile>()
+
+                    // Check files that exist in both and were both updated
+                    val commonPaths = localMap.keys.intersect(cloudMap.keys)
+                    commonPaths.forEach { path ->
+                        val localFile = localMap[path]!!
+                        val cloudFile = cloudMap[path]!!
+
+                        val localTime = localFile.updateTimestamp ?: 0L
+                        val cloudTime = cloudFile.updateTimestamp ?: 0L
+
+                        when {
+                            localTime > cloudTime -> {
+                                Timber.tag("GOG-CloudSaves").i("Local file is newer: $path (local: $localTime > cloud: $cloudTime)")
+                                toUpload.add(localFile)
+                            }
+                            cloudTime > localTime -> {
+                                Timber.tag("GOG-CloudSaves").i("Cloud file is newer: $path (cloud: $cloudTime > local: $localTime)")
+                                toDownload.add(cloudFile)
+                            }
+                            else -> {
+                                Timber.tag("GOG-CloudSaves").w("Files have same timestamp, skipping: $path")
+                            }
+                        }
+                    }
+
+                    // Upload files that only exist locally or are newer locally
+                    (localMap.keys - commonPaths).forEach { path ->
+                        toUpload.add(localMap[path]!!)
+                    }
+
+                    // Download files that only exist in cloud or are newer in cloud
+                    (cloudMap.keys - commonPaths).forEach { path ->
+                        toDownload.add(cloudMap[path]!!)
+                    }
+
+                    // Handle files not existing in either location
+                    toUpload.addAll(classifier.notExistingRemotely)
+                    toDownload.addAll(classifier.notExistingLocally.filter { !it.isDeleted })
+
+                    // Execute uploads
+                    if (toUpload.isNotEmpty()) {
+                        Timber.tag("GOG-CloudSaves").i("Uploading ${toUpload.size} file(s) based on timestamp comparison")
+                        toUpload.forEach { file ->
+                            uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
+                        }
+                    }
+
+                    // Execute downloads
+                    if (toDownload.isNotEmpty()) {
+                        Timber.tag("GOG-CloudSaves").i("Downloading ${toDownload.size} file(s) based on timestamp comparison")
+                        toDownload.forEach { file ->
+                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                        }
+                    }
+                }
                 SyncAction.NONE -> {
                     Timber.tag("GOG-CloudSaves").i("No sync needed - files are up to date")
                 }
