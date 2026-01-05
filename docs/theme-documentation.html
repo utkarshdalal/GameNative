@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GameNative Theme Documentation</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        /* Highlight.js - Atom One Dark Theme (inlined) */
+        .hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}
+        </style>
     <style>
         :root {
             --primary: #6C5CE7;
@@ -88,7 +89,7 @@
 </head>
 <body>
     <button class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('show')">
-        <i class="fas fa-bars"></i>
+        ☰
     </button>
 
     <aside id="sidebar">
@@ -139,7 +140,7 @@
             <p>Welcome to the GameNative theme system documentation. Themes allow you to completely customize the appearance of your game library, from simple color changes to entirely new layouts with carousels, grids, and custom UI elements.</p>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-lightbulb"></i> Tip:</strong> Start by exploring the <a href="#built-in-themes">built-in themes</a> as reference implementations, then modify one to create your own custom theme.
+                <strong>💡 Tip:</strong> Start by exploring the <a href="#built-in-themes">built-in themes</a> as reference implementations, then modify one to create your own custom theme.
             </div>
 
             <h3 id="quick-start">Quick Start</h3>
@@ -163,7 +164,7 @@
             </ol>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-sd-card"></i> SD Card Users:</strong> If you have external storage enabled, themes placed in <code>[SD Card]/GameNative/Themes/</code> will be automatically detected.
+                <strong>💾 SD Card Users:</strong> If you have external storage enabled, themes placed in <code>[SD Card]/GameNative/Themes/</code> will be automatically detected.
             </div>
             
             <h4>Helpful Resources</h4>
@@ -196,7 +197,7 @@
             <p><small>* Highly recommended for better user experience in the theme selector</small></p>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-info-circle"></i> Note:</strong> The theme and variables file names are configurable via the <code>&lt;theme source="..." variables="..." /&gt;</code> element in manifest.xml. You can name them anything you like.
+                <strong>ℹ️ Note:</strong> The theme and variables file names are configurable via the <code>&lt;theme source="..." variables="..." /&gt;</code> element in manifest.xml. You can name them anything you like.
             </div>
         </section>
 
@@ -343,7 +344,7 @@
 &lt;/theme&gt;</code></pre>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-lightbulb"></i> Tip:</strong> Use the <code>&lt;elements&gt;</code> approach for complex themes or when sharing cards between layouts. Use inline cards for simple, single-layout themes where everything stays in one place.
+                <strong>💡 Tip:</strong> Use the <code>&lt;elements&gt;</code> approach for complex themes or when sharing cards between layouts. Use inline cards for simple, single-layout themes where everything stays in one place.
             </div>
             
             <pre><code class="language-xml">&lt;elements&gt;
@@ -938,7 +939,7 @@
             <p>Static <code>&lt;shadow&gt;</code> and <code>&lt;backdrop&gt;</code> elements work similarly to their card layer counterparts but in fixed positions. Use shadows for depth effects on fixed UI elements, and backdrops for frosted glass panels or blur effects over scrolling content.</p>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-info-circle"></i> Note:</strong> Fixed element shadows use <code>offsetX/offsetY</code> attributes, while card layer shadows use <code>dx/dy</code>.
+                <strong>ℹ️ Note:</strong> Fixed element shadows use <code>offsetX/offsetY</code> attributes, while card layer shadows use <code>dx/dy</code>.
             </div>
             
             <pre><code class="language-xml">&lt;!-- Drop shadow (fixed element) --&gt;
@@ -1004,7 +1005,7 @@
       color="@{game.compatibility.color}" /&gt;</code></pre>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-info-circle"></i> Tip:</strong> All binding attributes use the same <code>@{...}</code> syntax consistently—<code>visibleWhen</code>, <code>text</code>, <code>src</code>, <code>color</code>, and more.
+                <strong>ℹ️ Tip:</strong> All binding attributes use the same <code>@{...}</code> syntax consistently—<code>visibleWhen</code>, <code>text</code>, <code>src</code>, <code>color</code>, and more.
             </div>
         </section>
 
@@ -1113,7 +1114,7 @@
             <p>The theme system supports controller/D-pad navigation between elements. <strong>Navigation is handled automatically</strong> based on element positions—the system determines which element to focus when pressing directional buttons. However, you can <strong>override automatic navigation</strong> when needed by using <code>navigationId</code> to identify elements and navigation attributes to define custom focus flow.</p>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-info-circle"></i> Tip:</strong> For most themes, you don't need to define navigation at all—the automatic system works well. Use custom navigation only when you need specific focus behavior that differs from the spatial default.
+                <strong>ℹ️ Tip:</strong> For most themes, you don't need to define navigation at all—the automatic system works well. Use custom navigation only when you need specific focus behavior that differs from the spatial default.
             </div>
             
             <pre><code class="language-xml">&lt;!-- Define navigation flow --&gt;
@@ -1217,7 +1218,7 @@
 &lt;header x="0" y="24" anchor="topCenter" ... /&gt;</code></pre>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-info-circle"></i> How anchors work:</strong> With <code>anchor="bottomRight"</code> and <code>x="8" y="8"</code>, the element is positioned 8px from the right edge and 8px from the bottom edge of the parent (card or screen).
+                <strong>ℹ️ How anchors work:</strong> With <code>anchor="bottomRight"</code> and <code>x="8" y="8"</code>, the element is positioned 8px from the right edge and 8px from the bottom edge of the parent (card or screen).
             </div>
 
             <h3>Dimensions</h3>
@@ -1280,7 +1281,7 @@
             <p>However, the <strong>parent container's position</strong> in the layout affects overall visibility. For example, elements in a <code>bottomBar</code> fixed container will naturally render on top of elements in the main layout area.</p>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-layer-group"></i> Note:</strong> When zIndex values are equal, elements render in declaration order (first declared = behind).
+                <strong>📚 Note:</strong> When zIndex values are equal, elements render in declaration order (first declared = behind).
             </div>
         </section>
 
@@ -1326,7 +1327,7 @@
             <p>Copy this minimal theme structure to get started quickly:</p>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-rocket"></i> Quick Start:</strong> The easiest way to start is to download an existing <a href="#built-in-themes">built-in theme</a>, rename the folder, update the <code>id</code> and <code>title</code> in manifest.xml, then customize from there.
+                <strong>🚀 Quick Start:</strong> The easiest way to start is to download an existing <a href="#built-in-themes">built-in theme</a>, rename the folder, update the <code>id</code> and <code>title</code> in manifest.xml, then customize from there.
             </div>
             
             <pre><code class="language-xml">&lt;!-- manifest.xml --&gt;
@@ -1693,7 +1694,7 @@
             </ul>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-bug"></i> Debugging Tip:</strong> Start with a working <a href="#built-in-themes">built-in theme</a> and make small changes one at a time. This makes it easier to identify which change caused an issue.
+                <strong>🐛 Debugging Tip:</strong> Start with a working <a href="#built-in-themes">built-in theme</a> and make small changes one at a time. This makes it easier to identify which change caused an issue.
             </div>
         </section>
 
@@ -1702,7 +1703,7 @@
             <h2>Best Practices</h2>
             <p>Recommendations for creating polished, performant themes.</p>
             
-            <h3><i class="fas fa-tachometer-alt"></i> Performance</h3>
+            <h3>⚡ Performance</h3>
             <table>
                 <tr><th>Tip</th><th>Why</th></tr>
                 <tr>
@@ -1731,7 +1732,7 @@
                 </tr>
             </table>
             
-            <h3><i class="fas fa-universal-access"></i> Accessibility</h3>
+            <h3>♿ Accessibility</h3>
             <table>
                 <tr><th>Guideline</th><th>Recommendation</th></tr>
                 <tr>
@@ -1756,7 +1757,7 @@
                 </tr>
             </table>
             
-            <h3><i class="fas fa-mobile-alt"></i> Responsive Design</h3>
+            <h3>📱 Responsive Design</h3>
             <ul>
                 <li><strong>Test both orientations:</strong> Use <a href="#breakpoints">breakpoints</a> to adapt layouts for portrait and landscape</li>
                 <li><strong>Use percentage widths:</strong> Prefer <code>width="100%"</code> over fixed pixels where appropriate</li>
@@ -1765,7 +1766,7 @@
                 <li><strong>Hide non-essential elements:</strong> Use <code>visibility="landscape"</code> for elements that clutter small screens</li>
             </ul>
             
-            <h3><i class="fas fa-folder-open"></i> File Organization</h3>
+            <h3>📂 File Organization</h3>
             <pre class="file-tree"><span class="folder">MyTheme/</span>
 ├── <span class="required">manifest.xml</span>       <span style="color:#888">← Required: theme identity</span>
 ├── <span class="file">theme.xml</span>          <span style="color:#888">← Required: layout definition</span>
@@ -1778,7 +1779,7 @@
     ├── <span class="file">default.xml</span>    <span style="color:#888">← Default language</span>
     └── <span class="file">es.xml</span>         <span style="color:#888">← Spanish translations</span></pre>
             
-            <h3><i class="fas fa-check-circle"></i> Theme Checklist</h3>
+            <h3>✅ Theme Checklist</h3>
             <p>Before sharing your theme:</p>
             <ul>
                 <li>✅ Test in both portrait and landscape orientations</li>
@@ -1792,7 +1793,7 @@
             </ul>
             
             <div class="alert-tip">
-                <strong><i class="fas fa-palette"></i> Design Tip:</strong> Study the <a href="#built-in-themes">built-in themes</a> for inspiration. They demonstrate proven patterns for different layout styles—grids, carousels, lists—and handle edge cases you might not think of initially.
+                <strong>🎨 Design Tip:</strong> Study the <a href="#built-in-themes">built-in themes</a> for inspiration. They demonstrate proven patterns for different layout styles—grids, carousels, lists—and handle edge cases you might not think of initially.
             </div>
         </section>
 
@@ -1903,7 +1904,7 @@
                 <a href="../app/src/main/assets/Themes/ListView" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/ListView/assets/theme.png" alt="ListView Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-list"></i> ListView</h4>
+                        <h4 style="margin: 0 0 8px;">📋 ListView</h4>
                         <p style="margin: 0;">Traditional list layout with game details, install status, and quick actions.</p>
                     </div>
                 </a>
@@ -1911,7 +1912,7 @@
                 <a href="../app/src/main/assets/Themes/CapsuleGrid" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/CapsuleGrid/assets/theme.png" alt="CapsuleGrid Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-th"></i> CapsuleGrid</h4>
+                        <h4 style="margin: 0 0 8px;">▦ CapsuleGrid</h4>
                         <p style="margin: 0;">Portrait cover grid layout with compatibility badges.</p>
                     </div>
                 </a>
@@ -1919,7 +1920,7 @@
                 <a href="../app/src/main/assets/Themes/HeroGrid" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/HeroGrid/assets/theme.png" alt="HeroGrid Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-image"></i> HeroGrid</h4>
+                        <h4 style="margin: 0 0 8px;">🖼️ HeroGrid</h4>
                         <p style="margin: 0;">Landscape hero banner grid with title overlays.</p>
                     </div>
                 </a>
@@ -1927,7 +1928,7 @@
                 <a href="../app/src/main/assets/Themes/Carousel" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/Carousel/assets/theme.png" alt="Carousel Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-arrows-alt-h"></i> Carousel</h4>
+                        <h4 style="margin: 0 0 8px;">↔️ Carousel</h4>
                         <p style="margin: 0;">Horizontal carousel with focused scaling and hero backgrounds.</p>
                     </div>
                 </a>
@@ -1935,7 +1936,7 @@
                 <a href="../app/src/main/assets/Themes/Showcase" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/Showcase/assets/theme.png" alt="Showcase Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-arrows-alt-v"></i> Showcase</h4>
+                        <h4 style="margin: 0 0 8px;">↕️ Showcase</h4>
                         <p style="margin: 0;">Vertical carousel with detailed game info on focus.</p>
                     </div>
                 </a>
@@ -1943,7 +1944,7 @@
                 <a href="../app/src/main/assets/Themes/SwitchinItUp" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/SwitchinItUp/assets/theme.png" alt="SwitchinItUp Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-gamepad"></i> SwitchinItUp</h4>
+                        <h4 style="margin: 0 0 8px;">🎮 SwitchinItUp</h4>
                         <p style="margin: 0;">Switch-style horizontal carousel with square covers and gradient borders.</p>
                     </div>
                 </a>
@@ -1951,7 +1952,7 @@
                 <a href="../app/src/main/assets/Themes/SquareGrid" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/SquareGrid/assets/theme.png" alt="SquareGrid Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-th-large"></i> SquareGrid</h4>
+                        <h4 style="margin: 0 0 8px;">⊞ SquareGrid</h4>
                         <p style="margin: 0;">Square cover grid layout for a clean, uniform appearance.</p>
                     </div>
                 </a>
@@ -1959,26 +1960,61 @@
                 <a href="../app/src/main/assets/Themes/Snowcase" class="theme-card" style="padding: 0; overflow: hidden;">
                     <img src="../app/src/main/assets/Themes/Snowcase/assets/theme.png" alt="Snowcase Theme" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div style="padding: 16px;">
-                        <h4 style="margin: 0 0 8px;"><i class="fas fa-snowflake"></i> Snowcase</h4>
+                        <h4 style="margin: 0 0 8px;">❄️ Snowcase</h4>
                         <p style="margin: 0;">Festive variant of Showcase with custom clock icons.</p>
                     </div>
                 </a>
             </div>
 
             <div class="alert-tip">
-                <strong><i class="fas fa-download"></i> Getting Started:</strong> Download any built-in theme folder, modify it to your liking, then use the <strong>"Add Theme"</strong> button in the app's theme selector to add your custom theme. Once added, the theme path is remembered—you can make further changes to your theme files and simply restart the app to see updates, without needing to re-add the theme.
+                <strong>📥 Getting Started:</strong> Download any built-in theme folder, modify it to your liking, then use the <strong>"Add Theme"</strong> button in the app's theme selector to add your custom theme. Once added, the theme path is remembered—you can make further changes to your theme files and simply restart the app to see updates, without needing to re-add the theme.
             </div>
         </section>
 
         <footer style="padding: 40px 0; text-align: center; color: #666; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px;">
             <p>GameNative Theme Engine v1.0.0</p>
-            <p><a href="../"><i class="fab fa-github"></i> View on GitHub</a></p>
+            <p><a href="../">⌂ View on GitHub</a></p>
         </footer>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
     <script>
+        /* Minimal highlight.js implementation for XML/HTML (inlined) */
+        (function(){
+            const defined = (x) => x !== undefined;
+            const escapeHTML = (value) => value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+            
+            function highlightXML(code) {
+                return code
+                    // Comments
+                    .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="hljs-comment">$1</span>')
+                    // CDATA
+                    .replace(/(&lt;!\[CDATA\[[\s\S]*?\]\]&gt;)/g, '<span class="hljs-comment">$1</span>')
+                    // Tags with attributes
+                    .replace(/(&lt;\/?)([\w:-]+)((?:\s+[\w:-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*)(\/?&gt;)/g, 
+                        function(match, open, tag, attrs, close) {
+                            let result = '<span class="hljs-tag">' + open + '<span class="hljs-name">' + tag + '</span>';
+                            if (attrs) {
+                                result += attrs.replace(/([\w:-]+)(\s*=\s*)("[^"]*"|'[^']*')/g, 
+                                    '<span class="hljs-attr">$1</span>$2<span class="hljs-string">$3</span>');
+                            }
+                            result += close + '</span>';
+                            return result;
+                        })
+                    // Processing instructions
+                    .replace(/(&lt;\?[\s\S]*?\?&gt;)/g, '<span class="hljs-meta">$1</span>');
+            }
+            
+            window.hljs = {
+                highlightAll: function() {
+                    document.querySelectorAll('pre code').forEach(function(block) {
+                        const escaped = escapeHTML(block.textContent);
+                        block.innerHTML = highlightXML(escaped);
+                        block.classList.add('hljs');
+                    });
+                }
+            };
+        })();
+        
         hljs.highlightAll();
         
         // Smooth scroll and active nav
