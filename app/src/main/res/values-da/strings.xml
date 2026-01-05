@@ -321,9 +321,7 @@
     <string name="graphics_driver">Grafikdriver</string>
     <string name="graphics_driver_version">Grafikdriverversion</string>
     <string name="exposed_vulkan_extensions">Eksponerede Vulkan-udvidelser</string>
-    <string name="max_device_memory">Maksimal enhedshukommelse</string>
-    <string name="frame_synchronization">Rammens synkronisering</string>
-    <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
+    <string name="max_device_memory">Maksimal enhedshukommelse</string>    <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan-version</string>
     <string name="image_cache_size">Billedcache-størrelse</string>
     <string name="dx_wrapper">DX-wrapper</string>
@@ -796,4 +794,178 @@
     <string name="base_app_exported">Eksporteret</string>
     <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
     <string name="base_app_export_cancelled">Eksport annulleret</string>
+
+    <!-- Oversatte strenge -->
+    <string name="add_game">Tilføj spil</string>
+    <string name="back">Tilbage</string>
+    <string name="base_app_reset_container_confirm">Nulstil</string>
+    <string name="base_app_reset_container_title">Nulstil container?</string>
+    <string name="bcn_emulation">BCn-emulering</string>
+    <string name="bcn_emulation_cache">BCn-emuleringscache</string>
+    <string name="bcn_emulation_type">BCn-emuleringstype</string>
+    <string name="box86_64_env_var_help__avx"><![CDATA[
+        AVX og AVX2 implementeret sammen med BMI1, BMI2, ADX, FMA, F16C og RDRAND-udvidelser!<br /><br />
+        <b>0</b> : Deaktiver AVX-udvidelse<br />
+        <b>1</b> : Aktiver AVX, BMI1, F16C og VAES-udvidelse.<br />
+        <b>2</b> : Alt fra 1 plus aktiver AVX2, BMI2, FMA, ADX, VPCLMULQDQ og RDRAND.<br />\
+    ]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
+        Generer kun aligned atomics (kun tilgængeligt på Arm64 for nu).<br /><br />
+        <b>0</b> : Generer kode til håndtering af ujusterede atomics.<br />
+        <b>1</b> : Generer aligned atomics, hvilket er hurtigere og giver mindre kodestørrelse, men vil forårsage SIGBUS for LOCK-præfikserede opcodes, der opererer på justerede dataadresser.]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
+        Aktiver eller deaktiver brugen af udskudte flag.<br /><br />
+        <b>0</b> : Deaktiver brugen af udskudte flag.<br />
+        <b>1</b> : Aktiver brugen af udskudte flag.]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
+        Tillad fortsat kørsel af en blok, der er ubeskyttet og potentielt dirty.<br /><br />
+        <b>0</b> : Tillad ikke fortsat kørsel af en blok, der er ubeskyttet og potentielt dirty.<br />
+        <b>1</b> : Tillad fortsat kørsel af en dynablock, der skriver data på samme side som kode. Det kan gøre indlæsningstiden hurtigere i nogle spil, men kan også give uventede nedbrud.<br />
+        <b>2</b> : Vil også, når den detekterer en HotPage, markere den side som NEVERCLEAN, så den ikke vil blive skrivebeskyttet, men blokke bygget fra den side vil altid blive testet. Det kan være hurtigere på den måde (men nogle SMC-tilfælde fanges muligvis ikke).]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
+        Aktiver eller deaktiver brugen af native flag.<br /><br />
+        <b>0</b> : Brug ikke native flag.<br />
+        <b>1</b> : Brug native flag når muligt.]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
+        Aktiver x86 PAUSE-emulering, kan hjælpe med spinlock-ydeevne.<br /><br />
+        <b>0</b> : Ignorer x86 PAUSE-instruktion.<br />
+        <b>1</b> : Brug YIELD til at emulere x86 PAUSE-instruktion.<br />
+        <b>2</b> : Brug WFI til at emulere x86 PAUSE-instruktion.<br />
+        <b>3</b> : Brug SEVL+WFE til at emulere x86 PAUSE-instruktion.
+    ]]></string>
+    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
+        Juster hukommelsesbarrierer for at reducere ydeevnepåvirkning fra stærk hukommelsesemulering<br /><br />
+        <b>0</b> : Brug almindelige sikre barrierer<br />
+        <b>1</b> : Brug svage barrierer for mild ydeevneforbedring<br />
+        <b>2</b> : Brug svage barrierer, deaktiver også sidste skrivebarrierer]]></string>
+    <string name="box86_64_env_var_help__maxcpu">Maksimalt antal CPU\'er præsenteret for programmer af box64</string>
+    <string name="box86_64_env_var_help__mmap32">Tving alle hukommelsesallokeringer til 32-bit adresserum</string>
+    <string name="box86_64_env_var_help__unityplayer">Detekter UnityPlayer.dll og anvend strongmem-indstillinger</string>
+    <string name="cancel_import_confirm">Ja, annuller import</string>
+    <string name="cancel_import_keep">Nej, behold import</string>
+    <string name="cancel_import_message">En import er i gang. Annullering vil kassere alle udpakkede filer, og du skal starte importen igen.\n\nEr du sikker på, at du vil annullere?</string>
+    <string name="cancel_import_title">Annuller import?</string>
+    <string name="container_config_custom_resolution_error_aspect">Bredde skal være større end højde</string>
+    <string name="container_config_custom_resolution_error_nonzero">Bredde og højde skal være større end 0</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_title">Indstil brugerdefineret opløsning</string>
+    <string name="custom_game_unknown_developer">Ukendt</string>
+    <string name="disable_present_wait">Deaktiver KHR_present_wait</string>
+    <string name="fexcore_env_var_help__disablel2cache">Deaktiverer FEXCore JIT L2-cache-opslag, sparer hukommelse men introducerer hakken.</string>
+    <string name="fexcore_env_var_help__dynamicl1cache">Skifter FEXCore JIT L1-cache til dynamisk størrelse, sparer hukommelse men introducerer hakken.</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">Bruger halv-barriere atomics til ujusterede læsninger/skrivninger under TSO.</string>
+    <string name="fexcore_env_var_help__hidehypervisorbit">Skjuler CPUID hypervisor-bit (nyttigt for apps der crasher med det).</string>
+    <string name="fexcore_env_var_help__hostfeatures">Styrer tvungen CPU-funktionalitet.</string>
+    <string name="fexcore_env_var_help__maxinst">Maksimalt instruktionsbudget per oversættelsesblok. Højere værdier kan forbedre ydeevne, men kan reducere stabilitet.</string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled">Gør REP MOVS / REP STOS atomiske under TSO.</string>
+    <string name="fexcore_env_var_help__monohacks">Specielle SMC + JIT-blokhacks til Mono-detektion.</string>
+    <string name="fexcore_env_var_help__multiblock">Aktiverer multiblok-kodekompilering. Kan forårsage længere JIT-kompilering og hakken.</string>
+    <string name="fexcore_env_var_help__smalltscscale">Skalerer TSC på lavfrekvente systemer.</string>
+    <string name="fexcore_env_var_help__smc_checks">Selvmodificerende kode-kontroller.</string>
+    <string name="fexcore_env_var_help__tsoenabled">Aktiverer TSO IR-operationer (påkrævet for multitrådede apps).</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">Gør vektor-læsninger/skrivninger atomiske når TSO er aktiveret.</string>
+    <string name="fexcore_env_var_help__volatilemetadata">Bruger volatile metadata fra PE-filer til TSO når tilgængeligt.</string>
+    <string name="fexcore_env_var_help__x87reducedprecision">Emulerer X87 floating point med 64-bit præcision. Dette reducerer emuleringsnøjagtighed og kan resultere i renderingsfejl.</string>
+    <string name="fexcore_preset">FEXCore-forudindstilling</string>
+    <string name="fexcore_presets">FEXCore-forudindstillinger</string>
+    <string name="fexcore_presets_description">Se, rediger og opret FEXCore-forudindstillinger</string>
+    <string name="last_played">Sidst spillet</string>
+    <string name="library_layout_title">Layout</string>
+    <string name="library_never_played">Aldrig spillet</string>
+    <string name="library_source_custom">Brugerdefinerede spil</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="present_modes">Præsentationstilstande</string>
+    <string name="resource_type">Hukommelsesressourcetype</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">Importer brugerdefinerede Wine/Proton-versioner (kun Bionic)</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton Manager</string>
+    <string name="settings_interface_sort_last_played_subtitle">Vis senest spillede spil først i biblioteket</string>
+    <string name="settings_interface_sort_last_played_title">Sortér installerede efter sidst spillet</string>
+    <string name="settings_theme_picker_title">Tema</string>
+    <string name="settings_theme_reload_dev">Genindlæs tema (dev)</string>
+    <string name="settings_theme_source_builtin">Indbygget</string>
+    <string name="settings_theme_source_user">Bruger</string>
+    <string name="settings_use_theme_engine_ui_subtitle">Aktiver den nye temabaserede biblioteksskærm. Kan reducere interaktivitet.</string>
+    <string name="settings_use_theme_engine_ui_title">Brug Tema Engine UI (eksperimentel)</string>
+    <string name="sharpness_denoise">Skarphedsstøjreduktion</string>
+    <string name="sharpness_effect">Skarphedsforstærkning</string>
+    <string name="sharpness_level">Skarphedsniveau</string>
+    <string name="steam_continue">Fortsæt</string>
+    <string name="steam_never">Aldrig</string>
+    <string name="steam_not_logged_in">Du skal være logget ind på Steam for at bruge denne funktion</string>
+    <string name="steam_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="steam_uninstall_failed">Kunne ikke afinstallere spillet</string>
+    <string name="steam_uninstall_success">%1$s er blevet afinstalleret</string>
+    <string name="sync_frame">Synkroniser hver frame</string>
+    <string name="theme_activate">Aktiver</string>
+    <string name="theme_active">Aktiv</string>
+    <string name="theme_add_dialog_message">Vælg venligst en mappe med et gyldigt tema.\n\nEn gyldig temamappe skal indeholde en manifest.xml-fil med de påkrævede felter (id, version, engineVersion, minAppVersion).\n\nBemærk: Appen kan genstarte efter valg af mappe.</string>
+    <string name="theme_add_dialog_title">Tilføj eksternt tema</string>
+    <string name="theme_add_dont_show_again">Vis ikke denne dialog igen</string>
+    <string name="theme_add_external">Tilføj tema</string>
+    <string name="theme_added_toast">Tema tilføjet: %1$s</string>
+    <string name="theme_applied_toast">Tema anvendt: %1$s</string>
+    <string name="theme_by_author">Af %s</string>
+    <string name="theme_fallback_toast">Tema kunne ikke indlæses. Falder tilbage til %1$s</string>
+    <string name="theme_menu_button">Temaer</string>
+    <string name="theme_no_description">Ingen beskrivelse tilgængelig</string>
+    <string name="theme_remove">Fjern</string>
+    <string name="theme_remove_confirm">Fjern</string>
+    <string name="theme_remove_message">Fjern \"%1$s\" fra temalisten?\n\nDette vil ikke slette temafilerne fra din enhed.</string>
+    <string name="theme_remove_title">Fjern tema</string>
+    <string name="theme_removed_toast">Tema fjernet: %1$s</string>
+    <string name="theme_select_folder">Vælg en mappe med et tema</string>
+    <string name="theme_selector_title">Vælg tema</string>
+    <string name="theme_source_external">Ekstern</string>
+    <string name="theme_validation_failed">Ugyldigt tema: %1$s</string>
+    <string name="win_proton_example">For eksempel: "proton-10.0-ARM64ec.wcp"</string>
+    <string name="wine_proton_all_files_trusted">✓ Alle filer er betroede. Klar til installation.</string>
+    <string name="wine_proton_bin_path">Bin-sti</string>
+    <string name="wine_proton_bionic_notice_header">Kun Bionic-billeder</string>
+    <string name="wine_proton_cannot_open">Kan ikke åbne fil</string>
+    <string name="wine_proton_containers_in_use">Containere der bruger denne version:</string>
+    <string name="wine_proton_containers_will_break">Disse containere vil ikke længere fungere, hvis du fortsætter:</string>
+    <string name="wine_proton_delete_content_desc">Slet</string>
+    <string name="wine_proton_description">Beskrivelse</string>
+    <string name="wine_proton_error_badprofile">profile.json er ugyldig</string>
+    <string name="wine_proton_error_badtar">Fil kan ikke genkendes som gyldigt arkiv</string>
+    <string name="wine_proton_error_exist">Denne Wine/Proton-version findes allerede</string>
+    <string name="wine_proton_error_missingfiles">Pakken mangler påkrævede filer (bin/, lib/ eller prefixPack.txz)</string>
+    <string name="wine_proton_error_noprofile">profile.json ikke fundet i pakken</string>
+    <string name="wine_proton_error_nospace">Ikke nok lagerplads</string>
+    <string name="wine_proton_error_unable_install">Kunne ikke installere Wine/Proton-pakke</string>
+    <string name="wine_proton_error_unknown">Ukendt fejl opstod</string>
+    <string name="wine_proton_error_untrustprofile">Pakken kan ikke betros</string>
+    <string name="wine_proton_extracting">Udpakker og validerer pakke (dette kan tage 2-3 minutter for store filer)...</string>
+    <string name="wine_proton_failed_file_picker">Kunne ikke åbne filvælger: %s</string>
+    <string name="wine_proton_file_empty">Filen er tom eller kan ikke læses</string>
+    <string name="wine_proton_filename_error">Filnavn skal begynde med \'wine\' eller \'proton\' (ikke følsom for store/små bogstaver)</string>
+    <string name="wine_proton_glibc_incompatible">Denne Wine/Proton-build kræver GLIBC-containere og er ikke kompatibel med GameNative. Brug venligst kun ARM64/bionic-builds.</string>
+    <string name="wine_proton_import_package">Importer Wine/Proton-pakke</string>
+    <string name="wine_proton_import_wcp_button">Importer .wcp-pakke</string>
+    <string name="wine_proton_info_description">Importer brugerdefinerede Wine- eller Proton-versioner til Bionic-containere. Filnavn skal begynde med \'wine\' eller \'proton\' (ikke følsom for store/små bogstaver). Pakker skal indeholde bin/, lib/ og prefixPack.txz. Alle importer er kun bionic-kompatible.</string>
+    <string name="wine_proton_install_error">Installationsfejl: %s</string>
+    <string name="wine_proton_install_failed">Installation mislykkedes: %s</string>
+    <string name="wine_proton_install_package">Installer pakke</string>
+    <string name="wine_proton_install_success">%1$s %2$s installeret succesfuldt</string>
+    <string name="wine_proton_installed_versions">Installerede Wine/Proton-versioner</string>
+    <string name="wine_proton_lib_path">Lib-sti</string>
+    <string name="wine_proton_manager">Wine/Proton Manager</string>
+    <string name="wine_proton_no_containers_warning">Ingen containere bruger i øjeblikket denne version.</string>
+    <string name="wine_proton_no_versions_found">Ingen installerede Wine- eller Proton-versioner fundet.</string>
+    <string name="wine_proton_not_wine_or_proton">Pakken er ikke Wine eller Proton (type: %s)</string>
+    <string name="wine_proton_package_details">Pakkedetaljer</string>
+    <string name="wine_proton_processing">Behandler...</string>
+    <string name="wine_proton_remove_failed">Fjernelse mislykkedes: %s</string>
+    <string name="wine_proton_remove_message">Er du sikker på, at du vil fjerne %1$s %2$s (%3$d)? Containere der bruger denne version vil ikke længere fungere.</string>
+    <string name="wine_proton_remove_title">Fjern Wine/Proton-version</string>
+    <string name="wine_proton_removed_toast">Fjernet %s</string>
+    <string name="wine_proton_select_file_description">Vælg en .wcp-fil (med filnavn der starter med \'wine\' eller \'proton\')</string>
+    <string name="wine_proton_type">Type</string>
+    <string name="wine_proton_type_mismatch">Filnavn angiver %1$s, men pakken indeholder %2$s</string>
+    <string name="wine_proton_untrusted_files_detected">Denne pakke indeholder filer uden for det betroede sæt.</string>
+    <string name="wine_proton_untrusted_files_label">Ikke-betroede filer:</string>
+    <string name="wine_proton_untrusted_files_message">Denne pakke indeholder filer uden for det betroede sæt. Gennemgå og bekræft for at fortsætte med installationen.</string>
+    <string name="wine_proton_version">Version</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton-version findes allerede</string>
+    <string name="wine_proton_version_code">Versionskode</string>
 </resources>

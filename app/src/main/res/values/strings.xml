@@ -961,7 +961,6 @@
     <string name="theme_activate">Activate</string>
     <string name="theme_active">Active</string>
     <string name="back">Back</string>
-    <string name="selected">Selected</string>
 
     <!-- External Themes -->
     <string name="theme_add_external">Add Theme</string>

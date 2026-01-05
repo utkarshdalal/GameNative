@@ -31,7 +31,7 @@
 
     <!-- Text (sizes scale with focusedScale) -->
     <var name="titleSize" value="18" />
-    <var name="subtitleSize" value="9" />
+    <var name="subtitleSize" value="8" />
     <var name="statusSize" value="7" />
     <!-- X position for install status (offset for checkmark) -->
     <var name="statusX" value="125" />
@@ -55,11 +55,11 @@
     <var name="imageY" value="0" />
 
     <!-- Info text position (relative to card, appears right of image in landscape) -->
-    <var name="infoY" value="-5" />
-    <var name="compatY" value="10" />
-    <var name="statusY" value="20" />
-    <var name="lastPlayedY" value="30" />
-    <var name="clockIconY" value="31" />
+    <var name="infoY" value="-4" />
+    <var name="compatY" value="16" />
+    <var name="statusY" value="26" />
+    <var name="lastPlayedY" value="36" />
+    <var name="clockIconY" value="37" />
     <var name="clockIconSize" value="6" />
 
     <!-- Footer overlay for portrait mode (text inside card) -->
