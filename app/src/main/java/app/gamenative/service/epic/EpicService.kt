@@ -35,8 +35,6 @@ import timber.log.Timber
   * TODO: Test Pausing and Cancelling Downloads
   * TODO: DLC Support
   * TODO: Clean up all the code in the Epic files
-  * TODO: Ensure games install over multiple manifest types
-  * TODO: Remove all the Python code and put in the basic information regarding Cloud Saves.
  */
 @AndroidEntryPoint
 class EpicService : Service() {
