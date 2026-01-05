@@ -517,7 +517,7 @@ class EpicManager @Inject constructor(
      *   ...
      * }
      */
-    private fun parseGameFromCatalog(data: JSONObject, libraryAppName: String): EpicGame {
+    internal fun parseGameFromCatalog(data: JSONObject, libraryAppName: String): EpicGame {
         val catalogItemId = data.getString("id")
         val namespace = data.getString("namespace")
         val title = data.getString("title")

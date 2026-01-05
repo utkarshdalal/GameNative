@@ -1,0 +1,92 @@
+{
+	"1860f41341d1499fa4a06ae064340bbe": {
+		"id": "1860f41341d1499fa4a06ae064340bbe",
+		"title": "Dragon Age: Inquisition – Game of the Year Edition",
+		"description": "Winner of over 130 Game of the Year awards, discover the definitive Dragon Age: Inquisition experience. The Game of the Year Edition includes the critically acclaimed game, all three official add-ons - Jaws of Hakkon, The Descent, and Trespasser - and more.",
+		"keyImages": [
+			{
+				"type": "DieselGameBox",
+				"url": "https://cdn1.epicgames.com/spt-assets/175e781d820144ce966f1c1942b64b57/dragon-age-inquisition-game-of-the-year-edition-1l7v1.jpg",
+				"md5": "24b891a8ac072d9b532539047c7a1c23",
+				"width": 2560,
+				"height": 1440,
+				"size": 907501,
+				"uploadedDate": "2024-04-12T20:13:01.890Z",
+				"alt": "Dragon Age: Inquisition Game of the Year Edition Offer"
+			},
+			{
+				"type": "DieselGameBoxTall",
+				"url": "https://cdn1.epicgames.com/spt-assets/175e781d820144ce966f1c1942b64b57/dragon-age-inquisition-game-of-the-year-edition-kx1pf.jpg",
+				"md5": "dcd0354d8c43df6f5d41a714cf3985c5",
+				"width": 1200,
+				"height": 1600,
+				"size": 864336,
+				"uploadedDate": "2024-04-12T20:13:06.008Z",
+				"alt": "Download Dragon Age: Inquisition Game of the Year Edition Offer"
+			}
+		],
+		"categories": [
+			{
+				"path": "games"
+			},
+			{
+				"path": "applications"
+			}
+		],
+		"namespace": "afe2527e29b94db48b2eef984e34d81a",
+		"status": "ACTIVE",
+		"creationDate": "2024-05-15T22:43:56.332Z",
+		"lastModifiedDate": "2024-05-15T22:43:56.332Z",
+		"customAttributes": {
+			"RegistryPath": {
+				"type": "STRING",
+				"value": "SOFTWARE\\WOW6432Node\\BioWare\\Dragon Age Inquisition"
+			},
+			"ThirdPartyManagedApp": {
+				"type": "STRING",
+				"value": "The EA App"
+			},
+			"AdditionalCommandline": {
+				"type": "STRING",
+				"value": "&platform=epic"
+			},
+			"ProcessNames": {
+				"type": "STRING",
+				"value": "DragonAgeInquisition.exe"
+			},
+			"MainWindowProcessName": {
+				"type": "STRING",
+				"value": "DragonAgeInquisition.exe"
+			},
+			"FolderName": {
+				"type": "STRING",
+				"value": "DragonAgeInquisitiontFgJu"
+			},
+			"RegistryKey": {
+				"type": "STRING",
+				"value": "Install Dir"
+			}
+		},
+		"entitlementName": "1860f41341d1499fa4a06ae064340bbe",
+		"entitlementType": "EXECUTABLE",
+		"itemType": "DURABLE",
+		"releaseInfo": [
+			{
+				"id": "85c27fce6ff1434d8aaad907c4ad683e",
+				"appId": "verdi",
+				"platform": [
+					"Windows"
+				]
+			}
+		],
+		"developer": "Electronic Arts",
+		"developerId": "o-vtqh9b4lk8n4jpadfv6cphqs9hsly9",
+		"eulaIds": [],
+		"endOfSupport": false,
+		"mainGameItemList": [],
+		"ageGatings": {},
+		"applicationId": "",
+		"requiresSecureAccount": false,
+		"unsearchable": false
+	}
+}

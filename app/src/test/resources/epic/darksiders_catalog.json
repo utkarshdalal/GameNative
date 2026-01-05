@@ -1,0 +1,94 @@
+{
+	"8c04901974534bd0818f747952b0a19b": {
+		"id": "8c04901974534bd0818f747952b0a19b",
+		"title": "Darksiders II Deathinitive Edition",
+		"description": "Darksiders II Deathinitive Edition",
+		"keyImages": [
+			{
+				"type": "DieselGameBox",
+				"url": "https://cdn1.epicgames.com/091d95ea332843498122beee1a786d71/item/Storefront_Landscape-2560x1440-aaf0b5a36c066638e2b3f0ebcf2885e0.jpg",
+				"md5": "aaf0b5a36c066638e2b3f0ebcf2885e0",
+				"width": 2560,
+				"height": 1440,
+				"size": 778591,
+				"uploadedDate": "2019-12-19T21:54:10.003Z"
+			},
+			{
+				"type": "DieselGameBoxTall",
+				"url": "https://cdn1.epicgames.com/091d95ea332843498122beee1a786d71/item/Storefront_Portrait-860x1148-79de1e63157da0a0af69d207703cec0a.jpg",
+				"md5": "79de1e63157da0a0af69d207703cec0a",
+				"width": 860,
+				"height": 1148,
+				"size": 276640,
+				"uploadedDate": "2019-12-19T21:54:18.442Z"
+			}
+		],
+		"categories": [
+			{
+				"path": "public"
+			},
+			{
+				"path": "games"
+			},
+			{
+				"path": "applications"
+			}
+		],
+		"namespace": "091d95ea332843498122beee1a786d71",
+		"status": "ACTIVE",
+		"creationDate": "2025-03-04T08:39:07.841Z",
+		"lastModifiedDate": "2025-03-06T07:37:16.597Z",
+		"customAttributes": {
+			"CanRunOffline": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"PresenceId": {
+				"type": "STRING",
+				"value": "091d95ea332843498122beee1a786d71"
+			},
+			"MonitorPresence": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"UseAccessControl": {
+				"type": "STRING",
+				"value": "false"
+			},
+			"RequirementsJson": {
+				"type": "STRING",
+				"value": "[]"
+			},
+			"CanSkipKoreanIdVerification": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"FolderName": {
+				"type": "STRING",
+				"value": "Darksiders2"
+			}
+		},
+		"entitlementName": "8c04901974534bd0818f747952b0a19b",
+		"entitlementType": "EXECUTABLE",
+		"itemType": "DURABLE",
+		"releaseInfo": [
+			{
+				"id": "6fa6ff06b3214b179e3da75eae5df8b7",
+				"appId": "Hoki",
+				"platform": [
+					"Windows"
+				]
+			}
+		],
+		"developer": "THQ Nordic GmbH",
+		"developerId": "o-jywxgemg3dagnv6fymcngq3g29mc4j",
+		"eulaIds": [
+			"egstore"
+		],
+		"endOfSupport": false,
+		"mainGameItemList": [],
+		"ageGatings": {},
+		"selfRefundable": true,
+		"unsearchable": false
+	}
+}
