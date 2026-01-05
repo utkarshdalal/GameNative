@@ -446,7 +446,6 @@ class GOGService : Service() {
                                 continue
                             }
 
-                            // Use Kotlin cloud saves manager instead of Python
                             val cloudSavesManager = GOGCloudSavesManager(context)
                             val newTimestamp = cloudSavesManager.syncSaves(
                                 clientId = location.clientId,
