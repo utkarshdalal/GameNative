@@ -91,15 +91,18 @@ object FileUtils {
      */
     fun walkThroughPath(rootPath: Path, maxDepth: Int = 0, action: (Path) -> Unit) {
         if (!Files.exists(rootPath) || !Files.isDirectory(rootPath)) return
-        Files.list(rootPath).forEach {
-            action(it)
-            if (maxDepth != 0 && it.exists() && it.isDirectory()) {
-                walkThroughPath(
-                    rootPath = it,
-                    maxDepth = if (maxDepth > 0) maxDepth - 1 else maxDepth,
-                    action = action,
-                )
+        Files.list(rootPath).use { fileList ->
+            fileList.forEach {
+                action(it)
+                if (maxDepth != 0 && it.exists() && it.isDirectory()) {
+                    walkThroughPath(
+                        rootPath = it,
+                        maxDepth = if (maxDepth > 0) maxDepth - 1 else maxDepth,
+                        action = action,
+                    )
+                }
             }
+            fileList.close()
         }
     }
 

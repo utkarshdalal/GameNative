@@ -238,6 +238,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootToContainer = value) }
     }
 
+    fun setTestGraphics(value: Boolean) {
+        _state.update { it.copy(testGraphics = value) }
+    }
+
     fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {

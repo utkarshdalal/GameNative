@@ -595,16 +595,35 @@ public class ContentsManager {
         if (type != null && profilesMap.get(type) != null) {
             List<ContentProfile> profiles = profilesMap.get(type);
             Log.d("ContentsManager", "   Found " + profiles.size() + " profiles of type " + type);
-
+    
+            String keyLower = lowerVersionName;
+    
             for (ContentProfile profile : profiles) {
-                Log.d("ContentsManager", "   Checking profile: verName='" + profile.verName + "'");
-                // Match against version name directly (no version code)
-                if (entryName.equalsIgnoreCase(profile.verName)) {
+                String verName = (profile.verName != null) ? profile.verName : "";
+                String verLower = verName.toLowerCase();
+    
+                String typeAndVer = profile.type.toString() + "-" + verName;
+                String typeAndVerLower = typeAndVer.toLowerCase();
+    
+                String fullEntry = ContentsManager.getEntryName(profile);
+                String fullEntryLower = fullEntry.toLowerCase();
+    
+                Log.d(
+                    "ContentsManager",
+                    "   Checking profile: verName='" + profile.verName +
+                            "', typeAndVer='" + typeAndVer +
+                            "', fullEntry='" + fullEntry + "'"
+                );
+    
+                if (keyLower.equals(verLower) ||
+                    keyLower.equals(typeAndVerLower) ||
+                    keyLower.equals(fullEntryLower)) {
                     Log.d("ContentsManager", "   ✅ MATCH FOUND!");
                     return profile;
                 }
             }
-            Log.d("ContentsManager", "   ❌ No matching profile found");
+    
+            Log.d("ContentsManager", "   ❌ No matching profile found in primary lookup");
         } else {
             Log.d("ContentsManager", "   ❌ Type is null or no profiles for this type");
         }

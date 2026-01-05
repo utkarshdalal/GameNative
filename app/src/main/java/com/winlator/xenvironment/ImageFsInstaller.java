@@ -70,6 +70,21 @@ public abstract class ImageFsInstaller {
         }
     }
 
+    public static void installWineFromDownloads(final Context context) {
+        String[] versions = context.getResources().getStringArray(R.array.bionic_wine_entries);
+        File rootDir = ImageFs.find(context).getRootDir();
+        ImageFs imageFs = ImageFs.find(context);
+        for (String version : versions) {
+            File downloaded = new File(imageFs.getFilesDir(), version + ".txz");
+            File outFile = new File(rootDir, "/opt/" + version);
+            outFile.mkdirs();
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.XZ,
+                downloaded,
+                outFile
+            );
+        }
+    }
 
     private static Future<Boolean> installFromAssetsFuture(final Context context, AssetManager assetManager, String containerVariant, Callback<Integer> onProgress) {
         // AppUtils.keepScreenOn(context);
@@ -126,7 +141,7 @@ public abstract class ImageFsInstaller {
                 Log.d("ImageFsInstaller", "Successfully installed system files");
                 ContainerManager containerManager = new ContainerManager(context);
 
-                installWineFromAssets(context, assetManager);
+                installWineFromDownloads(context);
                 installGuestLibs(context);
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 resetContainerImgVersions(context);

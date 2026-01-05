@@ -38,19 +38,20 @@ object ContainerUtils {
     fun setContainerDefaults(context: Context){
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
-            DefaultVersion.VARIANT = Container.GLIBC
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "turnip"
-            DefaultVersion.DXVK = "2.6.1-gplasync"
+            DefaultVersion.VARIANT = Container.BIONIC
+            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = "turnip25.3.0_R3_Auto"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
-            DefaultVersion.ASYNC_CACHE = "1"
+            DefaultVersion.ASYNC_CACHE = "0"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper-leegao"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "async-1.10.3"
-            DefaultVersion.VKD3D = "2.6"
+            DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT
             DefaultVersion.ASYNC_CACHE = "0"
         }
@@ -261,8 +262,6 @@ object ContainerUtils {
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
-            emulateKeyboardMouse = container.isEmulateKeyboardMouse(),
-            controllerEmulationBindings = container.getControllerEmulationBindings()?.toString() ?: "",
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -383,18 +382,11 @@ object ContainerUtils {
         container.setFEXCorePreset(containerData.fexcorePreset)
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
-        container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
-        try {
-            val bindingsStr = containerData.controllerEmulationBindings
-            if (bindingsStr.isNotEmpty()) {
-                container.setControllerEmulationBindings(org.json.JSONObject(bindingsStr))
-            }
-        } catch (_: Exception) {}
         try {
             container.language = containerData.language
         } catch (e: Exception) {
@@ -439,31 +431,11 @@ object ContainerUtils {
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
-            // If bionic arm64ec, persist FEXCore settings directly
-            if (containerData.containerVariant.equals(Container.BIONIC, true)
-                && containerData.wineVersion.contains("arm64ec", true)) {
-                FEXCoreManager.writeToConfigFile(
-                    context,
-                    container.id,
-                    containerData.fexcoreTSOMode,
-                    containerData.fexcoreMultiBlock,
-                    containerData.fexcoreX87Mode,
-                )
-            }
             // Mark that config has been changed, so we can show feedback dialog after next game run
             container.putExtra("config_changed", "true")
             container.saveData()
         }
         Timber.d("Set container.execArgs to '${containerData.execArgs}'")
-
-        // Generate/update per-container emulation profile when enabled
-        try {
-            if (containerData.emulateKeyboardMouse) {
-                generateOrUpdateEmulationProfile(context, container)
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to generate/update emulation profile for container %s", container.id)
-        }
     }
 
     private fun mapLanguageToLocale(language: String): String {
@@ -786,39 +758,50 @@ object ContainerUtils {
             createNewContainer(context, appId, appId, containerManager)
         }
 
-        // Ensure Custom Games have the A: drive mapped to the game folder
+        // Delete any existing FEXCore config files (we use environment variables only)
+        FEXCoreManager.deleteConfigFiles(context, container.id)
+
+        // Ensure all games have the A: drive mapped to the game folder
         val gameSource = extractGameSourceFromContainerId(appId)
-        if (gameSource == GameSource.CUSTOM_GAME) {
-            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
-            if (gameFolderPath != null) {
-                // Check if A: drive is already mapped to the correct path
-                var hasCorrectADrive = false
-                for (drive in Container.drivesIterator(container.drives)) {
-                    if (drive[0] == "A" && drive[1] == gameFolderPath) {
-                        hasCorrectADrive = true
-                        break
+        val gameFolderPath: String? = when (gameSource) {
+            GameSource.STEAM -> {
+                val gameId = extractGameIdFromContainerId(appId)
+                SteamService.getAppDirPath(gameId)
+            }
+            GameSource.CUSTOM_GAME -> {
+                CustomGameScanner.getFolderPathFromAppId(appId)
+            }
+            else -> null
+        }
+
+        if (gameFolderPath != null) {
+            // Check if A: drive is already mapped to the correct path
+            var hasCorrectADrive = false
+            for (drive in Container.drivesIterator(container.drives)) {
+                if (drive[0] == "A" && drive[1] == gameFolderPath) {
+                    hasCorrectADrive = true
+                    break
+                }
+            }
+
+            // If A: drive is not mapped correctly, update it
+            if (!hasCorrectADrive) {
+                val currentDrives = container.drives
+                // Rebuild drives string, excluding existing A: drive and adding new one
+                val drivesBuilder = StringBuilder()
+                drivesBuilder.append("A:$gameFolderPath")
+
+                // Add all other drives (excluding A:)
+                for (drive in Container.drivesIterator(currentDrives)) {
+                    if (drive[0] != "A") {
+                        drivesBuilder.append("${drive[0]}:${drive[1]}")
                     }
                 }
 
-                // If A: drive is not mapped correctly, update it
-                if (!hasCorrectADrive) {
-                    val currentDrives = container.drives
-                    // Rebuild drives string, excluding existing A: drive and adding new one
-                    val drivesBuilder = StringBuilder()
-                    drivesBuilder.append("A:$gameFolderPath")
-
-                    // Add all other drives (excluding A:)
-                    for (drive in Container.drivesIterator(currentDrives)) {
-                        if (drive[0] != "A") {
-                            drivesBuilder.append("${drive[0]}:${drive[1]}")
-                        }
-                    }
-
-                    val updatedDrives = drivesBuilder.toString()
-                    container.drives = updatedDrives
-                    container.saveData()
-                    Timber.d("Updated container drives to include A: drive mapping: $updatedDrives")
-                }
+                val updatedDrives = drivesBuilder.toString()
+                container.drives = updatedDrives
+                container.saveData()
+                Timber.d("Updated container drives to include A: drive mapping: $updatedDrives")
             }
         }
 
@@ -846,12 +829,6 @@ object ContainerUtils {
                     if (effectiveConfig != null) {
                         applyToContainer(context, container, effectiveConfig, saveToDisk = false)
                         Timber.i("Applied temporary config override to existing container for app $appId (in-memory only)")
-                        // Also refresh emulation profile in-memory if enabled
-                        try {
-                            if (effectiveConfig.emulateKeyboardMouse) {
-                                generateOrUpdateEmulationProfile(context, container)
-                            }
-                        } catch (_: Exception) {}
                     }
                 }
             }
@@ -867,172 +844,6 @@ object ContainerUtils {
 
             createNewContainer(context, appId, appId, containerManager, overrideConfig)
         }
-    }
-
-    /**
-     * Create or update a per-container ControlsProfile that remaps on-screen controls and
-     * adds controller bindings for physical gamepads according to container.controllerEmulationBindings.
-     * The profile name is the container id as a string, so it can be looked up easily at runtime.
-     */
-    fun generateOrUpdateEmulationProfile(context: Context, container: Container): ControlsProfile {
-        val inputControlsManager = InputControlsManager(context)
-        var profiles = inputControlsManager.getProfiles(false)
-
-        // If profiles are empty, try to force reload from assets
-        if (profiles.isEmpty()) {
-            val profilesDir = InputControlsManager.getProfilesDir(context)
-            try {
-                // Force copy from assets if directory is empty
-                if (FileUtils.isEmpty(profilesDir)) {
-                    FileUtils.copy(context, "inputcontrols/profiles", profilesDir)
-                }
-                // Reload profiles
-                profiles = inputControlsManager.getProfiles(false)
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to reload profiles from assets")
-            }
-        }
-
-        // Choose a base profile to clone from (Virtual Gamepad preferred)
-        val baseProfile = profiles.firstOrNull { it.id == 3 || it.name.contains("Virtual Gamepad", true) }
-            ?: profiles.getOrNull(2)
-            ?: profiles.firstOrNull()
-            ?: throw IllegalStateException(
-                "No control profiles available. Please ensure inputcontrols/profiles assets are present."
-            )
-        val baseFile = ControlsProfile.getProfileFile(context, baseProfile.id)
-
-        val profileJSONObject = org.json.JSONObject(FileUtils.readString(baseFile))
-        val elementsJSONArray = profileJSONObject.getJSONArray("elements")
-
-        val emuJson = try {
-            container.controllerEmulationBindings
-        } catch (_: Exception) {
-            null
-        }
-
-        fun optBinding(key: String, fallback: String): String {
-            return emuJson?.optString(key, fallback) ?: fallback
-        }
-
-        // Apply on-screen remaps similar to emulateKeyboardMouseOnscreen
-        for (i in 0 until elementsJSONArray.length()) {
-            val e = elementsJSONArray.getJSONObject(i)
-            val type = e.getString("type")
-            val bindings = e.getJSONArray("bindings")
-            if (type == "D_PAD") {
-                bindings.put(0, optBinding("DPAD_UP", bindings.getString(0)))
-                bindings.put(1, optBinding("DPAD_RIGHT", bindings.getString(1)))
-                bindings.put(2, optBinding("DPAD_DOWN", bindings.getString(2)))
-                bindings.put(3, optBinding("DPAD_LEFT", bindings.getString(3)))
-            } else if (type == "STICK") {
-                val b0 = bindings.getString(0)
-                if (b0.startsWith("GAMEPAD_LEFT_THUMB")) {
-                    bindings.put(0, "KEY_W")
-                    bindings.put(1, "KEY_D")
-                    bindings.put(2, "KEY_S")
-                    bindings.put(3, "KEY_A")
-                } else if (b0.startsWith("GAMEPAD_RIGHT_THUMB")) {
-                    bindings.put(0, "MOUSE_MOVE_UP")
-                    bindings.put(1, "MOUSE_MOVE_RIGHT")
-                    bindings.put(2, "MOUSE_MOVE_DOWN")
-                    bindings.put(3, "MOUSE_MOVE_LEFT")
-                }
-            } else if (type == "BUTTON") {
-                val b0 = bindings.getString(0)
-                val logical = when (b0) {
-                    "GAMEPAD_BUTTON_A" -> "A"
-                    "GAMEPAD_BUTTON_B" -> "B"
-                    "GAMEPAD_BUTTON_X" -> "X"
-                    "GAMEPAD_BUTTON_Y" -> "Y"
-                    "GAMEPAD_BUTTON_L1" -> "L1"
-                    "GAMEPAD_BUTTON_L2" -> "L2"
-                    "GAMEPAD_BUTTON_L3" -> "L3"
-                    "GAMEPAD_BUTTON_R1" -> "R1"
-                    "GAMEPAD_BUTTON_R2" -> "R2"
-                    "GAMEPAD_BUTTON_R3" -> "R3"
-                    "GAMEPAD_BUTTON_START" -> "START"
-                    "GAMEPAD_BUTTON_SELECT" -> "SELECT"
-                    else -> null
-                }
-                if (logical != null) {
-                    val mapped = optBinding(logical, "NONE")
-                    bindings.put(0, mapped)
-                    bindings.put(1, "NONE")
-                    bindings.put(2, "NONE")
-                    bindings.put(3, "NONE")
-                }
-            }
-        }
-
-        // Build controller bindings for connected gamepads
-        val controllersJSONArray = org.json.JSONArray()
-        val connected = com.winlator.inputcontrols.ExternalController.getControllers()
-
-        for (controller in connected) {
-            val controllerJSONObject = org.json.JSONObject()
-            controllerJSONObject.put("id", controller.id)
-            controllerJSONObject.put("name", controller.name)
-
-            val controllerBindingsJSONArray = org.json.JSONArray()
-
-            fun addBinding(keyCode: Int, bindingName: String?) {
-                if (bindingName == null || bindingName == "NONE" || bindingName.isEmpty()) return
-                val obj = org.json.JSONObject()
-                obj.put("keyCode", keyCode)
-                obj.put("binding", bindingName)
-                controllerBindingsJSONArray.put(obj)
-            }
-
-            // Left stick -> WASD
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Y, -1), "KEY_W")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_X, +1), "KEY_D")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Y, +1), "KEY_S")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_X, -1), "KEY_A")
-
-            // Right stick -> mouse
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_RZ, -1), "MOUSE_MOVE_UP")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Z, +1), "MOUSE_MOVE_RIGHT")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_RZ, +1), "MOUSE_MOVE_DOWN")
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_Z, -1), "MOUSE_MOVE_LEFT")
-
-            // D-Pad from HAT axes, allow overrides
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_Y, -1), optBinding("DPAD_UP", "KEY_UP"))
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_X, +1), optBinding("DPAD_RIGHT", "KEY_RIGHT"))
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_Y, +1), optBinding("DPAD_DOWN", "KEY_DOWN"))
-            addBinding(com.winlator.inputcontrols.ExternalControllerBinding.getKeyCodeForAxis(android.view.MotionEvent.AXIS_HAT_X, -1), optBinding("DPAD_LEFT", "KEY_LEFT"))
-
-            // Buttons (allow overrides from emuJson)
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_A, optBinding("A", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_B, optBinding("B", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_X, optBinding("X", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_Y, optBinding("Y", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_L1, optBinding("L1", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_R1, optBinding("R1", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_L2, optBinding("L2", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_R2, optBinding("R2", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_THUMBL, optBinding("L3", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_THUMBR, optBinding("R3", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_START, optBinding("START", "NONE"))
-            addBinding(android.view.KeyEvent.KEYCODE_BUTTON_SELECT, optBinding("SELECT", "NONE"))
-
-            controllerJSONObject.put("controllerBindings", controllerBindingsJSONArray)
-            controllersJSONArray.put(controllerJSONObject)
-        }
-
-        if (controllersJSONArray.length() > 0) {
-            profileJSONObject.put("controllers", controllersJSONArray)
-        }
-
-        // Create/find per-container profile by name = container id as string
-        val profileName = container.id.toString()
-        val targetProfile = profiles.firstOrNull { it.name == profileName }
-            ?: inputControlsManager.createProfile(profileName)
-
-        val targetFile = ControlsProfile.getProfileFile(context, targetProfile.id)
-        FileUtils.writeString(targetFile, profileJSONObject.toString())
-
-        return targetProfile
     }
 
     /**
@@ -1087,5 +898,116 @@ object ContainerUtils {
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }
+    }
+
+    /**
+     * Gets the file system path for the container's A: drive
+     */
+    fun getADrivePath(drives: String): String? {
+        // Use the existing Container.drivesIterator logic
+        for (drive in Container.drivesIterator(drives)) {
+            if (drive[0] == "A") {
+                return drive[1]
+            }
+        }
+        return null
+    }
+
+    /**
+     * Scans the container's A: drive for all .exe files
+     */
+    fun scanExecutablesInADrive(drives: String): List<String> {
+        val executables = mutableListOf<String>()
+
+        try {
+            // Find the A: drive path from container drives
+            val aDrivePath = getADrivePath(drives)
+            if (aDrivePath == null) {
+                Timber.w("No A: drive found in container drives")
+                return emptyList()
+            }
+
+            val aDir = File(aDrivePath)
+            if (!aDir.exists() || !aDir.isDirectory) {
+                Timber.w("A: drive path does not exist or is not a directory: $aDrivePath")
+                return emptyList()
+            }
+
+            Timber.d("Scanning for executables in A: drive: $aDrivePath")
+
+            // Recursively scan for .exe files using listFiles with depth limit
+            fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
+                if (depth > maxDepth) return
+
+                dir.listFiles()?.forEach { file ->
+                    if (file.isDirectory) {
+                        scanRecursive(file, baseDir, depth + 1, maxDepth)
+                    } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                        // Convert to relative Windows path format
+                        val relativePath = baseDir.toURI().relativize(file.toURI()).path
+                        executables.add(relativePath)
+                    }
+                }
+            }
+
+            scanRecursive(aDir, aDir)
+
+            // Sort alphabetically and prioritize common game executables
+            executables.sortWith { a, b ->
+                val aScore = getExecutablePriority(a)
+                val bScore = getExecutablePriority(b)
+
+                if (aScore != bScore) {
+                    bScore.compareTo(aScore) // Higher priority first
+                } else {
+                    a.compareTo(b, ignoreCase = true) // Alphabetical
+                }
+            }
+
+            Timber.d("Found ${executables.size} executables in A: drive")
+
+        } catch (e: Exception) {
+            Timber.e(e, "Error scanning A: drive for executables")
+        }
+
+        return executables
+    }
+
+    /**
+     * Assigns priority scores to executables for better sorting
+     */
+    private fun getExecutablePriority(exePath: String): Int {
+        val fileName = exePath.substringAfterLast('\\').lowercase()
+        val baseName = fileName.substringBeforeLast('.')
+
+        return when {
+            // Highest priority: common game executable patterns
+            fileName.contains("game") -> 100
+            fileName.contains("start") -> 85
+            fileName.contains("main") -> 80
+            fileName.contains("launcher") && !fileName.contains("unins") -> 75
+
+            // High priority: probable main executables
+            baseName.length >= 4 && !isSystemExecutable(fileName) -> 70
+
+            // Medium priority: any non-system executable
+            !isSystemExecutable(fileName) -> 50
+
+            // Low priority: system/utility executables
+            else -> 10
+        }
+    }
+
+    /**
+     * Checks if an executable is likely a system/utility file
+     */
+    private fun isSystemExecutable(fileName: String): Boolean {
+        val systemKeywords = listOf(
+            "unins", "setup", "install", "config", "crash", "handler",
+            "viewer", "compiler", "tool", "redist", "vcredist", "directx",
+            "steam", "origin", "uplay", "epic", "battlenet"
+        )
+
+        return systemKeywords.any { fileName.contains(it) }
     }
 }

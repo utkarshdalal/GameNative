@@ -65,12 +65,10 @@ import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
-import app.gamenative.ui.screen.chat.ChatScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameFeedbackUtils
@@ -81,6 +79,8 @@ import app.gamenative.utils.UpdateInstaller
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
+import com.winlator.core.TarCompressorUtils
+import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import kotlinx.coroutines.CoroutineScope
@@ -88,6 +88,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
@@ -897,6 +898,23 @@ fun PluviaMain(
                     onClickPlay = { appId, asContainer ->
                         viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(asContainer)
+                        viewModel.setTestGraphics(false)
+                        viewModel.setOffline(isOffline)
+                        preLaunchApp(
+                            context = context,
+                            appId = appId,
+                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                            setLoadingProgress = viewModel::setLoadingDialogProgress,
+                            setLoadingMessage = viewModel::setLoadingDialogMessage,
+                            setMessageDialogState = { msgDialogState = it },
+                            onSuccess = viewModel::launchApp,
+                            isOffline = isOffline,
+                        )
+                    },
+                    onTestGraphics = { appId ->
+                        viewModel.setLaunchedAppId(appId)
+                        viewModel.setBootToContainer(true)
+                        viewModel.setTestGraphics(true)
                         viewModel.setOffline(isOffline)
                         preLaunchApp(
                             context = context,
@@ -928,35 +946,12 @@ fun PluviaMain(
                 )
             }
 
-            /** Full Screen Chat **/
-
-            /** Full Screen Chat **/
-            composable(
-                route = "chat/{id}",
-                arguments = listOf(
-                    navArgument(PluviaScreen.Chat.ARG_ID) {
-                        type = NavType.LongType
-                    },
-                ),
-            ) {
-                val id = it.arguments?.getLong(PluviaScreen.Chat.ARG_ID) ?: throw RuntimeException("Unable to get ID to chat")
-                ChatScreen(
-                    friendId = id,
-                    onBack = {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            navController.popBackStack()
-                        }
-                    },
-                )
-            }
-
-            /** Game Screen **/
-
             /** Game Screen **/
             composable(route = PluviaScreen.XServer.route) {
                 XServerScreen(
                     appId = state.launchedAppId,
                     bootToContainer = state.bootToContainer,
+                    testGraphics = state.testGraphics,
                     registerBackAction = { cb ->
                         Timber.d("registerBackAction called: $cb")
                         gameBackAction = cb
@@ -1047,7 +1042,7 @@ fun preLaunchApp(
         // set up Ubuntu file system
         SplitCompat.install(context)
         if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
-            setLoadingMessage("Downloading first-time files${if(container.containerVariant.equals(Container.GLIBC)) " (1/2)" else ""}")
+            setLoadingMessage("Downloading first-time files")
             SteamService.downloadImageFs(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
@@ -1056,11 +1051,55 @@ fun preLaunchApp(
             ).await()
         }
         if (container.containerVariant.equals(Container.GLIBC) && !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")) {
-            setLoadingMessage("Downloading first-time files (2/2)")
+            setLoadingMessage("Downloading Wine")
             SteamService.downloadImageFsPatches(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
+            ).await()
+        } else {
+            if (container.wineVersion.contains("proton-9.0-arm64ec") && !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")) {
+                setLoadingMessage("Downloading arm64ec Proton")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "proton-9.0-arm64ec.txz"
+                ).await()
+            } else if (container.wineVersion.contains("proton-9.0-x86_64") && !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")) {
+                setLoadingMessage("Downloading x86_64 Proton")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "proton-9.0-x86_64.txz"
+                ).await()
+            }
+            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
+                val protonVersion = container.wineVersion
+                val imageFs = ImageFs.find(context)
+                val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
+                val binDir = File(outFile, "bin")
+                if (!binDir.exists() || !binDir.isDirectory) {
+                    Timber.i("Extracting $protonVersion to /opt/")
+                    setLoadingMessage("Extracting $protonVersion")
+                    setLoadingProgress(-1f)
+                    val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.XZ,
+                        downloaded,
+                        outFile,
+                    )
+                }
+            }
+        }
+        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm-20260101.tzst")) {
+            setLoadingMessage("Downloading extras")
+            SteamService.downloadFile(
+                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                this,
+                context = context,
+                "experimental-drm-20260101.tzst"
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {

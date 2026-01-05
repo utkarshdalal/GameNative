@@ -116,8 +116,6 @@ class ContainerConfigDialogContainerUpdateTest {
             dinputMapperType = 2,
             disableMouseInput = true,
             touchscreenMode = true,
-            emulateKeyboardMouse = true,
-            controllerEmulationBindings = """{"A":"KEY_SPACE","B":"KEY_Q","X":"KEY_E","Y":"KEY_TAB","L1":"KEY_SHIFT_L","L2":"MOUSE_LEFT_BUTTON","L3":"KEY_CTRL_L","R1":"KEY_CTRL_R","R2":"MOUSE_RIGHT_BUTTON","R3":"KEY_ALT_R","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT","START":"KEY_ENTER","SELECT":"KEY_ESC"}""",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -157,7 +155,6 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.sdlControllerAPI, container.isSdlControllerAPI)
         assertEquals(mutated.disableMouseInput, container.isDisableMouseInput)
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
-        assertEquals(mutated.emulateKeyboardMouse, container.isEmulateKeyboardMouse)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -258,8 +255,6 @@ class ContainerConfigDialogContainerUpdateTest {
             dinputMapperType = 2,
             disableMouseInput = true,
             touchscreenMode = true,
-            emulateKeyboardMouse = true,
-            controllerEmulationBindings = """{"A":"KEY_SPACE","B":"KEY_Q","X":"KEY_E","Y":"KEY_TAB","L1":"KEY_SHIFT_L","L2":"MOUSE_LEFT_BUTTON","L3":"KEY_CTRL_L","R1":"KEY_CTRL_R","R2":"MOUSE_RIGHT_BUTTON","R3":"KEY_ALT_R","DPAD_UP":"KEY_UP","DPAD_DOWN":"KEY_DOWN","DPAD_LEFT":"KEY_LEFT","DPAD_RIGHT":"KEY_RIGHT","START":"KEY_ENTER","SELECT":"KEY_ESC"}""",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -300,7 +295,6 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.sdlControllerAPI, container.isSdlControllerAPI)
         assertEquals(mutated.disableMouseInput, container.isDisableMouseInput)
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
-        assertEquals(mutated.emulateKeyboardMouse, container.isEmulateKeyboardMouse)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -415,7 +409,6 @@ class ContainerConfigDialogContainerUpdateTest {
             enableDInput = true,
             disableMouseInput = true,
             touchscreenMode = true,
-            emulateKeyboardMouse = true,
             wow64Mode = true
         )
 
@@ -429,7 +422,6 @@ class ContainerConfigDialogContainerUpdateTest {
         assertTrue(container.isSdlControllerAPI)
         assertTrue(container.isDisableMouseInput)
         assertTrue(container.isTouchscreenMode)
-        assertTrue(container.isEmulateKeyboardMouse)
     }
 
     @Test

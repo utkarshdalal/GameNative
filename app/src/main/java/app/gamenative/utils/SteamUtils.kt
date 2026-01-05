@@ -6,7 +6,10 @@ import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.SaveFilePattern
+import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
+import app.gamenative.enums.PathType
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
@@ -116,25 +119,25 @@ object SteamUtils {
         Timber.i("Generated steam_interfaces.txt (${sorted.size} interfaces)")
     }
 
-    private fun copyOriginalSteamDll(dllPath: Path, appDirPath: String) {
+    private fun copyOriginalSteamDll(dllPath: Path, appDirPath: String): String? {
         // 1️⃣  back-up next to the original DLL
         val backup = dllPath.parent.resolve("${dllPath.fileName}.orig")
         if (Files.notExists(backup)) {
             try {
                 Files.copy(dllPath, backup)
                 Timber.i("Copied original ${dllPath.fileName} to $backup")
-
-                // 2️⃣  record the relative path inside the app directory
-                val relPath = Paths.get(appDirPath).relativize(backup)
-                Files.write(
-                    Paths.get(appDirPath).resolve("orig_dll_path.txt"),
-                    listOf(relPath.toString()),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-                )
             } catch (e: IOException) {
                 Timber.w(e, "Failed to back up ${dllPath.fileName}")
+                return null
             }
+        }
+        // 2️⃣  return the relative path inside the app directory (even if backup already existed)
+        return try {
+            val relPath = Paths.get(appDirPath).relativize(backup)
+            relPath.toString()
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to compute relative path for ${dllPath.fileName}")
+            null
         }
     }
 
@@ -152,8 +155,9 @@ object SteamUtils {
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
         Timber.i("Starting replaceSteamApi for appId: $appId")
         Timber.i("Checking directory: $appDirPath")
-        var replaced32 = false
-        var replaced64 = false
+        var replaced32Count = 0
+        var replaced64Count = 0
+        val backupPaths = mutableSetOf<String>()
         val imageFs = ImageFs.find(context)
         autoLoginUserChanges(imageFs)
         setupLightweightSteamConfig(imageFs, SteamService.userSteamId?.toString())
@@ -169,13 +173,14 @@ object SteamUtils {
             val is64Bit = path.name.equals("steam_api64.dll", ignoreCase = true)
             val is32Bit = path.name.equals("steam_api.dll", ignoreCase = true)
 
-            if ((is32Bit && replaced32) || (is64Bit && replaced64)) return@forEach
-
             if (is64Bit || is32Bit) {
                 val dllName = if (is64Bit) "steam_api64.dll" else "steam_api.dll"
                 Timber.i("Found $dllName at ${path.absolutePathString()}, replacing...")
                 generateInterfacesFile(path)
-                copyOriginalSteamDll(path, appDirPath)
+                val relPath = copyOriginalSteamDll(path, appDirPath)
+                if (relPath != null) {
+                    backupPaths.add(relPath)
+                }
                 Files.delete(path)
                 Files.createFile(path)
                 FileOutputStream(path.absolutePathString()).use { fos ->
@@ -184,12 +189,27 @@ object SteamUtils {
                     }
                 }
                 Timber.i("Replaced $dllName")
-                if (is64Bit) replaced64 = true else replaced32 = true
+                if (is64Bit) replaced64Count++ else replaced32Count++
                 ensureSteamSettings(context, path, appId, ticketBase64)
             }
         }
 
-        Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
+        // Write all collected backup paths to orig_dll_path.txt
+        if (backupPaths.isNotEmpty()) {
+            try {
+                Files.write(
+                    Paths.get(appDirPath).resolve("orig_dll_path.txt"),
+                    backupPaths.sorted(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+                )
+                Timber.i("Wrote ${backupPaths.size} DLL backup paths to orig_dll_path.txt")
+            } catch (e: IOException) {
+                Timber.w(e, "Failed to write orig_dll_path.txt")
+            }
+        }
+
+        Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32Count, Replaced 64bit: $replaced64Count")
 
         // Restore unpacked executable if it exists (for DRM-free mode)
         restoreUnpackedExecutable(context, steamAppId)
@@ -213,12 +233,12 @@ object SteamUtils {
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
         val imageFs = ImageFs.find(context)
+        val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260101.tzst")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
-            context.assets,
-            "experimental-drm.tzst",
+            downloaded,
             imageFs.getRootDir(),
-        );
+        )
         putBackSteamDlls(appDirPath)
         restoreUnpackedExecutable(context, steamAppId)
 
@@ -721,7 +741,12 @@ object SteamUtils {
 
         val configsIni = settingsDir.resolve("configs.user.ini")
         val accountName   = PrefManager.username
-        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
+        val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() 
+            ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }?.toString()
+            ?: "0"
+        val accountId = SteamService.userSteamId?.accountID 
+            ?: PrefManager.steamUserAccountId.takeIf { it != 0 }?.toLong()
+            ?: 0L
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val language = runCatching {
             (container.getExtra("language", null)
@@ -729,25 +754,47 @@ object SteamUtils {
                 ?: "english"
         }.getOrDefault("english").lowercase()
 
-        val iniContent = """
-            [user::general]
-            account_name=$accountName
-            account_steamid=$accountSteamId
-            language=$language
-            ticket=$ticketBase64
-        """.trimIndent()
+        // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
+        val appInfo = getAppInfoOf(steamAppId)
+        val hasSaveFilePatterns = appInfo?.ufs?.saveFilePatterns?.isNotEmpty() == true
+
+        val iniContent = buildString {
+            appendLine("[user::general]")
+            appendLine("account_name=$accountName")
+            appendLine("account_steamid=$accountSteamId")
+            appendLine("language=$language")
+            if (!ticketBase64.isNullOrEmpty()) {
+                appendLine("ticket=$ticketBase64")
+            }
+
+            // Only add [user::saves] section if no saveFilePatterns are defined
+            if (!hasSaveFilePatterns) {
+                val steamUserDataPath = "C:\\Program Files (x86)\\Steam\\userdata\\$accountId"
+                appendLine()
+                appendLine("[user::saves]")
+                appendLine("local_save_path=$steamUserDataPath")
+            }
+        }
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
         configsIni.toFile().writeText(iniContent)
 
         val appIni = settingsDir.resolve("configs.app.ini")
         val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
+        val hiddenDlcApps = SteamService.getHiddenDlcAppsOf(steamAppId)
 
         val forceDlc = container.isForceDlc()
         val appIniContent = buildString {
             appendLine("[app::dlcs]")
             appendLine("unlock_all=${if (forceDlc) 1 else 0}")
             dlcIds?.forEach { appendLine("$it=dlc$it") }
+            hiddenDlcApps?.forEach { appendLine("${it.id}=${it.name}") }
+
+            // Add cloud save config sections if appInfo exists
+            if (appInfo != null) {
+                appendLine()
+                append(generateCloudSaveConfig(appInfo))
+            }
         }
 
         if (Files.notExists(appIni)) Files.createFile(appIni)
@@ -801,6 +848,37 @@ object SteamUtils {
             "vietnamese",
         )
         supportedLanguagesFile.toFile().writeText(supportedLanguages.joinToString("\n"))
+    }
+
+    /**
+     * Generates cloud save configuration sections for configs.app.ini
+     * Returns empty string if no Windows save patterns are found
+     */
+    private fun generateCloudSaveConfig(appInfo: SteamApp): String {
+        // Filter to only Windows save patterns
+        val windowsPatterns = appInfo.ufs.saveFilePatterns.filter { it.root.isWindows }
+
+        return buildString {
+            if (windowsPatterns.isNotEmpty()) {
+                appendLine("[app::cloud_save::general]")
+                appendLine("create_default_dir=1")
+                appendLine("create_specific_dirs=1")
+                appendLine()
+                appendLine("[app::cloud_save::win]")
+                val uniqueDirs = LinkedHashSet<String>()
+                windowsPatterns.forEach { pattern ->
+                    val root = if (pattern.root.name == "GameInstall") "gameinstall" else pattern.root.name
+                    val path = pattern.path
+                        .replace("{64BitSteamID}", "{::64BitSteamID::}")
+                        .replace("{Steam3AccountID}", "{::Steam3AccountID::}")
+                    uniqueDirs.add("{::$root::}/$path")
+                }
+                
+                uniqueDirs.forEachIndexed { index, dir ->
+                    appendLine("dir${index + 1}=$dir")
+                }
+            }
+        }
     }
 
     private fun convertToWindowsPath(unixPath: String): String {
@@ -909,28 +987,32 @@ object SteamUtils {
 
             override fun onResponse(call: Call, res: Response) {
                 res.use {
-                    val body = it.body?.string() ?: run { callback(-1); return }
-                    Timber.i("[DX Fetch] Raw fbody etchDirect3DMajor for body=%s", body)
-                    val arr = JSONObject(body)
-                        .optJSONArray("cargoquery") ?: run { callback(-1); return }
+                    try {
+                        val body = it.body?.string() ?: run { callback(-1); return }
+                        Timber.i("[DX Fetch] Raw body fetchDirect3DMajor for body=%s", body)
+                        val arr = JSONObject(body)
+                            .optJSONArray("cargoquery") ?: run { callback(-1); return }
 
-                    // There should be at most one row; take the first.
-                    val raw = arr.optJSONObject(0)
-                        ?.optJSONObject("title")
-                        ?.optString("Direct3D versions")
-                        ?.trim() ?: ""
+                        // There should be at most one row; take the first.
+                        val raw = arr.optJSONObject(0)
+                            ?.optJSONObject("title")
+                            ?.optString("Direct3D versions")
+                            ?.trim() ?: ""
 
-                    Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
+                        Timber.i("[DX Fetch] Raw fetchDirect3DMajor for raw=%s", raw)
 
-                    // Extract highest DX major number present.
-                    val dx = Regex("\\b(9|10|11|12)\\b")
-                        .findAll(raw)
-                        .map { it.value.toInt() }
-                        .maxOrNull() ?: -1
+                        // Extract highest DX major number present.
+                        val dx = Regex("\\b(9|10|11|12)\\b")
+                            .findAll(raw)
+                            .map { it.value.toInt() }
+                            .maxOrNull() ?: -1
 
-                    Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
+                        Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
 
-                    callback(dx)
+                        callback(dx)
+                    } catch (e: Exception){
+                        callback(-1)
+                    }
                 }
             }
         })
@@ -944,3 +1026,4 @@ object SteamUtils {
         return SteamService.userSteamId?.accountID?.toLong()
     }
 }
+

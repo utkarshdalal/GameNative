@@ -7,6 +7,7 @@ import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.CachedLicenseDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
+import app.gamenative.db.migration.ROOM_MIGRATION_V7_to_V8
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,7 +25,8 @@ class DatabaseModule {
         // The db will be considered unstable during development.
         // Once stable we should add a (room) db migration
         return Room.databaseBuilder(context, PluviaDatabase::class.java, DATABASE_NAME)
-            .fallbackToDestructiveMigration() // TODO remove before prod
+            .addMigrations(ROOM_MIGRATION_V7_to_V8)
+            .fallbackToDestructiveMigration(true)
             .build()
     }
 
@@ -38,23 +40,11 @@ class DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSteamFriendDao(db: PluviaDatabase) = db.steamFriendDao()
-
-    @Provides
-    @Singleton
     fun provideAppChangeNumbersDao(db: PluviaDatabase) = db.appChangeNumbersDao()
 
     @Provides
     @Singleton
     fun provideAppFileChangeListsDao(db: PluviaDatabase) = db.appFileChangeListsDao()
-
-    @Provides
-    @Singleton
-    fun provideFriendMessagesDao(db: PluviaDatabase) = db.friendMessagesDao()
-
-    @Provides
-    @Singleton
-    fun provideEmoticonDao(db: PluviaDatabase) = db.emoticonDao()
 
     @Provides
     @Singleton

@@ -1085,7 +1085,7 @@ private fun detectBinaryVariant(installDir: File): String {
             wine64.exists() -> wine64
             wine.exists() -> wine
             else -> {
-                android.util.Log.w("WineProtonManager", "No wine binary found in ${installDir.path}")
+                Timber.w("No wine binary found in ${installDir.path}")
                 return "unknown"
             }
         }
@@ -1106,7 +1106,7 @@ private fun detectBinaryVariant(installDir: File): String {
             else -> "unknown"
         }
     } catch (e: Exception) {
-        android.util.Log.e("WineProtonManager", "Error detecting binary variant", e)
+        Timber.e("Error detecting binary variant: " + e)
         return "unknown"
     }
 }

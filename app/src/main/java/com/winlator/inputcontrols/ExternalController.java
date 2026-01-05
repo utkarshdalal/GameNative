@@ -144,6 +144,10 @@ public class ExternalController {
         return this.controllerBindings.size();
     }
 
+    public ArrayList<ExternalControllerBinding> getControllerBindings() {
+        return new ArrayList<>(this.controllerBindings);
+    }
+
     public JSONObject toJSONObject() {
         try {
             if (this.controllerBindings.isEmpty()) {

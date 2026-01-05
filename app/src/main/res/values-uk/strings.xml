@@ -1,0 +1,579 @@
+<resources>
+    <string name="app_name">GameNative</string>
+    <string name="login_user">Вхід користувача</string>
+    <string name="login_2fa">Двофакторна автентифікація</string>
+    <string name="home">Домівка</string>
+    <string name="settings">Налаштування</string>
+    <string name="login_qr">Вхід за допомогою QR-коду</string>
+    <string name="app_library">Бібліотека</string>
+    <string name="app_downloads">Завантаження</string>
+    <string name="unknown_app">Невідомий застосунок</string>
+    <string name="steam_2fa_incorrect">Невірний код, спробуйте знову.</string>
+    <string name="steam_2fa_confirmation">Підтвердіть вхід, за допомогою мобільного застосунку Steam…</string>
+    <string name="steam_2fa_device">Введіть код двофакторної автентифікації.</string>
+    <string name="steam_2fa_email">Введіть код, відправлений на пошту: %s</string>
+    <string name="header_img_desc">Зображення заголовка застосунку</string>
+    <string name="download">Завантажити</string>
+    <string name="install">Інсталювати</string>
+    <string name="install_app">Інсталювати</string>
+    <string name="delete_app">Видалити</string>
+    <string name="uninstall">Деінсталювати</string>
+    <string name="run_app">Грати</string>
+    <string name="download_prompt_title">Інсталювати застосунок</string>
+    <string name="delete_prompt_title">Деінсталювати застосунок</string>
+    <string name="cancel_download_prompt_title">Скасувати завантаження</string>
+    <string name="acknowledge">ОК</string>
+    <string name="yes">Так</string>
+    <string name="no">Ні</string>
+    <string name="not_enough_space">Недостатньо місця</string>
+    <string name="proceed">Продовжити</string>
+    <string name="cancel">Скасувати</string>
+    <string name="untitled">Без назви</string>
+    <string name="confirm_delete">Підтвердити видалення</string>
+    <string name="destination_library">Бібліотека</string>
+    <string name="destination_downloads">Завантаження</string>
+    <string name="destination_friends">Друзі</string>
+
+    <!--Winlator-->
+    <string name="disabled">Вимкнено</string>
+    <string name="copy">Копіювати</string>
+    <string name="stability">Стабільність</string>
+    <string name="compatibility">Сумісність</string>
+    <string name="intermediate">Середній</string>
+    <string name="performance">Продуктивність</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="title_ubuntufs">Ubuntu FS</string>
+
+    <!-- Winlator: Win Components -->
+    <string name="direct3d">Direct3D</string>
+    <string name="directsound">DirectSound</string>
+    <string name="directmusic">DirectMusic</string>
+    <string name="directplay">DirectPlay</string>
+    <string name="directshow">DirectShow</string>
+    <string name="directx">DirectX</string>
+    <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="wmdecoder">Декодер Windows Media</string>
+    <string name="opengl">OpenGL</string>
+    <string name="dxvk_version">Версія DXVK</string>
+    <string name="run">Запустити</string>
+    <string name="edit">Змінити</string>
+    <string name="remove">Видалити</string>
+    <string name="add">Додати</string>
+    <string name="ok">ОК</string>
+    <string name="storage_info">Інформація про сховище</string>
+    <string name="duplicate">Дублювати</string>
+    <string name="reconfigure">Переналаштувати</string>
+    <string name="content_info">Інформація про вміст</string>
+    <string name="game_not_installed_title">Гра не інстальована</string>
+    <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
+    <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>
+    <string name="save_container_settings_message">Тимчасові налаштування були застосовані для цього запуску. Зберегти їх?</string>
+    <string name="sync_error_title">Помилка синхронізації</string>
+    <string name="save">Зберегти</string>
+    <string name="discard">Скасувати</string>
+    <string name="shortcuts">Ярлики</string>
+    <string name="containers">Контейнери</string>
+    <string name="box64_rc_file">Box64 RCFile</string>
+    <string name="contents">Вміст</string>
+    <string name="about">Про програму</string>
+    <string name="open_file">Відкрити файл</string>
+    <string name="download_file">Завантажити файл</string>
+    <string name="processor_affinity">Спорідненість процесора</string>
+    <string name="bring_to_front">Перенести на передній план</string>
+    <string name="end_process">Завершити процес</string>
+    <string name="new_file">Новий файл</string>
+    <string name="add_to_home_screen">Додати на головний екран</string>
+    <string name="toggle_fullscreen">Перемкнути повноекранний режим</string>
+    <string name="toggle_orientation">Перемкнути орієнтацію екрана</string>
+    <string name="task_manager">Диспетчер завдань</string>
+    <string name="magnifier">Лупа</string>
+    <string name="logs">Журнали</string>
+    <string name="exit_game">Вийти з гри</string>
+    <string name="exit">Вийти</string>
+    <string name="keyboard">Клавіатура</string>
+    <string name="input_controls">Елементи керування введенням</string>
+    <string name="touchpad_help">Довідка сенсорної панелі</string>
+
+
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
+        Handling of flags on CALL/RET opcodes<br /><br />
+        <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
+        <b>1</b> : Most RET will need flags, most CALLS will not<br />
+        <b>2</b> : All CALL/RET will need flags (slower)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">Створює -NAN, як на x86</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">Створює точне округлення x86</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">Використовує Float/Double для x87 емуляції</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
+        Dynarec building BigBlock<br /><br />
+        <b>0</b> : Don\'t try to build block as big as possible<br />
+        <b>1</b> : Build Dynarec block as big as possible<br />
+        <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
+        <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
+        Simulation of Strong Memory model<br /><br />
+        <b>0</b> : Don\'t try anything special<br />
+        <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
+        <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
+        <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_forward">Визначає максимально допустиме значeння forward при побудові Block</string>
+    <string name="box86_64_env_var_help__dynarec_callret">Оптимізація опкодів CALL/RET</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Визначає, чи буде Dynarec чекати на FillBlock</string>
+
+    <string name="resume_download">Продовжити</string>
+    <string name="pause_download">Призупинити</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">Створити ярлик</string>
+    <string name="label">Позначка</string>
+    <string name="icon">Значок</string>
+    <string name="create">Створити</string>
+    <string name="update_now">Оновити зараз</string>
+    <string name="moving_files">Переміщення файлів</string>
+    <string name="need_internet_to_install">Потрібне інтернет-з’єднання для інсталяції</string>
+    <string name="install_wifi_only_enabled">Увімкнено інсталяцію лише через Wi-Fi</string>
+    <string name="installation_progress">Прогрес інсталювання</string>
+    <string name="downloading">Завантаження...</string>
+    <string name="calculating_time">Розрахунок...</string>
+    <string name="download_failed_try_again">Помилка завантаження. Спробуйте знову.</string>
+    <string name="update_available">Доступне оновлення</string>
+    <string name="game_information">Інформація про гру</string>
+    <string name="status">Статус</string>
+    <string name="size">Розмір</string>
+    <string name="location">Розташування</string>
+    <string name="developer">Видавець</string>
+    <string name="release_date">Дата виходу</string>
+    <string name="installed">Інстальовано</string>
+    <string name="installing">Інсталяція</string>
+    <string name="not_installed">Не інстальовано</string>
+    <string name="open">Відкрити</string>
+    <string name="family_shared">Сімейна бібліотека</string>
+    <string name="games">Ігри</string>
+    <string name="playtime_last_two_weeks">Награно за останні два тижні: %s годин</string>
+    <string name="total_playtime">Всього награно: %s годин</string>
+
+
+    <!-- App Filter -->
+    <string name="app_filter_installed">Інстальовані</string>
+    <string name="app_filter_game">Ігри</string>
+    <string name="app_filter_application">Програми</string>
+    <string name="app_filter_tool">Інструменти</string>
+    <string name="app_filter_demo">Демо</string>
+    <string name="app_filter_family">Сімейна бібліотека</string>
+
+    <!-- Login & Connection -->
+    <string name="no_connection_to_steam">Немає з\'єднання зі Steam</string>
+    <string name="retry_steam_connection">Спробувати</string>
+    <string name="continue_offline">Продовжити офлайн</string>
+
+
+    <!--Game Feedback Dialog -->
+    <string name="game_feedback_game_run">Як працювала гра?</string>
+    <string name="game_feedback_issues_question">Оберіть знайдені проблеми:</string>
+
+
+    <!-- Profile & Menu -->
+	<string name="help_and_support">Довідка та підтримка</string>
+    <string name="hall_of_fame">Зал слави</string>
+    <string name="go_online">Увійти в мережу</string>
+    <string name="go_offline">Вийти з мережі</string>
+    <string name="log_out">Вийти з акаунта</string>
+    <string name="close">Закрити</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">Нова змінна середовища</string>
+    <string name="name">Назва</string>
+    <string name="value">Значення</string>
+    <string name="no_more_known_variables">Більше немає відомих змінних</string>
+    <string name="container_variant">Варіант контейнера</string>
+    <string name="wine_version">Версія Wine</string>
+    <string name="exec_arguments">Параметри запуску</string>
+    <string name="exec_arguments_example">Наприклад: -dx11</string>
+    <string name="language">Мова</string>
+    <string name="screen_size">Розмір екрана</string>
+    <string name="width">Ширина</string>
+    <string name="height">Висота</string>
+    <string name="audio_driver">Аудіо драйвер</string>
+    <string name="show_fps">Показати FPS</string>
+    <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер "%s"? Цю дію не можна скасувати.</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="use_legacy_drm">Попередній метод DRM</string>
+    <string name="force_dlc">Примусити DLC</string>
+    <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
+    <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
+    <string name="launch_steam_client_description">Зменшує продуктивність та сповілнює запуск\nДозволяє онлайн гру а також вирішує проблему DRM та контролеру\nПрацює не з усіма іграми</string>
+    <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
+    <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
+    <string name="steam_type">Версія Steam</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">Графічний драйвер</string>
+    <string name="graphics_driver_version">Версія графічного драйвера</string>
+    <string name="exposed_vulkan_extensions">Відкриті розширення Vulkan</string>
+    <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
+    <string name="frame_synchronization">Синхронізація кадрів</string>
+    <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
+    <string name="vulkan_version">Версія Vulkan</string>
+    <string name="image_cache_size">Розмір кешу</string>
+    <string name="dx_wrapper">DX Wrapper</string>
+    <string name="vkd3d_feature_level">Рівень функцій VKD3D</string>
+    <string name="use_dri3">Використовувати DRI3</string>
+    <string name="use_dri3_description">Вимкнення параметра може виправити графічні проблеми на деяких пристроях</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">Версія FEXCore</string>
+    <string name="tso_mode">Режим TSO</string>
+    <string name="x87_mode">Режим x87</string>
+    <string name="multiblock">Multiblock</string>
+    <string name="emulator_64bit">64-бітний емулятор</string>
+    <string name="emulator_32bit">32-бітний емулятор</string>
+    <string name="box64_version">Версія Box64</string>
+    <string name="box64_preset">Пресет Box64</string>
+    <string name="box64_presets">Пресети Box64</string>
+    <string name="preset_name">Назва пресета</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">Використовувати SDL API</string>
+    <string name="enable_xinput_api">Увімкнути XInput API</string>
+    <string name="enable_directinput_api">Увімкнути DirectInput API</string>
+    <string name="directinput_mapper_type">Тип мапера DirectInput</string>
+    <string name="disable_mouse_input">Вимкнути введення мишею</string>
+    <string name="touchscreen_mode">Режим сенсорного екрану</string>
+    <string name="emulate_keyboard_mouse">Емуляція клавіатури та миші</string>
+    <string name="emulate_keyboard_mouse_description">Лівий стік = WASD, Правий стік = Миша. L2 = ЛКМ, R2 = ПКМ.</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">Рушій візуалізації</string>
+    <string name="gpu_name">Назва GPU</string>
+    <string name="offscreen_rendering_mode">Режим позаекранного рендерингу</string>
+    <string name="video_memory_size">Розмір відеопам\'яті</string>
+    <string name="enable_csmt">Увімкнути CSMT (Command Stream Multi-Thread)</string>
+    <string name="enable_strict_shader_math">Увімкнути сувору математику шейдерів</string>
+    <string name="mouse_warp_override">Примусове позиціонування курсора</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">Змінні середовища</string>
+    <string name="no_environment_variables">Немає змінних середовища</string>
+    <string name="no_drives">Немає дисків</string>
+    <string name="startup_selection">Налаштування при запуску</string>
+    <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
+    <string name="executable_path">Шлях .exe файлу</string>
+    <string name="executable_path_placeholder">Наприклад path\\to\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">Дозволені орієнтації екрану</string>
+    <string name="select_wine_debug_channels">Обрати канали налагодження Wine</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">Опишіть, що сталось</string>
+    <string name="get_support_on_discord">Отримати допомогу в Discord</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">Менеджер драйверів</string>
+    <string name="select_a_driver">Обрати драйвер</string>
+    <string name="import_zip_from_device">Імпортувати ZIP-файл з пристрою</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">Менеджер вмісту</string>
+    <string name="import_wcp_from_device">Імпортувати .wcp з пристрою</string>
+    <string name="working">Виконання...</string>
+    <string name="selected_content">Обраний вміст</string>
+    <string name="installed_contents">Інстальований вміст</string>
+    <string name="select_type">Обрати тип файлу</string>
+    <string name="untrusted_files_detected">Помічено ненадійні файли</string>
+    <string name="install_anyway">Всеодно інсталювати</string>
+    <string name="remove_content">Видалити вміст?</string>
+    <string name="remove_content_confirmation">Ви впевнені, що хочете видалити %1$s (%2$s)?</string>
+
+    <!-- Settings -->
+    <string name="settings_language">Мова</string>
+    <string name="settings_select_language">Обрати мову</string>
+    <string name="settings_language_restart_title">Необхідний перезапуск</string>
+    <string name="settings_language_restart_message">Зміна мови потребує перезапуску. Продовжити?</string>
+    <string name="settings_language_restart_confirm">Перезапустити</string>
+    <string name="settings_language_changing">Зміна мови та перезапуск...</string>
+
+    <!-- Settings: Emulation Group -->
+    <string name="settings_emulation_title">Емуляція</string>
+    <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
+    <string name="settings_emulation_orientations_subtitle">Виберіть доступні орієнтації екрана під час гри.</string>
+    <string name="settings_emulation_default_config_title">Змінити стандартну конфігурацію</string>
+    <string name="settings_emulation_default_config_subtitle">Стандартні налаштування контейнера для кожної гри (не впливає на вже інстальовані ігри)</string>
+    <string name="settings_emulation_default_config_dialog_title">Стандартні налаштування контейнера</string>
+    <string name="settings_emulation_box64_presets_title">Box64 Пресети</string>
+    <string name="settings_emulation_box64_presets_subtitle">Переглянути, змінити та створити пресети Box64</string>
+    <string name="settings_emulation_driver_manager_title">Менеджер драйвера</string>
+    <string name="settings_emulation_driver_manager_subtitle">Інсталювати або видалити пакети власних графічних драйверів</string>
+    <string name="settings_emulation_contents_manager_title">Менеджер вмісту</string>
+    <string name="settings_emulation_contents_manager_subtitle">Інсталяція додаткових компонентів (.wcp)</string>
+
+    <!-- Settings: Debug Group -->
+    <string name="settings_debug_title">Налагодження</string>
+    <string name="settings_debug_wine_channels_title">Обрати канали налагодження Wine</string>
+    <string name="settings_debug_wine_logs_title">Увімкнути журнали налагодження Wine</string>
+    <string name="settings_debug_wine_logs_subtitle">Записувати виведення налагодження Wine у файл</string>
+    <string name="settings_debug_box_logs_title">Увімкнути журнали Box86/64</string>
+    <string name="settings_debug_box_logs_subtitle">Записувати виведення налагодження Box86 та Box64 у файл</string>
+    <string name="settings_debug_view_crash_title">Переглянути останній збій</string>
+    <string name="settings_debug_view_log_title">Переглянути журнал налагодження гри</string>
+    <string name="settings_debug_clear_prefs_title">Очистити налаштування</string>
+    <string name="settings_debug_clear_prefs_subtitle">[Закриває застосунок] Вихід із клієнта та видалення локальних налаштувань.</string>
+    <string name="settings_debug_clear_db_title">Очистити локальну базу даних</string>
+    <string name="settings_debug_clear_db_subtitle">[Закриває застосунок] Може допомогти виправити проблеми з елементами бібліотеки чи повідомленнями.</string>
+    <string name="settings_debug_clear_cache_title">Очистити кеш зображень</string>
+    <string name="settings_debug_clear_cache_subtitle">Видалити всі завантажені зображення.</string>
+
+    <!-- Settings: Info Group -->
+    <string name="settings_info_title">Інформація</string>
+    <string name="settings_info_send_tip_title">Підтримати розробників</string>
+    <string name="settings_info_send_tip_subtitle">Сприяйте подальшому розвитку</string>
+    <string name="settings_info_ask_tip_title">Пропонувати підтримку розробників при запуску</string>
+    <string name="settings_info_ask_tip_subtitle">Приховує повідомлення з пропозицією підтримки</string>
+    <string name="settings_info_source_title">Вихідний код</string>
+    <string name="settings_info_source_subtitle">Переглянути вихідний код застосунку</string>
+    <string name="settings_info_libraries_title">Використані бібліотеки</string>
+    <string name="settings_info_libraries_subtitle">Дізнайтеся, завдяки яким технологіям працює GameNative</string>
+    <string name="settings_info_privacy_title">Політика конфіденційності</string>
+    <string name="settings_info_privacy_subtitle">Відкриває посилання на Політику конфіденційності GameNative</string>
+
+    <!-- Settings: Interface Group -->
+    <string name="settings_interface_title">Інтерфейс</string>
+    <string name="settings_interface_external_links_title">Відкривати вебпосилання у зовнішньому браузері</string>
+    <string name="settings_interface_external_links_subtitle">Посилання відкриваються у вашому основному браузері</string>
+    <string name="settings_interface_hide_statusbar_title">Приховувати рядок стану, коли гра не запущена</string>
+    <string name="settings_interface_hide_statusbar_subtitle">Приховує рядок стану Android у списку ігор, налаштуваннях тощо. Застосунок перезапуститься після зміни.</string>
+    <string name="settings_interface_icon_style">Стиль значку</string>
+    <string name="settings_interface_wifi_only_title">Завантаження тільки через Wi-Fi</string>
+    <string name="settings_interface_wifi_only_subtitle">Запобігає завантаженню через мобільні дані</string>
+    <string name="settings_interface_external_storage_title">Записувати на зовнішнє сховище</string>
+    <string name="settings_interface_no_external_storage">Не виявлено зовнішнього сховища</string>
+    <string name="settings_interface_external_storage_subtitle">Зберігати ігри на зовнішнє сховище</string>
+    <string name="settings_interface_storage_volume_title">Обсяг сховища</string>
+    <string name="settings_interface_download_server_title">Сервер завантаження Steam</string>
+    <string name="settings_interface_restart_required_title">Потрібен перезапуск</string>
+
+    <!-- Settings: Downloads Group -->
+    <string name="settings_downloads_title">Завантаження</string>
+
+    <!-- Login Screen -->
+    <string name="login_app_name">GameNative</string>
+    <string name="login_privacy_policy">Політика конфіденційності</string>
+    <string name="login_welcome_back">З поверненням</string>
+    <string name="login_subtitle">Увійдіть, щоб отримати доступ до бібліотеки Steam</string>
+    <string name="login_username">Ім’я користувача</string>
+    <string name="login_password">Пароль</string>
+    <string name="login_remember_session">Запам\'ятати мене</string>
+    <string name="login_sign_in">Увійти</string>
+    <string name="login_qr_failed">Помилка QR-коду</string>
+    <string name="login_retry_qr">Спробувати ще раз</string>
+    <string name="login_qr_instructions">Відкрийте мобільний застосунок Steam і відскануйте цей QR-код, щоб миттєво увійти.</string>
+
+    <!-- Generic/Reusable strings -->
+    <string name="continue_action">Продовжити</string>
+    <string name="settings_text">Налаштування</string>
+
+
+    <!-- Connecting to Servers Screen -->
+    <string name="connect_to_remote_server">Підключення до віддалених серверів...</string>
+
+    <!-- LibraryAppScreen: Dialogs -->
+    <string name="library_not_enough_space_message">Для інсталяції застосунку потрібно %1$s пам\'яті, але на пристрої доступно лише %2$s.</string>
+    <string name="library_download_prompt_message">Для інсталяції застосунку потрібні такі вимоги до місця. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tМісце на диску: %2$s\n\tДоступне місце: %3$s</string>
+    <string name="library_cancel_download_message">Ви впевнені, що хочете скасувати завантаження цього застосунку?</string>
+    <string name="library_delete_download_message">Видалити всі завантажені дані для цієї гри?</string>
+    <string name="library_delete_app_message">Ви впевнені, що хочете видалити цей застосунок?</string>
+    <string name="library_download_install_imagefs_title">Завантажити та інсталювати ImageFS</string>
+    <string name="library_download_install_imagefs_message">Образ Ubuntu потрібно завантажити та інсталювати, перш ніж Ви зможете редагувати конфігурацію. Ця операція може тривати кілька хвилин. Бажаєте продовжити?</string>
+    <string name="library_install_imagefs_title">Інсталювати ImageFS</string>
+    <string name="library_install_imagefs_message">Образ Ubuntu потрібно інсталювати, перш ніж Ви зможете редагувати конфігурацію. Ця операція може тривати кілька хвилин. Бажаєте продовжити?</string>
+    <string name="library_reset_container_title">Скинути контейнер</string>
+    <string name="library_reset_container_message">Це скине налаштування Вашого контейнера до стандартної конфігурації.</string>
+    <string name="library_verify_files_title">Перевірити файли</string>
+    <string name="library_verify_files_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію, оскільки інакше вони можуть бути перезаписані.</string>
+    <string name="library_update_title">Оновити</string>
+    <string name="library_update_message">Будь ласка, переконайтеся, що ваші збереження завантажено у хмару або створено їхню резервну копію перед оновленням, оскільки інакше вони можуть бути перезаписані.</string>
+    <string name="library_config_title">Конфігурація %s</string>
+
+    <!-- LibraryAppScreen: Toast Messages -->
+    <string name="library_storage_permission_required">Необхідний дозвіл на доступ до сховища</string>
+    <string name="library_exported">Вивантажено</string>
+    <string name="library_failed_to_export">Помилка вивантаження: %s</string>
+    <string name="library_export_cancelled">Вивантаження скасовано</string>
+    <string name="library_shortcut_created">Створено ярлик</string>
+    <string name="library_failed_to_create_shortcut">Помилка створення ярлика: %s</string>
+    <string name="library_cloud_sync_success">Успішна синхронізація з хмарою</string>
+    <string name="library_cloud_sync_up_to_date">Файли збереження вже актуальні</string>
+    <string name="library_cloud_sync_failed">Помилка синхронізації з хмарою: %s</string>
+
+    <!-- LibraryAppScreen: UI Labels -->
+    <string name="library_need_internet">Потрібне інтернет-з’єднання для інсталяції</string>
+    <string name="library_wifi_only_enabled">Увімкнено інсталяцію лише через Wi-Fi/LAN</string>
+    <string name="library_file_count">Файл %1$d з %2$d</string>
+
+    <!-- PluviaMain: Update & App Info -->
+    <string name="main_update_available_title">Доступне оновлення</string>
+    <string name="main_update_available_message">Нова версія (%1$s) доступна!%2$s</string>
+    <string name="main_update_button">Оновити</string>
+    <string name="main_later_button">Пізніше</string>
+    <string name="main_update_failed_title">Помилка оновлення</string>
+    <string name="main_update_failed_message">Помилка завантаження або інсталяції оновлення. Будь ласка, спробуйте знову.</string>
+
+    <!-- PluviaMain: Crash & Support -->
+    <string name="main_recent_crash_title">Нещодавній збій</string>
+    <string name="main_recent_crash_message">Перепрошуємо!\nБуло б добре дізнатися про проблему, з якою Ви нещодавно зіткнулися.\nВи можете переглянути та експортувати останній журнал збою в налаштуваннях застосунку і додати його як проблему (issue) на GitHub у репозиторії проєкту.\nПосилання на репозиторій GitHub також знаходиться в налаштуваннях!</string>
+    <string name="main_thank_you_title">Дякуємо за користування GameNative!</string>
+    <string name="main_thank_you_message">Підтримайте open-source ПК-ігри на Android, поділившись застосунком із друзями або ставши учасником на Ko-fi.</string>
+    <string name="main_join_kofi">Стати учасником на Ko-fi</string>
+    <string name="main_share">Поділитися</string>
+    <string name="main_discord_support_title">Чи працювала гра?</string>
+    <string name="main_discord_support_message">Долучайтесь до нашого Discord, щоб отримати підтримку у виправленні чи покращенні роботи ігор.</string>
+    <string name="main_open_discord">Відкрити Discord</string>
+
+    <!-- PluviaMain: Game Launch -->
+    <string name="main_downloading_steam">Завантаження Steam...</string>
+    <string name="main_installing_glibc">Інсталяція компонентів glibc...</string>
+    <string name="main_installing_bionic">Інсталяція компонентів Bionic...</string>
+    <string name="main_loading">Завантаження...</string>
+
+    <!-- PluviaMain: Session Conflicts -->
+    <string name="main_app_running_title">Застосунок працює</string>
+    <string name="main_app_running_message">Ви авторизовані на іншому пристрої, де граєте у %s. Ви все одно можете грати в цю гру, але це завершить інший сеанс у Steam.</string>
+    <string name="main_app_running_other_device">Ви авторизовані на іншому пристрої (%1$s), де граєте у %2$s (%3$s), і прогрес цієї гри ще не синхронізовано з хмарою. \nВи все одно можете грати в цю гру, але це завершить інший сеанс у Steam і може створити конфлікт збережень, коли прогрес того сеансу синхронізуватиметься</string>
+    <string name="main_play_anyway">Все одно грати</string>
+
+    <!-- PluviaMain: Save Conflicts -->
+    <string name="main_save_conflict_title">Конфлікт збережень</string>
+    <string name="main_save_conflict_message">Знайдено нове віддалене та нове локальне збереження. Яке з них залишити?\n\nЛокальне збереження:\n\t%1$s\nВіддалене збереження:\n\t%2$s</string>
+    <string name="main_keep_local">Залишити локальне</string>
+    <string name="main_keep_remote">Залишити віддалене</string>
+
+    <!-- PluviaMain: Sync Errors -->
+    <string name="main_sync_in_progress_retry">Операція синхронізації триває занадто довго. Спробуйте запустити гру ще раз через деякий час.</string>
+    <string name="main_sync_in_progress">Наразі триває синхронізація. Спробуйте ще раз за мить.</string>
+    <string name="main_sync_failed">Помилка синхронізації файлів збереження: %s.</string>
+
+    <!-- PluviaMain: Pending Operations -->
+    <string name="main_upload_in_progress_title">Триває вивантаження</string>
+    <string name="main_upload_in_progress_message">Ви грали у %1$s на пристрої %2$s (%3$s), і збереження цього сеансу ще завантажуються.\nСпробуйте пізніше.</string>
+    <string name="main_pending_upload_title">Очікування вивантаження</string>
+    <string name="main_pending_upload_message">Ви грали у %1$s на пристрої %2$s (%3$s), і збереження цього сеансу ще не синхронізовано з хмарою (вивантаження не розпочато).\nВи все одно можете грати в цю гру, але це може створити конфлікт, коли ваш попередній прогрес успішно вивантажиться.</string>
+    <string name="main_app_session_suspended">Сеанс застосунку призупинено. Будь ласка, перезапустіть застосунок.</string>
+    <string name="main_pending_operation_none">Отримано відкладені віддалені операції з типом \'none\'. Будь ласка, перезапустіть застосунок.</string>
+    <string name="main_multiple_pending_operations">Виявлено кілька відкладених віддалених операцій. Спробуйте пізніше. Будь ласка, перезапустіть застосунок.</string>
+
+    <!-- Container Config Dialog -->
+    <string name="container_config_title">Налаштувати контейнер</string>
+    <string name="container_config_unsaved_changes_title">Незбережені зміни</string>
+    <string name="container_config_unsaved_changes_message">Ви впевнені, що бажаєте відкинути внесені зміни?</string>
+    <string name="container_config_tab_general">Загальні</string>
+    <string name="container_config_tab_graphics">Графіка</string>
+    <string name="container_config_tab_emulation">Емуляція</string>
+    <string name="container_config_tab_controller">Контролер</string>
+    <string name="container_config_tab_wine">Wine</string>
+    <string name="container_config_tab_win_components">Компоненти Windows</string>
+    <string name="container_config_tab_environment">Середовище</string>
+    <string name="container_config_tab_drives">Диски</string>
+    <string name="container_config_tab_advanced">Додаткові</string>
+    <string name="container_config_vkd3d_version">Версія VKD3D</string>
+    <string name="container_config_executable_path">Шлях до виконуваного файлу</string>
+    <string name="container_config_executable_path_placeholder">напр., path\\to\\exe</string>
+
+    <!-- Libraries Dialog -->
+    <string name="libraries_title">Використані бібліотеки</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator та Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper та https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+
+    <!-- Supporters Dialog -->
+    <string name="supporters_art_credits">Автори ілюстрацій</string>
+    <string name="supporters_app_icon">Іконка застосунку: Hachi</string>
+    <string name="supporters_alt_icon">Альтернативна іконка застосунку: rhapsody_mdr</string>
+    <string name="supporters_loading">Завантаження прихильників…</string>
+    <string name="supporters_members">Учасники</string>
+    <string name="supporters_supporters">Прихильники</string>
+    <string name="supporters_none">Прихильників поки немає.</string>
+    <string name="supporters_anonymous">Анонімно</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_preview_warning">Чат знаходиться у ранньому доступі\nБудь ласка, повідомляйте про проблеми у репозиторії проєкту.</string>
+    <string name="chat_no_history">Історія чату відсутня</string>
+    <string name="chat_send_message">Надіслати повідомлення</string>
+    <string name="chat_send">Надіслати</string>
+    <string name="chat_emoticons">Смайли</string>
+    <string name="chat_stickers">Стікери</string>
+
+    <!-- Library Components -->
+    <string name="library_open">Відкрити</string>
+    <string name="library_installed">Інстальовано</string>
+    <string name="library_installing">Інсталяція</string>
+    <string name="library_not_installed">Не інстальовано</string>
+    <string name="library_family_shared">Сімейна бібліотека</string>
+    <string name="library_app_type">Тип застосунку</string>
+    <string name="library_app_status">Статус застосунку</string>
+    <string name="library_layout">Відображення</string>
+    <string name="library_layout_list">Список</string>
+    <string name="library_layout_capsule">Капсула</string>
+    <string name="library_layout_hero">Герой</string>
+    <string name="library_search_placeholder">Шукати серед ваших ігор…</string>
+    <string name="library_search_description">Пошук</string>
+    <string name="library_search_clear">Очистити пошук</string>
+    <string name="library_no_items">Немає елементів, що відповідають вибору</string>
+    <string name="library_filters">Фільтри</string>
+    <string name="library_game_count">%1$d ігор • %2$d інстальовано</string>
+
+    <!-- Two Factor Auth -->
+    <string name="two_factor_login">Вхід</string>
+    <string name="two_factor_verification_code">Код підтвердження</string>
+    <string name="two_factor_enter_code">Введіть 5-символьний код</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_validating">Перевірка вмісту…</string>
+    <string name="contents_error_badtar">Файл не розпізнано</string>
+    <string name="contents_error_noprofile">Профіль не знайдено у вмісті</string>
+    <string name="contents_error_badprofile">Профіль не розпізнано</string>
+    <string name="contents_error_exist">Вміст уже існує</string>
+    <string name="contents_error_missingfiles">Вміст неповний</string>
+    <string name="contents_error_untrustprofile">Вміст є недовіреним</string>
+    <string name="contents_error_nospace">Недостатньо місця</string>
+    <string name="contents_error_generic">Не вдається інсталювати вміст</string>
+    <string name="contents_untrusted_files">Цей вміст містить файли, що не входять до надійного набору.</string>
+    <string name="contents_install_components">Інсталювати додаткові компоненти (.wcp: tar.xz/zst)</string>
+    <string name="contents_type">Тип</string>
+    <string name="contents_version">Версія</string>
+    <string name="contents_code">Код</string>
+    <string name="contents_description">Опис</string>
+    <string name="contents_all_trusted">Усі файли є надійними. Готово до інсталяції.</string>
+    <string name="contents_no_installed">Немає інстальованого вмісту цього типу.</string>
+    <string name="contents_delete">Видалити</string>
+    <string name="contents_review_confirm">Цей вміст містить файли, що не входять до надійного набору. Перегляньте та підтвердьте для продовження.</string>
+    <string name="contents_removed">Видалено %1$s</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_error_manifest">Не вдалося завантажити маніфест драйвера: %1$d</string>
+    <string name="driver_error_loading">Помилка завантаження маніфесту драйвера: %1$s</string>
+    <string name="driver_timeout">Час очікування з’єднання вичерпано. Перевірте мережу та спробуйте ще раз.</string>
+    <string name="driver_network_error">Помилка мережі: %1$s</string>
+
+    <!-- Settings Interface -->
+    <string name="settings_theme_default">Стандартна</string>
+    <string name="settings_theme_alternate">Альтернативна</string>
+    <string name="settings_download_slow">Повільна</string>
+    <string name="settings_download_medium">Середня</string>
+    <string name="settings_download_fast">Швидка</string>
+    <string name="settings_download_blazing">Блискавично швидка</string>
+    <string name="settings_download_speed">Швидкість завантаження</string>
+    <string name="settings_download_heat_warning">Вищі швидкості можуть спричинити надмірний нагрів пристрою під час завантаження.</string>
+    <string name="settings_region_default">Стандартний</string>
+    <string name="settings_saving_restarting">Збереження налаштувань та перезапуск…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Налаштування</string>
+
+    <!-- Contents Install Finish -->
+    <string name="contents_install_success">Вміст успішно інстальовано</string>
+    <string name="contents_install_failed">Не вдалося інсталювати вміст</string>
+    <string name="contents_install_error">Помилка інсталяції: %1$s</string>
+</resources>
+
+
