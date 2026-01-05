@@ -1162,7 +1162,6 @@ fun preLaunchApp(
             val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                 context = context,
                 appId = appId,
-                preferredAction = "download"
             )
 
             if (!syncSuccess) {
