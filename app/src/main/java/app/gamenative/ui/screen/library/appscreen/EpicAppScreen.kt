@@ -323,7 +323,7 @@ class EpicAppScreen : BaseAppScreen() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Get install path
-                val installPath = EpicConstants.getGameInstallPathByAppName(appName)
+                val installPath = EpicConstants.getGameInstallPathByAppName(context, appName)
                 Timber.d("Downloading Epic game to: $installPath")
 
                 // Show starting download toast
@@ -694,6 +694,7 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Show install confirmation dialog
         if (showInstallDialog) {
+            val context = androidx.compose.ui.platform.LocalContext.current
             val appId = libraryItem.appId
             val epicGame = remember(appId) {
                 EpicService.getEpicGameOf(appId.removePrefix("EPIC_"))
@@ -703,7 +704,7 @@ class EpicAppScreen : BaseAppScreen() {
             val installBytes = epicGame?.installSize ?: 0L
             val downloadText = if (downloadBytes > 0L) formatBytes(downloadBytes) else "Unknown"
             val installText = if (installBytes > 0L) formatBytes(installBytes) else "Unknown"
-            val availableSpace = app.gamenative.utils.StorageUtils.getAvailableSpace(EpicConstants.defaultEpicGamesPath).let {
+            val availableSpace = app.gamenative.utils.StorageUtils.getAvailableSpace(EpicConstants.defaultEpicGamesPath(context)).let {
                 formatBytes(it)
             }
 

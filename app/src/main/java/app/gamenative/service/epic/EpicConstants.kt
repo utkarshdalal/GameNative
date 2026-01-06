@@ -71,58 +71,61 @@ object EpicConstants {
     const val AUTH_TYPE_DEVICE_AUTH = "deviceauth"
 
     // Epic Games installation paths
-    private const val INTERNAL_BASE_PATH = "/data/data/app.gamenative/files"
 
     /**
      * Internal Epic games installation path (similar to Steam's internal path)
-     * /data/data/app.gamenative/files/Epic/games/
+     * {context.filesDir}/Epic/games/
      */
-    val internalEpicGamesPath: String
-        get() = Paths.get(INTERNAL_BASE_PATH, "Epic", "games").toString()
+    fun internalEpicGamesPath(context: android.content.Context): String {
+        return Paths.get(context.filesDir.absolutePath, "Epic", "games").toString()
+    }
 
     /**
      * External Epic games installation path
      * {externalStoragePath}/Epic/games/
      */
-    val externalEpicGamesPath: String
-        get() = Paths.get(PrefManager.externalStoragePath, "Epic", "games").toString()
+    fun externalEpicGamesPath(): String {
+        return Paths.get(PrefManager.externalStoragePath, "Epic", "games").toString()
+    }
 
     /**
      * Default Epic games installation path - uses external storage if available
      */
-    val defaultEpicGamesPath: String
-        get() {
-            return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
-                Timber.i("Epic using external storage: $externalEpicGamesPath")
-                externalEpicGamesPath
-            } else {
-                Timber.i("Epic using internal storage: $internalEpicGamesPath")
-                internalEpicGamesPath
-            }
+    fun defaultEpicGamesPath(context: android.content.Context): String {
+        return if (PrefManager.useExternalStorage && File(PrefManager.externalStoragePath).exists()) {
+            val path = externalEpicGamesPath()
+            Timber.i("Epic using external storage: $path")
+            path
+        } else {
+            val path = internalEpicGamesPath(context)
+            Timber.i("Epic using internal storage: $path")
+            path
         }
+    }
 
     /**
      * Legendary configuration directory path
-     * /data/data/app.gamenative/files/legendary/
+     * {context.filesDir}/legendary/
      */
-    val legendaryConfigPath: String
-        get() = Paths.get(INTERNAL_BASE_PATH, LEGENDARY_CONFIG_DIR).toString()
+    fun legendaryConfigPath(context: android.content.Context): String {
+        return Paths.get(context.filesDir.absolutePath, LEGENDARY_CONFIG_DIR).toString()
+    }
 
     /**
      * Get the installation path for a specific Epic game
      * Sanitizes the game title to be filesystem-safe
      */
-    fun getGameInstallPath(gameTitle: String): String {
+    fun getGameInstallPath(context: android.content.Context, gameTitle: String): String {
         // Sanitize game title for filesystem
         val sanitizedTitle = gameTitle.replace(Regex("[^a-zA-Z0-9 -_]"), "").trim()
-        return Paths.get(defaultEpicGamesPath, sanitizedTitle).toString()
+        return Paths.get(defaultEpicGamesPath(context), sanitizedTitle).toString()
     }
 
     /**
      * Get the installation path by app name (preferred method)
      */
-    fun getGameInstallPathByAppName(appName: String): String {
-        return Paths.get(defaultEpicGamesPath, appName).toString()
+    fun getGameInstallPathByAppName(context: android.content.Context, appName: String): String {
+        return Paths.get(defaultEpicGamesPath(context), appName).toString()
     }
 
     /**
