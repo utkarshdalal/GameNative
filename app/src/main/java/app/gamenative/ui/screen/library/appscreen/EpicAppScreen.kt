@@ -46,7 +46,8 @@ class EpicAppScreen : BaseAppScreen() {
     companion object {
         private const val TAG = "EpicAppScreen"
 
-        var gameDlc by mutableStateOf(listOf<EpicGame>())
+        // TODO: DLC Manager
+        // var gameDlc by mutableStateOf(listOf<EpicGame>())
 
         // Shared state for uninstall dialog - list of appIds that should show the dialog
         private val uninstallDialogAppIds = mutableStateListOf<String>()
@@ -168,82 +169,12 @@ class EpicAppScreen : BaseAppScreen() {
                 val dlcTitles = EpicService.getDLCForGame(game.id)
                 if (dlcTitles.isNotEmpty()) {
                     for (title in dlcTitles) {
-                        Timber.tag("Epic").i("DLC Found: ${title.title}, downloadSize: ${title.downloadSize}, installSize: ${title.installSize}")
-
+                        Timber.tag("Epic").d("DLC Found: ${title.title}")
                     }
                 }
-                gameDlc = dlcTitles
-
-                Timber.tag("Epic").i("""
-                    |╔═══════════════════════════════════════════════════════════════════════════════
-                    |║ EPIC GAME DATABASE ENTRY
-                    |╠═══════════════════════════════════════════════════════════════════════════════
-                    |║ IDENTIFIERS
-                    |║   ID (Primary Key): ${game.id}
-                    |║   App Name: ${game.appName}
-                    |║   Namespace: ${game.namespace}
-                    |║   Title: ${game.title}
-                    |║
-                    |║ METADATA
-                    |║   Developer: ${game.developer}
-                    |║   Publisher: ${game.publisher}
-                    |║   Platform: ${game.platform}
-                    |║   Release Date: ${game.releaseDate}
-                    |║   Version: ${game.version}
-                    |║
-                    |║ INSTALLATION
-                    |║   Is Installed: ${game.isInstalled}
-                    |║   Install Path: ${game.installPath.ifEmpty { "N/A" }}
-                    |║   Executable: ${game.executable.ifEmpty { "N/A" }}
-                    |║   Download Size: ${game.downloadSize} bytes (${game.downloadSize / 1_000_000_000.0} GB)
-                    |║   Install Size: ${game.installSize} bytes (${game.installSize / 1_000_000_000.0} GB)
-                    |║   Base Game App Name: ${game.baseGameAppName.ifEmpty { "N/A" }}
-                    |║
-                    |║ ARTWORK
-                    |║   Cover (Tall): ${game.artCover.ifEmpty { "N/A" }}
-                    |║   Square: ${game.artSquare.ifEmpty { "N/A" }}
-                    |║   Logo: ${game.artLogo.ifEmpty { "N/A" }}
-                    |║   Portrait (Wide): ${game.artPortrait.ifEmpty { "N/A" }}
-                    |║
-                    |║ FEATURES
-                    |║   Can Run Offline: ${game.canRunOffline}
-                    |║   Requires OT: ${game.requiresOT}
-                    |║   Cloud Save Enabled: ${game.cloudSaveEnabled}
-                    |║   Save Folder: ${game.saveFolder.ifEmpty { "N/A" }}
-                    |║   Is DLC: ${game.isDLC}
-                    |║   Base Game App Name: ${game.baseGameAppName.ifEmpty { "N/A" }}
-                    |║
-                    |║ THIRD PARTY
-                    |║   Third Party App: ${game.thirdPartyManagedApp.ifEmpty { "N/A" }}
-                    |║   Is EA Managed: ${game.isEAManaged}
-                    |║
-                    |║ DESCRIPTION
-                    |║   ${game.description.take(200)}${if (game.description.length > 200) "..." else ""}
-                    |║
-                    |║ GENRES (${game.genres.size})
-                    |║   ${game.genres.joinToString(", ").ifEmpty { "None" }}
-                    |║
-                    |║ TAGS (${game.tags.size})
-                    |║   ${game.tags.joinToString(", ").ifEmpty { "None" }}
-                    |║
-                    |║ PLAYTIME
-                    |║   Last Played: ${if (game.lastPlayed > 0) java.util.Date(game.lastPlayed) else "Never"}
-                    |║   Total Playtime: ${game.playTime} seconds (${game.playTime / 3600.0} hours)
-                    |╚═══════════════════════════════════════════════════════════════════════════════
-                """.trimMargin())
-            } else {
-                Timber.tag("Epic").w("""
-                    |╔═══════════════════════════════════════════════════════════════════════════════
-                    |║ EPIC GAME NOT FOUND IN DATABASE
-                    |╠═══════════════════════════════════════════════════════════════════════════════
-                    |║ App ID: $appId
-                    |║ App Name: $appName
-                    |║
-                    |║ The game will use fallback data from the LibraryItem until Epic library
-                    |║ is refreshed. Try opening Settings > Epic Games > Sync Library.
-                    |╚═══════════════════════════════════════════════════════════════════════════════
-                """.trimMargin())
-            }
+                // TODO: Implement DLC Management
+                // TODO: Give them a list of DLC and allow them to pick which ones to download
+                // gameDlc = dlcTitles
             game
         }
 
