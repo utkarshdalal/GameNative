@@ -169,7 +169,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         DisposableEffect(gameId) {
             val listener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-                if (event.appId == gameId) {
+                if (event.appId == gameId.toString()) {
                     isInstalled = SteamService.isAppInstalled(gameId)
                 }
             }
@@ -328,7 +328,7 @@ class SteamAppScreen : BaseAppScreen() {
         var progressDisposer = attachDownloadProgressListener(appId, onProgressChanged)
 
         val installListener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-            if (event.appId == appId) {
+            if (event.appId == appId.toString()) {
                 onStateChanged()
             }
         }
@@ -336,7 +336,7 @@ class SteamAppScreen : BaseAppScreen() {
         disposables += { PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener) }
 
         val downloadStatusListener: (AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
-            if (event.appId == appId) {
+            if (event.appId == appId.toString()) {
                 if (event.isDownloading) {
                     progressDisposer?.invoke()
                     progressDisposer = attachDownloadProgressListener(appId, onProgressChanged)
@@ -355,7 +355,7 @@ class SteamAppScreen : BaseAppScreen() {
         disposables += { PluviaApp.events.off<AndroidEvent.DownloadStatusChanged, Unit>(downloadStatusListener) }
 
         val connectivityListener: (AndroidEvent.DownloadPausedDueToConnectivity) -> Unit = { event ->
-            if (event.appId == appId) {
+            if (event.appId == appId.toString()) {
                 onStateChanged()
             }
         }
@@ -985,7 +985,7 @@ class SteamAppScreen : BaseAppScreen() {
                         downloadInfo?.cancel()
                         CoroutineScope(Dispatchers.IO).launch {
                             SteamService.deleteApp(gameId)
-                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId.toString()))
                             withContext(Dispatchers.Main) {
                                 hideInstallDialog(gameId)
                             }
@@ -1127,7 +1127,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 }
                                 withContext(Dispatchers.Main) {
                                     if (success) {
-                                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId.toString()))
                                         Toast.makeText(
                                             context,
                                             context.getString(

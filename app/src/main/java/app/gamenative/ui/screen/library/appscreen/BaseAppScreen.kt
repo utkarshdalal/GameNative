@@ -626,6 +626,7 @@ abstract class BaseAppScreen {
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
             app.gamenative.data.GameSource.STEAM -> app.gamenative.service.SteamService.getAppDownloadInfo(displayInfo.gameId)
+            app.gamenative.data.GameSource.EPIC -> app.gamenative.service.epic.EpicService.getDownloadInfo(displayInfo.appId.removePrefix("EPIC_"))
             app.gamenative.data.GameSource.GOG -> app.gamenative.service.gog.GOGService.getDownloadInfo(displayInfo.gameId.toString())
             app.gamenative.data.GameSource.CUSTOM_GAME -> null // Custom games don't support downloads yet
         }
@@ -636,9 +637,7 @@ abstract class BaseAppScreen {
                 libraryItem = libraryItem,
                 onStateChanged = { requestStateRefresh(true) },
                 onProgressChanged = { progress ->
-                    uiScope.launch {
-                        downloadProgressState = progress
-                    }
+                    downloadProgressState = progress
                 },
                 onHasPartialDownloadChanged = { hasPartial ->
                     hasPartialDownloadState = hasPartial

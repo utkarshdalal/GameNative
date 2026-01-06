@@ -11,9 +11,11 @@ import app.gamenative.PluviaApp
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.data.GOGGame
+import app.gamenative.data.EpicGame
 import app.gamenative.data.GameSource
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
+import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
@@ -46,6 +48,7 @@ import kotlin.math.min
 class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
     private val gogGameDao: GOGGameDao,
+    private val epicGameDao: EpicGameDao,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -72,6 +75,7 @@ class LibraryViewModel @Inject constructor(
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
     private var gogGameList: List<GOGGame> = emptyList()
+    private var epicGameList: List<EpicGame> = emptyList()
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -119,6 +123,19 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch(Dispatchers.IO) {
+            epicGameDao.getAll().collect { games ->
+                Timber.tag("LibraryViewModel").d("Collecting ${games.size} Epic games")
+
+                val hasChanges = epicGameList.size != games.size || epicGameList != games
+                epicGameList = games
+
+                if (hasChanges) {
+                    onFilterApps(paginationCurrentPage)
+                }
+            }
+        }
+
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
     }
@@ -157,6 +174,11 @@ class LibraryViewModel @Inject constructor(
                 val newValue = !current.showGOGInLibrary
                 PrefManager.showGOGInLibrary = newValue
                 _state.update { it.copy(showGOGInLibrary = newValue) }
+            }
+            GameSource.EPIC -> {
+                val newValue = !current.showEpicInLibrary
+                PrefManager.showEpicInLibrary = newValue
+                _state.update { it.copy(showEpicInLibrary = newValue) }
             }
         }
         onFilterApps(paginationCurrentPage)
@@ -358,7 +380,49 @@ class LibraryViewModel @Inject constructor(
                 )
             }
 
+            // Filter Epic games
+            val filteredEpicGames = epicGameList
+                .asSequence()
+                .filter { game ->
+                    if (currentState.searchQuery.isNotEmpty()) {
+                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                    } else {
+                        true
+                    }
+                }
+                .filter { game ->
+                    if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
+                        game.isInstalled
+                    } else {
+                        true
+                    }
+                }
+                .filter { game ->
+                    if (game.isDLC) {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                .toList()
+
+            val epicEntries = filteredEpicGames.map { game ->
+                LibraryEntry(
+                    item = LibraryItem(
+                        index = 0,
+                        appId = "EPIC_${game.appName}",
+                        name = game.title,
+                        iconHash = game.artCover,
+                        isShared = false,
+                        gameSource = GameSource.EPIC,
+                    ),
+                    isInstalled = game.isInstalled,
+                )
+            }
+
+            // Calculate installed counts
             val gogInstalledCount = filteredGOGGames.count { it.isInstalled }
+            val epicInstalledCount = filteredEpicGames.count { it.isInstalled }
             // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
             // This needs to happen before filtering by source, so we save the total counts
             if (currentState.searchQuery.isEmpty()) {
@@ -366,19 +430,23 @@ class LibraryViewModel @Inject constructor(
                 PrefManager.steamGamesCount = filteredSteamApps.size
                 PrefManager.gogGamesCount = filteredGOGGames.size
                 PrefManager.gogInstalledGamesCount = gogInstalledCount
-                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount")
+                PrefManager.epicGamesCount = filteredEpicGames.size
+                PrefManager.epicInstalledGamesCount = epicInstalledCount
+                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount, Epic: ${filteredEpicGames.size}, Epic installed: $epicInstalledCount")
             }
 
             // Apply App Source filters
             val includeSteam = _state.value.showSteamInLibrary
             val includeOpen = _state.value.showCustomGamesInLibrary
             val includeGOG = _state.value.showGOGInLibrary
+            val includeEpic = _state.value.showEpicInLibrary
 
             // Combine all lists and sort: installed games first, then alphabetically
             val combined = buildList<LibraryEntry> {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen) addAll(customEntries)
                 if (includeGOG) addAll(gogEntries)
+                if (includeEpic) addAll(epicEntries)
             }.sortedWith(
                 // Primary sort: installed status (0 = installed at top, 1 = not installed at bottom)
                 // Secondary sort: alphabetically by name (case-insensitive)

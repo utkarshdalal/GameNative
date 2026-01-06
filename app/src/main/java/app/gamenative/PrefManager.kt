@@ -712,6 +712,13 @@ object PrefManager {
             setPref(SHOW_GOG_IN_LIBRARY, value)
         }
 
+    private val SHOW_EPIC_IN_LIBRARY = booleanPreferencesKey("show_epic_in_library")
+    var showEpicInLibrary: Boolean
+        get() = getPref(SHOW_EPIC_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_EPIC_IN_LIBRARY, value)
+        }
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int
@@ -734,11 +741,25 @@ object PrefManager {
             setPref(GOG_GAMES_COUNT, value)
         }
 
+    private val EPIC_GAMES_COUNT = intPreferencesKey("epic_games_count")
+    var epicGamesCount: Int
+        get() = getPref(EPIC_GAMES_COUNT, 0)
+        set(value) {
+            setPref(EPIC_GAMES_COUNT, value)
+        }
+
     private val GOG_INSTALLED_GAMES_COUNT = intPreferencesKey("gog_installed_games_count")
     var gogInstalledGamesCount: Int
         get() = getPref(GOG_INSTALLED_GAMES_COUNT, 0)
         set(value) {
             setPref(GOG_INSTALLED_GAMES_COUNT, value)
+        }
+
+    private val EPIC_INSTALLED_GAMES_COUNT = intPreferencesKey("epic_installed_games_count")
+    var epicInstalledGamesCount: Int
+        get() = getPref(EPIC_INSTALLED_GAMES_COUNT, 0)
+        set(value) {
+            setPref(EPIC_INSTALLED_GAMES_COUNT, value)
         }
 
     // Show dialog when adding custom game folder

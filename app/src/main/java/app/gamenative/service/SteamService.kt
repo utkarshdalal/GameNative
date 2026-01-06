@@ -271,11 +271,11 @@ class SteamService : Service(), IChallengeUrlChanged {
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
         private fun notifyDownloadStarted(appId: Int) {
-            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId.toString(), true))
         }
 
         private fun notifyDownloadStopped(appId: Int) {
-            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, false))
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId.toString(), false))
         }
 
         private fun removeDownloadJob(appId: Int) {
@@ -1167,7 +1167,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Handle completion: add marker, update database
                 val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
                 MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
+                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId.toString()))
                 runBlocking {
                     instance?.appInfoDao?.insert(
                         AppInfo(
@@ -1949,7 +1949,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     for ((appId, info) in downloadJobs.entries.toList()) {
                         Timber.d("Cancelling job")
                         info.cancel()
-                        PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId))
+                        PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId.toString()))
                         removeDownloadJob(appId)
                     }
                     notificationHelper.notify("Download paused – waiting for Wi-Fi/LAN")

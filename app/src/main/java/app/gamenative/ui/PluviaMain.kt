@@ -410,6 +410,13 @@ fun PluviaMain(
                 app.gamenative.service.gog.GOGService.start(context)
             }
 
+            // Start EpicService if user has Epic credentials
+            if (app.gamenative.service.epic.EpicService.hasStoredCredentials(context) &&
+                !app.gamenative.service.epic.EpicService.isRunning) {
+                Timber.d("[PluviaMain]: Starting EpicService for logged-in user")
+                app.gamenative.service.epic.EpicService.start(context)
+            }
+
             if (SteamService.isLoggedIn && !SteamService.isGameRunning && state.currentScreen == PluviaScreen.LoginUser) {
                 navController.navigate(PluviaScreen.Home.route)
             }
@@ -1171,6 +1178,15 @@ fun preLaunchApp(
                 Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
 
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
+        // For Epic Games, bypass Steam Cloud operations entirely and proceed to launch
+        val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
+        if (isEpicGame) {
+            Timber.tag("preLaunchApp").i("Epic Game detected for $appId — skipping Steam Cloud sync and launching container")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

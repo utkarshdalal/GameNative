@@ -61,7 +61,9 @@ import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import android.widget.Toast
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
@@ -1669,7 +1671,7 @@ private fun getWineStartCommand(
     appLaunchInfo: LaunchInfo?,
     envVars: EnvVars,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
-): String {
+): String? {
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
 
@@ -1679,9 +1681,10 @@ private fun getWineStartCommand(
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val isGOGGame = gameSource == GameSource.GOG
+    val isEpicGame = gameSource == GameSource.EPIC
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-    if (!isCustomGame && !isGOGGame) {
+    if (!isCustomGame && !isGOGGame && !isEpicGame) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)
@@ -1719,6 +1722,28 @@ private fun getWineStartCommand(
 
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
         return "winhandler.exe $gogCommand"
+    } else if (isEpicGame) {
+        // For Epic games, use EpicService to get the launch command
+        Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
+
+        // Create a LibraryItem from the appId
+        val libraryItem = LibraryItem(
+            appId = appId,
+            name = "", // Name not needed for launch command
+            gameSource = GameSource.EPIC
+        )
+
+        val epicCommand = EpicService.getWineStartCommand(
+            libraryItem = libraryItem,
+            container = container,
+            bootToContainer = bootToContainer,
+            appLaunchInfo = appLaunchInfo,
+            envVars = envVars,
+            guestProgramLauncherComponent = guestProgramLauncherComponent
+        )
+
+        Timber.tag("XServerScreen").i("Epic launch command: $epicCommand")
+        return "winhandler.exe $epicCommand"
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect

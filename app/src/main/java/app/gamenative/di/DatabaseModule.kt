@@ -61,4 +61,8 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideGOGGameDao(db: PluviaDatabase) = db.gogGameDao()
+
+    @Provides
+    @Singleton
+    fun provideEpicGameDao(db: PluviaDatabase) = db.epicGameDao()
 }
