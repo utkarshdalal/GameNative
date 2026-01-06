@@ -985,7 +985,7 @@ object EpicCloudSavesManager {
 
             // Create manifest
             val manifest = createManifest(game, accountId, chunks, fileManifests)
-            val manifestData = manifest.data
+            val manifestData = manifest.serialize()
 
             val timestamp = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
             val manifestName = "manifests/${timestamp.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd-HH.mm.ss"))}.manifest"

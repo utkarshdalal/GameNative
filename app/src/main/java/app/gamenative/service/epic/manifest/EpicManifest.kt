@@ -67,6 +67,7 @@ sealed class EpicManifest {
 
     abstract fun read(data: ByteArray)
     abstract fun parseContents()
+    abstract fun serialize(): ByteArray
 
     /**
      * Get chunk directory based on manifest version
@@ -146,6 +147,44 @@ class BinaryManifest : EpicManifest() {
         // Clear raw data to save memory
         data = ByteArray(0)
     }
+
+    override fun serialize(): ByteArray {
+        // Build uncompressed body data
+        val bodyBuffer = ByteBuffer.allocate(1024 * 1024).order(ByteOrder.LITTLE_ENDIAN)
+
+        // Write components in order
+        meta?.write(bodyBuffer)
+        chunkDataList?.write(bodyBuffer, meta?.featureLevel ?: version)
+        fileManifestList?.write(bodyBuffer)
+        customFields?.write(bodyBuffer)
+
+        val uncompressedData = bodyBuffer.array().copyOf(bodyBuffer.position())
+
+        // Compress the body
+        val compressedData = java.io.ByteArrayOutputStream()
+        java.util.zip.DeflaterOutputStream(compressedData).use { it.write(uncompressedData) }
+        val compressed = compressedData.toByteArray()
+
+        // Calculate SHA hash of uncompressed data
+        val sha = MessageDigest.getInstance("SHA-1").digest(uncompressedData)
+
+        // Build header
+        val headerBuffer = ByteBuffer.allocate(41).order(ByteOrder.LITTLE_ENDIAN)
+        headerBuffer.putInt(HEADER_MAGIC.toInt())
+        headerBuffer.putInt(41) // header size
+        headerBuffer.putInt(uncompressedData.size) // uncompressed size
+        headerBuffer.putInt(compressed.size) // compressed size
+        headerBuffer.put(sha) // SHA-1 hash (20 bytes)
+        headerBuffer.put(0x01.toByte()) // storedAs (compressed)
+        headerBuffer.putInt(version) // version
+
+        // Combine header + compressed body
+        val result = ByteArray(41 + compressed.size)
+        System.arraycopy(headerBuffer.array(), 0, result, 0, 41)
+        System.arraycopy(compressed, 0, result, 41, compressed.size)
+
+        return result
+    }
 }
 
 /**
@@ -172,6 +211,17 @@ class JsonManifest : EpicManifest() {
 
         // Clear raw data to save memory
         this.data = ByteArray(0)
+    }
+
+    override fun serialize(): ByteArray {
+        // JSON manifests are not commonly created, convert to binary
+        val binary = BinaryManifest()
+        binary.version = this.version
+        binary.meta = this.meta
+        binary.chunkDataList = this.chunkDataList
+        binary.fileManifestList = this.fileManifestList
+        binary.customFields = this.customFields
+        return binary.serialize()
     }
 }
 
@@ -239,6 +289,47 @@ data class ManifestMeta(
 
             return meta
         }
+    }
+
+    fun write(buffer: ByteBuffer) {
+        val startPos = buffer.position()
+
+        // Placeholder for size
+        val sizePos = buffer.position()
+        buffer.putInt(0)
+
+        buffer.put(dataVersion)
+        buffer.putInt(featureLevel)
+        buffer.put(if (isFileData) 1.toByte() else 0.toByte())
+        buffer.putInt(appId)
+        writeFString(buffer, appName)
+        writeFString(buffer, buildVersion)
+        writeFString(buffer, launchExe)
+        writeFString(buffer, launchCommand)
+
+        // Prerequisite IDs list
+        buffer.putInt(prereqIds.size)
+        prereqIds.forEach { writeFString(buffer, it) }
+
+        writeFString(buffer, prereqName)
+        writeFString(buffer, prereqPath)
+        writeFString(buffer, prereqArgs)
+
+        // Data version 1+ includes build ID
+        if (dataVersion >= 1) {
+            writeFString(buffer, buildId)
+        }
+
+        // Data version 2+ includes uninstall actions
+        if (dataVersion >= 2) {
+            writeFString(buffer, uninstallActionPath)
+            writeFString(buffer, uninstallActionArgs)
+        }
+
+        // Update size
+        val endPos = buffer.position()
+        val size = endPos - startPos
+        buffer.putInt(sizePos, size)
     }
 }
 
@@ -321,6 +412,53 @@ data class ChunkDataList(
 
             return cdl
         }
+    }
+
+    fun write(buffer: ByteBuffer, manifestVersion: Int) {
+        val startPos = buffer.position()
+
+        // Placeholder for size
+        val sizePos = buffer.position()
+        buffer.putInt(0)
+
+        buffer.put(version)
+        buffer.putInt(elements.size)
+
+        // Write data in columnar format (all GUIDs, then all hashes, etc.)
+        // GUIDs (128-bit each)
+        elements.forEach { chunk ->
+            chunk.guid.forEach { buffer.putInt(it) }
+        }
+
+        // Hashes (64-bit each)
+        elements.forEach { chunk ->
+            buffer.putLong(chunk.hash.toLong())
+        }
+
+        // SHA1 hashes (160-bit each)
+        elements.forEach { chunk ->
+            buffer.put(chunk.shaHash)
+        }
+
+        // Group numbers (8-bit each)
+        elements.forEach { chunk ->
+            buffer.put(chunk.groupNum.toByte())
+        }
+
+        // Window sizes (32-bit each)
+        elements.forEach { chunk ->
+            buffer.putInt(chunk.windowSize)
+        }
+
+        // File sizes (64-bit each)
+        elements.forEach { chunk ->
+            buffer.putLong(chunk.fileSize)
+        }
+
+        // Update size
+        val endPos = buffer.position()
+        val size = endPos - startPos
+        buffer.putInt(sizePos, size)
     }
 }
 
@@ -505,6 +643,94 @@ data class FileManifestList(
             return fml
         }
     }
+
+    fun write(buffer: ByteBuffer) {
+        val startPos = buffer.position()
+
+        // Placeholder for size
+        val sizePos = buffer.position()
+        buffer.putInt(0)
+
+        buffer.put(version)
+        buffer.putInt(elements.size)
+
+        // Write in columnar format
+        // Filenames
+        elements.forEach { fm ->
+            writeFString(buffer, fm.filename)
+        }
+
+        // Symlink targets
+        elements.forEach { fm ->
+            writeFString(buffer, fm.symlinkTarget)
+        }
+
+        // SHA1 hashes
+        elements.forEach { fm ->
+            buffer.put(fm.hash)
+        }
+
+        // Flags
+        elements.forEach { fm ->
+            buffer.put(fm.flags.toByte())
+        }
+
+        // Install tags
+        elements.forEach { fm ->
+            buffer.putInt(fm.installTags.size)
+            fm.installTags.forEach { tag -> writeFString(buffer, tag) }
+        }
+
+        // Chunk parts
+        elements.forEach { fm ->
+            buffer.putInt(fm.chunkParts.size)
+
+            fm.chunkParts.forEach { part ->
+                val partStartPos = buffer.position()
+
+                // Placeholder for part size
+                val partSizePos = buffer.position()
+                buffer.putInt(0)
+
+                // Write part data
+                part.guid.forEach { buffer.putInt(it) }
+                buffer.putInt(part.offset)
+                buffer.putInt(part.size)
+
+                // Update part size
+                val partEndPos = buffer.position()
+                val partSize = partEndPos - partStartPos
+                buffer.putInt(partSizePos, partSize)
+            }
+        }
+
+        // Version 1+: MD5 hashes and MIME types
+        if (version >= 1) {
+            elements.forEach { fm ->
+                val hasMd5 = if (fm.hashMd5.any { it != 0.toByte() }) 1 else 0
+                buffer.putInt(hasMd5)
+                if (hasMd5 != 0) {
+                    buffer.put(fm.hashMd5)
+                }
+            }
+
+            elements.forEach { fm ->
+                writeFString(buffer, fm.mimeType)
+            }
+        }
+
+        // Version 2+: SHA256 hashes
+        if (version >= 2) {
+            elements.forEach { fm ->
+                buffer.put(fm.hashSha256)
+            }
+        }
+
+        // Update size
+        val endPos = buffer.position()
+        val size = endPos - startPos
+        buffer.putInt(sizePos, size)
+    }
 }
 
 /**
@@ -594,6 +820,22 @@ data class CustomFields(
             return cf
         }
     }
+
+    fun write(buffer: ByteBuffer) {
+        val startPos = buffer.position()
+        buffer.putInt(0) // placeholder for size
+        buffer.putInt(fields.size)
+
+        fields.forEach { (key, value) ->
+            writeFString(buffer, key)
+            writeFString(buffer, value)
+        }
+
+        // Update size
+        val endPos = buffer.position()
+        val size = endPos - startPos
+        buffer.putInt(startPos, size)
+    }
 }
 
 /**
@@ -619,5 +861,33 @@ private fun readFString(buffer: ByteBuffer): String {
             String(bytes, Charsets.US_ASCII)
         }
         else -> ""
+    }
+}
+
+/**
+ * Write a variable-length string to the buffer (Epic's FString format)
+ */
+private fun writeFString(buffer: ByteBuffer, str: String) {
+    if (str.isEmpty()) {
+        buffer.putInt(0)
+        return
+    }
+
+    // Check if ASCII is sufficient
+    val isAscii = str.all { it.code < 128 }
+
+    if (isAscii) {
+        // ASCII encoded
+        val bytes = str.toByteArray(Charsets.US_ASCII)
+        buffer.putInt(bytes.size + 1) // +1 for null terminator
+        buffer.put(bytes)
+        buffer.put(0) // null terminator
+    } else {
+        // UTF-16 encoded (negative length)
+        val bytes = str.toByteArray(Charsets.UTF_16LE)
+        buffer.putInt(-(bytes.size / 2 + 1)) // negative indicates UTF-16, +1 for null terminator
+        buffer.put(bytes)
+        buffer.put(0) // null terminator (2 bytes)
+        buffer.put(0)
     }
 }
