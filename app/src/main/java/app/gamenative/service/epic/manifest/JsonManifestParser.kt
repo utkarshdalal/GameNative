@@ -15,7 +15,15 @@ class JsonManifestParser {
          * Parse a complete JSON manifest
          */
         fun parse(jsonData: ByteArray): EpicManifest {
+            if (jsonData.isEmpty()) {
+                throw IllegalArgumentException("Cannot parse empty manifest data")
+            }
+            
             val jsonString = String(jsonData, Charsets.UTF_8)
+            if (jsonString.isBlank()) {
+                throw IllegalArgumentException("Manifest contains only whitespace")
+            }
+            
             val json = JSONObject(jsonString)
 
             val manifest = JsonManifest()

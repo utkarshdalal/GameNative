@@ -554,10 +554,17 @@ object EpicCloudSavesManager {
 
             // 6. Parse manifest
             val manifestBytes = manifestData.getOrNull()!!
+            
+            // Validate manifest is not empty
+            if (manifestBytes.isEmpty()) {
+                Timber.tag("Epic").e("[Cloud Saves] Downloaded manifest is empty")
+                return@withContext false
+            }
+            
             val manifest = try {
                 EpicManifest.readAll(manifestBytes)
             } catch (e: Exception) {
-                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest")
+                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest (size: ${manifestBytes.size} bytes)")
                 return@withContext false
             }
 
