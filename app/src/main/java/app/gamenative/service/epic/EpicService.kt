@@ -365,6 +365,11 @@ class EpicService : Service() {
                 return Result.success(instance.activeDownloads[appName]!!)
             }
 
+            // Create DownloadInfo before launching coroutine to avoid race condition
+            val downloadInfo = DownloadInfo()
+            downloadInfo.setActive(true)
+            instance.activeDownloads[appName] = downloadInfo
+
             // Start download in background
             instance.scope.launch {
                 try {
@@ -373,10 +378,6 @@ class EpicService : Service() {
                         Timber.tag("Epic").e("Game not found: $appName")
                         return@launch
                     }
-
-                    val downloadInfo = DownloadInfo()
-                    downloadInfo.setActive(true)
-                    instance.activeDownloads[appName] = downloadInfo
 
                     Timber.tag("Epic").i("Starting download for ${game.title}")
 
@@ -435,7 +436,7 @@ class EpicService : Service() {
             }
 
             // Return the DownloadInfo immediately so caller can track progress
-            return Result.success(instance.activeDownloads[appName]!!)
+            return Result.success(downloadInfo)
         }
 
         suspend fun refreshSingleGame(appName: String, context: Context): Result<EpicGame?> {
