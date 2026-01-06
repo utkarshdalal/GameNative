@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -120,14 +121,17 @@ class EpicAppScreen : BaseAppScreen() {
         var refreshTrigger by remember { mutableStateOf(0) }
 
         // Listen for install status changes to refresh game data
-        LaunchedEffect(appId) {
-            val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-                if (event.appId == libraryItem.appId) {
-                    Timber.tag(TAG).d("Install status changed, refreshing game data for $appId")
-                    refreshTrigger++
-                }
+       DisposableEffect(appId) {
+           val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
+               if (event.appId == libraryItem.appId) {
+                   Timber.tag(TAG).d("Install status changed, refreshing game data for $appId")
+                   refreshTrigger++
+               }
+           }
+           app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+           onDispose {
+               app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
             }
-            app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
         }
 
         // Fetch install size from manifest if not already available
@@ -291,8 +295,8 @@ class EpicAppScreen : BaseAppScreen() {
         if (isDownloading) {
             // Cancel ongoing download
             Timber.tag(TAG).i("Cancelling Epic download for: $appName")
-            downloadInfo.cancel()
             EpicService.cleanupDownload(appName)
+            downloadInfo.cancel()
         } else if (installed) {
             // Already installed: launch game
             Timber.tag(TAG).i("Epic game already installed, launching: $appName")
@@ -371,8 +375,8 @@ class EpicAppScreen : BaseAppScreen() {
         if (isDownloading) {
             // Cancel/pause download
             Timber.tag(TAG).i("Pausing Epic download: $appName")
-            EpicService.cleanupDownload(appName)
             downloadInfo.cancel()
+            EpicService.cleanupDownload(appName)
         } else {
             // Resume download (restart from beginning for now)
             Timber.tag(TAG).i("Resuming Epic download: $appName")
