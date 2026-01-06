@@ -216,6 +216,7 @@ class EpicManager @Inject constructor(
             Timber.tag("Epic").d("${newGamesList.size} new games need details fetched")
 
             val epicGames = mutableListOf<EpicGame>()
+            var processedCount = 0
             for ((index, game) in newGamesList.withIndex()) {
                 val result = fetchGameInfo(context, game)
 
@@ -223,23 +224,24 @@ class EpicManager @Inject constructor(
                     val epicGame = result.getOrNull()
                     if (epicGame != null) {
                         epicGames.add(epicGame)
+                        processedCount++
                         Timber.tag("Epic").d("Refreshed Game: ${epicGame.title}")
                     }
                 } else {
                     Timber.tag("Epic").w("Epic game ${game.appName} could not be fetched")
                 }
 
-                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == gamesList.size - 1) {
+                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGamesList.lastIndex) {
                     if (epicGames.isNotEmpty()) {
                         epicGameDao.upsertPreservingInstallStatus(epicGames)
-                        Timber.tag("Epic").d("Batch inserted ${epicGames.size} games (processed ${index + 1}/${gamesList.size})")
+                        Timber.tag("Epic").d("Batch inserted ${epicGames.size} games (processed ${index + 1}/${newGamesList.size})")
                         epicGames.clear()
                     }
                 }
             }
 
             Timber.tag("Epic").i("Successfully refreshed Epic library")
-            Result.success(epicGames.size)
+            Result.success(processedCount)
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh Epic library")
             Result.failure(e)
