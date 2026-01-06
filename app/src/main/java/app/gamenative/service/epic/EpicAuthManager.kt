@@ -37,7 +37,7 @@ object EpicAuthManager {
                     true
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Failed to clear GOG credentials")
+                Timber.e(e, "Failed to clear Epic credentials")
                 false
             }
         }
@@ -130,8 +130,8 @@ object EpicAuthManager {
                 val refreshResult = EpicAuthClient.refreshAccessToken(credentials.refreshToken)
 
                 if (refreshResult.isFailure) {
-                    Timber.e("Failed to refresh token, returning expired credentials")
-                    return Result.success(credentials)
+                    Timber.e("Failed to refresh token")
+                    return Result.failure(Exception("Failed to refresh expired token: ${refreshResult.exceptionOrNull()?.message}"))
                 }
 
                 val authResponse = refreshResult.getOrNull()!!
