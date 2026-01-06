@@ -13,7 +13,7 @@
     <string name="steam_2fa_device">Введіть код двофакторної автентифікації.</string>
     <string name="steam_2fa_email">Введіть код, відправлений на пошту: %s</string>
     <string name="steam_install_space_prompt">Застосунок, що інсталюється, має такі вимоги до обсягу пам\'яті. Продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступне місце: %3$s</string>
-    <string name="steam_install_not_enough_space">Для інсталяції застосунка потрібно %1$s вільного місця, але на цьому пристрої доступно лише %2$s</string>
+    <string name="steam_install_not_enough_space">Для інreatсталяції застосунка потрібно %1$s вільного місця, але на цьому пристрої доступно лише %2$s</string>
     <string name="steam_cancel_download_message">Ви впевнені, що хочете скасувати завантаження застосунка?</string>
     <string name="steam_delete_download_message">Видалити всі завантажені дані цієї гри?</string>
     <string name="steam_imagefs_download_install_title">Завантажити та інсталювати ImageFS</string>
@@ -462,7 +462,7 @@
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
-    <string name="launch_steam_client_description">Зменшує продуктивність та сповілнює запуск.\nДозволяє онлайн гру а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
+    <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
     <string name="steam_type">Версія Steam</string>
@@ -829,8 +829,8 @@
     <string name="contents_error_missingfiles">Вміст неповний</string>
     <string name="contents_error_untrustprofile">Вміст є недовіреним</string>
     <string name="contents_error_nospace">Недостатньо місця</string>
-    <string name="contents_error_generic">Не вдається інсталювати вміст</string>
-    <string name="contents_untrusted_files">Цей вміст містить файли, що не входять до надійного набору.</string>
+    <string name="contents_error_generic">Не вдається інсталювати пакет</string>
+    <string name="contents_untrusted_files">Цей пакет містить файли, що не входять до надійного набору.</string>
     <string name="contents_install_components">Інсталювати додаткові компоненти (.wcp: tar.xz/zst)</string>
     <string name="contents_type">Тип</string>
     <string name="contents_version">Версія</string>
