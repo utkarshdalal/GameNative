@@ -956,8 +956,7 @@ object EpicCloudSavesManager {
             }
 
             // Create manifest
-            val manifest = createManifest(game, accountId, chunks, fileManifests)
-            val manifestData = serializeManifest(manifest)
+            val manifestData = createManifest(game, accountId, chunks, fileManifests)
 
             val timestamp = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
             val manifestName = "manifests/${timestamp.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd-HH.mm.ss"))}.manifest"
@@ -1089,13 +1088,6 @@ object EpicCloudSavesManager {
         manifest.fileManifestList!!.elements.addAll(fileManifests)
 
         return manifest
-    }
-
-    // Serialize manifest to bytes
-    private fun serializeManifest(manifest: app.gamenative.service.epic.manifest.EpicManifest): ByteArray {
-        // For now, return the raw data from the manifest
-        // TODO: Implement proper binary manifest serialization if needed
-        return manifest.data
     }
 
     // Resolve save directory path
