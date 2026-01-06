@@ -109,7 +109,6 @@ data class DownloadInfo(
             bytesDownloaded = 0L
         }
         addSpeedSample(timestampMs)
-        emitProgressChange()
     }
 
     fun updateStatusMessage(message: String?) {
