@@ -18,6 +18,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -358,20 +359,23 @@ fun SettingsGroupInterface(
 
     // GOG Integration
     SettingsGroup(title = { Text(text = stringResource(R.string.gog_integration_title)) }) {
-        SettingsMenuLink(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.gog_settings_login_title)) },
-            subtitle = { Text(text = stringResource(R.string.gog_settings_login_subtitle)) },
-            onClick = {
-                openGOGLoginDialog = true
-                gogLoginError = null
-                gogLoginSuccess = false
-            }
-        )
-
+        if (!app.gamenative.service.gog.GOGAuthManager.hasStoredCredentials(context)) {
+            SettingsMenuLink(
+                icon = { androidx.compose.material3.Icon(Icons.Default.Login, contentDescription = null) },
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.gog_settings_login_title)) },
+                subtitle = { Text(text = stringResource(R.string.gog_settings_login_subtitle)) },
+                onClick = {
+                    openGOGLoginDialog = true
+                    gogLoginError = null
+                    gogLoginSuccess = false
+                }
+            )
+        }
         // Logout button - only show if credentials exist
         if (app.gamenative.service.gog.GOGAuthManager.hasStoredCredentials(context)) {
             SettingsMenuLink(
+                icon = { androidx.compose.material3.Icon(Icons.Default.Logout, contentDescription = null) },
                 colors = settingsTileColorsAlt(),
                 title = { Text(text = stringResource(R.string.gog_settings_logout_title)) },
                 subtitle = { Text(text = stringResource(R.string.gog_settings_logout_subtitle)) },
@@ -384,21 +388,23 @@ fun SettingsGroupInterface(
 
     // Epic Games Integration
     SettingsGroup(title = { Text(text = stringResource(R.string.epic_integration_title)) }) {
-        SettingsMenuLink(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.epic_settings_login_title)) },
-            subtitle = { Text(text = stringResource(R.string.epic_settings_login_subtitle)) },
-            onClick = {
-                openEpicLoginDialog = true
-                epicLoginError = null
-                epicLoginSuccess = false
-            }
-        )
-
-        // Logout button - only show if credentials exist
-        if (EpicAuthManager.hasStoredCredentials(context)) {
+        if(!EpicAuthManager.hasStoredCredentials(context)) {
             SettingsMenuLink(
                 icon = { androidx.compose.material3.Icon(Icons.Default.Login, contentDescription = null) },
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.epic_settings_login_title)) },
+                subtitle = { Text(text = stringResource(R.string.epic_settings_login_subtitle)) },
+                onClick = {
+                    openEpicLoginDialog = true
+                    epicLoginError = null
+                    epicLoginSuccess = false
+                }
+            )
+        }
+            // Epic Logout Button
+        if (EpicAuthManager.hasStoredCredentials(context)) {
+            SettingsMenuLink(
+                icon = { androidx.compose.material3.Icon(Icons.Default.Logout, contentDescription = null) },
                 title = { Text(text = stringResource(R.string.epic_settings_logout_title)) },
                 subtitle = { Text(text = stringResource(R.string.epic_settings_logout_subtitle)) },
                 onClick = {
@@ -408,6 +414,8 @@ fun SettingsGroupInterface(
             )
         }
     }
+
+
 
     // Downloads settings
     SettingsGroup(title = { Text(text = stringResource(R.string.settings_downloads_title)) }) {
