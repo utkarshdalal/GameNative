@@ -585,39 +585,6 @@ class EpicManager @Inject constructor(
     }
 
     /**
-     * Extract image URL from keyImages array by type
-     */
-    private fun extractImageUrl(keyImages: JSONArray?, imageType: String): String {
-        if (keyImages == null) return ""
-
-        for (i in 0 until keyImages.length()) {
-            val image = keyImages.optJSONObject(i) ?: continue
-            if (image.optString("type") == imageType) {
-                return image.optString("url", "")
-            }
-        }
-        return ""
-    }
-
-    /**
-     * Parse JSON array into list of strings
-     */
-    private fun parseJsonArray(jsonArray: JSONArray?): List<String> {
-        val result = mutableListOf<String>()
-        if (jsonArray != null) {
-            for (j in 0 until jsonArray.length()) {
-                val item = jsonArray.opt(j)
-                when (item) {
-                    is String -> result.add(item)
-                    is JSONObject -> result.add(item.optString("name", item.toString()))
-                    else -> result.add(item.toString())
-                }
-            }
-        }
-        return result
-    }
-
-    /**
      * Get a single game by ID
      */
     suspend fun getGameById(gameId: String): EpicGame? {

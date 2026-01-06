@@ -456,7 +456,7 @@ internal fun LibraryListPane(
                                 showSteam = state.showSteamInLibrary,
                                 showCustomGames = state.showCustomGamesInLibrary,
                                 showGOG = state.showGOGInLibrary,
-                                showEpic =state.showEpicInLibrary,
+                                showEpic = state.showEpicInLibrary,
                                 onSourceToggle = onSourceToggle,
                             )
                         },

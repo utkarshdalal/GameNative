@@ -981,7 +981,7 @@
     <string name="epic_login_success_message">You are now signed in to Epic Games.</string>
     <string name="epic_logout_success">Logged out from Epic successfully</string>
 
-    <!-- GOG Login Dialog -->
+    <!-- Epic Login Dialog -->
     <string name="epic_login_title">Sign in to Epic Games</string>
     <string name="epic_login_auto_auth_info">Tap \'Open Epic Login\' and sign in. Once logged in, please copy the URL and paste below</string>
     <string name="epic_login_auth_example">Example: https://epicgames.com/id/login?clientId=client&amp;authorizationCode=aaa"</string>
@@ -991,6 +991,7 @@
     <string name="epic_login_button">Login</string>
     <string name="epic_login_cancel">Cancel</string>
     <string name="epic_login_browser_error">Could not open browser</string>
+
     <!-- Epic Games Logout -->
     <string name="epic_settings_logout_title">Logout from Epic Games</string>
     <string name="epic_settings_logout_subtitle">Disconnect your Epic Games account</string>
