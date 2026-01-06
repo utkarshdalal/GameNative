@@ -710,12 +710,6 @@ class EpicManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 Timber.tag("Epic").i("Getting DLC for appId: $appId")
-                val dlcTitles = epicGameDao.getAllDlcTitles().firstOrNull() ?:emptyList()
-                if (dlcTitles.isNotEmpty()) {
-                    for (title in dlcTitles) {
-                        Timber.tag("Epic").i("ALL DLCs: ${title.title} \nBase Game: ${title.baseGameAppName}")
-                    }
-                }
                 epicGameDao.getDLCForTitle(appId).firstOrNull() ?: emptyList()
             } catch (e: Exception) {
                 Timber.e(e, "Failed to get DLC for app name: $appId")

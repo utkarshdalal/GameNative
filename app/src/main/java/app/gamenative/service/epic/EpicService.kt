@@ -72,8 +72,6 @@ class EpicService : Service() {
             return true
         }
 
-
-
         // ==========================================================================
         // AUTHENTICATION - Delegate to EpicAuthManager
         // ==========================================================================
@@ -251,9 +249,6 @@ class EpicService : Service() {
             getInstance()?.epicManager?.updateGame(game)
         }
 
-        suspend fun getDLCForTitle(appName: String): List<EpicGame> {
-            return getInstance()?.epicManager?.getDLCForTitle(appName) ?: emptyList()
-        }
 
         fun isGameInstalled(appName: String): Boolean {
             val game = getEpicGameOf(appName)

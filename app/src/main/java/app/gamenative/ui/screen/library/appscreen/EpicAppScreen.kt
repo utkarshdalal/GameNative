@@ -46,6 +46,8 @@ class EpicAppScreen : BaseAppScreen() {
     companion object {
         private const val TAG = "EpicAppScreen"
 
+        var gameDlc by mutableStateOf(listOf<EpicGame>())
+
         // Shared state for uninstall dialog - list of appIds that should show the dialog
         private val uninstallDialogAppIds = mutableStateListOf<String>()
 
@@ -166,9 +168,11 @@ class EpicAppScreen : BaseAppScreen() {
                 val dlcTitles = EpicService.getDLCForGame(game.id)
                 if (dlcTitles.isNotEmpty()) {
                     for (title in dlcTitles) {
-                        Timber.tag("Epic").i("DLC Found: ${title.title}")
+                        Timber.tag("Epic").i("DLC Found: ${title.title}, downloadSize: ${title.downloadSize}, installSize: ${title.installSize}")
+
                     }
                 }
+                gameDlc = dlcTitles
 
                 Timber.tag("Epic").i("""
                     |╔═══════════════════════════════════════════════════════════════════════════════
@@ -763,6 +767,9 @@ class EpicAppScreen : BaseAppScreen() {
             val installBytes = epicGame?.installSize ?: 0L
             val downloadText = if (downloadBytes > 0L) formatBytes(downloadBytes) else "Unknown"
             val installText = if (installBytes > 0L) formatBytes(installBytes) else "Unknown"
+            val availableSpace = app.gamenative.utils.StorageUtils.getAvailableSpace(EpicConstants.defaultEpicGamesPath).let {
+                formatBytes(it)
+            }
 
             AlertDialog(
                 onDismissRequest = {
@@ -773,10 +780,10 @@ class EpicAppScreen : BaseAppScreen() {
                     Text(
                         stringResource(
                             R.string.epic_install_game_message,
-                            libraryItem.name,
                             downloadText,
                             installText,
-                        ),
+                            availableSpace
+                        )
                     )
                 },
                 confirmButton = {
