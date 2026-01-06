@@ -7,12 +7,7 @@ import app.gamenative.enums.AppType
 
 /**
  * Epic Game entity for Room database
- * Represents a game from the Epic Games Store via Legendary CLI
- *
- * Fields based on Legendary's game metadata structure:
- * - legendary list --json (library listing)
- * - legendary info <app_name> --json (detailed game info)
- * - installed.json (installation status)
+ * Represents a game from the Epic Games Store
  */
 @Entity(tableName = "epic_games")
 data class EpicGame(
@@ -21,7 +16,7 @@ data class EpicGame(
     val id: String,  // Epic's catalogId
 
     @ColumnInfo("app_name")
-    val appName: String = "",  // Legendary CLI identifier (used for all Legendary operations)
+    val appName: String = "",
 
     @ColumnInfo("title")
     val title: String = "",
@@ -208,7 +203,7 @@ data class EpicDLCInfo(
 )
 
 /**
- * Game launch token from Legendary
+ * Game launch token
  * Used for Epic authentication during game launch
  */
 data class GameToken(
