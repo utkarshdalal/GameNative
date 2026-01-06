@@ -606,7 +606,7 @@
     <string name="settings_info_send_tip_title">Підтримати розробників</string>
     <string name="settings_info_send_tip_subtitle">Сприяйте подальшому розвитку</string>
     <string name="settings_info_ask_tip_title">Пропонувати підтримку розробників при запуску</string>
-    <string name="settings_info_ask_tip_subtitle">(ВИМК) Приховує повідомлення з пропозицією підтримки </string>
+    <string name="settings_info_ask_tip_subtitle">(ВИМК) Приховує повідомлення з пропозицією підтримки</string>
     <string name="settings_info_source_title">Вихідний код</string>
     <string name="settings_info_source_subtitle">Переглянути вихідний код застосунку</string>
     <string name="settings_info_libraries_title">Використані бібліотеки</string>
