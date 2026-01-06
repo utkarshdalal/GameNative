@@ -674,15 +674,21 @@ object EpicCloudSavesManager {
                 return@withContext false
             }
 
-            // Validate packaged files are not empty
+            // Filter out empty files (just log them, don't fail the upload)
             val emptyFiles = packagedFiles.filter { it.value.isEmpty() }
             if (emptyFiles.isNotEmpty()) {
-                Timber.tag("Epic").e("[Cloud Saves] Found ${emptyFiles.size} empty packaged files: ${emptyFiles.keys.joinToString()}")
+                Timber.tag("Epic").w("[Cloud Saves] Skipping ${emptyFiles.size} empty packaged files: ${emptyFiles.keys.joinToString()}")
+            }
+            
+            // Only upload non-empty files
+            val nonEmptyFiles = packagedFiles.filterValues { it.isNotEmpty() }
+            if (nonEmptyFiles.isEmpty()) {
+                Timber.tag("Epic").e("[Cloud Saves] No valid files to upload after filtering empty files")
                 return@withContext false
             }
 
             // 3. Request write links for all files
-            val fileNames = packagedFiles.keys.toList()
+            val fileNames = nonEmptyFiles.keys.toList()
             val writeLinks = requestWriteLinks(context, game.appName, fileNames)
             if (writeLinks.isEmpty()) {
                 Timber.tag("Epic").e("[Cloud Saves] Failed to get write links")
@@ -691,14 +697,8 @@ object EpicCloudSavesManager {
 
             // 4. Upload chunks
             var uploadedChunks = 0
-            packagedFiles.forEach { (fileName, fileData) ->
+            nonEmptyFiles.forEach { (fileName, fileData) ->
                 if (!fileName.endsWith(".manifest")) {
-                    // Validate chunk is not empty
-                    if (fileData.isEmpty()) {
-                        Timber.tag("Epic").e("[Cloud Saves] Skipping empty chunk: $fileName")
-                        return@forEach
-                    }
-
                     val writeLink = writeLinks[fileName]
                     if (writeLink != null) {
                         Timber.tag("Epic").d("[Cloud Saves] Uploading chunk: $fileName (${fileData.size} bytes)")
@@ -714,14 +714,8 @@ object EpicCloudSavesManager {
             }
 
             // 5. Upload manifest last
-            val manifestEntry = packagedFiles.entries.find { it.key.endsWith(".manifest") }
+            val manifestEntry = nonEmptyFiles.entries.find { it.key.endsWith(".manifest") }
             if (manifestEntry != null) {
-                // Validate manifest is not empty
-                if (manifestEntry.value.isEmpty()) {
-                    Timber.tag("Epic").e("[Cloud Saves] Manifest is empty, cannot upload: ${manifestEntry.key}")
-                    return@withContext false
-                }
-
                 val writeLink = writeLinks[manifestEntry.key]
                 if (writeLink != null) {
                     Timber.tag("Epic").d("[Cloud Saves] Uploading manifest: ${manifestEntry.key} (${manifestEntry.value.size} bytes)")
