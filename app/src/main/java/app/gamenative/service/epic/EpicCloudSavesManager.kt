@@ -16,6 +16,8 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.collections.get
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -34,6 +36,10 @@ import timber.log.Timber
  * - Chunks are deduplicated via GUID/hash
  */
 object EpicCloudSavesManager {
+
+    // Synchronization to prevent duplicate concurrent syncs
+    private val syncMutex = Mutex()
+    private val activeSyncs = mutableSetOf<String>()
 
     // Data classes for API responses
     data class CloudSaveFiles(
@@ -71,6 +77,15 @@ object EpicCloudSavesManager {
         appId: String,
         preferredAction: String = "auto"
     ): Boolean = withContext(Dispatchers.IO) {
+        // Check if sync is already in progress for this appId
+        syncMutex.withLock {
+            if (activeSyncs.contains(appId)) {
+                Timber.tag("Epic").w("[Cloud Saves] Sync already in progress for $appId, skipping duplicate request")
+                return@withContext false
+            }
+            activeSyncs.add(appId)
+        }
+
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting sync for $appId (action: $preferredAction)")
 
@@ -126,6 +141,11 @@ object EpicCloudSavesManager {
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "[Cloud Saves] Sync failed")
             false
+        } finally {
+            // Always remove from active syncs when done
+            syncMutex.withLock {
+                activeSyncs.remove(appId)
+            }
         }
     }
 
@@ -285,6 +305,11 @@ object EpicCloudSavesManager {
                 }
 
                 val data = response.body?.bytes() ?: return@withContext Result.failure(Exception("Empty response"))
+
+                if (data.isEmpty()) {
+                    Timber.tag("Epic").w("[Cloud Saves] Downloaded file is empty (0 bytes)")
+                }
+
                 Result.success(data)
             }
         } catch (e: Exception) {
@@ -352,11 +377,20 @@ object EpicCloudSavesManager {
             }
 
             val manifestBytes = manifestData.getOrNull()!!
+
+            // Validate manifest is not empty
+            if (manifestBytes.isEmpty()) {
+                Timber.tag("Epic").w("[Cloud Saves] Cloud manifest is empty, uploading all local files")
+                return@withContext uploadSaves(context, appId, accountId, game)
+            }
+
             val manifest = try {
                 EpicManifest.readAll(manifestBytes)
             } catch (e: Exception) {
-                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest")
-                return@withContext false
+                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest (size: ${manifestBytes.size} bytes)")
+                // If manifest is corrupt, upload our local version
+                Timber.tag("Epic").w("[Cloud Saves] Manifest parse failed, uploading local files")
+                return@withContext uploadSaves(context, appId, accountId, game)
             }
 
             // Build map of cloud files with their modification times
@@ -679,7 +713,7 @@ object EpicCloudSavesManager {
             if (emptyFiles.isNotEmpty()) {
                 Timber.tag("Epic").w("[Cloud Saves] Skipping ${emptyFiles.size} empty packaged files: ${emptyFiles.keys.joinToString()}")
             }
-            
+
             // Only upload non-empty files
             val nonEmptyFiles = packagedFiles.filterValues { it.isNotEmpty() }
             if (nonEmptyFiles.isEmpty()) {

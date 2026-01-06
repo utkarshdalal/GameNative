@@ -117,7 +117,7 @@ object EpicConstants {
      */
     fun getGameInstallPath(context: android.content.Context, gameTitle: String): String {
         // Sanitize game title for filesystem
-        val sanitizedTitle = gameTitle.replace(Regex("[^a-zA-Z0-9 -_]"), "").trim()
+        val sanitizedTitle = gameTitle.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
         return Paths.get(defaultEpicGamesPath(context), sanitizedTitle).toString()
     }
 
