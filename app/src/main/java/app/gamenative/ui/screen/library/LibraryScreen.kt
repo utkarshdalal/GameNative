@@ -75,6 +75,7 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.Orientation
@@ -338,14 +339,14 @@ private fun LibraryScreenContent(
                                 findSteamGridDBImage(item, "grid_capsule")
                                     ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_600x900.jpg" else "")
                             GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_600x900.jpg"
-                            else -> ""
+                            GameSource.GOG -> item.iconHash.ifEmpty { "" }
                         }
                         val heroUrl = when (item.gameSource) {
                             GameSource.CUSTOM_GAME ->
                                 findSteamGridDBImage(item, "grid_hero")
                                     ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg" else "")
                             GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg"
-                            else -> ""
+                            GameSource.GOG -> item.iconHash.ifEmpty { "" }
                         }
                         // Library hero - the large 1920x620 banner used on game info screens
                         val libraryHeroUrl = when (item.gameSource) {
@@ -354,7 +355,7 @@ private fun LibraryScreenContent(
                                     ?: findSteamGridDBImage(item, "grid_hero")
                                     ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_hero.jpg" else "")
                             GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_hero.jpg"
-                            else -> ""
+                            GameSource.GOG -> item.iconHash.ifEmpty { "" }
                         }
                         val coverUrl = item.clientIconUrl
 
@@ -372,7 +373,7 @@ private fun LibraryScreenContent(
                         val isInstalled = when (item.gameSource) {
                             GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
                             GameSource.CUSTOM_GAME -> true // Custom games are always "installed"
-                            else -> false
+                            GameSource.GOG -> GOGService.isGameInstalled(item.gameId.toString())
                         }
                         val installStatusLabel = if (isInstalled) {
                             context.getString(R.string.library_installed)
@@ -392,6 +393,7 @@ private fun LibraryScreenContent(
                         // Game source bindings
                         val isSteam = item.gameSource == GameSource.STEAM
                         val isCustom = item.gameSource == GameSource.CUSTOM_GAME
+                        val isGOG = item.gameSource == GameSource.GOG
 
                         mapOf(
                             "game.title" to title,
@@ -409,6 +411,7 @@ private fun LibraryScreenContent(
                             "game.lastPlayed" to lastPlayedText,
                             "game.isSteam" to isSteam.toString(),
                             "game.isCustom" to isCustom.toString(),
+                            "game.isGOG" to isGOG.toString(),
                             "game.source" to item.gameSource.name.lowercase(),
                         )
                     }
@@ -678,6 +681,7 @@ private fun LibraryScreenContent(
                     onViewChanged = { /* No-op when using themes */ },
                     showSteam = state.showSteamInLibrary,
                     showCustomGames = state.showCustomGamesInLibrary,
+                    showGOG = state.showGOGInLibrary,
                     onSourceToggle = onSourceToggle,
                 )
             }

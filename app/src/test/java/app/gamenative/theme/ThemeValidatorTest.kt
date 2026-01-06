@@ -21,7 +21,7 @@ class ThemeValidatorTest {
         val themeXml = XmlNode("theme")
         val tree = ThemeTree(root.absolutePath, manifestEntry = null, themeXml = themeXml)
 
-        val result = ThemeValidator.validate(tree, appVersion = "1.5.0", engineMajor = 1)
+        val result = ThemeValidator.validate(tree, appVersion = "1.5.0", engineVersion = "1.0.0")
         assertTrue("Expected blocking error", result.hasBlocking())
         assertTrue(result.issues.any { it.code == ValidationCode.ENGINE_VERSION_MISMATCH && it.severity == Severity.ERROR })
     }
@@ -33,13 +33,13 @@ class ThemeValidatorTest {
         writeManifest(root, engineVersion = 1, minApp = "2.0.0", maxApp = null)
         val tree = ThemeTree(root.absolutePath, manifestEntry = null, themeXml = XmlNode("theme"))
 
-        val resMin = ThemeValidator.validate(tree, appVersion = "1.5.0", engineMajor = 1)
+        val resMin = ThemeValidator.validate(tree, appVersion = "1.5.0", engineVersion = "1.0.0")
         assertTrue(resMin.hasBlocking())
         assertTrue(resMin.issues.any { it.code == ValidationCode.APP_VERSION_OUT_OF_RANGE })
 
         // app 3.0.0 exceeds max 2.5.0
         writeManifest(root, engineVersion = 1, minApp = "1.0.0", maxApp = "2.5.0")
-        val resMax = ThemeValidator.validate(tree, appVersion = "3.0.0", engineMajor = 1)
+        val resMax = ThemeValidator.validate(tree, appVersion = "3.0.0", engineVersion = "1.0.0")
         assertTrue(resMax.hasBlocking())
         assertTrue(resMax.issues.any { it.code == ValidationCode.APP_VERSION_OUT_OF_RANGE })
     }

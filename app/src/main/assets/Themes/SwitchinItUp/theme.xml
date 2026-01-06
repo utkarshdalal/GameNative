@@ -32,6 +32,17 @@
                    focusOnly="true"
                    focusTransitionSpeed="@{vars.transitionSpeed}"
                    visibleWhen="@{game.isSteam}" />
+                   
+            <!-- GOG icon - shown to the left of title for GOG games -->
+            <image id="gogIcon"
+                   x="@{vars.sourceIconX}" y="@{vars.sourceIconY}"
+                   width="@{vars.sourceIconSize}" height="@{vars.sourceIconSize}"
+                   src="assets/gog.png"
+                   scaleType="contain"
+                   anchor="topLeft"
+                   focusOnly="true"
+                   focusTransitionSpeed="@{vars.transitionSpeed}"
+                   visibleWhen="@{game.isGOG}" />
 
             <!-- Custom game icon - shown to the left of title for custom games -->
             <image id="customIcon"

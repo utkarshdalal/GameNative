@@ -989,7 +989,8 @@
                 <tr><th>Binding</th><th>Type</th><th>Description</th></tr>
                 <tr><td><code>@{game.isSteam}</code></td><td>Boolean</td><td>"true" for Steam games</td></tr>
                 <tr><td><code>@{game.isCustom}</code></td><td>Boolean</td><td>"true" for custom games</td></tr>
-                <tr><td><code>@{game.source}</code></td><td>String</td><td>"steam" or "custom_game"</td></tr>
+                <tr><td><code>@{game.isGOG}</code></td><td>Boolean</td><td>"true" for GOG games</td></tr>
+                <tr><td><code>@{game.source}</code></td><td>String</td><td>"steam", "custom_game", or "gog"</td></tr>
             </table>
 
             <h3>Using Bindings for Conditional Visibility</h3>
@@ -997,8 +998,9 @@
             <pre><code class="language-xml">&lt;!-- Show checkmark only when installed --&gt;
 &lt;text text="✓" visibleWhen="@{game.isInstalled}" /&gt;
 
-&lt;!-- Show Steam icon only for Steam games --&gt;
+&lt;!-- Show platform-specific icons --&gt;
 &lt;image src="assets/steam.png" visibleWhen="@{game.isSteam}" /&gt;
+&lt;image src="assets/gog.png" visibleWhen="@{game.isGOG}" /&gt;
 
 &lt;!-- Dynamic color from binding (these DO use @{...}) --&gt;
 &lt;text text="@{game.compatibility.label}" 
@@ -1320,7 +1322,7 @@
                 <tr><td>Text</td><td><code>@{game.title}</code>, <code>@{game.appId}</code>, <code>@{game.lastPlayed}</code></td></tr>
                 <tr><td>Status</td><td><code>@{game.isInstalled}</code>, <code>@{game.installStatus}</code>, <code>@{game.installStatus.color}</code></td></tr>
                 <tr><td>Compatibility</td><td><code>@{game.compatibility.label}</code>, <code>@{game.compatibility.color}</code></td></tr>
-                <tr><td>Source</td><td><code>@{game.isSteam}</code>, <code>@{game.isCustom}</code>, <code>@{game.source}</code></td></tr>
+                <tr><td>Source</td><td><code>@{game.isSteam}</code>, <code>@{game.isCustom}</code>, <code>@{game.isGOG}</code>, <code>@{game.source}</code></td></tr>
             </table>
             
             <h3>Starter Template</h3>
@@ -1450,7 +1452,13 @@
 &lt;image x="8" y="8" width="20" height="20"
        src="assets/folder.png" scaleType="contain"
        anchor="topLeft" focusOnly="true"
-       visibleWhen="@{game.isCustom}" /&gt;</code></pre>
+       visibleWhen="@{game.isCustom}" /&gt;
+
+&lt;!-- GOG game icon --&gt;
+&lt;image x="8" y="8" width="20" height="20"
+       src="assets/gog.png" scaleType="contain"
+       anchor="topLeft" focusOnly="true"
+       visibleWhen="@{game.isGOG}" /&gt;</code></pre>
             
             <h3>Title Only When Focused</h3>
             <p>Show game title with fade animation on focus:</p>

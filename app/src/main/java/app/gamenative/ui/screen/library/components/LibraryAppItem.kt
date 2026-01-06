@@ -64,6 +64,7 @@ import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
@@ -199,44 +200,51 @@ internal fun AppItem(
                     }
 
                     val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
-                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-                            // For Custom Games, use SteamGridDB images
-                            when (paneType) {
-                                PaneType.GRID_CAPSULE -> {
-                                    // Vertical grid for capsule
-                                    findSteamGridDBImage("grid_capsule")
-                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                                }
-                                PaneType.GRID_HERO -> {
-                                    // Horizontal grid for hero view
-                                    findSteamGridDBImage("grid_hero")
-                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
-                                }
-                                else -> {
-                                    // For list view, use heroes endpoint (not grid_hero)
-                                    val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
-                                    val heroUrl = gameFolderPath?.let { path ->
-                                        val folder = java.io.File(path)
-                                        val heroFile = folder.listFiles()?.firstOrNull { file ->
-                                            file.name.startsWith("steamgriddb_hero") &&
-                                            !file.name.contains("grid") &&
-                                            (file.name.endsWith(".png", ignoreCase = true) ||
-                                             file.name.endsWith(".jpg", ignoreCase = true) ||
-                                             file.name.endsWith(".webp", ignoreCase = true))
-                                        }
-                                        heroFile?.let { android.net.Uri.fromFile(it).toString() }
+                        val url = when (appInfo.gameSource) {
+                            GameSource.CUSTOM_GAME -> {
+                                // For Custom Games, use SteamGridDB images
+                                when (paneType) {
+                                    PaneType.GRID_CAPSULE -> {
+                                        // Vertical grid for capsule
+                                        findSteamGridDBImage("grid_capsule")
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
                                     }
-                                    heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                    PaneType.GRID_HERO -> {
+                                        // Horizontal grid for hero view
+                                        findSteamGridDBImage("grid_hero")
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                    }
+                                    else -> {
+                                        // For list view, use heroes endpoint (not grid_hero)
+                                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                                        val heroUrl = gameFolderPath?.let { path ->
+                                            val folder = java.io.File(path)
+                                            val heroFile = folder.listFiles()?.firstOrNull { file ->
+                                                file.name.startsWith("steamgriddb_hero") &&
+                                                !file.name.contains("grid") &&
+                                                (file.name.endsWith(".png", ignoreCase = true) ||
+                                                 file.name.endsWith(".jpg", ignoreCase = true) ||
+                                                 file.name.endsWith(".webp", ignoreCase = true))
+                                            }
+                                            heroFile?.let { android.net.Uri.fromFile(it).toString() }
+                                        }
+                                        heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                    }
                                 }
                             }
-                        } else {
-                            // For Steam games, use standard Steam URLs
-                            if (paneType == PaneType.GRID_CAPSULE) {
-                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                            } else {
-                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                            GameSource.GOG -> {
+                                appInfo.iconHash
+                            }
+                            GameSource.STEAM -> {
+                                // For Steam games, use standard Steam URLs
+                                if (paneType == PaneType.GRID_CAPSULE) {
+                                    "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                                } else {
+                                    "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
                             }
                         }
+                        url
                     }
 
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
@@ -299,18 +307,26 @@ internal fun AppItem(
                         )
                     } else {
                         var isInstalled by remember(appInfo.appId, appInfo.gameSource) {
-                            when (appInfo.gameSource) {
-                                GameSource.STEAM -> mutableStateOf(SteamService.isAppInstalled(appInfo.gameId))
-                                GameSource.CUSTOM_GAME -> mutableStateOf(true) // Custom Games are always considered installed
-                                else -> mutableStateOf(false)
+                            mutableStateOf(false)
+                        }
+
+                        // Initialize installation status
+                        LaunchedEffect(appInfo.appId, appInfo.gameSource) {
+                            isInstalled = when (appInfo.gameSource) {
+                                GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                                GameSource.CUSTOM_GAME -> true
+                                else -> false
                             }
                         }
+
                         // Update installation status when refresh completes
                         LaunchedEffect(isRefreshing) {
                             if (!isRefreshing) {
                                 // Refresh just completed, check installation status
                                 isInstalled = when (appInfo.gameSource) {
                                     GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                    GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
                                     GameSource.CUSTOM_GAME -> true
                                     else -> false
                                 }

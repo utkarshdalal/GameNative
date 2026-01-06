@@ -17,6 +17,10 @@
     <string name="delete_app">Slet</string>
     <string name="uninstall">Afinstallér</string>
     <string name="run_app">Spil</string>
+    <string name="gog_uninstall_game_title">Afinstallér spil</string>
+    <string name="gog_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="gog_install_game_title">Download spil</string>
+    <string name="gog_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tTilgængelig plads: %2$s</string>
     <string name="download_prompt_title">Installér app</string>
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
@@ -321,7 +325,9 @@
     <string name="graphics_driver">Grafikdriver</string>
     <string name="graphics_driver_version">Grafikdriverversion</string>
     <string name="exposed_vulkan_extensions">Eksponerede Vulkan-udvidelser</string>
-    <string name="max_device_memory">Maksimal enhedshukommelse</string>    <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
+    <string name="max_device_memory">Maksimal enhedshukommelse</string>
+    <string name="frame_synchronization">Rammens synkronisering</string>
+    <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan-version</string>
     <string name="image_cache_size">Billedcache-størrelse</string>
     <string name="dx_wrapper">DX-wrapper</string>
@@ -467,7 +473,7 @@
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>
 
-    <!-- TODO: Manual review - New strings for Login Screen -->
+    <!-- New strings for Login Screen -->
     <string name="login_app_name">GameNative</string>
     <string name="login_privacy_policy">Privatlivspolitik</string>
     <string name="login_welcome_back">Velkommen tilbage</string>
@@ -480,16 +486,16 @@
     <string name="login_retry_qr">Prøv QR-kode igen</string>
     <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>
 
-    <!-- TODO: Manual review - Generic/Reusable strings -->
+    <!-- Generic/Reusable strings -->
     <string name="continue_action">Fortsæt</string>
     <string name="settings_text">Indstillinger</string>
     <string name="download">Download</string>
     <string name="install">Installér</string>
 
-    <!-- TODO: Manual review - Connecting to Servers Screen -->
+    <!-- Connecting to Servers Screen -->
     <string name="connect_to_remote_server">Forbinder til fjernservere...</string>
 
-    <!-- TODO: Manual review - LibraryAppScreen: Dialogs -->
+    <!-- LibraryAppScreen: Dialogs -->
     <string name="download_failed_try_again">Download fejlede. Prøv venligst igen.</string>
     <string name="library_not_enough_space_message">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
     <string name="library_download_prompt_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
@@ -508,7 +514,7 @@
     <string name="library_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
     <string name="library_config_title">%s-konfiguration</string>
 
-    <!-- TODO: Manual review - LibraryAppScreen: Toast Messages -->
+    <!-- LibraryAppScreen: Toast Messages -->
     <string name="library_storage_permission_required">Lagertilladelse påkrævet</string>
     <string name="library_exported">Eksporteret</string>
     <string name="library_failed_to_export">Kunne ikke eksportere: %s</string>
@@ -519,12 +525,12 @@
     <string name="library_cloud_sync_up_to_date">Gemfiler er allerede opdaterede</string>
     <string name="library_cloud_sync_failed">Sky-synkronisering fejlede: %s</string>
 
-    <!-- TODO: Manual review - LibraryAppScreen: UI Labels -->
+    <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">Internet påkrævet for installation</string>
     <string name="library_wifi_only_enabled">Installation kun via Wi-Fi/LAN aktiveret</string>
     <string name="library_file_count">Fil %1$d af %2$d</string>
 
-    <!-- TODO: Manual review - PluviaMain: Update & App Info -->
+    <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Opdatering tilgængelig</string>
     <string name="main_update_available_message">En ny version (%1$s) er tilgængelig!%2$s</string>
     <string name="main_update_button">Opdatér</string>
@@ -532,7 +538,7 @@
     <string name="main_update_failed_title">Opdatering fejlede</string>
     <string name="main_update_failed_message">Kunne ikke downloade eller installere opdateringen. Prøv venligst igen senere.</string>
 
-    <!-- TODO: Manual review - PluviaMain: Crash & Support -->
+    <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Nylig crash</string>
     <string name="main_recent_crash_message">Beklager det!\nDet ville være dejligt at vide om det nylige problem, du har haft.\nDu kan se og eksportere den nyeste crash-log i appens indstillinger og vedhæfte den som et Github-problem i projektets repository.\nLink til Github-repo er også i indstillinger!</string>
     <string name="main_thank_you_title">Tak for at bruge GameNative!</string>
@@ -543,30 +549,30 @@
     <string name="main_discord_support_message">Tilmeld dig Discord for at få support til at rette dit spil eller forbedre ydelsen.</string>
     <string name="main_open_discord">Åbn Discord</string>
 
-    <!-- TODO: Manual review - PluviaMain: Game Launch -->
+    <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Downloader Steam...</string>
     <string name="main_installing_glibc">Installerer glibc-komponenter...</string>
     <string name="main_installing_bionic">Installerer Bionic-komponenter...</string>
     <string name="main_loading">Indlæser...</string>
 
-    <!-- TODO: Manual review - PluviaMain: Session Conflicts -->
+    <!-- PluviaMain: Session Conflicts -->
     <string name="main_app_running_title">App kører</string>
     <string name="main_app_running_message">Du er logget ind på en anden enhed og spiller allerede %s. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam.</string>
     <string name="main_app_running_other_device">Du er logget ind på en anden enhed (%1$s) og spiller allerede %2$s (%3$s), og den gemfil er ikke i skyen endnu. \nDu kan stadig spille dette spil, men det vil afbryde den anden session fra Steam og kan skabe en gemfilkonflikt når sessionsframgangen synkroniseres</string>
     <string name="main_play_anyway">Spil alligevel</string>
 
-    <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
+    <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
     <string name="main_save_conflict_message">Der er en ny fjern-gemfil og en ny lokal gemfil, hvilken vil du beholde?\n\nLokal gemfil:\n\t%1$s\nFjern-gemfil:\n\t%2$s</string>
     <string name="main_keep_local">Behold lokal</string>
     <string name="main_keep_remote">Behold fjern</string>
 
-    <!-- TODO: Manual review - PluviaMain: Sync Errors -->
+    <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Synkroniseringsoperationen tager for lang tid. Prøv venligst at starte spillet igen om et øjeblik.</string>
     <string name="main_sync_in_progress">Synkronisering er i gang. Prøv venligst igen om et øjeblik.</string>
     <string name="main_sync_failed">Kunne ikke synkronisere gemfiler: %s.</string>
 
-    <!-- TODO: Manual review - PluviaMain: Pending Operations -->
+    <!-- PluviaMain: Pending Operations -->
     <string name="main_upload_in_progress_title">Upload i gang</string>
     <string name="main_upload_in_progress_message">Du spillede %1$s på enheden %2$s (%3$s) og gemfilen fra den session uploader stadig.\nPrøv igen senere.</string>
     <string name="main_pending_upload_title">Ventende upload</string>
@@ -575,7 +581,7 @@
     <string name="main_pending_operation_none">Modtog ventende fjernoperationer, hvis operation var \'none\'. Genstart venligst appen.</string>
     <string name="main_multiple_pending_operations">Flere ventende fjernoperationer, prøv igen senere. Genstart venligst appen.</string>
 
-    <!-- TODO: Manual review - Container Config Dialog -->
+    <!-- Container Config Dialog -->
     <string name="container_config_title">Konfigurér container</string>
     <string name="container_config_unsaved_changes_title">Ikke-gemte ændringer</string>
     <string name="container_config_unsaved_changes_message">Er du sikker på, at du vil kassere dine ændringer?</string>
@@ -592,11 +598,11 @@
     <string name="container_config_executable_path">Sti til eksekverbar fil</string>
     <string name="container_config_executable_path_placeholder">f.eks. sti\\til\\exe</string>
 
-    <!-- TODO: Manual review - Libraries Dialog -->
+    <!-- Libraries Dialog -->
     <string name="libraries_title">Anvendte biblioteker</string>
     <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
 
-    <!-- TODO: Manual review - Supporters Dialog -->
+    <!-- Supporters Dialog -->
     <string name="supporters_art_credits">Kunstnerkreditter</string>
     <string name="supporters_app_icon">App-ikon: Hachi</string>
     <string name="supporters_alt_icon">Alternativt app-ikon: rhapsody_mdr</string>
@@ -606,7 +612,7 @@
     <string name="supporters_none">Ingen støtter endnu.</string>
     <string name="supporters_anonymous">Anonym</string>
 
-    <!-- TODO: Manual review - Chat Screen -->
+    <!-- Chat Screen -->
     <string name="chat_preview_warning">Chatning er stadig en tidlig funktion.\nRapportér venligst problemer i projektets repository.</string>
     <string name="chat_no_history">Ingen chathistorik</string>
     <string name="chat_send_message">Send en besked</string>
@@ -614,7 +620,7 @@
     <string name="chat_emoticons">Humørikoner</string>
     <string name="chat_stickers">Mærkater</string>
 
-    <!-- TODO: Manual review - Library Components -->
+    <!-- Library Components -->
     <string name="library_open">Åbn</string>
     <string name="library_installed">Installeret</string>
     <string name="library_installing">Installerer</string>
@@ -623,6 +629,8 @@
     <string name="library_compatible">Kompatibel</string>
     <string name="library_compatibility_unknown">Kompatibilitet ukendt</string>
     <string name="library_not_compatible">Ikke kompatibel</string>
+    <string name="library_never_played">Aldrig spillet</string>
+    <string name="last_played">Sidst spillet</string>
 
     <!-- Best Config Compatibility Messages -->
     <string name="best_config_exact_gpu_match">Kendt konfiguration virker på din enhed</string>
@@ -638,7 +646,6 @@
 
     <string name="library_app_type">App-type</string>
     <string name="library_app_status">App-status</string>
-    <string name="library_app_source">App-kilder</string>
     <string name="library_layout">Layout</string>
     <string name="library_layout_list">Liste</string>
     <string name="library_layout_capsule">Kapsel</string>
@@ -650,12 +657,12 @@
     <string name="library_filters">Filtre</string>
     <string name="library_game_count">%1$d spil • %2$d installerede</string>
 
-    <!-- TODO: Manual review - Two Factor Auth -->
+    <!-- Two Factor Auth -->
     <string name="two_factor_login">Login</string>
     <string name="two_factor_verification_code">Verifikationskode</string>
     <string name="two_factor_enter_code">Indtast 5-tegns kode</string>
 
-    <!-- TODO: Manual review - Contents Manager -->
+    <!-- Contents Manager -->
     <string name="contents_validating">Validerer indhold...</string>
     <string name="contents_error_badtar">Filen kan ikke genkendes</string>
     <string name="contents_error_noprofile">Profil ikke fundet i indhold</string>
@@ -677,13 +684,13 @@
     <string name="contents_review_confirm">Dette indhold inkluderer filer uden for det pålidelige sæt. Gennemgå og bekræft for at fortsætte.</string>
     <string name="contents_removed">Fjernede %1$s</string>
 
-    <!-- TODO: Manual review - Driver Manager -->
+    <!-- Driver Manager -->
     <string name="driver_error_manifest">Kunne ikke indlæse drivermanifest: %1$d</string>
     <string name="driver_error_loading">Fejl ved indlæsning af drivermanifest: %1$s</string>
     <string name="driver_timeout">Forbindelsen fik timeout. Tjek venligst dit netværk og prøv igen.</string>
     <string name="driver_network_error">Netværksfejl: %1$s</string>
 
-    <!-- TODO: Manual review - Settings Interface -->
+    <!-- Settings Interface -->
     <string name="settings_theme_default">Standard</string>
     <string name="settings_theme_alternate">Alternativ</string>
     <string name="settings_download_slow">Langsom</string>
@@ -695,15 +702,15 @@
     <string name="settings_region_default">Standard</string>
     <string name="settings_saving_restarting">Gemmer indstillinger og genstarter...</string>
 
-    <!-- TODO: Manual review - Settings Screen -->
+    <!-- Settings Screen -->
     <string name="settings_title">Indstillinger</string>
 
-    <!-- TODO: Manual review - Contents Install Finish -->
+    <!-- Contents Install Finish -->
     <string name="contents_install_success">Indhold installeret</string>
     <string name="contents_install_failed">Kunne ikke installere indhold</string>
     <string name="contents_install_error">Installationsfejl: %1$s</string>
 
-    <!-- TODO: Manual review - App Filter -->
+    <!-- App Filter -->
     <string name="app_filter_installed">Installeret</string>
     <string name="app_filter_game">Spil</string>
     <string name="app_filter_application">Applikation</string>
@@ -711,17 +718,16 @@
     <string name="app_filter_demo">Demo</string>
     <string name="app_filter_family">Familie</string>
 
-    <!-- TODO: Manual review - Game Feedback Dialog -->
+    <!-- Game Feedback Dialog -->
     <string name="game_feedback_game_run">Hvordan kørte spillet?</string>
     <string name="game_feedback_issues_question">Vælg eventuelle problemer du stødte på:</string>
 
-    <!-- TODO: Manual review - Container Configuration: Steam Integration (missing) -->
+    <!-- Container Configuration: Steam Integration (missing) -->
     <string name="use_legacy_drm">Brug ældre DRM</string>
 
-    <!-- TODO: Manual review - Library Status -->
+    <!-- Library Status -->
     <string name="library_status_ready">Klar</string>
 
-    <!-- TODO: Manual review - New strings from latest pull -->
     <!-- Steam-specific dialogs -->
     <string name="steam_install_space_prompt">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
     <string name="steam_install_not_enough_space">Appen der installeres har brug for %1$s plads, men der er kun %2$s tilbage på denne enhed</string>
@@ -795,7 +801,38 @@
     <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
     <string name="base_app_export_cancelled">Eksport annulleret</string>
 
-    <!-- Oversatte strenge -->
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">GOG Integration (Alpha)</string>
+    <string name="gog_settings_login_title">GOG Login</string>
+    <string name="gog_settings_login_subtitle">Log ind på din GOG-konto</string>
+    <string name="gog_settings_sync_subtitle_syncing">Synkroniserer…</string>
+    <string name="gog_settings_sync_subtitle_error">Fejl: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ Synkroniseret %1$d spil</string>
+    <string name="gog_settings_sync_subtitle_default">Hent dit GOG-spilbibliotek</string>
+    <string name="gog_login_success_title">Login lykkedes</string>
+    <string name="gog_login_success_message">Du er nu logget ind på GOG.\nVi vil nu synkronisere dit bibliotek i baggrunden.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Log ind på GOG</string>
+    <string name="gog_login_auto_auth_info">Tryk på \'Åbn GOG Login\' og log ind. Når du er logget ind, skal du kopiere URL\'en og indsætte nedenfor</string>
+    <string name="gog_login_auth_example">Eksempel: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">Åbn GOG Login</string>
+    <string name="gog_login_auth_code_label">Godkendelseskode eller login-succes-URL</string>
+    <string name="gog_login_auth_code_placeholder">Indsæt kode eller url her</string>
+    <string name="gog_login_button">Log ind</string>
+    <string name="gog_login_cancel">Annuller</string>
+    <string name="gog_login_browser_error">Kunne ikke åbne browser</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Log ud</string>
+    <string name="gog_settings_logout_subtitle">Log ud fra din GOG-konto</string>
+    <string name="gog_logout_confirm_title">Log ud fra GOG?</string>
+    <string name="gog_logout_confirm_message">Dette vil fjerne dine GOG-legitimationsoplysninger og rydde dit GOG-bibliotek fra denne enhed. Du kan logge ind igen når som helst.</string>
+    <string name="gog_logout_confirm">Log ud</string>
+    <string name="gog_logout_success">Logget ud fra GOG</string>
+    <string name="gog_logout_failed">Kunne ikke logge ud: %s</string>
+    <string name="gog_logout_in_progress">Logger ud fra GOG…</string>
+
     <string name="add_game">Tilføj spil</string>
     <string name="back">Tilbage</string>
     <string name="base_app_reset_container_confirm">Nulstil</string>
@@ -869,9 +906,7 @@
     <string name="fexcore_preset">FEXCore-forudindstilling</string>
     <string name="fexcore_presets">FEXCore-forudindstillinger</string>
     <string name="fexcore_presets_description">Se, rediger og opret FEXCore-forudindstillinger</string>
-    <string name="last_played">Sidst spillet</string>
     <string name="library_layout_title">Layout</string>
-    <string name="library_never_played">Aldrig spillet</string>
     <string name="library_source_custom">Brugerdefinerede spil</string>
     <string name="library_source_steam">Steam</string>
     <string name="present_modes">Præsentationstilstande</string>

@@ -5,6 +5,8 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
+import app.gamenative.service.gog.GOGConstants
+import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
@@ -503,26 +505,46 @@ object ContainerUtils {
 
         // Set up container drives to include app
         val defaultDrives = PrefManager.drives
-        val drives = if (gameSource == GameSource.STEAM) {
-            // For Steam games, set up the app directory path
-            val gameId = extractGameIdFromContainerId(appId)
-            val appDirPath = SteamService.getAppDirPath(gameId)
-            val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
-            "$defaultDrives$drive:$appDirPath"
-        } else {
-            // For Custom Games, find the game folder and map it to A: drive
-            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
-            if (gameFolderPath != null) {
-                // Check if A: is already in defaultDrives, if not use it, otherwise use next available
-                val drive: Char = if (defaultDrives.contains("A:")) {
-                    Container.getNextAvailableDriveLetter(defaultDrives)
+        val drives = when (gameSource) {
+            GameSource.STEAM -> {
+                // For Steam games, set up the app directory path
+                val gameId = extractGameIdFromContainerId(appId)
+                val appDirPath = SteamService.getAppDirPath(gameId)
+                val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
+                "$defaultDrives$drive:$appDirPath"
+            }
+            GameSource.CUSTOM_GAME -> {
+                // For Custom Games, find the game folder and map it to A: drive
+                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+                if (gameFolderPath != null) {
+                    // Check if A: is already in defaultDrives, if not use it, otherwise use next available
+                    val drive: Char = if (defaultDrives.contains("A:")) {
+                        Container.getNextAvailableDriveLetter(defaultDrives)
+                    } else {
+                        'A'
+                    }
+                    "$defaultDrives$drive:$gameFolderPath"
                 } else {
-                    'A'
+                    Timber.w("Could not find folder path for Custom Game: $appId")
+                    defaultDrives
                 }
-                "$defaultDrives$drive:$gameFolderPath"
-            } else {
-                Timber.w("Could not find folder path for Custom Game: $appId")
-                defaultDrives
+            }
+            GameSource.GOG -> {
+                // For GOG games, map the specific game directory to A: drive
+                val gameId = extractGameIdFromContainerId(appId)
+                val game = GOGService.getGOGGameOf(gameId.toString())
+                if (game != null && game.installPath.isNotEmpty()) {
+                    val gameInstallPath = game.installPath
+                    val drive: Char = if (defaultDrives.contains("A:")) {
+                        Container.getNextAvailableDriveLetter(defaultDrives)
+                    } else {
+                        'A'
+                    }
+                    "$defaultDrives$drive:$gameInstallPath"
+                } else {
+                    Timber.w("Could not find GOG game info for: $gameId, using default drives")
+                    defaultDrives
+                }
             }
         }
         Timber.d("Prepared container drives: $drives")
@@ -703,6 +725,7 @@ object ContainerUtils {
         }
 
         // No custom config, so determine the DX wrapper synchronously (only for Steam games)
+        // For GOG and Custom Games, use the default DX wrapper from preferences
         if (gameSource == GameSource.STEAM) {
             runBlocking {
                 try {
@@ -761,7 +784,8 @@ object ContainerUtils {
         // Delete any existing FEXCore config files (we use environment variables only)
         FEXCoreManager.deleteConfigFiles(context, container.id)
 
-        // Ensure all games have the A: drive mapped to the game folder
+        // Ensure Custom Games have the A: drive mapped to the game folder
+        // and GOG games have a drive mapped to the GOG games directory
         val gameSource = extractGameSourceFromContainerId(appId)
         val gameFolderPath: String? = when (gameSource) {
             GameSource.STEAM -> {
@@ -802,6 +826,51 @@ object ContainerUtils {
                 container.drives = updatedDrives
                 container.saveData()
                 Timber.d("Updated container drives to include A: drive mapping: $updatedDrives")
+            }
+        } else if (gameSource == GameSource.GOG) {
+            // Ensure GOG games have the specific game directory mapped
+            val gameId = extractGameIdFromContainerId(appId)
+            val game = runBlocking { GOGService.getGOGGameOf(gameId.toString()) }
+            if (game != null && game.installPath.isNotEmpty()) {
+                val gameInstallPath = game.installPath
+                var hasCorrectDriveMapping = false
+
+                // Check if the specific game directory is already mapped
+                for (drive in Container.drivesIterator(container.drives)) {
+                    if (drive[1] == gameInstallPath) {
+                        hasCorrectDriveMapping = true
+                        break
+                    }
+                }
+
+                // If specific game directory is not mapped, add/update it
+                if (!hasCorrectDriveMapping) {
+                    val currentDrives = container.drives
+                    val drivesBuilder = StringBuilder()
+
+                    // Use A: drive for game, or next available
+                    val drive: Char = if (!currentDrives.contains("A:")) {
+                        'A'
+                    } else {
+                        Container.getNextAvailableDriveLetter(currentDrives)
+                    }
+
+                    drivesBuilder.append("$drive:$gameInstallPath")
+
+                    // Add all other drives (excluding the one we just used)
+                    for (existingDrive in Container.drivesIterator(currentDrives)) {
+                        if (existingDrive[0] != drive.toString()) {
+                            drivesBuilder.append("${existingDrive[0]}:${existingDrive[1]}")
+                        }
+                    }
+
+                    val updatedDrives = drivesBuilder.toString()
+                    container.drives = updatedDrives
+                    container.saveData()
+                    Timber.d("Updated container drives to include $drive: drive mapping for GOG game: $updatedDrives")
+                }
+            } else {
+                Timber.w("Could not find GOG game info for $gameId, skipping drive mapping update")
             }
         }
 
@@ -866,7 +935,9 @@ object ContainerUtils {
      * Handles formats like:
      * - STEAM_123456 -> 123456
      * - CUSTOM_GAME_571969840 -> 571969840
+     * - GOG_19283103 -> 19283103
      * - STEAM_123456(1) -> 123456
+     * - 19283103 -> 19283103 (legacy GOG format)
      */
     fun extractGameIdFromContainerId(containerId: String): Int {
         // Remove duplicate suffix like (1), (2) if present
@@ -895,6 +966,7 @@ object ContainerUtils {
         return when {
             containerId.startsWith("STEAM_") -> GameSource.STEAM
             containerId.startsWith("CUSTOM_GAME_") -> GameSource.CUSTOM_GAME
+            containerId.startsWith("GOG_") -> GameSource.GOG
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }
@@ -1011,3 +1083,4 @@ object ContainerUtils {
         return systemKeywords.any { fileName.contains(it) }
     }
 }
+

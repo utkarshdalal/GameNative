@@ -57,4 +57,8 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideEncryptedAppTicketDao(db: PluviaDatabase): EncryptedAppTicketDao = db.encryptedAppTicketDao()
+
+    @Provides
+    @Singleton
+    fun provideGOGGameDao(db: PluviaDatabase) = db.gogGameDao()
 }
