@@ -554,13 +554,13 @@ object EpicCloudSavesManager {
 
             // 6. Parse manifest
             val manifestBytes = manifestData.getOrNull()!!
-            
+
             // Validate manifest is not empty
             if (manifestBytes.isEmpty()) {
                 Timber.tag("Epic").e("[Cloud Saves] Downloaded manifest is empty")
                 return@withContext false
             }
-            
+
             val manifest = try {
                 EpicManifest.readAll(manifestBytes)
             } catch (e: Exception) {
@@ -685,6 +685,13 @@ object EpicCloudSavesManager {
                 Timber.tag("Epic").e("[Cloud Saves] Failed to package save files")
                 return@withContext false
             }
+            
+            // Validate packaged files are not empty
+            val emptyFiles = packagedFiles.filter { it.value.isEmpty() }
+            if (emptyFiles.isNotEmpty()) {
+                Timber.tag("Epic").e("[Cloud Saves] Found ${emptyFiles.size} empty packaged files: ${emptyFiles.keys.joinToString()}")
+                return@withContext false
+            }
 
             // 3. Request write links for all files
             val fileNames = packagedFiles.keys.toList()
@@ -698,9 +705,15 @@ object EpicCloudSavesManager {
             var uploadedChunks = 0
             packagedFiles.forEach { (fileName, fileData) ->
                 if (!fileName.endsWith(".manifest")) {
+                    // Validate chunk is not empty
+                    if (fileData.isEmpty()) {
+                        Timber.tag("Epic").e("[Cloud Saves] Skipping empty chunk: $fileName")
+                        return@forEach
+                    }
+                    
                     val writeLink = writeLinks[fileName]
                     if (writeLink != null) {
-                        Timber.tag("Epic").d("[Cloud Saves] Uploading chunk: $fileName")
+                        Timber.tag("Epic").d("[Cloud Saves] Uploading chunk: $fileName (${fileData.size} bytes)")
                         val result = uploadFile(writeLink, fileData)
                         if (result.isSuccess) {
                             uploadedChunks++
@@ -715,9 +728,15 @@ object EpicCloudSavesManager {
             // 5. Upload manifest last
             val manifestEntry = packagedFiles.entries.find { it.key.endsWith(".manifest") }
             if (manifestEntry != null) {
+                // Validate manifest is not empty
+                if (manifestEntry.value.isEmpty()) {
+                    Timber.tag("Epic").e("[Cloud Saves] Manifest is empty, cannot upload: ${manifestEntry.key}")
+                    return@withContext false
+                }
+                
                 val writeLink = writeLinks[manifestEntry.key]
                 if (writeLink != null) {
-                    Timber.tag("Epic").d("[Cloud Saves] Uploading manifest: ${manifestEntry.key}")
+                    Timber.tag("Epic").d("[Cloud Saves] Uploading manifest: ${manifestEntry.key} (${manifestEntry.value.size} bytes)")
                     val result = uploadFile(writeLink, manifestEntry.value)
                     if (result.isSuccess) {
                         Timber.tag("Epic").i("[Cloud Saves] Uploaded manifest: ${manifestEntry.key} (${manifestEntry.value.size} bytes)")
@@ -879,7 +898,14 @@ object EpicCloudSavesManager {
             files.forEach { file ->
                 try {
                     val relativePath = file.relativeTo(saveDir).path.replace("\\", "/")
-                    Timber.tag("Epic").d("[Cloud Saves] Processing file: $relativePath")
+                    
+                    // Skip empty files
+                    if (file.length() == 0L) {
+                        Timber.tag("Epic").w("[Cloud Saves] Skipping empty file: $relativePath")
+                        return@forEach
+                    }
+                    
+                    Timber.tag("Epic").d("[Cloud Saves] Processing file: $relativePath (${file.length()} bytes)")
 
                     val fileManifest = app.gamenative.service.epic.manifest.FileManifest()
                     fileManifest.filename = relativePath
