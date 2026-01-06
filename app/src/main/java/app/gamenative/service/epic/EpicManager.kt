@@ -17,27 +17,7 @@ import org.json.JSONObject
 import timber.log.Timber
 
 /**
- *
- * TODO:
- * Launching games using the different execution params that we store.
- * DLC Support (Use DLC manager when its ready)
- * Finish off Cloud Saves
- * Deal with how we should work with 3rd party games such as Ubisoft/EA.
- *
- */
-
-/**
  * EpicManager handles Epic Games library management
- *
- * Responsibilities:
- * - Fetch game library from Epic via Legendary CLI
- * - Parse game metadata from JSON
- * - Update Room database
- * - Detect existing installations
- *
- * Uses legendary CLI commands:
- * - `legendary list --third-party --json` - Full library with metadata
- * - `legendary info <app_name> --json` - Detailed game info
  */
 @Singleton
 class EpicManager @Inject constructor(
@@ -60,11 +40,6 @@ class EpicManager @Inject constructor(
         .followSslRedirects(true)
         .build()
 
-    // DarkSiders 2 example for grabbing the details. Requires the Namespace and the catalog ID.
-    // https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/091d95ea332843498122beee1a786d71/bulk/items?id=8c04901974534bd0818f747952b0a19b&includeDLCDetails=true&includeMainGameDetails=true
-
-    // WE should just query the asset list first to get a list of assets, then we can query for each game if possible.
-    // ! TODO: Convert from grabbing everything, we can make our request since they're not difficult.
     data class EpicAssetList(
         val appName: String,
         val labelName: String,
@@ -81,8 +56,8 @@ class EpicManager @Inject constructor(
     )
 
     data class LibraryItem(
-        val namespace: String, // We also need this to construct the URL for grabbing the game information....
-        val catalogItemId: String?, // Catalogue Item ID is the one we use to grab the game details -> It's the most important ID.
+        val namespace: String,
+        val catalogItemId: String?,
         val appName: String,
         val country: String?,
         val platform: List<String>?,
@@ -117,7 +92,7 @@ class EpicManager @Inject constructor(
         val downloadSize: Long,
     )
 
-    // Usually consists of DieselGameBox and DieselGameBoxTall that we can use. We should use DieselGameBoxtall for capsule & the other for everything else.
+    // Usually consists of DieselGameBox and DieselGameBoxTall that we can use.
     data class EpicKeyImage(
         val type: String,
         val url: String, // Full URL of the game art.
@@ -137,9 +112,7 @@ class EpicManager @Inject constructor(
         val value: String,
     )
 
-    // So we may have multiple ways that we can determine if there's a 3rd party. So we should just check if either of these are available,
-    // we should just try to map it best we can (The EA App -> EA, UbisoftConnect -> Ubisoft, otherwise Uknown if we didnt parse but it exists)
-    // Turns out there are multiple fields we COULD see that may check for ubisoft and EA, so we'll need to look around.
+    // Custom Attributes from the payload.
     data class EpicCustomAttributes(
         val canRunOffline: Boolean = false,
         val cloudSaveFolder: String? = null,
@@ -204,12 +177,6 @@ class EpicManager @Inject constructor(
         val baseProductId: String?,
         val mainGameItem: EpicMainGameItem?,
     )
-
-    // GET LIBRARY ITEMS
-    // https://library-service.live.use1a.on.epicgames.com/library/api/public/items
-
-    // Get manifest DARKSIDERS 2 EXAMPLE : https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/v2/platform/Windows/namespace/091d95ea332843498122beee1a786d71/catalogItem/8c04901974534bd0818f747952b0a19b/app/Hoki/label/Live
-
     /**
      * Refresh the entire library (called manually by user or after login)
      * Fetches all games from Epic via Legendary and updates the database
@@ -248,8 +215,6 @@ class EpicManager @Inject constructor(
             val newGamesList = gamesList.filter { it.catalogItemId !in existingGameIds }
             Timber.tag("Epic").d("${newGamesList.size} new games need details fetched")
 
-
-            // ! Get the game information and store each one in batches
             val epicGames = mutableListOf<EpicGame>()
             for ((index, game) in newGamesList.withIndex()) {
                 val result = fetchGameInfo(context, game)
@@ -280,24 +245,11 @@ class EpicManager @Inject constructor(
             Result.failure(e)
         }
     }
-
-    // We should only pull out the following:
-
     /**
-     * Fetch user's Epic library
-     *
-     * Calls: GET https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata=true
      *
      * Returns list of library items with app names, namespaces, and catalog IDs
      */
     suspend fun fetchLibrary(context: Context): Result<List<ParsedLibraryItem>> = withContext(Dispatchers.IO) {
-        // Grab the initial library amount. We need the following from each game:
-        // namespace
-        // appName
-        // productId
-        // catalogItemId
-        // country
-        // Initial list is a List<LibraryItem> - We then parse it into a <ParsedLibraryItem>
         try {
             // Get Credentials and restore them
             val credentials = EpicAuthManager.getStoredCredentials(context)
@@ -407,7 +359,7 @@ class EpicManager @Inject constructor(
 
             val country = game.country ?: "US" // Do we really need this?
 
-            // TODO: Investigate if we need &locale=en-US param.
+            //! We should expertiment with the country to see what affects language downloads
             val url = "${EpicConstants.EPIC_CATALOG_API_URL}/shared/namespace/${game.namespace}/bulk/items" +
                 "?id=${game.catalogItemId}&includeDLCDetails=true&includeMainGameDetails=true" +
                 "&country=$country"
@@ -450,15 +402,6 @@ class EpicManager @Inject constructor(
 
     /**
      * Parse customAttributes object from Epic catalog API
-     *
-     * Custom attributes structure:
-     * {
-     *   "CanRunOffline": { "type": "STRING", "value": "true" },
-     *   "CloudSaveFolder": { "type": "STRING", "value": "{UserDir}/GAME_NAME/" },
-     *   "CloudIncludeList": { "type": "STRING", "value": "*.sav,*.key,*.opt" },
-     *   "FolderName": { "type": "STRING", "value": "TwentyXX" },
-     *   ...
-     * }
      */
     private fun parseCustomAttributes(customAttributesJson: JSONObject?): EpicCustomAttributes {
         if (customAttributesJson == null) {
@@ -499,23 +442,6 @@ class EpicManager @Inject constructor(
 
     /**
      * Parse Epic catalog JSON into EpicGame object
-     *
-     * Catalog structure:
-     * {
-     *   "id": "catalogItemId",
-     *   "namespace": "namespace",
-     *   "title": "Game Title",
-     *   "description": "Description...",
-     *   "keyImages": [...],
-     *   "categories": [...],
-     *   "developer": "Developer",
-     *   "developerDisplayName": "Developer Display Name",
-     *   "publisher": "Publisher",
-     *   "publisherDisplayName": "Publisher Display Name",
-     *   "releaseInfo": [...],
-     *   "mainGameItem": { ... },  // Present for DLC
-     *   ...
-     * }
      */
     internal fun parseGameFromCatalog(data: JSONObject, libraryAppName: String): EpicGame {
         val catalogItemId = data.getString("id")
@@ -523,11 +449,8 @@ class EpicManager @Inject constructor(
         val title = data.getString("title")
         val description = data.optString("description", "")
 
-        // Use the appName from library API (passed as parameter)
-        // This is the real appName needed for downloads, not the catalog ID
         val appName = libraryAppName
 
-        // Extract images - map to EpicGame's art fields
         val keyImages = data.optJSONArray("keyImages")
         var artCover = "" // DieselGameBoxTall - Tall cover art
         var artSquare = "" // DieselGameBox - Square box art
@@ -789,8 +712,7 @@ class EpicManager @Inject constructor(
         val cdnUrls: List<CdnUrl>
     )
 
-    // authQueryParams:  e.g., "?f_token=..." or "?ak_token=..."
-    // cloudDir: e.g., "/Builds/Org/{org}/{build}/default" - the path prefix for chunks
+
     data class CdnUrl(
         val baseUrl: String,
         val authQueryParams: String,

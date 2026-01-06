@@ -22,8 +22,7 @@ import org.json.JSONObject
 import timber.log.Timber
 
 /**
- * EpicDownloadManager handles downloading Epic games using Kotlin/OkHttp
- * instead of Legendary's Python downloader.
+ * EpicDownloadManager handles downloading Epic games
  *
  * Epic's CDN structure:
  * 1. Fetch manifest from CDN (contains list of chunks and files)

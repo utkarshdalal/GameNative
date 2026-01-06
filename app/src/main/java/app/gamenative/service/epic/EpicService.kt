@@ -21,20 +21,13 @@ import kotlinx.coroutines.*
 import timber.log.Timber
 
 /**
- * Epic Games Service - thin coordinator that delegates to specialized managers.
- *
- * Architecture:
- * - EpicAuthManager: Authentication and account management
- * - EpicManager: Game library, downloads, and installation
- *
- * This service maintains backward compatibility through static accessors
- * while delegating all operations to the appropriate managers.
+ * Epic Games Service - thin coordinator that delegates to other Epic managers.
  */
 
  /**
-  * TODO: Test Pausing and Cancelling Downloads
+  * For Follow-up:
+  * TODO: Pausing and Cancelling Downloads
   * TODO: DLC Support
-  * TODO: Clean up all the code in the Epic files
  */
 @AndroidEntryPoint
 class EpicService : Service() {

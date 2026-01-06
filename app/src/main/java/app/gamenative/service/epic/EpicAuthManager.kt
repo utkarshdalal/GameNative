@@ -8,13 +8,6 @@ import java.io.File
 
 /**
  * Manages Epic Games authentication and account operations.
- *
- * - OAuth2 authorization code authentication
- * - Credential storage (native JSON file)
- * - Token refresh (native HTTP API calls)
- * - Account logout
- *
- * Uses native EpicAuthClient for all operations (no Python)
  */
 object EpicAuthManager {
 

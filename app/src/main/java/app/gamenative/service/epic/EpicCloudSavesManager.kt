@@ -26,18 +26,6 @@ import org.json.JSONObject
 import timber.log.Timber
 
 /**
- * The Cloud Saves for Epic is much simpler than GOG:
- * Authenticate
- * use the account_id and access_token from the JSON credentials file
- * use the appName in the function
- * Go to: https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com/api/v1/access/egstore/savesync/{{ _.accountId }}/{{ _.appName }}
- * If downloading and size is 0, just log out there are no cloud saves.
- * use the readLink for the Downloading if size is > 0
- * use the writeLink if we want to upload files.
- * Writing will be the awkward part, no idea how we do binary stuff.
-*/
-
-/**
  * Manages Epic Cloud Saves - downloading and uploading save files
  *
  * Epic uses a manifest-based chunked format (similar to game downloads):

@@ -6,10 +6,7 @@ import java.nio.file.Paths
 import timber.log.Timber
 
 /**
- * Constants for Epic Games Store integration via Legendary CLI
- *
- * Epic uses OAuth 2.0 for authentication and provides API access through
- * GraphQL endpoints. All game operations are managed through the Legendary CLI.
+ * Constants for Epic Games Store integration
  */
 object EpicConstants {
     //! OAuth Configuration - Using Legendary's official credentials (Do not worry, these are hard-coded and not sensitive.)
