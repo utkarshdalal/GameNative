@@ -119,7 +119,7 @@ class EpicManagerTest {
 
         // Third party - EA
         assertEquals("The EA App", game.thirdPartyManagedApp)
-        assertEquals("The EA App", game.isEAManaged)
+        assertTrue(game.isEAManaged)
 
         // Executable name
         assertEquals("DragonAgeInquisition.exe", game.executable)

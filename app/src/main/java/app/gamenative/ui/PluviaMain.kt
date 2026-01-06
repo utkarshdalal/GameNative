@@ -1183,14 +1183,30 @@ fun preLaunchApp(
             return@launch
         }
 
-        // For Epic Games, bypass Steam Cloud operations entirely and proceed to launch
-        val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
-        if (isEpicGame) {
-            Timber.tag("preLaunchApp").i("Epic Game detected for $appId — skipping Steam Cloud sync and launching container")
-            setLoadingDialogVisible(false)
-            onSuccess(context, appId)
-            return@launch
-        }
+       // For Epic Games, sync cloud saves before launch
+       val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
+       if (isEpicGame) {
+           Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
+
+           // Sync cloud saves (download latest saves before playing)
+           Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
+           val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+               context = context,
+               appId = appId.removePrefix("EPIC_"),
+            // preferredAction = "download"
+           )
+
+           if (!syncSuccess) {
+               Timber.tag("Epic").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
+               // Don't block launch on sync failure - log warning and continue
+           } else {
+               Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
+           }
+
+           setLoadingDialogVisible(false)
+           onSuccess(context, appId)
+           return@launch
+       }
 
         // For Steam games, sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
