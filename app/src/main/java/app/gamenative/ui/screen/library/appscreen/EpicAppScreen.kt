@@ -175,6 +175,7 @@ class EpicAppScreen : BaseAppScreen() {
                 // TODO: Implement DLC Management
                 // TODO: Give them a list of DLC and allow them to pick which ones to download
                 // gameDlc = dlcTitles
+            }
             game
         }
 
