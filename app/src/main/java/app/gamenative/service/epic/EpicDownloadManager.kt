@@ -101,11 +101,12 @@ class EpicDownloadManager @Inject constructor(
 
 
 
-            val totalSize = files.sumOf { it.fileSize }
+            // Use chunk sizes for download progress (compressed data)
+            val totalSize = chunks.sumOf { it.fileSize }
             val chunkCount = chunks.size
             val fileCount = files.size
 
-            Timber.tag("Epic").i(
+            Timber.tag("Epic").d(
                 """
                 |Download prepared:
                 |  Total size: ${totalSize / 1_000_000_000.0} GB

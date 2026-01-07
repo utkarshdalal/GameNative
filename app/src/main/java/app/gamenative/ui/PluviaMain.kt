@@ -1193,7 +1193,6 @@ fun preLaunchApp(
            val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
                context = context,
                appId = appId.removePrefix("EPIC_"),
-            // preferredAction = "download"
            )
 
            if (!syncSuccess) {

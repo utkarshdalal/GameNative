@@ -449,13 +449,19 @@ object EpicCloudSavesManager {
                 val chunks = mutableMapOf<String, ByteArray>()
                 val pathPrefix = manifestPath.split("/", limit = 4).take(3).joinToString("/")
 
+                Timber.tag("Epic").d("[Cloud Saves] Manifest path: $manifestPath")
+                Timber.tag("Epic").d("[Cloud Saves] Path prefix: $pathPrefix")
+                Timber.tag("Epic").d("[Cloud Saves] Available cloud files: ${cloudSaves.files.keys.take(10)}")
+
                 manifest.chunkDataList?.elements?.forEach { chunkInfo ->
                     try {
                         val chunkPath = "$pathPrefix/${chunkInfo.getPath()}"
+                        Timber.tag("Epic").d("[Cloud Saves] Looking for chunk at: $chunkPath")
                         val chunkFile = cloudSaves.files[chunkPath]
 
                         if (chunkFile?.readLink == null) {
                             Timber.tag("Epic").w("[Cloud Saves] Chunk not found in cloud: $chunkPath")
+                            downloadSuccess = false
                             return@forEach
                         }
 
@@ -1322,7 +1328,7 @@ object EpicCloudSavesManager {
             }
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse chunk header, trying direct decompress")
-            decompressIfNeeded(chunkBytes)
+            return decompressIfNeeded(chunkBytes)
         }
     }
 }
