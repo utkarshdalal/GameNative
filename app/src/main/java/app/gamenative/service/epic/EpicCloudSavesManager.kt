@@ -1318,10 +1318,15 @@ object EpicCloudSavesManager {
 
             // Decompress if needed
             if (isCompressed) {
-                java.io.ByteArrayInputStream(data).use { inputStream ->
-                    java.util.zip.InflaterInputStream(inputStream).use { inflater ->
-                        inflater.readBytes()
+                try {
+                    java.io.ByteArrayInputStream(data).use { inputStream ->
+                        java.util.zip.InflaterInputStream(inputStream).use { inflater ->
+                            inflater.readBytes()
+                        }
                     }
+                } catch (e: Exception) {
+                    Timber.tag("Epic").w(e, "[Cloud Saves] Failed to decompress chunk data, using raw data")
+                    data
                 }
             } else {
                 data
