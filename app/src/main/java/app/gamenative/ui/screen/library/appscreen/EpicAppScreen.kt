@@ -304,7 +304,39 @@ class EpicAppScreen : BaseAppScreen() {
         } else {
             // Show install confirmation dialog
             Timber.tag(TAG).i("Showing install confirmation dialog for: ${libraryItem.appId}")
-            showInstallDialog(libraryItem.appId)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val game = EpicService.getEpicGameOf(libraryItem.appId.removePrefix("EPIC_"))
+
+                    // Calculate sizes
+                    val downloadSize = formatBytes(game?.downloadSize ?: 0L)
+                    val installSize = formatBytes(game?.installSize ?: 0L)
+                    val availableSpace = try {
+                        formatBytes(app.gamenative.utils.StorageUtils.getAvailableSpace(EpicConstants.defaultEpicGamesPath(context)))
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e(e, "Failed to get available storage space")
+                        "Unknown"
+                    }
+
+                    val message = context.getString(
+                        R.string.epic_install_game_message,
+                        downloadSize,
+                        installSize,
+                        availableSpace
+                    )
+                    val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
+                        visible = true,
+                        type = app.gamenative.ui.enums.DialogType.INSTALL_APP,
+                        title = context.getString(R.string.epic_install_game_title),
+                        message = message,
+                        confirmBtnText = context.getString(R.string.install),
+                        dismissBtnText = context.getString(R.string.cancel)
+                    )
+                    BaseAppScreen.showInstallDialog(libraryItem.appId, state)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to show install dialog for: ${libraryItem.appId}")
+                }
+            }
         }
     }
 
@@ -681,67 +713,44 @@ class EpicAppScreen : BaseAppScreen() {
                 }
         }
 
-        // Monitor install dialog state
-        var showInstallDialog by remember { mutableStateOf(shouldShowInstallDialog(libraryItem.appId)) }
-
-        LaunchedEffect(libraryItem.appId) {
-            snapshotFlow { shouldShowInstallDialog(libraryItem.appId) }
-                .collect { shouldShow ->
-                    Timber.tag(TAG).d("Install dialog state changed: $shouldShow")
-                    showInstallDialog = shouldShow
+        // Shared install dialog state (from BaseAppScreen)
+        val appId = libraryItem.appId
+        var installDialogState by remember(appId) {
+            mutableStateOf(BaseAppScreen.getInstallDialogState(appId) ?: app.gamenative.ui.component.dialog.state.MessageDialogState(false))
+        }
+        LaunchedEffect(appId) {
+            snapshotFlow { BaseAppScreen.getInstallDialogState(appId) }
+                .collect { state ->
+                    installDialogState = state ?: app.gamenative.ui.component.dialog.state.MessageDialogState(false)
                 }
         }
 
-        // Show install confirmation dialog
-        if (showInstallDialog) {
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val appId = libraryItem.appId
-            val epicGame = remember(appId) {
-                EpicService.getEpicGameOf(appId.removePrefix("EPIC_"))
+        // Show install dialog if visible
+        if (installDialogState.visible) {
+            val onDismissRequest: (() -> Unit)? = {
+                BaseAppScreen.hideInstallDialog(appId)
             }
-
-            val downloadBytes = epicGame?.downloadSize ?: 0L
-            val installBytes = epicGame?.installSize ?: 0L
-            val downloadText = if (downloadBytes > 0L) formatBytes(downloadBytes) else "Unknown"
-            val installText = if (installBytes > 0L) formatBytes(installBytes) else "Unknown"
-            val availableSpace = app.gamenative.utils.StorageUtils.getAvailableSpace(EpicConstants.defaultEpicGamesPath(context)).let {
-                formatBytes(it)
+            val onDismissClick: (() -> Unit)? = {
+                BaseAppScreen.hideInstallDialog(appId)
             }
-
-            AlertDialog(
-                onDismissRequest = {
-                    hideInstallDialog(libraryItem.appId)
-                },
-                title = { Text(stringResource(R.string.epic_install_game_title)) },
-                text = {
-                    Text(
-                        stringResource(
-                            R.string.epic_install_game_message,
-                            downloadText,
-                            installText,
-                            availableSpace
-                        )
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            hideInstallDialog(libraryItem.appId)
-                            performDownload(context, libraryItem) {}
-                        }
-                    ) {
-                        Text(stringResource(R.string.install))
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = {
-                            hideInstallDialog(libraryItem.appId)
-                        }
-                    ) {
-                        Text(stringResource(R.string.cancel))
+            val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
+                app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
+                    {
+                        BaseAppScreen.hideInstallDialog(appId)
+                        performDownload(context, libraryItem) {}
                     }
                 }
+                else -> null
+            }
+            app.gamenative.ui.component.dialog.MessageDialog(
+                visible = installDialogState.visible,
+                onDismissRequest = onDismissRequest,
+                onConfirmClick = onConfirmClick,
+                onDismissClick = onDismissClick,
+                confirmBtnText = installDialogState.confirmBtnText,
+                dismissBtnText = installDialogState.dismissBtnText,
+                title = installDialogState.title,
+                message = installDialogState.message,
             )
         }
 

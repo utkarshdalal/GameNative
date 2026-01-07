@@ -77,7 +77,9 @@ object EpicConstants {
      * {context.filesDir}/Epic/games/
      */
     fun internalEpicGamesPath(context: android.content.Context): String {
-        return Paths.get(context.filesDir.absolutePath, "Epic", "games").toString()
+        val path = Paths.get(context.filesDir.absolutePath, "Epic", "games").toString()
+        File(path).mkdirs()
+        return path
     }
 
     /**
@@ -85,7 +87,10 @@ object EpicConstants {
      * {externalStoragePath}/Epic/games/
      */
     fun externalEpicGamesPath(): String {
-        return Paths.get(PrefManager.externalStoragePath, "Epic", "games").toString()
+        val path = Paths.get(PrefManager.externalStoragePath, "Epic", "games").toString()
+        // Ensure directory exists for StatFs
+        File(path).mkdirs()
+        return path
     }
 
     /**
@@ -99,6 +104,8 @@ object EpicConstants {
         } else {
             val path = internalEpicGamesPath(context)
             Timber.i("Epic using internal storage: $path")
+            // Ensure directory exists for StatFs
+            File(path).mkdirs()
             path
         }
     }

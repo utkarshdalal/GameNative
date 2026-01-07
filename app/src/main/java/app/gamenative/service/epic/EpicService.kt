@@ -257,11 +257,6 @@ class EpicService : Service() {
             }
         }
 
-        fun verifyInstallation(appName: String): Pair<Boolean, String?> {
-            // TODO: Implement when EpicManager is ready
-            return Pair(false, "Not implemented")
-        }
-
         suspend fun getInstalledExe(libraryItem: LibraryItem): String {
             // Strip EPIC_ prefix to get the raw Epic app name
             val epicAppName = libraryItem.appId.removePrefix("EPIC_")
