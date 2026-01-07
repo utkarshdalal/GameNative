@@ -1065,15 +1065,23 @@ fun preLaunchApp(
                     "proton-9.0-arm64ec.txz"
                 ).await()
             } else if (container.wineVersion.contains("proton-9.0-x86_64") && !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")) {
-                setLoadingMessage("Downloading x86_64 Proton")
+                setLoadingMessage("Downloading x86_64 Proton 9")
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                     this,
                     context = context,
                     "proton-9.0-x86_64.txz"
                 ).await()
+            } else if (container.wineVersion.contains("proton-10-x86_64") && !SteamService.isFileInstallable(context, "proton-10-x86_64.txz")) {
+                setLoadingMessage("Downloading x86_64 Proton 10")
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    "proton-10-x86_64.txz"
+                ).await()
             }
-            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
+            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec") || container.wineVersion.contains("proton-10-x86_64")) {
                 val protonVersion = container.wineVersion
                 val imageFs = ImageFs.find(context)
                 val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
