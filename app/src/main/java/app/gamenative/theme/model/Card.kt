@@ -11,9 +11,5 @@ data class Card(
     val canvas: DimSize,
     /** Ordered list of layers, back-to-front. */
     val layers: List<Layer> = emptyList(),
-    /** Optional state definitions applied to this card. */
-    val states: List<State> = emptyList(),
-    /** Optional transitions between states. */
-    val transitions: List<Transition> = emptyList(),
 )
 

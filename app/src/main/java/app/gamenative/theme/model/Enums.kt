@@ -29,31 +29,12 @@ enum class MediaKind {
 }
 
 /**
- * Standard UI state names used by the state/transition system.
- */
-enum class StandardState {
-    NORMAL,
-    FOCUSED,
-    SELECTED,
-    PRESSED,
-    DISABLED
-}
-
-/**
  * Preload policies for video media.
  */
 enum class VideoPreloadPolicy {
     NONE,
     METADATA,
     AUTO
-}
-
-/** Animation easing options for transitions. */
-enum class Easing {
-    LINEAR,
-    EASE_IN,
-    EASE_OUT,
-    EASE_IN_OUT
 }
 
 /**
