@@ -603,7 +603,7 @@ fun ContainerConfigDialog(
                 if (isD7VK) {
                     SettingsListDropdown(
                         colors = settingsTileColors(),
-                        title = { Text(text = "D7VK Version") },
+                        title = { Text(text = stringResource(R.string.d7vk_version)) },
                         value = d7vkVersionIndex.coerceIn(0, (d7vkVersionsAll.size - 1).coerceAtLeast(0)),
                         items = d7vkVersionsAll,
                         onItemSelected = {
@@ -2174,7 +2174,7 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
         // Recursively scan for .exe files using listFiles with depth limit
         fun scanRecursive(dir: java.io.File, baseDir: java.io.File, depth: Int = 0, maxDepth: Int = 10) {
             if (depth > maxDepth) return
-            
+
             dir.listFiles()?.forEach { file ->
                 if (file.isDirectory) {
                     scanRecursive(file, baseDir, depth + 1, maxDepth)
@@ -2185,7 +2185,7 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
                 }
             }
         }
-        
+
         scanRecursive(aDir, aDir)
 
         // Sort alphabetically and prioritize common game executables
