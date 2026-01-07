@@ -538,14 +538,18 @@ fun ContainerConfigDialog(
                     val currentConfig = KeyValueSet(config.dxwrapperConfig)
                     when (newWrapper) {
                         "dxvk" -> {
-                            dxvkVersionIndex = 0
-                            val newVersion = StringUtils.parseIdentifier(dxvkVersionsAll[0])
-                            currentConfig.put("version", newVersion)
+                            if (dxvkVersionsAll.isNotEmpty()) {
+                                dxvkVersionIndex = 0
+                                val newVersion = StringUtils.parseIdentifier(dxvkVersionsAll[0])
+                                currentConfig.put("version", newVersion)
+                            }
                         }
                         "d7vk" -> {
-                            d7vkVersionIndex = 0
-                            val newVersion = StringUtils.parseIdentifier(d7vkVersionsAll[0])
-                            currentConfig.put("version", newVersion)
+                            if (d7vkVersionsAll.isNotEmpty()) {
+                                d7vkVersionIndex = 0
+                                val newVersion = StringUtils.parseIdentifier(d7vkVersionsAll[0])
+                                currentConfig.put("version", newVersion)
+                            }
                         }
                         "vkd3d" -> {
                             currentConfig.put("vkd3dVersion", vkd3dForcedVersion())
@@ -588,8 +592,7 @@ fun ContainerConfigDialog(
                                 config.copy(dxwrapperConfig = currentConfig.toString(), envVars = envVarsSet.toString())
                         },
                     )
-                } else if (isVKD3D) {
-                   // Ensure default version for vortek-like when hidden
+                } else {
                     val version = if (isVortekLike) "1.10.3" else "2.4.1"
                     val currentConfig = KeyValueSet(config.dxwrapperConfig)
                     currentConfig.put("version", version)
