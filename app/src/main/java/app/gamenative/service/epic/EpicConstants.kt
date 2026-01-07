@@ -129,13 +129,6 @@ object EpicConstants {
     }
 
     /**
-     * Get the installation path by app name (preferred method)
-     */
-    fun getGameInstallPathByAppName(context: android.content.Context, appName: String): String {
-        return Paths.get(defaultEpicGamesPath(context), appName).toString()
-    }
-
-    /**
      * Get build version for user agent
      */
     private fun getBuildVersion(): String {

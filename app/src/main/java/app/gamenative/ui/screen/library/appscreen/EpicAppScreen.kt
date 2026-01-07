@@ -355,7 +355,7 @@ class EpicAppScreen : BaseAppScreen() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Get install path
-                val installPath = EpicConstants.getGameInstallPathByAppName(context, appName)
+                val installPath = EpicConstants.getGameInstallPath(context, appName)
                 Timber.d("Downloading Epic game to: $installPath")
 
                 // Show starting download toast
