@@ -109,6 +109,7 @@ data class DownloadInfo(
             bytesDownloaded = 0L
         }
         addSpeedSample(timestampMs)
+        emitProgressChange() // Force updates until we can optimise the Epic updates better
     }
 
     fun updateStatusMessage(message: String?) {
