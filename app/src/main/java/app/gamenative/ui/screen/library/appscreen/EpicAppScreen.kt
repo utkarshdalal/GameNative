@@ -398,7 +398,7 @@ class EpicAppScreen : BaseAppScreen() {
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
-        val epicGame = EpicService.getEpicGameOf(libraryItem.appId)
+        val epicGame = EpicService.getEpicGameOf(libraryItem.appId.removePrefix("EPIC_"))
         val appName = epicGame?.appName ?: return
         val downloadInfo = EpicService.getDownloadInfo(appName)
         val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
@@ -428,8 +428,9 @@ class EpicAppScreen : BaseAppScreen() {
         if (isDownloading) {
             // Cancel download immediately if currently downloading
             Timber.tag(TAG).i("Cancelling active download for Epic game: $appName")
-            EpicService.cleanupDownload(appName)
             downloadInfo.cancel()
+            EpicService.cleanupDownload(appName)
+
             android.widget.Toast.makeText(
                 context,
                 "Download cancelled",

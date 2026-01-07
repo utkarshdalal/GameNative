@@ -184,9 +184,10 @@ class EpicService : Service() {
                 // Uninstall from database (keeps the entry but marks as not installed)
                 instance.epicManager.uninstall(game.id)
 
-                // Delete container (must run on Main thread)
+                // Delete container
+                // Use "EPIC_${appName}" format to match container creation
                 withContext(Dispatchers.Main) {
-                    ContainerUtils.deleteContainer(context, game.id)
+                    ContainerUtils.deleteContainer(context, "EPIC_${game.appName}")
                 }
 
                 // Trigger library refresh event
