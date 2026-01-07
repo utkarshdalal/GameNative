@@ -39,6 +39,10 @@
     <string name="steam_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
     <string name="steam_uninstall_success">%1$s 已卸载</string>
     <string name="steam_uninstall_failed">卸载游戏失败</string>
+    <string name="gog_uninstall_game_title">卸载游戏</string>
+    <string name="gog_uninstall_confirmation_message">您确定要卸载 %1$s 吗? 此操作无法撤回</string>
+    <string name="gog_install_game_title">下载游戏</string>
+    <string name="gog_install_confirmation_message">正在安装的应用程式有以下空间需求:\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
     <string name="steam_never">从不</string>
     <string name="steam_continue">继续</string>
     <string name="header_img_desc">应用头图</string>
@@ -921,4 +925,36 @@
     <string name="wine_proton_containers_in_use">使用此版本的容器：</string>
     <string name="wine_proton_no_containers_warning">目前没有容器使用此版本</string>
     <string name="wine_proton_containers_will_break">若您继续操作，这些容器将无法继续运行：</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">GOG 集成 (Alpha)</string>
+    <string name="gog_settings_login_title">GOG 登录</string>
+    <string name="gog_settings_login_subtitle">登录到您的 GOG 账户</string>
+    <string name="gog_settings_sync_subtitle_syncing">同步中…</string>
+    <string name="gog_settings_sync_subtitle_error">错误: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ 已同步 %1$d 个游戏</string>
+    <string name="gog_settings_sync_subtitle_default">获取您的 GOG 游戏库</string>
+    <string name="gog_login_success_title">登录成功</string>
+    <string name="gog_login_success_message">您现已登录到 GOG。\n我们将在后台同步您的游戏库。</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">登录到 GOG</string>
+    <string name="gog_login_auto_auth_info">点击\'打开 GOG 登录\'并登录。登录后, 请复制 URL 并粘贴到下方</string>
+    <string name="gog_login_auth_example">示例: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">打开 GOG 登录</string>
+    <string name="gog_login_auth_code_label">授权码或登录成功 URL</string>
+    <string name="gog_login_auth_code_placeholder">在此粘贴代码或 url</string>
+    <string name="gog_login_button">登录</string>
+    <string name="gog_login_cancel">取消</string>
+    <string name="gog_login_browser_error">无法打开浏览器</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">注销</string>
+    <string name="gog_settings_logout_subtitle">从您的 GOG 账户登出</string>
+    <string name="gog_logout_confirm_title">从 GOG 注销?</string>
+    <string name="gog_logout_confirm_message">这将删除您的 GOG 凭据并清除此设备上的 GOG 库。您可以随时重新登录。</string>
+    <string name="gog_logout_confirm">注销</string>
+    <string name="gog_logout_success">成功从 GOG 注销</string>
+    <string name="gog_logout_failed">注销失败: %s</string>
+    <string name="gog_logout_in_progress">正在从 GOG 注销…</string>
 </resources>

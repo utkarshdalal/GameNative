@@ -705,6 +705,13 @@ object PrefManager {
             setPref(SHOW_CUSTOM_GAMES_IN_LIBRARY, value)
         }
 
+    private val SHOW_GOG_IN_LIBRARY = booleanPreferencesKey("show_gog_in_library")
+    var showGOGInLibrary: Boolean
+        get() = getPref(SHOW_GOG_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_GOG_IN_LIBRARY, value)
+        }
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int
@@ -718,6 +725,20 @@ object PrefManager {
         get() = getPref(STEAM_GAMES_COUNT, 0)
         set(value) {
             setPref(STEAM_GAMES_COUNT, value)
+        }
+
+    private val GOG_GAMES_COUNT = intPreferencesKey("gog_games_count")
+    var gogGamesCount: Int
+        get() = getPref(GOG_GAMES_COUNT, 0)
+        set(value) {
+            setPref(GOG_GAMES_COUNT, value)
+        }
+
+    private val GOG_INSTALLED_GAMES_COUNT = intPreferencesKey("gog_installed_games_count")
+    var gogInstalledGamesCount: Int
+        get() = getPref(GOG_INSTALLED_GAMES_COUNT, 0)
+        set(value) {
+            setPref(GOG_INSTALLED_GAMES_COUNT, value)
         }
 
     // Show dialog when adding custom game folder

@@ -64,6 +64,9 @@ class PluviaApp : SplitCompatApplication() {
         // Init our datastore preferences.
         PrefManager.init(this)
 
+        // Initialize GOGConstants
+        app.gamenative.service.gog.GOGConstants.init(this)
+
         DownloadService.populateDownloadService(this)
 
         appScope.launch {
@@ -99,6 +102,19 @@ class PluviaApp : SplitCompatApplication() {
         } catch (e: Exception) {
             Timber.e(e, "Failed to initialize Supabase client: ${e.message}")
             e.printStackTrace()
+        }
+
+        // Initialize GOG service
+        appScope.launch {
+            try {
+                if (app.gamenative.service.gog.GOGService.initialize(applicationContext)) {
+                    Timber.d("GOGService initialized successfully")
+                } else {
+                    Timber.w("GOGService initialization returned false")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to initialize GOGService: ${e.message}")
+            }
         }
     }
 

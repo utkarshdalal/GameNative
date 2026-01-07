@@ -90,6 +90,7 @@ import java.util.EnumSet
 fun HomeLibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
     onClickPlay: (String, Boolean) -> Unit,
+    onTestGraphics: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -110,6 +111,7 @@ fun HomeLibraryScreen(
         onSearchQuery = viewModel::onSearchQuery,
         onRefresh = viewModel::onRefresh,
         onClickPlay = onClickPlay,
+        onTestGraphics = onTestGraphics,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
@@ -131,6 +133,7 @@ private fun LibraryScreenContent(
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
+    onTestGraphics: (String) -> Unit,
     onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
@@ -247,6 +250,11 @@ private fun LibraryScreenContent(
                 onClickPlay = {
                     selectedLibraryItem?.let { libraryItem ->
                         onClickPlay(libraryItem.appId, it)
+                    }
+                },
+                onTestGraphics = {
+                    selectedLibraryItem?.let { libraryItem ->
+                        onTestGraphics(libraryItem.appId)
                     }
                 },
             )
@@ -391,6 +399,7 @@ private fun Preview_LibraryScreenContent() {
                 state = state.copy(modalBottomSheet = !currentState)
             },
             onClickPlay = { _, _ -> },
+            onTestGraphics = { },
             onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},

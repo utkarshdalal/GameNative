@@ -865,4 +865,42 @@
     <string name="wine_proton_containers_in_use">Container, die diese Version verwenden:</string>
     <string name="wine_proton_no_containers_warning">Kein Container nutzt diese Version.</string>
     <string name="wine_proton_containers_will_break">Diese Container funktionieren danach nicht mehr:</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">GOG-Integration (Alpha)</string>
+    <string name="gog_settings_login_title">GOG-Anmeldung</string>
+    <string name="gog_settings_login_subtitle">Bei deinem GOG-Konto anmelden</string>
+    <string name="gog_settings_sync_subtitle_syncing">Synchronisiere…</string>
+    <string name="gog_settings_sync_subtitle_error">Fehler: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ %1$d Spiele synchronisiert</string>
+    <string name="gog_settings_sync_subtitle_default">GOG-Spielebibliothek abrufen</string>
+    <string name="gog_login_success_title">Anmeldung erfolgreich</string>
+    <string name="gog_login_success_message">Du bist jetzt bei GOG angemeldet.\nWir synchronisieren deine Bibliothek nun im Hintergrund.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Bei GOG anmelden</string>
+    <string name="gog_login_auto_auth_info">Tippe auf \'GOG-Anmeldung öffnen\' und melde dich an. Nach der Anmeldung kopiere bitte die URL und füge sie unten ein</string>
+    <string name="gog_login_auth_example">Beispiel: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">GOG-Anmeldung öffnen</string>
+    <string name="gog_login_auth_code_label">Autorisierungscode oder Anmelde-Erfolgs-URL</string>
+    <string name="gog_login_auth_code_placeholder">Code oder URL hier einfügen</string>
+    <string name="gog_login_button">Anmelden</string>
+    <string name="gog_login_cancel">Abbrechen</string>
+    <string name="gog_login_browser_error">Browser konnte nicht geöffnet werden</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Abmelden</string>
+    <string name="gog_settings_logout_subtitle">Von deinem GOG-Konto abmelden</string>
+    <string name="gog_logout_confirm_title">Von GOG abmelden?</string>
+    <string name="gog_logout_confirm_message">Dies entfernt deine GOG-Anmeldedaten und löscht deine GOG-Bibliothek von diesem Gerät. Du kannst dich jederzeit wieder anmelden.</string>
+    <string name="gog_logout_confirm">Abmelden</string>
+    <string name="gog_logout_success">Erfolgreich von GOG abgemeldet</string>
+    <string name="gog_logout_failed">Abmeldung fehlgeschlagen: %s</string>
+    <string name="gog_logout_in_progress">Melde von GOG ab…</string>
+
+    <!-- GOG Install/Uninstall -->
+    <string name="gog_uninstall_game_title">Spiel deinstallieren</string>
+    <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="gog_install_game_title">Spiel herunterladen</string>
+    <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
 </resources>

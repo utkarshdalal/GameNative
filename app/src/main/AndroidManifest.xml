@@ -55,12 +55,12 @@
                 <action android:name="app.gamenative.LAUNCH_GAME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            
+
             <!--Allows app window to be resized on Oculus Quest VR headsets-->
             <meta-data
                 android:name="com.oculus.vrshell.supports_free_resizing"
                 android:value="true" />
-            
+
         </activity>
         <!-- Launcher icon aliases to allow switching app icon at runtime -->
         <activity-alias
@@ -92,7 +92,13 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
-        
+
+        <service
+            android:name=".service.gog.GOGService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- FileProvider for secure file sharing (for APK installation) -->
         <provider
             android:name="androidx.core.content.FileProvider"

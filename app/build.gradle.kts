@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
     alias(libs.plugins.secrets.gradle)
+    id("com.chaquo.python") version "16.0.0"
 }
 
 val keystorePropertiesFile = rootProject.file("app/keystores/keystore.properties")
@@ -52,7 +53,7 @@ android {
         targetSdk = 28
 
         versionCode = 8
-        versionName = "0.6.1"
+        versionName = "0.6.2"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -85,6 +86,7 @@ android {
             "zh-rCN",  // Simplified Chinese
             "fr",      // French
             "de",      // German
+            "uk",      // Ukrainian
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
@@ -158,8 +160,6 @@ android {
             excludes += "/DebugProbesKt.bin"
             excludes += "/junit/runner/smalllogo.gif"
             excludes += "/junit/runner/logo.gif"
-
-            // Other excludes
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
         jniLibs {
@@ -203,8 +203,27 @@ android {
     // }
 }
 
+chaquopy {
+    defaultConfig {
+        version = "3.11"  // Last Python version supporting armeabi-v7a (32-bit ARM)
+        pip {
+            // Install GOGDL dependencies
+            install("requests")
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            srcDir("src/main/python")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.material)
+
+    // Chrome Custom Tabs for GOG OAuth
+    implementation("androidx.browser:browser:1.8.0")
+
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {

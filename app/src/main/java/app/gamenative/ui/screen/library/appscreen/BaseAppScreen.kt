@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -46,6 +47,22 @@ import kotlinx.coroutines.withContext
  * This defines the contract that all game source-specific screens must implement.
  */
 abstract class BaseAppScreen {
+        // Shared state for install dialog - map of appId (String) to MessageDialogState
+        companion object {
+            private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
+
+            fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
+                installDialogStates[appId] = state
+            }
+
+            fun hideInstallDialog(appId: String) {
+                installDialogStates.remove(appId)
+            }
+
+            fun getInstallDialogState(appId: String): app.gamenative.ui.component.dialog.state.MessageDialogState? {
+                return installDialogStates[appId]
+            }
+        }
     /**
      * Get the game display information for rendering the UI.
      * This is called to get all the data needed for the common UI layout.
@@ -184,6 +201,20 @@ abstract class BaseAppScreen {
             AppOptionMenuType.RunContainer,
             onClick = {
                 onRunContainerClick(context, libraryItem, onClickPlay)
+            }
+        )
+    }
+
+    @Composable
+    protected open fun getTestGraphicsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onTestGraphics: () -> Unit
+    ): AppMenuOption? {
+        return AppMenuOption(
+            AppOptionMenuType.TestGraphics,
+            onClick = {
+                onTestGraphicsClick(context, libraryItem, onTestGraphics)
             }
         )
     }
@@ -355,16 +386,20 @@ abstract class BaseAppScreen {
         )
     }
 
-    /**
-     * Hook method called when RunContainer is clicked.
-     * Override this to add custom behavior (e.g., analytics tracking).
-     */
     protected open fun onRunContainerClick(
         context: Context,
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
         onClickPlay(true)
+    }
+
+    protected open fun onTestGraphicsClick(
+        context: Context,
+        libraryItem: LibraryItem,
+        onTestGraphics: () -> Unit
+    ) {
+        onTestGraphics()
     }
 
     /**
@@ -439,6 +474,7 @@ abstract class BaseAppScreen {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
+        onTestGraphics: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
@@ -450,6 +486,7 @@ abstract class BaseAppScreen {
         if (isInstalled) {
             // Options only available when game is installed
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
+            getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
@@ -484,6 +521,7 @@ abstract class BaseAppScreen {
     fun Content(
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit,
+        onTestGraphics: () -> Unit,
         onBack: () -> Unit,
     ) {
         val context = LocalContext.current
@@ -583,7 +621,14 @@ abstract class BaseAppScreen {
             },
         )
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, exportFrontendLauncher)
+        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
+
+        // Get download info based on game source for progress tracking
+        val downloadInfo = when (libraryItem.gameSource) {
+            app.gamenative.data.GameSource.STEAM -> app.gamenative.service.SteamService.getAppDownloadInfo(displayInfo.gameId)
+            app.gamenative.data.GameSource.GOG -> app.gamenative.service.gog.GOGService.getDownloadInfo(displayInfo.gameId.toString())
+            app.gamenative.data.GameSource.CUSTOM_GAME -> null // Custom games don't support downloads yet
+        }
 
         DisposableEffect(libraryItem.appId) {
             val dispose = observeGameState(
@@ -613,6 +658,7 @@ abstract class BaseAppScreen {
             downloadProgress = downloadProgressState,
             hasPartialDownload = hasPartialDownloadState,
             isUpdatePending = isUpdatePendingState,
+            downloadInfo = downloadInfo,
             onDownloadInstallClick = {
                 onDownloadInstallClick(context, libraryItem, onClickPlay)
                 uiScope.launch {
@@ -627,7 +673,9 @@ abstract class BaseAppScreen {
                     performStateRefresh(false)
                 }
             },
-            onDeleteDownloadClick = { onDeleteDownloadClick(context, libraryItem) },
+            onDeleteDownloadClick = {
+                onDeleteDownloadClick(context, libraryItem)
+            },
             onUpdateClick = {
                 onUpdateClick(context, libraryItem)
                 uiScope.launch {

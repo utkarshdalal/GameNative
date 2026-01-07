@@ -21,17 +21,18 @@ data class LibraryState(
     val isSearching: Boolean = false,
     val searchQuery: String = "",
 
-    // App Source filters (Steam / Custom Games)
+    // App Source filters (Steam / Custom Games / GOG)
     val showSteamInLibrary: Boolean = PrefManager.showSteamInLibrary,
     val showCustomGamesInLibrary: Boolean = PrefManager.showCustomGamesInLibrary,
-    
+    val showGOGInLibrary: Boolean = PrefManager.showGOGInLibrary,
+
     // Loading state for skeleton loaders
     val isLoading: Boolean = false,
-    
+
     // Refresh counter that increments when custom game images are fetched
     // Used to trigger UI recomposition to show newly downloaded images
     val imageRefreshCounter: Long = 0,
-    
+
     // Compatibility status map: game name -> compatibility status
     val compatibilityMap: Map<String, GameCompatibilityStatus> = emptyMap(),
 )

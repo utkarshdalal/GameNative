@@ -17,6 +17,10 @@
     <string name="delete_app">Slet</string>
     <string name="uninstall">Afinstallér</string>
     <string name="run_app">Spil</string>
+    <string name="gog_uninstall_game_title">Afinstallér spil</string>
+    <string name="gog_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="gog_install_game_title">Download spil</string>
+    <string name="gog_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tTilgængelig plads: %2$s</string>
     <string name="download_prompt_title">Installér app</string>
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>
@@ -795,4 +799,36 @@
     <string name="base_app_exported">Eksporteret</string>
     <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
     <string name="base_app_export_cancelled">Eksport annulleret</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">GOG Integration (Alpha)</string>
+    <string name="gog_settings_login_title">GOG Login</string>
+    <string name="gog_settings_login_subtitle">Log ind på din GOG-konto</string>
+    <string name="gog_settings_sync_subtitle_syncing">Synkroniserer…</string>
+    <string name="gog_settings_sync_subtitle_error">Fejl: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ Synkroniseret %1$d spil</string>
+    <string name="gog_settings_sync_subtitle_default">Hent dit GOG-spilbibliotek</string>
+    <string name="gog_login_success_title">Login lykkedes</string>
+    <string name="gog_login_success_message">Du er nu logget ind på GOG.\nVi vil nu synkronisere dit bibliotek i baggrunden.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Log ind på GOG</string>
+    <string name="gog_login_auto_auth_info">Tryk på \'Åbn GOG Login\' og log ind. Når du er logget ind, skal du kopiere URL\'en og indsætte nedenfor</string>
+    <string name="gog_login_auth_example">Eksempel: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">Åbn GOG Login</string>
+    <string name="gog_login_auth_code_label">Godkendelseskode eller login-succes-URL</string>
+    <string name="gog_login_auth_code_placeholder">Indsæt kode eller url her</string>
+    <string name="gog_login_button">Log ind</string>
+    <string name="gog_login_cancel">Annuller</string>
+    <string name="gog_login_browser_error">Kunne ikke åbne browser</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Log ud</string>
+    <string name="gog_settings_logout_subtitle">Log ud fra din GOG-konto</string>
+    <string name="gog_logout_confirm_title">Log ud fra GOG?</string>
+    <string name="gog_logout_confirm_message">Dette vil fjerne dine GOG-legitimationsoplysninger og rydde dit GOG-bibliotek fra denne enhed. Du kan logge ind igen når som helst.</string>
+    <string name="gog_logout_confirm">Log ud</string>
+    <string name="gog_logout_success">Logget ud fra GOG</string>
+    <string name="gog_logout_failed">Kunne ikke logge ud: %s</string>
+    <string name="gog_logout_in_progress">Logger ud fra GOG…</string>
 </resources>

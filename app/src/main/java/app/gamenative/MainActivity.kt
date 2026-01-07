@@ -33,6 +33,7 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
@@ -250,6 +251,11 @@ class MainActivity : ComponentActivity() {
             Timber.i("Stopping Steam Service")
             SteamService.stop()
         }
+
+        if(GOGService.isRunning) {
+            Timber.i("Stopping GOG Service")
+            GOGService.stop()
+        }
     }
 
     override fun onResume() {
@@ -262,6 +268,13 @@ class MainActivity : ComponentActivity() {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
+
+        // Restart GOG service if it went down
+        if (GOGService.hasStoredCredentials(this) && !GOGService.isRunning) {
+            Timber.i("GOG service was down on resume - restarting")
+            GOGService.start(this)
+        }
+
         PostHog.capture(event = "app_foregrounded")
     }
 

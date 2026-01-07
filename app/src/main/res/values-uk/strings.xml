@@ -19,6 +19,10 @@
     <string name="delete_app">Видалити</string>
     <string name="uninstall">Деінсталювати</string>
     <string name="run_app">Грати</string>
+    <string name="gog_uninstall_game_title">Деінсталювати гру</string>
+    <string name="gog_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
+    <string name="gog_install_game_title">Завантажити гру</string>
+    <string name="gog_install_confirmation_message">Гра має наступні вимоги до простору. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tДоступний простір: %2$s</string>
     <string name="download_prompt_title">Інсталювати застосунок</string>
     <string name="delete_prompt_title">Деінсталювати застосунок</string>
     <string name="cancel_download_prompt_title">Скасувати завантаження</string>
@@ -574,6 +578,38 @@
     <string name="contents_install_success">Вміст успішно інстальовано</string>
     <string name="contents_install_failed">Не вдалося інсталювати вміст</string>
     <string name="contents_install_error">Помилка інсталяції: %1$s</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">Інтеграція GOG (Альфа)</string>
+    <string name="gog_settings_login_title">Вхід у GOG</string>
+    <string name="gog_settings_login_subtitle">Увійдіть у свій обліковий запис GOG</string>
+    <string name="gog_settings_sync_subtitle_syncing">Синхронізація…</string>
+    <string name="gog_settings_sync_subtitle_error">Помилка: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ Синхронізовано %1$d ігор</string>
+    <string name="gog_settings_sync_subtitle_default">Отримати вашу бібліотеку ігор GOG</string>
+    <string name="gog_login_success_title">Вхід успішний</string>
+    <string name="gog_login_success_message">Ви увійшли в GOG.\nМи тепер синхронізуємо вашу бібліотеку у фоновому режимі.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Увійти в GOG</string>
+    <string name="gog_login_auto_auth_info">Натисніть \'Відкрити вхід GOG\' і увійдіть. Після входу скопіюйте URL-адресу та вставте нижче</string>
+    <string name="gog_login_auth_example">Приклад: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">Відкрити вхід GOG</string>
+    <string name="gog_login_auth_code_label">Код авторизації або URL успішного входу</string>
+    <string name="gog_login_auth_code_placeholder">Вставте код або url сюди</string>
+    <string name="gog_login_button">Увійти</string>
+    <string name="gog_login_cancel">Скасувати</string>
+    <string name="gog_login_browser_error">Не вдалося відкрити браузер</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Вийти</string>
+    <string name="gog_settings_logout_subtitle">Вийти з облікового запису GOG</string>
+    <string name="gog_logout_confirm_title">Вийти з GOG?</string>
+    <string name="gog_logout_confirm_message">Це видалить ваші облікові дані GOG та очистить бібліотеку GOG на цьому пристрої. Ви можете увійти знову в будь-який час.</string>
+    <string name="gog_logout_confirm">Вийти</string>
+    <string name="gog_logout_success">Успішно вийшли з GOG</string>
+    <string name="gog_logout_failed">Не вдалося вийти: %s</string>
+    <string name="gog_logout_in_progress">Вихід з GOG…</string>
 </resources>
 
 

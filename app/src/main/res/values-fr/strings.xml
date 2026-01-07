@@ -40,6 +40,10 @@
     <string name="steam_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="steam_uninstall_success">%1$s a été désinstallé</string>
     <string name="steam_uninstall_failed">Échec de la désinstallation du jeu</string>
+    <string name="gog_uninstall_game_title">Désinstaller le jeu</string>
+    <string name="gog_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
+    <string name="gog_install_game_title">Télécharger le jeu</string>
+    <string name="gog_install_confirmation_message">L\'application en cours d\'installation nécessite l\'espace suivant. Voulez-vous continuer ?\n\n\tTaille du téléchargement : %1$s\n\tEspace disponible : %2$s</string>
     <string name="steam_never">Jamais</string>
     <string name="steam_continue">Continuer</string>
     <string name="header_img_desc">Image d\'en-tête de l\'application</string>
@@ -928,6 +932,38 @@
     <string name="wine_proton_containers_in_use">Conteneurs utilisant cette version :</string>
     <string name="wine_proton_no_containers_warning">Aucun conteneur n\'utilise actuellement cette version.</string>
     <string name="wine_proton_containers_will_break">Ces conteneurs ne fonctionneront plus si vous continuez :</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">Intégration GOG (Alpha)</string>
+    <string name="gog_settings_login_title">Connexion GOG</string>
+    <string name="gog_settings_login_subtitle">Connectez-vous à votre compte GOG</string>
+    <string name="gog_settings_sync_subtitle_syncing">Synchronisation…</string>
+    <string name="gog_settings_sync_subtitle_error">Erreur : %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ %1$d jeux synchronisés</string>
+    <string name="gog_settings_sync_subtitle_default">Récupérer votre bibliothèque de jeux GOG</string>
+    <string name="gog_login_success_title">Connexion réussie</string>
+    <string name="gog_login_success_message">Vous êtes maintenant connecté à GOG.\nNous allons maintenant synchroniser votre bibliothèque en arrière-plan.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Se connecter à GOG</string>
+    <string name="gog_login_auto_auth_info">Appuyez sur \'Ouvrir la connexion GOG\' et connectez-vous. Une fois connecté, veuillez copier l\'URL et coller ci-dessous</string>
+    <string name="gog_login_auth_example">Exemple : https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">Ouvrir la connexion GOG</string>
+    <string name="gog_login_auth_code_label">Code d\'autorisation ou URL de réussite de connexion</string>
+    <string name="gog_login_auth_code_placeholder">Collez le code ou l\'url ici</string>
+    <string name="gog_login_button">Se connecter</string>
+    <string name="gog_login_cancel">Annuler</string>
+    <string name="gog_login_browser_error">Impossible d\'ouvrir le navigateur</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Déconnexion</string>
+    <string name="gog_settings_logout_subtitle">Se déconnecter de votre compte GOG</string>
+    <string name="gog_logout_confirm_title">Se déconnecter de GOG ?</string>
+    <string name="gog_logout_confirm_message">Cela supprimera vos identifiants GOG et effacera votre bibliothèque GOG de cet appareil. Vous pouvez vous reconnecter à tout moment.</string>
+    <string name="gog_logout_confirm">Déconnexion</string>
+    <string name="gog_logout_success">Déconnecté de GOG avec succès</string>
+    <string name="gog_logout_failed">Échec de la déconnexion : %s</string>
+    <string name="gog_logout_in_progress">Déconnexion de GOG…</string>
 </resources>
 
 
