@@ -9,6 +9,7 @@ import app.gamenative.data.FileChangeLists
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamLicense
 import app.gamenative.data.CachedLicense
+import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
@@ -25,6 +26,7 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.SteamLicenseDao
 import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.CachedLicenseDao
+import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
@@ -42,8 +44,9 @@ const val DATABASE_NAME = "pluvia.db"
         SteamLicense::class,
         GOGGame::class,
         EpicGame::class,
+        DownloadingAppInfo::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false, // Should export once stable.
 )
 @TypeConverters(
@@ -73,4 +76,6 @@ abstract class PluviaDatabase : RoomDatabase() {
 
     abstract fun gogGameDao(): GOGGameDao
     abstract fun epicGameDao(): EpicGameDao
+
+    abstract fun downloadingAppInfoDao(): DownloadingAppInfoDao
 }

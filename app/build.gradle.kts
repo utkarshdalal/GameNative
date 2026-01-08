@@ -87,6 +87,7 @@ android {
             "fr",      // French
             "de",      // German
             "uk",      // Ukrainian
+            "it",      // Italian
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 
@@ -228,8 +229,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-5-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-5-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {

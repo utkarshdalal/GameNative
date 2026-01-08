@@ -48,6 +48,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import app.gamenative.ui.component.dialog.GameManagerDialog
+import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import com.winlator.core.GPUInformation
 import timber.log.Timber
 import java.nio.file.Paths
@@ -128,6 +130,20 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun getInstallDialogState(gameId: Int): MessageDialogState? {
             return installDialogStates[gameId]
+        }
+
+        private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
+
+        fun showGameManagerDialog(gameId: Int, state: GameManagerDialogState) {
+            gameManagerDialogStates[gameId] = state
+        }
+
+        fun hideGameManagerDialog(gameId: Int) {
+            gameManagerDialogStates.remove(gameId)
+        }
+
+        fun getGameManagerDialogState(gameId: Int): GameManagerDialogState? {
+            return gameManagerDialogStates[gameId]
         }
 
         // Shared state for update/verify operation - map of gameId to AppOptionMenuType
@@ -438,14 +454,10 @@ class SteamAppScreen : BaseAppScreen() {
         } else if (!isInstalled) {
             // Request storage permissions first, then show install dialog
             // This will be handled by the permission launcher in AdditionalDialogs
-            showInstallDialog(
+            showGameManagerDialog(
                 gameId,
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.INSTALL_APP_PENDING,
-                    title = context.getString(R.string.download_prompt_title),
-                    message = context.getString(R.string.calculating_space_requirements),
-                    dismissBtnText = context.getString(R.string.cancel),
+                GameManagerDialogState(
+                    visible = true
                 )
             )
         } else {
@@ -614,6 +626,17 @@ class SteamAppScreen : BaseAppScreen() {
                     container.isNeedsUnpacking = true
                     container.saveData()
                 },
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ManageGameContent,
+                onClick = {
+                    showGameManagerDialog(
+                        gameId,
+                        GameManagerDialogState(
+                            visible = true,
+                        )
+                    )
+                }
             ),
             AppMenuOption(
                 AppOptionMenuType.VerifyFiles,
@@ -831,6 +854,17 @@ class SteamAppScreen : BaseAppScreen() {
                 }
         }
 
+        var gameManagerDialogState by remember(gameId) {
+            mutableStateOf(getGameManagerDialogState(gameId) ?: GameManagerDialogState(false))
+        }
+
+        LaunchedEffect(gameId) {
+            snapshotFlow { getGameManagerDialogState(gameId) }
+                .collect { state ->
+                    gameManagerDialogState = state ?: GameManagerDialogState(false)
+                }
+        }
+
         // Migration state
         val scope = rememberCoroutineScope()
         var showMoveDialog by remember { mutableStateOf(false) }
@@ -894,6 +928,7 @@ class SteamAppScreen : BaseAppScreen() {
                     Toast.LENGTH_SHORT
                 ).show()
                 hideInstallDialog(gameId)
+                hideGameManagerDialog(gameId)
             }
         }
 
@@ -945,6 +980,18 @@ class SteamAppScreen : BaseAppScreen() {
                     buildInstallPromptState(context, info)
                 }
                 showInstallDialog(gameId, state)
+            }
+        }
+
+        LaunchedEffect(gameManagerDialogState.visible, hasStoragePermission) {
+            if (!gameManagerDialogState.visible) return@LaunchedEffect
+            if (!hasStoragePermission) {
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ),
+                )
             }
         }
 
@@ -1171,6 +1218,37 @@ class SteamAppScreen : BaseAppScreen() {
                 currentFile = current,
                 movedFiles = moved,
                 totalFiles = total,
+            )
+        }
+
+        if (gameManagerDialogState.visible) {
+            GameManagerDialog(
+                visible = true,
+                onGetDisplayInfo = { context ->
+                    return@GameManagerDialog getGameDisplayInfo(context, libraryItem)
+                },
+                onInstall = { dlcAppIds ->
+                    hideGameManagerDialog(gameId)
+
+                    val installedApp = SteamService.getInstalledApp(gameId)
+                    if (installedApp != null) {
+                        // Remove markers if the app is already installed
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    }
+
+                    PostHog.capture(
+                        event = "game_install_started",
+                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false)
+                    }
+                },
+                onDismissRequest = {
+                    hideGameManagerDialog(gameId)
+                }
             )
         }
     }

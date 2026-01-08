@@ -729,6 +729,7 @@
     <!-- TODO: Revisão manual - Novas strings do último pull -->
     <!-- Diálogos específicos do Steam -->
     <string name="steam_install_space_prompt">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tTamanho no disco: %2$s\n\tEspaço disponível: %3$s</string>
+    <string name="steam_install_space">Tamanho do download: %1$s\nTamanho no disco: %2$s\nEspaço disponível: %3$s</string>
     <string name="steam_install_not_enough_space">O aplicativo sendo instalado precisa de %1$s de espaço, mas há apenas %2$s restante neste dispositivo</string>
     <string name="steam_cancel_download_message">Tem certeza de que deseja cancelar o download do aplicativo?</string>
     <string name="steam_delete_download_message">Excluir todos os dados baixados para este jogo?</string>

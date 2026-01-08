@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
+import androidx.navigation.ActivityNavigator
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
@@ -732,11 +733,12 @@ object SteamUtils {
             appIdFile.toFile().writeText(steamAppId.toString())
         }
         val depotsFile = settingsDir.resolve("depots.txt")
-        if (Files.notExists(depotsFile)) {
-            SteamService.getInstalledDepotsOf(steamAppId)?.let { depotsList ->
-                Files.createFile(depotsFile)
-                depotsFile.toFile().writeText(depotsList.joinToString(System.lineSeparator()))
-            }
+        if (Files.exists(depotsFile)) {
+            Files.delete(depotsFile)
+        }
+        SteamService.getInstalledDepotsOf(steamAppId)?.sorted()?.let { depotsList ->
+            Files.createFile(depotsFile)
+            depotsFile.toFile().writeText(depotsList.joinToString(System.lineSeparator()))
         }
 
         val configsIni = settingsDir.resolve("configs.user.ini")
@@ -780,15 +782,36 @@ object SteamUtils {
         configsIni.toFile().writeText(iniContent)
 
         val appIni = settingsDir.resolve("configs.app.ini")
-        val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
+        val dlcIds = SteamService.getInstalledDlcDepotsOf(steamAppId)
+        val dlcApps = SteamService.getDownloadableDlcAppsOf(steamAppId)
         val hiddenDlcApps = SteamService.getHiddenDlcAppsOf(steamAppId)
+        val appendedDlcIds = mutableListOf<Int>()
 
         val forceDlc = container.isForceDlc()
         val appIniContent = buildString {
             appendLine("[app::dlcs]")
             appendLine("unlock_all=${if (forceDlc) 1 else 0}")
-            dlcIds?.forEach { appendLine("$it=dlc$it") }
-            hiddenDlcApps?.forEach { appendLine("${it.id}=${it.name}") }
+            dlcIds?.sorted()?.forEach {
+                appendLine("$it=dlc$it")
+                appendedDlcIds.add(it)
+            }
+
+            dlcApps?.forEach { dlcApp ->
+                val installedDlcApp = SteamService.getInstalledApp(dlcApp.id)
+                if (installedDlcApp != null && !appendedDlcIds.contains(dlcApp.id)) {
+                    appendLine("${dlcApp.id}=dlc${dlcApp.id}")
+                    appendedDlcIds.add(dlcApp.id)
+                }
+            }
+
+            // only add hidden dlc apps if not found in appendedDlcIds
+            hiddenDlcApps?.forEach { hiddenDlcApp ->
+                if (!appendedDlcIds.contains(hiddenDlcApp.id) &&
+                    // only add hidden dlc apps if it is not a DLC of the main app
+                    appInfo!!.depots.filter { (_, depot) -> depot.dlcAppId == hiddenDlcApp.id }.size <= 1) {
+                    appendLine("${hiddenDlcApp.id}=dlc${hiddenDlcApp.id}")
+                }
+            }
 
             // Add cloud save config sections if appInfo exists
             if (appInfo != null) {
@@ -873,7 +896,7 @@ object SteamUtils {
                         .replace("{Steam3AccountID}", "{::Steam3AccountID::}")
                     uniqueDirs.add("{::$root::}/$path")
                 }
-                
+
                 uniqueDirs.forEachIndexed { index, dir ->
                     appendLine("dir${index + 1}=$dir")
                 }

@@ -221,7 +221,7 @@ internal fun LibraryListPane(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(top = headerTopPadding)
+                    .padding(vertical = headerTopPadding)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

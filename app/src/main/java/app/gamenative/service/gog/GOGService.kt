@@ -15,6 +15,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 
 /**
@@ -298,7 +299,7 @@ class GOGService : Service() {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             // Create DownloadInfo for progress tracking
-            val downloadInfo = DownloadInfo(jobCount = 1)
+            val downloadInfo = DownloadInfo(jobCount = 1, gameId = 0, downloadingAppIds = CopyOnWriteArrayList<Int>())
 
             // Track in activeDownloads first
             instance.activeDownloads[gameId] = downloadInfo
