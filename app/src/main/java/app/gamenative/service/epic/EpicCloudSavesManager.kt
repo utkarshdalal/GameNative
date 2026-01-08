@@ -70,7 +70,9 @@ object EpicCloudSavesManager {
 
     /**
      * Sync cloud saves for a game (bidirectional sync with conflict detection)
-     *
+     * preferredAction = download -> Force downloads all files and overwrites current files
+     * preferredAction = upload -> Force uploads all files
+     * preferredAction = "auto" -> Timestamp check and uploads/downloads the files pending on the timestamp resolution
      * @param preferredAction "download", "upload", or "auto" (default)
      */
     suspend fun syncCloudSaves(
