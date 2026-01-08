@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.content.Context
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.EpicGame
+import app.gamenative.service.epic.manifest.EpicManifest
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.ByteBuffer
@@ -87,7 +88,7 @@ class EpicDownloadManager @Inject constructor(
             Timber.tag("Epic").d("Manifest fetched with ${cdnUrls.size} CDN URLs, parsing...")
 
             // Step 2: Parse manifest binary to get chunks and files
-            val manifest = app.gamenative.service.epic.manifest.EpicManifest.readAll(manifestData.manifestBytes)
+            val manifest = EpicManifest.readAll(manifestData.manifestBytes)
 
             // Extract chunk and file data from parsed manifest
             val chunkDataList = manifest.chunkDataList
@@ -217,7 +218,6 @@ class EpicDownloadManager @Inject constructor(
 
             Timber.tag("EpicManifest").i("Chunk Dir: $chunkPath")
 
-
             // Try each CDN base URL until one succeeds
             var lastException: Exception? = null
             for (cdnUrl in cdnUrls) {
@@ -315,6 +315,7 @@ class EpicDownloadManager @Inject constructor(
 
         // Read chunk data starting from header end
         val dataStart = headerSize
+        //! Note: This may require adjustments if we see chunks bigger than 2GB - Unlikely but worth Observing
         val dataBytes = chunkBytes.copyOfRange(dataStart, dataStart + compressedSize)
 
         return if (isCompressed) {
@@ -331,40 +332,6 @@ class EpicDownloadManager @Inject constructor(
         } else {
             // Already uncompressed
             dataBytes
-        }
-    }
-
-    /**
-     * Decompress a chunk file using zlib inflation (deprecated - keeping for reference)
-     * Epic chunks use zlib compression (deflate algorithm)
-     */
-    @Deprecated("Use readEpicChunk instead")
-    private fun decompressChunk(compressedFile: File, outputFile: File, expectedSize: Long) {
-        val inflater = Inflater()
-        try {
-            compressedFile.inputStream().use { input ->
-                outputFile.outputStream().use { output ->
-                    val compressedData = input.readBytes()
-                    inflater.setInput(compressedData)
-
-                    val buffer = ByteArray(CHUNK_BUFFER_SIZE)
-                    var totalDecompressed = 0L
-
-                    while (!inflater.finished()) {
-                        val decompressedCount = inflater.inflate(buffer)
-                        if (decompressedCount > 0) {
-                            output.write(buffer, 0, decompressedCount)
-                            totalDecompressed += decompressedCount
-                        }
-                    }
-
-                    if (totalDecompressed != expectedSize) {
-                        throw Exception("Decompressed size mismatch: expected $expectedSize, got $totalDecompressed")
-                    }
-                }
-            }
-        } finally {
-            inflater.end()
         }
     }
 
