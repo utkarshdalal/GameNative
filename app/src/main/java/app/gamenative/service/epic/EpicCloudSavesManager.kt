@@ -238,6 +238,7 @@ object EpicCloudSavesManager {
             val instant = Instant.parse(timestamp)
             instant.toEpochMilli()
         } catch (e: Exception) {
+            Timber.tag("Epic").w(e, "[Cloud Saves] Failed to parse timestamp: $timestamp")
             0L
         }
     }
