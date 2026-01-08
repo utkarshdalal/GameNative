@@ -34,6 +34,7 @@ import timber.log.Timber
  * - Manifest files contain metadata and chunk references
  * - Save files are split into compressed chunks
  * - Chunks are deduplicated via GUID/hash
+ * ! Note: This implementation will have its issues with outlier use-cases. We will cover them as we find them.
  */
 object EpicCloudSavesManager {
 
