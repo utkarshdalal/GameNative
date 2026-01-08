@@ -89,7 +89,9 @@ fun GameManagerDialog(
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
-    val installedApp = SteamService.getInstalledApp(gameId)
+    val installedApp = remember(gameId) {
+        SteamService.getInstalledApp(gameId)
+    }
     val installedDlcIds = installedApp?.dlcDepots.orEmpty()
 
     val indirectDlcAppIds = remember(gameId) {
@@ -188,26 +190,34 @@ fun GameManagerDialog(
         val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
 
         // For Base Game
-        val baseGameInstallBytes = downloadableDepots
-            .filter { (_, depot) ->
-                depot.dlcAppId == INVALID_APP_ID
-            }.values.sumOf { it.manifests["public"]?.size ?: 0 }
+        val baseGameInstallBytes = if (installedApp == null) {
+            downloadableDepots
+                .filter { (_, depot) ->
+                    depot.dlcAppId == INVALID_APP_ID
+                }.values.sumOf { it.manifests["public"]?.size ?: 0 }
+        } else {
+            0L
+        }
 
-        val baseGameDownloadBytes = downloadableDepots
-            .filter { (_, depot) ->
-                depot.dlcAppId == INVALID_APP_ID
-            }.values.sumOf { it.manifests["public"]?.download ?: 0 }
+        val baseGameDownloadBytes = if (installedApp == null) {
+            downloadableDepots
+                .filter { (_, depot) ->
+                    depot.dlcAppId == INVALID_APP_ID
+                }.values.sumOf { it.manifests["public"]?.download ?: 0 }
+        } else {
+            0L
+        }
 
         // For Selected DLCs
         val selectedInstallBytes = downloadableDepots
             .filter { (_, depot) ->
-                selectedAppIds[depot.dlcAppId] == true
+                selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
             .values.sumOf { it.manifests["public"]?.size ?: 0 }
 
         val selectedDownloadBytes = downloadableDepots
             .filter { (_, depot) ->
-                selectedAppIds[depot.dlcAppId] == true
+                selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
             .values.sumOf { it.manifests["public"]?.download ?: 0 }
 
@@ -220,7 +230,7 @@ fun GameManagerDialog(
         )
     }
 
-    val installSizeInfo by remember(downloadableDepots.keys.toSet(), selectedAppIds.toMap()) {
+    val installSizeInfo by remember(downloadableDepots.keys.toSet(), selectedAppIds.toMap(), enabledAppIds.toMap()) {
         derivedStateOf { getInstallSizeInfo() }
     }
 

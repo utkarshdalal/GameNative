@@ -1372,7 +1372,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return info
         }
 
-        private fun completeAppDownload(
+        private suspend fun completeAppDownload(
             downloadInfo: DownloadInfo,
             downloadingAppId: Int,
             entitledDepotIds: List<Int>,
@@ -1382,32 +1382,30 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Item $downloadingAppId download completed, saving database")
 
             // Update database
-            runBlocking {
-                val appInfo = getInstalledApp(downloadingAppId)
+            val appInfo = instance?.appInfoDao?.getInstalledApp(downloadingAppId)
 
-                // Update Saved AppInfo
-                if (appInfo != null) {
-                    val updatedDownloadedDepots = (appInfo.downloadedDepots + entitledDepotIds).distinct()
-                    val updatedDlcDepots = (appInfo.dlcDepots + selectedDlcAppIds).distinct()
+            // Update Saved AppInfo
+            if (appInfo != null) {
+                val updatedDownloadedDepots = (appInfo.downloadedDepots + entitledDepotIds).distinct()
+                val updatedDlcDepots = (appInfo.dlcDepots + selectedDlcAppIds).distinct()
 
-                    instance?.appInfoDao?.update(
-                        AppInfo(
-                            downloadingAppId,
-                            isDownloaded = true,
-                            downloadedDepots = updatedDownloadedDepots.sorted(),
-                            dlcDepots = updatedDlcDepots.sorted(),
-                        ),
-                    )
-                } else {
-                    instance?.appInfoDao?.insert(
-                        AppInfo(
-                            downloadingAppId,
-                            isDownloaded = true,
-                            downloadedDepots = entitledDepotIds.sorted(),
-                            dlcDepots = selectedDlcAppIds.sorted(),
-                        ),
-                    )
-                }
+                instance?.appInfoDao?.update(
+                    AppInfo(
+                        downloadingAppId,
+                        isDownloaded = true,
+                        downloadedDepots = updatedDownloadedDepots.sorted(),
+                        dlcDepots = updatedDlcDepots.sorted(),
+                    ),
+                )
+            } else {
+                instance?.appInfoDao?.insert(
+                    AppInfo(
+                        downloadingAppId,
+                        isDownloaded = true,
+                        downloadedDepots = entitledDepotIds.sorted(),
+                        dlcDepots = selectedDlcAppIds.sorted(),
+                    ),
+                )
             }
 
             // Remove completed appId from downloadInfo.dlcAppIds
@@ -1416,11 +1414,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             // All downloading appIds are removed
             if (downloadInfo.downloadingAppIds.isEmpty()) {
                 // Handle completion: add markers
-                MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                withContext(Dispatchers.IO) {
+                    MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+                    MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+                }
                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
-
-                MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
-                MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
 
                 // Clear persisted bytes file on successful completion
                 downloadInfo.clearPersistedBytesDownloaded(appDirPath)

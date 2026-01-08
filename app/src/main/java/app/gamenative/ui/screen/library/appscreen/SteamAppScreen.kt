@@ -928,6 +928,7 @@ class SteamAppScreen : BaseAppScreen() {
                     Toast.LENGTH_SHORT
                 ).show()
                 hideInstallDialog(gameId)
+                hideGameManagerDialog(gameId)
             }
         }
 
@@ -979,6 +980,18 @@ class SteamAppScreen : BaseAppScreen() {
                     buildInstallPromptState(context, info)
                 }
                 showInstallDialog(gameId, state)
+            }
+        }
+
+        LaunchedEffect(gameManagerDialogState.visible, hasStoragePermission) {
+            if (!gameManagerDialogState.visible) return@LaunchedEffect
+            if (!hasStoragePermission) {
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ),
+                )
             }
         }
 
