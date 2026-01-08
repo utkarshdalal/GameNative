@@ -144,6 +144,8 @@ private fun LibraryScreenContent(
 ) {
     val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
+    var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     // Dialog state for add custom game prompt
@@ -187,7 +189,10 @@ private fun LibraryScreenContent(
         }
     }
 
-    BackHandler(selectedAppId != null) { selectedAppId = null }
+    BackHandler(selectedLibraryItem != null) {
+        selectedAppId = null
+        selectedLibraryItem = null
+    }
 
     // Refresh list when navigating back from detail view
     LaunchedEffect(selectedAppId) {
@@ -202,7 +207,7 @@ private fun LibraryScreenContent(
     // Apply top padding differently for list vs game detail pages.
     // On the game page we want to hide the top padding when the status bar is hidden.
     val safePaddingModifier = if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
-        if (selectedAppId != null) {
+        if (selectedLibraryItem != null) {
             // Detail (game) page: use actual status bar height when status bar is visible,
             // or 0.dp when status bar is hidden
             val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
@@ -220,7 +225,7 @@ private fun LibraryScreenContent(
     Box(
         Modifier.background(MaterialTheme.colorScheme.background)
         .then(safePaddingModifier)) {
-        if (selectedAppId == null) {
+        if (selectedLibraryItem == null) {
             LibraryListPane(
                 state = state,
                 listState = listState,
@@ -232,24 +237,25 @@ private fun LibraryScreenContent(
                 onSearchQuery = onSearchQuery,
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
-                onNavigate = { appId -> selectedAppId = appId },
+                onNavigate = { appId ->
+                    selectedAppId = appId
+                    selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                },
                 onGoOnline = onGoOnline,
                 onRefresh = onRefresh,
                 onSourceToggle = onSourceToggle,
                 isOffline = isOffline,
             )
         } else {
-            // Find the LibraryItem from the state based on selectedAppId
-            val selectedLibraryItem = selectedAppId?.let { appId ->
-                state.appInfoList.find { it.appId == appId }
-            }
-
             LibraryDetailPane(
                 libraryItem = selectedLibraryItem,
-                onBack = { selectedAppId = null },
+                onBack = {
+                    selectedAppId = null
+                    selectedLibraryItem = null
+                },
                 onClickPlay = {
-                    selectedLibraryItem?.let { libraryItem ->
-                        onClickPlay(libraryItem.appId, it)
+                    selectedLibraryItem?.let { libraryItem -> 
+                        onClickPlay(libraryItem.appId, it) 
                     }
                 },
                 onTestGraphics = {
@@ -260,7 +266,7 @@ private fun LibraryScreenContent(
             )
         }
 
-        if (selectedAppId == null) {
+        if (selectedLibraryItem == null) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
