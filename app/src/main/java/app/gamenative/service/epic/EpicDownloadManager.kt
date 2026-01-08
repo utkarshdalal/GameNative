@@ -84,7 +84,10 @@ class EpicDownloadManager @Inject constructor(
             }
 
             val manifestData = manifestResult.getOrNull()!!
+
+            // ! Avoiding Cloudflare as it causes issues with some downloads and is inconsistent.
             val cdnUrls = manifestData.cdnUrls.filter { !it.baseUrl.startsWith("https://cloudflare.epicgamescdn.com") }
+
             Timber.tag("Epic").d("Manifest fetched with ${cdnUrls.size} CDN URLs, parsing...")
 
             // Step 2: Parse manifest binary to get chunks and files
