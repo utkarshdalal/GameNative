@@ -2036,7 +2036,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
-                        appDao.deleteAll()
                         changeNumbersDao.deleteAll()
                         fileChangeListsDao.deleteAll()
                         licenseDao.deleteAll()
