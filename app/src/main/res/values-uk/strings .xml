@@ -289,62 +289,62 @@
     <string name="settings_save_logcat_title">Зберегти logcat</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
-        Handling of flags on CALL/RET opcodes<br /><br />
-        <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
-        <b>1</b> : Most RET will need flags, most CALLS will not<br />
-        <b>2</b> : All CALL/RET will need flags (slower)
+        Обробка прапорців для опкодів CALL/RET<br /><br />
+        <b>0</b> : Обробляє CALL/RET так, ніби їм ніколи не потрібні прапорці (швидше, нестабільно)<br />
+        <b>1</b> : Більшості RET потрібні прапорці, більшості CALL — ні<br />
+        <b>2</b> : Усім CALL/RET потрібні прапорці (повільніше)
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_fastnan">Створює -NAN, як на x86</string>
     <string name="box86_64_env_var_help__dynarec_fastround">Створює точне округлення x86</string>
     <string name="box86_64_env_var_help__dynarec_x87double">Використовує Float/Double для x87 емуляції</string>
     <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
-        Dynarec building BigBlock<br /><br />
-        <b>0</b> : Don\'t try to build block as big as possible<br />
-        <b>1</b> : Build Dynarec block as big as possible<br />
-        <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
-        <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
+        Побудова Dynarec BigBlock<br /><br />
+        <b>0</b> : Не намагатися будувати блок максимально великим<br />
+        <b>1</b> : Будувати блок Dynarec максимально великим<br />
+        <b>2</b> : Будувати ще більший блок Dynarec (продовжувати при накладанні блоків, лише для пам\'яті elf)<br />
+        <b>3</b> : Будувати ще більший блок Dynarec (продовжувати при накладанні блоків, для всіх типів пам\'яті)
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
-        Simulation of Strong Memory model<br /><br />
-        <b>0</b> : Don\'t try anything special<br />
-        <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
-        <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
-        <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
+        Симуляція моделі строгої пам\'яті (Strong Memory)<br /><br />
+        <b>0</b> : Не робити нічого особливого<br />
+        <b>1</b> : Увімкнути деякі бар\'єри пам\'яті при записі в пам\'ять (на деяких опкодах MOV)<br />
+        <b>2</b> : Все з пункту 1, плюс бар\'єр пам\'яті при кожному записі в пам\'ять через MOV<br />
+        <b>3</b> : Все з пункту 2, плюс бар\'єр пам\'яті при читанні з пам\'яті та на деяких опкодах SSE/SSE2
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
-        Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
-        <b>0</b> : Use regular safe barriers<br />
-        <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+        Налаштування бар\'єрів пам\'яті для зменшення впливу на продуктивність емуляції strong memory<br /><br />
+        <b>0</b> : Використовувати звичайні безпечні бар\'єри<br />
+        <b>1</b> : Використовувати слабкі бар\'єри для невеликого приросту продуктивності<br />
+        <b>2</b> : Використовувати слабкі бар\'єри, додатково вимкнути бар\'єри останнього запису]]></string>
     <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
-        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
-        <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+        Генерувати лише вирівняні атоміки (наразі доступно лише на Arm64).<br /><br />
+        <b>0</b> : Генерувати код обробки невирівняних атоміків.<br />
+        <b>1</b> : Генерувати лише вирівняні атоміки (швидший і менший код, але викличе SIGBUS для опкодів з префіксом LOCK на вирівняних адресах).]]></string>
     <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
+        Увімкнути або вимкнути використання відкладених прапорців.<br /><br />
+        <b>0</b> : Вимкнути використання відкладених прапорців.<br />
+        <b>1</b> : Увімкнути використання відкладених прапорців.]]></string>
     <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
-        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
-        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
-        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+        Дозволити продовження виконання незахищеного блоку, який може бути "брудним".<br /><br />
+        <b>0</b> : Не дозволяти виконання.<br />
+        <b>1</b> : Дозволити продовжити виконання dynablock, що пише дані на ту саму сторінку, що й код. Пришвидшує завантаження деяких ігор, але може викликати збої.<br />
+        <b>2</b> : Також, при виявленні HotPage, позначає її як NEVERCLEAN (вона не буде захищена від запису, але блоки з цієї сторінки завжди перевірятимуться). Це може бути швидше (але деякі випадки SMC можуть не перехоплюватися).]]></string>
     <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
+        Увімкнути або вимкнути використання рідних (native) прапорців.<br /><br />
+        <b>0</b> : Не використовувати рідні прапорці.<br />
+        <b>1</b> : Використовувати рідні прапорці, коли це можливо.]]></string>
     <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
-        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
-        <b>0</b> : Ignore x86 PAUSE instruction.<br />
-        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
-        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
-        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
+        Увімкнути емуляцію x86 PAUSE, може покращити продуктивність спінлоків.<br /><br />
+        <b>0</b> : Ігнорувати інструкцію x86 PAUSE.<br />
+        <b>1</b> : Використовувати YIELD для емуляції x86 PAUSE.<br />
+        <b>2</b> : Використовувати WFI для емуляції x86 PAUSE.<br />
+        <b>3</b> : Використовувати SEVL+WFE для емуляції x86 PAUSE.
     ]]></string>
     <string name="box86_64_env_var_help__avx"><![CDATA[
-        AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
-        <b>0</b> : Disable AVX extension<br />
-        <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
-        <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />
+        Реалізовано AVX та AVX2, разом із розширеннями BMI1, BMI2, ADX, FMA, F16C та RDANDR!<br /><br />
+        <b>0</b> : Вимкнути розширення AVX<br />
+        <b>1</b> : Увімкнути розширення AVX, BMI1, F16C та VAES.<br />
+        <b>2</b> : Все з пункту 1, плюс увімкнути AVX2, BMI2, FMA, ADX, VPCLMULQDQ та RDRAND.<br />
     ]]></string>
     <string name="box86_64_env_var_help__maxcpu">Максимальна кількість процесорів, що відображається для програм через box64</string>
     <string name="box86_64_env_var_help__unityplayer">Виявляти UnityPlayer.dll і застосовувати налаштування strongmem</string>
@@ -455,7 +455,7 @@
     <string name="height">Висота</string>
     <string name="audio_driver">Аудіо драйвер</string>
     <string name="show_fps">Показати FPS</string>
-    <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер "%s"? Цю дію не можна скасувати.</string>
+    <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер «%s»? Цю дію не можна скасувати.</string>
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Попередній метод DRM</string>
@@ -874,7 +874,7 @@
     <string name="wine_proton_manager">Менеджер Wine/Proton</string>
     <string name="wine_proton_bionic_notice_header">Лише образи Bionic</string>
     <string name="wine_proton_info_description">Імпортуйте власні версії Wine або Proton для контейнерів Bionic. Ім\'я файлу має починатися з \'wine\' або \'proton\' (без урахування регістру). Пакети повинні містити bin/, lib/ та prefixPack.txz. Усі імпортовані файли сумісні лише з bionic.</string>
-    <string name="win_proton_example">Наприклад: "proton-10.0-ARM64ec.wcp"</string>
+    <string name="win_proton_example">Наприклад: «proton-10.0-ARM64ec.wcp»</string>
     <string name="wine_proton_import_package">Імпортувати пакет Wine/Proton</string>
     <string name="wine_proton_select_file_description">Виберіть файл .wcp (ім\'я файлу має починатися з \'wine\' або \'proton\')</string>
     <string name="wine_proton_import_wcp_button">Імпортувати пакет .wcp</string>
@@ -913,7 +913,7 @@
     <string name="wine_proton_error_badprofile">Недійсний profile.json</string>
     <string name="wine_proton_error_exist">Ця версія Wine/Proton вже існує</string>
     <string name="wine_proton_error_missingfiles">У пакеті відсутні необхідні файли (bin/, lib/ або prefixPack.txz)</string>
-    <string name="wine_proton_error_untrustprofile">Пакет є ненадійним</string>
+    <string name="wine_proton_error_untrustprofile">Пакет є недовіреним</string>
     <string name="wine_proton_error_nospace">Недостатньо місця в сховищі</string>
     <string name="wine_proton_error_unknown">Сталася невідома помилка</string>
     <string name="wine_proton_error_unable_install">Неможливо інсталювати пакет Wine/Proton</string>
