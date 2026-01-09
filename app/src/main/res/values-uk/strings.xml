@@ -13,6 +13,7 @@
     <string name="steam_2fa_device">Введіть код двофакторної автентифікації.</string>
     <string name="steam_2fa_email">Введіть код, відправлений на пошту: %s</string>
     <string name="steam_install_space_prompt">Застосунок, що інсталюється, має такі вимоги до обсягу пам\'яті. Продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступне місце: %3$s</string>
+    <string name="steam_install_space">Розмір завантаження: %1$s\nРозмір на диску: %2$s\nДоступне місце: %3$s</string>
     <string name="steam_install_not_enough_space">Для інсталяції застосунка потрібно %1$s вільного місця, але на цьому пристрої доступно лише %2$s</string>
     <string name="steam_cancel_download_message">Ви впевнені, що хочете скасувати завантаження застосунка?</string>
     <string name="steam_delete_download_message">Видалити всі завантажені дані цієї гри?</string>
@@ -125,6 +126,10 @@
     <string name="delete">Видалити</string>
     <string name="copy_from">Копіювати з</string>
     <string name="ok">ОК</string>
+    <string name="container_config_custom_resolution_title">Встановити власну роздільну здатність</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_error_nonzero">Ширина та висота повинні бути більшими за 0</string>
+    <string name="container_config_custom_resolution_error_aspect">Ширина повинна бути більшою за висоту</string>
     <string name="storage_info">Інформація про сховище</string>
     <string name="duplicate">Дублювати</string>
     <string name="reconfigure">Переналаштувати</string>
