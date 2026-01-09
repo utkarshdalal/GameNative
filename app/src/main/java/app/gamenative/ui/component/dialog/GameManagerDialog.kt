@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -230,6 +231,18 @@ fun GameManagerDialog(
         )
     }
 
+    val selectableAppIds by remember(enabledAppIds.toMap()) {
+        derivedStateOf {
+            enabledAppIds.filter { it.value }.keys.toList()
+        }
+    }
+
+    val allSelectableSelected by remember(selectedAppIds.toMap(), selectableAppIds) {
+        derivedStateOf {
+            selectableAppIds.isNotEmpty() && selectableAppIds.all { selectedAppIds[it] == true }
+        }
+    }
+
     val installSizeInfo by remember(downloadableDepots.keys.toSet(), selectedAppIds.toMap(), enabledAppIds.toMap()) {
         derivedStateOf { getInstallSizeInfo() }
     }
@@ -372,6 +385,29 @@ fun GameManagerDialog(
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            // Select All toggle
+                            if (selectableAppIds.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            val newState = !allSelectableSelected
+                                            selectableAppIds.forEach { appId ->
+                                                selectedAppIds[appId] = newState
+                                            }
+                                        }
+                                    ) {
+                                        Text(
+                                            text = if (allSelectableSelected) "Deselect all" else "Select all"
+                                        )
+                                    }
+                                }
+                            }
+
                             allDownloadableApps.forEach { (dlcAppId, depotInfo) ->
                                 val checked = selectedAppIds[dlcAppId] ?: false
                                 val enabled = enabledAppIds[dlcAppId] ?: false
@@ -405,6 +441,12 @@ fun GameManagerDialog(
                                         // Toggle checkbox when ListItem is clicked
                                         selectedAppIds[dlcAppId] = !checked
                                     }
+                                )
+
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                 )
                             }
                         }

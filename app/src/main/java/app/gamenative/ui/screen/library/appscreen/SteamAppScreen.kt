@@ -609,8 +609,9 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
+        val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
 
-        if (!isInstalled) {
+        if (!isInstalled || isDownloadInProgress) {
             return emptyList()
         }
 
