@@ -115,6 +115,7 @@ jetbrains-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", ve
 kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 secrets-gradle = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version = "2.0.1" }
+room = { id = "androidx.room", version.ref = "room-runtime" }
 
 [bundles]
 hilt = [

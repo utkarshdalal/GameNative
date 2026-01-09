@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
     alias(libs.plugins.secrets.gradle)
+    alias(libs.plugins.room)
     id("com.chaquo.python") version "16.0.0"
 }
 
@@ -27,6 +28,10 @@ val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: Sys
 // Add Supabase URL and key as build-time variables
 val supabaseUrl: String = project.findProperty("SUPABASE_URL") as String? ?: System.getenv("SUPABASE_URL") ?: "https://your-project.supabase.co"
 val supabaseKey: String = project.findProperty("SUPABASE_KEY") as String? ?: System.getenv("SUPABASE_KEY") ?: ""
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
 
 android {
     namespace = "app.gamenative"
@@ -149,11 +154,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
-        arg("room.incremental", "true")
     }
 
     packaging {
