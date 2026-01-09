@@ -13,6 +13,7 @@
     <string name="steam_2fa_device">Please enter your 2-factor auth code from your authenticator app.</string>
     <string name="steam_2fa_email">Please enter the auth code sent to the email at %s</string>
     <string name="steam_install_space_prompt">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="steam_install_space">Download Size: %1$s\nSize on Disk: %2$s\nAvailable Space: %3$s</string>
     <string name="steam_install_not_enough_space">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
     <string name="steam_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
     <string name="steam_delete_download_message">Delete all downloaded data for this game?</string>
@@ -40,6 +41,10 @@
     <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="steam_uninstall_success">%1$s has been uninstalled</string>
     <string name="steam_uninstall_failed">Failed to uninstall game</string>
+    <string name="gog_uninstall_game_title">Uninstall Game</string>
+    <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="gog_install_game_title">Download Game</string>
+    <string name="gog_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
     <string name="steam_never">Never</string>
     <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>
@@ -932,5 +937,37 @@
     <string name="wine_proton_containers_in_use">Containers using this version:</string>
     <string name="wine_proton_no_containers_warning">No containers are currently using this version.</string>
     <string name="wine_proton_containers_will_break">These containers will no longer work if you proceed:</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">GOG Integration (Alpha)</string>
+    <string name="gog_settings_login_title">GOG Login</string>
+    <string name="gog_settings_login_subtitle">Sign in to your GOG account</string>
+    <string name="gog_settings_sync_subtitle_syncing">Syncing…</string>
+    <string name="gog_settings_sync_subtitle_error">Error: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ Synced %1$d games</string>
+    <string name="gog_settings_sync_subtitle_default">Fetch your GOG games library</string>
+    <string name="gog_login_success_title">Login Successful</string>
+    <string name="gog_login_success_message">You are now signed in to GOG.\nWe will now sync your library in the background.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Sign in to GOG</string>
+    <string name="gog_login_auto_auth_info">Tap \'Open GOG Login\' and sign in. Once logged in, please copy the URL and paste below</string>
+    <string name="gog_login_auth_example">Example: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">Open GOG Login</string>
+    <string name="gog_login_auth_code_label">Authorization Code or login success URL</string>
+    <string name="gog_login_auth_code_placeholder">Paste code or url here</string>
+    <string name="gog_login_button">Login</string>
+    <string name="gog_login_cancel">Cancel</string>
+    <string name="gog_login_browser_error">Could not open browser</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Logout</string>
+    <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>
+    <string name="gog_logout_confirm_title">Logout from GOG?</string>
+    <string name="gog_logout_confirm_message">This will remove your GOG credentials and clear your GOG library from this device. You can sign in again at any time.</string>
+    <string name="gog_logout_confirm">Logout</string>
+    <string name="gog_logout_success">Logged out from GOG successfully</string>
+    <string name="gog_logout_failed">Failed to logout: %s</string>
+    <string name="gog_logout_in_progress">Logging out from GOG…</string>
 </resources>
 

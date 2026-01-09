@@ -10,8 +10,10 @@ import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
+import app.gamenative.data.GOGGame
 import app.gamenative.data.GameSource
 import app.gamenative.db.dao.SteamAppDao
+import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
@@ -43,6 +45,7 @@ import kotlin.math.min
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
+    private val gogGameDao: GOGGameDao,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -68,6 +71,7 @@ class LibraryViewModel @Inject constructor(
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
+    private var gogGameList: List<GOGGame> = emptyList()
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -95,11 +99,21 @@ class LibraryViewModel @Inject constructor(
                 // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
             ).collect { apps ->
                 Timber.tag("LibraryViewModel").d("Collecting ${apps.size} apps")
-
+                // Check if the list has actually changed before triggering a re-filter
                 if (appList.size != apps.size) {
-                    // Don't filter if it's no change
                     appList = apps
+                    onFilterApps(paginationCurrentPage)
+                }
+            }
+        }
 
+        // Collect GOG games
+        viewModelScope.launch(Dispatchers.IO) {
+            gogGameDao.getAll().collect { games ->
+                Timber.tag("LibraryViewModel").d("Collecting ${games.size} GOG games")
+                // Check if the list has actually changed before triggering a re-filter
+                if (gogGameList != games) {
+                    gogGameList = games
                     onFilterApps(paginationCurrentPage)
                 }
             }
@@ -138,6 +152,11 @@ class LibraryViewModel @Inject constructor(
                 val newValue = !current.showCustomGamesInLibrary
                 PrefManager.showCustomGamesInLibrary = newValue
                 _state.update { it.copy(showCustomGamesInLibrary = newValue) }
+            }
+            GameSource.GOG -> {
+                val newValue = !current.showGOGInLibrary
+                PrefManager.showGOGInLibrary = newValue
+                _state.update { it.copy(showGOGInLibrary = newValue) }
             }
         }
         onFilterApps(paginationCurrentPage)
@@ -185,6 +204,10 @@ class LibraryViewModel @Inject constructor(
                 } else {
                     Timber.tag("LibraryViewModel").d("No newly owned games discovered during refresh")
                 }
+                if (app.gamenative.service.gog.GOGService.hasStoredCredentials(context)) {
+                    Timber.tag("LibraryViewModel").i("Triggering GOG library refresh")
+                    app.gamenative.service.gog.GOGService.triggerLibrarySync(context)
+                }
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
             } finally {
@@ -193,6 +216,7 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
+
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath
@@ -214,18 +238,19 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun onFilterApps(paginationPage: Int = 0): Job {
-        // May be filtering 1000+ apps - in future should paginate at the point of DAO request
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        return viewModelScope.launch {
+        return viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(isLoading = true) }
 
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
+            // Fetch download directory apps once on IO thread and cache as a HashSet for O(1) lookups
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
+            val downloadDirectorySet = downloadDirectoryApps.toHashSet()
 
             // Filter Steam apps first (no pagination yet)
-            val downloadDirectorySet = downloadDirectoryApps.toHashSet()
+            // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
             val filteredSteamApps: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
@@ -300,28 +325,72 @@ class LibraryViewModel @Inject constructor(
             }
             val customEntries = customGameItems.map { LibraryEntry(it, true) }
 
+            // Filter GOG games
+            val filteredGOGGames = gogGameList
+                .asSequence()
+                .filter { game ->
+                    if (currentState.searchQuery.isNotEmpty()) {
+                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                    } else {
+                        true
+                    }
+                }
+                .filter { game ->
+                    if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
+                        game.isInstalled
+                    } else {
+                        true
+                    }
+                }
+                .toList()
+
+            val gogEntries = filteredGOGGames.map { game ->
+                LibraryEntry(
+                    item = LibraryItem(
+                        index = 0,
+                        appId = "${GameSource.GOG.name}_${game.id}",
+                        name = game.title,
+                        iconHash = game.imageUrl.ifEmpty { game.iconUrl },
+                        isShared = false,
+                        gameSource = GameSource.GOG,
+                    ),
+                    isInstalled = game.isInstalled,
+                )
+            }
+
+            val gogInstalledCount = filteredGOGGames.count { it.isInstalled }
             // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
             // This needs to happen before filtering by source, so we save the total counts
             if (currentState.searchQuery.isEmpty()) {
                 PrefManager.customGamesCount = customGameItems.size
                 PrefManager.steamGamesCount = filteredSteamApps.size
-                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}")
+                PrefManager.gogGamesCount = filteredGOGGames.size
+                PrefManager.gogInstalledGamesCount = gogInstalledCount
+                Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${filteredSteamApps.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount")
             }
 
             // Apply App Source filters
             val includeSteam = _state.value.showSteamInLibrary
             val includeOpen = _state.value.showCustomGamesInLibrary
+            val includeGOG = _state.value.showGOGInLibrary
 
-            // Combine both lists
+            // Combine all lists and sort: installed games first, then alphabetically
             val combined = buildList<LibraryEntry> {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen) addAll(customEntries)
+                if (includeGOG) addAll(gogEntries)
             }.sortedWith(
-                // Always sort by installed status first (installed games at top), then alphabetically within each group
+                // Primary sort: installed status (0 = installed at top, 1 = not installed at bottom)
+                // Secondary sort: alphabetically by name (case-insensitive)
                 compareBy<LibraryEntry> { entry ->
                     if (entry.isInstalled) 0 else 1
-                }.thenBy { it.item.name.lowercase() } // Alphabetical sorting within installed and uninstalled groups
-            ).mapIndexed { idx, entry -> entry.item.copy(index = idx) }
+                }.thenBy { it.item.name.lowercase() }
+            ).also { sortedList ->
+                if (sortedList.isNotEmpty()) {
+                    val installedCount = sortedList.count { it.isInstalled }
+                    val first10 = sortedList.take(10)
+                }
+            }.mapIndexed { idx, entry -> entry.item.copy(index = idx) }
 
             // Total count for the current filter
             val totalFound = combined.size

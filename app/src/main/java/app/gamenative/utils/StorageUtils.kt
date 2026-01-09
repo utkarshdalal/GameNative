@@ -21,6 +21,10 @@ import java.nio.file.Path
 object StorageUtils {
 
     fun getAvailableSpace(path: String): Long {
+        val file = File(path)
+        if (!file.exists()) {
+            throw IllegalArgumentException("Invalid path: $path")
+        }
         val stat = StatFs(path)
         return stat.blockSizeLong * stat.availableBlocksLong
     }

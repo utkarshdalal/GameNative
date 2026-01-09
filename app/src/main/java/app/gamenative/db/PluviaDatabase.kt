@@ -9,20 +9,25 @@ import app.gamenative.data.FileChangeLists
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamLicense
 import app.gamenative.data.CachedLicense
+import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.data.EncryptedAppTicket
+import app.gamenative.data.GOGGame
 import app.gamenative.db.converters.AppConverter
 import app.gamenative.db.converters.ByteArrayConverter
 import app.gamenative.db.converters.FriendConverter
 import app.gamenative.db.converters.LicenseConverter
 import app.gamenative.db.converters.PathTypeConverter
 import app.gamenative.db.converters.UserFileInfoListConverter
+import app.gamenative.db.converters.GOGConverter
 import app.gamenative.db.dao.ChangeNumbersDao
 import app.gamenative.db.dao.FileChangeListsDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.SteamLicenseDao
 import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.CachedLicenseDao
+import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
+import app.gamenative.db.dao.GOGGameDao
 
 const val DATABASE_NAME = "pluvia.db"
 
@@ -35,8 +40,10 @@ const val DATABASE_NAME = "pluvia.db"
         FileChangeLists::class,
         SteamApp::class,
         SteamLicense::class,
+        GOGGame::class,
+        DownloadingAppInfo::class
     ],
-    version = 8,
+    version = 10,
     exportSchema = false, // Should export once stable.
 )
 @TypeConverters(
@@ -46,6 +53,7 @@ const val DATABASE_NAME = "pluvia.db"
     LicenseConverter::class,
     PathTypeConverter::class,
     UserFileInfoListConverter::class,
+    GOGConverter::class,
 )
 abstract class PluviaDatabase : RoomDatabase() {
 
@@ -62,4 +70,8 @@ abstract class PluviaDatabase : RoomDatabase() {
     abstract fun cachedLicenseDao(): CachedLicenseDao
 
     abstract fun encryptedAppTicketDao(): EncryptedAppTicketDao
+
+    abstract fun gogGameDao(): GOGGameDao
+
+    abstract fun downloadingAppInfoDao(): DownloadingAppInfoDao
 }

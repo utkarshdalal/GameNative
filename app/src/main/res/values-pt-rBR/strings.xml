@@ -17,6 +17,10 @@
     <string name="delete_app">Deletar</string>
     <string name="uninstall">Desinstalar</string>
     <string name="run_app">Jogar</string>
+    <string name="gog_uninstall_game_title">Desinstalar Jogo</string>
+    <string name="gog_uninstall_confirmation_message">Tem certeza que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
+    <string name="gog_install_game_title">Baixar Jogo</string>
+    <string name="gog_install_confirmation_message">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tEspaço disponível: %2$s</string>
     <string name="download_prompt_title">Instalar App</string>
     <string name="delete_prompt_title">Deletar App</string>
     <string name="cancel_download_prompt_title">Cancelar Download</string>
@@ -725,6 +729,7 @@
     <!-- TODO: Revisão manual - Novas strings do último pull -->
     <!-- Diálogos específicos do Steam -->
     <string name="steam_install_space_prompt">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tTamanho no disco: %2$s\n\tEspaço disponível: %3$s</string>
+    <string name="steam_install_space">Tamanho do download: %1$s\nTamanho no disco: %2$s\nEspaço disponível: %3$s</string>
     <string name="steam_install_not_enough_space">O aplicativo sendo instalado precisa de %1$s de espaço, mas há apenas %2$s restante neste dispositivo</string>
     <string name="steam_cancel_download_message">Tem certeza de que deseja cancelar o download do aplicativo?</string>
     <string name="steam_delete_download_message">Excluir todos os dados baixados para este jogo?</string>
@@ -795,4 +800,36 @@
     <string name="base_app_exported">Exportado</string>
     <string name="base_app_export_failed">Falha ao exportar: %s</string>
     <string name="base_app_export_cancelled">Exportação cancelada</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">Integração GOG (Alpha)</string>
+    <string name="gog_settings_login_title">Login GOG</string>
+    <string name="gog_settings_login_subtitle">Entre na sua conta GOG</string>
+    <string name="gog_settings_sync_subtitle_syncing">Sincronizando…</string>
+    <string name="gog_settings_sync_subtitle_error">Erro: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ %1$d jogos sincronizados</string>
+    <string name="gog_settings_sync_subtitle_default">Buscar sua biblioteca de jogos GOG</string>
+    <string name="gog_login_success_title">Login bem-sucedido</string>
+    <string name="gog_login_success_message">Você está conectado ao GOG.\nVamos sincronizar sua biblioteca em segundo plano.</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">Entrar no GOG</string>
+    <string name="gog_login_auto_auth_info">Toque em \'Abrir Login GOG\' e entre. Após fazer login, copie a URL e cole abaixo</string>
+    <string name="gog_login_auth_example">Exemplo: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">Abrir Login GOG</string>
+    <string name="gog_login_auth_code_label">Código de autorização ou URL de sucesso do login</string>
+    <string name="gog_login_auth_code_placeholder">Cole o código ou url aqui</string>
+    <string name="gog_login_button">Entrar</string>
+    <string name="gog_login_cancel">Cancelar</string>
+    <string name="gog_login_browser_error">Não foi possível abrir o navegador</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">Sair</string>
+    <string name="gog_settings_logout_subtitle">Desconectar da sua conta GOG</string>
+    <string name="gog_logout_confirm_title">Sair do GOG?</string>
+    <string name="gog_logout_confirm_message">Isso removerá suas credenciais GOG e limpará sua biblioteca GOG deste dispositivo. Você pode entrar novamente a qualquer momento.</string>
+    <string name="gog_logout_confirm">Sair</string>
+    <string name="gog_logout_success">Desconectado do GOG com sucesso</string>
+    <string name="gog_logout_failed">Falha ao sair: %s</string>
+    <string name="gog_logout_in_progress">Saindo do GOG…</string>
 </resources>

@@ -13,6 +13,7 @@
     <string name="steam_2fa_device">請輸入您的驗證器應用程式中的雙重驗證碼</string>
     <string name="steam_2fa_email">請輸入發送至郵件信箱 %s 的驗證碼</string>
     <string name="steam_install_space_prompt">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t磁碟佔用空間: %2$s\n\t可用空間: %3$s</string>
+    <string name="steam_install_space">下載大小: %1$s\n磁碟佔用空間: %2$s\n可用空間: %3$s</string>
     <string name="steam_install_not_enough_space">正在安裝的應用程式需要 %1$s 的空間, 但此設備上只剩下 %2$s 的空間</string>
     <string name="steam_cancel_download_message">您確定要取消下載此應用程式嗎?</string>
     <string name="steam_delete_download_message">刪除此遊戲的所有已下載數據?</string>
@@ -39,6 +40,10 @@
     <string name="steam_uninstall_confirmation_message">您確定要卸載 %1$s 嗎? 此操作無法撤回</string>
     <string name="steam_uninstall_success">%1$s 已卸載</string>
     <string name="steam_uninstall_failed">卸載遊戲失敗</string>
+    <string name="gog_uninstall_game_title">卸載遊戲</string>
+    <string name="gog_uninstall_confirmation_message">您確定要卸載 %1$s 嗎? 此操作無法撤回</string>
+    <string name="gog_install_game_title">下載遊戲</string>
+    <string name="gog_install_confirmation_message">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t可用空間: %2$s</string>
     <string name="steam_never">從不</string>
     <string name="steam_continue">繼續</string>
     <string name="header_img_desc">App header image</string>
@@ -925,6 +930,38 @@
     <string name="wine_proton_containers_in_use">使用此版本的容器:</string>
     <string name="wine_proton_no_containers_warning">目前沒有容器使用此版本</string>
     <string name="wine_proton_containers_will_break">若您繼續操作, 這些容器將無法繼續運作:</string>
+
+    <!-- GOG Settings -->
+    <string name="gog_integration_title">GOG 整合 (Alpha)</string>
+    <string name="gog_settings_login_title">GOG 登入</string>
+    <string name="gog_settings_login_subtitle">登入您的 GOG 帳戶</string>
+    <string name="gog_settings_sync_subtitle_syncing">同步中…</string>
+    <string name="gog_settings_sync_subtitle_error">錯誤: %1$s</string>
+    <string name="gog_settings_sync_subtitle_success">✓ 已同步 %1$d 個遊戲</string>
+    <string name="gog_settings_sync_subtitle_default">獲取您的 GOG 遊戲庫</string>
+    <string name="gog_login_success_title">登入成功</string>
+    <string name="gog_login_success_message">您現已登入到 GOG。\n我們將在背景中同步您的遊戲庫。</string>
+
+    <!-- GOG Login Dialog -->
+    <string name="gog_login_title">登入到 GOG</string>
+    <string name="gog_login_auto_auth_info">點擊\'開啟 GOG 登入\'並登入。登入後, 請複製 URL 並貼到下方</string>
+    <string name="gog_login_auth_example">範例: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
+    <string name="gog_login_open_button">開啟 GOG 登入</string>
+    <string name="gog_login_auth_code_label">授權碼或登入成功 URL</string>
+    <string name="gog_login_auth_code_placeholder">在此貼上代碼或 url</string>
+    <string name="gog_login_button">登入</string>
+    <string name="gog_login_cancel">取消</string>
+    <string name="gog_login_browser_error">無法開啟瀏覽器</string>
+
+    <!-- GOG Logout -->
+    <string name="gog_settings_logout_title">登出</string>
+    <string name="gog_settings_logout_subtitle">從您的 GOG 帳戶登出</string>
+    <string name="gog_logout_confirm_title">從 GOG 登出?</string>
+    <string name="gog_logout_confirm_message">這將刪除您的 GOG 憑證並清除此裝置上的 GOG 遊戲庫。您可以隨時重新登入。</string>
+    <string name="gog_logout_confirm">登出</string>
+    <string name="gog_logout_success">成功從 GOG 登出</string>
+    <string name="gog_logout_failed">登出失敗: %s</string>
+    <string name="gog_logout_in_progress">正在從 GOG 登出…</string>
 </resources>
 
 
