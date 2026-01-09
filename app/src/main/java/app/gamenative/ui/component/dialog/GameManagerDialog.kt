@@ -110,7 +110,13 @@ fun GameManagerDialog(
         allDownloadableApps.clear()
 
         // Get Downloadable Depots
-        downloadableDepots.putAll(SteamService.getDownloadableDepots(gameId))
+        val allPossibleDownloadableDepots = SteamService.getDownloadableDepots(gameId)
+        downloadableDepots.putAll(allPossibleDownloadableDepots)
+
+        // Get Optional DLC IDs
+        val optionalDlcIds = allPossibleDownloadableDepots
+            .filter { it.value.optionalDlcId == it.value.dlcAppId }
+            .map { it.value.dlcAppId }
 
         // Add DLCs
         downloadableDepots
@@ -124,7 +130,11 @@ fun GameManagerDialog(
             .forEach { (_, depotInfo) ->
                 allDownloadableApps.add(Pair(depotInfo.dlcAppId, depotInfo))
                 val installed = SteamService.getInstalledApp(depotInfo.dlcAppId)
-                selectedAppIds[depotInfo.dlcAppId] = !indirectDlcAppIds.contains(depotInfo.dlcAppId) || installedDlcIds.contains(depotInfo.dlcAppId) || installed != null
+                selectedAppIds[depotInfo.dlcAppId] =
+                        installed != null || // For installed Base Game and Indirect DLC App
+                        installedDlcIds.contains(depotInfo.dlcAppId) || // For installed DLC from Main Depot
+                        ( !indirectDlcAppIds.contains(depotInfo.dlcAppId) && !optionalDlcIds.contains(depotInfo.dlcAppId) ) // Not in indirect DLC and not in optional DLC ids
+
                 enabledAppIds[depotInfo.dlcAppId] = !installedDlcIds.contains(depotInfo.dlcAppId) && installed == null
             }
 
