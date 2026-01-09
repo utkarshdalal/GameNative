@@ -466,7 +466,7 @@
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
-    <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
+    <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
     <string name="steam_type">Версія Steam</string>
