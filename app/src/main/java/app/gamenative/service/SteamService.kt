@@ -1597,6 +1597,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
+            onProgress: ((message: String, progress: Float) -> Unit)? = null,
         ): Deferred<PostSyncInfo> = parentScope.async {
             if (isOffline || !isConnected) {
                 return@async PostSyncInfo(SyncResult.UpToDate)
@@ -1622,6 +1623,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 preferredSave = preferredSave,
                                 parentScope = parentScope,
                                 prefixToPath = prefixToPath,
+                                onProgress = onProgress,
                             ).await()
 
                             postSyncInfo?.let { info ->
