@@ -232,8 +232,35 @@ class SteamAutoCloudTest {
 
     @After
     fun tearDown() {
-        tempDir.deleteRecursively()
+        // Clean up ImageFs directory first (files created in wineprefix)
+        // This is critical because ImageFs uses context.getFilesDir() which is inside Robolectric's temp directory
+        try {
+            val imageFs = ImageFs.find(context)
+            val imageFsRoot = imageFs.rootDir
+            if (imageFsRoot.exists()) {
+                imageFsRoot.deleteRecursively()
+            }
+            
+            // Reset ImageFs singleton to prevent issues across tests
+            val instanceField = ImageFs::class.java.getDeclaredField("INSTANCE")
+            instanceField.isAccessible = true
+            instanceField.set(null, null)
+        } catch (e: Exception) {
+            // Ignore cleanup errors - files might be locked, but Robolectric will handle it
+        }
+        
+        // Clean up temp directory
+        try {
+            tempDir.deleteRecursively()
+        } catch (e: Exception) {
+            // Ignore cleanup errors
+        }
+        
+        // Close database
         db.close()
+        
+        // Give file system a moment to release locks (especially important in CI)
+        Thread.sleep(50)
     }
 
     @Test

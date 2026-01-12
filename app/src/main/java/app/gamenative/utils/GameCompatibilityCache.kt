@@ -99,8 +99,9 @@ object GameCompatibilityCache {
     private fun saveCache() {
         try {
             val now = System.currentTimeMillis()
-            val cacheMap = inMemoryCache.mapValues { (_, response) ->
-                CachedCompatibilityResponse(response.toData(), now)
+            val cacheMap = inMemoryCache.mapValues { (gameName, response) ->
+                val timestamp = timestamps[gameName] ?: now
+                CachedCompatibilityResponse(response.toData(), timestamp)
             }
             val cacheJson = Json.encodeToString(cacheMap)
             PrefManager.gameCompatibilityCache = cacheJson
@@ -164,7 +165,7 @@ object GameCompatibilityCache {
      */
     fun isCached(gameName: String): Boolean {
         loadCache()
-        return inMemoryCache.containsKey(gameName)
+        return getCached(gameName) != null
     }
 
     /**

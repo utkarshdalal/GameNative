@@ -19,7 +19,6 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.events.AndroidEvent
-import app.gamenative.enums.LoginResult
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
