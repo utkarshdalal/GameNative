@@ -2978,7 +2978,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     /**
      * Get encrypted app ticket for an app, with 30-minute caching.
-     * Returns the encrypted ticket bytes, or null if unavailable.
+     * Returns the serialized protobuf bytes, or null if unavailable.
      */
     suspend fun getEncryptedAppTicket(appId: Int): ByteArray? {
         return try {
@@ -2988,7 +2988,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val thirtyMinutes = 30 * 60 * 1000L
 
             if (cachedTicket != null && (now - cachedTicket.timestamp) < thirtyMinutes) {
-                Timber.d("Using cached encrypted app ticket for app $appId")
+                Timber.d("Using cached encrypted app ticket protobuf for app $appId")
                 return cachedTicket.encryptedTicket
             }
 
@@ -3017,13 +3017,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 crcEncryptedTicket = ticketProto.crcEncryptedticket.toInt(),
                 cbEncryptedUserData = ticketProto.cbEncrypteduserdata.toInt(),
                 cbEncryptedAppOwnershipTicket = ticketProto.cbEncryptedAppownershipticket.toInt(),
-                encryptedTicket = ticketProto.encryptedTicket.toByteArray(),
+                encryptedTicket = ticketProto.toByteArray(),
                 timestamp = now,
             )
 
             // Store in database
             encryptedAppTicketDao.insert(ticket)
-            Timber.d("Stored new encrypted app ticket for app $appId")
+            Timber.d("Stored new encrypted app ticket protobuf for app $appId")
 
             ticket.encryptedTicket
         } catch (e: Exception) {
