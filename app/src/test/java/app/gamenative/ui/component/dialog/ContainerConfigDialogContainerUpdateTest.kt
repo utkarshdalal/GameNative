@@ -1,20 +1,32 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.Context
+import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.data.ConfigInfo
+import app.gamenative.data.SteamApp
+import app.gamenative.db.PluviaDatabase
+import app.gamenative.enums.AppType
+import app.gamenative.enums.OS
+import app.gamenative.enums.ReleaseState
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.lang.reflect.Field
+import java.util.EnumSet
 
 @RunWith(RobolectricTestRunner::class)
 class ContainerConfigDialogContainerUpdateTest {
@@ -35,6 +47,43 @@ class ContainerConfigDialogContainerUpdateTest {
         DownloadService.populateDownloadService(context)
         File(SteamService.internalAppInstallPath).mkdirs()
         SteamService.externalAppInstallPath.takeIf { it.isNotBlank() }?.let { File(it).mkdirs() }
+
+        // Create app directory that SteamService.getAppDirPath will return
+        val appDir = File(SteamService.internalAppInstallPath, "123456")
+        appDir.mkdirs()
+
+        // Set up in-memory database with SteamApp entry
+        val db = Room.inMemoryDatabaseBuilder(context, PluviaDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+
+        // Insert test SteamApp so getAppDirPath() can find it
+        val testApp = SteamApp(
+            id = 123456,
+            name = "Test Game",
+            config = ConfigInfo(installDir = "123456"),
+            type = AppType.game,
+            osList = EnumSet.of(OS.windows),
+            releaseState = ReleaseState.released,
+        )
+        runBlocking {
+            db.steamAppDao().insert(testApp)
+        }
+
+        // Create a mock SteamService instance and set it as SteamService.instance
+        val mockSteamService = mock<SteamService>()
+        whenever(mockSteamService.appDao).thenReturn(db.steamAppDao())
+
+        // Mock steamClient and steamID for userSteamId property
+        val mockSteamClient = mock<`in`.dragonbra.javasteam.steam.steamclient.SteamClient>()
+        val mockSteamID = mock<`in`.dragonbra.javasteam.types.SteamID>()
+        whenever(mockSteamService.steamClient).thenReturn(mockSteamClient)
+        whenever(mockSteamClient.steamID).thenReturn(mockSteamID)
+
+        // Set the mock as SteamService.instance using reflection
+        val instanceField = SteamService::class.java.getDeclaredField("instance")
+        instanceField.isAccessible = true
+        instanceField.set(null, mockSteamService)
 
         container = Container("STEAM_123456")
         container.setRootDir(tempDir)
