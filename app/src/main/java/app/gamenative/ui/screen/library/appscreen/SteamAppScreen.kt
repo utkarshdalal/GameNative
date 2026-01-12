@@ -33,6 +33,8 @@ import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.GameCompatibilityCache
+import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.SteamUtils
@@ -266,16 +268,14 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Fetch best config compatibility info for uninstalled games
+        // Fetch compatibility info from cache
         var compatibilityMessage by remember { mutableStateOf<String?>(null) }
         var compatibilityColor by remember { mutableStateOf<ULong?>(null) }
         LaunchedEffect(isInstalled, gameId, appInfo.name) {
-            // Check if container exists
             try {
-                val gpuName = GPUInformation.getRenderer(context)
-                val bestConfig = BestConfigService.fetchBestConfig(appInfo.name, gpuName)
-                if (bestConfig != null) {
-                    val message = BestConfigService.getCompatibilityMessage(context, bestConfig.matchType)
+                val cachedResponse = GameCompatibilityCache.getCached(appInfo.name)
+                if (cachedResponse != null) {
+                    val message = GameCompatibilityService.getCompatibilityMessageFromResponse(context, cachedResponse)
                     compatibilityMessage = message.text
                     compatibilityColor = message.color.value
                 } else {
@@ -283,7 +283,7 @@ class SteamAppScreen : BaseAppScreen() {
                     compatibilityColor = null
                 }
             } catch (e: Exception) {
-                Timber.tag("SteamAppScreen").e(e, "Failed to fetch best config")
+                Timber.tag("SteamAppScreen").e(e, "Failed to get compatibility from cache")
                 compatibilityMessage = null
                 compatibilityColor = null
             }

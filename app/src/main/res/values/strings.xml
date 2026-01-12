@@ -798,9 +798,9 @@
     <string name="library_not_compatible">Not Compatible</string>
 
     <!-- Best Config Compatibility Messages -->
-    <string name="best_config_exact_gpu_match">Known config works on your device</string>
-    <string name="best_config_gpu_family_match">Known config should work on your device</string>
-    <string name="best_config_fallback_match">Known config may work on your device</string>
+    <string name="best_config_exact_gpu_match">Known config works on your GPU</string>
+    <string name="best_config_gpu_family_match">Known config should work on your GPU</string>
+    <string name="best_config_fallback_match">Known config may work on your GPU</string>
     <string name="best_config_compatibility_unknown">No known config</string>
 
     <!-- Best Config Toast Messages -->

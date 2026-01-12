@@ -844,4 +844,12 @@ object PrefManager {
     var appLanguage: String
         get() = getPref(APP_LANGUAGE, "")
         set(value) = setPref(APP_LANGUAGE, value)
+
+    // Game compatibility cache (JSON string)
+    private val GAME_COMPATIBILITY_CACHE = stringPreferencesKey("game_compatibility_cache")
+    var gameCompatibilityCache: String
+        get() = getPref(GAME_COMPATIBILITY_CACHE, "{}")
+        set(value) {
+            setPref(GAME_COMPATIBILITY_CACHE, value)
+        }
 }
