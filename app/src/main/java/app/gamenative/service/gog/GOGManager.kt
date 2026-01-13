@@ -207,57 +207,38 @@ class GOGManager @Inject constructor(
 
             Timber.tag("GOG").d("Getting Game Details for ${newGameIds.size} new GOG Games...")
 
-            // Process games in parallel batches for better performance
-            // Split into batches to avoid overwhelming the API and to save progress incrementally
-            newGameIds.chunked(REFRESH_BATCH_SIZE).forEachIndexed { batchIndex, batch ->
+            val games = mutableListOf<GOGGame>()
+
+            // Use direct HTTP calls via GOGApiClient
+            for ((index, id) in newGameIds.withIndex()) {
                 try {
-                    val batchStartIndex = batchIndex * REFRESH_BATCH_SIZE
-                    Timber.tag("GOG").d("Processing batch ${batchIndex + 1} (${batch.size} games, starting at index $batchStartIndex)")
+                    // Fetch game details using direct HTTP call
+                    val result = GOGApiClient.getGameById(context, id)
 
-                    // Fetch all games in this batch concurrently
-                    val batchResults = batch.map { gameId ->
-                        kotlinx.coroutines.async {
-                            try {
-                                val result = GOGApiClient.getGameById(context, gameId)
-                                Triple(gameId, result, null as Exception?)
-                            } catch (e: Exception) {
-                                Triple(gameId, null as Result<JSONObject>?, e)
+                    if (result.isSuccess) {
+                        val gameDetails = result.getOrNull()
+                        if (gameDetails != null) {
+                            Timber.tag("GOG").d("Got Game Details for ID: $id")
+                            val game = parseGameObject(gameDetails)
+                            if (game != null) {
+                                games.add(game)
+                                Timber.tag("GOG").d("Refreshed Game: ${game.title}")
+                                totalProcessed++
                             }
                         }
-                    }.map { it.await() }
-
-                    // Process results and collect valid games
-                    val games = mutableListOf<GOGGame>()
-                    batchResults.forEach { (gameId, result, error) ->
-                        when {
-                            error != null -> {
-                                Timber.e(error, "Failed to fetch game details for ID: $gameId")
-                            }
-                            result?.isSuccess == true -> {
-                                val gameDetails = result.getOrNull()
-                                if (gameDetails != null) {
-                                    val game = parseGameObject(gameDetails)
-                                    if (game != null) {
-                                        games.add(game)
-                                        Timber.tag("GOG").d("Refreshed Game: ${game.title}")
-                                        totalProcessed++
-                                    }
-                                }
-                            }
-                            else -> {
-                                Timber.w("GOG game ID $gameId not found in library after refresh")
-                            }
-                        }
+                    } else {
+                        Timber.w("GOG game ID $id not found in library after refresh")
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to parse game details for ID: $id")
+                }
 
-                    // Batch insert all valid games from this batch
+                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGameIds.size - 1) {
                     if (games.isNotEmpty()) {
                         gogGameDao.upsertPreservingInstallStatus(games)
-                        Timber.tag("GOG").d("Batch ${batchIndex + 1} inserted ${games.size} games (total processed: $totalProcessed/${newGameIds.size})")
+                        Timber.tag("GOG").d("Batch inserted ${games.size} games (processed ${index + 1}/${newGameIds.size})")
+                        games.clear()
                     }
-
-                } catch (e: Exception) {
-                    Timber.e(e, "Error processing batch ${batchIndex + 1}")
                 }
             }
             val detectedCount = detectAndUpdateExistingInstallations()
