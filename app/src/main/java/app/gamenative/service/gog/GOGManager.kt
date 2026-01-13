@@ -104,7 +104,7 @@ class GOGManager @Inject constructor(
         loadTimestampsFromDisk()
     }
 
-    suspend fun getGameById(gameId: String): GOGGame? {
+    suspend fun getGameFromDbById(gameId: String): GOGGame? {
         return withContext(Dispatchers.IO) {
             try {
                 gogGameDao.getById(gameId)
@@ -207,41 +207,57 @@ class GOGManager @Inject constructor(
 
             Timber.tag("GOG").d("Getting Game Details for ${newGameIds.size} new GOG Games...")
 
-            val games = mutableListOf<GOGGame>()
-            val authConfigPath = GOGAuthManager.getAuthConfigPath(context)
-
-            for ((index, id) in newGameIds.withIndex()) {
+            // Process games in parallel batches for better performance
+            // Split into batches to avoid overwhelming the API and to save progress incrementally
+            newGameIds.chunked(REFRESH_BATCH_SIZE).forEachIndexed { batchIndex, batch ->
                 try {
-                    val result = GOGPythonBridge.executeCommand(
-                        "--auth-config-path", authConfigPath,
-                        "game-details",
-                        "--game_id", id,
-                        "--pretty"
-                    )
+                    val batchStartIndex = batchIndex * REFRESH_BATCH_SIZE
+                    Timber.tag("GOG").d("Processing batch ${batchIndex + 1} (${batch.size} games, starting at index $batchStartIndex)")
 
-                    if (result.isSuccess) {
-                        val output = result.getOrNull() ?: ""
-                        Timber.tag("GOG").d("Got Game Details for ID: $id")
-                        val gameDetails = JSONObject(output.trim())
-                        val game = parseGameObject(gameDetails)
-                        if(game != null) {
-                            games.add(game)
-                            Timber.tag("GOG").d("Refreshed Game: ${game.title}")
-                            totalProcessed++
+                    // Fetch all games in this batch concurrently
+                    val batchResults = batch.map { gameId ->
+                        kotlinx.coroutines.async {
+                            try {
+                                val result = GOGApiClient.getGameById(context, gameId)
+                                Triple(gameId, result, null as Exception?)
+                            } catch (e: Exception) {
+                                Triple(gameId, null as Result<JSONObject>?, e)
+                            }
                         }
-                    } else {
-                        Timber.w("GOG game ID $id not found in library after refresh")
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to parse game details for ID: $id")
-                }
+                    }.map { it.await() }
 
-                if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGameIds.size - 1) {
+                    // Process results and collect valid games
+                    val games = mutableListOf<GOGGame>()
+                    batchResults.forEach { (gameId, result, error) ->
+                        when {
+                            error != null -> {
+                                Timber.e(error, "Failed to fetch game details for ID: $gameId")
+                            }
+                            result?.isSuccess == true -> {
+                                val gameDetails = result.getOrNull()
+                                if (gameDetails != null) {
+                                    val game = parseGameObject(gameDetails)
+                                    if (game != null) {
+                                        games.add(game)
+                                        Timber.tag("GOG").d("Refreshed Game: ${game.title}")
+                                        totalProcessed++
+                                    }
+                                }
+                            }
+                            else -> {
+                                Timber.w("GOG game ID $gameId not found in library after refresh")
+                            }
+                        }
+                    }
+
+                    // Batch insert all valid games from this batch
                     if (games.isNotEmpty()) {
                         gogGameDao.upsertPreservingInstallStatus(games)
-                        Timber.tag("GOG").d("Batch inserted ${games.size} games (processed ${index + 1}/${newGameIds.size})")
-                        games.clear()
+                        Timber.tag("GOG").d("Batch ${batchIndex + 1} inserted ${games.size} games (total processed: $totalProcessed/${newGameIds.size})")
                     }
+
+                } catch (e: Exception) {
+                    Timber.e(e, "Error processing batch ${batchIndex + 1}")
                 }
             }
             val detectedCount = detectAndUpdateExistingInstallations()
@@ -256,35 +272,14 @@ class GOGManager @Inject constructor(
         }
     }
 
+
+    /**
+     * List all game IDs owned by the user
+     * Uses direct HTTP call via GOGApiClient instead of Python bridge
+     */
     private suspend fun listGameIds(context: Context): Result<List<String>> {
-
-            Timber.tag("GOG").i("Fetching GOG Game Ids via GOGDL...")
-            val authConfigPath = GOGAuthManager.getAuthConfigPath(context)
-            if (!GOGAuthManager.hasStoredCredentials(context)) {
-              Timber.e("Cannot list games: not authenticated")
-              return Result.failure(Exception("Not authenticated. Please log in first."))
-          }
-
-            val result = GOGPythonBridge.executeCommand("--auth-config-path", authConfigPath, "game-ids")
-
-            if (result.isFailure) {
-                val error = result.exceptionOrNull()
-                Timber.e(error, "Failed to fetch GOG game IDs")
-                return Result.failure(error ?: Exception("Failed to fetch GOG game IDs"))
-            }
-
-            val output = result.getOrNull() ?: ""
-
-            if (output.isBlank()) {
-                Timber.w("Empty response when fetching GOG game IDs")
-                return Result.failure(Exception("Empty response from GOGDL"))
-            }
-
-            val gamesArray = org.json.JSONArray(output.trim())
-            val gameIds = List(gamesArray.length()) { gamesArray.getString(it) }
-            Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs")
-
-            return Result.success(gameIds)
+        Timber.tag("GOG").i("Fetching GOG Game Ids via direct HTTP...")
+        return GOGApiClient.getGameIds(context)
     }
 
     private fun parseGameObject(gameObj: JSONObject): GOGGame? {
@@ -363,7 +358,7 @@ class GOGManager @Inject constructor(
                         val detectedGame = detectGameFromDirectory(installDir)
                         if (detectedGame != null) {
                             // Update database with installation info
-                            val existingGame = getGameById(detectedGame.id)
+                            val existingGame = getGameFromDbById(detectedGame.id)
                             if (existingGame != null && !existingGame.isInstalled) {
                                 val updatedGame = existingGame.copy(
                                     isInstalled = true,
@@ -417,7 +412,7 @@ class GOGManager @Inject constructor(
                 val infoJson = JSONObject(infoContent)
                 val gameId = infoJson.optString("gameId", "")
                 if (gameId.isNotEmpty()) {
-                    val game = getGameById(gameId)
+                    val game = getGameFromDbById(gameId)
                     if (game != null) {
                         val installSize = calculateDirectorySize(installDir)
                         return game.copy(
@@ -488,29 +483,27 @@ class GOGManager @Inject constructor(
 
     suspend fun refreshSingleGame(gameId: String, context: Context): Result<GOGGame?> {
         return try {
-            Timber.d("Fetching single game data for gameId: $gameId")
-            val authConfigPath = GOGAuthManager.getAuthConfigPath(context)
+            Timber.d("Fetching single game data for gameId: $gameId via direct HTTP...")
 
             if (!GOGAuthManager.hasStoredCredentials(context)) {
                 return Result.failure(Exception("Not authenticated"))
             }
 
-            val result = GOGPythonBridge.executeCommand("--auth-config-path", authConfigPath, "game-details", "--game_id", gameId, "--pretty")
+            // Use direct HTTP call via GOGApiClient
+            val result = GOGApiClient.getGameById(context, gameId)
 
             if (result.isFailure) {
                 return Result.failure(result.exceptionOrNull() ?: Exception("Failed to fetch game data"))
             }
 
-            val output = result.getOrNull() ?: ""
-
-            if(result == null) {
+            val gameDetails = result.getOrNull()
+            if (gameDetails == null) {
                 Timber.w("Game $gameId not found in GOG library")
                 return Result.success(null)
             }
 
-            val gameDetails = org.json.JSONObject(output.trim())
-            var game = parseGameObject(gameDetails)
-            if(game == null){
+            val game = parseGameObject(gameDetails)
+            if (game == null) {
                 Timber.tag("GOG").w("Skipping Invalid GOG App with id: $gameId")
                 return Result.success(null)
             }
@@ -522,6 +515,7 @@ class GOGManager @Inject constructor(
         }
     }
 
+    // ! Note: We will not migrate this until we can confidently migrate this with 0 issues.
     suspend fun downloadGame(context: Context, gameId: String, installPath: String, downloadInfo: DownloadInfo): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
@@ -552,7 +546,7 @@ class GOGManager @Inject constructor(
                 }
 
                 // Get expected download size from database for accurate progress tracking
-                val game = getGameById(gameId)
+                val game = getGameFromDbById(gameId)
                 if (game != null && game.downloadSize > 0L) {
                     downloadInfo.setTotalExpectedBytes(game.downloadSize)
                     Timber.d("[Download] Set total expected bytes: ${game.downloadSize} (${game.downloadSize / 1_000_000} MB)")
@@ -593,7 +587,7 @@ class GOGManager @Inject constructor(
                     Timber.d("[Download] Calculated install size: $diskSize bytes (${diskSize / 1_000_000} MB)")
 
                     // Update or create database entry
-                    var game = getGameById(gameId)
+                    var game = getGameFromDbById(gameId)
                     if (game != null) {
                         // Game exists - update install status
                         Timber.d("Updating existing game install status: isInstalled=true, installPath=$installPath, installSize=$diskSize")
@@ -705,7 +699,7 @@ class GOGManager @Inject constructor(
                 MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
                 // Update database - mark as not installed
-                val game = getGameById(gameId)
+                val game = getGameFromDbById(gameId)
                 if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")
                     gogGameDao.update(updatedGame)
@@ -742,7 +736,7 @@ class GOGManager @Inject constructor(
 
             // Update database if status changed
             val gameId = libraryItem.gameId.toString()
-            val game = runBlocking { getGameById(gameId) }
+            val game = runBlocking { getGameFromDbById(gameId) }
             if (game != null && isInstalled != game.isInstalled) {
                 val installPath = if (isInstalled) getGameInstallPath(gameId, libraryItem.name) else ""
                 val updatedGame = game.copy(isInstalled = isInstalled, installPath = installPath)
@@ -758,7 +752,7 @@ class GOGManager @Inject constructor(
 
 
     fun verifyInstallation(gameId: String): Pair<Boolean, String?> {
-        val game = runBlocking { getGameById(gameId) }
+        val game = runBlocking { getGameFromDbById(gameId) }
         val installPath = game?.installPath
 
         if (game == null || installPath == null || !game.isInstalled) {
@@ -787,7 +781,7 @@ class GOGManager @Inject constructor(
     suspend fun getInstalledExe(libraryItem: LibraryItem): String = withContext(Dispatchers.IO) {
         val gameId = libraryItem.gameId.toString()
         try {
-            val game = getGameById(gameId) ?: return@withContext ""
+            val game = getGameFromDbById(gameId) ?: return@withContext ""
             val installPath = getGameInstallPath(game.id, game.title)
 
             // Try V2 structure first (game_$gameId subdirectory)
@@ -912,7 +906,7 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val game = runBlocking { getGameById(gameId.toString()) }
+        val game = runBlocking { getGameFromDbById(gameId.toString()) }
         if (game == null) {
             Timber.e("Game not found for ID: $gameId")
             return "\"explorer.exe\""
@@ -998,7 +992,7 @@ class GOGManager @Inject constructor(
 
             // If no install path provided, try to get from database
             if (path == null) {
-                val game = getGameById(gameId.toString())
+                val game = getGameFromDbById(gameId.toString())
                 path = game?.installPath
             }
 
@@ -1180,7 +1174,7 @@ class GOGManager @Inject constructor(
         try {
             Timber.tag("GOG").d("[Cloud Saves] Getting save directory path for $appId ($gameTitle)")
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-            val game = getGameById(gameId.toString())
+            val game = getGameFromDbById(gameId.toString())
 
             if (game == null) {
                 Timber.tag("GOG").w("[Cloud Saves] Game not found for appId $appId")
@@ -1492,7 +1486,7 @@ class GOGManager @Inject constructor(
 
     fun getAppDirPath(appId: String): String {
         val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-        val game = runBlocking { getGameById(gameId.toString()) }
+        val game = runBlocking { getGameFromDbById(gameId.toString()) }
 
         if (game != null) {
             return GOGConstants.getGameInstallPath(game.title)

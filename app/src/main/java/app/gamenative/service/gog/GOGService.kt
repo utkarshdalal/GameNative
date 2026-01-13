@@ -229,7 +229,7 @@ class GOGService : Service() {
 
         fun getGOGGameOf(gameId: String): GOGGame? {
             return runBlocking(Dispatchers.IO) {
-                getInstance()?.gogManager?.getGameById(gameId)
+                getInstance()?.gogManager?.getGameFromDbById(gameId)
             }
         }
 
@@ -239,7 +239,7 @@ class GOGService : Service() {
 
         fun isGameInstalled(gameId: String): Boolean {
             return runBlocking(Dispatchers.IO) {
-                val game = getInstance()?.gogManager?.getGameById(gameId)
+                val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
                 if (game?.isInstalled != true) {
                     return@runBlocking false
                 }
@@ -257,7 +257,7 @@ class GOGService : Service() {
 
         fun getInstallPath(gameId: String): String? {
             return runBlocking(Dispatchers.IO) {
-                val game = getInstance()?.gogManager?.getGameById(gameId)
+                val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
                 if (game?.isInstalled == true) game.installPath else null
             }
         }
@@ -390,7 +390,7 @@ class GOGService : Service() {
                     // Get game info
                     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Extracted game ID: $gameId from appId: $appId")
-                    val game = instance.gogManager.getGameById(gameId.toString())
+                    val game = instance.gogManager.getGameFromDbById(gameId.toString())
 
                     if (game == null) {
                         Timber.tag("GOG").e("[Cloud Saves] Game not found for appId: $appId")
