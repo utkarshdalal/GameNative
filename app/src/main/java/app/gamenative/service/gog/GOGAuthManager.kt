@@ -131,7 +131,9 @@ object GOGAuthManager {
                 })
             }
 
-            authFile.writeText(authData.toString(2))
+            withContext(Dispatchers.IO) {
+                authFile.writeText(authData.toString(2))
+            }
             Timber.i("GOG authentication successful for user: $userId")
 
             Result.success(credentials)
@@ -154,9 +156,9 @@ object GOGAuthManager {
                 return Result.failure(Exception("No stored credentials found"))
             }
 
-            // Read credentials from file
+            // Read credentials from file (IO dispatcher)
             val authFile = File(authConfigPath)
-            val authContent = authFile.readText()
+            val authContent = withContext(Dispatchers.IO) { authFile.readText() }
             val authJson = JSONObject(authContent)
 
             // Get Galaxy app credentials
