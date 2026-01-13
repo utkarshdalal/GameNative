@@ -145,7 +145,6 @@ object GOGAuthManager {
 
     /**
      * Get user credentials from storage, automatically refreshing if expired
-     * Native Kotlin implementation
      */
     suspend fun getStoredCredentials(context: Context): Result<GOGCredentials> {
         return try {
@@ -307,7 +306,6 @@ object GOGAuthManager {
 
     /**
      * Validate credentials, automatically refreshing if expired
-     * Native Kotlin implementation
      */
     suspend fun validateCredentials(context: Context): Result<Boolean> {
         return try {
@@ -353,7 +351,6 @@ object GOGAuthManager {
 
     /**
      * Refresh credentials using refresh token
-     * Native Kotlin implementation
      */
     private suspend fun refreshCredentials(context: Context, clientId: String, clientSecret: String): Result<Boolean> {
         return try {
