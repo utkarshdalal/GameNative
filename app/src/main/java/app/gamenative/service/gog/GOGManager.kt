@@ -162,6 +162,8 @@ class GOGManager @Inject constructor(
     /**
      * Refresh the entire library (called manually by user)
      * Fetches all games from GOG API and updates the database
+     * ! Note: If someone wants to improve this logic, I'd recommend seeing
+     * ! if coroutine parallel downloading would work without being rate-limited
      */
     suspend fun refreshLibrary(context: Context): Result<Int> = withContext(Dispatchers.IO) {
         try {
