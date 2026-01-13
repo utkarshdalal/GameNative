@@ -41,6 +41,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -265,14 +267,11 @@ class GOGManager @Inject constructor(
         return GOGApiClient.getGameIds(context)
     }
 
-    private fun parseGameObject(gameObj: JSONObject): GOGGame? {
-        val genresList = parseJsonArray(gameObj.optJSONArray("genres"))
-        val languagesList = parseJsonArray(gameObj.optJSONArray("languages"))
+    private fun parseGameObject(parsedGame: ParsedGogGame): GOGGame? {
+        val title = parsedGame.title
+        val id = parsedGame.id
 
-        val title = gameObj.optString("title", "Unknown Game")
-        val id = gameObj.optString("id", "")
-
-        val isInvalidGame = title == "Unknown Game" || title.startsWith("product_title_")
+        val isInvalidGame = title == "Unknown Game" || title.startsWith("product_title_") || title == "Unknown"
 
         if(isInvalidGame){
             Timber.tag("GOG").w("Found incorrectly formatted game: $title, $id")
@@ -280,34 +279,24 @@ class GOGManager @Inject constructor(
         }
 
         return GOGGame(
-            id,
-            title,
-            slug = gameObj.optString("slug", ""),
-            imageUrl = gameObj.optString("imageUrl", ""),
-            iconUrl = gameObj.optString("iconUrl", ""),
-            description = gameObj.optString("description", ""),
-            releaseDate = gameObj.optString("releaseDate", ""),
-            developer = gameObj.optString("developer", ""),
-            publisher = gameObj.optString("publisher", ""),
-            genres = genresList,
-            languages = languagesList,
-            downloadSize = gameObj.optLong("downloadSize", 0L),
+            id = id,
+            title = title,
+            slug = parsedGame.slug,
+            imageUrl = parsedGame.imageUrl,
+            iconUrl = parsedGame.iconUrl,
+            description = parsedGame.description,
+            releaseDate = parsedGame.releaseDate,
+            developer = parsedGame.developer,
+            publisher = parsedGame.publisher,
+            genres = parsedGame.genres,
+            languages = parsedGame.languages,
+            downloadSize = parsedGame.downloadSize,
             installSize = 0L,
             isInstalled = false,
             installPath = "",
             lastPlayed = 0L,
             playTime = 0L,
         )
-    }
-
-    private fun parseJsonArray(jsonArray: org.json.JSONArray?): List<String> {
-        val result = mutableListOf<String>()
-        if (jsonArray != null) {
-            for (j in 0 until jsonArray.length()) {
-                result.add(jsonArray.getString(j))
-            }
-        }
-        return result
     }
 
     /**
