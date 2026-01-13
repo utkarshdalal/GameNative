@@ -1006,10 +1006,39 @@ fun XServerScreen(
         val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
         val profileIdStr = container.getExtra("profileId", "0")
         val profileId = profileIdStr.toIntOrNull() ?: 0
-        val profile = if (profileId != 0) {
+        
+        // Get profile, but don't load profile 0 directly (will duplicate if needed)
+        var profile = if (profileId != 0) {
             manager.getProfile(profileId)
         } else {
-            manager.getProfile(0)
+            null  // Will create new profile below
+        }
+        
+        // Auto-create profile if using default (profile 0)
+        if (profile == null) {
+            val allProfiles = manager.getProfiles(false)
+            val sourceProfile = manager.getProfile(0)
+                ?: allProfiles.firstOrNull { it.id == 2 }
+                ?: allProfiles.firstOrNull()
+            
+            if (sourceProfile != null) {
+                try {
+                    // Duplicate profile 0 to create game-specific profile
+                    profile = manager.duplicateProfile(sourceProfile)
+                    
+                    // Rename to game name
+                    val gameName = currentAppInfo?.name ?: container.name
+                    profile.setName("$gameName - Physical Controller")
+                    profile.save()
+                    
+                    // Associate with container
+                    container.putExtra("profileId", profile.id.toString())
+                    container.saveData()
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to auto-create profile for container ${container.name}")
+                    profile = sourceProfile  // Fallback
+                }
+            }
         }
 
         if (profile != null) {
@@ -1025,6 +1054,15 @@ fun XServerScreen(
                         profile = profile,
                         onDismiss = { showPhysicalControllerDialog = false },
                         onSave = {
+                            // Ensure controllersLoaded is true before saving
+                            // (addController sets the flag even if controller already exists)
+                            profile.addController("*")
+                            
+                            // Save profileId to container so it persists across launches
+                            container.putExtra("profileId", profile.id.toString())
+                            container.saveData()
+                            
+                            // Save profile (will now write controllers since controllersLoaded = true)
                             profile.save()
                             profile.loadControllers()
 
