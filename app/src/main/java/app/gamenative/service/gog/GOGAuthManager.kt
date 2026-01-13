@@ -29,6 +29,10 @@ object GOGAuthManager {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    // Internal for testing - allows tests to override token URL
+    @JvmField
+    internal var tokenUrl: String = "https://auth.gog.com/token"
+
     fun getAuthConfigPath(context: Context): String {
         return "${context.filesDir}/gog_auth.json"
     }
@@ -65,7 +69,7 @@ object GOGAuthManager {
             // Exchange authorization code for tokens
             Timber.tag("GOG").d("Exchanging authorization code for tokens...")
 
-            val tokenUrl = "https://auth.gog.com/token".toHttpUrl().newBuilder()
+            val tokenUrlWithParams = tokenUrl.toHttpUrl().newBuilder()
                 .addQueryParameter("client_id", GOGConstants.GOG_CLIENT_ID)
                 .addQueryParameter("client_secret", GOGConstants.GOG_CLIENT_SECRET)
                 .addQueryParameter("grant_type", "authorization_code")
@@ -74,7 +78,7 @@ object GOGAuthManager {
                 .build()
 
             val request = okhttp3.Request.Builder()
-                .url(tokenUrl)
+                .url(tokenUrlWithParams)
                 .get()
                 .build()
 
@@ -379,7 +383,7 @@ object GOGAuthManager {
 
             // Request new tokens
             Timber.d("Refreshing credentials for clientId: $clientId")
-            val tokenUrl = "https://auth.gog.com/token".toHttpUrl().newBuilder()
+            val tokenUrlWithParams = tokenUrl.toHttpUrl().newBuilder()
                 .addQueryParameter("client_id", clientId)
                 .addQueryParameter("client_secret", clientSecret)
                 .addQueryParameter("grant_type", "refresh_token")
@@ -387,7 +391,7 @@ object GOGAuthManager {
                 .build()
 
             val request = okhttp3.Request.Builder()
-                .url(tokenUrl)
+                .url(tokenUrlWithParams)
                 .get()
                 .build()
 
@@ -417,7 +421,13 @@ object GOGAuthManager {
         }
     }
 
-    private fun extractCodeFromInput(input: String): String {
+    /**
+     * Extract authorization code from either a full URL or plain code string.
+     *
+     * @param input Either a full GOG redirect URL or a plain authorization code
+     * @return The extracted authorization code, or empty string if not found
+     */
+    fun extractCodeFromInput(input: String): String {
         return if (input.startsWith("http")) {
             // Extract code parameter from URL
             val codeParam = input.substringAfter("code=", "")
