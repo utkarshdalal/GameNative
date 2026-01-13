@@ -23,6 +23,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Inject credentials
+        if: github.event.pull_request.head.repo.full_name == github.repository
         run: |
           cat <<EOF > local.properties
           POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
