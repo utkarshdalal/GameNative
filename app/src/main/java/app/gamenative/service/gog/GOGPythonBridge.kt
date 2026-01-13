@@ -94,67 +94,6 @@ object GOGPythonBridge {
     fun isReady(): Boolean = isInitialized && Python.isStarted()
 
     /**
-     * Executes Python GOGDL commands using Chaquopy (Java-Python lib)
-     * @param args Command line arguments to pass to gogdl CLI
-     * @return Result containing command output or error
-     */
-    suspend fun executeCommand(vararg args: String): Result<String> {
-        return withContext(Dispatchers.IO) {
-            try {
-                if (!Python.isStarted()) {
-                    Timber.e("Python is not started! Cannot execute GOGDL command")
-                    return@withContext Result.failure(Exception("Python environment not initialized"))
-                }
-
-                val python = Python.getInstance()
-                val sys = python.getModule("sys")
-                val io = python.getModule("io")
-                val originalArgv = sys.get("argv")
-
-                try {
-                    val gogdlCli = python.getModule("gogdl.cli")
-
-                    // Set up arguments for argparse
-                    val argsList = listOf("gogdl") + args.toList()
-                    val pythonList = python.builtins.callAttr("list", argsList.toTypedArray())
-                    sys.put("argv", pythonList)
-
-                    // Capture stdout
-                    val stdoutCapture = io.callAttr("StringIO")
-                    val originalStdout = sys.get("stdout")
-                    sys.put("stdout", stdoutCapture)
-
-                    // Execute the main function
-                    gogdlCli.callAttr("main")
-
-                    // Get the captured output
-                    val output = stdoutCapture.callAttr("getvalue").toString()
-
-                    // Restore original stdout
-                    sys.put("stdout", originalStdout)
-
-                    if (output.isNotEmpty()) {
-                        Result.success(output)
-                    } else {
-                        Timber.w("GOGDL execution completed but output is empty")
-                        Result.success("GOGDL execution completed")
-                    }
-
-                } catch (e: Exception) {
-                    Timber.e(e, "GOGDL execution failed: ${e.message}")
-                    Result.failure(Exception("GOGDL execution failed: ${e.message}", e))
-                } finally {
-                    // Restore original sys.argv
-                    sys.put("argv", originalArgv)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to execute GOGDL command: ${args.joinToString(" ")}")
-                Result.failure(Exception("GOGDL execution failed: ${e.message}", e))
-            }
-        }
-    }
-
-    /**
      * Execute GOGDL command with progress callback for downloads
      *
      * This variant allows Python code to report progress via a callback object.
