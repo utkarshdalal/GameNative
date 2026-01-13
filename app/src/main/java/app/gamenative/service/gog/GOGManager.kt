@@ -461,7 +461,6 @@ class GOGManager @Inject constructor(
                 return Result.failure(Exception("Not authenticated"))
             }
 
-            // Use direct HTTP call via GOGApiClient
             val result = GOGApiClient.getGameById(context, gameId)
 
             if (result.isFailure) {

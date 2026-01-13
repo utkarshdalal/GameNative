@@ -101,23 +101,23 @@ object GOGApiClient {
      */
     suspend fun getGameIds(context: Context): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Fetching GOG game IDs via direct HTTP call...")
+            Timber.tag("GOG").d("Fetching GOG game IDs...")
 
             // Get credentials from AuthManager
             val credentialsResult = GOGAuthManager.getStoredCredentials(context)
             if (credentialsResult.isFailure) {
                 val error = credentialsResult.exceptionOrNull()
-                Timber.e(error, "Cannot list games: not authenticated")
+                Timber.tag("GOG").e(error, "Cannot list games: not authenticated")
                 return@withContext Result.failure(Exception("Not authenticated. Please log in first."))
             }
 
             val credentials = credentialsResult.getOrNull()
             if (credentials == null || credentials.accessToken.isEmpty()) {
-                Timber.e("No valid access token found")
+                Timber.tag("GOG").e("No valid access token found")
                 return@withContext Result.failure(Exception("No valid credentials found"))
             }
 
-            // Build request to GOG_EMBED/user/data/games
+
             val url = "${GOGConstants.GOG_EMBED_URL}/user/data/games"
             val request = Request.Builder()
                 .url(url)
@@ -126,9 +126,8 @@ object GOGApiClient {
                 .get()
                 .build()
 
-            Timber.d("Requesting game IDs from: $url")
+            Timber.tag("GOG").d("Requesting game IDs from: $url")
 
-            // Execute request
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
@@ -179,7 +178,7 @@ object GOGApiClient {
         expanded: List<String> = listOf("downloads", "description", "screenshots")
     ): Result<ParsedGogGame> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Fetching game details for gameId: $gameId")
+            Timber.tag("GOG").d("Fetching game details for gameId: $gameId")
 
             // Get credentials from AuthManager
             val credentialsResult = GOGAuthManager.getStoredCredentials(context)
@@ -210,13 +209,13 @@ object GOGApiClient {
                 .get()
                 .build()
 
-            Timber.d("Requesting game details from: $url")
+            Timber.tag("GOG").d("Requesting game details from: $url")
 
             // Execute request
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
-                    Timber.e("Failed to fetch game details for $gameId: HTTP ${response.code} - $errorBody")
+                    Timber.tag("GOG").e("Failed to fetch game details for $gameId: HTTP ${response.code} - $errorBody")
                     return@withContext Result.failure(
                         Exception("Failed to fetch game details: HTTP ${response.code}")
                     )
@@ -224,21 +223,20 @@ object GOGApiClient {
 
                 val responseBody = response.body?.string() ?: ""
                 if (responseBody.isBlank()) {
-                    Timber.w("Empty response when fetching game details for $gameId")
+                    Timber.tag("GOG").w("Empty response when fetching game details for $gameId")
                     return@withContext Result.failure(Exception("Empty response from GOG"))
                 }
 
                 // Parse raw GOG API response
                 val rawApiResponse = JSONObject(responseBody)
 
-                // Transform to simplified structure (like GOGDL does)
+                // Transform to simplified, flattened structure
                 val transformedResponse = transformGameDetails(rawApiResponse, gameId)
 
-                Timber.i("Successfully fetched and transformed game details for $gameId")
                 return@withContext Result.success(transformedResponse)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Exception fetching game details for $gameId: ${e.message}")
+            Timber.tag("GOG").e(e, "Exception fetching game details for $gameId: ${e.message}")
             Result.failure(e)
         }
     }
