@@ -17,6 +17,8 @@ import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
+import java.io.File
+
 
 /**
  * GOG Service - thin coordinator that delegates to specialized managers.
@@ -295,7 +297,7 @@ class GOGService : Service() {
         }
 
 
-        fun downloadGame(context: Context, gameId: String, installPath: String): Result<DownloadInfo?> {
+        fun downloadGame(context: Context, gameId: String, installPath: String, new: Boolean=false): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             // Create DownloadInfo for progress tracking
@@ -308,7 +310,11 @@ class GOGService : Service() {
             instance.scope.launch {
                 try {
                     Timber.d("[Download] Starting download for game $gameId")
-                    val result = instance.gogManager.downloadGame(context, gameId, installPath, downloadInfo)
+                    val result = if (new) {
+                        instance.GOGDownloadManager.downloadGame(gameId, File(installPath), downloadInfo, "en-US", true)
+                    } else {
+                        instance.gogManager.downloadGame(context, gameId, installPath, downloadInfo)
+                    }
 
                     if (result.isFailure) {
                         Timber.e(result.exceptionOrNull(), "[Download] Failed for game $gameId")
@@ -519,6 +525,9 @@ class GOGService : Service() {
 
     @Inject
     lateinit var gogManager: GOGManager
+
+    @Inject
+    lateinit var GOGDownloadManager: GOGDownloadManager
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
