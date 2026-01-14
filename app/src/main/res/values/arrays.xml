@@ -39,6 +39,7 @@
         <item>turnip25.3.0_R6_Gmem</item>
         <item>25.3.0_R11</item>
         <item>26.0.0_R4</item>
+        <item>26.0.0_R8</item>
     </string-array>
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>
@@ -169,11 +170,13 @@
     </string-array>
     <string-array name="box64_bionic_version_entries">
         <item>0.3.7 (Default)</item>
+        <item>0.4.0</item>
         <item>0.3.8</item>
         <item>0.3.6</item>
         <item>0.3.2</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
+        <item>0.4.0</item>
         <item>0.3.7</item>
         <item>0.3.4</item>
     </string-array>
@@ -182,6 +185,7 @@
         <item>2508</item>
         <item>2511</item>
         <item>2512</item>
+        <item>2601</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>

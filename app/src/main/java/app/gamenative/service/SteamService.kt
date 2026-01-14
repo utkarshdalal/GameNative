@@ -152,6 +152,19 @@ import java.util.concurrent.TimeUnit
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
 
+    // To view log messages in android logcat properly
+    private val logger = object : LogListener {
+        override fun onLog(clazz: Class<*>, message: String?, throwable: Throwable?) {
+            val logMessage = message ?: "No message given"
+            Timber.i(throwable, "[${clazz.simpleName}] -> $logMessage")
+        }
+
+        override fun onError(clazz: Class<*>, message: String?, throwable: Throwable?) {
+            val logMessage = message ?: "No message given"
+            Timber.e(throwable, "[${clazz.simpleName}] -> $logMessage")
+        }
+    }
+
     @Inject
     lateinit var db: PluviaDatabase
 
@@ -1597,6 +1610,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
+            onProgress: ((message: String, progress: Float) -> Unit)? = null,
         ): Deferred<PostSyncInfo> = parentScope.async {
             if (isOffline || !isConnected) {
                 return@async PostSyncInfo(SyncResult.UpToDate)
@@ -1622,6 +1636,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 preferredSave = preferredSave,
                                 parentScope = parentScope,
                                 prefixToPath = prefixToPath,
+                                onProgress = onProgress,
                             ).await()
 
                             postSyncInfo?.let { info ->
@@ -2036,7 +2051,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
-                        appDao.deleteAll()
                         changeNumbersDao.deleteAll()
                         fileChangeListsDao.deleteAll()
                         licenseDao.deleteAll()
@@ -2238,17 +2252,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
 
         // To view log messages in android logcat properly
-        val logger = object : LogListener {
-            override fun onLog(clazz: Class<*>, message: String?, throwable: Throwable?) {
-                val logMessage = message ?: "No message given"
-                Timber.i(throwable, "[${clazz.simpleName}] -> $logMessage")
-            }
-
-            override fun onError(clazz: Class<*>, message: String?, throwable: Throwable?) {
-                val logMessage = message ?: "No message given"
-                Timber.e(throwable, "[${clazz.simpleName}] -> $logMessage")
-            }
-        }
         LogManager.addListener(logger)
     }
 
@@ -2437,6 +2440,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
         PluviaApp.events.clearAllListenersOf<SteamEvent<Any>>()
+
+        LogManager.removeListener(logger)
     }
 
     private fun reconnect() {
@@ -2973,7 +2978,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     /**
      * Get encrypted app ticket for an app, with 30-minute caching.
-     * Returns the encrypted ticket bytes, or null if unavailable.
+     * Returns the serialized protobuf bytes, or null if unavailable.
      */
     suspend fun getEncryptedAppTicket(appId: Int): ByteArray? {
         return try {
@@ -2983,7 +2988,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val thirtyMinutes = 30 * 60 * 1000L
 
             if (cachedTicket != null && (now - cachedTicket.timestamp) < thirtyMinutes) {
-                Timber.d("Using cached encrypted app ticket for app $appId")
+                Timber.d("Using cached encrypted app ticket protobuf for app $appId")
                 return cachedTicket.encryptedTicket
             }
 
@@ -3012,13 +3017,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 crcEncryptedTicket = ticketProto.crcEncryptedticket.toInt(),
                 cbEncryptedUserData = ticketProto.cbEncrypteduserdata.toInt(),
                 cbEncryptedAppOwnershipTicket = ticketProto.cbEncryptedAppownershipticket.toInt(),
-                encryptedTicket = ticketProto.encryptedTicket.toByteArray(),
+                encryptedTicket = ticketProto.toByteArray(),
                 timestamp = now,
             )
 
             // Store in database
             encryptedAppTicketDao.insert(ticket)
-            Timber.d("Stored new encrypted app ticket for app $appId")
+            Timber.d("Stored new encrypted app ticket protobuf for app $appId")
 
             ticket.encryptedTicket
         } catch (e: Exception) {

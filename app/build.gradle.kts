@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
     alias(libs.plugins.secrets.gradle)
+    alias(libs.plugins.room)
     id("com.chaquo.python") version "16.0.0"
 }
 
@@ -27,6 +28,10 @@ val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: Sys
 // Add Supabase URL and key as build-time variables
 val supabaseUrl: String = project.findProperty("SUPABASE_URL") as String? ?: System.getenv("SUPABASE_URL") ?: "https://your-project.supabase.co"
 val supabaseKey: String = project.findProperty("SUPABASE_KEY") as String? ?: System.getenv("SUPABASE_KEY") ?: ""
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
 
 android {
     namespace = "app.gamenative"
@@ -151,11 +156,6 @@ android {
         buildConfig = true
     }
 
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
-        arg("room.incremental", "true")
-    }
-
     packaging {
         resources {
             excludes += "/DebugProbesKt.bin"
@@ -229,8 +229,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-5-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-5-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-6-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0-6-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {
@@ -292,6 +292,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.mockk)
     testImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.zstd.jni)
 

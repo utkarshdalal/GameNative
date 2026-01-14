@@ -34,7 +34,7 @@ class UserLoginViewModel : ViewModel() {
 
     private val authenticator = object : IAuthenticator {
         override fun acceptDeviceConfirmation(): CompletableFuture<Boolean> {
-            Timber.i("Two-Factor, device confirmation")
+            Timber.tag("UserLoginViewModel").i("Two-Factor, device confirmation")
 
             _loginState.update { currentState ->
                 currentState.copy(
@@ -49,7 +49,7 @@ class UserLoginViewModel : ViewModel() {
         }
 
         override fun getDeviceCode(previousCodeWasIncorrect: Boolean): CompletableFuture<String> {
-            Timber.d("Two-Factor, device code")
+            Timber.tag("UserLoginViewModel").d("Two-Factor, device code")
 
             _loginState.update { currentState ->
                 currentState.copy(
@@ -73,7 +73,7 @@ class UserLoginViewModel : ViewModel() {
             email: String?,
             previousCodeWasIncorrect: Boolean,
         ): CompletableFuture<String> {
-            Timber.d("Two-Factor, asking for email code")
+            Timber.tag("UserLoginViewModel").d("Two-Factor, asking for email code")
 
             _loginState.update { currentState ->
                 currentState.copy(
@@ -96,7 +96,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
-        Timber.i("Received is connected")
+        Timber.tag("UserLoginViewModel").i("Received is connected")
 
         _loginState.update { currentState ->
             currentState.copy(
@@ -107,14 +107,14 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = {
-        Timber.i("Received disconnected from Steam")
+        Timber.tag("UserLoginViewModel").i("Received disconnected from Steam")
         _loginState.update { currentState ->
             currentState.copy(isSteamConnected = false)
         }
     }
 
     private val onRemoteDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = {
-        Timber.i("Disconnected from steam remotely")
+        Timber.tag("UserLoginViewModel").i("Disconnected from steam remotely")
         _loginState.update { it.copy(isSteamConnected = false) }
     }
 
@@ -125,7 +125,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = {
-        Timber.i("Received login result: ${it.loginResult}")
+        Timber.tag("UserLoginViewModel").i("Received login result: ${it.loginResult}")
         val prevState = _loginState.value
         _loginState.update { currentState ->
             currentState.copy(
@@ -181,7 +181,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {
-        Timber.i("Received logged out")
+        Timber.tag("UserLoginViewModel").i("Received logged out")
         _loginState.update {
             it.copy(
                 isSteamConnected = false,
@@ -194,7 +194,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     init {
-        Timber.d("init")
+        Timber.tag("UserLoginViewModel").d("init")
 
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
@@ -208,7 +208,7 @@ class UserLoginViewModel : ViewModel() {
 
         val isLoggedIn = SteamService.isLoggedIn
         val isSteamConnected = SteamService.isConnected
-        Timber.d("Logged in? $isLoggedIn")
+        Timber.tag("UserLoginViewModel").d("Logged in? $isLoggedIn")
         if (isLoggedIn) {
             _loginState.update {
                 it.copy(isSteamConnected = isSteamConnected, isLoggingIn = true, isQrFailed = false, loginResult = LoginResult.Success)
@@ -221,7 +221,7 @@ class UserLoginViewModel : ViewModel() {
     }
 
     override fun onCleared() {
-        Timber.d("onCleared")
+        Timber.tag("UserLoginViewModel").d("onCleared")
 
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
@@ -276,7 +276,7 @@ class UserLoginViewModel : ViewModel() {
         when (loginScreen) {
             LoginScreen.CREDENTIAL -> SteamService.stopLoginWithQr()
             LoginScreen.QR -> viewModelScope.launch { SteamService.startLoginWithQr() }
-            else -> Timber.w("onShowLoginScreen ended up in an unknown state: ${loginScreen.name}")
+            else -> Timber.tag("UserLoginViewModel").w("onShowLoginScreen ended up in an unknown state: ${loginScreen.name}")
         }
 
         _loginState.update { currentState ->
@@ -325,7 +325,7 @@ class UserLoginViewModel : ViewModel() {
                 val intent = android.content.Intent(context, app.gamenative.service.SteamService::class.java)
                 context.startForegroundService(intent)
             } catch (e: Exception) {
-                Timber.e(e, "Failed to restart SteamService in retryConnection")
+                Timber.tag("UserLoginViewModel").e(e, "Failed to restart SteamService in retryConnection")
                 showSnack("Failed to restart Steam connection: ${e.localizedMessage}")
             }
         }

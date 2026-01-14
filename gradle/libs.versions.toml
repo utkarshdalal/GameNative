@@ -11,7 +11,7 @@ dataStore = "1.1.2" # https://mvnrepository.com/artifact/androidx.datastore/data
 espressoCore = "3.6.1" # https://mvnrepository.com/artifact/androidx.test.espresso/espresso-core
 feature-delivery = "2.1.0" # https://mvnrepository.com/artifact/com.google.android.play/feature-delivery
 hiltNavigationCompose = "1.2.0" # https://mvnrepository.com/artifact/androidx.hilt/hilt-navigation-compose
-javasteam = "1.8.0-5-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
+javasteam = "1.8.0-6-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
 json = "1.8.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
 junit = "4.13.2" # https://mvnrepository.com/artifact/junit/junit
 junitVersion = "1.2.1" # https://mvnrepository.com/artifact/androidx.test.ext/junit
@@ -27,10 +27,11 @@ material3Version = "1.3.1" # Minimum version for pull-to-refresh support
 materialKolor = "2.0.0" # https://mvnrepository.com/artifact/com.materialkolor/material-kolor-android
 mockito = "5.14.2" # https://mvnrepository.com/artifact/org.mockito/mockito-core
 mockitoKotlin = "5.3.1" # https://mvnrepository.com/artifact/org.mockito.kotlin/mockito-kotlin
+mockk = "1.13.5" # https://mvnrepository.com/artifact/io.mockk/mockk
 navigation-compose = "2.8.6" # https://mvnrepository.com/artifact/androidx.navigation/navigation-compose
 protobuf = "4.31.1" # https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
 robolectric = "4.14" # https://mvnrepository.com/artifact/org.robolectric/robolectric
-room-runtime = "2.8.0-rc02" # https://mvnrepository.com/artifact/androidx.room/room-runtime
+room-runtime = "2.8.4" # https://mvnrepository.com/artifact/androidx.room/room-runtime
 runner = "1.6.2" # https://mvnrepository.com/artifact/androidx.test/runner
 settings = "2.10.0" # https://github.com/alorma/Compose-Settings/releases
 spongycastle = "1.58.0.0" # https://mvnrepository.com/artifact/com.madgag.spongycastle/prov
@@ -92,6 +93,7 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
 # Dependencies when locally building JavaSteam, check link below for current dependencies.
@@ -115,6 +117,7 @@ jetbrains-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", ve
 kotlinter = { id = "org.jmailen.kotlinter", version.ref = "kotlinter" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 secrets-gradle = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version = "2.0.1" }
+room = { id = "androidx.room", version.ref = "room-runtime" }
 
 [bundles]
 hilt = [
