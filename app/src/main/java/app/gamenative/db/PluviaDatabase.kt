@@ -44,14 +44,14 @@ const val DATABASE_NAME = "pluvia.db"
         GOGGame::class,
         DownloadingAppInfo::class
     ],
-    version = 10,
-
+    version = 11,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
         // For every version change, if it is automatic, please add a new migration here.
         AutoMigration(from = 8, to = 9),
-        AutoMigration(from = 9, to = 10)
+        AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11)
     ]
 )
 @TypeConverters(

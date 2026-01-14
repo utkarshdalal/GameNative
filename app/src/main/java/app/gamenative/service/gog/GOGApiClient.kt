@@ -27,7 +27,8 @@ data class ParsedGogGame(
     val languages: List<String>,
     val description: String,
     val releaseDate: String,
-    val downloadSize: Long
+    val downloadSize: Long,
+    val isSecret: Boolean
 )
 
 /**
@@ -119,7 +120,7 @@ object GOGApiClient {
 
 
             val url = "${GOGConstants.GOG_EMBED_URL}/user/data/games"
-            val request = Request.Builder()
+            val request = Request.Builder() // Returns an "owned" key with an array of ints.
                 .url(url)
                 .addHeader("Authorization", "Bearer ${credentials.accessToken}")
                 .addHeader("User-Agent", "GameNative/1.0")
@@ -314,6 +315,7 @@ object GOGApiClient {
 
         // Extract download size from first installer
         val downloads = rawResponse.optJSONObject("downloads")
+        val isSecret = rawResponse.optBoolean("is_secret", false)
         val installers = downloads?.optJSONArray("installers")
         val downloadSize = if (installers != null && installers.length() > 0) {
             installers.optJSONObject(0)?.optLong("total_size", 0L) ?: 0L
@@ -334,7 +336,8 @@ object GOGApiClient {
             languages = languages,
             description = description,
             releaseDate = rawResponse.optString("release_date", ""),
-            downloadSize = downloadSize
+            downloadSize = downloadSize,
+            isSecret = isSecret
         )
     }
 }

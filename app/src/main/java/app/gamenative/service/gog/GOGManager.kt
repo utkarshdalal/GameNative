@@ -195,7 +195,7 @@ class GOGManager @Inject constructor(
             }
 
             // Get existing game IDs from database to avoid re-fetching
-            val existingGameIds = gogGameDao.getAllGameIds().toSet()
+            val existingGameIds = gogGameDao.getAllGameIdsWithExclusions().toSet()
             Timber.tag("GOG").d("Found ${existingGameIds.size} games already in database")
 
             // Filter to only new games that need details fetched
@@ -270,17 +270,17 @@ class GOGManager @Inject constructor(
     private fun parseGameObject(parsedGame: ParsedGogGame): GOGGame? {
         val title = parsedGame.title
         val id = parsedGame.id
-
-        val isInvalidGame = title == "Unknown Game" || title.startsWith("product_title_") || title == "Unknown"
-
-        if(isInvalidGame){
-            Timber.tag("GOG").w("Found incorrectly formatted game: $title, $id")
-            return null
-        }
+        val downloadSize = parsedGame.downloadSize
+        val isSecret = parsedGame.isSecret
+        // Added Exclude so that we still store a record in the DB but we don't expose it.
+        // This reduces the amount of fetching we do from the APIs and we also reduce chances of Amazon Prime duplicates etc.
+        // Had to put in an extra case for some games not using isSecret but still are amazon prime duplicates...
+        val exclude = title == "Unknown Game" || title.startsWith("product_title_") || title == "Unknown" || downloadSize == 0L || isSecret || title.endsWith("Amazon Prime")
 
         return GOGGame(
             id = id,
             title = title,
+            exclude = exclude,
             slug = parsedGame.slug,
             imageUrl = parsedGame.imageUrl,
             iconUrl = parsedGame.iconUrl,
