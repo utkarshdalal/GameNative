@@ -256,7 +256,7 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.setProgress(1.0f)
             downloadInfo.setActive(false)
             downloadInfo.emitProgressChange()
-            
+
             // Notify UI that installation status changed
             app.gamenative.PluviaApp.events.emitJava(
                 app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0)
@@ -270,12 +270,12 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.setProgress(-1.0f)
             downloadInfo.setActive(false)
             downloadInfo.emitProgressChange()
-            
+
             // Emit download stopped event on failure
             app.gamenative.PluviaApp.events.emitJava(
                 app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false)
             )
-            
+
             Result.failure(e)
         }
     }
@@ -303,7 +303,7 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.setProgress(0.0f)
             downloadInfo.setActive(true)
             downloadInfo.emitProgressChange()
-            
+
             // Download in batches to avoid overwhelming the system
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
@@ -326,13 +326,13 @@ class GOGDownloadManager @Inject constructor(
                 }
 
                 downloadedChunks += chunkBatch.size
-                
+
                 // Update progress with smooth interpolation
                 val progress = downloadedChunks.toFloat() / totalChunks
                 downloadInfo.setProgress(progress)
                 downloadInfo.updateStatusMessage("Downloading chunks ($downloadedChunks/$totalChunks)")
                 downloadInfo.emitProgressChange()
-                
+
                 Timber.tag("GOG").d("Progress: ${(progress * 100).toInt()}% ($downloadedChunks/$totalChunks chunks)")
             }
 
