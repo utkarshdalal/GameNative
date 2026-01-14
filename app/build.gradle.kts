@@ -294,7 +294,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.zstd.jni)
-    testImplementation(libs.json.org)
+    testImplementation(libs.jsonOrg)
     testImplementation(libs.mockwebserver)
 
     // Add PostHog Android SDK dependency
