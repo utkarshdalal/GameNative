@@ -194,8 +194,12 @@ class GOGManager @Inject constructor(
                 return@withContext Result.success(0)
             }
 
+            val ignoredGameId = "1801418160" // Hidden ID for GOG Galaxy that we should ignore.
+
             // Get existing game IDs from database to avoid re-fetching
-            val existingGameIds = gogGameDao.getAllGameIdsWithExclusions().toSet()
+            val existingGameIds = gogGameDao.getAllGameIdsWithExclusions().toMutableSet()
+            existingGameIds.add(ignoredGameId)
+
             Timber.tag("GOG").d("Found ${existingGameIds.size} games already in database")
 
             // Filter to only new games that need details fetched
