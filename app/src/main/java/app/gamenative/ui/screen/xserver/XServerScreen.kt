@@ -1538,20 +1538,6 @@ private fun setupXEnvironment(
     }
 
     if (container != null) {
-        if (container.isLaunchRealSteam) {
-            SteamTokenLogin(
-                context = context,
-                steamId = PrefManager.steamUserSteamId64.toString(),
-                login = PrefManager.username,
-                token = PrefManager.refreshToken,
-                imageFs = imageFs,
-                container = container,
-                isArm64EC = xServerState.value.wineInfo.isArm64EC,
-                wineProfile = contentsManager.getProfileByEntryName(container.wineVersion),
-                guestProgramLauncherComponent = guestProgramLauncherComponent,
-            ).setupSteamFiles()
-        }
-
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
             if (container.containerVariant.equals(Container.BIONIC)){
                 Timber.d("Incorrect startup selection detected. Reverting to essential startup selection")
@@ -1670,6 +1656,19 @@ private fun setupXEnvironment(
         PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
     }
     environment.addComponent(guestProgramLauncherComponent)
+
+    // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
+    if (container != null) {
+        if (container.isLaunchRealSteam) {
+            SteamTokenLogin(
+                steamId = PrefManager.steamUserSteamId64.toString(),
+                login = PrefManager.username,
+                token = PrefManager.refreshToken,
+                imageFs = imageFs,
+                guestProgramLauncherComponent = guestProgramLauncherComponent,
+            ).setupSteamFiles()
+        }
+    }
 
     // Log container settings before starting
     if (container != null) {

@@ -24,14 +24,10 @@ const val NULL_CHAR = '\u0000'
 const val TOKEN_EXPIRE_TIME = 86400L // 1 day
 
 class SteamTokenLogin(
-    private val context: Context,
     private val steamId: String,
     private val login: String,
     private val token: String,
     private val imageFs: ImageFs,
-    private val container: Container,
-    private val isArm64EC: Boolean,
-    private val wineProfile: ContentProfile?,
     private val guestProgramLauncherComponent: GuestProgramLauncherComponent? = null,
 ) {
     fun setupSteamFiles() {
