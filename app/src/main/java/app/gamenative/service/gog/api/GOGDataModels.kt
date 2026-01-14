@@ -337,7 +337,7 @@ data class SecureLinksResponse(
                         // We need to merge them: {base_url}/token=nva={expires_at}... etc.
                         val urlFormat = urlObj.optString("url_format", "")
                         val paramsObj = urlObj.optJSONObject("parameters")
-                        
+
                         if (urlFormat.isNotEmpty() && paramsObj != null) {
                             // Replace all {param} placeholders with actual values
                             var constructedUrl = urlFormat
@@ -347,10 +347,10 @@ data class SecureLinksResponse(
                                 val value = paramsObj.get(key).toString()
                                 constructedUrl = constructedUrl.replace("{$key}", value)
                             }
-                            
+
                             // Clean up escaped slashes from JSON
                             constructedUrl = constructedUrl.replace("\\/", "/")
-                            
+
                             if (constructedUrl.isNotEmpty()) {
                                 urls.add(constructedUrl)
                             }

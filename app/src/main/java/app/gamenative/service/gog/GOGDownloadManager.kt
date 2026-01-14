@@ -43,6 +43,7 @@ import javax.inject.Singleton
 class GOGDownloadManager @Inject constructor(
     private val apiClient: GOGApiClient,
     private val parser: GOGManifestParser,
+    private val gogManager: GOGManager,
     @ApplicationContext private val context: Context
 ) {
 
@@ -75,6 +76,11 @@ class GOGDownloadManager @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
+
+            // Emit download started event so UI can attach progress listeners
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, true)
+            )
 
             downloadInfo.updateStatusMessage("Fetching builds...")
 
@@ -223,14 +229,53 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
-            Timber.tag("GOG").i("Download completed successfully for game $gameId")
+            // Step 12: Update database with install info
+            downloadInfo.updateStatusMessage("Updating database...")
+            try {
+                val game = gogManager.getGameFromDbById(gameId)
+                if (game != null) {
+                    val actualInstallDir = File(installPath, manifest.installDirectory)
+                    val installSize = calculateDirectorySize(actualInstallDir)
+                    val updatedGame = game.copy(
+                        isInstalled = true,
+                        installPath = actualInstallDir.absolutePath,
+                        installSize = installSize
+                    )
+                    gogManager.updateGame(updatedGame)
+                    Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
+                } else {
+                    Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")
+                }
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
+                // Don't fail the entire download for DB issues
+            }
+
+            // Step 13: Emit completion event
             downloadInfo.updateStatusMessage("Complete")
             downloadInfo.setProgress(1.0f)
+            downloadInfo.setActive(false)
             downloadInfo.emitProgressChange()
+            
+            // Notify UI that installation status changed
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0)
+            )
 
+            Timber.tag("GOG").i("Download completed successfully for game $gameId")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Download failed: ${e.message}")
+            downloadInfo.updateStatusMessage("Failed: ${e.message}")
+            downloadInfo.setProgress(-1.0f)
+            downloadInfo.setActive(false)
+            downloadInfo.emitProgressChange()
+            
+            // Emit download stopped event on failure
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false)
+            )
+            
             Result.failure(e)
         }
     }
@@ -254,6 +299,11 @@ class GOGDownloadManager @Inject constructor(
 
             Timber.tag("GOG").d("Downloading $totalChunks chunks...")
 
+            // Initialize download progress
+            downloadInfo.setProgress(0.0f)
+            downloadInfo.setActive(true)
+            downloadInfo.emitProgressChange()
+            
             // Download in batches to avoid overwhelming the system
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
@@ -276,7 +326,14 @@ class GOGDownloadManager @Inject constructor(
                 }
 
                 downloadedChunks += chunkBatch.size
-                downloadInfo.updateStatusMessage("Downloaded $downloadedChunks/$totalChunks chunks")
+                
+                // Update progress with smooth interpolation
+                val progress = downloadedChunks.toFloat() / totalChunks
+                downloadInfo.setProgress(progress)
+                downloadInfo.updateStatusMessage("Downloading chunks ($downloadedChunks/$totalChunks)")
+                downloadInfo.emitProgressChange()
+                
+                Timber.tag("GOG").d("Progress: ${(progress * 100).toInt()}% ($downloadedChunks/$totalChunks chunks)")
             }
 
             Timber.tag("GOG").i("All $totalChunks chunks downloaded successfully")
@@ -318,7 +375,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Download compressed chunk
             Timber.tag("GOG").d("Downloading chunk $chunkMd5 from: $url")
-            
+
             val request = Request.Builder()
                 .url(url)
                 .header("User-Agent", "GOG Galaxy")
@@ -533,5 +590,32 @@ class GOGDownloadManager @Inject constructor(
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Calculate the total size of a directory recursively
+     *
+     * @param directory The directory to calculate size for
+     * @return Total size in bytes
+     */
+    private fun calculateDirectorySize(directory: File): Long {
+        var size = 0L
+        try {
+            if (!directory.exists() || !directory.isDirectory) {
+                return 0L
+            }
+
+            val files = directory.listFiles() ?: return 0L
+            for (file in files) {
+                size += if (file.isDirectory) {
+                    calculateDirectorySize(file)
+                } else {
+                    file.length()
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Error calculating directory size for ${directory.name}")
+        }
+        return size
     }
 }

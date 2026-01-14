@@ -181,7 +181,7 @@ class GOGManifestParser @Inject constructor() {
 
         // Use the first (highest priority) CDN URL as base
         val baseCdnUrl = baseUrls.first()
-        
+
         // Build full URL for each chunk: baseUrl/aa/bb/aabbccdd...
         // Where aa/bb are first 4 chars of MD5 hash
         return chunks.associateWith { chunkMd5 ->
