@@ -170,15 +170,29 @@ class GOGManifestParser @Inject constructor() {
      * Build a mapping of chunk MD5 -> secure CDN URL
      *
      * @param chunks List of chunk MD5 hashes
-     * @param urls List of secure CDN URLs (must match chunks length)
+     * @param baseUrls List of base CDN URLs (e.g., https://gog-cdn-fastly.gog.com/...)
      * @return Map of chunk MD5 to download URL
      */
-    fun buildChunkUrlMap(chunks: List<String>, urls: List<String>): Map<String, String> {
-        if (chunks.size != urls.size) {
-            Log.w(TAG, "Chunk count (${chunks.size}) doesn't match URL count (${urls.size})")
+    fun buildChunkUrlMap(chunks: List<String>, baseUrls: List<String>): Map<String, String> {
+        if (baseUrls.isEmpty()) {
+            Log.w(TAG, "No base CDN URLs provided")
+            return emptyMap()
         }
 
-        return chunks.zip(urls).toMap()
+        // Use the first (highest priority) CDN URL as base
+        val baseCdnUrl = baseUrls.first()
+        
+        // Build full URL for each chunk: baseUrl/aa/bb/aabbccdd...
+        // Where aa/bb are first 4 chars of MD5 hash
+        return chunks.associateWith { chunkMd5 ->
+            if (chunkMd5.length >= 4) {
+                val first2 = chunkMd5.substring(0, 2)
+                val next2 = chunkMd5.substring(2, 4)
+                "$baseCdnUrl/$first2/$next2/$chunkMd5"
+            } else {
+                "$baseCdnUrl/$chunkMd5"
+            }
+        }
     }
 
     /**

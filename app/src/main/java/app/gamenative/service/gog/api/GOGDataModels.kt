@@ -331,12 +331,29 @@ data class SecureLinksResponse(
 
             if (urlsArray != null) {
                 for (i in 0 until urlsArray.length()) {
-                    // URLs are JSON objects with "endpoint" field
                     val urlObj = urlsArray.optJSONObject(i)
                     if (urlObj != null) {
-                        val endpoint = urlObj.optString("endpoint", "")
-                        if (endpoint.isNotEmpty()) {
-                            urls.add(endpoint)
+                        // GOG returns URL objects with url_format template and parameters
+                        // We need to merge them: {base_url}/token=nva={expires_at}... etc.
+                        val urlFormat = urlObj.optString("url_format", "")
+                        val paramsObj = urlObj.optJSONObject("parameters")
+                        
+                        if (urlFormat.isNotEmpty() && paramsObj != null) {
+                            // Replace all {param} placeholders with actual values
+                            var constructedUrl = urlFormat
+                            val keys = paramsObj.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val value = paramsObj.get(key).toString()
+                                constructedUrl = constructedUrl.replace("{$key}", value)
+                            }
+                            
+                            // Clean up escaped slashes from JSON
+                            constructedUrl = constructedUrl.replace("\\/", "/")
+                            
+                            if (constructedUrl.isNotEmpty()) {
+                                urls.add(constructedUrl)
+                            }
                         }
                     }
                 }

@@ -246,6 +246,9 @@ class GOGApiClient @Inject constructor(
             val jsonStr = response.body?.string()
                 ?: return@withContext Result.failure(Exception("Empty response"))
 
+            // Log the actual response to debug parsing issues
+            Timber.tag("GOG").d("Secure link response: $jsonStr")
+
             val secureLinks = parser.parseSecureLinks(jsonStr)
 
             Timber.tag("GOG").d("Got ${secureLinks.urls.size} secure URL(s) for product $productId")

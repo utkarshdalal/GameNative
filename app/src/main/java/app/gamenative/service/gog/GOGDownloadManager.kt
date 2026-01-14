@@ -27,8 +27,8 @@ import javax.inject.Singleton
  * GOG's CDN structure (Gen 2):
  * 1. Fetch build manifest (contains depots and product metadata)
  * 2. Fetch depot manifests (contains file lists with chunks)
- * 3. Get secure CDN links (time-limited URLs for chunks)
- * 4. Download chunks from CDN (zlib compressed data)
+ * 3. Get secure CDN links (time-limited URLs for chunks) -> We have issues here
+ * 4. Download chunks from CDN (zlib compressed data) -> We have issues here
  * 5. Decompress and verify chunks (MD5)
  * 6. Assemble files from chunks
  *
@@ -168,8 +168,10 @@ class GOGDownloadManager @Inject constructor(
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
 
+            // Note: Use the original gameId parameter, not manifest.baseProductId
+            // This matches GOGDL's behavior which uses self.game_id for secure links
             val secureLinksResult = apiClient.getSecureLink(
-                productId = manifest.baseProductId,
+                productId = gameId,
                 path = "/",
                 generation = selectedBuild.generation
             )
@@ -315,6 +317,8 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // Download compressed chunk
+            Timber.tag("GOG").d("Downloading chunk $chunkMd5 from: $url")
+            
             val request = Request.Builder()
                 .url(url)
                 .header("User-Agent", "GOG Galaxy")
