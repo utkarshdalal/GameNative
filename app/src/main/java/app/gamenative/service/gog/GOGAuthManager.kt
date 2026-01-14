@@ -225,7 +225,7 @@ object GOGAuthManager {
             }
 
             // Read auth file
-            val authContent = authFile.readText()
+            val authContent = withContext(Dispatchers.IO) { authFile.readText() }
             val authJson = JSONObject(authContent)
 
             // Check if we already have credentials for this game
@@ -263,7 +263,7 @@ object GOGAuthManager {
 
             // Request game-specific token using Galaxy's refresh token
             Timber.d("Requesting game-specific token for clientId: $clientId")
-            val tokenUrl = "https://auth.gog.com/token".toHttpUrl().newBuilder()
+            val url = tokenUrl.toHttpUrl().newBuilder()
                 .addQueryParameter("client_id", clientId)
                 .addQueryParameter("client_secret", clientSecret)
                 .addQueryParameter("grant_type", "refresh_token")
@@ -271,7 +271,7 @@ object GOGAuthManager {
                 .build()
 
             val request = okhttp3.Request.Builder()
-                .url(tokenUrl)
+                .url(url)
                 .get()
                 .build()
 
@@ -292,7 +292,7 @@ object GOGAuthManager {
                 authJson.put(clientId, json)
 
                 // Write updated auth file
-                authFile.writeText(authJson.toString(2))
+                withContext(Dispatchers.IO) { authFile.writeText(authJson.toString(2)) }
 
                 Timber.i("Successfully obtained game-specific token for clientId: $clientId")
                 json
@@ -366,7 +366,7 @@ object GOGAuthManager {
             }
 
             // Read current credentials
-            val authContent = authFile.readText()
+            val authContent = withContext(Dispatchers.IO) { authFile.readText() }
             val authJson = JSONObject(authContent)
 
             // Get refresh token from Galaxy credentials
@@ -411,7 +411,7 @@ object GOGAuthManager {
             // Update credentials in auth file
             tokenJson.put("loginTime", System.currentTimeMillis() / 1000.0)
             authJson.put(clientId, tokenJson)
-            authFile.writeText(authJson.toString(2))
+            withContext(Dispatchers.IO) { authFile.writeText(authJson.toString(2)) }
 
             Timber.i("Successfully refreshed credentials for clientId: $clientId")
             Result.success(true)
