@@ -48,9 +48,6 @@ const val DATABASE_NAME = "pluvia.db"
         DownloadingAppInfo::class
     ],
     version = 11,
-    exportSchema = false, // Should export once stable.
-    version = 10,
-
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
