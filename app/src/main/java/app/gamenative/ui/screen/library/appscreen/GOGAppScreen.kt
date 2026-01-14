@@ -276,7 +276,7 @@ class GOGAppScreen : BaseAppScreen() {
                 }
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
-                val result = GOGService.downloadGame(context, gameId, installPath, true)
+                val result = GOGService.downloadGame(context, gameId, installPath)
 
                 if (result.isSuccess) {
                     Timber.i("GOG download started successfully for: $gameId")

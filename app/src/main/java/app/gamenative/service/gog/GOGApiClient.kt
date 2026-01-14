@@ -12,8 +12,7 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
- * Represents the simplified/parsed game details returned by GOGApiClient.
- * This matches the format that GOGDL Python implementation returns.
+ * Parsed/Formartted details returned by GOGApiClient.
  */
 data class ParsedGogGame(
     val id: String,
@@ -32,8 +31,7 @@ data class ParsedGogGame(
 )
 
 /**
- * Represents the raw GOG API response structure for game details.
- * Fields are nullable to handle missing/optional data from the API.
+ * Raw API Response details from gameDetails endpoint
  */
 data class RawGogApiResponse(
     val id: String?,
@@ -243,7 +241,7 @@ object GOGApiClient {
     }
 
     /**
-     * Transform raw GOG API response into simplified formats for easier parsing, similar to GOGDL
+     * Transform raw GOG API response into better format. Based on GOGDL implementation
      *
      * @param rawResponse Raw JSON from GOG API
      * @param gameId The game ID
@@ -315,6 +313,7 @@ object GOGApiClient {
 
         // Extract download size from first installer
         val downloads = rawResponse.optJSONObject("downloads")
+        // Used in GOG Galaxy to hide specific entitlements
         val isSecret = rawResponse.optBoolean("is_secret", false)
         val installers = downloads?.optJSONArray("installers")
         val downloadSize = if (installers != null && installers.length() > 0) {

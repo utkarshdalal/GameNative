@@ -21,15 +21,16 @@ import java.io.File
 
 
 /**
- * GOG Service - thin coordinator that delegates to specialized managers.
+ * GOG Service - thin abstraction layer that delegates to managers.
  *
  * Architecture:
- * - GOGPythonBridge: Low-level Python/GOGDL command execution
+ * - GOGApiClient: Api Layer for interacting with GOG's APIs
+ * - GOGDownloadManager: Handles Download Logic for Games
+ * - GOGConstants: Shared Constants for our GOG-related data
+ * - GOGCloudSavesManager: Handler for Cloud Saves
  * - GOGAuthManager: Authentication and account management
  * - GOGManager: Game library, downloads, and installation
  *
- * This service maintains backward compatibility through static accessors
- * while delegating all operations to the appropriate managers.
  */
 @AndroidEntryPoint
 class GOGService : Service() {
@@ -97,11 +98,6 @@ class GOGService : Service() {
             instance?.let { service ->
                 service.stopSelf()
             }
-        }
-
-
-        fun initialize(context: Context): Boolean {
-            return GOGPythonBridge.initialize(context)
         }
 
         // ==========================================================================
@@ -297,7 +293,7 @@ class GOGService : Service() {
         }
 
 
-        fun downloadGame(context: Context, gameId: String, installPath: String, new: Boolean=false): Result<DownloadInfo?> {
+        fun downloadGame(context: Context, gameId: String, installPath: String): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             // Create DownloadInfo for progress tracking

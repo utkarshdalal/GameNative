@@ -107,13 +107,10 @@ class PluviaApp : SplitCompatApplication() {
         // Initialize GOG service
         appScope.launch {
             try {
-                if (app.gamenative.service.gog.GOGService.initialize(applicationContext)) {
-                    Timber.d("GOGService initialized successfully")
-                } else {
-                    Timber.w("GOGService initialization returned false")
-                }
+                app.gamenative.service.gog.GOGService.start(applicationContext)
+                Timber.d("GOGService started successfully")
             } catch (e: Exception) {
-                Timber.e(e, "Failed to initialize GOGService: ${e.message}")
+                Timber.e(e, "Failed to start GOGService: ${e.message}")
             }
         }
     }
