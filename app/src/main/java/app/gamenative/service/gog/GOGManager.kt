@@ -198,7 +198,7 @@ class GOGManager @Inject constructor(
             val ignoredGameId = "1801418160" // Hidden ID for GOG Galaxy that we should ignore.
 
             // Get existing game IDs from database to avoid re-fetching
-            val existingGameIds = gogGameDao.getAllGameIdsWithExclusions().toMutableSet()
+            val existingGameIds = gogGameDao.getAllGameIdsIncludingExcluded().toMutableSet()
             existingGameIds.add(ignoredGameId)
 
             Timber.tag("GOG").d("Found ${existingGameIds.size} games already in database")
@@ -267,12 +267,13 @@ class GOGManager @Inject constructor(
         val id = parsedGame.id
         val downloadSize = parsedGame.downloadSize
         val isSecret = parsedGame.isSecret
+        val isDlc = parsedGame.isDlc
         // Added Exclude so that we still store a record in the DB but we don't expose it.
         // This reduces the amount of fetching we do from the APIs and we also reduce chances of Amazon Prime duplicates etc.
         // Had to put in an extra case for some games not using isSecret but still are amazon prime duplicates...
         val exclude =
             title == "Unknown Game" || title.startsWith("product_title_") || title == "Unknown" || downloadSize == 0L || isSecret ||
-                title.endsWith("Amazon Prime")
+                title.endsWith("Amazon Prime") || isDlc
 
         return GOGGame(
             id = id,

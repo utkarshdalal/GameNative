@@ -68,6 +68,12 @@ class GOGApiClient @Inject constructor(
 
                 Timber.tag("GOG").d("Found ${buildsResponse.totalCount} build(s) for game $gameId")
 
+                if(buildsResponse.totalCount == 0){
+                    return@withContext Result.failure(
+                        Exception("No viable builds found"),
+                    )
+                }
+
                 Result.success(buildsResponse)
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to get builds for game $gameId")

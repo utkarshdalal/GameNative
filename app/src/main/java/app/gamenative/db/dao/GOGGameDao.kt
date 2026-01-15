@@ -53,7 +53,7 @@ interface GOGGameDao {
     fun getCount(): Flow<Int>
 
     @Query("SELECT id FROM gog_games")
-    suspend fun getAllGameIdsWithExclusions(): List<String>
+    suspend fun getAllGameIdsIncludingExcluded(): List<String>
 
     @Transaction
     suspend fun replaceAll(games: List<GOGGame>) {

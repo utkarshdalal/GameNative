@@ -27,7 +27,8 @@ data class ParsedGogGame(
     val description: String,
     val releaseDate: String,
     val downloadSize: Long,
-    val isSecret: Boolean
+    val isSecret: Boolean,
+    val isDlc: Boolean
 )
 
 /**
@@ -456,6 +457,9 @@ object GOGApiClient {
         val downloads = rawResponse.optJSONObject("downloads")
         // Used in GOG Galaxy to hide specific entitlements
         val isSecret = rawResponse.optBoolean("is_secret", false)
+        val gameType = rawResponse.optString("game_type", "dlc")
+        val isDlc = gameType == "dlc"
+
         val installers = downloads?.optJSONArray("installers")
         val downloadSize = if (installers != null && installers.length() > 0) {
             installers.optJSONObject(0)?.optLong("total_size", 0L) ?: 0L
@@ -477,7 +481,8 @@ object GOGApiClient {
             description = description,
             releaseDate = rawResponse.optString("release_date", ""),
             downloadSize = downloadSize,
-            isSecret = isSecret
+            isSecret = isSecret,
+            isDlc = isDlc
         )
     }
 }
