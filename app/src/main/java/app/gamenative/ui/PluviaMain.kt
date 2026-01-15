@@ -1108,6 +1108,15 @@ fun preLaunchApp(
                 context = context,
             ).await()
         }
+        if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam-token.tzst")) {
+            setLoadingMessage("Downloading steam-token")
+            SteamService.downloadFile(
+                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                this,
+                context = context,
+                "steam-token.tzst"
+            ).await()
+        }
         val loadingMessage = if (container.containerVariant.equals(Container.GLIBC))
             context.getString(R.string.main_installing_glibc)
         else

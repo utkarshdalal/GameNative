@@ -379,6 +379,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     }
 
     public String execShellCommand(String command){
+        return execShellCommand(command, true);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr){
         return "";
     }
 }
