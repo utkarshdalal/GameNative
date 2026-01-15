@@ -8,18 +8,18 @@ import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.utils.Net
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.withContext
-import okhttp3.Request
-import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.zip.Inflater
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
+import okhttp3.Request
+import timber.log.Timber
 
 /**
  * GOGDownloadManager handles downloading GOG games
@@ -44,7 +44,7 @@ class GOGDownloadManager @Inject constructor(
     private val apiClient: GOGApiClient,
     private val parser: GOGManifestParser,
     private val gogManager: GOGManager,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
 ) {
 
     private val httpClient = Net.http
@@ -56,7 +56,7 @@ class GOGDownloadManager @Inject constructor(
         val gameId: String,
         val generation: Int,
         val dlcProducts: List<app.gamenative.service.gog.api.Product>,
-        val withDlcs: Boolean
+        val withDlcs: Boolean,
     )
 
     companion object {
@@ -83,14 +83,18 @@ class GOGDownloadManager @Inject constructor(
         downloadInfo: DownloadInfo,
         language: String = "en-US",
         withDlcs: Boolean = false,
-        supportDir: File? = null // Will need to do similar to Steam, put it in commonredists
+        supportDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            // TODO: We need to handle COMMON REDIST folder and go through the same thing.
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
+            if (supportDir != null) {
+                Timber.tag("GOG").i("Starting download for game $gameId to ${supportDir.absolutePath}")
+            }
 
             // Emit download started event so UI can attach progress listeners
             app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, true)
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, true),
             )
 
             downloadInfo.updateStatusMessage("Fetching builds...")
@@ -99,7 +103,7 @@ class GOGDownloadManager @Inject constructor(
             val buildsResult = apiClient.getBuilds(gameId, "windows")
             if (buildsResult.isFailure) {
                 return@withContext Result.failure(
-                    buildsResult.exceptionOrNull() ?: Exception("Failed to fetch builds")
+                    buildsResult.exceptionOrNull() ?: Exception("Failed to fetch builds"),
                 )
             }
 
@@ -115,7 +119,7 @@ class GOGDownloadManager @Inject constructor(
             val manifestResult = apiClient.fetchManifest(selectedBuild.link)
             if (manifestResult.isFailure) {
                 return@withContext Result.failure(
-                    manifestResult.exceptionOrNull() ?: Exception("Failed to fetch manifest")
+                    manifestResult.exceptionOrNull() ?: Exception("Failed to fetch manifest"),
                 )
             }
 
@@ -142,7 +146,7 @@ class GOGDownloadManager @Inject constructor(
                 val depotResult = apiClient.fetchDepotManifest(depot.manifest)
                 if (depotResult.isFailure) {
                     return@withContext Result.failure(
-                        depotResult.exceptionOrNull() ?: Exception("Failed to fetch depot manifest")
+                        depotResult.exceptionOrNull() ?: Exception("Failed to fetch depot manifest"),
                     )
                 }
 
@@ -152,7 +156,7 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").d("Total files from all depots: ${allFiles.size}")
 
             // Step 5: Separate base game, DLC, and support files
-            //! Note: We could actually give back the DLC list and ask which ones they want to download... (DLC Manager).
+            // ! Note: We could actually give back the DLC list and ask which ones they want to download... (DLC Manager).
             val (baseFiles, dlcFiles) = parser.separateBaseDLC(allFiles, manifest.baseProductId)
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             val (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
@@ -167,7 +171,7 @@ class GOGDownloadManager @Inject constructor(
                 0L
             }
 
-            Timber.tag("GOG").i(
+            Timber.tag("GOG").d(
                 """
                 |Download plan:
                 |  Base game files: ${baseFiles.size}
@@ -177,20 +181,20 @@ class GOGDownloadManager @Inject constructor(
                 |  Base game size: ${baseGameSize / 1_000_000.0} MB
                 |  DLC size: ${dlcSize / 1_000_000.0} MB
                 |  Including DLCs: $withDlcs
-                """.trimMargin()
+                """.trimMargin(),
             )
 
             // Step 6: Calculate sizes and extract chunk hashes
             val totalSize = parser.calculateTotalSize(gameFiles)
             val chunkHashes = parser.extractChunkHashes(gameFiles)
 
-            Timber.tag("GOG").i(
+            Timber.tag("GOG").d(
                 """
                 |Download stats:
                 |  Total compressed size: ${totalSize / 1_000_000.0} MB (${if (withDlcs) "including DLC" else "base game only"})
                 |  Unique chunks: ${chunkHashes.size}
                 |  Files: ${gameFiles.size}
-                """.trimMargin()
+                """.trimMargin(),
             )
 
             downloadInfo.setTotalExpectedBytes(totalSize)
@@ -206,11 +210,11 @@ class GOGDownloadManager @Inject constructor(
             val baseLinksResult = apiClient.getSecureLink(
                 productId = gameId,
                 path = "/",
-                generation = selectedBuild.generation
+                generation = selectedBuild.generation,
             )
             if (baseLinksResult.isFailure) {
                 return@withContext Result.failure(
-                    baseLinksResult.exceptionOrNull() ?: Exception("Failed to get secure links for base game")
+                    baseLinksResult.exceptionOrNull() ?: Exception("Failed to get secure links for base game"),
                 )
             }
             allSecureUrls.addAll(baseLinksResult.getOrThrow().urls)
@@ -224,7 +228,7 @@ class GOGDownloadManager @Inject constructor(
                     val dlcLinksResult = apiClient.getSecureLink(
                         productId = dlcProduct.productId,
                         path = "/",
-                        generation = selectedBuild.generation
+                        generation = selectedBuild.generation,
                     )
                     if (dlcLinksResult.isSuccess) {
                         allSecureUrls.addAll(dlcLinksResult.getOrThrow().urls)
@@ -245,7 +249,7 @@ class GOGDownloadManager @Inject constructor(
                 gameId = gameId,
                 generation = selectedBuild.generation,
                 dlcProducts = if (withDlcs) parser.findDLCProducts(manifest) else emptyList(),
-                withDlcs = withDlcs
+                withDlcs = withDlcs,
             )
 
             // Step 8: Download chunks
@@ -259,7 +263,7 @@ class GOGDownloadManager @Inject constructor(
                 chunkCacheDir = chunkCacheDir,
                 downloadInfo = downloadInfo,
                 chunkHashes = chunkHashes,
-                secureLinkContext = secureLinkContext
+                secureLinkContext = secureLinkContext,
             )
             if (downloadResult.isFailure) {
                 return@withContext downloadResult
@@ -277,8 +281,10 @@ class GOGDownloadManager @Inject constructor(
                 return@withContext assembleResult
             }
 
+            // ! Looks like we're not correctly getting the chunks to pull in the dependencies.
             // Step 10: Install support files if directory provided
             if (supportDir != null && supportFiles.isNotEmpty()) {
+                // This should be _CommonRedist almost entirely.
                 downloadInfo.updateStatusMessage("Installing support files...")
                 supportDir.mkdirs()
 
@@ -302,7 +308,7 @@ class GOGDownloadManager @Inject constructor(
                     val updatedGame = game.copy(
                         isInstalled = true,
                         installPath = installPath.absolutePath,
-                        installSize = installSize
+                        installSize = installSize,
                     )
                     gogManager.updateGame(updatedGame)
                     Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
@@ -322,7 +328,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Notify UI that installation status changed
             app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0)
+                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
             )
 
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
@@ -336,7 +342,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Emit download stopped event on failure
             app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false)
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
             )
 
             Result.failure(e)
@@ -357,7 +363,7 @@ class GOGDownloadManager @Inject constructor(
         chunkCacheDir: File,
         downloadInfo: DownloadInfo,
         chunkHashes: List<String>,
-        secureLinkContext: SecureLinkContext
+        secureLinkContext: SecureLinkContext,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             var currentChunkUrlMap = chunkUrlMap
@@ -384,7 +390,7 @@ class GOGDownloadManager @Inject constructor(
                     async {
                         // Use current URL map in case it was refreshed
                         val url = currentChunkUrlMap[chunkMd5] ?: return@async Result.failure<File>(
-                            Exception("No URL found for chunk $chunkMd5")
+                            Exception("No URL found for chunk $chunkMd5"),
                         )
                         downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
                     }
@@ -410,7 +416,7 @@ class GOGDownloadManager @Inject constructor(
                         val retryResults = chunkBatch.map { (chunkMd5, _) ->
                             async {
                                 val url = currentChunkUrlMap[chunkMd5] ?: return@async Result.failure<File>(
-                                    Exception("No URL found for chunk $chunkMd5 after refresh")
+                                    Exception("No URL found for chunk $chunkMd5 after refresh"),
                                 )
                                 downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
                             }
@@ -419,20 +425,20 @@ class GOGDownloadManager @Inject constructor(
                         // Check retry results
                         retryResults.firstOrNull { it.isFailure }?.let { failedResult ->
                             return@withContext Result.failure(
-                                failedResult.exceptionOrNull() ?: Exception("Failed to download chunk after link refresh")
+                                failedResult.exceptionOrNull() ?: Exception("Failed to download chunk after link refresh"),
                             )
                         }
                     } else {
                         Timber.tag("GOG").e("Failed to refresh secure links: ${refreshResult.exceptionOrNull()?.message}")
                         return@withContext Result.failure(
-                            refreshResult.exceptionOrNull() ?: Exception("Failed to refresh secure links")
+                            refreshResult.exceptionOrNull() ?: Exception("Failed to refresh secure links"),
                         )
                     }
                 } else {
                     // Check if any download failed for other reasons
                     results.firstOrNull { it.isFailure }?.let { failedResult ->
                         return@withContext Result.failure(
-                            failedResult.exceptionOrNull() ?: Exception("Failed to download chunk")
+                            failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
                         )
                     }
                 }
@@ -465,7 +471,7 @@ class GOGDownloadManager @Inject constructor(
      */
     private suspend fun refreshSecureLinks(
         context: SecureLinkContext,
-        chunkHashes: List<String>
+        chunkHashes: List<String>,
     ): Result<Map<String, String>> = withContext(Dispatchers.IO) {
         try {
             val allSecureUrls = mutableListOf<String>()
@@ -474,11 +480,11 @@ class GOGDownloadManager @Inject constructor(
             val baseLinksResult = apiClient.getSecureLink(
                 productId = context.gameId,
                 path = "/",
-                generation = context.generation
+                generation = context.generation,
             )
             if (baseLinksResult.isFailure) {
                 return@withContext Result.failure(
-                    baseLinksResult.exceptionOrNull() ?: Exception("Failed to refresh secure links for base game")
+                    baseLinksResult.exceptionOrNull() ?: Exception("Failed to refresh secure links for base game"),
                 )
             }
             allSecureUrls.addAll(baseLinksResult.getOrThrow().urls)
@@ -489,7 +495,7 @@ class GOGDownloadManager @Inject constructor(
                     val dlcLinksResult = apiClient.getSecureLink(
                         productId = dlcProduct.productId,
                         path = "/",
-                        generation = context.generation
+                        generation = context.generation,
                     )
                     if (dlcLinksResult.isSuccess) {
                         allSecureUrls.addAll(dlcLinksResult.getOrThrow().urls)
@@ -520,7 +526,7 @@ class GOGDownloadManager @Inject constructor(
         chunkMd5: String,
         url: String,
         chunkCacheDir: File,
-        downloadInfo: DownloadInfo
+        downloadInfo: DownloadInfo,
     ): Result<File> = withContext(Dispatchers.IO) {
         var lastException: Exception? = null
 
@@ -536,7 +542,6 @@ class GOGDownloadManager @Inject constructor(
 
             lastException = result.exceptionOrNull() as? Exception
 
-            // Don't retry on the last attempt
             if (attempt < MAX_CHUNK_RETRIES - 1) {
                 val delay = RETRY_DELAY_MS * (1 shl attempt) // Exponential backoff: 1s, 2s, 4s
                 Timber.tag("GOG").w("Chunk $chunkMd5 download failed (attempt ${attempt + 1}/$MAX_CHUNK_RETRIES): ${lastException?.message}. Retrying in ${delay}ms...")
@@ -560,7 +565,7 @@ class GOGDownloadManager @Inject constructor(
         chunkMd5: String,
         url: String,
         chunkCacheDir: File,
-        downloadInfo: DownloadInfo
+        downloadInfo: DownloadInfo,
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
             val chunkFile = File(chunkCacheDir, "$chunkMd5.chunk")
@@ -598,7 +603,7 @@ class GOGDownloadManager @Inject constructor(
             val actualMd5 = calculateMd5(compressedBytes)
             if (actualMd5 != chunkMd5) {
                 return@withContext Result.failure(
-                    Exception("Compressed MD5 mismatch for chunk: expected $chunkMd5, got $actualMd5")
+                    Exception("Compressed MD5 mismatch for chunk: expected $chunkMd5, got $actualMd5"),
                 )
             }
 
@@ -625,7 +630,7 @@ class GOGDownloadManager @Inject constructor(
         files: List<DepotFile>,
         chunkCacheDir: File,
         installDir: File,
-        downloadInfo: DownloadInfo
+        downloadInfo: DownloadInfo,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val totalFiles = files.size
@@ -640,7 +645,7 @@ class GOGDownloadManager @Inject constructor(
                 val assembleResult = assembleFile(file, chunkCacheDir, installDir)
                 if (assembleResult.isFailure) {
                     return@withContext Result.failure(
-                        assembleResult.exceptionOrNull() ?: Exception("Failed to assemble ${file.path}")
+                        assembleResult.exceptionOrNull() ?: Exception("Failed to assemble ${file.path}"),
                     )
                 }
             }
@@ -663,7 +668,7 @@ class GOGDownloadManager @Inject constructor(
     private suspend fun assembleFile(
         file: DepotFile,
         chunkCacheDir: File,
-        installDir: File
+        installDir: File,
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
             val outputFile = File(installDir, file.path)
@@ -676,7 +681,7 @@ class GOGDownloadManager @Inject constructor(
 
                     if (!chunkFile.exists()) {
                         return@withContext Result.failure(
-                            Exception("Chunk file missing: ${chunk.compressedMd5}")
+                            Exception("Chunk file missing: ${chunk.compressedMd5}"),
                         )
                     }
 
@@ -688,7 +693,7 @@ class GOGDownloadManager @Inject constructor(
                     if (decompressedBytes.isFailure) {
                         return@withContext Result.failure(
                             decompressedBytes.exceptionOrNull()
-                                ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}")
+                                ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
                         )
                     }
 
@@ -698,7 +703,7 @@ class GOGDownloadManager @Inject constructor(
                     val actualMd5 = calculateMd5(data)
                     if (actualMd5 != chunk.md5) {
                         return@withContext Result.failure(
-                            Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5")
+                            Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
                         )
                     }
 
@@ -758,7 +763,7 @@ class GOGDownloadManager @Inject constructor(
                 // Verify size matches expected
                 if (decompressed.size.toLong() != chunk.size) {
                     return Result.failure(
-                        Exception("Decompressed size mismatch: expected ${chunk.size}, got ${decompressed.size}")
+                        Exception("Decompressed size mismatch: expected ${chunk.size}, got ${decompressed.size}"),
                     )
                 }
 

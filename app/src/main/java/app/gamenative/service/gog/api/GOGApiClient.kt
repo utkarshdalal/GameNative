@@ -2,19 +2,15 @@ package app.gamenative.service.gog.api
 
 import android.content.Context
 import app.gamenative.service.gog.GOGAuthManager
+import app.gamenative.utils.Net
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import app.gamenative.utils.Net
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.zip.GZIPInputStream
-import java.util.zip.Inflater
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Native Kotlin API client for GOG Content System
@@ -24,7 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class GOGApiClient @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val parser: GOGManifestParser
+    private val parser: GOGManifestParser,
 ) {
 
     companion object {
@@ -61,7 +57,7 @@ class GOGApiClient @Inject constructor(
 
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(
-                        Exception("Failed to fetch builds: HTTP ${response.code}")
+                        Exception("Failed to fetch builds: HTTP ${response.code}"),
                     )
                 }
 
@@ -104,7 +100,7 @@ class GOGApiClient @Inject constructor(
 
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(
-                        Exception("Failed to fetch manifest: HTTP ${response.code}")
+                        Exception("Failed to fetch manifest: HTTP ${response.code}"),
                     )
                 }
 
@@ -119,7 +115,7 @@ class GOGApiClient @Inject constructor(
                 val manifest = parser.parseManifest(manifestStr)
 
                 Timber.tag("GOG").i(
-                    "Manifest parsed: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)"
+                    "Manifest parsed: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)",
                 )
 
                 Result.success(manifest)
@@ -158,7 +154,7 @@ class GOGApiClient @Inject constructor(
 
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(
-                        Exception("Failed to fetch depot manifest: HTTP ${response.code}")
+                        Exception("Failed to fetch depot manifest: HTTP ${response.code}"),
                     )
                 }
 
@@ -172,7 +168,7 @@ class GOGApiClient @Inject constructor(
 
                 Timber.tag("GOG").d(
                     "Depot manifest parsed: ${depotManifest.files.size} file(s), " +
-                    "${depotManifest.directories.size} dir(s)"
+                        "${depotManifest.directories.size} dir(s)",
                 )
 
                 Result.success(depotManifest)
@@ -198,7 +194,7 @@ class GOGApiClient @Inject constructor(
         productId: String,
         path: String = "/",
         generation: Int = 2,
-        root: String? = null
+        root: String? = null,
     ): Result<SecureLinksResponse> = withContext(Dispatchers.IO) {
         try {
             val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()
@@ -229,7 +225,7 @@ class GOGApiClient @Inject constructor(
 
             if (!response.isSuccessful) {
                 return@withContext Result.failure(
-                    Exception("Failed to get secure link: HTTP ${response.code}")
+                    Exception("Failed to get secure link: HTTP ${response.code}"),
                 )
             }
 
@@ -249,8 +245,6 @@ class GOGApiClient @Inject constructor(
             Result.failure(e)
         }
     }
-
-
 
     /**
      * Convert manifest hash to GOG Galaxy CDN path format

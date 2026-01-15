@@ -1,9 +1,13 @@
 package app.gamenative.service.gog.api
 
 import android.util.Log
-import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.Inflater
 import javax.inject.Inject
 import javax.inject.Singleton
+import org.json.JSONObject
 
 /**
  * Handles parsing of GOG manifest data
@@ -34,7 +38,6 @@ class GOGManifestParser @Inject constructor() {
             Log.w(TAG, "No Gen 2 builds found")
             return null
         }
-
 
         val selected = filtered.first()
 
@@ -244,14 +247,16 @@ class GOGManifestParser @Inject constructor() {
     fun decompressManifest(data: ByteArray): String {
         // Check compression type by magic bytes
         val isGzipped = data.size >= 2 &&
-                        data[0] == 0x1f.toByte() &&
-                        data[1] == 0x8b.toByte()
+            data[0] == 0x1f.toByte() &&
+            data[1] == 0x8b.toByte()
 
         val isZlib = data.size >= 2 &&
-                     data[0] == 0x78.toByte() &&
-                     (data[1] == 0x9c.toByte() ||
-                      data[1] == 0x01.toByte() ||
-                      data[1] == 0xda.toByte())
+            data[0] == 0x78.toByte() &&
+            (
+                data[1] == 0x9c.toByte() ||
+                    data[1] == 0x01.toByte() ||
+                    data[1] == 0xda.toByte()
+                )
 
         return when {
             isGzipped -> {
@@ -259,6 +264,7 @@ class GOGManifestParser @Inject constructor() {
                 val inputStream = GZIPInputStream(ByteArrayInputStream(data))
                 inputStream.bufferedReader().use { it.readText() }
             }
+
             isZlib -> {
                 // Decompress zlib (same as Epic chunk decompression)
                 val inflater = Inflater()
@@ -277,6 +283,7 @@ class GOGManifestParser @Inject constructor() {
                     inflater.end()
                 }
             }
+
             else -> {
                 // Try as plain text
                 String(data, Charsets.UTF_8)
