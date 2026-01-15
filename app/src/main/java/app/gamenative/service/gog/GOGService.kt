@@ -53,7 +53,7 @@ class GOGService : Service() {
         /**
          * Start the GOG service. Handles both first-time start and subsequent automatic syncs.
          * - First-time start: Always syncs (no throttle)
-         * - Subsequent starts: Throttled to once per 15 minutes
+         * - Subsequent starts: Service always starts, but sync is throttled to once per 15 minutes
          */
         fun start(context: Context) {
             // If already running, do nothing
@@ -71,19 +71,20 @@ class GOGService : Service() {
                 return
             }
 
-            // Subsequent starts: check throttle
+            // Subsequent starts: always start service, but check throttle for sync
             val now = System.currentTimeMillis()
             val timeSinceLastSync = now - lastSyncTimestamp
 
+            val intent = Intent(context, GOGService::class.java)
             if (timeSinceLastSync >= SYNC_THROTTLE_MILLIS) {
                 Timber.i("[GOGService] Starting service with automatic sync (throttle passed)")
-                val intent = Intent(context, GOGService::class.java)
                 intent.action = ACTION_SYNC_LIBRARY
-                context.startForegroundService(intent)
             } else {
                 val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
-                Timber.d("[GOGService] Skipping start - throttled (${remainingMinutes}min remaining)")
+                Timber.d("[GOGService] Starting service without sync - throttled (${remainingMinutes}min remaining)")
+                // Start service without sync action
             }
+            context.startForegroundService(intent)
         }
 
         fun triggerLibrarySync(context: Context) {
