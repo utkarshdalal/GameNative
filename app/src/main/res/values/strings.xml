@@ -794,7 +794,7 @@
     <string name="library_not_installed">Not installed</string>
     <string name="library_family_shared">Family Shared</string>
     <string name="library_compatible">Compatible</string>
-    <string name="library_compatibility_unknown">Compatibility Unknown</string>
+    <string name="library_compatibility_unknown">Unknown</string>
     <string name="library_not_compatible">Not Compatible</string>
 
     <!-- Best Config Compatibility Messages -->
