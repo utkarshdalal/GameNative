@@ -118,6 +118,12 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun insertGame(game: GOGGame) {
+        withContext(Dispatchers.IO) {
+            gogGameDao.insert(game)
+        }
+    }
+
     suspend fun updateGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
             gogGameDao.update(game)
