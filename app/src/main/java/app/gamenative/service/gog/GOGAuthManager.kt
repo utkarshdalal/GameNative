@@ -12,7 +12,6 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 /**
  * Manages GOG authentication and account operations.
