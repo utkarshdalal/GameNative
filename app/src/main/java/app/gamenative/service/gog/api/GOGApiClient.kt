@@ -38,7 +38,6 @@ class GOGApiClient @Inject constructor(
      * Get all available builds for a game (both generation 1 and 2)
      *
      * TEMPORARY: Currently filtered to Generation 2 only for initial implementation
-     * TODO: Add Gen 1 support later
      */
     suspend fun getBuilds(gameId: String, platform: String = "windows"): Result<BuildsResponse> =
         withContext(Dispatchers.IO) {
@@ -48,8 +47,7 @@ class GOGApiClient @Inject constructor(
                     return@withContext Result.failure(Exception("Not authenticated"))
                 }
 
-                // TEMPORARY: Filter to Gen 2 only for now
-                // TODO: Remove generation filter to support Gen 1 games
+                // ! Filter to Gen 2 only as they're a more consistent format for gog
                 val url = "$GOG_CONTENT_SYSTEM/products/$gameId/os/$platform/builds?generation=2"
 
                 Timber.tag("GOG").d("Fetching builds from: $url")
@@ -73,14 +71,6 @@ class GOGApiClient @Inject constructor(
                 val buildsResponse = parser.parseBuilds(jsonStr)
 
                 Timber.tag("GOG").d("Found ${buildsResponse.totalCount} build(s) for game $gameId")
-
-                // Log generation info for debugging
-                buildsResponse.items.take(3).forEach { build ->
-                    Timber.tag("GOG").d(
-                        "  Build ${build.buildId}: generation=${build.generation}, version=${build.versionName}"
-                    )
-                }
-                // Assuming all we ned for downloading is the build Ids, and ensure that we're downloading everything.
 
                 Result.success(buildsResponse)
             } catch (e: Exception) {
@@ -122,7 +112,7 @@ class GOGApiClient @Inject constructor(
                     ?: return@withContext Result.failure(Exception("Empty response"))
 
                 // Decompress based on detected format
-                val manifestStr = decompressManifest(manifestBytes)
+                val manifestStr = parser.decompressManifest(manifestBytes)
 
                 Timber.tag("GOG").d("Manifest decompressed, size: ${manifestStr.length} bytes")
 
@@ -154,7 +144,7 @@ class GOGApiClient @Inject constructor(
                 }
 
                 // Build depot manifest URL
-                val path = galaxyPath(manifestHash)
+                val path = gogGalaxyPath(manifestHash)
                 val url = "$GOG_CDN/content-system/v2/meta/$path"
 
                 Timber.tag("GOG").d("Fetching depot manifest: $url")
@@ -176,7 +166,7 @@ class GOGApiClient @Inject constructor(
                     ?: return@withContext Result.failure(Exception("Empty response"))
 
                 // Depot manifests are also compressed
-                val depotStr = decompressManifest(depotBytes)
+                val depotStr = parser.decompressManifest(depotBytes)
 
                 val depotManifest = parser.parseDepotManifest(depotStr)
 
@@ -260,51 +250,7 @@ class GOGApiClient @Inject constructor(
         }
     }
 
-    /**
-     * Decompress manifest data (auto-detects zlib or gzip)
-     */
-    private fun decompressManifest(data: ByteArray): String {
-        // Check compression type by magic bytes
-        val isGzipped = data.size >= 2 &&
-                        data[0] == 0x1f.toByte() &&
-                        data[1] == 0x8b.toByte()
 
-        val isZlib = data.size >= 2 &&
-                     data[0] == 0x78.toByte() &&
-                     (data[1] == 0x9c.toByte() ||
-                      data[1] == 0x01.toByte() ||
-                      data[1] == 0xda.toByte())
-
-        return when {
-            isGzipped -> {
-                // Decompress gzip
-                val inputStream = GZIPInputStream(ByteArrayInputStream(data))
-                inputStream.bufferedReader().use { it.readText() }
-            }
-            isZlib -> {
-                // Decompress zlib (same as Epic chunk decompression)
-                val inflater = Inflater()
-                try {
-                    inflater.setInput(data)
-                    val outputStream = ByteArrayOutputStream()
-                    val buffer = ByteArray(8192)
-
-                    while (!inflater.finished()) {
-                        val count = inflater.inflate(buffer)
-                        outputStream.write(buffer, 0, count)
-                    }
-
-                    outputStream.toString("UTF-8")
-                } finally {
-                    inflater.end()
-                }
-            }
-            else -> {
-                // Try as plain text
-                String(data, Charsets.UTF_8)
-            }
-        }
-    }
 
     /**
      * Convert manifest hash to GOG Galaxy CDN path format
@@ -312,7 +258,7 @@ class GOGApiClient @Inject constructor(
      * Format: AA/BB/CCDD... where AA, BB are first two pairs of hex digits
      * Example: "abc123..." -> "ab/c1/abc123..."
      */
-    private fun galaxyPath(hash: String): String {
+    private fun gogGalaxyPath(hash: String): String {
         if (hash.length < 4) return hash
         return "${hash.substring(0, 2)}/${hash.substring(2, 4)}/$hash"
     }

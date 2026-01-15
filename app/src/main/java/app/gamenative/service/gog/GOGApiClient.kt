@@ -31,7 +31,7 @@ data class ParsedGogGame(
 )
 
 /**
- * Raw API Response details from gameDetails endpoint
+ * Raw API Response details from gameDetails endpoint (Used for reference)
  */
 data class RawGogApiResponse(
     val id: String?,
@@ -92,7 +92,7 @@ object GOGApiClient {
      * Fetch list of game IDs owned by the user
      *
      * - Gets credentials from AuthManager
-     * - Calls GOG_EMBED/user/data/games endpoint
+     * - Calls GOG_EMBED/user/data/games endpoint to get Ids
      * - Returns list of owned game IDs
      *
      * @param context Application context for auth access
@@ -163,7 +163,7 @@ object GOGApiClient {
      * Fetch detailed information for a specific game by ID
      *
      * - Gets credentials from AuthManager
-     * - Calls GOG_API/products/{id}?expand=... endpoint
+     * - Calls GOG_API/products/{id} endpoint to get gameInfo
      * - Returns game details as ParsedGogGame
      *
      * @param context Application context for auth access

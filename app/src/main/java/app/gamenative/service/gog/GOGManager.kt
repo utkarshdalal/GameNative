@@ -26,6 +26,7 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
+import app.gamenative.utils.FileUtils
 import java.util.concurrent.TimeUnit
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
@@ -389,7 +390,7 @@ class GOGManager @Inject constructor(
                 if (gameId.isNotEmpty()) {
                     val game = getGameFromDbById(gameId)
                     if (game != null) {
-                        val installSize = calculateDirectorySize(installDir)
+                        val installSize = FileUtils.calculateDirectorySize(installDir)
                         return game.copy(
                             isInstalled = true,
                             installPath = installDir.absolutePath,
@@ -415,7 +416,7 @@ class GOGManager @Inject constructor(
                 } == true
 
                 if (hasContent) {
-                    val installSize = calculateDirectorySize(installDir)
+                    val installSize = FileUtils.calculateDirectorySize(installDir)
                     Timber.d("Matched directory '$dirName' to game '${game.title}'")
                     return game.copy(
                         isInstalled = true,
@@ -427,33 +428,6 @@ class GOGManager @Inject constructor(
         }
 
         return null
-    }
-
-    /**
-     * Calculate the total size of a directory recursively
-     *
-     * @param directory The directory to calculate size for
-     * @return Total size in bytes
-     */
-    private fun calculateDirectorySize(directory: File): Long {
-        var size = 0L
-        try {
-            if (!directory.exists() || !directory.isDirectory) {
-                return 0L
-            }
-
-            val files = directory.listFiles() ?: return 0L
-            for (file in files) {
-                size += if (file.isDirectory) {
-                    calculateDirectorySize(file)
-                } else {
-                    file.length()
-                }
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Error calculating directory size for ${directory.name}")
-        }
-        return size
     }
 
     suspend fun refreshSingleGame(gameId: String, context: Context): Result<GOGGame?> {

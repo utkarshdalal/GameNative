@@ -17,10 +17,7 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Select the best build based on generation and preferences
-     *
-     * TEMPORARY: Currently only supports Generation 2
-     *
+     * Select the correct build - Uses Gen 2 builds as they're all there.
      * @param builds List of available builds
      * @param preferredGeneration Preferred generation (1 or 2), null = auto-detect
      * @return Selected build or null if none suitable
@@ -31,30 +28,15 @@ class GOGManifestParser @Inject constructor() {
             return null
         }
 
-        // TEMPORARY: Only handle Gen 2 for now
         val filtered = builds.filter { it.generation == 2 }
-
-        // TODO: Uncomment for Gen 1 support
-        // val filtered = if (preferredGeneration != null) {
-        //     builds.filter { it.generation == preferredGeneration }
-        // } else {
-        //     builds
-        // }
 
         if (filtered.isEmpty()) {
             Log.w(TAG, "No Gen 2 builds found")
             return null
         }
 
-        // TEMPORARY: Just take first Gen 2 build
-        val selected = filtered.first()
 
-        // TODO: Uncomment for Gen 1 support with preference logic
-        // val selected = if (preferredGeneration == null) {
-        //     filtered.maxByOrNull { it.generation } ?: filtered.first()
-        // } else {
-        //     filtered.first()
-        // }
+        val selected = filtered.first()
 
         return selected
     }
@@ -254,5 +236,51 @@ class GOGManifestParser @Inject constructor() {
      */
     fun parseSecureLinks(json: String): SecureLinksResponse {
         return SecureLinksResponse.fromJson(JSONObject(json))
+    }
+
+    /**
+     * Decompress GOG manifest data (auto-detects zlib or gzip)
+     */
+    fun decompressManifest(data: ByteArray): String {
+        // Check compression type by magic bytes
+        val isGzipped = data.size >= 2 &&
+                        data[0] == 0x1f.toByte() &&
+                        data[1] == 0x8b.toByte()
+
+        val isZlib = data.size >= 2 &&
+                     data[0] == 0x78.toByte() &&
+                     (data[1] == 0x9c.toByte() ||
+                      data[1] == 0x01.toByte() ||
+                      data[1] == 0xda.toByte())
+
+        return when {
+            isGzipped -> {
+                // Decompress gzip
+                val inputStream = GZIPInputStream(ByteArrayInputStream(data))
+                inputStream.bufferedReader().use { it.readText() }
+            }
+            isZlib -> {
+                // Decompress zlib (same as Epic chunk decompression)
+                val inflater = Inflater()
+                try {
+                    inflater.setInput(data)
+                    val outputStream = ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+
+                    while (!inflater.finished()) {
+                        val count = inflater.inflate(buffer)
+                        outputStream.write(buffer, 0, count)
+                    }
+
+                    outputStream.toString("UTF-8")
+                } finally {
+                    inflater.end()
+                }
+            }
+            else -> {
+                // Try as plain text
+                String(data, Charsets.UTF_8)
+            }
+        }
     }
 }

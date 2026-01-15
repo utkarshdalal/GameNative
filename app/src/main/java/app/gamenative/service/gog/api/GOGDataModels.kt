@@ -60,7 +60,7 @@ data class GOGBuild(
 }
 
 /**
- * Main manifest metadata (Gen 2)
+ * Main manifest metadata
  */
 data class GOGManifestMeta(
     val baseProductId: String,

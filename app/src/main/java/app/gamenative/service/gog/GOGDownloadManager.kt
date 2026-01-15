@@ -399,13 +399,13 @@ class GOGDownloadManager @Inject constructor(
 
                 if (expiredLinkFailures.isNotEmpty()) {
                     Timber.tag("GOG").w("Detected ${expiredLinkFailures.size} expired secure link(s), refreshing...")
-                    
+
                     // Refresh secure links
                     val refreshResult = refreshSecureLinks(secureLinkContext, chunkHashes)
                     if (refreshResult.isSuccess) {
                         currentChunkUrlMap = refreshResult.getOrThrow()
                         Timber.tag("GOG").i("Secure links refreshed successfully, retrying failed chunks")
-                        
+
                         // Retry the failed chunks with new URLs
                         val retryResults = chunkBatch.map { (chunkMd5, _) ->
                             async {
@@ -415,7 +415,7 @@ class GOGDownloadManager @Inject constructor(
                                 downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
                             }
                         }.awaitAll()
-                        
+
                         // Check retry results
                         retryResults.firstOrNull { it.isFailure }?.let { failedResult ->
                             return@withContext Result.failure(
@@ -523,19 +523,19 @@ class GOGDownloadManager @Inject constructor(
         downloadInfo: DownloadInfo
     ): Result<File> = withContext(Dispatchers.IO) {
         var lastException: Exception? = null
-        
+
         repeat(MAX_CHUNK_RETRIES) { attempt ->
             val result = downloadChunk(chunkMd5, url, chunkCacheDir, downloadInfo)
-            
+
             if (result.isSuccess) {
                 if (attempt > 0) {
                     Timber.tag("GOG").i("Chunk $chunkMd5 downloaded successfully after ${attempt + 1} attempts")
                 }
                 return@withContext result
             }
-            
+
             lastException = result.exceptionOrNull() as? Exception
-            
+
             // Don't retry on the last attempt
             if (attempt < MAX_CHUNK_RETRIES - 1) {
                 val delay = RETRY_DELAY_MS * (1 shl attempt) // Exponential backoff: 1s, 2s, 4s
@@ -543,7 +543,7 @@ class GOGDownloadManager @Inject constructor(
                 kotlinx.coroutines.delay(delay)
             }
         }
-        
+
         Timber.tag("GOG").e(lastException, "Failed to download chunk $chunkMd5 after $MAX_CHUNK_RETRIES attempts")
         Result.failure(lastException ?: Exception("Failed to download chunk $chunkMd5"))
     }
