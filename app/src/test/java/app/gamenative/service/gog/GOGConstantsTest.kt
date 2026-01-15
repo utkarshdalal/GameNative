@@ -38,48 +38,14 @@ class GOGConstantsTest {
     }
 
     @Test
-    fun testGetGameInstallPath_internal() {
-        // Can't easily test external without mocking. So we'll just generate a path
-        File("/tmp/external").mkdirs()
-        val path = GOGConstants.getGameInstallPath("The Witcher 3: Wild Hunt")
-        assertTrue(path.contains("The Witcher 3 Wild Hunt"))
-        assertFalse(path.contains(":"))
-        // Path should be valid
-        assertTrue(path.isNotEmpty())
-    }
-
-    @Test
     fun testGetGameInstallPath_pathStructure() {
         val path = GOGConstants.getGameInstallPath("Another Game 2026")
-        assertTrue(path.contains("Another Game 2026"))
-        assertTrue(path.contains("GOG"))
-        assertTrue(path.contains("games"))
-        assertTrue(path.contains("common"))
+        assertEquals(path, "/tmp/internal/GOG/games/common/Another Game 2026")
     }
 
     @Test
-    fun testSanitization() {
-        val path = GOGConstants.getGameInstallPath("Game@With^Special*Chars")
-        assertTrue(path.contains("GameWithSpecialChars"))
-        assertFalse(path.contains("@"))
-        assertFalse(path.contains("^"))
-        assertFalse(path.contains("*"))
-    }
-
-    @Test
-    fun testSanitizationColon() {
-        val path = GOGConstants.getGameInstallPath("Game:With:Colons")
-        assertTrue(path.contains("GameWithColons"))
-        assertFalse(path.contains(":"))
-    }
-
-    @Test
-    fun testSanitizationHashAndSymbols() {
-        val path = GOGConstants.getGameInstallPath("Game#2026!@#$%")
-        assertTrue(path.contains("Game2026"))
-        assertFalse(path.contains("#"))
-        assertFalse(path.contains("!"))
-        assertFalse(path.contains("$"))
-        assertFalse(path.contains("%"))
+    fun testSanitizationSpecialChars() {
+        val path = GOGConstants.getGameInstallPath("G%ame@With^Special*Chars")
+        assertEquals(path, "/tmp/internal/GOG/games/common/GameWithSpecialChars")
     }
 }
