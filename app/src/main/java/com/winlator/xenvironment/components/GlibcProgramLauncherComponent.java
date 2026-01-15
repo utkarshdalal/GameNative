@@ -261,6 +261,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     }
 
     public String execShellCommand(String command) {
+        return execShellCommand(command, true);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -306,14 +310,17 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
             }
-            while ((line = errorReader.readLine()) != null) {
-                output.append(line).append("\n");
+            if (includeStderr) {
+                while ((line = errorReader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
             }
             process.waitFor();
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }
 
-        return output.toString();
+        // Format output: trim trailing whitespace/newlines
+        return output.toString().trim();
     }
 }

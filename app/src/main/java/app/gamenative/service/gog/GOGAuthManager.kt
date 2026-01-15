@@ -2,12 +2,12 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.GOGCredentials
+import app.gamenative.utils.Net
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 import timber.log.Timber
@@ -24,10 +24,7 @@ import java.util.concurrent.TimeUnit
  */
 object GOGAuthManager {
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     // Internal for testing - allows tests to override token URL
     @JvmField

@@ -57,7 +57,7 @@ android {
         targetSdk = 28
 
         versionCode = 8
-        versionName = "0.6.2"
+        versionName = "0.7.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -292,4 +292,6 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:realtime-kt")
 
     implementation("io.ktor:ktor-client-android:3.1.3")
+
+    implementation("com.auth0.android:jwtdecode:2.0.2")
 }
