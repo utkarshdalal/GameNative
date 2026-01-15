@@ -55,8 +55,8 @@ class GOGDownloadManager @Inject constructor(
     private data class SecureLinkContext(
         val gameId: String,
         val generation: Int,
-        val dlcProducts: List<app.gamenative.service.gog.api.Product>,
-        val withDlcs: Boolean,
+        val productIds: Set<String>,
+        val chunkToProductMap: Map<String, String>,
     )
 
     companion object {
@@ -108,10 +108,10 @@ class GOGDownloadManager @Inject constructor(
             }
 
             val builds = buildsResult.getOrThrow()
-            val selectedBuild = parser.selectBuild(builds.items)
-                ?: return@withContext Result.failure(Exception("No suitable build found"))
+            val selectedBuild = parser.selectBuild(builds.items, platform = "windows")
+                ?: return@withContext Result.failure(Exception("No suitable build found for Windows"))
 
-            Timber.tag("GOG").i("Selected build: ${selectedBuild.buildId} (Gen ${selectedBuild.generation})")
+            Timber.tag("GOG").i("Selected build: ${selectedBuild.buildId} (Gen ${selectedBuild.generation}, Platform: ${selectedBuild.platform})")
 
             downloadInfo.updateStatusMessage("Fetching manifest...")
 
@@ -128,13 +128,25 @@ class GOGDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Filtering depots...")
 
-            // Step 3: Filter depots by language
-            val depots = parser.filterDepotsByLanguage(manifest, language)
-            if (depots.isEmpty()) {
+            // Step 3: Filter depots by language and bitness
+            val languageDepots = parser.filterDepotsByLanguage(manifest, language)
+            if (languageDepots.isEmpty()) {
                 return@withContext Result.failure(Exception("No depots found for language: $language"))
             }
 
-            Timber.tag("GOG").d("Found ${depots.size} depot(s) for $language")
+            val bitnessDepots = parser.filterDepotsByBitness(languageDepots, bitness = "64")
+            if (bitnessDepots.isEmpty()) {
+                return@withContext Result.failure(Exception("No 64-bit depots found for language: $language"))
+            }
+
+            // Filter by ownership to exclude unowned DLC depots
+            val ownedGameIds = gogManager.getAllGameIds()
+            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            if (depots.isEmpty()) {
+                return@withContext Result.failure(Exception("No owned depots found for language: $language"))
+            }
+
+            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $language (64-bit)")
 
             downloadInfo.updateStatusMessage("Fetching depot manifests...")
 
@@ -202,54 +214,58 @@ class GOGDownloadManager @Inject constructor(
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
 
-            // Fetch secure links for base game and all DLCs
-            // GOGDL fetches separate secure links for each product (base + DLCs)
-            val allSecureUrls = mutableListOf<String>()
+            Timber.tag("GOG").d("User owns ${ownedGameIds.size} products: ${ownedGameIds.joinToString()}")
 
-            // Get base game secure links
-            val baseLinksResult = apiClient.getSecureLink(
-                productId = gameId,
-                path = "/",
-                generation = selectedBuild.generation,
-            )
-            if (baseLinksResult.isFailure) {
-                return@withContext Result.failure(
-                    baseLinksResult.exceptionOrNull() ?: Exception("Failed to get secure links for base game"),
-                )
-            }
-            allSecureUrls.addAll(baseLinksResult.getOrThrow().urls)
+            // Build mapping of product ID to secure URLs and chunk to product ID
+            val productUrlMap = mutableMapOf<String, List<String>>()
+            val chunkToProductMap = mutableMapOf<String, String>()
 
-            // Get secure links for each DLC if we're downloading DLCs
-            if (withDlcs && dlcFiles.isNotEmpty()) {
-                val dlcProducts = parser.findDLCProducts(manifest)
-                Timber.tag("GOG").d("Fetching secure links for ${dlcProducts.size} DLC product(s)")
+            // Map each chunk to its product ID, but only for products the user owns
+            gameFiles.forEach { file ->
+                val productId = file.productId ?: gameId // Use base game ID if productId is null
 
-                for (dlcProduct in dlcProducts) {
-                    val dlcLinksResult = apiClient.getSecureLink(
-                        productId = dlcProduct.productId,
-                        path = "/",
-                        generation = selectedBuild.generation,
-                    )
-                    if (dlcLinksResult.isSuccess) {
-                        allSecureUrls.addAll(dlcLinksResult.getOrThrow().urls)
-                        Timber.tag("GOG").d("Got secure links for DLC: ${dlcProduct.name} (${dlcProduct.productId})")
-                    } else {
-                        Timber.tag("GOG").w("Failed to get secure links for DLC: ${dlcProduct.name}")
+                // Only include files from products the user owns
+                if (productId in ownedGameIds) {
+                    file.chunks.forEach { chunk ->
+                        chunkToProductMap[chunk.compressedMd5] = productId
                     }
+                } else {
+                    Timber.tag("GOG").d("Skipping file ${file.path} from unowned product $productId")
                 }
             }
 
-            Timber.tag("GOG").d("Got ${allSecureUrls.size} total secure CDN URL(s)")
+            // Get unique product IDs we need to fetch secure links for
+            val productIds = chunkToProductMap.values.toSet()
+            Timber.tag("GOG").d("Need secure links for ${productIds.size} owned product(s): ${productIds.joinToString()}")
+            Timber.tag("GOG").d("Mapped ${chunkToProductMap.size} chunks to products")
 
-            // Use the first secure URL as base (they all should work for all chunks)
-            val chunkUrlMap = parser.buildChunkUrlMap(chunkHashes, allSecureUrls)
+            // Fetch secure links for each product
+            for (productId in productIds) {
+                val linksResult = apiClient.getSecureLink(
+                    productId = productId,
+                    path = "/",
+                    generation = selectedBuild.generation,
+                )
+                if (linksResult.isSuccess) {
+                    val urls = linksResult.getOrThrow().urls
+                    productUrlMap[productId] = urls
+                    Timber.tag("GOG").d("Got ${urls.size} secure URL(s) for product $productId")
+                } else {
+                    return@withContext Result.failure(
+                        linksResult.exceptionOrNull() ?: Exception("Failed to get secure links for product $productId"),
+                    )
+                }
+            }
+
+            // Build chunk URL map using the correct product URL for each chunk
+            val chunkUrlMap = parser.buildChunkUrlMapWithProducts(chunkHashes, chunkToProductMap, productUrlMap)
 
             // Store context for refreshing secure links if they expire
             val secureLinkContext = SecureLinkContext(
                 gameId = gameId,
                 generation = selectedBuild.generation,
-                dlcProducts = if (withDlcs) parser.findDLCProducts(manifest) else emptyList(),
-                withDlcs = withDlcs,
+                productIds = productIds,
+                chunkToProductMap = chunkToProductMap,
             )
 
             // Step 8: Download chunks
@@ -264,6 +280,7 @@ class GOGDownloadManager @Inject constructor(
                 downloadInfo = downloadInfo,
                 chunkHashes = chunkHashes,
                 secureLinkContext = secureLinkContext,
+                chunkToProductMap = chunkToProductMap,
             )
             if (downloadResult.isFailure) {
                 return@withContext downloadResult
@@ -357,6 +374,7 @@ class GOGDownloadManager @Inject constructor(
      * @param downloadInfo Progress tracker
      * @param chunkHashes List of all chunk hashes needed
      * @param secureLinkContext Context for refreshing secure links if they expire
+     * @param chunkToProductMap Map of chunk MD5 hash to product ID for debugging
      */
     private suspend fun downloadChunks(
         chunkUrlMap: Map<String, String>,
@@ -364,6 +382,7 @@ class GOGDownloadManager @Inject constructor(
         downloadInfo: DownloadInfo,
         chunkHashes: List<String>,
         secureLinkContext: SecureLinkContext,
+        chunkToProductMap: Map<String, String>,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             var currentChunkUrlMap = chunkUrlMap
@@ -392,12 +411,13 @@ class GOGDownloadManager @Inject constructor(
                         val url = currentChunkUrlMap[chunkMd5] ?: return@async Result.failure<File>(
                             Exception("No URL found for chunk $chunkMd5"),
                         )
+                        Timber.tag("GOG").d("Chunk $chunkMd5 URL: $url")
                         downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
                     }
                 }.awaitAll()
 
                 // Check if any download failed due to expired links (401/403/404)
-                val expiredLinkFailures = results.filter { result ->
+                val expiredLinkFailures = results.zip(chunkBatch).filter { (result, _) ->
                     result.isFailure && result.exceptionOrNull()?.message?.let { msg ->
                         msg.contains("HTTP 401") || msg.contains("HTTP 403") || msg.contains("HTTP 404")
                     } == true
@@ -405,6 +425,13 @@ class GOGDownloadManager @Inject constructor(
 
                 if (expiredLinkFailures.isNotEmpty()) {
                     Timber.tag("GOG").w("Detected ${expiredLinkFailures.size} expired secure link(s), refreshing...")
+
+                    // Log which products the failing chunks belong to
+                    expiredLinkFailures.forEach { (result, chunk) ->
+                        val chunkMd5 = chunk.key
+                        val productId = chunkToProductMap[chunkMd5]
+                        Timber.tag("GOG").w("Chunk $chunkMd5 belongs to product $productId: ${result.exceptionOrNull()?.message}")
+                    }
 
                     // Refresh secure links
                     val refreshResult = refreshSecureLinks(secureLinkContext, chunkHashes)
@@ -474,39 +501,28 @@ class GOGDownloadManager @Inject constructor(
         chunkHashes: List<String>,
     ): Result<Map<String, String>> = withContext(Dispatchers.IO) {
         try {
-            val allSecureUrls = mutableListOf<String>()
+            val productUrlMap = mutableMapOf<String, List<String>>()
 
-            // Get base game secure links
-            val baseLinksResult = apiClient.getSecureLink(
-                productId = context.gameId,
-                path = "/",
-                generation = context.generation,
-            )
-            if (baseLinksResult.isFailure) {
-                return@withContext Result.failure(
-                    baseLinksResult.exceptionOrNull() ?: Exception("Failed to refresh secure links for base game"),
+            // Get secure links for each product
+            for (productId in context.productIds) {
+                val linksResult = apiClient.getSecureLink(
+                    productId = productId,
+                    path = "/",
+                    generation = context.generation,
                 )
-            }
-            allSecureUrls.addAll(baseLinksResult.getOrThrow().urls)
-
-            // Get secure links for each DLC if needed
-            if (context.withDlcs && context.dlcProducts.isNotEmpty()) {
-                for (dlcProduct in context.dlcProducts) {
-                    val dlcLinksResult = apiClient.getSecureLink(
-                        productId = dlcProduct.productId,
-                        path = "/",
-                        generation = context.generation,
+                if (linksResult.isSuccess) {
+                    productUrlMap[productId] = linksResult.getOrThrow().urls
+                } else {
+                    return@withContext Result.failure(
+                        linksResult.exceptionOrNull() ?: Exception("Failed to refresh secure links for product $productId"),
                     )
-                    if (dlcLinksResult.isSuccess) {
-                        allSecureUrls.addAll(dlcLinksResult.getOrThrow().urls)
-                    }
                 }
             }
 
-            Timber.tag("GOG").d("Refreshed ${allSecureUrls.size} secure CDN URL(s)")
+            Timber.tag("GOG").d("Refreshed secure links for ${productUrlMap.size} product(s)")
 
             // Rebuild chunk URL map with new secure links
-            val newChunkUrlMap = parser.buildChunkUrlMap(chunkHashes, allSecureUrls)
+            val newChunkUrlMap = parser.buildChunkUrlMapWithProducts(chunkHashes, context.chunkToProductMap, productUrlMap)
             Result.success(newChunkUrlMap)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to refresh secure links")
@@ -593,6 +609,7 @@ class GOGDownloadManager @Inject constructor(
             val response = httpClient.newCall(request).execute()
 
             if (!response.isSuccessful) {
+                Timber.tag("GOG").e("HTTP ${response.code} for chunk $chunkMd5 from URL: $url")
                 return@withContext Result.failure(Exception("HTTP ${response.code} downloading chunk $chunkMd5"))
             }
 

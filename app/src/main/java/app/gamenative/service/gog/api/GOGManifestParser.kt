@@ -24,22 +24,31 @@ class GOGManifestParser @Inject constructor() {
      * Select the correct build - Uses Gen 2 builds as they're all there.
      * @param builds List of available builds
      * @param preferredGeneration Preferred generation (1 or 2), null = auto-detect
+     * @param platform Target platform (e.g., "windows", "linux", "osx")
      * @return Selected build or null if none suitable
      */
-    fun selectBuild(builds: List<GOGBuild>, preferredGeneration: Int? = null): GOGBuild? {
+    fun selectBuild(
+        builds: List<GOGBuild>,
+        preferredGeneration: Int? = null,
+        platform: String = "windows"
+    ): GOGBuild? {
         if (builds.isEmpty()) {
             Log.w(TAG, "No builds available")
             return null
         }
 
-        val filtered = builds.filter { it.generation == 2 }
+        // Filter by generation and platform
+        val filtered = builds.filter {
+            it.generation == 2 && it.platform.equals(platform, ignoreCase = true)
+        }
 
         if (filtered.isEmpty()) {
-            Log.w(TAG, "No Gen 2 builds found")
+            Log.w(TAG, "No Gen 2 builds found for platform: $platform")
             return null
         }
 
         val selected = filtered.first()
+        Log.d(TAG, "Selected build ${selected.buildId} for platform ${selected.platform}")
 
         return selected
     }
@@ -57,6 +66,38 @@ class GOGManifestParser @Inject constructor() {
         }
 
         Log.d(TAG, "Filtered ${filtered.size}/${manifest.depots.size} depots for language: $language")
+        return filtered
+    }
+
+    /**
+     * Filter depots based on OS bitness
+     *
+     * @param depots List of depots to filter
+     * @param bitness Target bitness (e.g., "64", "32")
+     * @return Filtered list of depots matching bitness
+     */
+    fun filterDepotsByBitness(depots: List<Depot>, bitness: String = "64"): List<Depot> {
+        val filtered = depots.filter { depot ->
+            depot.osBitness == null || depot.osBitness.contains(bitness)
+        }
+
+        Log.d(TAG, "Filtered ${filtered.size}/${depots.size} depots for bitness: $bitness")
+        return filtered
+    }
+
+    /**
+     * Filter depots based on ownership
+     *
+     * @param depots List of depots to filter
+     * @param ownedProductIds Set of product IDs the user owns
+     * @return Filtered list of depots for owned products only
+     */
+    fun filterDepotsByOwnership(depots: List<Depot>, ownedProductIds: Set<String>): List<Depot> {
+        val filtered = depots.filter { depot ->
+            depot.productId in ownedProductIds
+        }
+
+        Log.d(TAG, "Filtered ${filtered.size}/${depots.size} depots for owned products")
         return filtered
     }
 
@@ -178,6 +219,60 @@ class GOGManifestParser @Inject constructor() {
                 "$baseCdnUrl/$chunkMd5"
             }
         }
+    }
+
+    /**
+     * Build a mapping of chunk MD5 -> secure CDN URL with per-product URLs
+     * Each product (base game + DLCs) has its own CDN path with different URLs
+     *
+     * @param chunks List of chunk MD5 hashes
+     * @param chunkToProductMap Map of chunk hash to product ID
+     * @param productUrlMap Map of product ID to list of secure URLs for that product
+     * @return Map of chunk MD5 to download URL
+     */
+    fun buildChunkUrlMapWithProducts(
+        chunks: List<String>,
+        chunkToProductMap: Map<String, String>,
+        productUrlMap: Map<String, List<String>>
+    ): Map<String, String> {
+        val chunkUrlMap = mutableMapOf<String, String>()
+
+        for (chunkMd5 in chunks) {
+            val productId = chunkToProductMap[chunkMd5]
+            if (productId == null) {
+                Log.w(TAG, "No product ID found for chunk $chunkMd5")
+                continue
+            }
+
+            val productUrls = productUrlMap[productId]
+            if (productUrls.isNullOrEmpty()) {
+                Log.w(TAG, "No URLs found for product $productId (chunk $chunkMd5)")
+                continue
+            }
+
+            // Use the first (highest priority) CDN URL for this product
+            val baseCdnUrl = productUrls.first()
+
+            // Build full URL for chunk: baseUrl/aa/bb/aabbccdd...
+            // Where aa/bb are first 4 chars of MD5 hash
+            val chunkUrl = if (chunkMd5.length >= 4) {
+                val first2 = chunkMd5.substring(0, 2)
+                val next2 = chunkMd5.substring(2, 4)
+                "$baseCdnUrl/$first2/$next2/$chunkMd5"
+            } else {
+                "$baseCdnUrl/$chunkMd5"
+            }
+
+            chunkUrlMap[chunkMd5] = chunkUrl
+
+            // Debug logging for the problematic chunk
+            if (chunkMd5 == "50501137663066eeeaa987b0ac228bc2") {
+                Log.w(TAG, "Built URL for problematic chunk: productId=$productId, baseCdnUrl=$baseCdnUrl, finalUrl=$chunkUrl")
+            }
+        }
+
+        Log.d(TAG, "Built ${chunkUrlMap.size} chunk URLs from ${productUrlMap.size} product(s)")
+        return chunkUrlMap
     }
 
     /**

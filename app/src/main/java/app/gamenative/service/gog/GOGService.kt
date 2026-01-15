@@ -19,7 +19,15 @@ import javax.inject.Inject
 import kotlinx.coroutines.*
 import timber.log.Timber
 
+
 /**
+ *
+ * 	"dlcs": {
+*	"products": [
+*		{
+*			"id": 1546956723,
+*
+*
  * GOG Service - thin abstraction layer that delegates to managers.
  *
  * Architecture:

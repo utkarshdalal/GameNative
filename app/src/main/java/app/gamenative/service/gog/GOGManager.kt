@@ -136,6 +136,17 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun getAllGameIds(): Set<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                gogGameDao.getAllGameIdsIncludingExcluded().toSet()
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get all game IDs")
+                emptySet()
+            }
+        }
+    }
+
     suspend fun startBackgroundSync(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             if (!GOGAuthManager.hasStoredCredentials(context)) {
