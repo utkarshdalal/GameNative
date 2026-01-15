@@ -11,7 +11,6 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.secrets.gradle)
     alias(libs.plugins.room)
-    id("com.chaquo.python") version "16.0.0"
 }
 
 val keystorePropertiesFile = rootProject.file("app/keystores/keystore.properties")
@@ -202,21 +201,6 @@ android {
     //         exclude(group = "junit", module = "junit")
     //     }
     // }
-}
-
-chaquopy {
-    defaultConfig {
-        version = "3.11"  // Last Python version supporting armeabi-v7a (32-bit ARM)
-        pip {
-            // Install GOGDL dependencies
-            install("requests")
-        }
-    }
-    sourceSets {
-        getByName("main") {
-            srcDir("src/main/python")
-        }
-    }
 }
 
 dependencies {
