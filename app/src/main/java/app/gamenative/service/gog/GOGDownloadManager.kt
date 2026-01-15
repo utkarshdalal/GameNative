@@ -88,6 +88,16 @@ class GOGDownloadManager @Inject constructor(
         try {
             // TODO: We need to handle COMMON REDIST folder and go through the same thing.
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
+            Timber.tag("GOG").d("gameId parameter type: ${gameId::class.simpleName}, value: '$gameId'")
+            
+            // Get the actual game from database to check what ID we have stored
+            val dbGame = gogManager.getGameFromDbById(gameId)
+            if (dbGame != null) {
+                Timber.tag("GOG").d("Database game ID: ${dbGame.id}, title: ${dbGame.title}")
+            } else {
+                Timber.tag("GOG").w("Game $gameId not found in database!")
+            }
+            
             if (supportDir != null) {
                 Timber.tag("GOG").i("Starting download for game $gameId to ${supportDir.absolutePath}")
             }
@@ -112,6 +122,16 @@ class GOGDownloadManager @Inject constructor(
                 ?: return@withContext Result.failure(Exception("No suitable build found for Windows"))
 
             Timber.tag("GOG").i("Selected build: ${selectedBuild.buildId} (Gen ${selectedBuild.generation}, Platform: ${selectedBuild.platform})")
+            Timber.tag("GOG").d("Build productId: ${selectedBuild.productId}, input gameId: $gameId")
+            Timber.tag("GOG").d("Full build details: buildId=${selectedBuild.buildId}, productId=${selectedBuild.productId}, platform=${selectedBuild.platform}, gen=${selectedBuild.generation}, version=${selectedBuild.versionName}, branch=${selectedBuild.branch}, legacyBuildId=${selectedBuild.legacyBuildId}")
+            
+            // Use the build's productId as the real game ID if input gameId is the placeholder
+            val realGameId = if (gameId == "2147483047" && selectedBuild.productId != "2147483047") {
+                Timber.tag("GOG").i("Replacing placeholder gameId with build productId: ${selectedBuild.productId}")
+                selectedBuild.productId
+            } else {
+                gameId
+            }
 
             downloadInfo.updateStatusMessage("Fetching manifest...")
 
@@ -125,6 +145,10 @@ class GOGDownloadManager @Inject constructor(
 
             val manifest = manifestResult.getOrThrow()
             Timber.tag("GOG").d("Manifest: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)")
+            Timber.tag("GOG").d("Manifest baseProductId: ${manifest.baseProductId}")
+            manifest.products?.let { products ->
+                Timber.tag("GOG").d("Manifest products: ${products.joinToString { "name=${it.name}, id=${it.productId}" }}")
+            }
 
             downloadInfo.updateStatusMessage("Filtering depots...")
 
@@ -147,11 +171,17 @@ class GOGDownloadManager @Inject constructor(
             }
 
             Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $language (64-bit)")
+            depots.forEachIndexed { index, depot ->
+                Timber.tag("GOG").d("  Depot $index: productId=${depot.productId}, manifest=${depot.manifest}, size=${depot.size}, compressedSize=${depot.compressedSize}")
+            }
 
             downloadInfo.updateStatusMessage("Fetching depot manifests...")
 
             // Step 4: Fetch depot manifests to get file lists
-            val allFiles = mutableListOf<DepotFile>()
+            // Track which depot each file came from for proper productId mapping
+            data class FileWithDepot(val file: DepotFile, val depotProductId: String)
+            val allFilesWithDepots = mutableListOf<FileWithDepot>()
+            
             for ((index, depot) in depots.withIndex()) {
                 downloadInfo.updateStatusMessage("Fetching depot ${index + 1}/${depots.size}...")
 
@@ -162,9 +192,13 @@ class GOGDownloadManager @Inject constructor(
                     )
                 }
 
-                allFiles.addAll(depotResult.getOrThrow().files)
+                val files = depotResult.getOrThrow().files
+                files.forEach { file ->
+                    allFilesWithDepots.add(FileWithDepot(file, depot.productId))
+                }
             }
 
+            val allFiles = allFilesWithDepots.map { it.file }
             Timber.tag("GOG").d("Total files from all depots: ${allFiles.size}")
 
             // Step 5: Separate base game, DLC, and support files
@@ -220,9 +254,25 @@ class GOGDownloadManager @Inject constructor(
             val productUrlMap = mutableMapOf<String, List<String>>()
             val chunkToProductMap = mutableMapOf<String, String>()
 
-            // Map each chunk to its product ID, but only for products the user owns
-            gameFiles.forEach { file ->
-                val productId = file.productId ?: gameId // Use base game ID if productId is null
+            Timber.tag("GOG").d("Mapping chunks to products. gameId parameter: $gameId, realGameId: $realGameId, manifest baseProductId: ${manifest.baseProductId}")
+
+            // Map each chunk to its product ID using depot info
+            allFilesWithDepots.forEach { (file, depotProductId) ->
+                // Use depot's productId as fallback when file has null/placeholder productId
+                val productId = when {
+                    file.productId == null -> {
+                        Timber.tag("GOG").d("File ${file.path} has null productId, using depotProductId: $depotProductId")
+                        depotProductId
+                    }
+                    file.productId == "2147483047" -> {
+                        Timber.tag("GOG").d("File ${file.path} has placeholder productId, using depotProductId: $depotProductId")
+                        depotProductId
+                    }
+                    else -> {
+                        Timber.tag("GOG").d("File ${file.path} has productId: ${file.productId}")
+                        file.productId
+                    }
+                }
 
                 // Only include files from products the user owns
                 if (productId in ownedGameIds) {
@@ -262,7 +312,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Store context for refreshing secure links if they expire
             val secureLinkContext = SecureLinkContext(
-                gameId = gameId,
+                gameId = realGameId,
                 generation = selectedBuild.generation,
                 productIds = productIds,
                 chunkToProductMap = chunkToProductMap,

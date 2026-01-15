@@ -151,7 +151,8 @@ object GOGApiClient {
                     ownedGames.getString(it)
                 }
 
-                Timber.i("Successfully fetched ${gameIds.size} game IDs")
+                Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs")
+                Timber.tag("GOG").d("First 10 game IDs: ${gameIds.take(10).joinToString()}")
                 return@withContext Result.success(gameIds)
             }
         } catch (e: Exception) {

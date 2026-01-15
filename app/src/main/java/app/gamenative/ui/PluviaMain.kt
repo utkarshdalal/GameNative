@@ -403,11 +403,15 @@ fun PluviaMain(
                 context.startForegroundService(Intent(context, SteamService::class.java))
             }
 
-            // Start GOGService if user has GOG credentials
+            // Start GOGService if user has GOG
+
+            Timber.tag("GOG").d("GOG SERVICE RESUME...")
             if (app.gamenative.service.gog.GOGService.hasStoredCredentials(context) &&
                 !app.gamenative.service.gog.GOGService.isRunning) {
-                Timber.d("[PluviaMain]: Starting GOGService for logged-in user")
+                Timber.tag("GOG").d("[PluviaMain]: Starting GOGService for logged-in user")
                 app.gamenative.service.gog.GOGService.start(context)
+            } else {
+                Timber.tag("GOG").d("GOG SERVICE Not going to start: ${app.gamenative.service.gog.GOGService.isRunning}")
             }
 
             if (SteamService.isLoggedIn && !SteamService.isGameRunning && state.currentScreen == PluviaScreen.LoginUser) {

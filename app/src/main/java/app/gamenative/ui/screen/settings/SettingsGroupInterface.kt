@@ -103,11 +103,12 @@ private suspend fun handleGogAuthentication(
         if (result.isSuccess) {
             Timber.i("[SettingsGOG]: ✓ Authentication successful!")
 
-            // Start GOGService which will automatically trigger background library sync
-            Timber.i("[SettingsGOG]: Starting GOGService (will sync library in background)")
+            // Start GOGService and trigger immediate library sync (bypasses throttle)
+            Timber.i("[SettingsGOG]: Starting GOGService and triggering immediate library sync")
             GOGService.start(context)
+            GOGService.triggerLibrarySync(context)
 
-            // Authentication succeeded - service will handle library sync in background
+            // Authentication succeeded - manual sync triggered
             onSuccess(0)
             onLoadingChange(false)
             onDialogClose()
