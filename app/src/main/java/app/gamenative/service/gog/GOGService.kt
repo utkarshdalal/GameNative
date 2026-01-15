@@ -294,7 +294,7 @@ class GOGService : Service() {
                     val commonRedistDir = File(installPath, "_CommonRedist")
                     Timber.tag("GOG").d("Will install dependencies to _CommonRedist")
 
-                    val result = instance.GOGDownloadManager.downloadGame(
+                    val result = instance.gogDownloadManager.downloadGame(
                         gameId, File(installPath),
                         downloadInfo, "en-US", true, commonRedistDir,
                     )
@@ -545,7 +545,7 @@ class GOGService : Service() {
     lateinit var gogManager: GOGManager
 
     @Inject
-    lateinit var GOGDownloadManager: GOGDownloadManager
+    lateinit var gogDownloadManager: GOGDownloadManager
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
