@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -609,8 +610,8 @@ internal fun GameInfoBlock(
 fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSize: Int = 12) {
     when (gameSource) {
         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        else -> {}
     }
 }
 
@@ -632,7 +633,7 @@ private fun Preview_AppItem() {
                         val item = fakeAppInfo(idx)
                         LibraryItem(
                             index = idx,
-                            appId = "${GameSource.GOG.name}_${item.id}",
+                            appId = "${GameSource.STEAM.name}_${item.id}",
                             name = item.name,
                             iconHash = item.iconHash,
                             isShared = idx % 2 == 0,
@@ -674,7 +675,7 @@ private fun Preview_AppItemGrid() {
                         name = item.name,
                         iconHash = item.iconHash,
                         isShared = idx % 2 == 0,
-                        gameSource = GameSource.GOG,
+                        gameSource = GameSource.CUSTOM_GAME,
                     )
                 }
 
