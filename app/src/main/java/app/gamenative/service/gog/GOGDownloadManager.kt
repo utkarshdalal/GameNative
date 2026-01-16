@@ -371,7 +371,7 @@ class GOGDownloadManager @Inject constructor(
                 downloadInfo.updateStatusMessage("Downloading support files...")
                 supportDir.mkdirs()
                 // Download the depedencies.
-                val dependencyResult = downloadDependencies(gameId, dependencies, supportDir, downloadInfo)
+                val dependencyResult = downloadDependencies(gameId, dependencies, installPath, supportDir, downloadInfo)
                 if (dependencyResult.isFailure){
                     Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
@@ -564,6 +564,7 @@ class GOGDownloadManager @Inject constructor(
     private suspend fun downloadDependencies(
         gameId: String,
         dependencies: List<String>,
+        gameDir: File,
         supportDir: File,
         downloadInfo: DownloadInfo
     ): Result<Unit> = withContext(Dispatchers.IO) {
@@ -631,6 +632,16 @@ class GOGDownloadManager @Inject constructor(
 
                 Timber.tag("GOG").i("Downloading dependency: ${depot.readableName} (${depot.dependencyId})")
 
+                // Determine install directory based on executable path
+                // If path starts with __redist, install to supportDir, otherwise install to gameDir
+                val installBaseDir = if (depot.executable?.path?.startsWith("__redist") == true) {
+                    Timber.tag("GOG").d("Dependency ${depot.dependencyId} has __redist path, installing to supportDir")
+                    supportDir
+                } else {
+                    Timber.tag("GOG").d("Dependency ${depot.dependencyId} has no __redist path, installing to gameDir")
+                    gameDir
+                }
+
                 // Fetch depot manifest to get file list using open link URLs
                 val depotManifestResult = apiClient.fetchDependencyDepotManifest(depot.manifest, dependencyBaseUrls)
                 if (depotManifestResult.isFailure) {
@@ -653,7 +664,7 @@ class GOGDownloadManager @Inject constructor(
                 val chunkUrlMap = buildChunkUrlMap(chunkHashes, dependencyBaseUrls)
 
                 // Create cache directory for this dependency
-                val depotCacheDir = File(supportDir, ".gog_dep_${depot.dependencyId}")
+                val depotCacheDir = File(installBaseDir, ".gog_dep_${depot.dependencyId}")
                 depotCacheDir.mkdirs()
 
                 // Download chunks
@@ -663,8 +674,8 @@ class GOGDownloadManager @Inject constructor(
                     continue
                 }
 
-                // Assemble files
-                val depotInstallDir = File(supportDir, depot.dependencyId)
+                // Assemble files - install to appropriate directory
+                val depotInstallDir = File(installBaseDir, depot.dependencyId)
                 depotInstallDir.mkdirs()
 
                 val assembleResult = assembleFiles(depotFiles, depotCacheDir, depotInstallDir, downloadInfo)
@@ -676,7 +687,7 @@ class GOGDownloadManager @Inject constructor(
                 // Cleanup cache
                 depotCacheDir.deleteRecursively()
 
-                Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName}")
+                Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName} to ${depotInstallDir.absolutePath}")
             }
 
             Timber.tag("GOG").i("Completed downloading ${filteredDepots.size} dependencies")
@@ -693,7 +704,6 @@ class GOGDownloadManager @Inject constructor(
     private fun buildChunkUrlMap(chunkHashes: List<String>, baseUrls: List<String>): Map<String, String> {
         val chunkUrlMap = mutableMapOf<String, String>()
         val baseUrl = baseUrls.firstOrNull() ?: return emptyMap()
-        
         // Ensure base URL ends with / for proper concatenation
         val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
 
