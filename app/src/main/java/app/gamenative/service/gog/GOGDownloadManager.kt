@@ -679,7 +679,21 @@ class GOGDownloadManager @Inject constructor(
                 val depotInstallDir = installBaseDir
                 depotInstallDir.mkdirs()
 
-                val assembleResult = assembleFiles(depotFiles, depotCacheDir, depotInstallDir, downloadInfo)
+                // Strip __redist/ prefix from file paths if they're being installed to supportDir
+                // This prevents paths like supportDir/__redist/DirectX and gives us supportDir/DirectX instead
+                val filesToAssemble = if (installBaseDir == supportDir) {
+                    depotFiles.map { file ->
+                        if (file.path.startsWith("__redist/")) {
+                            file.copy(path = file.path.removePrefix("__redist/"))
+                        } else {
+                            file
+                        }
+                    }
+                } else {
+                    depotFiles
+                }
+
+                val assembleResult = assembleFiles(filesToAssemble, depotCacheDir, depotInstallDir, downloadInfo)
                 if (assembleResult.isFailure) {
                     Timber.tag("GOG").w("Failed to assemble files for ${depot.readableName}: ${assembleResult.exceptionOrNull()?.message}")
                     continue
