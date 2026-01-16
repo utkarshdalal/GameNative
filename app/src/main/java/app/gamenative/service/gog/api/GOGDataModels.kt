@@ -67,9 +67,9 @@ data class GOGBuild(
                 platform = json.optString("os", "windows"),
                 generation = json.optInt("generation", 2),
                 versionName = json.optString("version_name", ""),
-                branch = if (json.has("branch")) json.getString("branch") else null,
+                branch = if (json.has("branch") && !json.isNull("branch")) json.getString("branch") else null,
                 link = json.optString("link", ""),
-                legacyBuildId = if (json.has("legacy_build_id")) json.getString("legacy_build_id") else null
+                legacyBuildId = if (json.has("legacy_build_id") && !json.isNull("legacy_build_id")) json.getString("legacy_build_id") else null
             )
         }
     }
@@ -129,7 +129,8 @@ data class GOGDependencyManifestMeta(
                     val executableObj = depotObj.optJSONObject("executable")
                     val executable = if (executableObj != null) {
                         Executable(
-                            arguments = executableObj.optString("arguments", ""),
+                            arguments = if (executableObj.has("arguments") && !executableObj.isNull("arguments")) 
+                                executableObj.getString("arguments") else null,
                             path = executableObj.optString("path", "")
                         )
                     } else null
@@ -345,10 +346,10 @@ data class DepotFile(
             return DepotFile(
                 path = json.optString("path", "").replace("\\", "/").removePrefix("/"),
                 chunks = chunks,
-                md5 = if (json.has("md5")) json.getString("md5") else null,
-                sha256 = if (json.has("sha256")) json.getString("sha256") else null,
+                md5 = if (json.has("md5") && !json.isNull("md5")) json.getString("md5") else null,
+                sha256 = if (json.has("sha256") && !json.isNull("sha256")) json.getString("sha256") else null,
                 flags = flags,
-                productId = if (json.has("productId")) json.getString("productId") else null
+                productId = if (json.has("productId") && !json.isNull("productId")) json.getString("productId") else null
             )
         }
     }

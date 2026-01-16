@@ -467,7 +467,6 @@ class GOGDownloadManager @Inject constructor(
                         val url = currentChunkUrlMap[chunkMd5] ?: return@async Result.failure<File>(
                             Exception("No URL found for chunk $chunkMd5"),
                         )
-                        Timber.tag("GOG").d("Chunk $chunkMd5 URL: $url")
                         downloadChunkWithRetry(chunkMd5, url, chunkCacheDir, downloadInfo)
                     }
                 }.awaitAll()
