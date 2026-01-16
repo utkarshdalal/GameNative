@@ -30,6 +30,22 @@ data class BuildsResponse(
     }
 }
 
+
+data class DependencyRepository(
+    val repositoryManifest: String,
+    val generation: Int,
+    val buildId: String
+)   { companion object {
+        fun fromJson(json: JSONObject): DependencyRepository {
+            return DependencyRepository(
+                repositoryManifest = json.optString("repository_manifest", ""),
+                buildId = json.optString("build_id", ""),
+                generation = json.optInt("generation", 2),
+            )
+        }
+    }
+}
+
 /**
  * Individual build metadata
  */

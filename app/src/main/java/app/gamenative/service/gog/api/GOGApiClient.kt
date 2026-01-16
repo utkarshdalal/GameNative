@@ -80,6 +80,14 @@ class GOGApiClient @Inject constructor(
         }
 
 
+
+    // TODO: Implement this flow. Quite simple to get done right.
+    suspend fun fetchDependencyRepository(url: String): Result<> = withContext(Dispatchers.IO){
+
+
+    }
+
+
     suspend fun fetchDependencyManifest(manifestUrl: String): Result<GOGDependencyManifestMeta> = withContext(Dispatchers.IO) {
         try {
                 val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()

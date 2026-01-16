@@ -273,6 +273,7 @@ class GOGDownloadManager @Inject constructor(
             // Map each chunk to its product ID using depot info
             allFilesWithDepots.forEach { (file, depotProductId) ->
                 // Use depot's productId as fallback when file has null/placeholder productId
+                // TODO: We need to remove this later. It's clearly not right.
                 val productId = when {
                     file.productId == null -> {
                         Timber.tag("GOG").d("File ${file.path} has null productId, using depotProductId: $depotProductId")
@@ -365,14 +366,14 @@ class GOGDownloadManager @Inject constructor(
             // TODO: Use the dependencies, and download them etc.
             if (supportDir != null && supportFiles.isNotEmpty()) {
                 // This should be _CommonRedist almost entirely.
-                downloadInfo.updateStatusMessage("Installing support files...")
+                downloadInfo.updateStatusMessage("Downloading support files...")
                 supportDir.mkdirs()
-
-                val supportResult = assembleFiles(supportFiles, chunkCacheDir, supportDir, downloadInfo)
-                if (supportResult.isFailure) {
-                    Timber.tag("GOG").w("Failed to install support files: ${supportResult.exceptionOrNull()?.message}")
-                    // Continue anyway - support files are optional
+                // Download the depedencies.
+                val dependencyResult = downloadDependencies(gameId, dependencies, supportDir, DownloadInfo)
+                if (dependencyResult.isFailure){
+                    Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
+
             }
 
             // Step 11: Cleanup
@@ -563,12 +564,44 @@ class GOGDownloadManager @Inject constructor(
         dependencies: List<String>,
         supportDir: File,
         downloadInfo: DownloadInfo
-        ){
+        ): Result<Unit>{
+            try {
+                // 1. Query the dependency URL to grab the manifests.
+                // 2. Take the manifest URL, retrieve the depots. Download the chunks similar to how it's done above
 
-            // 1. Query the dependency URL to grab the manifests.
+                // Get dependency repository
+                val dependencyRepositoryResult =: Result<DependencyRepository> = apiClient.fetchDependencyRepository(DEPENDENCY_URL)
+                if (dependencyRepositoryResult.isFailure) {
+                    return@withContext Result.failure(
+                        gameManifestResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency manifest"),
+                    )
+                }
+
+                val manifestUrl = dependencyRepositoryResult.getOrThrow().manifestUrl
+
+                // Get the de-compressed manifest
+                val gameManifestResult: Result<GOGDependencyManifestMeta> = apiClient.fetchDependencyManifest(manifestUrl)
+
+                if (gameManifestResult.isFailure) {
+                    return@withContext Result.failure(
+                        gameManifestResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency manifest"),
+                    )
+                }
+
+                val manifests = gameManifestResult.getOrThrow()
+                // Filter manifest by the dependencyId so we only install what we need. e.g. MSVC2013
+                val filteredManifests = manifests.filter { dependencies.contains(it.dependencyId) }
+
+                // Then here we need to do our processing for manifests.
 
 
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(e, "Failed to download dependencies")
+                Result.failure(e)
+
+            }
         }
+
     /**
      * Refresh secure CDN links when they expire
      *
