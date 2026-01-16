@@ -148,7 +148,7 @@ object GOGApiClient {
                 val ownedGames = userData.optJSONArray("owned") ?: JSONArray()
 
                 val gameIds = List(ownedGames.length()) {
-                    ownedGames.getString(it)
+                    ownedGames.get(it).toString()
                 }
 
                 Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs")
@@ -157,7 +157,7 @@ object GOGApiClient {
             }
         } catch (e: Exception) {
             Timber.e(e, "Exception fetching game IDs: ${e.message}")
-            Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 
@@ -238,7 +238,7 @@ object GOGApiClient {
             }
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Exception fetching game details for $gameId: ${e.message}")
-            Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 

@@ -43,13 +43,14 @@ class GOGManifestParserTest {
         path: String = "game.exe",
         productId: String? = null,
         chunks: List<FileChunk> = listOf(createTestChunk()),
+        flags: List<String> = emptyList(),
     ) = DepotFile(
         path = path,
         productId = productId,
         chunks = chunks,
         md5 = null,
         sha256 = null,
-        flags = emptyList(),
+        flags = flags,
     )
 
     private fun createTestDepot(
@@ -132,6 +133,43 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun testFilterDepotsByBitness() {
+        val depot64 = createTestDepot().copy(osBitness = listOf("64"))
+        val depot32 = createTestDepot().copy(osBitness = listOf("32"))
+        val depotBoth = createTestDepot().copy(osBitness = listOf("32", "64"))
+        val depots = listOf(depot64, depot32, depotBoth)
+
+        val result = parser.filterDepotsByBitness(depots, "64")
+
+        assertEquals(2, result.size)
+        assertTrue(result.any { it.osBitness?.contains("64") == true })
+    }
+
+    @Test
+    fun testFilterDepotsByBitness_nullBitnessIncluded() {
+        val depotWithBitness = createTestDepot().copy(osBitness = listOf("64"))
+        val depotNoBitness = createTestDepot().copy(osBitness = null)
+        val depots = listOf(depotWithBitness, depotNoBitness)
+
+        val result = parser.filterDepotsByBitness(depots, "64")
+
+        assertEquals(2, result.size) // Both should be included
+    }
+
+    @Test
+    fun testFilterDepotsByOwnership() {
+        val ownedDepot = createTestDepot().copy(productId = "12345")
+        val unownedDepot = createTestDepot().copy(productId = "67890")
+        val depots = listOf(ownedDepot, unownedDepot)
+        val ownedProductIds = setOf("12345")
+
+        val result = parser.filterDepotsByOwnership(depots, ownedProductIds)
+
+        assertEquals(1, result.size)
+        assertEquals("12345", result[0].productId)
+    }
+
+    @Test
     fun testSeparateBaseDLC() {
         val baseFile = createTestDepotFile(path = "base.exe", productId = null)
         val dlcFile = createTestDepotFile(path = "dlc.dat", productId = "dlc_123")
@@ -147,15 +185,16 @@ class GOGManifestParserTest {
 
     @Test
     fun testSeparateSupportFiles() {
-        val gameFile = createTestDepotFile(path = "game.exe")
-        val supportFile = createTestDepotFile(path = "__support/redist/vcredist.exe")
+        val gameFile = createTestDepotFile(path = "game.exe", flags = emptyList())
+        val supportFile = createTestDepotFile(path = "__support/redist/vcredist.exe", flags = listOf("support"))
         val files = listOf(gameFile, supportFile)
 
         val (game, support) = parser.separateSupportFiles(files)
 
         assertEquals(1, game.size)
         assertEquals(1, support.size)
-        assertTrue(support[0].path.contains("__support"))
+        assertEquals("__support/redist/vcredist.exe", support[0].path)
+        assertTrue(support[0].flags.contains("support"))
     }
 
     @Test
@@ -263,6 +302,36 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun testBuildChunkUrlMapWithProducts() {
+        val chunks = listOf("aabbccdd11223344", "11223344aabbccdd")
+        val chunkToProductMap = mapOf(
+            "aabbccdd11223344" to "12345",
+            "11223344aabbccdd" to "67890"
+        )
+        val productUrlMap = mapOf(
+            "12345" to listOf("https://cdn1.gog.com/product1"),
+            "67890" to listOf("https://cdn2.gog.com/product2")
+        )
+
+        val result = parser.buildChunkUrlMapWithProducts(chunks, chunkToProductMap, productUrlMap)
+
+        assertEquals(2, result.size)
+        assertEquals("https://cdn1.gog.com/product1/aa/bb/aabbccdd11223344", result["aabbccdd11223344"])
+        assertEquals("https://cdn2.gog.com/product2/11/22/11223344aabbccdd", result["11223344aabbccdd"])
+    }
+
+    @Test
+    fun testBuildChunkUrlMapWithProducts_missingProduct() {
+        val chunks = listOf("aabbccdd11223344")
+        val chunkToProductMap = mapOf("aabbccdd11223344" to "12345")
+        val productUrlMap = emptyMap<String, List<String>>()
+
+        val result = parser.buildChunkUrlMapWithProducts(chunks, chunkToProductMap, productUrlMap)
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
     fun testExtractChunkHashes_preservesOrder() {
         val chunk1 = createTestChunk("aaaa")
         val chunk2 = createTestChunk("bbbb")
@@ -323,7 +392,7 @@ class GOGManifestParserTest {
         assertEquals(1, result.items.size)
         assertEquals("123", result.items[0].buildId)
         assertEquals(2, result.items[0].generation)
-        assertEquals(2, result.items[0].productId)
+        assertEquals("456", result.items[0].productId)
     }
 
     @Test
@@ -349,19 +418,71 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun testParseDepotManifest() {
+        val json = """
+            {
+                "depot": {
+                    "items": [
+                        {
+                            "type": "DepotFile",
+                            "path": "game.exe",
+                            "chunks": [],
+                            "flags": []
+                        }
+                    ]
+                }
+            }
+        """.trimIndent()
+
+        val result = parser.parseDepotManifest(json)
+
+        assertEquals(1, result.files.size)
+        assertEquals("game.exe", result.files[0].path)
+    }
+
+    @Test
+    fun testParseDependencyManifest() {
+        val json = """
+            {
+                "depots": [{
+                    "dependencyId": "vcredist2015",
+                    "manifest": "manifest_url",
+                    "compressedSize": 1000,
+                    "size": 2000,
+                    "languages": ["*"],
+                    "readableName": "Visual C++ 2015",
+                    "signature": "sig123",
+                    "internal": false
+                }]
+            }
+        """.trimIndent()
+
+        val result = parser.parseDependencyManifest(json)
+
+        assertEquals(1, result.depots.size)
+        assertEquals("vcredist2015", result.depots[0].dependencyId)
+        assertEquals("Visual C++ 2015", result.depots[0].readableName)
+    }
+
+    @Test
     fun testParseSecureLinks() {
         val json = """
             {
-                "urls": {
-                    "aabbccdd": "https://secure-cdn.gog.com/aa/bb/aabbccdd?token=xyz"
-                }
+                "urls": [{
+                    "url_format": "https://secure-cdn.gog.com/{path}?token={token}",
+                    "parameters": {
+                        "path": "content",
+                        "token": "xyz123"
+                    }
+                }]
             }
         """.trimIndent()
 
         val result = parser.parseSecureLinks(json)
 
         assertEquals(1, result.urls.size)
-        assertTrue(result.urls.contains("aabbccdd"))
+        assertTrue(result.urls[0].contains("secure-cdn.gog.com"))
+        assertTrue(result.urls[0].contains("xyz123"))
     }
 
     // ========== Decompression Tests ==========

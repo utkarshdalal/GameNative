@@ -273,7 +273,7 @@ class GOGDownloadManager @Inject constructor(
                     file.productId == "2147483047" -> {
                         Timber.tag("GOG").d("File ${file.path} has placeholder productId, using depotProductId: $depotProductId")
                         depotProductId
-                    },
+                    }
                     else -> {
                         Timber.tag("GOG").d("File ${file.path} has productId: ${file.productId}")
                         file.productId
