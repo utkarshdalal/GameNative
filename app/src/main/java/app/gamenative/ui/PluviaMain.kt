@@ -404,8 +404,6 @@ fun PluviaMain(
             }
 
             // Start GOGService if user has GOG
-
-            Timber.tag("GOG").d("GOG SERVICE RESUME...")
             if (app.gamenative.service.gog.GOGService.hasStoredCredentials(context) &&
                 !app.gamenative.service.gog.GOGService.isRunning) {
                 Timber.tag("GOG").d("[PluviaMain]: Starting GOGService for logged-in user")
