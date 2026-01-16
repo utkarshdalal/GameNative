@@ -375,7 +375,7 @@ data class FileChunk(
                 compressedMd5 = json.optString("compressedMd5", ""),
                 md5 = json.optString("md5", ""),
                 size = json.optLong("size", 0),
-                compressedSize = if (json.has("compressedSize")) {
+                compressedSize = if (json.has("compressedSize") && !json.isNull("compressedSize")) {
                     json.optLong("compressedSize", 0)
                 } else {
                     null
