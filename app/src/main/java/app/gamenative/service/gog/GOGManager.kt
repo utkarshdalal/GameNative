@@ -46,7 +46,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
@@ -80,11 +79,6 @@ class GOGManager @Inject constructor(
     private val gogGameDao: GOGGameDao,
     @ApplicationContext private val context: Context,
 ) {
-
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     // Thread-safe cache for download sizes
     private val downloadSizeCache = ConcurrentHashMap<String, String>()

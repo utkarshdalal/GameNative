@@ -301,8 +301,7 @@ object GOGApiClient {
                 .header("Authorization", "Bearer ${credentials.accessToken}")
                 .build()
 
-            val manifestResponse = httpClient.newCall(manifestRequest).execute()
-            manifestResponse.use {
+            httpClient.newCall(manifestRequest).execute().use { manifestResponse ->
                 if (!manifestResponse.isSuccessful) {
                     Timber.tag("GOG").w("[Cloud Saves] Manifest fetch failed: ${manifestResponse.code}")
                     return@withContext null

@@ -67,9 +67,9 @@ data class GOGBuild(
                 platform = json.optString("os", "windows"),
                 generation = json.optInt("generation", 2),
                 versionName = json.optString("version_name", ""),
-                branch = json.optString("branch", null),
+                branch = if (json.has("branch")) json.getString("branch") else null,
                 link = json.optString("link", ""),
-                legacyBuildId = json.optString("legacy_build_id", null)
+                legacyBuildId = if (json.has("legacy_build_id")) json.getString("legacy_build_id") else null
             )
         }
     }
@@ -345,10 +345,10 @@ data class DepotFile(
             return DepotFile(
                 path = json.optString("path", "").replace("\\", "/").removePrefix("/"),
                 chunks = chunks,
-                md5 = json.optString("md5", null),
-                sha256 = json.optString("sha256", null),
+                md5 = if (json.has("md5")) json.getString("md5") else null,
+                sha256 = if (json.has("sha256")) json.getString("sha256") else null,
                 flags = flags,
-                productId = json.optString("productId", null)
+                productId = if (json.has("productId")) json.getString("productId") else null
             )
         }
     }
