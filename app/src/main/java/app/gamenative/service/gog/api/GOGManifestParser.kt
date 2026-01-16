@@ -358,8 +358,9 @@ class GOGManifestParser @Inject constructor() {
         return when {
             isGzipped -> {
                 // Decompress gzip
-                val inputStream = GZIPInputStream(ByteArrayInputStream(data))
-                inputStream.bufferedReader().use { it.readText() }
+                GZIPInputStream(ByteArrayInputStream(data)).use { inputStream ->
+                    inputStream.bufferedReader().use { it.readText() }
+                }
             }
 
             isZlib -> {
