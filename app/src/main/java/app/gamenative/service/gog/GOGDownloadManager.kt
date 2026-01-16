@@ -1043,7 +1043,22 @@ class GOGDownloadManager @Inject constructor(
 
                 while (!inflater.finished()) {
                     val count = inflater.inflate(buffer)
-                    outputStream.write(buffer, 0, count)
+                    if (count > 0) {
+                        outputStream.write(buffer, 0, count)
+                    } else {
+                        // No bytes produced - check if we need more input or a dictionary
+                        if (inflater.needsInput()) {
+                            throw java.io.IOException(
+                                "Incomplete zlib data: decompression requires more input but none available"
+                            )
+                        } else if (inflater.needsDictionary()) {
+                            throw java.io.IOException(
+                                "Zlib data requires a preset dictionary which is not supported"
+                            )
+                        }
+                        // If neither condition is true, inflater is still processing internally
+                        // Continue loop, but this should be rare
+                    }
                 }
 
                 val decompressed = outputStream.toByteArray()

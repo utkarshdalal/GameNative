@@ -129,7 +129,7 @@ data class GOGDependencyManifestMeta(
                     val executableObj = depotObj.optJSONObject("executable")
                     val executable = if (executableObj != null) {
                         Executable(
-                            arguments = if (executableObj.has("arguments") && !executableObj.isNull("arguments")) 
+                            arguments = if (executableObj.has("arguments") && !executableObj.isNull("arguments"))
                                 executableObj.getString("arguments") else null,
                             path = executableObj.optString("path", "")
                         )
