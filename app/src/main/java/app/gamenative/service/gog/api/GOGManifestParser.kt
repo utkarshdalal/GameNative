@@ -264,11 +264,6 @@ class GOGManifestParser @Inject constructor() {
             }
 
             chunkUrlMap[chunkMd5] = chunkUrl
-
-            // Debug logging for the problematic chunk
-            if (chunkMd5 == "50501137663066eeeaa987b0ac228bc2") {
-                Timber.tag(TAG).w("Built URL for problematic chunk: productId=$productId, baseCdnUrl=$baseCdnUrl, finalUrl=$chunkUrl")
-            }
         }
 
         Timber.tag(TAG).d("Built ${chunkUrlMap.size} chunk URLs from ${productUrlMap.size} product(s)")

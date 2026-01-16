@@ -305,7 +305,6 @@ class GOGDownloadManager @Inject constructor(
                 if (linksResult.isSuccess) {
                     val urls = linksResult.getOrThrow().urls
                     productUrlMap[productId] = urls
-                    Timber.tag("GOG").d("Got ${urls.size} secure URL(s) for product $productId")
                 } else {
                     return@withContext Result.failure(
                         linksResult.exceptionOrNull() ?: Exception("Failed to get secure links for product $productId"),
@@ -325,6 +324,8 @@ class GOGDownloadManager @Inject constructor(
             )
 
             // Step 8: Download chunks
+            Timber.tag("GOG").i("Downoading Chunks for game $gameId")
+
             downloadInfo.updateStatusMessage("Downloading chunks...")
 
             val chunkCacheDir = File(installPath, ".gog_chunks")
