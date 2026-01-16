@@ -242,14 +242,14 @@ object SteamUtils {
         backupSteamclientFiles(context, steamAppId)
 
         val imageFs = ImageFs.find(context)
-        val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260101.tzst")
+        val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260116.tzst")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             downloaded,
             imageFs.getRootDir(),
         )
         putBackSteamDlls(appDirPath)
-        restoreUnpackedExecutable(context, steamAppId)
+        restoreOriginalExecutable(context, steamAppId)
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
@@ -336,6 +336,7 @@ object SteamUtils {
 
                 [Injection]
                 IgnoreLoaderArchDifference=1
+                DllsToInjectFolder=extra_dlls
             """.trimIndent(),
         )
     }
@@ -756,28 +757,28 @@ object SteamUtils {
         val imageFs = ImageFs.find(context)
         val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
 
-        dosDevicesPath.walkTopDown().maxDepth(10).firstOrNull {
-            it.isFile && it.name.endsWith(".original.exe", ignoreCase = true)
-        }?.let { file ->
-            try {
-                val origPath = file.toPath()
-                val originalPath = origPath.parent.resolve(origPath.name.removeSuffix(".original.exe"))
-                Timber.i("Found ${origPath.name} at ${origPath.absolutePathString()}, restoring...")
+        dosDevicesPath.walkTopDown().maxDepth(10)
+            .filter { it.isFile && it.name.endsWith(".original.exe", ignoreCase = true) }
+            .forEach { file ->
+                try {
+                    val origPath = file.toPath()
+                    val originalPath = origPath.parent.resolve(origPath.name.removeSuffix(".original.exe"))
+                    Timber.i("Found ${origPath.name} at ${origPath.absolutePathString()}, restoring...")
 
-                // Delete the current exe if it exists
-                if (Files.exists(originalPath)) {
-                    Files.delete(originalPath)
+                    // Delete the current exe if it exists
+                    if (Files.exists(originalPath)) {
+                        Files.delete(originalPath)
+                    }
+
+                    // Copy the backup back to the original location
+                    Files.copy(origPath, originalPath)
+
+                    Timber.i("Restored ${originalPath.fileName} from backup")
+                    restoredCount++
+                } catch (e: IOException) {
+                    Timber.w(e, "Failed to restore ${file.name} from backup")
                 }
-
-                // Copy the backup back to the original location
-                Files.copy(origPath, originalPath)
-
-                Timber.i("Restored ${originalPath.fileName} from backup")
-                restoredCount++
-            } catch (e: IOException) {
-                Timber.w(e, "Failed to restore ${file.name} from backup")
             }
-        }
 
         Timber.i("Finished restoreOriginalExecutable for appId: $steamAppId. Restored $restoredCount executable(s)")
     }
