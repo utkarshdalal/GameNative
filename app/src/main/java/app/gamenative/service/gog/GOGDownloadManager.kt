@@ -339,6 +339,7 @@ class GOGDownloadManager @Inject constructor(
                 secureLinkContext = secureLinkContext,
                 chunkToProductMap = chunkToProductMap,
             )
+
             if (downloadResult.isFailure) {
                 return@withContext downloadResult
             }
@@ -355,13 +356,11 @@ class GOGDownloadManager @Inject constructor(
                 return@withContext assembleResult
             }
 
-            // TODO: Use the dependencies, and download them etc.
-            // What the fuck are supportFiles???????
+            // Download Dependencies (They will either go to root or supportDir depending on )
             if (supportDir != null && dependencies.isNotEmpty()) {
-                // This should be _CommonRedist almost entirely.
-                downloadInfo.updateStatusMessage("Downloading support files...")
+                downloadInfo.updateStatusMessage("Downloading dependencies...")
                 supportDir.mkdirs()
-                // Download the depedencies.
+
                 val dependencyResult = downloadDependencies(gameId, dependencies, installPath, supportDir, downloadInfo)
                 if (dependencyResult.isFailure){
                     Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
@@ -391,7 +390,7 @@ class GOGDownloadManager @Inject constructor(
                 }
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
-                // Don't fail the entire download for DB issues
+                // Don't fail the entire download for DB issues - They can try again and it will auto-detect and finish
             }
 
             // Step 13: Emit completion event
