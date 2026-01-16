@@ -1,6 +1,6 @@
 package app.gamenative.service.gog.api
 
-import android.util.Log
+import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
@@ -17,7 +17,7 @@ import org.json.JSONObject
 class GOGManifestParser @Inject constructor() {
 
     companion object {
-        private const val TAG = "GOGManifestParser"
+        private const val TAG = "GOG"
     }
 
     /**
@@ -33,7 +33,7 @@ class GOGManifestParser @Inject constructor() {
         platform: String = "windows"
     ): GOGBuild? {
         if (builds.isEmpty()) {
-            Log.w(TAG, "No builds available")
+            Timber.tag(TAG).w("No builds available")
             return null
         }
 
@@ -43,12 +43,12 @@ class GOGManifestParser @Inject constructor() {
         }
 
         if (filtered.isEmpty()) {
-            Log.w(TAG, "No Gen 2 builds found for platform: $platform")
+            Timber.tag(TAG).w("No Gen 2 builds found for platform: $platform")
             return null
         }
 
         val selected = filtered.first()
-        Log.d(TAG, "Selected build ${selected.buildId} for platform ${selected.platform}")
+        Timber.tag(TAG).d("Selected build ${selected.buildId} for platform ${selected.platform}")
 
         return selected
     }
@@ -65,7 +65,7 @@ class GOGManifestParser @Inject constructor() {
             depot.matchesLanguage(language) || (depot.languages?.contains("*") == true)
         }
 
-        Log.d(TAG, "Filtered ${filtered.size}/${manifest.depots.size} depots for language: $language")
+        Timber.tag(TAG).d("Filtered ${filtered.size}/${manifest.depots.size} depots for language: $language")
         return filtered
     }
 
@@ -81,7 +81,7 @@ class GOGManifestParser @Inject constructor() {
             depot.osBitness == null || depot.osBitness.contains(bitness)
         }
 
-        Log.d(TAG, "Filtered ${filtered.size}/${depots.size} depots for bitness: $bitness")
+        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for bitness: $bitness")
         return filtered
     }
 
@@ -97,7 +97,7 @@ class GOGManifestParser @Inject constructor() {
             depot.productId in ownedProductIds
         }
 
-        Log.d(TAG, "Filtered ${filtered.size}/${depots.size} depots for owned products")
+        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for owned products")
         return filtered
     }
 
@@ -120,7 +120,7 @@ class GOGManifestParser @Inject constructor() {
             }
         }
 
-        Log.d(TAG, "Separated: ${baseFiles.size} base files, ${dlcFiles.size} DLC files")
+        Timber.tag(TAG).d("Separated: ${baseFiles.size} base files, ${dlcFiles.size} DLC files")
         return Pair(baseFiles, dlcFiles)
     }
 
@@ -142,7 +142,7 @@ class GOGManifestParser @Inject constructor() {
             }
         }
 
-        Log.d(TAG, "Separated: ${gameFiles.size} game files, ${supportFiles.size} support files")
+        Timber.tag(TAG).d("Separated: ${gameFiles.size} game files, ${supportFiles.size} support files")
         return Pair(gameFiles, supportFiles)
     }
 
@@ -201,7 +201,7 @@ class GOGManifestParser @Inject constructor() {
      */
     fun buildChunkUrlMap(chunks: List<String>, baseUrls: List<String>): Map<String, String> {
         if (baseUrls.isEmpty()) {
-            Log.w(TAG, "No base CDN URLs provided")
+            Timber.tag(TAG).w("No base CDN URLs provided")
             return emptyMap()
         }
 
@@ -240,13 +240,13 @@ class GOGManifestParser @Inject constructor() {
         for (chunkMd5 in chunks) {
             val productId = chunkToProductMap[chunkMd5]
             if (productId == null) {
-                Log.w(TAG, "No product ID found for chunk $chunkMd5")
+                Timber.tag(TAG).w("No product ID found for chunk $chunkMd5")
                 continue
             }
 
             val productUrls = productUrlMap[productId]
             if (productUrls.isNullOrEmpty()) {
-                Log.w(TAG, "No URLs found for product $productId (chunk $chunkMd5)")
+                Timber.tag(TAG).w("No URLs found for product $productId (chunk $chunkMd5)")
                 continue
             }
 
@@ -267,11 +267,11 @@ class GOGManifestParser @Inject constructor() {
 
             // Debug logging for the problematic chunk
             if (chunkMd5 == "50501137663066eeeaa987b0ac228bc2") {
-                Log.w(TAG, "Built URL for problematic chunk: productId=$productId, baseCdnUrl=$baseCdnUrl, finalUrl=$chunkUrl")
+                Timber.tag(TAG).w("Built URL for problematic chunk: productId=$productId, baseCdnUrl=$baseCdnUrl, finalUrl=$chunkUrl")
             }
         }
 
-        Log.d(TAG, "Built ${chunkUrlMap.size} chunk URLs from ${productUrlMap.size} product(s)")
+        Timber.tag(TAG).d("Built ${chunkUrlMap.size} chunk URLs from ${productUrlMap.size} product(s)")
         return chunkUrlMap
     }
 
@@ -294,7 +294,7 @@ class GOGManifestParser @Inject constructor() {
             }
         }
 
-        Log.d(TAG, "Extracted ${ordered.size} unique chunks from ${files.size} files")
+        Timber.tag(TAG).d("Extracted ${ordered.size} unique chunks from ${files.size} files")
         return ordered
     }
 
@@ -377,7 +377,13 @@ class GOGManifestParser @Inject constructor() {
 
                     while (!inflater.finished()) {
                         val count = inflater.inflate(buffer)
-                        outputStream.write(buffer, 0, count)
+                        if (count > 0) {
+                            outputStream.write(buffer, 0, count)
+                        } else if (inflater.needsInput()) {
+                            // No more input data available but decompression not finished - malformed data
+                            throw Exception("Incomplete or malformed zlib data: decompression ended prematurely")
+                        }
+                        // If count == 0 but !needsInput(), inflater is still processing, continue loop
                     }
 
                     outputStream.toString("UTF-8")

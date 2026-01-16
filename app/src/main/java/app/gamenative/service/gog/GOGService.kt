@@ -21,13 +21,6 @@ import timber.log.Timber
 
 
 /**
- *
- * 	"dlcs": {
-*	"products": [
-*		{
-*			"id": 1546956723,
-*
-*
  * GOG Service - thin abstraction layer that delegates to managers.
  *
  * Architecture:
@@ -37,6 +30,8 @@ import timber.log.Timber
  * - GOGCloudSavesManager: Handler for Cloud Saves
  * - GOGAuthManager: Authentication and account management
  * - GOGManager: Game library, downloads, and installation
+ * - GOGManifestParser: Parses and has utils for parsing/extracting/decompressing manifests.
+ * - GOGDataMdoels: Data Models for GOG-related Data types such as API responses
  *
  */
 @AndroidEntryPoint
@@ -58,11 +53,6 @@ class GOGService : Service() {
         val isRunning: Boolean
             get() = instance != null
 
-        /**
-         * Start the GOG service. Handles both first-time start and subsequent automatic syncs.
-         * - First-time start: Always syncs (no throttle)
-         * - Subsequent starts: Service always starts, but sync is throttled to once per 15 minutes
-         */
         fun start(context: Context) {
             // If already running, do nothing
             if (isRunning) {

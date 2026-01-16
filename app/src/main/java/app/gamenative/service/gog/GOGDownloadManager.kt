@@ -22,6 +22,11 @@ import okhttp3.Request
 import timber.log.Timber
 
 /**
+ * Custom exception for HTTP status errors with typed status code
+ */
+class HttpStatusException(val statusCode: Int, message: String) : Exception(message)
+
+/**
  * GOGDownloadManager handles downloading GOG games
  *
  * GOG's CDN structure (Gen 2):
@@ -128,17 +133,6 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").d("Build productId: ${selectedBuild.productId}, input gameId: $gameId")
             Timber.tag("GOG").d("Full build details: buildId=${selectedBuild.buildId}, productId=${selectedBuild.productId}, platform=${selectedBuild.platform}, gen=${selectedBuild.generation}, version=${selectedBuild.versionName}, branch=${selectedBuild.branch}, legacyBuildId=${selectedBuild.legacyBuildId}")
 
-            // Use the build's productId as the real game ID if input gameId is the placeholder
-
-            // TODO: Fix this jank piece of logic here as it's wrong.
-            // val realGameId = if (gameId == "2147483047" && selectedBuild.productId != "2147483047") {
-            //     Timber.tag("GOG").i("Replacing placeholder gameId with build productId: ${selectedBuild.productId}")
-            //     selectedBuild.productId
-            // } else {
-            //     gameId
-            // }
-
-            // TODO: just use gameId later. This was clearly a bug at some point...
             val realGameId = gameId
 
             downloadInfo.updateStatusMessage("Fetching manifest...")
@@ -159,7 +153,7 @@ class GOGDownloadManager @Inject constructor(
                 Timber.tag("GOG").d("Manifest products: ${products.joinToString { "name=${it.name}, id=${it.productId}" }}")
             }
 
-            //! Get the list of dependencies for later, we'll install this to the supportDir.
+            // Grab Dependencies from the gameManifest for later.
             val dependencies = gameManifest.dependencies
 
             downloadInfo.updateStatusMessage("Filtering depots...")
@@ -215,9 +209,6 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").d("Total files from all depots: ${allFiles.size}")
 
             // Step 5: Separate base game, DLC, and support files
-            // Step 5: Separate base game, DLC, and support files
-            // TODO: Eventually create a function that purely gets back the Depo list that allows us to show them the filtered DLC
-            // TODO: That would mean -> Get build[0] -> Get manifest for build, bring back filtered products to display
             val (baseFiles, dlcFiles) = parser.separateBaseDLC(allFiles, gameManifest.baseProductId)
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             val (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
@@ -263,8 +254,6 @@ class GOGDownloadManager @Inject constructor(
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
 
-            Timber.tag("GOG").d("User owns ${ownedGameIds.size} products: ${ownedGameIds.joinToString()}")
-
             // Build mapping of product ID to secure URLs and chunk to product ID
             val productUrlMap = mutableMapOf<String, List<String>>()
             val chunkToProductMap = mutableMapOf<String, String>()
@@ -274,7 +263,8 @@ class GOGDownloadManager @Inject constructor(
             // Map each chunk to its product ID using depot info
             allFilesWithDepots.forEach { (file, depotProductId) ->
                 // Use depot's productId as fallback when file has null/placeholder productId
-                // TODO: We need to remove this later. It's clearly not right.
+
+                // TODO: Remove this logic and always use the depotProductId.
                 val productId = when {
                     file.productId == null -> {
                         Timber.tag("GOG").d("File ${file.path} has null productId, using depotProductId: $depotProductId")
@@ -283,7 +273,7 @@ class GOGDownloadManager @Inject constructor(
                     file.productId == "2147483047" -> {
                         Timber.tag("GOG").d("File ${file.path} has placeholder productId, using depotProductId: $depotProductId")
                         depotProductId
-                    }
+                    },
                     else -> {
                         Timber.tag("GOG").d("File ${file.path} has productId: ${file.productId}")
                         file.productId
@@ -484,9 +474,8 @@ class GOGDownloadManager @Inject constructor(
 
                 // Check if any download failed due to expired links (401/403/404)
                 val expiredLinkFailures = results.zip(chunkBatch).filter { (result, _) ->
-                    result.isFailure && result.exceptionOrNull()?.message?.let { msg ->
-                        msg.contains("HTTP 401") || msg.contains("HTTP 403") || msg.contains("HTTP 404")
-                    } == true
+                    val exception = result.exceptionOrNull()
+                    exception is HttpStatusException && exception.statusCode in listOf(401, 403, 404)
                 }
 
                 if (expiredLinkFailures.isNotEmpty()) {
@@ -887,29 +876,31 @@ class GOGDownloadManager @Inject constructor(
                 .header("User-Agent", "GOG Galaxy")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("GOG").e("HTTP ${response.code} for chunk $chunkMd5 from URL: $url")
+                    return@withContext Result.failure(
+                        HttpStatusException(response.code, "HTTP ${response.code} downloading chunk $chunkMd5")
+                    )
+                }
 
-            if (!response.isSuccessful) {
-                Timber.tag("GOG").e("HTTP ${response.code} for chunk $chunkMd5 from URL: $url")
-                return@withContext Result.failure(Exception("HTTP ${response.code} downloading chunk $chunkMd5"))
+                val compressedBytes = response.body?.bytes()
+                    ?: return@withContext Result.failure(Exception("Empty response for chunk $chunkMd5"))
+
+                // Verify compressed MD5
+                val actualMd5 = calculateMd5(compressedBytes)
+                if (actualMd5 != chunkMd5) {
+                    return@withContext Result.failure(
+                        Exception("Compressed MD5 mismatch for chunk: expected $chunkMd5, got $actualMd5"),
+                    )
+                }
+
+                // Save compressed chunk (will decompress during assembly)
+                chunkFile.writeBytes(compressedBytes)
+                downloadInfo.updateBytesDownloaded(compressedBytes.size.toLong())
+
+                Result.success(chunkFile)
             }
-
-            val compressedBytes = response.body?.bytes()
-                ?: return@withContext Result.failure(Exception("Empty response for chunk $chunkMd5"))
-
-            // Verify compressed MD5
-            val actualMd5 = calculateMd5(compressedBytes)
-            if (actualMd5 != chunkMd5) {
-                return@withContext Result.failure(
-                    Exception("Compressed MD5 mismatch for chunk: expected $chunkMd5, got $actualMd5"),
-                )
-            }
-
-            // Save compressed chunk (will decompress during assembly)
-            chunkFile.writeBytes(compressedBytes)
-            downloadInfo.updateBytesDownloaded(compressedBytes.size.toLong())
-
-            Result.success(chunkFile)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to download chunk $chunkMd5")
             Result.failure(e)
