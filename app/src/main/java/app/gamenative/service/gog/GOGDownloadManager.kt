@@ -674,8 +674,9 @@ class GOGDownloadManager @Inject constructor(
                     continue
                 }
 
-                // Assemble files - install to appropriate directory
-                val depotInstallDir = File(installBaseDir, depot.dependencyId)
+                // Assemble files - the file paths in the manifest already contain the full directory structure
+                // so we use installBaseDir directly without adding depot.dependencyId
+                val depotInstallDir = installBaseDir
                 depotInstallDir.mkdirs()
 
                 val assembleResult = assembleFiles(depotFiles, depotCacheDir, depotInstallDir, downloadInfo)
