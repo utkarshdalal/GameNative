@@ -631,8 +631,8 @@ class GOGDownloadManager @Inject constructor(
 
                 Timber.tag("GOG").i("Downloading dependency: ${depot.readableName} (${depot.dependencyId})")
 
-                // Fetch depot manifest to get file list
-                val depotManifestResult = apiClient.fetchDepotManifest(depot.manifest)
+                // Fetch depot manifest to get file list using open link URLs
+                val depotManifestResult = apiClient.fetchDependencyDepotManifest(depot.manifest, dependencyBaseUrls)
                 if (depotManifestResult.isFailure) {
                     Timber.tag("GOG").w("Failed to fetch depot manifest for ${depot.readableName}: ${depotManifestResult.exceptionOrNull()?.message}")
                     continue
@@ -693,6 +693,9 @@ class GOGDownloadManager @Inject constructor(
     private fun buildChunkUrlMap(chunkHashes: List<String>, baseUrls: List<String>): Map<String, String> {
         val chunkUrlMap = mutableMapOf<String, String>()
         val baseUrl = baseUrls.firstOrNull() ?: return emptyMap()
+        
+        // Ensure base URL ends with / for proper concatenation
+        val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
 
         chunkHashes.forEach { hash ->
             // Build GOG Galaxy path format: AA/BB/CCDD...
@@ -701,7 +704,7 @@ class GOGDownloadManager @Inject constructor(
             } else {
                 hash
             }
-            chunkUrlMap[hash] = "$baseUrl$galaxyPath"
+            chunkUrlMap[hash] = "$normalizedBaseUrl$galaxyPath"
         }
 
         return chunkUrlMap

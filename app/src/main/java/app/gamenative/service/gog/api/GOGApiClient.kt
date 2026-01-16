@@ -323,6 +323,59 @@ class GOGApiClient @Inject constructor(
         }
 
     /**
+     * Fetch dependency depot manifest using open link CDN URLs
+     * Dependencies don't require authentication per-file, they use open links
+     * Note: Manifests use /dependencies/meta/ path, not /dependencies/store/
+     *
+     * @param manifestHash Hash from depot.manifest field
+     * @param baseUrls List of open link CDN URLs (unused, we use hardcoded CDN)
+     * @return Parsed depot manifest
+     */
+    suspend fun fetchDependencyDepotManifest(
+        manifestHash: String,
+        baseUrls: List<String>
+    ): Result<DepotManifest> = withContext(Dispatchers.IO) {
+        try {
+            // Build depot manifest URL
+            // Dependency manifests use /dependencies/meta/ path on the CDN
+            val path = gogGalaxyPath(manifestHash)
+            val url = "$GOG_CDN/content-system/v2/dependencies/meta/$path"
+
+            Timber.tag("GOG").d("Fetching dependency depot manifest: $url")
+
+            val request = Request.Builder()
+                .url(url)
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(
+                    Exception("Failed to fetch dependency depot manifest: HTTP ${response.code}"),
+                )
+            }
+
+            val depotBytes = response.body?.bytes()
+                ?: return@withContext Result.failure(Exception("Empty response"))
+
+            // Depot manifests are compressed
+            val depotStr = parser.decompressManifest(depotBytes)
+
+            val depotManifest = parser.parseDepotManifest(depotStr)
+
+            Timber.tag("GOG").d(
+                "Dependency depot manifest parsed: ${depotManifest.files.size} file(s), " +
+                    "${depotManifest.directories.size} dir(s)",
+            )
+
+            Result.success(depotManifest)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to fetch dependency depot manifest $manifestHash")
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Get secure download links for a product
      *
      * These are time-limited CDN URLs that work for all chunks in the product
