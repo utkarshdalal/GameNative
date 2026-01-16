@@ -59,6 +59,86 @@ data class GOGBuild(
     }
 }
 
+data class Executable(
+    val arguments: String?,
+    val path: String
+)
+
+data class DependencyDepot(
+    val compressedSize: Long,
+    val dependencyId: String,
+    val executable: <Executable>,
+    val isInternal: Boolean,
+    val languages: List<String>,
+    val manifest: String,
+    val osBitness: List<String>?,
+    val readableName: String,
+    val signature: String,
+    val size: Long,
+)
+// repository Manifest is a URL that will give back a compressed zlib JSON
+// generation is always 2 since we always use Generation 2 in the URL
+data class GOGDependencyManifestMeta(
+    depots: List<DependencyDepot>,
+) {
+    companion object {
+        fun fromJSON(json: JSONObject): List<DependencyDepot> {
+            val depotsArray = json.optJSONArray("depots")
+            val depots = mutableListOf<DependencyDepot>()
+
+            if(depotsArray != null) {
+                for (i in 0 until depotsArray.length()) {
+                    val depotObj = depotsArray.getJSONObject(i)
+
+                    // Parse Languages for this depot
+                    val languagesArray = depotObj.optJSONArray("languages")
+                    val languages = mutableListOf<String>()
+                    if (languagesArray != null) {
+                        for (j in 0 until languagesArray.length()) {
+                            languages.add(languagesArray.getString(j))
+                        }
+                    }
+
+                    // Parse bitness for this depot
+                    val bitnessArray = depotObj.optJSONArray("osBitness")
+                    val osBitness = if (bitnessArray != null) {
+                        val list = mutableListOf<String>()
+                        for (j in 0 until bitnessArray.length()) {
+                            list.add(bitnessArray.getString(j))
+                        }
+                        list
+                    } else null
+
+                    // Parse executable for this depot
+                    val executableObj = depotObj.optJSONObject("executable")
+                    val executable = if (executableObj != null) {
+                        Executable(
+                            arguments = executableObj.optString("arguments", ""),
+                            path = executableObj.optString("path", "")
+                        )
+                    } else null
+
+                    val depot = DependencyDepot (
+                        compressedSize = depotObj.optLong("compressedSize", 0),
+                        dependencyId = depotObj.optString("dependencyId", ""),
+                        executable = executable,
+                        languages = languages,
+                        osBitness = osBitness,
+                        isInternal = depotObj.optBoolean("internal", false),
+                        manifest = depotObj.optString("manifest", ""),
+                        readableName = depotObj.optString("readableName", ""),
+                        signature = depotObj.optString("signature", ""),
+                        size = depotObj.optLong("size", 0),
+                    )
+                    depots.add(depot);
+                }
+            }
+
+            return depots
+        }
+    }
+}
+
 /**
  * Main manifest metadata
  */

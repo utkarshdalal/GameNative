@@ -46,7 +46,7 @@ class GOGDownloadManager @Inject constructor(
     private val gogManager: GOGManager,
     @ApplicationContext private val context: Context,
 ) {
-
+    private val WINDOWS_OS_VERSION = "windows"
     private val httpClient = Net.http
 
     /**
@@ -64,6 +64,7 @@ class GOGDownloadManager @Inject constructor(
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
+        private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
     }
 
     /**
@@ -86,21 +87,22 @@ class GOGDownloadManager @Inject constructor(
         supportDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // TODO: We need to handle COMMON REDIST folder and go through the same thing.
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
-            Timber.tag("GOG").d("gameId parameter type: ${gameId::class.simpleName}, value: '$gameId'")
-            
+
+            if(supportDir != null {
+                Timber.tag("GOG").i("Will also put dependencies into ${supportDir.absolutePath}")
+            }
+
             // Get the actual game from database to check what ID we have stored
             val dbGame = gogManager.getGameFromDbById(gameId)
-            if (dbGame != null) {
-                Timber.tag("GOG").d("Database game ID: ${dbGame.id}, title: ${dbGame.title}")
-            } else {
-                Timber.tag("GOG").w("Game $gameId not found in database!")
+
+            if (dbGame == null) {
+                return@withContext Result.failure(
+                    buildsResult.exceptionOrNull() ?: Exception("Failed to fetch game from DB"),
+                )
             }
-            
-            if (supportDir != null) {
-                Timber.tag("GOG").i("Starting download for game $gameId to ${supportDir.absolutePath}")
-            }
+
+            Timber.tag("GOG").d("Database game ID: ${dbGame.id}, title: ${dbGame.title}")
 
             // Emit download started event so UI can attach progress listeners
             app.gamenative.PluviaApp.events.emitJava(
@@ -110,54 +112,65 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.updateStatusMessage("Fetching builds...")
 
             // Step 1: Get available builds
-            val buildsResult = apiClient.getBuilds(gameId, "windows")
+            val buildsResult = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION)
             if (buildsResult.isFailure) {
                 return@withContext Result.failure(
                     buildsResult.exceptionOrNull() ?: Exception("Failed to fetch builds"),
                 )
             }
 
+            // Get the best build (Most recent, match OS and the generation must be 2)
             val builds = buildsResult.getOrThrow()
-            val selectedBuild = parser.selectBuild(builds.items, platform = "windows")
+            val selectedBuild = parser.selectBuild(builds.items, platform = WINDOWS_OS_VERSION)
                 ?: return@withContext Result.failure(Exception("No suitable build found for Windows"))
 
             Timber.tag("GOG").i("Selected build: ${selectedBuild.buildId} (Gen ${selectedBuild.generation}, Platform: ${selectedBuild.platform})")
             Timber.tag("GOG").d("Build productId: ${selectedBuild.productId}, input gameId: $gameId")
             Timber.tag("GOG").d("Full build details: buildId=${selectedBuild.buildId}, productId=${selectedBuild.productId}, platform=${selectedBuild.platform}, gen=${selectedBuild.generation}, version=${selectedBuild.versionName}, branch=${selectedBuild.branch}, legacyBuildId=${selectedBuild.legacyBuildId}")
-            
+
             // Use the build's productId as the real game ID if input gameId is the placeholder
-            val realGameId = if (gameId == "2147483047" && selectedBuild.productId != "2147483047") {
-                Timber.tag("GOG").i("Replacing placeholder gameId with build productId: ${selectedBuild.productId}")
-                selectedBuild.productId
-            } else {
-                gameId
-            }
+
+            // TODO: Fix this jank piece of logic here as it's wrong.
+            // val realGameId = if (gameId == "2147483047" && selectedBuild.productId != "2147483047") {
+            //     Timber.tag("GOG").i("Replacing placeholder gameId with build productId: ${selectedBuild.productId}")
+            //     selectedBuild.productId
+            // } else {
+            //     gameId
+            // }
+
+            // TODO: just use gameId later. This was clearly a bug at some point...
+            val realGameId = gameId
 
             downloadInfo.updateStatusMessage("Fetching manifest...")
 
             // Step 2: Fetch main manifest
-            val manifestResult = apiClient.fetchManifest(selectedBuild.link)
-            if (manifestResult.isFailure) {
+            val gameManifestResult = apiClient.fetchManifest(selectedBuild.link)
+            if (gameManifestResult.isFailure) {
                 return@withContext Result.failure(
-                    manifestResult.exceptionOrNull() ?: Exception("Failed to fetch manifest"),
+                    gameManifestResult.exceptionOrNull() ?: Exception("Failed to fetch manifest"),
                 )
             }
 
-            val manifest = manifestResult.getOrThrow()
-            Timber.tag("GOG").d("Manifest: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)")
-            Timber.tag("GOG").d("Manifest baseProductId: ${manifest.baseProductId}")
-            manifest.products?.let { products ->
+            val gameManifest = gameManifestResult.getOrThrow()
+            Timber.tag("GOG").d("Game Manifest: ${gameManifest.installDirectory}, ${gameManifest.depots.size} depot(s)")
+            Timber.tag("GOG").d("Game Manifest baseProductId: ${gameManifest.baseProductId}")
+
+            gameManifest.products?.let { products ->
                 Timber.tag("GOG").d("Manifest products: ${products.joinToString { "name=${it.name}, id=${it.productId}" }}")
             }
 
+            //! Get the list of dependencies for later, we'll install this to the supportDir.
+            val dependencies = gameManifest.dependencies
+
             downloadInfo.updateStatusMessage("Filtering depots...")
 
-            // Step 3: Filter depots by language and bitness
+            // Step 3: Filter depots by language and bitness (32-bit or 64-bit)
             val languageDepots = parser.filterDepotsByLanguage(manifest, language)
             if (languageDepots.isEmpty()) {
                 return@withContext Result.failure(Exception("No depots found for language: $language"))
             }
 
+            // TODO: Verify if we need this anymore.
             val bitnessDepots = parser.filterDepotsByBitness(languageDepots, bitness = "64")
             if (bitnessDepots.isEmpty()) {
                 return@withContext Result.failure(Exception("No 64-bit depots found for language: $language"))
@@ -181,7 +194,7 @@ class GOGDownloadManager @Inject constructor(
             // Track which depot each file came from for proper productId mapping
             data class FileWithDepot(val file: DepotFile, val depotProductId: String)
             val allFilesWithDepots = mutableListOf<FileWithDepot>()
-            
+
             for ((index, depot) in depots.withIndex()) {
                 downloadInfo.updateStatusMessage("Fetching depot ${index + 1}/${depots.size}...")
 
@@ -202,7 +215,8 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").d("Total files from all depots: ${allFiles.size}")
 
             // Step 5: Separate base game, DLC, and support files
-            // ! Note: We could actually give back the DLC list and ask which ones they want to download... (DLC Manager).
+            // TODO: Eventually create a function that purely gets back the Depo list that allows us to show them the filtered DLC
+            // TODO: That would mean -> Get build[0] -> Get manifest for build, bring back filtered products to display
             val (baseFiles, dlcFiles) = parser.separateBaseDLC(allFiles, manifest.baseProductId)
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             val (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
@@ -348,8 +362,7 @@ class GOGDownloadManager @Inject constructor(
                 return@withContext assembleResult
             }
 
-            // ! Looks like we're not correctly getting the chunks to pull in the dependencies.
-            // Step 10: Install support files if directory provided
+            // TODO: Use the dependencies, and download them etc.
             if (supportDir != null && supportFiles.isNotEmpty()) {
                 // This should be _CommonRedist almost entirely.
                 downloadInfo.updateStatusMessage("Installing support files...")
@@ -539,6 +552,23 @@ class GOGDownloadManager @Inject constructor(
         }
     }
 
+
+    /**
+     * Downloads the dependencies for a given game by using the dependency array from the game's depo-list
+     * It will download the dependencies using the dependency URL
+     *
+     */
+    private suspend fun downloadDependencies(
+        gameId: String,
+        dependencies: List<String>,
+        supportDir: File,
+        downloadInfo: DownloadInfo
+        ){
+
+            // 1. Query the dependency URL to grab the manifests.
+
+
+        }
     /**
      * Refresh secure CDN links when they expire
      *

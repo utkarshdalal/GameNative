@@ -57,12 +57,12 @@ class GOGManifestParser @Inject constructor() {
      * Filter depots based on language
      *
      * @param manifest Main manifest metadata
-     * @param language Target language (e.g., "en-US")
+     * @param language Target language (e.g., "en-US") or is *
      * @return Filtered list of depots matching language
      */
     fun filterDepotsByLanguage(manifest: GOGManifestMeta, language: String): List<Depot> {
         val filtered = manifest.depots.filter { depot ->
-            depot.matchesLanguage(language)
+            depot.matchesLanguage(language) || (depot.languages?.contains("*") == true)
         }
 
         Log.d(TAG, "Filtered ${filtered.size}/${manifest.depots.size} depots for language: $language")
@@ -313,6 +313,13 @@ class GOGManifestParser @Inject constructor() {
      */
     fun parseBuilds(json: String): BuildsResponse {
         return BuildsResponse.fromJson(JSONObject(json))
+    }
+
+    /**
+     * Parse manifest metadata JSON
+     */
+    fun parseDependencyManifest(json: String): GOGDependencyManifestMeta {
+        return GOGDependencyManifestMeta.fromJson(JSONObject(json))
     }
 
     /**
