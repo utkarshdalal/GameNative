@@ -56,7 +56,7 @@ android {
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 8
+        versionCode = 9
         versionName = "0.7.0"
 
         buildConfigField("boolean", "GOLD", "false")
