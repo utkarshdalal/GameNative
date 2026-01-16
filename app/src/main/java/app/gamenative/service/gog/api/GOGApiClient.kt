@@ -30,6 +30,8 @@ class GOGApiClient @Inject constructor(
 
     private val httpClient = Net.http
 
+    // TODO: Compose any functions to reduce DRYNESS.
+
     /**
      * Get all available builds for a game (Gen 2 Only)
      */
@@ -79,14 +81,38 @@ class GOGApiClient @Inject constructor(
             }
         }
 
+    suspend fun fetchDependencyRepository(url: String): Result<DependencyRepository> = withContext(Dispatchers.IO){
+        try {
+            val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()
 
+            if (credentials == null) {
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer ${credentials.accessToken}")
+                .build()
 
-    // TODO: Implement this flow. Quite simple to get done right.
-    suspend fun fetchDependencyRepository(url: String): Result<> = withContext(Dispatchers.IO){
+            val response = httpClient.newCall(request).execute()
 
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(
+                    Exception("Failed to fetch manifest: HTTP ${response.code}"),
+                )
+            }
 
+            val jsonStr = response.body?.string()
+                ?: return@withContext Result.failure(Exception("Empty response from dependency repository"))
+
+            val json = JSONObject(jsonStr)
+
+            val dependencyRepositoryDetails = DependencyRepository.fromJson(json)
+            Result.success(dependencyRepositoryDetails)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to fetch dependency repository from $manifestUrl")
+            Result.failure(e)
+        }
     }
-
 
     suspend fun fetchDependencyManifest(manifestUrl: String): Result<GOGDependencyManifestMeta> = withContext(Dispatchers.IO) {
         try {

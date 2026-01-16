@@ -570,13 +570,13 @@ class GOGDownloadManager @Inject constructor(
                 // 2. Take the manifest URL, retrieve the depots. Download the chunks similar to how it's done above
 
                 // Get dependency repository
-                val dependencyRepositoryResult =: Result<DependencyRepository> = apiClient.fetchDependencyRepository(DEPENDENCY_URL)
+                val dependencyRepositoryResult: Result<DependencyRepository> = apiClient.fetchDependencyRepository(DEPENDENCY_URL)
                 if (dependencyRepositoryResult.isFailure) {
                     return@withContext Result.failure(
                         gameManifestResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency manifest"),
                     )
                 }
-
+                // TODO: Check manifest URL length and throw if blank.
                 val manifestUrl = dependencyRepositoryResult.getOrThrow().manifestUrl
 
                 // Get the de-compressed manifest
