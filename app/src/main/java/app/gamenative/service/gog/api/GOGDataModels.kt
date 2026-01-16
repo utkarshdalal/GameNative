@@ -83,7 +83,7 @@ data class Executable(
 data class DependencyDepot(
     val compressedSize: Long,
     val dependencyId: String,
-    val executable: <Executable>,
+    val executable: Executable?,
     val isInternal: Boolean,
     val languages: List<String>,
     val manifest: String,
@@ -95,10 +95,10 @@ data class DependencyDepot(
 // repository Manifest is a URL that will give back a compressed zlib JSON
 // generation is always 2 since we always use Generation 2 in the URL
 data class GOGDependencyManifestMeta(
-    depots: List<DependencyDepot>,
+    val depots: List<DependencyDepot>,
 ) {
     companion object {
-        fun fromJSON(json: JSONObject): List<DependencyDepot> {
+        fun fromJson(json: JSONObject): GOGDependencyManifestMeta {
             val depotsArray = json.optJSONArray("depots")
             val depots = mutableListOf<DependencyDepot>()
 
@@ -146,11 +146,11 @@ data class GOGDependencyManifestMeta(
                         signature = depotObj.optString("signature", ""),
                         size = depotObj.optLong("size", 0),
                     )
-                    depots.add(depot);
+                    depots.add(depot)
                 }
             }
 
-            return depots
+            return GOGDependencyManifestMeta(depots = depots)
         }
     }
 }

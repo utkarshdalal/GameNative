@@ -109,7 +109,75 @@ class GOGApiClient @Inject constructor(
             val dependencyRepositoryDetails = DependencyRepository.fromJson(json)
             Result.success(dependencyRepositoryDetails)
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to fetch dependency repository from $manifestUrl")
+            Timber.tag("GOG").e(e, "Failed to fetch dependency repository from $url")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get open link for dependencies (doesn't require product ID)
+     *
+     * @return List of CDN URLs for dependencies
+     */
+    suspend fun getDependencyOpenLink(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()
+            if (credentials == null) {
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
+
+            val url = "$GOG_CONTENT_SYSTEM/open_link?generation=2&_version=2&path=/dependencies/store/"
+
+            Timber.tag("GOG").d("Getting dependency open link")
+
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer ${credentials.accessToken}")
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(
+                    Exception("Failed to get dependency open link: HTTP ${response.code}"),
+                )
+            }
+
+            val jsonStr = response.body?.string()
+                ?: return@withContext Result.failure(Exception("Empty response"))
+
+            val json = JSONObject(jsonStr)
+            val urlsArray = json.optJSONArray("urls")
+            val urls = mutableListOf<String>()
+
+            if (urlsArray != null) {
+                for (i in 0 until urlsArray.length()) {
+                    val urlObj = urlsArray.optJSONObject(i)
+                    if (urlObj != null) {
+                        val urlFormat = urlObj.optString("url_format", "")
+                        val paramsObj = urlObj.optJSONObject("parameters")
+
+                        if (urlFormat.isNotEmpty() && paramsObj != null) {
+                            var constructedUrl = urlFormat
+                            val keys = paramsObj.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val value = paramsObj.get(key).toString()
+                                constructedUrl = constructedUrl.replace("{$key}", value)
+                            }
+                            constructedUrl = constructedUrl.replace("\\/", "/")
+                            if (constructedUrl.isNotEmpty()) {
+                                urls.add(constructedUrl)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Timber.tag("GOG").d("Got ${urls.size} dependency URL(s)")
+            Result.success(urls)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to get dependency open link")
             Result.failure(e)
         }
     }

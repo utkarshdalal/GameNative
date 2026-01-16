@@ -89,7 +89,7 @@ class GOGDownloadManager @Inject constructor(
         try {
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
 
-            if(supportDir != null {
+            if(supportDir != null) {
                 Timber.tag("GOG").i("Will also put dependencies into ${supportDir.absolutePath}")
             }
 
@@ -98,7 +98,7 @@ class GOGDownloadManager @Inject constructor(
 
             if (dbGame == null) {
                 return@withContext Result.failure(
-                    buildsResult.exceptionOrNull() ?: Exception("Failed to fetch game from DB"),
+                    Exception("Failed to fetch game from DB"),
                 )
             }
 
@@ -165,7 +165,7 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.updateStatusMessage("Filtering depots...")
 
             // Step 3: Filter depots by language and bitness (32-bit or 64-bit)
-            val languageDepots = parser.filterDepotsByLanguage(manifest, language)
+            val languageDepots = parser.filterDepotsByLanguage(gameManifest, language)
             if (languageDepots.isEmpty()) {
                 return@withContext Result.failure(Exception("No depots found for language: $language"))
             }
@@ -215,9 +215,10 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").d("Total files from all depots: ${allFiles.size}")
 
             // Step 5: Separate base game, DLC, and support files
+            // Step 5: Separate base game, DLC, and support files
             // TODO: Eventually create a function that purely gets back the Depo list that allows us to show them the filtered DLC
             // TODO: That would mean -> Get build[0] -> Get manifest for build, bring back filtered products to display
-            val (baseFiles, dlcFiles) = parser.separateBaseDLC(allFiles, manifest.baseProductId)
+            val (baseFiles, dlcFiles) = parser.separateBaseDLC(allFiles, gameManifest.baseProductId)
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             val (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
 
@@ -268,7 +269,7 @@ class GOGDownloadManager @Inject constructor(
             val productUrlMap = mutableMapOf<String, List<String>>()
             val chunkToProductMap = mutableMapOf<String, String>()
 
-            Timber.tag("GOG").d("Mapping chunks to products. gameId parameter: $gameId, realGameId: $realGameId, manifest baseProductId: ${manifest.baseProductId}")
+            Timber.tag("GOG").d("Mapping chunks to products. gameId parameter: $gameId, realGameId: $realGameId, manifest baseProductId: ${gameManifest.baseProductId}")
 
             // Map each chunk to its product ID using depot info
             allFilesWithDepots.forEach { (file, depotProductId) ->
@@ -364,12 +365,13 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // TODO: Use the dependencies, and download them etc.
-            if (supportDir != null && supportFiles.isNotEmpty()) {
+            // What the fuck are supportFiles???????
+            if (supportDir != null && dependencies.isNotEmpty()) {
                 // This should be _CommonRedist almost entirely.
                 downloadInfo.updateStatusMessage("Downloading support files...")
                 supportDir.mkdirs()
                 // Download the depedencies.
-                val dependencyResult = downloadDependencies(gameId, dependencies, supportDir, DownloadInfo)
+                val dependencyResult = downloadDependencies(gameId, dependencies, supportDir, downloadInfo)
                 if (dependencyResult.isFailure){
                     Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
@@ -564,43 +566,181 @@ class GOGDownloadManager @Inject constructor(
         dependencies: List<String>,
         supportDir: File,
         downloadInfo: DownloadInfo
-        ): Result<Unit>{
-            try {
-                // 1. Query the dependency URL to grab the manifests.
-                // 2. Take the manifest URL, retrieve the depots. Download the chunks similar to how it's done above
-
-                // Get dependency repository
-                val dependencyRepositoryResult: Result<DependencyRepository> = apiClient.fetchDependencyRepository(DEPENDENCY_URL)
-                if (dependencyRepositoryResult.isFailure) {
-                    return@withContext Result.failure(
-                        gameManifestResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency manifest"),
-                    )
-                }
-                // TODO: Check manifest URL length and throw if blank.
-                val manifestUrl = dependencyRepositoryResult.getOrThrow().manifestUrl
-
-                // Get the de-compressed manifest
-                val gameManifestResult: Result<GOGDependencyManifestMeta> = apiClient.fetchDependencyManifest(manifestUrl)
-
-                if (gameManifestResult.isFailure) {
-                    return@withContext Result.failure(
-                        gameManifestResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency manifest"),
-                    )
-                }
-
-                val manifests = gameManifestResult.getOrThrow()
-                // Filter manifest by the dependencyId so we only install what we need. e.g. MSVC2013
-                val filteredManifests = manifests.filter { dependencies.contains(it.dependencyId) }
-
-                // Then here we need to do our processing for manifests.
-
-
-            } catch (e: Exception) {
-                Timber.tag("GOG").e(e, "Failed to download dependencies")
-                Result.failure(e)
-
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (dependencies.isEmpty()) {
+                Timber.tag("GOG").d("No dependencies to download")
+                return@withContext Result.success(Unit)
             }
+
+            Timber.tag("GOG").i("Downloading ${dependencies.size} dependencies: ${dependencies.joinToString()}")
+
+            // Get dependency repository
+            val dependencyRepositoryResult = apiClient.fetchDependencyRepository(DEPENDENCY_URL)
+            if (dependencyRepositoryResult.isFailure) {
+                return@withContext Result.failure(
+                    dependencyRepositoryResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency repository"),
+                )
+            }
+
+            val repositoryManifestUrl = dependencyRepositoryResult.getOrThrow().repositoryManifest
+            if (repositoryManifestUrl.isBlank()) {
+                return@withContext Result.failure(Exception("Empty repository manifest URL"))
+            }
+
+            // Get the decompressed manifest
+            val dependencyManifestResult = apiClient.fetchDependencyManifest(repositoryManifestUrl)
+            if (dependencyManifestResult.isFailure) {
+                return@withContext Result.failure(
+                    dependencyManifestResult.exceptionOrNull() ?: Exception("Failed to fetch Dependency manifest"),
+                )
+            }
+
+            val dependencyManifest = dependencyManifestResult.getOrThrow()
+
+            // Filter depots by the dependencyId so we only install what we need (e.g., MSVC2013)
+            val filteredDepots = dependencyManifest.depots.filter { depot ->
+                dependencies.contains(depot.dependencyId)
+            }
+
+            if (filteredDepots.isEmpty()) {
+                Timber.tag("GOG").w("No matching dependency depots found for: ${dependencies.joinToString()}")
+                return@withContext Result.success(Unit)
+            }
+
+            Timber.tag("GOG").d("Found ${filteredDepots.size} dependency depot(s) to download")
+
+            // Get open link URLs for dependencies
+            val openLinkResult = apiClient.getDependencyOpenLink()
+            if (openLinkResult.isFailure) {
+                return@withContext Result.failure(
+                    openLinkResult.exceptionOrNull() ?: Exception("Failed to get dependency open link"),
+                )
+            }
+
+            val dependencyBaseUrls = openLinkResult.getOrThrow()
+            if (dependencyBaseUrls.isEmpty()) {
+                return@withContext Result.failure(Exception("No dependency URLs returned"))
+            }
+
+            Timber.tag("GOG").d("Got ${dependencyBaseUrls.size} dependency base URL(s)")
+
+            // Download each dependency
+            for ((index, depot) in filteredDepots.withIndex()) {
+                downloadInfo.updateStatusMessage("Downloading dependency ${index + 1}/${filteredDepots.size}: ${depot.readableName}")
+
+                Timber.tag("GOG").i("Downloading dependency: ${depot.readableName} (${depot.dependencyId})")
+
+                // Fetch depot manifest to get file list
+                val depotManifestResult = apiClient.fetchDepotManifest(depot.manifest)
+                if (depotManifestResult.isFailure) {
+                    Timber.tag("GOG").w("Failed to fetch depot manifest for ${depot.readableName}: ${depotManifestResult.exceptionOrNull()?.message}")
+                    continue
+                }
+
+                val depotManifest = depotManifestResult.getOrThrow()
+                val depotFiles = depotManifest.files
+
+                if (depotFiles.isEmpty()) {
+                    Timber.tag("GOG").w("No files in dependency depot: ${depot.readableName}")
+                    continue
+                }
+
+                // Extract chunk hashes
+                val chunkHashes = parser.extractChunkHashes(depotFiles)
+
+                // Build chunk URL map using dependency base URLs
+                val chunkUrlMap = buildChunkUrlMap(chunkHashes, dependencyBaseUrls)
+
+                // Create cache directory for this dependency
+                val depotCacheDir = File(supportDir, ".gog_dep_${depot.dependencyId}")
+                depotCacheDir.mkdirs()
+
+                // Download chunks
+                val downloadResult = downloadChunksSimple(chunkUrlMap, depotCacheDir, downloadInfo)
+                if (downloadResult.isFailure) {
+                    Timber.tag("GOG").w("Failed to download chunks for ${depot.readableName}: ${downloadResult.exceptionOrNull()?.message}")
+                    continue
+                }
+
+                // Assemble files
+                val depotInstallDir = File(supportDir, depot.dependencyId)
+                depotInstallDir.mkdirs()
+
+                val assembleResult = assembleFiles(depotFiles, depotCacheDir, depotInstallDir, downloadInfo)
+                if (assembleResult.isFailure) {
+                    Timber.tag("GOG").w("Failed to assemble files for ${depot.readableName}: ${assembleResult.exceptionOrNull()?.message}")
+                    continue
+                }
+
+                // Cleanup cache
+                depotCacheDir.deleteRecursively()
+
+                Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName}")
+            }
+
+            Timber.tag("GOG").i("Completed downloading ${filteredDepots.size} dependencies")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to download dependencies")
+            Result.failure(e)
         }
+    }
+
+    /**
+     * Build chunk URL map using base URLs
+     */
+    private fun buildChunkUrlMap(chunkHashes: List<String>, baseUrls: List<String>): Map<String, String> {
+        val chunkUrlMap = mutableMapOf<String, String>()
+        val baseUrl = baseUrls.firstOrNull() ?: return emptyMap()
+
+        chunkHashes.forEach { hash ->
+            // Build GOG Galaxy path format: AA/BB/CCDD...
+            val galaxyPath = if (hash.length >= 4) {
+                "${hash.substring(0, 2)}/${hash.substring(2, 4)}/$hash"
+            } else {
+                hash
+            }
+            chunkUrlMap[hash] = "$baseUrl$galaxyPath"
+        }
+
+        return chunkUrlMap
+    }
+
+    /**
+     * Simplified chunk download without retry and secure link refresh
+     * Used for dependencies which use open links
+     */
+    private suspend fun downloadChunksSimple(
+        chunkUrlMap: Map<String, String>,
+        chunkCacheDir: File,
+        downloadInfo: DownloadInfo,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val chunks = chunkUrlMap.entries.toList()
+
+            // Download in batches
+            chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
+                val results = chunkBatch.map { (chunkMd5, url) ->
+                    async {
+                        downloadChunk(chunkMd5, url, chunkCacheDir, downloadInfo)
+                    }
+                }.awaitAll()
+
+                // Check if any download failed
+                results.firstOrNull { it.isFailure }?.let { failedResult ->
+                    return@withContext Result.failure(
+                        failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
+                    )
+                }
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to download dependency chunks")
+            Result.failure(e)
+        }
+    }
 
     /**
      * Refresh secure CDN links when they expire
