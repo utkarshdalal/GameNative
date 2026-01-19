@@ -293,10 +293,8 @@ object ContainerUtils {
             updatedData = when (key) {
                 "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) }
                     ?: updatedData
-
                 "graphicsDriver" -> value?.let { updatedData.copy(graphicsDriver = it as? String ?: updatedData.graphicsDriver) }
                     ?: updatedData
-
                 "graphicsDriverVersion" -> value?.let {
                     updatedData.copy(
                         graphicsDriverVersion =
@@ -304,7 +302,6 @@ object ContainerUtils {
                     )
                 }
                     ?: updatedData
-
                 "graphicsDriverConfig" -> value?.let {
                     updatedData.copy(
                         graphicsDriverConfig =
@@ -312,14 +309,10 @@ object ContainerUtils {
                     )
                 }
                     ?: updatedData
-
                 "dxwrapper" -> value?.let { updatedData.copy(dxwrapper = it as? String ?: updatedData.dxwrapper) } ?: updatedData
-
                 "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) }
                     ?: updatedData
-
                 "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
-
                 "startupSelection" -> value?.let {
                     updatedData.copy(
                         startupSelection =
@@ -327,33 +320,22 @@ object ContainerUtils {
                     )
                 }
                     ?: updatedData
-
                 "box64Version" -> value?.let { updatedData.copy(box64Version = it as? String ?: updatedData.box64Version) } ?: updatedData
-
                 "box64Preset" -> value?.let { updatedData.copy(box64Preset = it as? String ?: updatedData.box64Preset) } ?: updatedData
-
                 "containerVariant" -> value?.let { updatedData.copy(containerVariant = it as? String ?: updatedData.containerVariant) }
                     ?: updatedData
-
                 "wineVersion" -> value?.let { updatedData.copy(wineVersion = it as? String ?: updatedData.wineVersion) } ?: updatedData
-
                 "emulator" -> value?.let { updatedData.copy(emulator = it as? String ?: updatedData.emulator) } ?: updatedData
-
                 "fexcoreVersion" -> value?.let { updatedData.copy(fexcoreVersion = it as? String ?: updatedData.fexcoreVersion) }
                     ?: updatedData
-
                 "fexcoreTSOMode" -> value?.let { updatedData.copy(fexcoreTSOMode = it as? String ?: updatedData.fexcoreTSOMode) }
                     ?: updatedData
-
                 "fexcoreX87Mode" -> value?.let { updatedData.copy(fexcoreX87Mode = it as? String ?: updatedData.fexcoreX87Mode) }
                     ?: updatedData
-
                 "fexcoreMultiBlock" -> value?.let { updatedData.copy(fexcoreMultiBlock = it as? String ?: updatedData.fexcoreMultiBlock) }
                     ?: updatedData
-
                 "fexcorePreset" -> value?.let { updatedData.copy(fexcorePreset = it as? String ?: updatedData.fexcorePreset) }
                     ?: updatedData
-
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
 
                 else -> updatedData
@@ -523,21 +505,18 @@ object ContainerUtils {
     }
 
     fun getContainerId(appId: String): String {
-        // appId already has prefix (STEAM_, EPIC_, CUSTOM_GAME_) or is a plain GOG ID
         return appId
     }
 
     fun hasContainer(context: Context, appId: String): Boolean {
         val containerManager = ContainerManager(context)
-        val containerId = getContainerId(appId)
-        return containerManager.hasContainer(containerId)
+        return containerManager.hasContainer(appId)
     }
 
     fun getContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
-        val containerId = getContainerId(appId)
-        return if (containerManager.hasContainer(containerId)) {
-            containerManager.getContainerById(containerId)
+        return if (containerManager.hasContainer(appId)) {
+            containerManager.getContainerById(appId)
         } else {
             throw Exception("Container does not exist for game $appId")
         }
@@ -550,15 +529,15 @@ object ContainerUtils {
         containerManager: ContainerManager,
         customConfig: ContainerData? = null,
     ): Container {
-        // Determine game source from the container ID (which has proper prefixes)
-        val gameSource = extractGameSourceFromContainerId(containerId)
+         // Determine game source
+        val gameSource = extractGameSourceFromContainerId(appId)
 
         // Set up container drives to include app
         val defaultDrives = PrefManager.drives
         val drives = when (gameSource) {
             GameSource.STEAM -> {
                 // For Steam games, set up the app directory path
-                val gameId = extractGameIdFromContainerId(containerId)
+                val gameId = extractGameIdFromContainerId(appId)
                 val appDirPath = SteamService.getAppDirPath(gameId)
                 val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
                 "$defaultDrives$drive:$appDirPath"
@@ -683,7 +662,7 @@ object ContainerUtils {
         var bestConfigMap: Map<String, Any?>? = null
         if (gameSource == GameSource.STEAM && customConfig == null) {
             try {
-                val gameId = extractGameIdFromContainerId(containerId)
+                val gameId = extractGameIdFromContainerId(appId)
                 val appInfo = SteamService.getAppInfoOf(gameId)
                 if (appInfo != null) {
                     val gameName = appInfo.name
