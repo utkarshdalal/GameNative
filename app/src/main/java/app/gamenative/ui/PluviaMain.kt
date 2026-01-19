@@ -211,7 +211,6 @@ fun PluviaMain(
                                     val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
                                     val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
 
-                                    // TODO: Check gameSource (which should always default thanks to the intent manager, have a gameSource.
                                     val isInstalled = when (gameSource) {
                                         GameSource.STEAM -> {
                                             SteamService.isAppInstalled(gameId)
