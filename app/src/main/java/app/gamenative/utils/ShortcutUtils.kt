@@ -14,12 +14,13 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import app.gamenative.MainActivity
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import java.util.Arrays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Arrays
 
 private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     val density = context.resources.displayMetrics.density
@@ -71,7 +72,7 @@ private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     // Center-fit scale to keep entire icon visible inside the padded area
     val scale = minOf(
         availSize.toFloat() / src.width.coerceAtLeast(1),
-        availSize.toFloat() / src.height.coerceAtLeast(1)
+        availSize.toFloat() / src.height.coerceAtLeast(1),
     )
     val drawW = src.width * scale
     val drawH = src.height * scale
@@ -84,13 +85,14 @@ private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     return outBmp
 }
 
-internal suspend fun createPinnedShortcut(context: Context, gameId: Int, label: String, iconUrl: String?) {
+internal suspend fun createPinnedShortcut(context: Context, gameId: Int, label: String, gameSource: GameSource, iconUrl: String?) {
     val appContext = context.applicationContext
     val shortcutManager = appContext.getSystemService(ShortcutManager::class.java)
 
     val intent = Intent("app.gamenative.LAUNCH_GAME").apply {
         setClass(appContext, MainActivity::class.java)
         putExtra("app_id", gameId)
+        putExtra("game_source", gameSource.name)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
     }
 
@@ -107,22 +109,27 @@ internal suspend fun createPinnedShortcut(context: Context, gameId: Int, label: 
                 val drawable = (result as? SuccessResult)?.drawable
                 val rawBitmap = when (drawable) {
                     is BitmapDrawable -> drawable.bitmap
+
                     else -> {
                         if (drawable != null) {
                             val bmp = Bitmap.createBitmap(
                                 drawable.intrinsicWidth.coerceAtLeast(1),
                                 drawable.intrinsicHeight.coerceAtLeast(1),
-                                Bitmap.Config.ARGB_8888
+                                Bitmap.Config.ARGB_8888,
                             )
                             val canvas = Canvas(bmp)
                             drawable.setBounds(0, 0, canvas.width, canvas.height)
                             drawable.draw(canvas)
                             bmp
-                        } else null
+                        } else {
+                            null
+                        }
                     }
                 }
                 rawBitmap
-            } else null
+            } else {
+                null
+            }
         } catch (_: Throwable) {
             null
         }

@@ -2,12 +2,12 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
@@ -18,8 +18,8 @@ import com.winlator.container.ContainerManager
 import java.io.File
 import kotlin.math.abs
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import org.json.JSONObject
+import timber.log.Timber
 
 object CustomGameScanner {
 
@@ -42,6 +42,7 @@ object CustomGameScanner {
                     externalDir.parentFile?.mkdirs()
                     externalDir
                 }
+
                 else -> {
                     Timber.tag("CustomGameScanner").w("External storage not available, falling back to internal: ${internalDir.path}")
                     internalDir
@@ -107,9 +108,11 @@ object CustomGameScanner {
 
         val steamGridLogo = folder.listFiles { file ->
             file.isFile && file.name.startsWith("steamgriddb_logo", ignoreCase = true) &&
-            (file.name.endsWith(".png", ignoreCase = true) ||
-             file.name.endsWith(".jpg", ignoreCase = true) ||
-             file.name.endsWith(".webp", ignoreCase = true))
+                (
+                    file.name.endsWith(".png", ignoreCase = true) ||
+                        file.name.endsWith(".jpg", ignoreCase = true) ||
+                        file.name.endsWith(".webp", ignoreCase = true)
+                    )
         }?.firstOrNull()
         if (steamGridLogo != null) {
             Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
@@ -147,9 +150,11 @@ object CustomGameScanner {
 
         val steamGridLogo = folder.listFiles { file ->
             file.isFile && file.name.startsWith("steamgriddb_logo", ignoreCase = true) &&
-            (file.name.endsWith(".png", ignoreCase = true) ||
-             file.name.endsWith(".jpg", ignoreCase = true) ||
-             file.name.endsWith(".webp", ignoreCase = true))
+                (
+                    file.name.endsWith(".png", ignoreCase = true) ||
+                        file.name.endsWith(".jpg", ignoreCase = true) ||
+                        file.name.endsWith(".webp", ignoreCase = true)
+                    )
         }?.firstOrNull()
         if (steamGridLogo != null) {
             Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
@@ -287,13 +292,13 @@ object CustomGameScanner {
         if (!folder.exists() || !folder.isDirectory) return null
 
         fun File.isValidExe(): Boolean = this.isFile && this.name.endsWith(".exe", ignoreCase = true) &&
-                !this.name.startsWith("unins", ignoreCase = true)
+            !this.name.startsWith("unins", ignoreCase = true)
 
         val candidates = mutableListOf<String>()
 
         folder.listFiles { f ->
             f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
-            !f.name.startsWith("unins", ignoreCase = true)
+                !f.name.startsWith("unins", ignoreCase = true)
         }?.forEach { f ->
             candidates.add(f.name)
         }
@@ -302,7 +307,7 @@ object CustomGameScanner {
         for (sd in subDirs) {
             sd.listFiles { f ->
                 f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
-                !f.name.startsWith("unins", ignoreCase = true)
+                    !f.name.startsWith("unins", ignoreCase = true)
             }?.forEach { f ->
                 val rel = sd.name + "/" + f.name
                 candidates.add(rel)
@@ -327,13 +332,13 @@ object CustomGameScanner {
         if (!folder.exists() || !folder.isDirectory) return emptyList()
 
         fun File.isValidExe(): Boolean = this.isFile && this.name.endsWith(".exe", ignoreCase = true) &&
-                !this.name.startsWith("unins", ignoreCase = true)
+            !this.name.startsWith("unins", ignoreCase = true)
 
         val candidates = mutableListOf<String>()
 
         folder.listFiles { f ->
             f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
-            !f.name.startsWith("unins", ignoreCase = true)
+                !f.name.startsWith("unins", ignoreCase = true)
         }?.forEach { f ->
             candidates.add(f.name)
         }
@@ -342,7 +347,7 @@ object CustomGameScanner {
         for (sd in subDirs) {
             sd.listFiles { f ->
                 f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
-                !f.name.startsWith("unins", ignoreCase = true)
+                    !f.name.startsWith("unins", ignoreCase = true)
             }?.forEach { f ->
                 val rel = sd.name + "/" + f.name
                 candidates.add(rel)
@@ -360,7 +365,7 @@ object CustomGameScanner {
     fun hasStoragePermission(context: Context, path: String): Boolean {
         // Check if path is outside app sandbox
         val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") &&
-                               !path.contains(context.dataDir.path)
+            !path.contains(context.dataDir.path)
 
         if (!isOutsideSandbox) {
             // Path is in app sandbox, no special permission needed
@@ -375,7 +380,7 @@ object CustomGameScanner {
             // Android 10 and below use standard storage permissions
             return ContextCompat.checkSelfPermission(
                 context,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
             ) == PackageManager.PERMISSION_GRANTED
         }
     }
@@ -413,7 +418,11 @@ object CustomGameScanner {
      * All manually added folders are included regardless of content.
      * Optionally filter by [query] contained in folder name (case-insensitive).
      */
-    fun scanAsLibraryItems(query: String = "", indexOffsetStart: Int = 0, includeWhenInstalledFilterActive: Boolean = true): List<LibraryItem> {
+    fun scanAsLibraryItems(
+        query: String = "",
+        indexOffsetStart: Int = 0,
+        includeWhenInstalledFilterActive: Boolean = true,
+    ): List<LibraryItem> {
         val items = mutableListOf<LibraryItem>()
         var indexCounter = indexOffsetStart
         val q = query.trim()
@@ -427,7 +436,7 @@ object CustomGameScanner {
                     val folderName = File(manualPath).name
                     if (!folderName.contains(q, ignoreCase = true)) continue
                 }
-                
+
                 val manualItem = createLibraryItemFromFolder(manualPath)
                 if (manualItem != null && existingAppIds.add(manualItem.appId)) {
                     items.add(manualItem.copy(index = indexCounter++))
@@ -474,7 +483,6 @@ object CustomGameScanner {
             return null
         }
 
-
         val idPart = getOrGenerateGameId(folder)
         val appId = "${GameSource.CUSTOM_GAME.name}_$idPart"
 
@@ -489,7 +497,6 @@ object CustomGameScanner {
             gameSource = GameSource.CUSTOM_GAME,
         )
     }
-
 
     /**
      * Reads the game ID from the .gamenative file in the given folder.
@@ -531,7 +538,7 @@ object CustomGameScanner {
     private fun getOrRebuildCache(): Map<Int, String> {
         return CustomGameCache.getOrRebuildCache(
             getManualFolders = { PrefManager.customGameManualFolders },
-            readGameIdFromFile = { folder -> readGameIdFromFile(folder) }
+            readGameIdFromFile = { folder -> readGameIdFromFile(folder) },
         )
     }
 
@@ -610,6 +617,13 @@ object CustomGameScanner {
         }
 
         return null
+    }
+
+    // Helper function to check if game is installed to match pattern of GOG & Steam Service
+    fun isGameInstalled(appId: Int): Boolean {
+        val isInstalled = findCustomGameById(appId) != null
+
+        return isInstalled
     }
 
     /**
