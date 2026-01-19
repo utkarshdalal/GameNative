@@ -174,7 +174,6 @@ android {
         }
     }
     dynamicFeatures += setOf(":ubuntufs")
-    buildToolsVersion = "35.0.0"
 
     kotlinter {
         ignoreFormatFailures  = false

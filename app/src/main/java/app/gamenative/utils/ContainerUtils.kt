@@ -1060,30 +1060,19 @@ object ContainerUtils {
      * Extracts the game ID from a container ID string
      * Handles formats like:
      * - STEAM_123456 -> 123456
-     * - EPIC_1dea8a6ddb544842a58e4b5c8675ff58 -> hashCode() of UUID
+     * - EPIC_2938123
      * - CUSTOM_GAME_571969840 -> 571969840
      * - GOG_19283103 -> 19283103
      * - STEAM_123456(1) -> 123456
      * - 19283103 -> 19283103 (legacy GOG format)
      */
     fun extractGameIdFromContainerId(containerId: String): Int {
-
         Timber.tag("Epic").d("Getting GameId for containerId: $containerId")
         // Epic games use string catalog IDs which can't be converted to int
         // For Epic, return a hash code of the ID after stripping EPIC_ prefix
         val source = extractGameSourceFromContainerId(containerId)
+        // TODO: remove logs here.
         Timber.tag("Epic").d("Got Source: $source")
-        if (source == GameSource.EPIC) {
-            // Strip EPIC_ prefix and return hashCode
-            val epicId = containerId.removePrefix("EPIC_")
-            Timber.tag("Epic").d("Got epicId: $epicId")
-            return epicId.hashCode()
-        }
-
-        // Check if this looks like an unprefixed Epic ID (not numeric, no known prefix)
-        if (isEpicId(containerId)) {
-            return containerId.hashCode()
-        }
 
         // Remove duplicate suffix like (1), (2) if present
         val idWithoutSuffix = if (containerId.contains("(")) {
