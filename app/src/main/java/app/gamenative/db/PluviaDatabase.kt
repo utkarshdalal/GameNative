@@ -47,7 +47,7 @@ const val DATABASE_NAME = "pluvia.db"
         EpicGame::class,
         DownloadingAppInfo::class
     ],
-    version = 11,
+    version = 12,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
@@ -55,6 +55,7 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11)
+        AutoMigration(from = 11, to = 12)
     ]
 )
 @TypeConverters(
