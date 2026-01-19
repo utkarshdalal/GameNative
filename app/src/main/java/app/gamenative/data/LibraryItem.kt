@@ -26,8 +26,6 @@ data class LibraryItem(
     val appId: String = "",
     val name: String = "",
     val iconHash: String = "",
-    val capsuleHash: String? = "",
-    val heroHash: String = "",
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
     val compatibilityStatus: GameCompatibilityStatus? = null,
