@@ -28,14 +28,14 @@ interface EpicGameDao {
     @Delete
     suspend fun delete(game: EpicGame)
 
-    @Query("UPDATE epic_games SET is_installed = 0, install_path='',install_size = 0 WHERE id = :appId")
-    suspend fun uninstall(appId: String)
+    @Query("UPDATE epic_games SET is_installed = 0, install_path='',install_size = 0 WHERE app_id = :appId")
+    suspend fun uninstall(appId: Int)
 
-    @Query("DELETE FROM epic_games WHERE id = :appId")
-    suspend fun deleteById(appId: String)
+    @Query("DELETE FROM epic_games WHERE app_id = :appId")
+    suspend fun deleteById(appId: Int)
 
-    @Query("SELECT * FROM epic_games WHERE id = :appId")
-    suspend fun getById(appId: String): EpicGame?
+    @Query("SELECT * FROM epic_games WHERE app_id = :appId")
+    suspend fun getById(appId: Int): EpicGame?
 
     @Query("SELECT * FROM epic_games WHERE app_name = :appName")
     suspend fun getByAppName(appName: String): EpicGame?
@@ -50,7 +50,7 @@ interface EpicGameDao {
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<EpicGame>>
 
     @Query("SELECT * FROM epic_games WHERE base_game_app_name = :appId")
-    fun getDLCForTitle(appId: String): Flow<List<EpicGame>>
+    fun getDLCForTitle(appId: Int): Flow<List<EpicGame>>
 
     @Query("SELECT * FROM epic_games WHERE base_game_app_name IS NOT NULL AND is_dlc = true")
     fun getAllDlcTitles(): Flow<List<EpicGame>>
@@ -64,8 +64,9 @@ interface EpicGameDao {
     @Query("SELECT COUNT(*) FROM epic_games")
     fun getCount(): Flow<Int>
 
-    @Query("SELECT id FROM epic_games")
-    suspend fun getAllGameIds(): List<String>
+    @Query("SELECT catalog_id FROM epic_games")
+    suspend fun getAllCatalogIds(): List<String>
+
 
     @Transaction
     suspend fun replaceAll(games: List<EpicGame>) {
@@ -80,7 +81,7 @@ interface EpicGameDao {
     @Transaction
     suspend fun upsertPreservingInstallStatus(games: List<EpicGame>) {
         games.forEach { newGame ->
-            val existingGame = getById(newGame.id)
+            val existingGame = getById(newGame.appId)
             if (existingGame != null) {
                 // Preserve installation status, path, and size from existing game
                 val gameToInsert = newGame.copy(

@@ -35,34 +35,55 @@ class EpicService : Service() {
     companion object {
         private var instance: EpicService? = null
 
+        private const val ACTION_SYNC_LIBRARY = "app.gamenative.EPIC_SYNC_LIBRARY"
+        private const val ACTION_MANUAL_SYNC = "app.gamenative.EPIC_MANUAL_SYNC"
+        private const val SYNC_THROTTLE_MILLIS = 15 * 60 * 1000L // 15 minutes
+
         // Sync tracking variables
         private var syncInProgress: Boolean = false
         private var backgroundSyncJob: Job? = null
+        private var lastSyncTimestamp: Long = 0L
+        private var hasPerformedInitialSync: Boolean = false
 
         val isRunning: Boolean
             get() = instance != null
 
         fun start(context: Context) {
-            Timber.tag("Epic").i("[EpicService.start] Called. isRunning=$isRunning")
-            if (!isRunning) {
-                Timber.tag("Epic").i("[EpicService.start] Starting foreground service...")
-                val intent = Intent(context, EpicService::class.java)
-                context.startForegroundService(intent)
-                Timber.tag("Epic").i("[EpicService.start] startForegroundService called")
-            } else {
-                Timber.tag("Epic").i("[EpicService.start] Service already running, skipping")
+            // If already running, do nothing
+            if (isRunning) {
+                Timber.d("[EpicService] Service already running, skipping start")
+                return
             }
+
+            // First-time start: always sync without throttle
+            if (!hasPerformedInitialSync) {
+                Timber.i("[EpicService] First-time start - starting service with initial sync")
+                val intent = Intent(context, EpicService::class.java)
+                intent.action = ACTION_SYNC_LIBRARY
+                context.startForegroundService(intent)
+                return
+            }
+
+            // Subsequent starts: always start service, but check throttle for sync
+            val now = System.currentTimeMillis()
+            val timeSinceLastSync = now - lastSyncTimestamp
+
+            val intent = Intent(context, EpicService::class.java)
+            if (timeSinceLastSync >= SYNC_THROTTLE_MILLIS) {
+                Timber.i("[EpicService] Starting service with automatic sync (throttle passed)")
+                intent.action = ACTION_SYNC_LIBRARY
+            } else {
+                val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
+                Timber.d("[EpicService] Starting service without sync - throttled (${remainingMinutes}min remaining)")
+                // Start service without sync action
+            }
+            context.startForegroundService(intent)
         }
 
         fun stop() {
             instance?.let { service ->
                 service.stopSelf()
             }
-        }
-
-        fun initialize(context: Context): Boolean {
-            // No initialization needed - EpicDownloadManager uses native Kotlin implementation
-            return true
         }
 
         // ==========================================================================
@@ -92,7 +113,8 @@ class EpicService : Service() {
                     // Get instance first before stopping the service
                     val instance = getInstance()
                     if (instance == null) {
-                        Timber.tag("Epic").w("Service not running, clearing credentials anyway")
+                        Timber.tag("Epic").w("Service not running during logout")
+                        return@withContext Result.failure(Exception("Service not running"))
                     }
 
                     // Clear stored credentials
@@ -141,15 +163,15 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.isNotEmpty() ?: false
         }
 
-        fun getCurrentlyDownloadingGame(): String? {
+        fun getCurrentlyDownloadingGame(): Int? {
             return getInstance()?.activeDownloads?.keys?.firstOrNull()
         }
 
-        fun getDownloadInfo(appName: String): DownloadInfo? {
-            return getInstance()?.activeDownloads?.get(appName)
+        fun getDownloadInfo(appId: Int): DownloadInfo? {
+            return getInstance()?.activeDownloads?.get(appId)
         }
 
-        suspend fun deleteGame(context: Context, appName: String): Result<Unit> {
+        suspend fun deleteGame(context: Context, appId: Int): Result<Unit> {
             val instance = getInstance()
             if (instance == null) {
                 return Result.failure(Exception("Service not available"))
@@ -157,9 +179,9 @@ class EpicService : Service() {
 
             return try {
                 // Get the game to find its install path
-                val game = instance.epicManager.getGameByAppName(appName)
+                val game = instance.epicManager.getGamebyId(appId)
                 if (game == null) {
-                    return Result.failure(Exception("Game not found: $appName"))
+                    return Result.failure(Exception("Game not found: $appId"))
                 }
 
                 // Delete the installation folder if it exists
@@ -185,40 +207,39 @@ class EpicService : Service() {
                 instance.epicManager.uninstall(game.id)
 
                 // Delete container
-                // Use "EPIC_${appName}" format to match container creation
                 withContext(Dispatchers.Main) {
-                    ContainerUtils.deleteContainer(context, "EPIC_${game.appName}")
+                    ContainerUtils.deleteContainer(context, appId)
                 }
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged("EPIC_${game.appName}")
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged("$appId")
                 )
 
-                Timber.tag("Epic").i("Game uninstalled: $appName")
+                Timber.tag("Epic").i("Game uninstalled: $appId")
                 Result.success(Unit)
             } catch (e: Exception) {
-                Timber.tag("Epic").e(e, "Failed to uninstall game: $appName")
+                Timber.tag("Epic").e(e, "Failed to uninstall game: $appId")
                 Result.failure(e)
             }
         }
 
-        fun cleanupDownload(appName: String) {
-            getInstance()?.activeDownloads?.remove(appName)
+        fun cleanupDownload(appId: Int) {
+            getInstance()?.activeDownloads?.remove(appId)
         }
 
-        fun cancelDownload(appName: String): Boolean {
+        fun cancelDownload(appId: Int): Boolean {
             val instance = getInstance()
-            val downloadInfo = instance?.activeDownloads?.get(appName)
+            val downloadInfo = instance?.activeDownloads?.get(appId)
 
             return if (downloadInfo != null) {
-                Timber.i("Cancelling download for Epic game: $appName")
+                Timber.i("Cancelling download for Epic game: $appId")
                 downloadInfo.cancel()
-                instance.activeDownloads.remove(appName)
-                Timber.d("Download cancelled for Epic game: $appName")
+                instance.activeDownloads.remove(appId)
+                Timber.d("Download cancelled for Epic game: $appId")
                 true
             } else {
-                Timber.w("No active download found for Epic game: $appName")
+                Timber.w("No active download found for Epic game: $appId")
                 false
             }
         }
@@ -227,13 +248,13 @@ class EpicService : Service() {
         // GAME & LIBRARY OPERATIONS - Delegate to instance EpicManager (Stubs)
         // ==========================================================================
 
-        fun getEpicGameOf(appName: String): EpicGame? {
+        fun getEpicGameOf(appId: Int): EpicGame? {
             return runBlocking {
-                getInstance()?.epicManager?.getGameByAppName(appName)
+                getInstance()?.epicManager?.getGameById(appId)
             }
         }
 
-        fun getDLCForGame(appId: String): List<EpicGame> {
+        fun getDLCForGame(appId: Int): List<EpicGame> {
             return runBlocking {
                 getInstance()?.epicManager?.getDLCForTitle(appId) ?: emptyList()
             }
@@ -244,13 +265,13 @@ class EpicService : Service() {
         }
 
 
-        fun isGameInstalled(appName: String): Boolean {
-            val game = getEpicGameOf(appName)
+        fun isGameInstalled(appId: Int): Boolean {
+            val game = getEpicGameOf(appId)
             return game?.isInstalled == true
         }
 
-        fun getInstallPath(appName: String): String? {
-            val game = getEpicGameOf(appName)
+        fun getInstallPath(appId: Int): String? {
+            val game = getEpicGameOf(appId)
             return if (game?.isInstalled == true && game.installPath.isNotEmpty()) {
                 game.installPath
             } else {
@@ -258,41 +279,8 @@ class EpicService : Service() {
             }
         }
 
-        suspend fun getInstalledExe(libraryItem: LibraryItem): String {
-            // Strip EPIC_ prefix to get the raw Epic app name
-            val epicAppName = libraryItem.appId.removePrefix("EPIC_")
-            val game = getInstance()?.epicManager?.getGameByAppName(epicAppName)
-            if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
-                Timber.tag("Epic").e("Game not installed: ${libraryItem.appId}")
-                return ""
-            }
-
-            // For now, return the install path - actual executable detection would require
-            // parsing the game's launch manifest or config files
-            // Most Epic games have a .exe in the root or Binaries folder
-            val installDir = File(game.installPath)
-            if (!installDir.exists()) {
-                Timber.tag("Epic").e("Install directory does not exist: ${game.installPath}")
-                return ""
-            }
-
-            // Try to find the main executable
-            // Common patterns: Game.exe, GameName.exe, or in Binaries/Win64/
-            val exeFiles = installDir.walk()
-                .filter { it.extension.equals("exe", ignoreCase = true) }
-                .filter { !it.name.contains("UnityCrashHandler", ignoreCase = true) }
-                .filter { !it.name.contains("UnrealCEFSubProcess", ignoreCase = true) }
-                .sortedBy { it.absolutePath.length } // Prefer shorter paths (usually main exe)
-                .toList()
-
-            val mainExe = exeFiles.firstOrNull()
-            if (mainExe != null) {
-                Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
-                return mainExe.absolutePath
-            }
-
-            Timber.tag("Epic").w("No executable found in ${game.installPath}")
-            return ""
+        suspend fun getInstalledExe(appId: Int): String {
+            return getInstance()?.epicManager?.getInstalledExe(appId)
         }
 
         fun getWineStartCommand(
@@ -303,39 +291,9 @@ class EpicService : Service() {
             envVars: com.winlator.core.envvars.EnvVars,
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
         ): String {
-            // Strip EPIC_ prefix to get the raw Epic app name
-            val epicAppName = libraryItem.appId.removePrefix("EPIC_")
-
-            val game = runBlocking {
-                getInstance()?.epicManager?.getGameByAppName(epicAppName)
-            }
-
-            if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
-                Timber.tag("Epic").e("Cannot launch: game not installed")
-                return "\"explorer.exe\""
-            }
-
-            // Get the executable path
-            val exePath = runBlocking {
-                getInstalledExe(libraryItem)
-            }
-
-            if (exePath.isEmpty()) {
-                Timber.tag("Epic").e("Cannot launch: executable not found")
-                return "\"explorer.exe\""
-            }
-
-            // Convert to relative path from install directory
-            val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
-
-            // Use A: drive (or the mapped drive letter) instead of Z:
-            // The container setup in ContainerUtils maps the game install path to A: drive
-            val winePath = "A:\\$relativePath".replace("/", "\\")
-
-            Timber.tag("Epic").i("Launching Epic game with exe: $winePath")
-
-            // Build Wine command with proper escaping
-            return "\"$winePath\""
+            return getInstance()?.epicManager?.getWineStartCommand(
+                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
+            ) ?: "\"explorer.exe\""
         }
 
         suspend fun refreshLibrary(context: Context): Result<Int> {
@@ -343,35 +301,35 @@ class EpicService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
-        suspend fun fetchManifestSizes(context: Context, appName: String): EpicManager.ManifestSizes {
-            return getInstance()?.epicManager?.fetchManifestSizes(context, appName)
+        suspend fun fetchManifestSizes(context: Context, appId: Int): EpicManager.ManifestSizes {
+            return getInstance()?.epicManager?.fetchManifestSizes(context, appId)
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
         }
 
-        fun downloadGame(context: Context, appName: String, installPath: String): Result<DownloadInfo> {
-            val instance = getInstance()
-            if (instance == null) {
-                Timber.tag("Epic").e("Service not running")
-                return Result.failure(Exception("Service not running"))
+        fun downloadGame(context: Context, appId: Int, installPath: String): Result<DownloadInfo> {
+            val game = instance?.epicManager?.getGameById(appId)
+
+            if(!game){
+                return Result.failure("No game found")
             }
 
             // Check if already downloading
-            if (instance.activeDownloads.containsKey(appName)) {
-                Timber.tag("Epic").w("Download already in progress for $appName")
+            if (instance?.activeDownloads?.containsKey(appId)) {
+                Timber.tag("Epic").w("Download already in progress for $appId")
                 return Result.success(instance.activeDownloads[appName]!!)
             }
 
             // Create DownloadInfo before launching coroutine to avoid race condition
             val downloadInfo = DownloadInfo()
             downloadInfo.setActive(true)
-            instance.activeDownloads[appName] = downloadInfo
+            instance.activeDownloads[appId] = downloadInfo
 
             // Start download in background
             instance.scope.launch {
                 try {
-                    val game = instance.epicManager.getGameByAppName(appName)
+
                     if (game == null) {
-                        Timber.tag("Epic").e("Game not found: $appName")
+                        Timber.tag("Epic").e("Game not found: $appId")
                         return@launch
                     }
 
@@ -379,7 +337,7 @@ class EpicService : Service() {
 
                     // Emit event for UI to start tracking progress
                     app.gamenative.PluviaApp.events.emitJava(
-                        app.gamenative.events.AndroidEvent.DownloadStatusChanged("EPIC_${game.appName}", true),
+                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, true),
                     )
 
                     val result = instance.epicDownloadManager.downloadGame(
@@ -403,17 +361,17 @@ class EpicService : Service() {
 
                         // Emit events for UI update
                         app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.DownloadStatusChanged("EPIC_${game.appName}", false),
+                            app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
                         )
                         app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged("EPIC_${game.appName}"),
+                            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId),
                         )
                     } else {
                         Timber.tag("Epic").e("Download failed: ${result.exceptionOrNull()?.message}")
 
                         // Emit event for UI update on failure
                         app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.DownloadStatusChanged("EPIC_${game.appName}", false),
+                            app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
                         )
                     }
                 } catch (e: Exception) {
@@ -423,7 +381,7 @@ class EpicService : Service() {
                     val game = instance.epicManager.getGameByAppName(appName)
                     if (game != null) {
                         app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.DownloadStatusChanged("EPIC_${game.appName}", false),
+                            app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
                         )
                     }
                 } finally {
@@ -435,9 +393,10 @@ class EpicService : Service() {
             return Result.success(downloadInfo)
         }
 
-        suspend fun refreshSingleGame(appName: String, context: Context): Result<EpicGame?> {
+        suspend fun refreshSingleGame(appId: Int, context: Context): Result<EpicGame?> {
             // For now, just get from database
-            val game = getInstance()?.epicManager?.getGameByAppName(appName)
+            val game = getInstance()?.epicManager?.getGameById(appId)
+            // TODO: Fix this up.
             return if (game != null) {
                 Result.success(game)
             } else {

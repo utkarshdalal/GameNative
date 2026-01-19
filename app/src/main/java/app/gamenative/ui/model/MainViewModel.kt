@@ -22,6 +22,7 @@ import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import com.materialkolor.PaletteStyle
+import app.gamenative.service.epic.EpicCloudSavesManager
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo

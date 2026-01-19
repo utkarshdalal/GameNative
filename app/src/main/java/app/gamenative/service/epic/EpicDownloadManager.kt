@@ -74,7 +74,7 @@ class EpicDownloadManager @Inject constructor(
             val manifestResult = epicManager.fetchManifestFromEpic(
                 context,
                 game.namespace,
-                game.id,
+                game.catalogId,
                 game.appName,
             )
             if (manifestResult.isFailure) {

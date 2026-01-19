@@ -54,7 +54,7 @@ const val DATABASE_NAME = "pluvia.db"
         // For every version change, if it is automatic, please add a new migration here.
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
-        AutoMigration(from = 10, to = 11)
+        AutoMigration(from = 10, to = 11),
         AutoMigration(from = 11, to = 12)
     ]
 )

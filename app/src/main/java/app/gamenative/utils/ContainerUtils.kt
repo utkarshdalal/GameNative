@@ -7,6 +7,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container

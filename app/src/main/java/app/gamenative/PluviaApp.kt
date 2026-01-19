@@ -117,11 +117,8 @@ class PluviaApp : SplitCompatApplication() {
         // Initialize Epic service
         appScope.launch {
             try {
-                if (app.gamenative.service.epic.EpicService.initialize(applicationContext)) {
-                    Timber.d("EpicService initialized successfully")
-                } else {
-                    Timber.w("EpicService initialization returned false")
-                }
+                app.gamenative.service.epic.EpicService.start(applicationContext)
+                Timber.d("EpicService initialized successfully")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to initialize EpicService: ${e.message}")
             }

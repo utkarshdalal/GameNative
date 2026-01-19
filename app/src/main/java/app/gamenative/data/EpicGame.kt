@@ -12,9 +12,9 @@ import app.gamenative.enums.AppType
 @Entity(tableName = "epic_games")
 data class EpicGame(
     // Generated INT for GameNative to track Epic. For any epic-API-related functionality, use catalogId.
-    @PrimaryKey
-    @ColumnInfo("id")
-    val id: Int,
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo("app_id")
+    val appId: Int,
 
     @ColumnInfo("catalog_id") // Epic's catalogId - Used as their primary key. Can be a UUID or straight normal string like "Quail"
     val catalogId: String = "",

@@ -15,6 +15,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.File
 
 /**
  * EpicManager handles Epic Games library management
@@ -208,11 +209,11 @@ class EpicManager @Inject constructor(
             }
 
             // Get existing game IDs from database to avoid re-fetching
-            val existingGameIds = epicGameDao.getAllGameIds().toSet()
-            Timber.tag("Epic").d("Found ${existingGameIds.size} games already in database")
+            val existingCatalogIds = epicGameDao.getAllCatalogIds().toSet()
+            Timber.tag("Epic").d("Found ${existingCatalogIds.size} games already in database")
 
             // Filter to only new games that need details fetched
-            val newGamesList = gamesList.filter { it.catalogItemId !in existingGameIds }
+            val newGamesList = gamesList.filter { it.catalogItemId !in existingCatalogIds }
             Timber.tag("Epic").d("${newGamesList.size} new games need details fetched")
 
             val epicGames = mutableListOf<EpicGame>()
@@ -342,6 +343,85 @@ class EpicManager @Inject constructor(
             Result.failure(e)
         }
     }
+
+        suspend fun getInstalledexe(appId: Int): String {
+            // Strip EPIC_ prefix to get the raw Epic app name
+            val game = getGameById(appId)
+            if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
+                Timber.tag("Epic").e("Game not installed: ${appId}")
+                return ""
+            }
+
+            // For now, return the install path - actual executable detection would require
+            // parsing the game's launch manifest or config files
+            // Most Epic games have a .exe in the root or Binaries folder
+            val installDir = File(game.installPath)
+            if (!installDir.exists()) {
+                Timber.tag("Epic").e("Install directory does not exist: ${game.installPath}")
+                return ""
+            }
+
+            // Try to find the main executable
+            // Common patterns: Game.exe, GameName.exe, or in Binaries/Win64/
+            val exeFiles = installDir.walk()
+                .filter { it.extension.equals("exe", ignoreCase = true) }
+                .filter { !it.name.contains("UnityCrashHandler", ignoreCase = true) }
+                .filter { !it.name.contains("UnrealCEFSubProcess", ignoreCase = true) }
+                .sortedBy { it.absolutePath.length } // Prefer shorter paths (usually main exe)
+                .toList()
+
+            val mainExe = exeFiles.firstOrNull()
+            if (mainExe != null) {
+                Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
+                return mainExe.absolutePath
+            }
+
+            Timber.tag("Epic").w("No executable found in ${game.installPath}")
+            return ""
+        }
+
+    fun getWineStartCommand(
+        libraryItem: LibraryItem,
+        container: com.winlator.container.Container,
+        bootToContainer: Boolean,
+        appLaunchInfo: LaunchInfo?,
+        envVars: com.winlator.core.envvars.EnvVars,
+        guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
+    ): String {
+
+        // Strip EPIC_ prefix to get the raw Epic app name
+        val game = runBlocking {
+            getGameById(libraryItem.appId)
+        }
+
+        if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
+            Timber.tag("Epic").e("Cannot launch: game not installed")
+            return "\"explorer.exe\""
+        }
+
+        // Get the executable path
+        val exePath = runBlocking {
+            getInstalledExe(libraryItem)
+        }
+
+        if (exePath.isEmpty()) {
+            Timber.tag("Epic").e("Cannot launch: executable not found")
+            return "\"explorer.exe\""
+        }
+
+        // Convert to relative path from install directory
+        val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
+
+        // Use A: drive (or the mapped drive letter) instead of Z:
+        // The container setup in ContainerUtils maps the game install path to A: drive
+        val winePath = "A:\\$relativePath".replace("/", "\\")
+
+        Timber.tag("Epic").i("Launching Epic game with exe: $winePath")
+
+        // Build Wine command with proper escaping
+        return "\"$winePath\""
+    }
+
 
     private suspend fun fetchGameInfo(
         context: Context,
@@ -544,7 +624,6 @@ class EpicManager @Inject constructor(
         Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
 
         return EpicGame(
-            id = catalogItemId,
             appName = appName,
             title = title,
             namespace = namespace,
@@ -587,18 +666,18 @@ class EpicManager @Inject constructor(
     /**
      * Get a single game by ID
      */
-    suspend fun getGameById(gameId: String): EpicGame? {
+    suspend fun getGameById(appId: Int): EpicGame? {
         return withContext(Dispatchers.IO) {
             try {
-                epicGameDao.getById(gameId)
+                epicGameDao.getById(appId)
             } catch (e: Exception) {
-                Timber.e(e, "Failed to get Epic game by ID: $gameId")
+                Timber.e(e, "Failed to get Epic game by ID: $appId")
                 null
             }
         }
     }
 
-    suspend fun getDLCForTitle(appId: String): List<EpicGame> {
+    suspend fun getDLCForTitle(appId: Int): List<EpicGame> {
         return withContext(Dispatchers.IO) {
             try {
                 Timber.tag("Epic").i("Getting DLC for appId: $appId")
