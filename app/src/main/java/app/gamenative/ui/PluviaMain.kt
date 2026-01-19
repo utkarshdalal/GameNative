@@ -1203,7 +1203,7 @@ fun preLaunchApp(
            Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
            val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
                context = context,
-               appId = appId.removePrefix("EPIC_"),
+               appId = appId
            )
 
            if (!syncSuccess) {
