@@ -565,8 +565,7 @@ class EpicManager @Inject constructor(
         }
 
         // Get developer/publisher
-        val developer = data.optString("developerDisplayName", data.optString("developer", ""))
-        val publisher = data.optString("publisherDisplayName", data.optString("publisher", ""))
+        val developer = data.optString("developer", "")
 
         // Get categories to check for mods
         val categories = data.optJSONArray("categories")
@@ -633,7 +632,7 @@ class EpicManager @Inject constructor(
             title = title,
             namespace = namespace,
             developer = developer,
-            publisher = publisher,
+            publisher = "",
             description = description,
             artCover = artCover,
             artSquare = artSquare,
