@@ -317,7 +317,7 @@ class MainViewModel @Inject constructor(
                         Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $appId")
                         val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
                             context = context,
-                            appId = appId.toString().removePrefix("EPIC_"),
+                            appId = appId,
                             preferredAction = "upload"
                         )
                         if (syncSuccess) {

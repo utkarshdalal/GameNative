@@ -257,8 +257,7 @@ internal fun AppItem(
                                 appInfo.iconHash
                             }
                             GameSource.EPIC -> {
-
-                                val game = EpicService.getEpicGameOf(appInfo.appId.removePrefix("EPIC_"))
+                                val game = EpicService.getEpicGameOf(appInfo.appId)
 
                                 val epicUrl = when (paneType) {
                                     PaneType.GRID_CAPSULE -> {
@@ -353,7 +352,7 @@ internal fun AppItem(
                             isInstalled = when (appInfo.gameSource) {
                                 GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                 GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId.removePrefix("EPIC_"))
+                                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId)
                                 GameSource.CUSTOM_GAME -> true
                                 else -> false
                             }
@@ -366,7 +365,7 @@ internal fun AppItem(
                                 isInstalled = when (appInfo.gameSource) {
                                     GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                     GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId.removePrefix("EPIC_"))
+                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId)
                                     GameSource.CUSTOM_GAME -> true
                                     else -> false
                                 }
@@ -559,7 +558,7 @@ internal fun GameInfoBlock(
                     // GOG and Epic games - check installation status from their respective services
                     val isInstalled = when (appInfo.gameSource) {
                         GameSource.GOG -> GOGService.isGameInstalled(appInfo.appId)
-                        GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId.removePrefix("EPIC_"))
+                        GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId)
                         else -> false
                     }
                     val text = if (isInstalled) {

@@ -115,7 +115,7 @@ class EpicAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("getGameDisplayInfo: appId=${libraryItem.appId}, name=${libraryItem.name}")
         // For Epic games, appId has EPIC_ prefix, strip it to get the raw Epic app name
         val appId = libraryItem.appId
-        val appName = appId.removePrefix("EPIC_")
+        val appName = appId
 
         // Add a refresh trigger to re-fetch game data when install status changes
         var refreshTrigger by remember { mutableStateOf(0) }

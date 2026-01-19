@@ -551,8 +551,8 @@ object ContainerUtils {
             }
             GameSource.EPIC -> {
                 // For Epic games, map the specific game directory to A: drive
-                val appName = appId.removePrefix("EPIC_")
-                val game = app.gamenative.service.epic.EpicService.getEpicGameOf(appName)
+                val gameId = extractGameIdFromContainerId(appId)
+                val game = EpicService.getEpicGameOf(gameId)
                 Timber.tag("Epic").d("EPIC GAME FOUND FOR DRIVE: $appName")
                 if (game != null && game.installPath.isNotEmpty()) {
                     val gameInstallPath = game.installPath
@@ -955,8 +955,8 @@ object ContainerUtils {
             }
         } else if (gameSource == GameSource.EPIC) {
             // Ensure Epic games have the specific game directory mapped
-            val appName = appId.removePrefix("EPIC_")
-            val game = app.gamenative.service.epic.EpicService.getEpicGameOf(appName)
+            val gameId = extractGameIdFromContainerId(appId)
+            val game = EpicService.getEpicGameOf(gameId)
             if (game != null && game.installPath.isNotEmpty()) {
                 val gameInstallPath = game.installPath
                 var hasCorrectDriveMapping = false
