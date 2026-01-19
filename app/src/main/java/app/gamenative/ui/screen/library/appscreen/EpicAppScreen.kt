@@ -153,15 +153,40 @@ class EpicAppScreen : BaseAppScreen() {
             val game = EpicService.getEpicGameOf(gameId)
 
             if (game != null) {
+                // Log all game details
+                Timber.tag(TAG).i("=== Epic Game Details ===")
+                Timber.tag(TAG).i("ID: ${game.id}")
+                Timber.tag(TAG).i("Title: ${game.title}")
+                Timber.tag(TAG).i("App Name: ${game.appName}")
+                Timber.tag(TAG).i("Namespace: ${game.namespace}")
+                Timber.tag(TAG).i("Catalog Item ID: ${game.catalogId}")
+                Timber.tag(TAG).i("Developer: ${game.developer}")
+                Timber.tag(TAG).i("Release Date: ${game.releaseDate}")
+                Timber.tag(TAG).i("Is Installed: ${game.isInstalled}")
+                Timber.tag(TAG).i("Install Path: ${game.installPath}")
+                Timber.tag(TAG).i("Install Size: ${game.installSize} bytes (${StringUtils.formatBytes(game.installSize)})")
+                Timber.tag(TAG).i("Download Size: ${game.downloadSize} bytes (${StringUtils.formatBytes(game.downloadSize)})")
+                Timber.tag(TAG).i("Icon URL: ${game.iconUrl}")
+                Timber.tag(TAG).i("Art Cover: ${game.artCover}")
+                Timber.tag(TAG).i("Art Square: ${game.artSquare}")
+                Timber.tag(TAG).i("Cloud Save Enabled: ${game.cloudSaveEnabled}")
+                Timber.tag(TAG).i("Base Game App Name: ${game.baseGameAppName}")
+                Timber.tag(TAG).i("========================")
+
                 val dlcTitles = EpicService.getDLCForGame(game.id)
                 if (dlcTitles.isNotEmpty()) {
+                    Timber.tag(TAG).i("DLC Count: ${dlcTitles.size}")
                     for (title in dlcTitles) {
                         Timber.tag("Epic").d("DLC Found: ${title.title}")
                     }
+                } else {
+                    Timber.tag(TAG).i("DLC Count: 0")
                 }
                 // TODO: Implement DLC Management
                 // TODO: Give them a list of DLC and allow them to pick which ones to download
                 // gameDlc = dlcTitles
+            } else {
+                Timber.tag(TAG).w("No Epic game found for gameId: $gameId")
             }
             game
         }

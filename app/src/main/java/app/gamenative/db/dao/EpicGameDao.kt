@@ -9,6 +9,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import app.gamenative.data.EpicGame
 import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 
 /**
  * DAO for Epic games in the Room database

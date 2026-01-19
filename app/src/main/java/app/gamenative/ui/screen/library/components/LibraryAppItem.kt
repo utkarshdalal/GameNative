@@ -76,6 +76,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import java.io.File
+import timber.log.Timber
 
 @Composable
 internal fun AppItem(
@@ -258,18 +259,7 @@ internal fun AppItem(
                             }
 
                             GameSource.EPIC -> {
-                                val game = EpicService.getEpicGameOf(appInfo.gameId)
-
-                                val epicUrl = when (paneType) {
-                                    PaneType.GRID_CAPSULE -> {
-                                        game?.artCover
-                                    }
-
-                                    else -> {
-                                        game?.artSquare
-                                    }
-                                }
-                                epicUrl
+                                appInfo.iconHash
                             }
 
                             GameSource.STEAM -> {
@@ -658,7 +648,7 @@ fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSi
         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        GameSource.EPIC  -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 
