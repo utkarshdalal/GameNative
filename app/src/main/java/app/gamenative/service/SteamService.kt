@@ -284,11 +284,11 @@ class SteamService : Service(), IChallengeUrlChanged {
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
         private fun notifyDownloadStarted(appId: Int) {
-            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId.toString(), true))
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
         }
 
         private fun notifyDownloadStopped(appId: Int) {
-            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId.toString(), false))
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, false))
         }
 
         private fun removeDownloadJob(appId: Int) {
@@ -2240,7 +2240,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     for ((appId, info) in downloadJobs.entries.toList()) {
                         Timber.d("Cancelling job")
                         info.cancel()
-                        PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId.toString()))
+                        PluviaApp.events.emit(AndroidEvent.DownloadPausedDueToConnectivity(appId))
                         removeDownloadJob(appId)
                     }
                     notificationHelper.notify("Download paused – waiting for Wi-Fi/LAN")

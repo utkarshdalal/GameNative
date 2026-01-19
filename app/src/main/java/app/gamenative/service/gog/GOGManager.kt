@@ -507,7 +507,7 @@ class GOGManager @Inject constructor(
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId.toString())
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId)
                 )
 
                 Result.success(Unit)
