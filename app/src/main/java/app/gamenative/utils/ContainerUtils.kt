@@ -5,9 +5,9 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
-import app.gamenative.service.epic.EpicService
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
@@ -23,13 +23,13 @@ import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.File
 
 object ContainerUtils {
     data class GpuInfo(
@@ -38,7 +38,7 @@ object ContainerUtils {
         val name: String,
     )
 
-    fun setContainerDefaults(context: Context){
+    fun setContainerDefaults(context: Context) {
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
@@ -104,23 +104,23 @@ object ContainerUtils {
             forceDlc = PrefManager.forceDlc,
             useLegacyDRM = PrefManager.useLegacyDRM,
             wineVersion = PrefManager.wineVersion,
-			emulator = PrefManager.emulator,
-			fexcoreVersion = PrefManager.fexcoreVersion,
-			fexcoreTSOMode = PrefManager.fexcoreTSOMode,
-			fexcoreX87Mode = PrefManager.fexcoreX87Mode,
-			fexcoreMultiBlock = PrefManager.fexcoreMultiBlock,
-			fexcorePreset = PrefManager.fexcorePreset,
-			renderer = PrefManager.renderer,
-			csmt = PrefManager.csmt,
+            emulator = PrefManager.emulator,
+            fexcoreVersion = PrefManager.fexcoreVersion,
+            fexcoreTSOMode = PrefManager.fexcoreTSOMode,
+            fexcoreX87Mode = PrefManager.fexcoreX87Mode,
+            fexcoreMultiBlock = PrefManager.fexcoreMultiBlock,
+            fexcorePreset = PrefManager.fexcorePreset,
+            renderer = PrefManager.renderer,
+            csmt = PrefManager.csmt,
             videoPciDeviceID = PrefManager.videoPciDeviceID,
             offScreenRenderingMode = PrefManager.offScreenRenderingMode,
             strictShaderMath = PrefManager.strictShaderMath,
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
-			enableXInput = PrefManager.xinputEnabled,
-			enableDInput = PrefManager.dinputEnabled,
-			dinputMapperType = PrefManager.dinputMapperType.toByte(),
+            enableXInput = PrefManager.xinputEnabled,
+            enableDInput = PrefManager.dinputEnabled,
+            dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
             sharpnessEffect = PrefManager.sharpnessEffect,
             sharpnessLevel = PrefManager.sharpnessLevel,
@@ -169,11 +169,11 @@ object ContainerUtils {
         PrefManager.fexcoreX87Mode = containerData.fexcoreX87Mode
         PrefManager.fexcoreMultiBlock = containerData.fexcoreMultiBlock
         PrefManager.fexcorePreset = containerData.fexcorePreset
-		// Persist renderer and controller defaults
-		PrefManager.renderer = containerData.renderer
-		PrefManager.xinputEnabled = containerData.enableXInput
-		PrefManager.dinputEnabled = containerData.enableDInput
-		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
+        // Persist renderer and controller defaults
+        PrefManager.renderer = containerData.renderer
+        PrefManager.xinputEnabled = containerData.enableXInput
+        PrefManager.dinputEnabled = containerData.enableDInput
+        PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
@@ -291,25 +291,71 @@ object ContainerUtils {
         var updatedData = containerData
         bestConfigMap.forEach { (key, value) ->
             updatedData = when (key) {
-                "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
-                "graphicsDriver" -> value?.let { updatedData.copy(graphicsDriver = it as? String ?: updatedData.graphicsDriver) } ?: updatedData
-                "graphicsDriverVersion" -> value?.let { updatedData.copy(graphicsDriverVersion = it as? String ?: updatedData.graphicsDriverVersion) } ?: updatedData
-                "graphicsDriverConfig" -> value?.let { updatedData.copy(graphicsDriverConfig = it as? String ?: updatedData.graphicsDriverConfig) } ?: updatedData
+                "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) }
+                    ?: updatedData
+
+                "graphicsDriver" -> value?.let { updatedData.copy(graphicsDriver = it as? String ?: updatedData.graphicsDriver) }
+                    ?: updatedData
+
+                "graphicsDriverVersion" -> value?.let {
+                    updatedData.copy(
+                        graphicsDriverVersion =
+                            it as? String ?: updatedData.graphicsDriverVersion,
+                    )
+                }
+                    ?: updatedData
+
+                "graphicsDriverConfig" -> value?.let {
+                    updatedData.copy(
+                        graphicsDriverConfig =
+                            it as? String ?: updatedData.graphicsDriverConfig,
+                    )
+                }
+                    ?: updatedData
+
                 "dxwrapper" -> value?.let { updatedData.copy(dxwrapper = it as? String ?: updatedData.dxwrapper) } ?: updatedData
-                "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) } ?: updatedData
+
+                "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) }
+                    ?: updatedData
+
                 "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
-                "startupSelection" -> value?.let { updatedData.copy(startupSelection = (it as? Int)?.toByte() ?: updatedData.startupSelection) } ?: updatedData
+
+                "startupSelection" -> value?.let {
+                    updatedData.copy(
+                        startupSelection =
+                            (it as? Int)?.toByte() ?: updatedData.startupSelection,
+                    )
+                }
+                    ?: updatedData
+
                 "box64Version" -> value?.let { updatedData.copy(box64Version = it as? String ?: updatedData.box64Version) } ?: updatedData
+
                 "box64Preset" -> value?.let { updatedData.copy(box64Preset = it as? String ?: updatedData.box64Preset) } ?: updatedData
-                "containerVariant" -> value?.let { updatedData.copy(containerVariant = it as? String ?: updatedData.containerVariant) } ?: updatedData
+
+                "containerVariant" -> value?.let { updatedData.copy(containerVariant = it as? String ?: updatedData.containerVariant) }
+                    ?: updatedData
+
                 "wineVersion" -> value?.let { updatedData.copy(wineVersion = it as? String ?: updatedData.wineVersion) } ?: updatedData
+
                 "emulator" -> value?.let { updatedData.copy(emulator = it as? String ?: updatedData.emulator) } ?: updatedData
-                "fexcoreVersion" -> value?.let { updatedData.copy(fexcoreVersion = it as? String ?: updatedData.fexcoreVersion) } ?: updatedData
-                "fexcoreTSOMode" -> value?.let { updatedData.copy(fexcoreTSOMode = it as? String ?: updatedData.fexcoreTSOMode) } ?: updatedData
-                "fexcoreX87Mode" -> value?.let { updatedData.copy(fexcoreX87Mode = it as? String ?: updatedData.fexcoreX87Mode) } ?: updatedData
-                "fexcoreMultiBlock" -> value?.let { updatedData.copy(fexcoreMultiBlock = it as? String ?: updatedData.fexcoreMultiBlock) } ?: updatedData
-                "fexcorePreset" -> value?.let { updatedData.copy(fexcorePreset = it as? String ?: updatedData.fexcorePreset) } ?: updatedData
+
+                "fexcoreVersion" -> value?.let { updatedData.copy(fexcoreVersion = it as? String ?: updatedData.fexcoreVersion) }
+                    ?: updatedData
+
+                "fexcoreTSOMode" -> value?.let { updatedData.copy(fexcoreTSOMode = it as? String ?: updatedData.fexcoreTSOMode) }
+                    ?: updatedData
+
+                "fexcoreX87Mode" -> value?.let { updatedData.copy(fexcoreX87Mode = it as? String ?: updatedData.fexcoreX87Mode) }
+                    ?: updatedData
+
+                "fexcoreMultiBlock" -> value?.let { updatedData.copy(fexcoreMultiBlock = it as? String ?: updatedData.fexcoreMultiBlock) }
+                    ?: updatedData
+
+                "fexcorePreset" -> value?.let { updatedData.copy(fexcorePreset = it as? String ?: updatedData.fexcorePreset) }
+                    ?: updatedData
+
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+
                 else -> updatedData
             }
         }
@@ -517,6 +563,7 @@ object ContainerUtils {
                 val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
                 "$defaultDrives$drive:$appDirPath"
             }
+
             GameSource.CUSTOM_GAME -> {
                 // For Custom Games, find the game folder and map it to A: drive
                 val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
@@ -533,6 +580,7 @@ object ContainerUtils {
                     defaultDrives
                 }
             }
+
             GameSource.GOG -> {
                 // For GOG games, map the specific game directory to A: drive
                 val gameId = extractGameIdFromContainerId(appId)
@@ -550,11 +598,12 @@ object ContainerUtils {
                     defaultDrives
                 }
             }
+
             GameSource.EPIC -> {
                 // For Epic games, map the specific game directory to A: drive
                 val gameId = extractGameIdFromContainerId(appId)
                 val game = EpicService.getEpicGameOf(gameId)
-                Timber.tag("Epic").d("EPIC GAME FOUND FOR DRIVE: $appName")
+                Timber.tag("Epic").d("EPIC GAME FOUND FOR DRIVE: $appId")
                 if (game != null && game.installPath.isNotEmpty()) {
                     val gameInstallPath = game.installPath
 
@@ -593,7 +642,7 @@ object ContainerUtils {
             // Get the container directory path
             val rootDir = ImageFs.find(context).getRootDir()
             val homeDir = File(rootDir, "home")
-            val containerDir = File(homeDir, ImageFs.USER+"-"+containerId)
+            val containerDir = File(homeDir, ImageFs.USER + "-" + containerId)
 
             if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
                 Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
@@ -651,7 +700,7 @@ object ContainerUtils {
                                     context,
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
-                                    false
+                                    false,
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
@@ -701,25 +750,25 @@ object ContainerUtils {
                 box64Preset = PrefManager.box64Preset,
                 desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
                 language = PrefManager.containerLanguage,
-				containerVariant = PrefManager.containerVariant,
-				wineVersion = PrefManager.wineVersion,
-				emulator = PrefManager.emulator,
-				fexcoreVersion = PrefManager.fexcoreVersion,
-				fexcoreTSOMode = PrefManager.fexcoreTSOMode,
-				fexcoreX87Mode = PrefManager.fexcoreX87Mode,
-				fexcoreMultiBlock = PrefManager.fexcoreMultiBlock,
-				fexcorePreset = PrefManager.fexcorePreset,
-				renderer = PrefManager.renderer,
+                containerVariant = PrefManager.containerVariant,
+                wineVersion = PrefManager.wineVersion,
+                emulator = PrefManager.emulator,
+                fexcoreVersion = PrefManager.fexcoreVersion,
+                fexcoreTSOMode = PrefManager.fexcoreTSOMode,
+                fexcoreX87Mode = PrefManager.fexcoreX87Mode,
+                fexcoreMultiBlock = PrefManager.fexcoreMultiBlock,
+                fexcorePreset = PrefManager.fexcorePreset,
+                renderer = PrefManager.renderer,
                 csmt = PrefManager.csmt,
                 videoPciDeviceID = PrefManager.videoPciDeviceID,
                 offScreenRenderingMode = PrefManager.offScreenRenderingMode,
                 strictShaderMath = PrefManager.strictShaderMath,
-				useDRI3 = PrefManager.useDRI3,
+                useDRI3 = PrefManager.useDRI3,
                 videoMemorySize = PrefManager.videoMemorySize,
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
-				enableXInput = PrefManager.xinputEnabled,
-				enableDInput = PrefManager.dinputEnabled,
-				dinputMapperType = PrefManager.dinputMapperType.toByte(),
+                enableXInput = PrefManager.xinputEnabled,
+                enableDInput = PrefManager.dinputEnabled,
+                dinputMapperType = PrefManager.dinputMapperType.toByte(),
                 disableMouseInput = PrefManager.disableMouseInput,
             )
         }
@@ -731,8 +780,12 @@ object ContainerUtils {
             var updatedData = containerData
             bestConfigMap.forEach { (key, value) ->
                 updatedData = when (key) {
-                    "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
-                    "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+                    "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) }
+                        ?: updatedData
+
+                    "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) }
+                        ?: updatedData
+
                     else -> updatedData
                 }
             }
@@ -802,10 +855,10 @@ object ContainerUtils {
      */
     private fun isEpicId(id: String): Boolean {
         return !id.startsWith("STEAM_") &&
-               !id.startsWith("CUSTOM_GAME_") &&
-               !id.startsWith("EPIC_") &&
-                !id.startsWith("GOG_") &&
-               id.toIntOrNull() == null
+            !id.startsWith("CUSTOM_GAME_") &&
+            !id.startsWith("EPIC_") &&
+            !id.startsWith("GOG_") &&
+            id.toIntOrNull() == null
     }
 
     fun getOrCreateContainer(context: Context, appId: String): Container {
@@ -829,9 +882,11 @@ object ContainerUtils {
                 val gameId = extractGameIdFromContainerId(appId)
                 SteamService.getAppDirPath(gameId)
             }
+
             GameSource.CUSTOM_GAME -> {
                 CustomGameScanner.getFolderPathFromAppId(appId)
             }
+
             else -> null
         }
 
@@ -997,7 +1052,7 @@ object ContainerUtils {
                     Timber.d("Updated container drives to include $drive: drive mapping for Epic game: $updatedDrives")
                 }
             } else {
-                Timber.w("Could not find Epic game info for $appName, skipping drive mapping update")
+                Timber.w("Could not find Epic game info for $appId, skipping drive mapping update")
             }
         }
 
@@ -1100,9 +1155,13 @@ object ContainerUtils {
     fun extractGameSourceFromContainerId(containerId: String): GameSource {
         return when {
             containerId.startsWith("STEAM_") -> GameSource.STEAM
+
             containerId.startsWith("EPIC_") -> GameSource.EPIC
+
             containerId.startsWith("CUSTOM_GAME_") -> GameSource.CUSTOM_GAME
+
             containerId.startsWith("GOG_") -> GameSource.GOG
+
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }
@@ -1173,7 +1232,6 @@ object ContainerUtils {
             }
 
             Timber.d("Found ${executables.size} executables in A: drive")
-
         } catch (e: Exception) {
             Timber.e(e, "Error scanning A: drive for executables")
         }
@@ -1191,8 +1249,11 @@ object ContainerUtils {
         return when {
             // Highest priority: common game executable patterns
             fileName.contains("game") -> 100
+
             fileName.contains("start") -> 85
+
             fileName.contains("main") -> 80
+
             fileName.contains("launcher") && !fileName.contains("unins") -> 75
 
             // High priority: probable main executables
@@ -1213,10 +1274,9 @@ object ContainerUtils {
         val systemKeywords = listOf(
             "unins", "setup", "install", "config", "crash", "handler",
             "viewer", "compiler", "tool", "redist", "vcredist", "directx",
-            "steam", "origin", "uplay", "epic", "battlenet"
+            "steam", "origin", "uplay", "epic", "battlenet",
         )
 
         return systemKeywords.any { fileName.contains(it) }
     }
 }
-

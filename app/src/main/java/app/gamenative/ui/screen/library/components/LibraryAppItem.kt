@@ -256,19 +256,22 @@ internal fun AppItem(
                             GameSource.GOG -> {
                                 appInfo.iconHash
                             }
+
                             GameSource.EPIC -> {
-                                val game = EpicService.getEpicGameOf(appInfo.appId)
+                                val game = EpicService.getEpicGameOf(appInfo.gameId)
 
                                 val epicUrl = when (paneType) {
                                     PaneType.GRID_CAPSULE -> {
                                         game?.artCover
                                     }
+
                                     else -> {
                                         game?.artSquare
                                     }
                                 }
                                 epicUrl
                             }
+
                             GameSource.STEAM -> {
                                 // For Steam games, use standard Steam URLs
                                 if (paneType == PaneType.GRID_CAPSULE) {
@@ -352,7 +355,7 @@ internal fun AppItem(
                             isInstalled = when (appInfo.gameSource) {
                                 GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                 GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId)
+                                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                                 GameSource.CUSTOM_GAME -> true
                                 else -> false
                             }
@@ -365,7 +368,7 @@ internal fun AppItem(
                                 isInstalled = when (appInfo.gameSource) {
                                     GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                     GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId)
+                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                                     GameSource.CUSTOM_GAME -> true
                                     else -> false
                                 }
@@ -558,7 +561,7 @@ internal fun GameInfoBlock(
                     // GOG and Epic games - check installation status from their respective services
                     val isInstalled = when (appInfo.gameSource) {
                         GameSource.GOG -> GOGService.isGameInstalled(appInfo.appId)
-                        GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId)
+                        GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                         else -> false
                     }
                     val text = if (isInstalled) {
@@ -655,6 +658,7 @@ fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSi
         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.EPIC  -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 

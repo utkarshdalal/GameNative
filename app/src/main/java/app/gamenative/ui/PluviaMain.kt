@@ -81,15 +81,15 @@ import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
+import java.io.File
+import java.util.Date
+import java.util.EnumSet
+import kotlin.reflect.KFunction2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.io.File
-import java.util.Date
-import java.util.EnumSet
-import kotlin.reflect.KFunction2
 
 @Composable
 fun PluviaMain(
@@ -180,7 +180,7 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
-                    if (SteamService.isGameRunning){
+                    if (SteamService.isGameRunning) {
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
                     } else if (hasBack) {
                         // TODO: check if back leads to log out and present confidence modal
@@ -278,8 +278,7 @@ fun PluviaMain(
                                         onSuccess = viewModel::launchApp,
                                     )
                                 }
-                            }
-                            else if (PluviaApp.xEnvironment == null) {
+                            } else if (PluviaApp.xEnvironment == null) {
                                 Timber.i("Navigating to library")
                                 navController.navigate(PluviaScreen.Home.route)
 
@@ -294,7 +293,7 @@ fun PluviaMain(
                                         message = context.getString(
                                             R.string.main_update_available_message,
                                             currentUpdateInfo.versionName,
-                                            currentUpdateInfo.releaseNotes?.let { "\n\n$it" } ?: ""
+                                            currentUpdateInfo.releaseNotes?.let { "\n\n$it" } ?: "",
                                         ),
                                         confirmBtnText = context.getString(R.string.main_update_button),
                                         dismissBtnText = context.getString(R.string.main_later_button),
@@ -405,7 +404,8 @@ fun PluviaMain(
 
             // Start GOGService if user has GOG
             if (app.gamenative.service.gog.GOGService.hasStoredCredentials(context) &&
-                !app.gamenative.service.gog.GOGService.isRunning) {
+                !app.gamenative.service.gog.GOGService.isRunning
+            ) {
                 Timber.tag("GOG").d("[PluviaMain]: Starting GOGService for logged-in user")
                 app.gamenative.service.gog.GOGService.start(context)
             } else {
@@ -414,7 +414,8 @@ fun PluviaMain(
 
             // Start EpicService if user has Epic credentials
             if (app.gamenative.service.epic.EpicService.hasStoredCredentials(context) &&
-                !app.gamenative.service.epic.EpicService.isRunning) {
+                !app.gamenative.service.epic.EpicService.isRunning
+            ) {
                 Timber.d("[PluviaMain]: Starting EpicService for logged-in user")
                 app.gamenative.service.epic.EpicService.start(context)
             }
@@ -519,6 +520,7 @@ fun PluviaMain(
                 setMessageDialogState(MessageDialogState(false))
             }
         }
+
         DialogType.SUPPORT -> {
             onConfirmClick = {
                 uriHandler.openUri(Constants.Misc.KO_FI_LINK)
@@ -756,7 +758,7 @@ fun PluviaMain(
                             versionName = updateInfo.versionName,
                             onProgress = { progress ->
                                 viewModel.setLoadingDialogProgress(progress)
-                            }
+                            },
                         )
 
                         viewModel.setLoadingDialogVisible(false)
@@ -974,7 +976,7 @@ fun PluviaMain(
                         CoroutineScope(Dispatchers.Main).launch {
                             val currentRoute = navController.currentBackStackEntry
                                 ?.destination
-                                ?.route          // ← this is the screen’s route string
+                                ?.route // ← this is the screen’s route string
 
                             if (currentRoute == PluviaScreen.XServer.route) {
                                 navController.popBackStack()
@@ -1057,7 +1059,9 @@ fun preLaunchApp(
                 context = context,
             ).await()
         }
-        if (container.containerVariant.equals(Container.GLIBC) && !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")) {
+        if (container.containerVariant.equals(Container.GLIBC) &&
+            !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")
+        ) {
             setLoadingMessage("Downloading Wine")
             SteamService.downloadImageFsPatches(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
@@ -1065,21 +1069,25 @@ fun preLaunchApp(
                 context = context,
             ).await()
         } else {
-            if (container.wineVersion.contains("proton-9.0-arm64ec") && !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")) {
+            if (container.wineVersion.contains("proton-9.0-arm64ec") &&
+                !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
+            ) {
                 setLoadingMessage("Downloading arm64ec Proton")
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                     this,
                     context = context,
-                    "proton-9.0-arm64ec.txz"
+                    "proton-9.0-arm64ec.txz",
                 ).await()
-            } else if (container.wineVersion.contains("proton-9.0-x86_64") && !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")) {
+            } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
+                !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
+            ) {
                 setLoadingMessage("Downloading x86_64 Proton")
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                     this,
                     context = context,
-                    "proton-9.0-x86_64.txz"
+                    "proton-9.0-x86_64.txz",
                 ).await()
             }
             if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
@@ -1100,13 +1108,15 @@ fun preLaunchApp(
                 }
             }
         }
-        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")) {
+        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
+            !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
+        ) {
             setLoadingMessage("Downloading extras")
             SteamService.downloadFile(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
-                "experimental-drm-20260116.tzst"
+                "experimental-drm-20260116.tzst",
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
@@ -1123,13 +1133,14 @@ fun preLaunchApp(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
-                "steam-token.tzst"
+                "steam-token.tzst",
             ).await()
         }
-        val loadingMessage = if (container.containerVariant.equals(Container.GLIBC))
+        val loadingMessage = if (container.containerVariant.equals(Container.GLIBC)) {
             context.getString(R.string.main_installing_glibc)
-        else
+        } else {
             context.getString(R.string.main_installing_bionic)
+        }
         setLoadingMessage(loadingMessage)
         val imageFsInstallSuccess =
             ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
@@ -1194,29 +1205,30 @@ fun preLaunchApp(
             return@launch
         }
 
-       // For Epic Games, sync cloud saves before launch
-       val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
-       if (isEpicGame) {
-           Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
+        // For Epic Games, sync cloud saves before launch
+        val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
+        if (isEpicGame) {
+            Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
 
-           // Sync cloud saves (download latest saves before playing)
-           Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
-           val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
-               context = context,
-               appId = appId
-           )
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            // Sync cloud saves (download latest saves before playing)
+            Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
+            val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+                context = context,
+                appId = gameId,
+            )
 
-           if (!syncSuccess) {
-               Timber.tag("Epic").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
-               // Don't block launch on sync failure - log warning and continue
-           } else {
-               Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
-           }
+            if (!syncSuccess) {
+                Timber.tag("Epic").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
+                // Don't block launch on sync failure - log warning and continue
+            } else {
+                Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
+            }
 
-           setLoadingDialogVisible(false)
-           onSuccess(context, appId)
-           return@launch
-       }
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
 
         // For Steam games, sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
@@ -1249,7 +1261,7 @@ fun preLaunchApp(
                         message = context.getString(
                             R.string.main_save_conflict_message,
                             Date(postSyncInfo.localTimestamp).toString(),
-                            Date(postSyncInfo.remoteTimestamp).toString()
+                            Date(postSyncInfo.remoteTimestamp).toString(),
                         ),
                         dismissBtnText = context.getString(R.string.main_keep_local),
                         confirmBtnText = context.getString(R.string.main_keep_remote),
@@ -1292,6 +1304,7 @@ fun preLaunchApp(
                     )
                 }
             }
+
             SyncResult.UnknownFail,
             SyncResult.DownloadFail,
             SyncResult.UpdateFail,
@@ -1334,7 +1347,7 @@ fun preLaunchApp(
                                         R.string.main_upload_in_progress_message,
                                         gameName,
                                         pro.machineName,
-                                        dateStr
+                                        dateStr,
                                     ),
                                     dismissBtnText = context.getString(R.string.ok),
                                 ),
@@ -1351,7 +1364,7 @@ fun preLaunchApp(
                                         R.string.main_pending_upload_message,
                                         gameName,
                                         pro.machineName,
-                                        dateStr
+                                        dateStr,
                                     ),
                                     confirmBtnText = context.getString(R.string.main_play_anyway),
                                     dismissBtnText = context.getString(R.string.cancel),
@@ -1369,7 +1382,7 @@ fun preLaunchApp(
                                         R.string.main_app_running_other_device,
                                         pro.machineName,
                                         gameName,
-                                        dateStr
+                                        dateStr,
                                     ),
                                     confirmBtnText = context.getString(R.string.main_play_anyway),
                                     dismissBtnText = context.getString(R.string.cancel),

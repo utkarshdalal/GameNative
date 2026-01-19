@@ -2,20 +2,22 @@ package app.gamenative.service.epic
 
 import android.content.Context
 import app.gamenative.data.EpicGame
+import app.gamenative.data.LaunchInfo
+import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.EpicGameDao
+import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.File
 
 /**
  * EpicManager handles Epic Games library management
@@ -56,7 +58,7 @@ class EpicManager @Inject constructor(
         val update_type: String,
     )
 
-    data class LibraryItem(
+    data class EpicLibraryItem(
         val namespace: String,
         val catalogItemId: String?,
         val appName: String,
@@ -80,7 +82,7 @@ class EpicManager @Inject constructor(
 
     data class LibraryItemsResponse(
         val responseMetadata: ResponseMetadata,
-        val records: List<LibraryItem>?,
+        val records: List<EpicLibraryItem>?,
     )
 
     data class ResponseMetadata(
@@ -135,7 +137,7 @@ class EpicManager @Inject constructor(
         val additionalCommandline: String? = null,
         val processNames: String? = null,
         val gameId: String? = null,
-        val executableName: String? = null
+        val executableName: String? = null,
     )
 
     data class EpicReleaseInfo(
@@ -178,6 +180,7 @@ class EpicManager @Inject constructor(
         val baseProductId: String?,
         val mainGameItem: EpicMainGameItem?,
     )
+
     /**
      * Refresh the entire library (called manually by user or after login)
      * Fetches all games from Epic via Legendary and updates the database
@@ -248,6 +251,7 @@ class EpicManager @Inject constructor(
             Result.failure(e)
         }
     }
+
     /**
      *
      * Returns list of library items with app names, namespaces, and catalog IDs
@@ -344,41 +348,41 @@ class EpicManager @Inject constructor(
         }
     }
 
-        suspend fun getInstalledexe(appId: Int): String {
-            // Strip EPIC_ prefix to get the raw Epic app name
-            val game = getGameById(appId)
-            if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
-                Timber.tag("Epic").e("Game not installed: ${appId}")
-                return ""
-            }
-
-            // For now, return the install path - actual executable detection would require
-            // parsing the game's launch manifest or config files
-            // Most Epic games have a .exe in the root or Binaries folder
-            val installDir = File(game.installPath)
-            if (!installDir.exists()) {
-                Timber.tag("Epic").e("Install directory does not exist: ${game.installPath}")
-                return ""
-            }
-
-            // Try to find the main executable
-            // Common patterns: Game.exe, GameName.exe, or in Binaries/Win64/
-            val exeFiles = installDir.walk()
-                .filter { it.extension.equals("exe", ignoreCase = true) }
-                .filter { !it.name.contains("UnityCrashHandler", ignoreCase = true) }
-                .filter { !it.name.contains("UnrealCEFSubProcess", ignoreCase = true) }
-                .sortedBy { it.absolutePath.length } // Prefer shorter paths (usually main exe)
-                .toList()
-
-            val mainExe = exeFiles.firstOrNull()
-            if (mainExe != null) {
-                Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
-                return mainExe.absolutePath
-            }
-
-            Timber.tag("Epic").w("No executable found in ${game.installPath}")
+    suspend fun getInstalledExe(appId: Int): String {
+        // Strip EPIC_ prefix to get the raw Epic app name
+        val game = getGameById(appId)
+        if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
+            Timber.tag("Epic").e("Game not installed: $appId")
             return ""
         }
+
+        // For now, return the install path - actual executable detection would require
+        // parsing the game's launch manifest or config files
+        // Most Epic games have a .exe in the root or Binaries folder
+        val installDir = File(game.installPath)
+        if (!installDir.exists()) {
+            Timber.tag("Epic").e("Install directory does not exist: ${game.installPath}")
+            return ""
+        }
+
+        // Try to find the main executable
+        // Common patterns: Game.exe, GameName.exe, or in Binaries/Win64/
+        val exeFiles = installDir.walk()
+            .filter { it.extension.equals("exe", ignoreCase = true) }
+            .filter { !it.name.contains("UnityCrashHandler", ignoreCase = true) }
+            .filter { !it.name.contains("UnrealCEFSubProcess", ignoreCase = true) }
+            .sortedBy { it.absolutePath.length } // Prefer shorter paths (usually main exe)
+            .toList()
+
+        val mainExe = exeFiles.firstOrNull()
+        if (mainExe != null) {
+            Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
+            return mainExe.absolutePath
+        }
+
+        Timber.tag("Epic").w("No executable found in ${game.installPath}")
+        return ""
+    }
 
     fun getWineStartCommand(
         libraryItem: LibraryItem,
@@ -388,10 +392,8 @@ class EpicManager @Inject constructor(
         envVars: com.winlator.core.envvars.EnvVars,
         guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
     ): String {
-
-        // Strip EPIC_ prefix to get the raw Epic app name
         val game = runBlocking {
-            getGameById(libraryItem.appId)
+            getGameById(libraryItem.gameId)
         }
 
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
@@ -401,7 +403,7 @@ class EpicManager @Inject constructor(
 
         // Get the executable path
         val exePath = runBlocking {
-            getInstalledExe(libraryItem)
+            getInstalledExe(game.appId)
         }
 
         if (exePath.isEmpty()) {
@@ -422,7 +424,6 @@ class EpicManager @Inject constructor(
         return "\"$winePath\""
     }
 
-
     private suspend fun fetchGameInfo(
         context: Context,
         game: ParsedLibraryItem,
@@ -441,7 +442,7 @@ class EpicManager @Inject constructor(
 
             val country = game.country ?: "US" // Do we really need this?
 
-            //! We should expertiment with the country to see what affects language downloads
+            // ! We should expertiment with the country to see what affects language downloads
             val url = "${EpicConstants.EPIC_CATALOG_API_URL}/shared/namespace/${game.namespace}/bulk/items" +
                 "?id=${game.catalogItemId}&includeDLCDetails=true&includeMainGameDetails=true" +
                 "&country=$country"
@@ -518,7 +519,7 @@ class EpicManager @Inject constructor(
             thirdPartyManagedApp = getAttribute("ThirdPartyManagedApp"),
             thirdPartyManagedProvider = getAttribute("ThirdPartyManagedProvider"),
             partnerLinkType = getAttribute("PartnerLinkType"),
-            executableName = getAttribute("MainWindowProcessName")
+            executableName = getAttribute("MainWindowProcessName"),
         )
     }
 
@@ -612,10 +613,12 @@ class EpicManager @Inject constructor(
         val thirdPartyApp = listOfNotNull(
             parsedAttributes.thirdPartyManagedApp,
             parsedAttributes.thirdPartyManagedProvider,
-            parsedAttributes.partnerLinkType
+            parsedAttributes.partnerLinkType,
         ).firstOrNull() ?: ""
 
-        val isEaManaged = if(parsedAttributes.thirdPartyManagedApp != null && parsedAttributes.thirdPartyManagedApp.lowercase() in listOf("origin", "the ea app")){
+        val isEaManaged = if (parsedAttributes.thirdPartyManagedApp != null &&
+            parsedAttributes.thirdPartyManagedApp.lowercase() in listOf("origin", "the ea app")
+        ) {
             true
         } else {
             false
@@ -715,12 +718,11 @@ class EpicManager @Inject constructor(
         }
     }
 
-    suspend fun uninstall(appId: String) {
+    suspend fun uninstall(appId: Int) {
         withContext(Dispatchers.IO) {
             epicGameDao.uninstall(appId)
         }
     }
-
 
     /**
      * Start background sync (called after login)
@@ -738,17 +740,17 @@ class EpicManager @Inject constructor(
             Timber.tag("Epic").i("Starting Epic library background sync...")
             Result.success(Unit)
 
-             val result = refreshLibrary(context)
+            val result = refreshLibrary(context)
 
-             if (result.isSuccess) {
-                 val count = result.getOrNull() ?: 0
-                 Timber.tag("Epic").i("Background sync completed: $count games synced")
-                 Result.success(Unit)
-             } else {
-                 val error = result.exceptionOrNull()
-                 Timber.e(error, "Background sync failed: ${error?.message}")
-                 Result.failure(error ?: Exception("Background sync failed"))
-             }
+            if (result.isSuccess) {
+                val count = result.getOrNull() ?: 0
+                Timber.tag("Epic").i("Background sync completed: $count games synced")
+                Result.success(Unit)
+            } else {
+                val error = result.exceptionOrNull()
+                Timber.e(error, "Background sync failed: ${error?.message}")
+                Result.failure(error ?: Exception("Background sync failed"))
+            }
         } catch (e: Exception) {
             Timber.e(e, "Failed to sync Epic library in background")
             Result.failure(e)
@@ -757,14 +759,13 @@ class EpicManager @Inject constructor(
 
     data class ManifestResult(
         val manifestBytes: ByteArray,
-        val cdnUrls: List<CdnUrl>
+        val cdnUrls: List<CdnUrl>,
     )
-
 
     data class CdnUrl(
         val baseUrl: String,
         val authQueryParams: String,
-        val cloudDir: String = ""  // Full build path for chunk downloads
+        val cloudDir: String = "", // Full build path for chunk downloads
     )
 
     /**
@@ -776,7 +777,7 @@ class EpicManager @Inject constructor(
         context: Context,
         namespace: String,
         catalogItemId: String,
-        appName: String
+        appName: String,
     ): Result<ManifestResult> = withContext(Dispatchers.IO) {
         try {
             // Get credentials
@@ -792,8 +793,8 @@ class EpicManager @Inject constructor(
 
             // Fetch manifest URL from Epic API
             val manifestUrl = "${EpicConstants.EPIC_LAUNCHER_API_URL}/launcher/api/public/assets/v2/platform" +
-                    "/Windows/namespace/$namespace/catalogItem/$catalogItemId/app" +
-                    "/$appName/label/Live"
+                "/Windows/namespace/$namespace/catalogItem/$catalogItemId/app" +
+                "/$appName/label/Live"
 
             Timber.tag("Epic").d("Fetching manifest metadata from: $manifestUrl")
 
@@ -944,7 +945,7 @@ class EpicManager @Inject constructor(
             }
 
             // Fetch manifest using shared function
-            val manifestResult = fetchManifestFromEpic(context, game.namespace, game.id, game.appName)
+            val manifestResult = fetchManifestFromEpic(context, game.namespace, game.catalogId, game.appName)
             if (manifestResult.isFailure) {
                 Timber.tag("Epic").w("Failed to fetch manifest: ${manifestResult.exceptionOrNull()?.message}")
                 return@withContext ManifestSizes(installSize = 0L, downloadSize = 0L)

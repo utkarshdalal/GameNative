@@ -1,9 +1,9 @@
 package app.gamenative.service.epic
 
 import android.content.Context
+import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.utils.Net
-import app.gamenative.data.EpicGame
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -50,9 +50,9 @@ object EpicCloudSavesManager {
     private val baseCloudSyncUrl = "https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com"
 
     private val httpClient = OkHttpClient.Builder()
-    .connectTimeout(30, TimeUnit.SECONDS)
-    .readTimeout(30, TimeUnit.SECONDS)
-    .build()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     data class CloudFileInfo(
         val hash: String,
@@ -65,7 +65,7 @@ object EpicCloudSavesManager {
         UPLOAD,
         DOWNLOAD,
         CONFLICT,
-        NONE
+        NONE,
     }
 
     /**
@@ -78,7 +78,7 @@ object EpicCloudSavesManager {
     suspend fun syncCloudSaves(
         context: Context,
         appId: Int,
-        preferredAction: String = "auto"
+        preferredAction: String = "auto",
     ): Boolean = withContext(Dispatchers.IO) {
         // Check if sync is already in progress for this appId
         syncMutex.withLock {
@@ -125,11 +125,14 @@ object EpicCloudSavesManager {
             // 3. Execute sync action
             val result = when (action) {
                 SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
+
                 SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game)
+
                 SyncAction.CONFLICT -> {
                     Timber.tag("Epic").w("[Cloud Saves] Conflict detected - resolving via timestamp comparison")
                     resolveConflict(context, creds.accountId, game)
                 }
+
                 SyncAction.NONE -> {
                     Timber.tag("Epic").i("[Cloud Saves] No sync needed")
                     true
@@ -159,7 +162,7 @@ object EpicCloudSavesManager {
         context: Context,
         accountId: String,
         game: app.gamenative.data.EpicGame,
-        preferredAction: String
+        preferredAction: String,
     ): SyncAction = withContext(Dispatchers.IO) {
         try {
             // Force action if requested
@@ -335,7 +338,7 @@ object EpicCloudSavesManager {
     private suspend fun resolveConflict(
         context: Context,
         accountId: String,
-        game: EpicGame
+        game: EpicGame,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting conflict resolution for ${game.appId}")
@@ -368,7 +371,7 @@ object EpicCloudSavesManager {
             val cloudSaves = cloudSavesResult.getOrNull()!!
             val (manifestPath, manifestInfo) = findLatestManifest(cloudSaves.files) ?: run {
                 Timber.tag("Epic").w("[Cloud Saves] No manifest in cloud, uploading all local files")
-                return@withContext uploadSaves(context, game.appId, accountId, game)
+                return@withContext uploadSaves(context, accountId, game)
             }
 
             // 3. Download and parse manifest to get cloud file list with timestamps
@@ -383,7 +386,7 @@ object EpicCloudSavesManager {
             // Validate manifest is not empty
             if (manifestBytes.isEmpty()) {
                 Timber.tag("Epic").w("[Cloud Saves] Cloud manifest is empty, uploading all local files")
-                return@withContext uploadSaves(context, game.appId, accountId, game)
+                return@withContext uploadSaves(context, accountId, game)
             }
 
             val manifest = try {
@@ -392,7 +395,7 @@ object EpicCloudSavesManager {
                 Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse manifest (size: ${manifestBytes.size} bytes)")
                 // If manifest is corrupt, upload our local version
                 Timber.tag("Epic").w("[Cloud Saves] Manifest parse failed, uploading local files")
-                return@withContext uploadSaves(context, game.appId, accountId, game)
+                return@withContext uploadSaves(context, accountId, game)
             }
 
             // Build map of cloud files with their modification times
@@ -420,10 +423,12 @@ object EpicCloudSavesManager {
                         Timber.tag("Epic").i("[Cloud Saves] Local file is newer: $path (local: $localTime > cloud: $cloudTime)")
                         toUpload.add(path)
                     }
+
                     cloudTime > localTime -> {
                         Timber.tag("Epic").i("[Cloud Saves] Cloud file is newer: $path (cloud: $cloudTime > local: $localTime)")
                         toDownload.add(path)
                     }
+
                     else -> {
                         Timber.tag("Epic").d("[Cloud Saves] Files have same timestamp, skipping: $path")
                     }
@@ -497,7 +502,7 @@ object EpicCloudSavesManager {
                                     } else {
                                         val partData = chunkData.copyOfRange(
                                             chunkPart.offset.toInt(),
-                                            (chunkPart.offset + chunkPart.size).toInt()
+                                            (chunkPart.offset + chunkPart.size).toInt(),
                                         )
                                         output.write(partData)
                                     }
@@ -662,7 +667,7 @@ object EpicCloudSavesManager {
                                 // Extract the specific part of the chunk for this file
                                 val partData = chunkData.copyOfRange(
                                     chunkPart.offset.toInt(),
-                                    (chunkPart.offset + chunkPart.size).toInt()
+                                    (chunkPart.offset + chunkPart.size).toInt(),
                                 )
                                 output.write(partData)
                             }
@@ -691,10 +696,10 @@ object EpicCloudSavesManager {
     private suspend fun uploadSaves(
         context: Context,
         accountId: String,
-        game: EpicGame
+        game: EpicGame,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            Timber.tag("Epic").i("[Cloud Saves] Starting upload for $appId")
+            Timber.tag("Epic").i("[Cloud Saves] Starting upload for $game.appId")
 
             // 1. Get local save directory
             val saveDir = resolveSaveDirectory(context, game, accountId) ?: run {
@@ -766,7 +771,7 @@ object EpicCloudSavesManager {
 
                         // Update sync timestamp
                         val timestamp = java.time.Instant.now().toString()
-                        setSyncTimestamp(context, appId, timestamp)
+                        setSyncTimestamp(context, game.appId, timestamp)
 
                         Timber.tag("Epic").i("[Cloud Saves] Upload complete: $uploadedChunks chunks uploaded")
                         return@withContext true
@@ -787,7 +792,7 @@ object EpicCloudSavesManager {
     private suspend fun requestWriteLinks(
         context: Context,
         appName: String,
-        fileNames: List<String>
+        fileNames: List<String>,
     ): Map<String, String> = withContext(Dispatchers.IO) {
         try {
             val credentialsResult = EpicAuthManager.getStoredCredentials(context)
@@ -892,7 +897,7 @@ object EpicCloudSavesManager {
     private fun packageSaveFiles(
         saveDir: File,
         game: EpicGame,
-        accountId: String
+        accountId: String,
     ): Map<String, ByteArray> {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Packaging files from: ${saveDir.absolutePath}")
@@ -971,7 +976,7 @@ object EpicCloudSavesManager {
                             guid = guid,
                             offset = offset,
                             size = size,
-                            fileOffset = partFileOffset
+                            fileOffset = partFileOffset,
                         )
 
                         fileManifest.chunkParts.add(chunkPart)
@@ -1010,7 +1015,7 @@ object EpicCloudSavesManager {
     private fun finalizeChunk(
         data: ByteArray,
         chunkNum: Int,
-        packagedFiles: MutableMap<String, ByteArray>
+        packagedFiles: MutableMap<String, ByteArray>,
     ): app.gamenative.service.epic.manifest.ChunkInfo {
         // Pad to 1 MB if needed
         val paddedData = if (data.size < 1024 * 1024) {
@@ -1101,7 +1106,7 @@ object EpicCloudSavesManager {
         game: EpicGame,
         accountId: String,
         chunks: List<app.gamenative.service.epic.manifest.ChunkInfo>,
-        fileManifests: List<app.gamenative.service.epic.manifest.FileManifest>
+        fileManifests: List<app.gamenative.service.epic.manifest.FileManifest>,
     ): app.gamenative.service.epic.manifest.EpicManifest {
         val manifest = app.gamenative.service.epic.manifest.BinaryManifest()
 
@@ -1195,6 +1200,7 @@ object EpicCloudSavesManager {
                     // Go up one directory
                     normalizedParts.removeAt(normalizedParts.lastIndex)
                 }
+
                 part != "." && part.isNotEmpty() -> {
                     // Add non-empty, non-current-dir parts
                     normalizedParts.add(part)
@@ -1251,15 +1257,15 @@ object EpicCloudSavesManager {
         return actualPath
     }
 
-        private fun getSyncTimestamp(context: Context, appId: Int): String? {
-            val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
-            return prefs.getString("sync_timestamp_$appId", null)
-        }
+    private fun getSyncTimestamp(context: Context, appId: Int): String? {
+        val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
+        return prefs.getString("sync_timestamp_$appId", null)
+    }
 
-        private fun setSyncTimestamp(context: Context, appId: Int, timestamp: String) {
-            val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
-            prefs.edit().putString("sync_timestamp_$appId", timestamp).apply()
-        }
+    private fun setSyncTimestamp(context: Context, appId: Int, timestamp: String) {
+        val prefs = context.getSharedPreferences("epic_cloud_saves", Context.MODE_PRIVATE)
+        prefs.edit().putString("sync_timestamp_$appId", timestamp).apply()
+    }
 
     /**
      * Decompress data if it's GZIP compressed, otherwise return as-is
