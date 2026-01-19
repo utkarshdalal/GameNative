@@ -92,7 +92,7 @@ class GOGAppScreen : BaseAppScreen() {
         // Listen for install status changes to refresh game data
         LaunchedEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-                if (event.appId == libraryItem.gameId.toString()) {
+                if (event.appId == libraryItem.gameId) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
                     refreshTrigger++
                 }
@@ -467,7 +467,7 @@ class GOGAppScreen : BaseAppScreen() {
         // Listen for download status changes
         val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId.toString()}")
-            if (event.appId == libraryItem.gameId.toString()) {
+            if (event.appId == libraryItem.gameId) {
                 Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.appId}, isDownloading=${event.isDownloading}")
                 if (event.isDownloading) {
                     // Download started - attach progress listener
@@ -512,7 +512,7 @@ class GOGAppScreen : BaseAppScreen() {
         // Listen for install status changes
         val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] LibraryInstallStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId.toString()}")
-            if (event.appId == libraryItem.gameId.toString()) {
+            if (event.appId == libraryItem.gameId)) {
                 Timber.tag(TAG).d("[OBSERVE] Install status changed for ${libraryItem.appId}, calling onStateChanged()")
                 onStateChanged()
             }
