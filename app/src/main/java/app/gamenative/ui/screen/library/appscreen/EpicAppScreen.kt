@@ -97,17 +97,17 @@ class EpicAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
     ): GameDisplayInfo {
         Timber.tag(TAG).d("getGameDisplayInfo: appId=${libraryItem.appId}, name=${libraryItem.name}")
-        // For Epic games, appId has EPIC_ prefix, strip it to get the raw Epic app name
-        val appId = extractGameIdFromContainerId(libraryItem.appId)
+        // Use gameId to look up the Epic game
+        val gameId = libraryItem.gameId
 
         // Add a refresh trigger to re-fetch game data when install status changes
         var refreshTrigger by remember { mutableStateOf(0) }
 
         // Listen for install status changes to refresh game data
-        DisposableEffect(appId) {
+        DisposableEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-                if (event.appId == appId) {
-                    Timber.tag(TAG).d("Install status changed, refreshing game data for $appId")
+                if (event.appId == gameId) {
+                    Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
                     refreshTrigger++
                 }
             }
@@ -118,8 +118,8 @@ class EpicAppScreen : BaseAppScreen() {
         }
 
         // Fetch install size from manifest if not already available
-        LaunchedEffect(appId) {
-            val game = EpicService.getEpicGameOf(appId)
+        LaunchedEffect(gameId) {
+            val game = EpicService.getEpicGameOf(gameId)
             if (
                 game != null &&
                 !game.isInstalled &&
@@ -128,7 +128,7 @@ class EpicAppScreen : BaseAppScreen() {
                 Timber.tag("Epic").d("Install size not available for ${game.title}, fetching from manifest...")
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     try {
-                        val sizes = EpicService.fetchManifestSizes(context, game.appId)
+                        val sizes = EpicService.fetchManifestSizes(context, game.id)
                         if (sizes.installSize > 0L || sizes.downloadSize > 0L) {
                             Timber.tag("Epic").i(
                                 "Fetched sizes for ${game.title}: install=${sizes.installSize} download=${sizes.downloadSize}",
@@ -149,8 +149,8 @@ class EpicAppScreen : BaseAppScreen() {
             }
         }
 
-        val epicGame = remember(appId, refreshTrigger) {
-            val game = EpicService.getEpicGameOf(appId)
+        val epicGame = remember(gameId, refreshTrigger) {
+            val game = EpicService.getEpicGameOf(gameId)
 
             if (game != null) {
                 val dlcTitles = EpicService.getDLCForGame(game.id)
@@ -221,10 +221,8 @@ class EpicAppScreen : BaseAppScreen() {
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
         Timber.tag(TAG).d("isInstalled: checking appId=${libraryItem.appId}")
 
-        val appId = libraryItem.appId.get()
         return try {
-            // Strip EPIC_ prefix to get raw Epic app name for Legendary CLI operations
-            val epicGame = EpicService.getEpicGameOf(libraryItem.appId)
+            val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
             val installed = epicGame?.isInstalled ?: false
             Timber.tag(TAG).d("isInstalled: appId=${libraryItem.appId}, result=$installed")
             installed
@@ -262,25 +260,25 @@ class EpicAppScreen : BaseAppScreen() {
         val game = EpicService.getEpicGameOf(libraryItem.gameId)
 
         if (game == null) {
-            Timber.e("No game found with id: ${libraryItem.gameId}")
+            Timber.e("No game found with gameId: ${libraryItem.gameId}")
             return
         }
 
-        val appId = game.appId
-        val downloadInfo = EpicService.getDownloadInfo(appId)
+        val gameId = libraryItem.gameId
+        val downloadInfo = EpicService.getDownloadInfo(gameId)
         val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
         val installed = isInstalled(context, libraryItem)
 
-        Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, appId=$appId, isDownloading=$isDownloading, installed=$installed")
+        Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, gameId=$gameId, isDownloading=$isDownloading, installed=$installed")
 
         if (isDownloading) {
             // Cancel ongoing download
-            Timber.tag(TAG).i("Cancelling Epic download for: $appId")
-            EpicService.cleanupDownload(appId)
+            Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
+            EpicService.cleanupDownload(gameId)
             downloadInfo.cancel()
         } else if (installed) {
             // Already installed: launch game
-            Timber.tag(TAG).i("Epic game already installed, launching: $appId")
+            Timber.tag(TAG).i("Epic game already installed, launching: $gameId")
             onClickPlay(false)
         } else {
             // Show install confirmation dialog
@@ -324,11 +322,21 @@ class EpicAppScreen : BaseAppScreen() {
      * Delegates to EpicService/EpicManager for proper service layer separation
      */
     private fun performDownload(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
-        Timber.i("Starting Epic game download: $appId")
+        Timber.i("Starting Epic game download: ${libraryItem.gameId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Get the game to access its title/appName
+                val game = EpicService.getEpicGameOf(libraryItem.gameId)
+                if (game == null) {
+                    Timber.e("Game not found: ${libraryItem.gameId}")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Game not found", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
                 // Get install path
-                val installPath = EpicConstants.getGameInstallPath(context, appId)
+                val installPath = EpicConstants.getGameInstallPath(context, game.appName)
                 Timber.d("Downloading Epic game to: $installPath")
 
                 // Show starting download toast
@@ -341,13 +349,13 @@ class EpicAppScreen : BaseAppScreen() {
                 }
 
                 // Start download - EpicService will handle monitoring, database updates, verification, and events
-                val result = EpicService.downloadGame(context, appId, installPath)
+                val result = EpicService.downloadGame(context, libraryItem.gameId, installPath)
 
                 if (result.isSuccess) {
-                    Timber.i("Epic game download started successfully: $appId")
+                    Timber.i("Epic game download started successfully: ${libraryItem.gameId}")
                     // Success toast will be shown when download completes (monitored by EpicService)
                 } else {
-                    Timber.e("Failed to start Epic game download: $appId - ${result.exceptionOrNull()?.message}")
+                    Timber.e("Failed to start Epic game download: ${libraryItem.gameId} - ${result.exceptionOrNull()?.message}")
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context,
@@ -372,14 +380,15 @@ class EpicAppScreen : BaseAppScreen() {
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
 
-        if (isDownloading(libraryItem.appId)) {
+        if (isDownloading(context, libraryItem)) {
+            val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
             // Cancel/pause download
-            Timber.tag(TAG).i("Pausing Epic download: $appId")
-            downloadInfo.cancel()
-            EpicService.cleanupDownload(libraryItem.appId)
+            Timber.tag(TAG).i("Pausing Epic download: ${libraryItem.gameId}")
+            downloadInfo?.cancel()
+            EpicService.cleanupDownload(libraryItem.gameId)
         } else {
             // Resume download (restart from beginning for now)
-            Timber.tag(TAG).i("Resuming Epic download: $appId")
+            Timber.tag(TAG).i("Resuming Epic download: ${libraryItem.gameId}")
             onDownloadInstallClick(context, libraryItem) {}
         }
     }
@@ -387,18 +396,19 @@ class EpicAppScreen : BaseAppScreen() {
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onDeleteDownloadClick: appId=${libraryItem.appId}")
 
-        if (isDownloading(libraryItem.appId)) {
+        if (isDownloading(context, libraryItem)) {
+            val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
             // Cancel download immediately if currently downloading
-            Timber.tag(TAG).i("Cancelling active download for Epic game: $appId")
-            downloadInfo.cancel()
-            EpicService.cleanupDownload(appId)
+            Timber.tag(TAG).i("Cancelling active download for Epic game: ${libraryItem.gameId}")
+            downloadInfo?.cancel()
+            EpicService.cleanupDownload(libraryItem.gameId)
 
             android.widget.Toast.makeText(
                 context,
                 "Download cancelled",
                 android.widget.Toast.LENGTH_SHORT,
             ).show()
-        } else if (isInstalled) {
+        } else if (isInstalled(context, libraryItem)) {
             // Show uninstall confirmation dialog
             Timber.tag(TAG).i("Showing uninstall dialog for: ${libraryItem.appId}")
             showUninstallDialog(libraryItem.appId)
@@ -413,8 +423,7 @@ class EpicAppScreen : BaseAppScreen() {
         Timber.i("Uninstalling Epic game: ${libraryItem.appId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Delegate to EpicService which calls EpicManager.deleteGame
-                val result = EpicService.deleteGame(context, appId)
+                val result = EpicService.deleteGame(context, libraryItem.gameId)
 
                 if (result.isSuccess) {
                     Timber.i("Epic game uninstalled successfully: ${libraryItem.appId}")
@@ -453,7 +462,7 @@ class EpicAppScreen : BaseAppScreen() {
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
         Timber.tag(TAG).d("getInstallPath: appId=${libraryItem.appId}")
         return try {
-            val path = EpicService.getInstallPath(libraryItem.appId)
+            val path = EpicService.getInstallPath(libraryItem.gameId)
             Timber.tag(TAG).d("getInstallPath: appId=${libraryItem.appId} path=$path")
             path
         } catch (e: Exception) {
@@ -499,7 +508,7 @@ class EpicAppScreen : BaseAppScreen() {
         val options = mutableListOf<AppMenuOption>()
 
         // Add cloud sync option if game supports cloud saves
-        val epicGame = EpicService.getEpicGameOf(libraryItem.appId)
+        val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
         if (epicGame?.cloudSaveEnabled == true) {
             options.add(
                 AppMenuOption(
@@ -517,7 +526,7 @@ class EpicAppScreen : BaseAppScreen() {
                                 val result = withContext(Dispatchers.IO) {
                                     EpicCloudSavesManager.syncCloudSaves(
                                         context,
-                                        libraryItem.appId,
+                                        libraryItem.gameId,
                                         preferredAction = "download", // Force download for testing
                                     )
                                 }
@@ -581,12 +590,12 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Listen for download status changes
         val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
-            Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.appId=${libraryItem.appId}, match=${event.appId == libraryItem.appId}")
-            if (event.appId == libraryItem.appId) {
-                Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.appId}, isDownloading=${event.isDownloading}")
+            Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
+            if (event.appId == libraryItem.gameId) {
+                Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.gameId}, isDownloading=${event.isDownloading}")
                 if (event.isDownloading) {
                     // Download started - attach progress listener
-                    val downloadInfo = EpicService.getDownloadInfo(appId)
+                    val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
                     if (downloadInfo != null) {
                         // Remove previous listener if exists
                         currentProgressListener?.let { listener ->
@@ -606,12 +615,12 @@ class EpicAppScreen : BaseAppScreen() {
                                 currentProgressListener = null
                             }
                         }
-                        Timber.tag(TAG).d("[OBSERVE] Progress listener attached for $appId")
+                        Timber.tag(TAG).d("[OBSERVE] Progress listener attached for ${libraryItem.gameId}")
                     }
                 } else {
                     // Download stopped/completed - clean up listener
                     currentProgressListener?.let { listener ->
-                        val downloadInfo = EpicService.getDownloadInfo(appId)
+                        val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
                         downloadInfo?.removeProgressListener(listener)
                     }
                     onHasPartialDownloadChanged?.invoke(false)

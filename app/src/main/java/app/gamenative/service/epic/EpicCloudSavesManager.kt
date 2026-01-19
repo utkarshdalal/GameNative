@@ -196,7 +196,7 @@ object EpicCloudSavesManager {
                 return@withContext SyncAction.UPLOAD
             }
 
-            val lastSync = getSyncTimestamp(context, game.appId)
+            val lastSync = getSyncTimestamp(context, game.id)
             val cloudTimestamp = manifestInfo.lastModified
 
             // Get local newest file timestamp
@@ -341,7 +341,7 @@ object EpicCloudSavesManager {
         game: EpicGame,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            Timber.tag("Epic").i("[Cloud Saves] Starting conflict resolution for ${game.appId}")
+            Timber.tag("Epic").i("[Cloud Saves] Starting conflict resolution for ${game.id}")
 
             // 1. Get local save directory and files
             val saveDir = resolveSaveDirectory(context, game, accountId) ?: run {
@@ -528,7 +528,7 @@ object EpicCloudSavesManager {
             // 7. Update sync timestamp if both operations succeeded
             if (downloadSuccess && uploadSuccess) {
                 val timestamp = java.time.Instant.now().toString()
-                setSyncTimestamp(context, game.appId, timestamp)
+                setSyncTimestamp(context, game.id, timestamp)
                 Timber.tag("Epic").i("[Cloud Saves] Conflict resolution complete")
                 return@withContext true
             }
@@ -699,7 +699,7 @@ object EpicCloudSavesManager {
         game: EpicGame,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            Timber.tag("Epic").i("[Cloud Saves] Starting upload for $game.appId")
+            Timber.tag("Epic").i("[Cloud Saves] Starting upload for ${game.id}")
 
             // 1. Get local save directory
             val saveDir = resolveSaveDirectory(context, game, accountId) ?: run {
@@ -771,7 +771,7 @@ object EpicCloudSavesManager {
 
                         // Update sync timestamp
                         val timestamp = java.time.Instant.now().toString()
-                        setSyncTimestamp(context, game.appId, timestamp)
+                        setSyncTimestamp(context, game.id, timestamp)
 
                         Timber.tag("Epic").i("[Cloud Saves] Upload complete: $uploadedChunks chunks uploaded")
                         return@withContext true

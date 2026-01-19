@@ -28,14 +28,18 @@ interface EpicGameDao {
     @Delete
     suspend fun delete(game: EpicGame)
 
-    @Query("UPDATE epic_games SET is_installed = 0, install_path='',install_size = 0 WHERE app_id = :appId")
+    @Query("UPDATE epic_games SET is_installed = 0, install_path='',install_size = 0 WHERE id = :appId")
     suspend fun uninstall(appId: Int)
 
-    @Query("DELETE FROM epic_games WHERE app_id = :appId")
+    @Query("DELETE FROM epic_games WHERE id = :appId")
     suspend fun deleteById(appId: Int)
 
-    @Query("SELECT * FROM epic_games WHERE app_id = :appId")
+    @Query("SELECT * FROM epic_games WHERE id = :appId")
     suspend fun getById(appId: Int): EpicGame?
+
+    @Query("SELECT * FROM epic_games WHERE catalog_id = :catalogId")
+    suspend fun getByCatalogId(catalogId: String): EpicGame?
+
 
     @Query("SELECT * FROM epic_games WHERE app_name = :appName")
     suspend fun getByAppName(appName: String): EpicGame?
@@ -81,10 +85,12 @@ interface EpicGameDao {
     @Transaction
     suspend fun upsertPreservingInstallStatus(games: List<EpicGame>) {
         games.forEach { newGame ->
-            val existingGame = getById(newGame.appId)
+            // Look up by appName since id is auto-generated
+            val existingGame = getByCatalogId(newGame.catalogId)
             if (existingGame != null) {
                 // Preserve installation status, path, and size from existing game
                 val gameToInsert = newGame.copy(
+                    id = existingGame.id, // Keep the existing ID
                     isInstalled = existingGame.isInstalled,
                     installPath = existingGame.installPath,
                     installSize = existingGame.installSize,
@@ -93,7 +99,7 @@ interface EpicGameDao {
                 )
                 insert(gameToInsert)
             } else {
-                // New game, insert as-is
+                // New game, insert as-is (id = 0 will auto-generate)
                 insert(newGame)
             }
         }

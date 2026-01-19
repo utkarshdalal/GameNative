@@ -179,7 +179,7 @@ class EpicService : Service() {
 
             return try {
                 // Get the game to find its install path
-                val game = instance.epicManager.getGamebyId(appId)
+                val game = instance.epicManager.getGameById(appId)
                 if (game == null) {
                     return Result.failure(Exception("Game not found: $appId"))
                 }
@@ -204,16 +204,16 @@ class EpicService : Service() {
                 MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
                 // Uninstall from database (keeps the entry but marks as not installed)
-                instance.epicManager.uninstall(game.id)
+                instance.epicManager.uninstall(appId)
 
                 // Delete container
                 withContext(Dispatchers.Main) {
-                    ContainerUtils.deleteContainer(context, appId)
+                    ContainerUtils.deleteContainer(context, "EPIC_${game.appName}")
                 }
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged("$appId")
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId)
                 )
 
                 Timber.tag("Epic").i("Game uninstalled: $appId")
@@ -254,6 +254,12 @@ class EpicService : Service() {
             }
         }
 
+        fun getEpicGameByAppName(appName: String): EpicGame? {
+            return runBlocking {
+                getInstance()?.epicManager?.getGameByAppName(appName)
+            }
+        }
+
         fun getDLCForGame(appId: Int): List<EpicGame> {
             return runBlocking {
                 getInstance()?.epicManager?.getDLCForTitle(appId) ?: emptyList()
@@ -280,7 +286,7 @@ class EpicService : Service() {
         }
 
         suspend fun getInstalledExe(appId: Int): String {
-            return getInstance()?.epicManager?.getInstalledExe(appId)
+            return getInstance()?.epicManager?.getInstalledExe(appId) ?: ""
         }
 
         fun getWineStartCommand(
@@ -307,20 +313,27 @@ class EpicService : Service() {
         }
 
         fun downloadGame(context: Context, appId: Int, installPath: String): Result<DownloadInfo> {
-            val game = instance?.epicManager?.getGameById(appId)
+            val instance = getInstance()
+            if (instance == null) {
+                return Result.failure(Exception("Service not available"))
+            }
 
-            if(!game){
-                return Result.failure("No game found")
+            val game = runBlocking { instance.epicManager.getGameById(appId) }
+            if (game == null) {
+                return Result.failure(Exception("No game found"))
             }
 
             // Check if already downloading
-            if (instance?.activeDownloads?.containsKey(appId)) {
+            if (instance.activeDownloads.containsKey(appId)) {
                 Timber.tag("Epic").w("Download already in progress for $appId")
-                return Result.success(instance.activeDownloads[appName]!!)
+                return Result.success(instance.activeDownloads[appId]!!)
             }
 
             // Create DownloadInfo before launching coroutine to avoid race condition
-            val downloadInfo = DownloadInfo()
+            val downloadInfo = DownloadInfo(
+                gameId = appId,
+                downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList<Int>(),
+            )
             downloadInfo.setActive(true)
             instance.activeDownloads[appId] = downloadInfo
 
@@ -375,17 +388,14 @@ class EpicService : Service() {
                         )
                     }
                 } catch (e: Exception) {
-                    Timber.tag("Epic").e(e, "Download exception for $appName")
+                    Timber.tag("Epic").e(e, "Download exception for $appId")
 
                     // Emit event for UI update on exception
-                    val game = instance.epicManager.getGameByAppName(appName)
-                    if (game != null) {
-                        app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
-                        )
-                    }
+                    app.gamenative.PluviaApp.events.emitJava(
+                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
+                    )
                 } finally {
-                    instance.activeDownloads.remove(appName)
+                    instance.activeDownloads.remove(appId)
                 }
             }
 
@@ -400,7 +410,7 @@ class EpicService : Service() {
             return if (game != null) {
                 Result.success(game)
             } else {
-                Result.failure(Exception("Game not found: $appName"))
+                Result.failure(Exception("Game not found: $appId"))
             }
         }
 
@@ -437,8 +447,8 @@ class EpicService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // Track active downloads by Epic app name
-    private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
+    // Track active downloads by GameNative Int ID
+    private val activeDownloads = ConcurrentHashMap<Int, DownloadInfo>()
 
     override fun onCreate() {
         super.onCreate()
