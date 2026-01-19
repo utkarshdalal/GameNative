@@ -69,6 +69,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
 import com.winlator.alsaserver.ALSAClient
@@ -143,6 +144,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Arrays
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.name
 import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
@@ -150,6 +152,9 @@ import com.winlator.PrefManager as WinlatorPrefManager
 // Always re-extract drivers and DXVK on every launch to handle cases of container corruption
 // where games randomly stop working. Set to false once corruption issues are resolved.
 private const val ALWAYS_REEXTRACT = true
+
+// Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
+private val isExiting = AtomicBoolean(false)
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -1008,31 +1013,31 @@ fun XServerScreen(
         val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
         val profileIdStr = container.getExtra("profileId", "0")
         val profileId = profileIdStr.toIntOrNull() ?: 0
-        
+
         // Get profile, but don't load profile 0 directly (will duplicate if needed)
         var profile = if (profileId != 0) {
             manager.getProfile(profileId)
         } else {
             null  // Will create new profile below
         }
-        
+
         // Auto-create profile if using default (profile 0)
         if (profile == null) {
             val allProfiles = manager.getProfiles(false)
             val sourceProfile = manager.getProfile(0)
                 ?: allProfiles.firstOrNull { it.id == 2 }
                 ?: allProfiles.firstOrNull()
-            
+
             if (sourceProfile != null) {
                 try {
                     // Duplicate profile 0 to create game-specific profile
                     profile = manager.duplicateProfile(sourceProfile)
-                    
+
                     // Rename to game name
                     val gameName = currentAppInfo?.name ?: container.name
                     profile.setName("$gameName - Physical Controller")
                     profile.save()
-                    
+
                     // Associate with container
                     container.putExtra("profileId", profile.id.toString())
                     container.saveData()
@@ -1059,11 +1064,11 @@ fun XServerScreen(
                             // Ensure controllersLoaded is true before saving
                             // (addController sets the flag even if controller already exists)
                             profile.addController("*")
-                            
+
                             // Save profileId to container so it persists across launches
                             container.putExtra("profileId", profile.id.toString())
                             container.saveData()
-                            
+
                             // Save profile (will now write controllers since controllersLoaded = true)
                             profile.save()
                             profile.loadControllers()
@@ -1576,7 +1581,16 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.box86Preset = container.box86Preset
         guestProgramLauncherComponent.box64Preset = container.box64Preset
         guestProgramLauncherComponent.setPreUnpack {
-            unpackExecutableFile(context, container.isNeedsUnpacking, container, appId, appLaunchInfo, guestProgramLauncherComponent, containerVariantChanged, onGameLaunchError)
+            unpackExecutableFile(
+                context = context,
+                needsUnpacking = container.isNeedsUnpacking,
+                container = container,
+                appId = appId,
+                appLaunchInfo = appLaunchInfo,
+                guestProgramLauncherComponent = guestProgramLauncherComponent,
+                containerVariantChanged = containerVariantChanged,
+                onError = onGameLaunchError
+            )
         }
 
         val enableGstreamer = container.isGstreamerWorkaround()
@@ -1649,6 +1663,19 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
+    // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
+    if (container != null) {
+        if (container.isLaunchRealSteam) {
+            SteamTokenLogin(
+                steamId = PrefManager.steamUserSteamId64.toString(),
+                login = PrefManager.username,
+                token = PrefManager.refreshToken,
+                imageFs = imageFs,
+                guestProgramLauncherComponent = guestProgramLauncherComponent,
+            ).setupSteamFiles()
+        }
+    }
+
     // Log container settings before starting
     if (container != null) {
         Timber.i("---- Launching Container ----")
@@ -1674,7 +1701,7 @@ private fun setupXEnvironment(
     // Request encrypted app ticket for Steam games at launch time
     val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
     val gameIdForTicket = ContainerUtils.extractGameIdFromContainerId(appId)
-    if (!bootToContainer && !isCustomGame && gameIdForTicket != null) {
+    if (!bootToContainer && !isCustomGame && gameIdForTicket != null && !container.isLaunchRealSteam) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val ticket = SteamService.instance?.getEncryptedAppTicket(gameIdForTicket)
@@ -1833,7 +1860,7 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        if (container.isLaunchRealSteam()) {
+        if (container.isLaunchRealSteam) {
             // Launch Steam with the applaunch parameter to start the game
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
                     "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
@@ -1912,15 +1939,19 @@ private fun filterExecutablesForSteamless(executables: List<String>): List<Strin
 }
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
-    PostHog.capture(
-        event = "game_exited",
-        properties = mapOf(
-            "game_name" to appInfo?.name.toString(),
-            "session_length" to (frameRating?.sessionLengthSec ?: 0),
-            "avg_fps" to (frameRating?.avgFPS ?: 0.0),
-            "container_config" to container.containerJson,
-        ),
-    )
+
+    // Prevent duplicate PostHog events when multiple exit triggers fire simultaneously
+    if (isExiting.compareAndSet(false, true)) {
+        PostHog.capture(
+            event = "game_exited",
+            properties = mapOf(
+                "game_name" to appInfo?.name.toString(),
+                "session_length" to (frameRating?.sessionLengthSec ?: 0),
+                "avg_fps" to (frameRating?.avgFPS ?: 0.0),
+                "container_config" to container.containerJson,
+            ),
+        )
+    }
 
     // Store session data in container metadata
     frameRating?.let { rating ->
@@ -2251,76 +2282,85 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
 
-        // Scan all executables from A: drive and filter them
-        val allExecutables = ContainerUtils.scanExecutablesInADrive(container.drives)
-        Timber.i("Found ${allExecutables.size} executables in A: drive")
+        if (!container.isLaunchRealSteam && container.isUseLegacyDRM) {
+            // Scan all executables from A: drive and filter them
+            val allExecutables = ContainerUtils.scanExecutablesInADrive(container.drives)
+            Timber.i("Found ${allExecutables.size} executables in A: drive")
 
-        val filteredExecutables = filterExecutablesForSteamless(allExecutables)
-        Timber.i("Filtered to ${filteredExecutables.size} executables for Steamless processing")
+            val filteredExecutables = filterExecutablesForSteamless(allExecutables)
+            Timber.i("Filtered to ${filteredExecutables.size} executables for Steamless processing")
 
-        if (filteredExecutables.isEmpty()) {
-            Timber.w("No executables to process with Steamless")
-        } else {
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+            if (filteredExecutables.isEmpty()) {
+                Timber.w("No executables to process with Steamless")
+            } else {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
 
-            // Process each executable individually to handle errors per file
-            filteredExecutables.forEachIndexed { index, exePath ->
-                var batchFile: File? = null
-                try {
-                    val normalizedPath = exePath.replace('/', '\\')
-                    val windowsPath = "A:\\$normalizedPath"
+                // Process each executable individually to handle errors per file
+                filteredExecutables.forEachIndexed { index, exePath ->
+                    var batchFile: File? = null
+                    try {
+                        val normalizedPath = exePath.replace('/', '\\')
+                        val windowsPath = "A:\\$normalizedPath"
 
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM... (${index + 1}/${filteredExecutables.size})"))
+                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM... (${index + 1}/${filteredExecutables.size})"))
 
-                    // Create a batch file that Wine can execute, to handle paths with spaces in them
-                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper_${index}.bat")
-                    batchFile.parentFile?.mkdirs()
-                    batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
+                        // Create a batch file that Wine can execute, to handle paths with spaces in them
+                        batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper_${index}.bat")
+                        batchFile.parentFile?.mkdirs()
+                        batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
 
-                    val slCmd = "wine z:\\tmp\\steamless_wrapper_${index}.bat"
-                    val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
-                    output.append(slOutput)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error running Steamless on $exePath, continuing with next file")
-                    output.append("Error processing $exePath: ${e.message}\n")
-                } finally {
-                    // Clean up batch file
-                    batchFile?.delete()
-                }
-            }
-
-            Timber.i("Finished processing ${filteredExecutables.size} executables. Result: $output")
-
-            // Process file moving for all filtered executables
-            for (exePath in filteredExecutables) {
-                try {
-                    // Paths from scanExecutablesInADrive use forward slashes (Unix format from URI)
-                    // Use as-is for File operations (forward slashes work on Unix/Android)
-                    val unixPath = exePath.replace('\\', '/')
-                    val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
-                    val unpackedExe = File(
-                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
-                    )
-                    val originalExe = File(
-                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
-                    )
-
-                    // For logging, show Windows format
-                    val windowsPath = "A:\\${exePath.replace('/', '\\')}"
-
-                    Timber.i("Moving files for $windowsPath")
-                    if (exe.exists() && unpackedExe.exists()) {
-                        Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
-                        Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
-                        Timber.i("Successfully moved files for $windowsPath")
-                    } else {
-                        val errorMsg = "Either original exe or unpacked exe does not exist for $windowsPath. Original: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
-                        Timber.w(errorMsg)
+                        val slCmd = "wine z:\\tmp\\steamless_wrapper_${index}.bat"
+                        val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
+                        output.append(slOutput)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error running Steamless on $exePath, continuing with next file")
+                        output.append("Error processing $exePath: ${e.message}\n")
+                    } finally {
+                        // Clean up batch file
+                        batchFile?.delete()
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error moving files for $exePath, continuing with next executable")
+                }
+
+                Timber.i("Finished processing ${filteredExecutables.size} executables. Result: $output")
+
+                // Process file moving for all filtered executables
+                for (exePath in filteredExecutables) {
+                    try {
+                        // Paths from scanExecutablesInADrive use forward slashes (Unix format from URI)
+                        // Use as-is for File operations (forward slashes work on Unix/Android)
+                        val unixPath = exePath.replace('\\', '/')
+                        val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
+                        val unpackedExe = File(
+                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
+                        )
+                        val originalExe = File(
+                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
+                        )
+
+                        // For logging, show Windows format
+                        val windowsPath = "A:\\${exePath.replace('/', '\\')}"
+
+                        Timber.i("Moving files for $windowsPath")
+                        if (exe.exists() && unpackedExe.exists()) {
+                            if (originalExe.exists()) {
+                                Timber.i("Original backup exists for $windowsPath; skipping overwrite")
+                            } else {
+                                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                            }
+                            Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                            Timber.i("Successfully moved files for $windowsPath")
+                        } else {
+                            val errorMsg =
+                                "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                            Timber.w(errorMsg)
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error moving files for $exePath, continuing with next executable")
+                    }
                 }
             }
+        } else {
+            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM})")
         }
 
         output = StringBuilder()

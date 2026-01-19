@@ -11,7 +11,6 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.secrets.gradle)
     alias(libs.plugins.room)
-    id("com.chaquo.python") version "16.0.0"
 }
 
 val keystorePropertiesFile = rootProject.file("app/keystores/keystore.properties")
@@ -57,8 +56,8 @@ android {
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 8
-        versionName = "0.6.2"
+        versionCode = 9
+        versionName = "0.7.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -205,21 +204,6 @@ android {
     // }
 }
 
-chaquopy {
-    defaultConfig {
-        version = "3.11"  // Last Python version supporting armeabi-v7a (32-bit ARM)
-        pip {
-            // Install GOGDL dependencies
-            install("requests")
-        }
-    }
-    sourceSets {
-        getByName("main") {
-            srcDir("src/main/python")
-        }
-    }
-}
-
 dependencies {
     implementation(libs.material)
 
@@ -295,6 +279,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.zstd.jni)
+    testImplementation(libs.orgJson)
+    testImplementation(libs.mockwebserver)
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.8.0")
@@ -307,4 +293,6 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:realtime-kt")
 
     implementation("io.ktor:ktor-client-android:3.1.3")
+
+    implementation("com.auth0.android:jwtdecode:2.0.2")
 }

@@ -1806,7 +1806,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 appendLine("        \"MostRecent\"           \"1\"")
                 appendLine("        \"Timestamp\"            \"$epoch\"")
                 appendLine("    }")
-                appendLine("    \"currentuser\"              \"$steamId64\"")
                 appendLine("}")
             }
 
@@ -1892,6 +1891,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         this.persistentSession = rememberSession
                         this.authenticator = authenticator
                         this.deviceFriendlyName = SteamUtils.getMachineName(instance!!)
+                        this.clientOSType = EOSType.WinUnknown
                     }
 
                     val event = SteamEvent.LogonStarted(username)
@@ -1940,7 +1940,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     isWaitingForQRAuth = true
 
                     val authDetails = AuthSessionDetails().apply {
-                        deviceFriendlyName = SteamUtils.getMachineName(instance!!)
+                        this.deviceFriendlyName = SteamUtils.getMachineName(instance!!)
+                        this.clientOSType = EOSType.WinUnknown
+                        this.persistentSession = true
                     }
 
                     val authSession = steamClient.authentication.beginAuthSessionViaQR(authDetails).await()

@@ -34,26 +34,26 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE id = :gameId")
     suspend fun getById(gameId: String): GOGGame?
 
-    @Query("SELECT * FROM gog_games ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE exclude = false ORDER BY title ASC")
     fun getAll(): Flow<List<GOGGame>>
 
-    @Query("SELECT * FROM gog_games ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE exclude = false ORDER BY title ASC")
     suspend fun getAllAsList(): List<GOGGame>
 
-    @Query("SELECT * FROM gog_games WHERE is_installed = :isInstalled ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE is_installed = :isInstalled AND exclude = false ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<GOGGame>>
 
-    @Query("SELECT * FROM gog_games WHERE title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE exclude = false AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<GOGGame>>
 
     @Query("DELETE FROM gog_games")
     suspend fun deleteAll()
 
-    @Query("SELECT COUNT(*) FROM gog_games")
+    @Query("SELECT COUNT(*) FROM gog_games WHERE exclude = false")
     fun getCount(): Flow<Int>
 
     @Query("SELECT id FROM gog_games")
-    suspend fun getAllGameIds(): List<String>
+    suspend fun getAllGameIdsIncludingExcluded(): List<String>
 
     @Transaction
     suspend fun replaceAll(games: List<GOGGame>) {

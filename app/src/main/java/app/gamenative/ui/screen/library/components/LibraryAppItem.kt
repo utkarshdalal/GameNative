@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,6 +53,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -68,12 +70,12 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import java.io.File
-import timber.log.Timber
 
 @Composable
 internal fun AppItem(
@@ -217,13 +219,17 @@ internal fun AppItem(
                                     PaneType.GRID_CAPSULE -> {
                                         // Vertical grid for capsule
                                         findSteamGridDBImage("grid_capsule")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
+                                            "/library_600x900.jpg"
                                     }
+
                                     PaneType.GRID_HERO -> {
                                         // Horizontal grid for hero view
                                         findSteamGridDBImage("grid_hero")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
+                                            "/header.jpg"
                                     }
+
                                     else -> {
                                         // For list view, use heroes endpoint (not grid_hero)
                                         val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
@@ -231,17 +237,22 @@ internal fun AppItem(
                                             val folder = java.io.File(path)
                                             val heroFile = folder.listFiles()?.firstOrNull { file ->
                                                 file.name.startsWith("steamgriddb_hero") &&
-                                                !file.name.contains("grid") &&
-                                                (file.name.endsWith(".png", ignoreCase = true) ||
-                                                 file.name.endsWith(".jpg", ignoreCase = true) ||
-                                                 file.name.endsWith(".webp", ignoreCase = true))
+                                                    !file.name.contains("grid") &&
+                                                    (
+                                                        file.name.endsWith(".png", ignoreCase = true) ||
+                                                            file.name.endsWith(".jpg", ignoreCase = true) ||
+                                                            file.name.endsWith(".webp", ignoreCase = true)
+                                                        )
                                             }
                                             heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                         }
-                                        heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                        heroUrl
+                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
+                                            "/header.jpg"
                                     }
                                 }
                             }
+
                             GameSource.GOG -> {
                                 appInfo.iconHash
                             }
@@ -302,19 +313,22 @@ internal fun AppItem(
                             }
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopCenter)
+                                    .align(Alignment.TopStart)
                                     .fillMaxWidth()
                                     .background(Color.Black.copy(alpha = 0.6f))
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                             ) {
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = color,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.align(Alignment.Center),
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.TopStart),
+
+                                ) {
+                                    Text(text = text, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    GameSourceIcon(appInfo.gameSource)
+                                }
                             }
                         }
                     }
@@ -627,13 +641,21 @@ internal fun GameInfoBlock(
 
                     GameCompatibilityStatus.NOT_COMPATIBLE -> stringResource(R.string.library_not_compatible) to Color.Red
                 }
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                    color = color,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text(text = text, style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic), color = color)
+                    GameSourceIcon(appInfo.gameSource)
+                }
             }
         }
+    }
+}
+
+@Composable
+fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSize: Int = 12) {
+    when (gameSource) {
+        GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 
@@ -659,6 +681,7 @@ private fun Preview_AppItem() {
                             name = item.name,
                             iconHash = item.iconHash,
                             isShared = idx % 2 == 0,
+                            gameSource = GameSource.STEAM,
                         )
                     },
                     itemContent = {
@@ -696,7 +719,7 @@ private fun Preview_AppItemGrid() {
                         name = item.name,
                         iconHash = item.iconHash,
                         isShared = idx % 2 == 0,
-                        gameSource = GameSource.STEAM,
+                        gameSource = GameSource.CUSTOM_GAME,
                     )
                 }
 
