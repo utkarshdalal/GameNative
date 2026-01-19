@@ -848,19 +848,6 @@ object ContainerUtils {
         return container
     }
 
-    /**
-     * Checks if an appId looks like an Epic game ID
-     * Epic IDs can be UUIDs (32 hex chars) or simple strings like "Quail"
-     * They don't have STEAM_, CUSTOM_GAME_ prefix and aren't plain numeric (GOG)
-     */
-    private fun isEpicId(id: String): Boolean {
-        return !id.startsWith("STEAM_") &&
-            !id.startsWith("CUSTOM_GAME_") &&
-            !id.startsWith("EPIC_") &&
-            !id.startsWith("GOG_") &&
-            id.toIntOrNull() == null
-    }
-
     fun getOrCreateContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
 
@@ -964,55 +951,10 @@ object ContainerUtils {
             } else {
                 Timber.w("Could not find GOG game info for $gameId, skipping drive mapping update")
             }
-        } else if (gameSource == GameSource.GOG) {
-            // Ensure GOG games have the specific game directory mapped
-            val gameId = extractGameIdFromContainerId(appId)
-            val game = runBlocking { GOGService.getGOGGameOf(gameId.toString()) }
-            if (game != null && game.installPath.isNotEmpty()) {
-                val gameInstallPath = game.installPath
-                var hasCorrectDriveMapping = false
-
-                // Check if the specific game directory is already mapped
-                for (drive in Container.drivesIterator(container.drives)) {
-                    if (drive[1] == gameInstallPath) {
-                        hasCorrectDriveMapping = true
-                        break
-                    }
-                }
-
-                // If specific game directory is not mapped, add/update it
-                if (!hasCorrectDriveMapping) {
-                    val currentDrives = container.drives
-                    val drivesBuilder = StringBuilder()
-
-                    // Use A: drive for game, or next available
-                    val drive: Char = if (!currentDrives.contains("A:")) {
-                        'A'
-                    } else {
-                        Container.getNextAvailableDriveLetter(currentDrives)
-                    }
-
-                    drivesBuilder.append("$drive:$gameInstallPath")
-
-                    // Add all other drives (excluding the one we just used)
-                    for (existingDrive in Container.drivesIterator(currentDrives)) {
-                        if (existingDrive[0] != drive.toString()) {
-                            drivesBuilder.append("${existingDrive[0]}:${existingDrive[1]}")
-                        }
-                    }
-
-                    val updatedDrives = drivesBuilder.toString()
-                    container.drives = updatedDrives
-                    container.saveData()
-                    Timber.d("Updated container drives to include $drive: drive mapping for GOG game: $updatedDrives")
-                }
-            } else {
-                Timber.w("Could not find GOG game info for $gameId, skipping drive mapping update")
-            }
         } else if (gameSource == GameSource.EPIC) {
             // Ensure Epic games have the specific game directory mapped
-            val appName = appId.removePrefix("EPIC_")
-            val game = app.gamenative.service.epic.EpicService.getEpicGameByAppName(appName)
+            val gameId = extractGameIdFromContainerId(appId)
+            val game = EpicService.getEpicGameOf(gameId)
             if (game != null && game.installPath.isNotEmpty()) {
                 val gameInstallPath = game.installPath
                 var hasCorrectDriveMapping = false
