@@ -637,7 +637,9 @@ abstract class BaseAppScreen {
                 libraryItem = libraryItem,
                 onStateChanged = { requestStateRefresh(true) },
                 onProgressChanged = { progress ->
-                    downloadProgressState = progress
+                    uiScope.launch {
+                        downloadProgressState = progress
+                    }
                 },
                 onHasPartialDownloadChanged = { hasPartial ->
                     hasPartialDownloadState = hasPartial
