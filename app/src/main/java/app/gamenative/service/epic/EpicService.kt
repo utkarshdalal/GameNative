@@ -16,6 +16,7 @@ import app.gamenative.service.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -29,6 +30,11 @@ import timber.log.Timber
   * TODO: Pausing and Cancelling Downloads
   * TODO: DLC Support
  */
+ // checklist:
+ // Syncing Library
+ // Authentication
+ // Pull games correctly
+ // TODO: Check Installing works
 @AndroidEntryPoint
 class EpicService : Service() {
 
@@ -315,15 +321,13 @@ class EpicService : Service() {
         }
 
         fun downloadGame(context: Context, appId: Int, installPath: String): Result<DownloadInfo> {
-            val instance = getInstance()
-            if (instance == null) {
-                return Result.failure(Exception("Service not available"))
-            }
+            val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             val game = runBlocking { instance.epicManager.getGameById(appId) }
-            if (game == null) {
-                return Result.failure(Exception("No game found"))
-            }
+            val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
+
+
+
 
             // Check if already downloading
             if (instance.activeDownloads.containsKey(appId)) {
@@ -333,71 +337,75 @@ class EpicService : Service() {
 
             // Create DownloadInfo before launching coroutine to avoid race condition
             val downloadInfo = DownloadInfo(
+                jobCount = 1,
                 gameId = appId,
-                downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList<Int>(),
+                downloadingAppIds = CopyOnWriteArrayList<Int>(),
             )
-            downloadInfo.setActive(true)
-            instance.activeDownloads[appId] = downloadInfo
 
+            instance.activeDownloads[appId] = downloadInfo
+            downloadInfo.setActive(true)
             // Start download in background
             instance.scope.launch {
                 try {
-
-                    if (game == null) {
-                        Timber.tag("Epic").e("Game not found: $appId")
-                        return@launch
-                    }
-
+                    val commonRedistDir = File(installPath, "_CommonRedist")
                     Timber.tag("Epic").i("Starting download for ${game.title}")
 
-                    // Emit event for UI to start tracking progress
-                    app.gamenative.PluviaApp.events.emitJava(
-                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, true),
-                    )
-
                     val result = instance.epicDownloadManager.downloadGame(
-                        context = context,
-                        game = game,
-                        installPath = installPath,
-                        downloadInfo = downloadInfo,
+                        context,
+                        game,
+                        installPath,
+                        downloadInfo,
+                        "en-US",
+                        true, 
+                        commonRedistDir,
                     )
 
                     Timber.tag("Epic").d("Download result: ${if (result.isSuccess) "SUCCESS" else "FAILURE: ${result.exceptionOrNull()?.message}"}")
 
                     if (result.isSuccess) {
-                        Timber.tag("Epic").i("Download completed successfully for ${game.title}")
+                        Timber.i("[Download] Completed successfully for game $gameId")
+                        downloadInfo.setProgress(1.0f)
+                        downloadInfo.setActive(false)
 
-                        // Update game as installed
-                        val updatedGame = game.copy(
-                            isInstalled = true,
-                            installPath = installPath,
-                        )
-                        instance.epicManager.updateGame(updatedGame)
-
-                        // Emit events for UI update
-                        app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
-                        )
-                        app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId),
-                        )
+                        // Show success toast
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Download completed successfully!",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     } else {
-                        Timber.tag("Epic").e("Download failed: ${result.exceptionOrNull()?.message}")
+                        val error = result.exceptionOrNull()
+                        Timber.e(error, "[Download] Failed for game $gameId")
+                        downloadInfo.setProgress(-1.0f)
+                        downloadInfo.setActive(false)
 
-                        // Emit event for UI update on failure
-                        app.gamenative.PluviaApp.events.emitJava(
-                            app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
-                        )
+                        // Show failure toast
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Download failed: ${error?.message ?: "Unknown error"}",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                 } catch (e: Exception) {
-                    Timber.tag("Epic").e(e, "Download exception for $appId")
+                    Timber.e(e, "[Download] Exception for game $gameId")
+                    downloadInfo.setProgress(-1.0f)
+                    downloadInfo.setActive(false)
 
-                    // Emit event for UI update on exception
-                    app.gamenative.PluviaApp.events.emitJava(
-                        app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
-                    )
+                    // Show error toast
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Download error: ${e.message ?: "Unknown error"}",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
                 } finally {
                     instance.activeDownloads.remove(appId)
+                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
 

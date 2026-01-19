@@ -347,7 +347,7 @@ class EpicAppScreen : BaseAppScreen() {
      * Delegates to EpicService/EpicManager for proper service layer separation
      */
     private fun performDownload(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
-        Timber.i("Starting Epic game download: ${libraryItem.gameId}")
+        Timber.tag(TAG).i("Starting Epic game download: ${libraryItem.gameId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Get the game to access its title/appName
@@ -362,7 +362,7 @@ class EpicAppScreen : BaseAppScreen() {
 
                 // Get install path
                 val installPath = EpicConstants.getGameInstallPath(context, game.appName)
-                Timber.d("Downloading Epic game to: $installPath")
+                Timber.tag(TAG).d("Downloading Epic game to: $installPath")
 
                 // Show starting download toast
                 withContext(Dispatchers.Main) {
@@ -377,7 +377,7 @@ class EpicAppScreen : BaseAppScreen() {
                 val result = EpicService.downloadGame(context, libraryItem.gameId, installPath)
 
                 if (result.isSuccess) {
-                    Timber.i("Epic game download started successfully: ${libraryItem.gameId}")
+                    Timber.tag(TAG).i("Epic game download started successfully: ${libraryItem.gameId}")
                     // Success toast will be shown when download completes (monitored by EpicService)
                 } else {
                     Timber.e("Failed to start Epic game download: ${libraryItem.gameId} - ${result.exceptionOrNull()?.message}")
@@ -385,7 +385,7 @@ class EpicAppScreen : BaseAppScreen() {
                         android.widget.Toast.makeText(
                             context,
                             "Failed to start download: ${result.exceptionOrNull()?.message}",
-                            android.widget.Toast.LENGTH_SHORT,
+                            android.widget.Toast.LENGTH_LONG,
                         ).show()
                     }
                 }
@@ -395,7 +395,7 @@ class EpicAppScreen : BaseAppScreen() {
                     android.widget.Toast.makeText(
                         context,
                         "Download error: ${e.message}",
-                        android.widget.Toast.LENGTH_SHORT,
+                        android.widget.Toast.LENGTH_LONG,
                     ).show()
                 }
             }
@@ -445,13 +445,13 @@ class EpicAppScreen : BaseAppScreen() {
      * Delegates to EpicService/EpicManager for proper service layer separation
      */
     private fun performUninstall(context: Context, libraryItem: LibraryItem) {
-        Timber.i("Uninstalling Epic game: ${libraryItem.appId}")
+        Timber.tag(TAG).i("Uninstalling Epic game: ${libraryItem.appId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val result = EpicService.deleteGame(context, libraryItem.gameId)
 
                 if (result.isSuccess) {
-                    Timber.i("Epic game uninstalled successfully: ${libraryItem.appId}")
+                    Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
                 } else {
                     Timber.e("Failed to uninstall Epic game: ${libraryItem.appId} - ${result.exceptionOrNull()?.message}")
                     withContext(Dispatchers.Main) {
@@ -647,6 +647,7 @@ class EpicAppScreen : BaseAppScreen() {
                     currentProgressListener?.let { listener ->
                         val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
                         downloadInfo?.removeProgressListener(listener)
+                        currentProgressListener = null
                     }
                     onHasPartialDownloadChanged?.invoke(false)
                     Timber.tag(TAG).d("[OBSERVE] Download stopped/completed, listener cleaned up")

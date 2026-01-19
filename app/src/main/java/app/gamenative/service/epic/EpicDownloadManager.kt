@@ -66,6 +66,9 @@ class EpicDownloadManager @Inject constructor(
         game: EpicGame,
         installPath: String,
         downloadInfo: DownloadInfo,
+        language: String = "en-US",
+        withDlcs: Boolean = false,
+        commonRedistDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("Starting download for ${game.title} to $installPath")
@@ -102,8 +105,6 @@ class EpicDownloadManager @Inject constructor(
             val chunks = chunkDataList.elements
             val files = fileManifestList.elements
             val chunkDir = manifest.getChunkDir()
-
-
 
             // Use chunk sizes for download progress (compressed data)
             val totalSize = chunks.sumOf { it.fileSize }
