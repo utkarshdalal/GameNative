@@ -146,6 +146,13 @@ class EpicDownloadManager @Inject constructor(
             )
 
             // Download chunks in batches to avoid overwhelming the system
+            var downloadedChunks = 0
+            val totalChunks = chunks.size
+
+            // Initialize progress tracking
+            downloadInfo.setProgress(0.0f)
+            downloadInfo.emitProgressChange()
+
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
                     Timber.tag("Epic").w("Download cancelled by user")
@@ -165,6 +172,15 @@ class EpicDownloadManager @Inject constructor(
                         failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
                     )
                 }
+
+                // Update progress after each batch completes
+                downloadedChunks += chunkBatch.size
+                val progress = downloadedChunks.toFloat() / totalChunks
+                downloadInfo.setProgress(progress)
+                downloadInfo.updateStatusMessage("Downloading chunks ($downloadedChunks/$totalChunks)")
+                downloadInfo.emitProgressChange()
+
+                Timber.tag("Epic").d("Download progress: $downloadedChunks/$totalChunks chunks (${(progress * 100).toInt()}%)")
             }
 
             downloadInfo.updateStatusMessage("Decompressing and assembling files...")
