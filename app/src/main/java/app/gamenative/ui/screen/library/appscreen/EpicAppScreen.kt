@@ -152,6 +152,11 @@ class EpicAppScreen : BaseAppScreen() {
         val epicGame = remember(gameId, refreshTrigger) {
             val game = EpicService.getEpicGameOf(gameId)
 
+            // We should be able to get the developer most of the time (which can populate).
+            // The installSize & download Size are empty until we grab the manifest. We can MAYBE do this parallel and then update them.
+            // We can also get some of these bits of detail from gamesDB etc. - Release date, developer & publisher.
+            // Most import parts are id, title, namespace, appName, catalogId.
+            // We will also need to let them know whether cloudsaves are enabled.
             if (game != null) {
                 // Log all game details
                 Timber.tag(TAG).i("=== Epic Game Details ===")
@@ -161,16 +166,9 @@ class EpicAppScreen : BaseAppScreen() {
                 Timber.tag(TAG).i("Namespace: ${game.namespace}")
                 Timber.tag(TAG).i("Catalog Item ID: ${game.catalogId}")
                 Timber.tag(TAG).i("Developer: ${game.developer}")
-                Timber.tag(TAG).i("Release Date: ${game.releaseDate}")
-                Timber.tag(TAG).i("Is Installed: ${game.isInstalled}")
-                Timber.tag(TAG).i("Install Path: ${game.installPath}")
                 Timber.tag(TAG).i("Install Size: ${game.installSize} bytes (${StringUtils.formatBytes(game.installSize)})")
                 Timber.tag(TAG).i("Download Size: ${game.downloadSize} bytes (${StringUtils.formatBytes(game.downloadSize)})")
-                Timber.tag(TAG).i("Icon URL: ${game.iconUrl}")
-                Timber.tag(TAG).i("Art Cover: ${game.artCover}")
-                Timber.tag(TAG).i("Art Square: ${game.artSquare}")
                 Timber.tag(TAG).i("Cloud Save Enabled: ${game.cloudSaveEnabled}")
-                Timber.tag(TAG).i("Base Game App Name: ${game.baseGameAppName}")
                 Timber.tag(TAG).i("========================")
 
                 val dlcTitles = EpicService.getDLCForGame(game.id)
