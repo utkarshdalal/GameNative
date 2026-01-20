@@ -790,9 +790,6 @@ object ContainerUtils {
             createNewContainer(context, appId, appId, containerManager)
         }
 
-        // Delete any existing FEXCore config files (we use environment variables only)
-        FEXCoreManager.deleteConfigFiles(context, container.id)
-
         // Ensure Custom Games have the A: drive mapped to the game folder
         // and GOG games have a drive mapped to the GOG games directory
         val gameSource = extractGameSourceFromContainerId(appId)
