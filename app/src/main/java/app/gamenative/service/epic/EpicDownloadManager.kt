@@ -59,7 +59,7 @@ class EpicDownloadManager @Inject constructor(
         .build()
 
     companion object {
-        private const val MAX_PARALLEL_DOWNLOADS = 8 // Increased from 4 for better throughput
+        private const val MAX_PARALLEL_DOWNLOADS = 6
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
