@@ -752,10 +752,6 @@ class EpicManager @Inject constructor(
 
             Timber.tag("Epic").i("Starting Epic library background sync...")
 
-            // TODO: Remove once finished testing.
-            Timber.tag("Epic").i("Starting Epic library background sync...")
-            Result.success(Unit)
-
             val result = refreshLibrary(context)
 
             if (result.isSuccess) {
