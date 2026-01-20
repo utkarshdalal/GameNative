@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">%d cartelle trovate</string>
     <string name="custom_games_scan_description">Le cartelle in questi percorsi vengono scansionate per file .exe ed elencate come giochi personalizzati. Questo potrebbe rallentare l\'avvio dell\'app.</string>
     <string name="custom_game_folder_picker_error">Impossibile risolvere il percorso della cartella</string>
+    <string name="container_config_drive_letter_missing">Manca la lettera dell\'unità</string>
+    <string name="container_config_invalid_drive_path">Percorso dell\'unità non valido</string>
     <string name="custom_game_exe_selection_title">Selezione Eseguibile Richiesta</string>
     <string name="custom_game_exe_selection_message">Questo gioco ha più eseguibili. Apri le Impostazioni Gioco Personalizzato per selezionare quale avviare.</string>
     <string name="custom_game_settings">Impostazioni Gioco Personalizzato</string>

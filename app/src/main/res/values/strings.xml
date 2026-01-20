@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">%d folders found</string>
     <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games. This may slow down the app startup time.</string>
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
+    <string name="container_config_drive_letter_missing">Drive letter is missing</string>
+    <string name="container_config_invalid_drive_path">Invalid drive path</string>
     <string name="custom_game_exe_selection_title">Executable Selection Required</string>
     <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>

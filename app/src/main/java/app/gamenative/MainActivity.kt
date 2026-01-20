@@ -252,7 +252,7 @@ class MainActivity : ComponentActivity() {
             SteamService.stop()
         }
 
-        if(GOGService.isRunning) {
+        if (GOGService.isRunning) {
             Timber.i("Stopping GOG Service")
             GOGService.stop()
         }
@@ -295,6 +295,15 @@ class MainActivity : ComponentActivity() {
         // enable auto-stop behavior if backgrounded
         SteamService.autoStopWhenIdle = true
 
+        Timber.d(
+            "onStop - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Keep Alive: %b, Is Importing: %b",
+            index,
+            SteamService.isConnected,
+            SteamService.isLoggedIn,
+            isChangingConfigurations,
+            SteamService.keepAlive,
+            SteamService.isImporting,
+        )
         // stop SteamService only if no downloads or sync are in progress
         if (!isChangingConfigurations &&
             SteamService.isConnected &&
@@ -305,6 +314,11 @@ class MainActivity : ComponentActivity() {
         ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stop()
+        }
+
+        if (GOGService.isRunning) {
+            Timber.i("Stopping GOG Service")
+            GOGService.stop()
         }
     }
 

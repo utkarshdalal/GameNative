@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">%d dossiers trouvés</string>
     <string name="custom_games_scan_description">Les dossiers dans ces chemins sont analysés pour les fichiers .exe et listés comme jeux personnalisés. Cela peut ralentir le démarrage de l\'application.</string>
     <string name="custom_game_folder_picker_error">Échec de la résolution du chemin du dossier</string>
+    <string name="container_config_drive_letter_missing">La lettre du lecteur est manquante</string>
+    <string name="container_config_invalid_drive_path">Chemin du lecteur invalide</string>
     <string name="custom_game_exe_selection_title">Sélection d\'exécutable requise</string>
     <string name="custom_game_exe_selection_message">Ce jeu possède plusieurs exécutables. Veuillez ouvrir les paramètres de jeu personnalisé pour sélectionner celui à lancer.</string>
     <string name="custom_game_settings">Paramètres du jeu personnalisé</string>

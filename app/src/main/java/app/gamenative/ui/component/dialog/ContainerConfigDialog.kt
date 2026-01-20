@@ -717,7 +717,11 @@ fun ContainerConfigDialog(
                 SteamService.keepAlive = false
                 val letter = pendingDriveLetter.uppercase(Locale.ENGLISH)
                 if (letter.isBlank()) {
-                    Toast.makeText(context, "Drive letter is missing", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.container_config_drive_letter_missing),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                     return@rememberCustomGameFolderPicker
                 }
                 if (!availableDriveLetters.contains(letter)) {
@@ -730,7 +734,11 @@ fun ContainerConfigDialog(
                     return@rememberCustomGameFolderPicker
                 }
                 if (path.isBlank() || path.contains(":")) {
-                    Toast.makeText(context, "Invalid drive path", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.container_config_invalid_drive_path),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                     pendingDriveLetter = ""
                     return@rememberCustomGameFolderPicker
                 }
@@ -751,6 +759,9 @@ fun ContainerConfigDialog(
             onFailure = { message ->
                 SteamService.keepAlive = false
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            },
+            onCancel = {
+                SteamService.keepAlive = false
             },
         )
 

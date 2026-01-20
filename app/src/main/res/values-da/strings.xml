@@ -775,6 +775,8 @@
     <string name="custom_games_folders_found">%d mapper fundet</string>
     <string name="custom_games_scan_description">Mapper i disse stier scannes for .exe-filer og vises som tilpassede spil.</string>
     <string name="custom_game_folder_picker_error">Kunne ikke løse mappesti</string>
+    <string name="container_config_drive_letter_missing">Drevbogstav mangler</string>
+    <string name="container_config_invalid_drive_path">Ugyldig drevsti</string>
     <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
     <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn venligst tilpassede spilindstillinger for at vælge hvilken der skal startes.</string>
     <string name="custom_game_settings">Tilpassede spilindstillinger</string>
