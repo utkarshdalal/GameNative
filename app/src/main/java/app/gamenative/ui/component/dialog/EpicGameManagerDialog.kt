@@ -85,18 +85,28 @@ fun EpicGameManagerDialog(
         // Get base game
         val baseGame = EpicService.getEpicGameOf(gameId)
         if (baseGame != null) {
-            allDownloadableGames.add(baseGame)
+            // Fetch manifest to get accurate sizes
+            val sizes = EpicService.fetchManifestSizes(context, baseGame.id ?: 0)
+            val updatedGame = baseGame.copy(
+                downloadSize = sizes.downloadSize,
+                installSize = sizes.installSize
+            )
+            allDownloadableGames.add(updatedGame)
             // Base game is always selected and can't be deselected
-            selectedGameIds[baseGame.id ?: 0] = true
+            selectedGameIds[updatedGame.id ?: 0] = true
         }
 
-        // Get DLCs
+        // Get DLCs and fetch their manifest sizes
         val dlcs = EpicService.getDLCForGame(gameId)
-        allDownloadableGames.addAll(dlcs)
-
-        // All DLCs are selected by default for now
         dlcs.forEach { dlc ->
-            selectedGameIds[dlc.id ?: 0] = true
+            // Fetch manifest to get accurate sizes for each DLC
+            val sizes = EpicService.fetchManifestSizes(context, dlc.id ?: 0)
+            val updatedDlc = dlc.copy(
+                downloadSize = sizes.downloadSize,
+                installSize = sizes.installSize
+            )
+            allDownloadableGames.add(updatedDlc)
+            selectedGameIds[updatedDlc.id ?: 0] = true
         }
     }
 
