@@ -34,7 +34,6 @@ import timber.log.Timber
  * - Manifest files contain metadata and chunk references
  * - Save files are split into compressed chunks
  * - Chunks are deduplicated via GUID/hash
- * ! Note: This implementation will have its issues with outlier use-cases. We will cover them as we find them.
  */
 object EpicCloudSavesManager {
 
@@ -522,7 +521,7 @@ object EpicCloudSavesManager {
             var uploadSuccess = true
             if (toUpload.isNotEmpty()) {
                 Timber.tag("Epic").i("[Cloud Saves] Uploading ${toUpload.size} files based on timestamp comparison")
-                uploadSuccess = uploadSaves(context, accountId, game)
+                uploadSuccess = uploadSaves(context, accountId, game, toUpload)
             }
 
             // 7. Update sync timestamp if both operations succeeded
@@ -697,6 +696,7 @@ object EpicCloudSavesManager {
         context: Context,
         accountId: String,
         game: EpicGame,
+        fileList: List<String>? = null, // Optional: only upload specific files
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting upload for ${game.id}")
@@ -713,8 +713,12 @@ object EpicCloudSavesManager {
             }
 
             // 2. Package save files into chunks and manifest
-            Timber.tag("Epic").i("[Cloud Saves] Packaging save files from: ${saveDir.absolutePath}")
-            val packagedFiles = packageSaveFiles(saveDir, game, accountId)
+            if (fileList != null) {
+                Timber.tag("Epic").i("[Cloud Saves] Packaging ${fileList.size} specific files from: ${saveDir.absolutePath}")
+            } else {
+                Timber.tag("Epic").i("[Cloud Saves] Packaging all save files from: ${saveDir.absolutePath}")
+            }
+            val packagedFiles = packageSaveFiles(saveDir, game, accountId, fileList)
             if (packagedFiles.isEmpty()) {
                 Timber.tag("Epic").e("[Cloud Saves] Failed to package save files")
                 return@withContext false
@@ -898,14 +902,28 @@ object EpicCloudSavesManager {
         saveDir: File,
         game: EpicGame,
         accountId: String,
+        fileList: List<String>? = null, // Optional: only package specific files
     ): Map<String, ByteArray> {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Packaging files from: ${saveDir.absolutePath}")
 
-            val files = saveDir.walkTopDown()
+            val allFiles = saveDir.walkTopDown()
                 .filter { it.isFile }
                 .toList()
-                .sortedBy { it.name.lowercase() }
+
+            // Filter to only requested files if fileList is provided
+            val files = if (fileList != null) {
+                allFiles.filter { file ->
+                    val relativePath = file.relativeTo(saveDir).path.replace("\\", "/")
+                    val included = fileList.contains(relativePath)
+                    if (included) {
+                        Timber.tag("Epic").d("[Cloud Saves] Including file: $relativePath")
+                    }
+                    included
+                }
+            } else {
+                allFiles
+            }.sortedBy { it.name.lowercase() }
 
             if (files.isEmpty()) {
                 Timber.tag("Epic").w("[Cloud Saves] No files found to package")
