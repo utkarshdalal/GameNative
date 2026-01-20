@@ -540,6 +540,9 @@
     <string name="environment_variables">Змінні середовища</string>
     <string name="no_environment_variables">Немає змінних середовища</string>
     <string name="no_drives">Немає дисків</string>
+    <string name="add_drive">Додати диск</string>
+    <string name="drive_letter">Літера диска</string>
+    <string name="no_available_drive_letters">Немає доступних літер дисків</string>
     <string name="startup_selection">Налаштування при запуску</string>
     <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
     <string name="executable_path">Шлях .exe файлу</string>

@@ -540,6 +540,9 @@
     <string name="environment_variables">Environment Variables</string>
     <string name="no_environment_variables">No environment variables</string>
     <string name="no_drives">No drives</string>
+    <string name="add_drive">Add drive</string>
+    <string name="drive_letter">Drive letter</string>
+    <string name="no_available_drive_letters">No available drive letters</string>
     <string name="startup_selection">Startup Selection</string>
     <string name="processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="executable_path">Executable Path</string>

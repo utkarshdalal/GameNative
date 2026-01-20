@@ -98,7 +98,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
-            SteamService.setGameRunning(true);
+            SteamService.setKeepAlive(true);
         }
     }
 
@@ -112,7 +112,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
                 }
-                SteamService.setGameRunning(false);
+                SteamService.setKeepAlive(false);
             }
             execShellCommand("wineserver -k");
         }
@@ -341,7 +341,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 pid = -1;
             }
             if (!environment.isWinetricksRunning()) {
-                SteamService.setGameRunning(false);
+                SteamService.setKeepAlive(false);
                 if (terminationCallback != null)
                     terminationCallback.call(status);
             }

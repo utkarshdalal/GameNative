@@ -4,6 +4,8 @@ import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -75,9 +77,12 @@ import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.components.rememberCustomGameFolderPicker
+import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.SteamService
 import com.winlator.contents.ContentProfile
@@ -102,6 +107,7 @@ import com.winlator.fexcore.FEXCoreManager
 import com.winlator.fexcore.FEXCorePresetManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -687,6 +693,66 @@ fun ContainerConfigDialog(
             mutableStateOf(MessageDialogState(visible = false))
         }
         var showEnvVarCreateDialog by rememberSaveable { mutableStateOf(false) }
+        var showAddDriveDialog by rememberSaveable { mutableStateOf(false) }
+        var selectedDriveLetter by rememberSaveable { mutableStateOf("") }
+        var pendingDriveLetter by rememberSaveable { mutableStateOf("") }
+        var driveLetterMenuExpanded by rememberSaveable { mutableStateOf(false) }
+
+        val reservedDriveLetters = setOf("C", "Z")
+        val nonDeletableDriveLetters = setOf("A", "C", "D", "Z")
+        val availableDriveLetters = remember(config.drives) {
+            val usedDriveLetters = Container.drivesIterator(config.drives)
+                .map { it[0].uppercase(Locale.ENGLISH) }
+                .toSet()
+            ('A'..'Z').map { it.toString() }
+                .filter { it !in usedDriveLetters && it !in reservedDriveLetters }
+        }
+
+        val storagePermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { }
+
+        val folderPicker = rememberCustomGameFolderPicker(
+            onPathSelected = { path ->
+                SteamService.keepAlive = false
+                val letter = pendingDriveLetter.uppercase(Locale.ENGLISH)
+                if (letter.isBlank()) {
+                    Toast.makeText(context, "Drive letter is missing", Toast.LENGTH_SHORT).show()
+                    return@rememberCustomGameFolderPicker
+                }
+                if (!availableDriveLetters.contains(letter)) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.no_available_drive_letters),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    pendingDriveLetter = ""
+                    return@rememberCustomGameFolderPicker
+                }
+                if (path.isBlank() || path.contains(":")) {
+                    Toast.makeText(context, "Invalid drive path", Toast.LENGTH_SHORT).show()
+                    pendingDriveLetter = ""
+                    return@rememberCustomGameFolderPicker
+                }
+
+                val folder = File(path)
+                val canAccess = try {
+                    folder.exists() && folder.isDirectory && folder.canRead()
+                } catch (_: Exception) {
+                    false
+                }
+                if (!canAccess && !CustomGameScanner.hasStoragePermission(context, path)) {
+                    requestPermissionsForPath(context, path, storagePermissionLauncher)
+                }
+
+                config = config.copy(drives = "${config.drives}${letter}:${path}")
+                pendingDriveLetter = ""
+            },
+            onFailure = { message ->
+                SteamService.keepAlive = false
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            },
+        )
 
         val applyScreenSizeToConfig: () -> Unit = {
             val screenSize = if (screenSizeIndex == 0) {
@@ -902,6 +968,75 @@ fun ContainerConfigDialog(
                             showEnvVarCreateDialog = false
                         },
                         content = { Text(text = stringResource(R.string.ok)) },
+                    )
+                },
+            )
+        }
+
+        if (showAddDriveDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddDriveDialog = false },
+                title = { Text(text = stringResource(R.string.add_drive)) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = selectedDriveLetter,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(text = stringResource(R.string.drive_letter)) },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { driveLetterMenuExpanded = true },
+                                    content = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.ViewList,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                        DropdownMenu(
+                            expanded = driveLetterMenuExpanded,
+                            onDismissRequest = { driveLetterMenuExpanded = false },
+                        ) {
+                            availableDriveLetters.forEach { letter ->
+                                DropdownMenuItem(
+                                    text = { Text(text = letter) },
+                                    onClick = {
+                                        selectedDriveLetter = letter
+                                        driveLetterMenuExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                        if (availableDriveLetters.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.no_available_drive_letters),
+                                color = MaterialTheme.colorScheme.error,
+                                style = TextStyle(fontSize = 14.sp),
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = selectedDriveLetter.isNotBlank() &&
+                            availableDriveLetters.contains(selectedDriveLetter),
+                        onClick = {
+                            pendingDriveLetter = selectedDriveLetter
+                            showAddDriveDialog = false
+                            SteamService.keepAlive = true
+                            folderPicker.launchPicker()
+                        },
+                        content = { Text(text = stringResource(R.string.ok)) },
+                    )
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAddDriveDialog = false },
+                        content = { Text(text = stringResource(R.string.cancel)) },
                     )
                 },
             )
@@ -1861,16 +1996,33 @@ fun ContainerConfigDialog(
                                             title = { Text(driveLetter) },
                                             subtitle = { Text(drivePath) },
                                             onClick = {},
-                                            // action = {
-                                            //     IconButton(
-                                            //         onClick = {
-                                            //             config = config.copy(
-                                            //                 drives = config.drives.replace("$driveLetter:$drivePath", ""),
-                                            //             )
-                                            //         },
-                                            //         content = { Icon(Icons.Filled.Delete, contentDescription = "Delete drive") },
-                                            //     )
-                                            // },
+                                            action = if (driveLetter !in nonDeletableDriveLetters) {
+                                                {
+                                                    IconButton(
+                                                        onClick = {
+                                                            // Rebuild drives string excluding the drive to delete
+                                                            val drivesBuilder = StringBuilder()
+                                                            for (existingDrive in Container.drivesIterator(config.drives)) {
+                                                                if (existingDrive[0] != driveLetter) {
+                                                                    drivesBuilder.append("${existingDrive[0]}:${existingDrive[1]}")
+                                                                }
+                                                            }
+                                                            config = config.copy(
+                                                                drives = drivesBuilder.toString(),
+                                                            )
+                                                        },
+                                                        content = {
+                                                            Icon(
+                                                                Icons.Filled.Delete,
+                                                                contentDescription = "Delete drive",
+                                                                tint = MaterialTheme.colorScheme.error,
+                                                            )
+                                                        },
+                                                    )
+                                                }
+                                            } else {
+                                                null
+                                            },
                                         )
                                     }
                                 } else {
@@ -1893,9 +2045,17 @@ fun ContainerConfigDialog(
                                         }
                                     },
                                     onClick = {
-                                        // TODO: add way to create new drive
-                                        // directoryLauncher.launch(null)
-                                        Toast.makeText(context, "Adding drives not yet available", Toast.LENGTH_LONG).show()
+                                        if (availableDriveLetters.isEmpty()) {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.no_available_drive_letters),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                            return@SettingsMenuLink
+                                        }
+                                        selectedDriveLetter = availableDriveLetters.first()
+                                        driveLetterMenuExpanded = false
+                                        showAddDriveDialog = true
                                     },
                                 )
                             }

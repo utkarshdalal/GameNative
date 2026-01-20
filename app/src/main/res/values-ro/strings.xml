@@ -541,6 +541,9 @@
 	<string name="environment_variables">Variabile de mediu</string>
 	<string name="no_environment_variables">Nu există variabile de mediu</string>
 	<string name="no_drives">Nu există unități</string>
+	<string name="add_drive">Adaugă unitate</string>
+	<string name="drive_letter">Literă de unitate</string>
+	<string name="no_available_drive_letters">Nu există litere de unitate disponibile</string>
 	<string name="startup_selection">Selecție la pornire</string>
 	<string name="processor_affinity_32bit">Afilieri procesor (aplicații 32-bit)</string>
 	<string name="executable_path">Cale executabil</string>

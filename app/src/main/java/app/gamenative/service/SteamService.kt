@@ -314,7 +314,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Track whether a game is currently running to prevent premature service stop
         @JvmStatic
         @Volatile
-        var isGameRunning: Boolean = false
+        var keepAlive: Boolean = false
 
         @Volatile
         var isImporting: Boolean = false

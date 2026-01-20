@@ -532,6 +532,9 @@
     <string name="environment_variables">环境变量</string>
     <string name="no_environment_variables">没有环境变量</string>
     <string name="no_drives">未挂载任何存储设备</string>
+    <string name="add_drive">添加驱动器</string>
+    <string name="drive_letter">驱动器盘符</string>
+    <string name="no_available_drive_letters">没有可用的驱动器盘符</string>
     <string name="startup_selection">启动选项</string>
     <string name="processor_affinity_32bit">处理器关联性（32 位应用程序）</string>
     <string name="executable_path">执行路径</string>

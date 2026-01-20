@@ -247,7 +247,7 @@ class MainActivity : ComponentActivity() {
             isChangingConfigurations,
         )
 
-        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.isGameRunning) {
+        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.keepAlive) {
             Timber.i("Stopping Steam Service")
             SteamService.stop()
         }
@@ -264,7 +264,7 @@ class MainActivity : ComponentActivity() {
         SteamService.autoStopWhenIdle = false
 
         // Resume game if it was running
-        if (SteamService.isGameRunning) {
+        if (SteamService.keepAlive) {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
@@ -279,7 +279,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        if (SteamService.isGameRunning) {
+        if (SteamService.keepAlive) {
             PluviaApp.xEnvironment?.onPause()
             Timber.d("Game paused due to app backgrounded")
         }
@@ -300,7 +300,7 @@ class MainActivity : ComponentActivity() {
             SteamService.isConnected &&
             !SteamService.hasActiveOperations() &&
             !SteamService.isLoginInProgress &&
-            !SteamService.isGameRunning &&
+            !SteamService.keepAlive &&
             !SteamService.isImporting
         ) {
             Timber.i("Stopping SteamService - no active operations")
@@ -330,7 +330,7 @@ class MainActivity : ComponentActivity() {
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
             if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (SteamService.isGameRunning){
+                if (SteamService.keepAlive){
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
                     eventDispatched = true
                 }
