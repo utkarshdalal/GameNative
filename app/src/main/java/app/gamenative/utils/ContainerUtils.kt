@@ -103,6 +103,7 @@ object ContainerUtils {
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
             useLegacyDRM = PrefManager.useLegacyDRM,
+            unpackFiles = PrefManager.unpackFiles,
             wineVersion = PrefManager.wineVersion,
             emulator = PrefManager.emulator,
             fexcoreVersion = PrefManager.fexcoreVersion,
@@ -176,6 +177,7 @@ object ContainerUtils {
         PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
+        PrefManager.unpackFiles = containerData.unpackFiles
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
@@ -260,6 +262,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             forceDlc = container.isForceDlc,
             useLegacyDRM = container.isUseLegacyDRM(),
+            unpackFiles = container.isUnpackFiles(),
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -337,7 +340,7 @@ object ContainerUtils {
                 "fexcorePreset" -> value?.let { updatedData.copy(fexcorePreset = it as? String ?: updatedData.fexcorePreset) }
                     ?: updatedData
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
-
+                "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -415,6 +418,7 @@ object ContainerUtils {
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
+        container.setUnpackFiles(containerData.unpackFiles)
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
@@ -749,22 +753,22 @@ object ContainerUtils {
                 enableDInput = PrefManager.dinputEnabled,
                 dinputMapperType = PrefManager.dinputMapperType.toByte(),
                 disableMouseInput = PrefManager.disableMouseInput,
+                forceDlc = PrefManager.forceDlc,
+                useLegacyDRM = PrefManager.useLegacyDRM,
+                unpackFiles = PrefManager.unpackFiles,
             )
         }
 
         // Apply best config map to containerData if available
-        // Note: When applyKnownConfig=false (container creation), map only contains executablePath and useLegacyDRM
+        // Note: When applyKnownConfig=false (container creation), map only contains executablePath, useLegacyDRM, and unpackFiles
         // When applyKnownConfig=true, map contains all validated fields from the best config
         containerData = if (bestConfigMap != null && bestConfigMap.isNotEmpty()) {
             var updatedData = containerData
             bestConfigMap.forEach { (key, value) ->
                 updatedData = when (key) {
-                    "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) }
-                        ?: updatedData
-
-                    "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) }
-                        ?: updatedData
-
+                    "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
+                    "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+                    "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                     else -> updatedData
                 }
             }
@@ -835,9 +839,6 @@ object ContainerUtils {
         } else {
             createNewContainer(context, appId, appId, containerManager)
         }
-
-        // Delete any existing FEXCore config files (we use environment variables only)
-        FEXCoreManager.deleteConfigFiles(context, container.id)
 
         // Ensure Custom Games have the A: drive mapped to the game folder
         // and GOG games have a drive mapped to the GOG games directory

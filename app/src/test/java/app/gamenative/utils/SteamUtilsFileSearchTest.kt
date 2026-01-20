@@ -653,7 +653,7 @@ class SteamUtilsFileSearchTest {
 
         // Verify game.exe is NOT overwritten after first replaceSteamClientDll call
         assertEquals("game.exe should be overwritten after replaceSteamClientDll",
-            "original exe content", gameExe.readText())
+            "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
         assertTrue("Should add STEAM_COLDCLIENT_USED marker",
@@ -771,7 +771,7 @@ class SteamUtilsFileSearchTest {
 
         // Verify game.exe is NOT overwritten after second replaceSteamClientDll call
         assertEquals("game.exe should not be overwritten after second replaceSteamClientDll",
-            "original exe content", gameExe.readText())
+            "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
         assertTrue("Should add STEAM_COLDCLIENT_USED marker",
@@ -879,7 +879,7 @@ class SteamUtilsFileSearchTest {
 
         // Verify game.exe is NOT overwritten after first replaceSteamClientDll call
         assertEquals("game.exe should not be overwritten after replaceSteamClientDll",
-            "original exe content", gameExe.readText())
+            "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
         assertTrue("Should add STEAM_COLDCLIENT_USED marker",
@@ -925,8 +925,8 @@ class SteamUtilsFileSearchTest {
         SteamUtils.replaceSteamclientDll(context, testAppId)
 
         // Verify restoreUnpackedExecutable overwrites game.exe with game.exe.unpacked.exe content
-        assertEquals("game.exe should be overwritten with game.exe.original.exe content after second replaceSteamClientDll",
-            "original exe content", gameExe.readText())
+        assertEquals("game.exe should be overwritten with game.exe.unpacked.exe content after second replaceSteamClientDll",
+            "unpacked exe content", gameExe.readText())
 
         // Verify steam_settings folder still exists next to steamclient.dll in Steam directory
         assertTrue("steam_settings folder should still exist in Steam directory",

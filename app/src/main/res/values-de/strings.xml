@@ -84,6 +84,8 @@
     <string name="custom_games_folders_found">%d Ordner gefunden</string>
     <string name="custom_games_scan_description">Ordner in diesen Pfaden werden nach .exe-Dateien durchsucht und als eigene Spiele gelistet. Das kann den App-Start verlangsamen.</string>
     <string name="custom_game_folder_picker_error">Ordnerpfad konnte nicht ermittelt werden</string>
+    <string name="container_config_drive_letter_missing">Laufwerksbuchstabe fehlt</string>
+    <string name="container_config_invalid_drive_path">Ungültiger Laufwerkspfad</string>
     <string name="custom_game_exe_selection_title">Auswahl erforderlich</string>
     <string name="custom_game_exe_selection_message">Für dieses Spiel gibt es mehrere ausführbare Dateien. Bitte wähle in den Einstellungen aus, welche gestartet werden soll.</string>
     <string name="custom_game_settings">Eigene Spiele-Einstellungen</string>
@@ -439,6 +441,8 @@
     <string name="remove_driver_confirmation">Möchtest du den Treiber "%s" wirklich entfernen? Dies kann nicht rückgängig gemacht werden.</string>
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Legacy DRM verwenden</string>
+    <string name="unpack_files">Dateien entpacken</string>
+    <string name="unpack_files_description">Nur verwenden, wenn \'Application Load Error\' auftritt. Kann die FPS reduzieren.</string>
     <string name="force_dlc">DLC erzwingen</string>
     <string name="force_dlc_description">Nur aktivieren, falls DLCs nicht erkannt werden oder Spielstände mit DLC nicht funktionieren</string>
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
@@ -506,6 +510,9 @@
     <string name="environment_variables">Umgebungsvariablen</string>
     <string name="no_environment_variables">Keine Umgebungsvariablen</string>
     <string name="no_drives">Keine Laufwerke</string>
+    <string name="add_drive">Laufwerk hinzufügen</string>
+    <string name="drive_letter">Laufwerksbuchstabe</string>
+    <string name="no_available_drive_letters">Keine verfügbaren Laufwerksbuchstaben</string>
     <string name="startup_selection">Startauswahl</string>
     <string name="processor_affinity_32bit">Prozessorbindung (32-Bit-Apps)</string>
     <string name="executable_path">Pfad zur Ausführbaren Datei</string>

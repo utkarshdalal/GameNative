@@ -92,6 +92,7 @@ android {
             "de",      // German
             "uk",      // Ukrainian
             "it",      // Italian
+            "ro",      // Română
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
         )
 

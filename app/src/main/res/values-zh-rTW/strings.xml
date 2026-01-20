@@ -89,6 +89,8 @@
     <string name="custom_games_folders_found">找到 %d 個文件夾</string>
     <string name="custom_games_scan_description">將掃描這些路徑中的文件夾中的 .exe 文件並將其列為自定義遊戲, 這可能會減慢應用程序的啟動時間</string>
     <string name="custom_game_folder_picker_error">無法解析文件夾路徑</string>
+    <string name="container_config_drive_letter_missing">缺少磁碟機代號</string>
+    <string name="container_config_invalid_drive_path">磁碟機路徑無效</string>
     <string name="custom_game_exe_selection_title">需要選擇可執行程序</string>
     <string name="custom_game_exe_selection_message">此遊戲有多個可執行文件, 請打開 自定義遊戲設置 以選擇要啟動的遊戲</string>
     <string name="custom_game_settings">自定義遊戲設置</string>
@@ -462,6 +464,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">使用舊版 DRM</string>
+    <string name="unpack_files">解壓檔案</string>
+    <string name="unpack_files_description">僅在出現\'應用程式載入錯誤\'時使用。可能會降低幀率。</string>
     <string name="force_dlc">強制開啟DLC</string>
     <string name="force_dlc_description">僅在未偵測到 DLC 或包含 DLC 的存檔無法運作時啟用</string>
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
@@ -535,6 +539,9 @@
     <string name="environment_variables">環境變數</string>
     <string name="no_environment_variables">沒有環境變數</string>
     <string name="no_drives">未掛載任何儲存裝置</string>
+    <string name="add_drive">新增磁碟機</string>
+    <string name="drive_letter">磁碟機代號</string>
+    <string name="no_available_drive_letters">沒有可用的磁碟機代號</string>
     <string name="startup_selection">啟動選項</string>
     <string name="processor_affinity_32bit">處理器關聯 (32 位元應用程式)</string>
     <string name="executable_path">執行路徑</string>
