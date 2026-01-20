@@ -324,6 +324,7 @@ class EpicService : Service() {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             val game = runBlocking { instance.epicManager.getGameById(appId) }
+                ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
 
 
@@ -356,7 +357,7 @@ class EpicService : Service() {
                         installPath,
                         downloadInfo,
                         "en-US",
-                        true, 
+                        true,
                         commonRedistDir,
                     )
 
