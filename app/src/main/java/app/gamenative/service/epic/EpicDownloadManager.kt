@@ -92,6 +92,23 @@ class EpicDownloadManager @Inject constructor(
                 app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, true),
             )
 
+            // Check for DLCs early to calculate total download size
+            val dlcsToDownload = if (withDlcs) {
+                try {
+                    Timber.tag("Epic").i("Checking for DLCs for ${game.title}...")
+                    val dlcs = epicManager.getDLCForTitle(game.id ?: 0)
+                    if (dlcs.isNotEmpty()) {
+                        Timber.tag("Epic").i("Found ${dlcs.size} DLC(s) for ${game.title}")
+                    }
+                    dlcs
+                } catch (e: Exception) {
+                    Timber.tag("Epic").e(e, "Error checking for DLCs, continuing without")
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+
             // Step 1: Fetch manifest binary and CDN URLs from Epic
             val manifestResult = epicManager.fetchManifestFromEpic(
                 context,
@@ -125,15 +142,47 @@ class EpicDownloadManager @Inject constructor(
             val files = fileManifestList.elements
             val chunkDir = manifest.getChunkDir()
 
-            // Use chunk sizes for download progress (compressed data)
-            val totalSize = chunks.sumOf { it.fileSize }
+            // Calculate total download size including DLCs
+            var totalSize = chunks.sumOf { it.fileSize }
+            val baseGameSize = totalSize
+
+            // Fetch DLC manifests to get their sizes for accurate progress tracking
+            val dlcManifestData = mutableListOf<Pair<EpicGame, EpicManager.ManifestResult>>()
+            if (dlcsToDownload.isNotEmpty()) {
+                downloadInfo.updateStatusMessage("Calculating DLC sizes...")
+                for (dlc in dlcsToDownload) {
+                    try {
+                        val dlcManifestResult = epicManager.fetchManifestFromEpic(
+                            context,
+                            dlc.namespace,
+                            dlc.catalogId,
+                            dlc.appName,
+                        )
+                        if (dlcManifestResult.isSuccess) {
+                            val dlcManifest = dlcManifestResult.getOrNull()!!
+                            val dlcParsed = EpicManifest.readAll(dlcManifest.manifestBytes)
+                            val dlcSize = dlcParsed.chunkDataList?.elements?.sumOf { it.fileSize } ?: 0L
+                            totalSize += dlcSize
+                            dlcManifestData.add(dlc to dlcManifest)
+                            Timber.tag("Epic").i("DLC ${dlc.title} size: ${dlcSize / 1_000_000} MB")
+                        } else {
+                            Timber.tag("Epic").w("Failed to fetch manifest for DLC ${dlc.title}, will skip")
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag("Epic").e(e, "Error fetching manifest for DLC ${dlc.title}")
+                    }
+                }
+            }
+
             val chunkCount = chunks.size
             val fileCount = files.size
 
             Timber.tag("Epic").d(
                 """
                 |Download prepared:
-                |  Total size: ${totalSize / 1_000_000_000.0} GB
+                |  Base game size: ${baseGameSize / 1_000_000_000.0} GB
+                |  DLCs: ${dlcManifestData.size}
+                |  Total size (including DLCs): ${totalSize / 1_000_000_000.0} GB
                 |  Chunks: $chunkCount
                 |  Files: $fileCount
                 |  ChunkDir: $chunkDir
@@ -141,7 +190,7 @@ class EpicDownloadManager @Inject constructor(
             )
 
             downloadInfo.setTotalExpectedBytes(totalSize)
-            downloadInfo.updateStatusMessage("Downloading chunks...")
+            downloadInfo.updateStatusMessage("Downloading base game...")
 
             // Step 3: Download chunks in parallel
             val chunkCacheDir = File(installPath, ".chunks")
@@ -190,7 +239,12 @@ class EpicDownloadManager @Inject constructor(
                 downloadedChunks += chunkBatch.size
                 val progress = downloadedChunks.toFloat() / totalChunks
                 downloadInfo.setProgress(progress)
-                downloadInfo.updateStatusMessage("Downloading chunks ($downloadedChunks/$totalChunks)")
+                val statusMsg = if (dlcManifestData.isNotEmpty()) {
+                    "Downloading base game ($downloadedChunks/$totalChunks chunks)"
+                } else {
+                    "Downloading chunks ($downloadedChunks/$totalChunks)"
+                }
+                downloadInfo.updateStatusMessage(statusMsg)
                 downloadInfo.emitProgressChange()
 
                 Timber.tag("Epic").d("Download progress: $downloadedChunks/$totalChunks chunks (${(progress * 100).toInt()}%)")
@@ -246,6 +300,47 @@ class EpicDownloadManager @Inject constructor(
                 // Don't fail the entire download for DB issues
             }
 
+            // Download DLCs using pre-fetched manifest data
+            if (dlcManifestData.isNotEmpty()) {
+                try {
+                    Timber.tag("Epic").i("Downloading ${dlcManifestData.size} DLC(s) for ${game.title}")
+
+                    dlcManifestData.forEachIndexed { index, (dlc, manifestData) ->
+                        try {
+                            Timber.tag("Epic").i("Downloading DLC ${index + 1}/${dlcManifestData.size}: ${dlc.title}")
+                            downloadInfo.updateStatusMessage("Downloading DLC: ${dlc.title} (${index + 1}/${dlcManifestData.size})")
+
+                            // DLC install path should be subdirectory of base game
+                            val dlcInstallPath = "$installPath/${dlc.appName}"
+
+                            // Download the DLC using already-fetched manifest
+                            val dlcResult = downloadGameWithManifest(
+                                context = context,
+                                game = dlc,
+                                manifestData = manifestData,
+                                installPath = dlcInstallPath,
+                                downloadInfo = downloadInfo,
+                            )
+
+                            if (dlcResult.isFailure) {
+                                Timber.tag("Epic").w("Failed to download DLC ${dlc.title}: ${dlcResult.exceptionOrNull()?.message}")
+                                // Continue with other DLCs even if one fails
+                            } else {
+                                Timber.tag("Epic").i("Successfully downloaded DLC: ${dlc.title}")
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("Epic").e(e, "Error downloading DLC ${dlc.title}")
+                            // Continue with other DLCs
+                        }
+                    }
+
+                    downloadInfo.updateStatusMessage("DLC downloads complete")
+                    Timber.tag("Epic").i("Finished downloading DLCs for ${game.title}")
+                } catch (e: Exception) {
+                    Timber.tag("Epic").e(e, "Error downloading DLCs")
+                    // Don't fail the base game download if DLC fails
+                }
+            }
             downloadInfo.updateStatusMessage("Complete")
             downloadInfo.setProgress(1.0f)
             downloadInfo.setActive(false)
@@ -270,6 +365,96 @@ class EpicDownloadManager @Inject constructor(
             app.gamenative.PluviaApp.events.emitJava(
                 app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false),
             )
+        }
+    }
+
+    /**
+     * Download game using an already-fetched manifest (used for DLCs)
+     */
+    private suspend fun downloadGameWithManifest(
+        context: Context,
+        game: EpicGame,
+        manifestData: EpicManager.ManifestResult,
+        installPath: String,
+        downloadInfo: DownloadInfo,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.tag("Epic").i("Starting download for ${game.title} using pre-fetched manifest")
+
+            // Parse manifest
+            val cdnUrls = manifestData.cdnUrls.filter { !it.baseUrl.startsWith("https://cloudflare.epicgamescdn.com") }
+            val manifest = EpicManifest.readAll(manifestData.manifestBytes)
+
+            val chunkDataList = manifest.chunkDataList
+                ?: return@withContext Result.failure(Exception("No chunk data in manifest"))
+            val fileManifestList = manifest.fileManifestList
+                ?: return@withContext Result.failure(Exception("No file manifest in manifest"))
+
+            val chunks = chunkDataList.elements
+            val files = fileManifestList.elements
+            val chunkDir = manifest.getChunkDir()
+
+            // Download chunks
+            val chunkCacheDir = File(installPath, ".chunks")
+            chunkCacheDir.mkdirs()
+
+            var downloadedChunks = 0
+            val totalChunks = chunks.size
+
+            chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
+                if (!downloadInfo.isActive()) {
+                    Timber.tag("Epic").w("Download cancelled by user")
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
+
+                val results = chunkBatch.map { chunk ->
+                    async {
+                        downloadChunkWithRetry(chunk, chunkCacheDir, chunkDir, cdnUrls, downloadInfo)
+                    }
+                }.awaitAll()
+
+                results.firstOrNull { it.isFailure }?.let { failedResult ->
+                    return@withContext Result.failure(
+                        failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
+                    )
+                }
+
+                downloadedChunks += chunkBatch.size
+            }
+
+            // Assemble files
+            val installDir = File(installPath)
+            installDir.mkdirs()
+
+            files.chunked(4).forEach { fileBatch ->
+                val assembleResults = fileBatch.map { fileManifest ->
+                    async {
+                        assembleFile(fileManifest, chunkCacheDir, installDir)
+                    }
+                }.awaitAll()
+
+                assembleResults.firstOrNull { it.isFailure }?.let { failedResult ->
+                    return@withContext Result.failure(
+                        failedResult.exceptionOrNull() ?: Exception("Failed to assemble file"),
+                    )
+                }
+            }
+
+            // Cleanup
+            chunkCacheDir.deleteRecursively()
+
+            // Update database
+            try {
+                epicManager.updateGame(game.copy(isInstalled = true, installPath = installPath))
+                Timber.tag("Epic").i("Updated database: DLC ${game.title} marked as installed")
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "Failed to update database for DLC ${game.id}")
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "DLC download failed: ${e.message}")
+            Result.failure(e)
         }
     }
 

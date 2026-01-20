@@ -10,6 +10,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,6 +89,23 @@ class EpicAppScreen : BaseAppScreen() {
             val result = installDialogAppIds.contains(appId)
             Timber.tag(TAG).d("shouldShowInstallDialog: appId=$appId, result=$result")
             return result
+        }
+
+        // Shared state for game manager dialog - map of gameId to GameManagerDialogState
+        private val gameManagerDialogStates = mutableStateMapOf<Int, app.gamenative.ui.component.dialog.state.GameManagerDialogState>()
+
+        fun showGameManagerDialog(gameId: Int, state: app.gamenative.ui.component.dialog.state.GameManagerDialogState) {
+            Timber.tag(TAG).d("showGameManagerDialog: gameId=$gameId")
+            gameManagerDialogStates[gameId] = state
+        }
+
+        fun hideGameManagerDialog(gameId: Int) {
+            Timber.tag(TAG).d("hideGameManagerDialog: gameId=$gameId")
+            gameManagerDialogStates.remove(gameId)
+        }
+
+        fun getGameManagerDialogState(gameId: Int): app.gamenative.ui.component.dialog.state.GameManagerDialogState? {
+            return gameManagerDialogStates[gameId]
         }
     }
 
@@ -182,7 +200,10 @@ class EpicAppScreen : BaseAppScreen() {
                 }
                 // TODO: Implement DLC Management
                 // TODO: Give them a list of DLC and allow them to pick which ones to download
-                // gameDlc = dlcTitles
+                if (dlcTitles.isNotEmpty()) {
+                    val installedDlcs = dlcTitles.count { it.isInstalled }
+                    Timber.tag(TAG).i("DLC Manager: $installedDlcs/${dlcTitles.size} installed")
+                }
             } else {
                 Timber.tag(TAG).w("No Epic game found for gameId: $gameId")
             }
@@ -304,48 +325,22 @@ class EpicAppScreen : BaseAppScreen() {
             Timber.tag(TAG).i("Epic game already installed, launching: $gameId")
             onClickPlay(false)
         } else {
-            // Show install confirmation dialog
-            Timber.tag(TAG).i("Showing install confirmation dialog for: ${libraryItem.appId}")
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    // Calculate sizes
-                    val downloadSize = StringUtils.formatBytes(game?.downloadSize ?: 0L)
-                    val installSize = StringUtils.formatBytes(game?.installSize ?: 0L)
-                    val availableSpace = try {
-                        StringUtils.formatBytes(app.gamenative.utils.StorageUtils.getAvailableSpace(EpicConstants.defaultEpicGamesPath(context)))
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "Failed to get available storage space")
-                        "Unknown"
-                    }
-
-                    val message = context.getString(
-                        R.string.epic_install_game_message,
-                        downloadSize,
-                        installSize,
-                        availableSpace,
-                    )
-                    val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
-                        visible = true,
-                        type = app.gamenative.ui.enums.DialogType.INSTALL_APP,
-                        title = context.getString(R.string.epic_install_game_title),
-                        message = message,
-                        confirmBtnText = context.getString(R.string.install),
-                        dismissBtnText = context.getString(R.string.cancel),
-                    )
-                    BaseAppScreen.showInstallDialog(libraryItem.appId, state)
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to show install dialog for: ${libraryItem.appId}")
-                }
-            }
+            // Show game manager dialog with DLC selection
+            Timber.tag(TAG).i("Showing game manager dialog for: ${libraryItem.appId}")
+            showGameManagerDialog(
+                gameId,
+                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true)
+            )
         }
     }
 
     /**
      * Perform the actual download after confirmation
      * Delegates to EpicService/EpicManager for proper service layer separation
+     * @param selectedGameIds List of game IDs to download (base game + selected DLCs)
      */
-    private fun performDownload(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
-        Timber.tag(TAG).i("Starting Epic game download: ${libraryItem.gameId}")
+    private fun performDownload(context: Context, libraryItem: LibraryItem, selectedGameIds: List<Int>, onClickPlay: (Boolean) -> Unit) {
+        Timber.tag(TAG).i("Starting Epic game download: ${libraryItem.gameId} with ${selectedGameIds.size} items (including DLCs)")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Get the game to access its title/appName
@@ -362,16 +357,21 @@ class EpicAppScreen : BaseAppScreen() {
                 val installPath = EpicConstants.getGameInstallPath(context, game.appName)
                 Timber.tag(TAG).d("Downloading Epic game to: $installPath")
 
+                // Determine if we should download DLCs (if more than just the base game is selected)
+                val withDlcs = selectedGameIds.size > 1
+                Timber.tag(TAG).d("Download with DLCs: $withDlcs (${selectedGameIds.size} items selected)")
+
                 // Show starting download toast
                 withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(
                         context,
-                        "Starting download: ${libraryItem.name}",
+                        if (withDlcs) "Starting download: ${game.title} + DLCs" else "Starting download: ${game.title}",
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }
 
                 // Start download - EpicService will handle monitoring, database updates, verification, and events
+                // EpicService.downloadGame already downloads all DLCs by default (withDlcs = true)
                 val result = EpicService.downloadGame(context, libraryItem.gameId, installPath)
 
                 if (result.isSuccess) {
@@ -701,6 +701,7 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Shared install dialog state (from BaseAppScreen)
         val appId = libraryItem.appId
+        val gameId = libraryItem.gameId
         var installDialogState by remember(appId) {
             mutableStateOf(BaseAppScreen.getInstallDialogState(appId) ?: app.gamenative.ui.component.dialog.state.MessageDialogState(false))
         }
@@ -708,6 +709,17 @@ class EpicAppScreen : BaseAppScreen() {
             snapshotFlow { BaseAppScreen.getInstallDialogState(appId) }
                 .collect { state ->
                     installDialogState = state ?: app.gamenative.ui.component.dialog.state.MessageDialogState(false)
+                }
+        }
+
+        // Game manager dialog state
+        var gameManagerDialogState by remember(gameId) {
+            mutableStateOf(getGameManagerDialogState(gameId) ?: app.gamenative.ui.component.dialog.state.GameManagerDialogState(false))
+        }
+        LaunchedEffect(gameId) {
+            snapshotFlow { getGameManagerDialogState(gameId) }
+                .collect { state ->
+                    gameManagerDialogState = state ?: app.gamenative.ui.component.dialog.state.GameManagerDialogState(false)
                 }
         }
 
@@ -723,7 +735,7 @@ class EpicAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
-                        performDownload(context, libraryItem) {}
+                        performDownload(context, libraryItem, listOf(libraryItem.gameId)) {}
                     }
                 }
 
@@ -738,6 +750,40 @@ class EpicAppScreen : BaseAppScreen() {
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,
                 message = installDialogState.message,
+            )
+        }
+
+        // Game manager dialog (DLC selection)
+        if (gameManagerDialogState.visible) {
+            app.gamenative.ui.component.dialog.EpicGameManagerDialog(
+                visible = true,
+                onGetDisplayInfo = { context ->
+                    getGameDisplayInfo(context, libraryItem)
+                },
+                onInstall = { selectedGameIds ->
+                    hideGameManagerDialog(gameId)
+                    performDownload(context, libraryItem, selectedGameIds) {}
+                },
+                onDismissRequest = {
+                    hideGameManagerDialog(gameId)
+                }
+            )
+        }
+
+        // Game manager dialog (DLC selection)
+        if (gameManagerDialogState.visible) {
+            app.gamenative.ui.component.dialog.EpicGameManagerDialog(
+                visible = true,
+                onGetDisplayInfo = { context ->
+                    getGameDisplayInfo(context, libraryItem)
+                },
+                onInstall = { selectedGameIds ->
+                    hideGameManagerDialog(gameId)
+                    performDownload(context, libraryItem, selectedGameIds) {}
+                },
+                onDismissRequest = {
+                    hideGameManagerDialog(gameId)
+                }
             )
         }
 

@@ -1,7 +1,6 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.Context
-import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,39 +40,28 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import app.gamenative.BuildConfig
 import app.gamenative.R
-import app.gamenative.data.DepotInfo
-import app.gamenative.service.SteamService
-import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
+import app.gamenative.data.EpicGame
+import app.gamenative.service.epic.EpicConstants
+import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.dialog.InstallSizeInfo
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
-import app.gamenative.ui.internal.fakeAppInfo
-import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.StorageUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import com.winlator.core.StringUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.collections.orEmpty
-
-data class InstallSizeInfo(
-    val downloadSize: String,
-    val installSize: String,
-    val availableSpace: String,
-    val installBytes: Long,
-    val availableBytes: Long,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameManagerDialog(
+fun EpicGameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
     onInstall: (List<Int>) -> Unit,
@@ -82,182 +70,65 @@ fun GameManagerDialog(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    val downloadableDepots = remember { mutableStateMapOf<Int, DepotInfo>() }
-    val allDownloadableApps = remember { mutableStateListOf<Pair<Int, DepotInfo>>() }
-    val selectedAppIds = remember { mutableStateMapOf<Int, Boolean>() }
-    val enabledAppIds = remember { mutableStateMapOf<Int, Boolean>() }
+    val allDownloadableGames = remember { mutableStateListOf<EpicGame>() }
+    val selectedGameIds = remember { mutableStateMapOf<Int, Boolean>() }
 
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
-    val installedApp = remember(gameId) {
-        SteamService.getInstalledApp(gameId)
-    }
-    val installedDlcIds = installedApp?.dlcDepots.orEmpty()
-
-    val indirectDlcAppIds = remember(gameId) {
-        SteamService.getDownloadableDlcAppsOf(gameId).orEmpty().map { it.id }
-    }
-
-    val mainAppDlcIdsWithoutProperDepotDlcIds = remember(gameId) {
-        SteamService.getMainAppDlcIdsWithoutProperDepotDlcIds(gameId).toList()
-    }
-
     LaunchedEffect(visible) {
         scrollState.animateScrollTo(0)
 
-        downloadableDepots.clear()
-        allDownloadableApps.clear()
+        allDownloadableGames.clear()
+        selectedGameIds.clear()
 
-        // Get Downloadable Depots
-        val allPossibleDownloadableDepots = SteamService.getDownloadableDepots(gameId)
-        downloadableDepots.putAll(allPossibleDownloadableDepots)
-
-        // Get Optional DLC IDs
-        val optionalDlcIds = allPossibleDownloadableDepots
-            .filter { it.value.optionalDlcId == it.value.dlcAppId }
-            .map { it.value.dlcAppId }
-
-        // Add DLCs
-        downloadableDepots
-            .toSortedMap()
-            .filter { (_, depot) ->
-                return@filter depot.dlcAppId != INVALID_APP_ID // Skip Main App
-            }.values
-                .groupBy { it.dlcAppId }
-                .mapValues { it.value.first() }
-                .toMap()
-            .forEach { (_, depotInfo) ->
-                allDownloadableApps.add(Pair(depotInfo.dlcAppId, depotInfo))
-                val installed = SteamService.getInstalledApp(depotInfo.dlcAppId)
-                selectedAppIds[depotInfo.dlcAppId] =
-                        installed != null || // For installed Base Game and Indirect DLC App
-                        installedDlcIds.contains(depotInfo.dlcAppId) || // For installed DLC from Main Depot
-                        ( !indirectDlcAppIds.contains(depotInfo.dlcAppId) && !optionalDlcIds.contains(depotInfo.dlcAppId) ) // Not in indirect DLC and not in optional DLC ids
-
-                enabledAppIds[depotInfo.dlcAppId] = !installedDlcIds.contains(depotInfo.dlcAppId) && installed == null
-            }
-
-        allDownloadableApps.sortBy { it.first }
-
-        // Add Base Game
-        allDownloadableApps.add(0, Pair(gameId, downloadableDepots.toSortedMap().values.first()))
-        selectedAppIds[gameId] = true
-        enabledAppIds[gameId] = false
-    }
-
-    fun getDepotAppName(depotInfo: DepotInfo): String {
-        if (depotInfo.dlcAppId == INVALID_APP_ID) {
-            return displayInfo.name
+        // Get base game
+        val baseGame = EpicService.getEpicGameOf(gameId)
+        if (baseGame != null) {
+            allDownloadableGames.add(baseGame)
+            // Base game is always selected and can't be deselected
+            selectedGameIds[baseGame.id ?: 0] = true
         }
 
-        val app = SteamService.getAppInfoOf(depotInfo.dlcAppId)
-        if (app != null) {
-            return app.name
+        // Get DLCs
+        val dlcs = EpicService.getDLCForGame(gameId)
+        allDownloadableGames.addAll(dlcs)
+
+        // All DLCs are selected by default for now
+        dlcs.forEach { dlc ->
+            selectedGameIds[dlc.id ?: 0] = true
         }
-
-        return "DLC ${depotInfo.dlcAppId}"
-    }
-
-    fun getSizeInfo(dlcAppId: Int): Pair<String, String> {
-        if (dlcAppId == INVALID_APP_ID || dlcAppId == gameId) {
-            // Base game case
-            val depotsForBaseGame = downloadableDepots.filter { (_, depot) ->
-                depot.dlcAppId == INVALID_APP_ID
-            }
-
-            val installBytes = depotsForBaseGame.values.sumOf {
-                it.manifests["public"]?.size ?: 0
-            }
-            val downloadBytes = depotsForBaseGame.values.sumOf {
-                it.manifests["public"]?.download ?: 0
-            }
-
-            return Pair(
-                StorageUtils.formatBinarySize(downloadBytes),
-                StorageUtils.formatBinarySize(installBytes)
-            )
-        }
-
-        // DLC case
-        val depotsForDlc = downloadableDepots.filter { (_, depot) ->
-            depot.dlcAppId == dlcAppId
-        }
-
-        val installBytes = depotsForDlc.values.sumOf {
-            it.manifests["public"]?.size ?: 0
-        }
-        val downloadBytes = depotsForDlc.values.sumOf {
-            it.manifests["public"]?.download ?: 0
-        }
-
-        return Pair(
-            StorageUtils.formatBinarySize(downloadBytes),
-            StorageUtils.formatBinarySize(installBytes)
-        )
     }
 
     fun getInstallSizeInfo(): InstallSizeInfo {
-        val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
-
-        // For Base Game
-        val baseGameInstallBytes = if (installedApp == null) {
-            downloadableDepots
-                .filter { (_, depot) ->
-                    depot.dlcAppId == INVALID_APP_ID
-                }.values.sumOf { it.manifests["public"]?.size ?: 0 }
-        } else {
+        val installPath = EpicConstants.defaultEpicGamesPath(context)
+        val availableBytes = try {
+            StorageUtils.getAvailableSpace(installPath)
+        } catch (e: Exception) {
             0L
         }
 
-        val baseGameDownloadBytes = if (installedApp == null) {
-            downloadableDepots
-                .filter { (_, depot) ->
-                    depot.dlcAppId == INVALID_APP_ID
-                }.values.sumOf { it.manifests["public"]?.download ?: 0 }
-        } else {
-            0L
+        val selectedGames = allDownloadableGames.filter {
+            selectedGameIds[it.id ?: 0] == true
         }
 
-        // For Selected DLCs
-        val selectedInstallBytes = downloadableDepots
-            .filter { (_, depot) ->
-                selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
-            }
-            .values.sumOf { it.manifests["public"]?.size ?: 0 }
-
-        val selectedDownloadBytes = downloadableDepots
-            .filter { (_, depot) ->
-                selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
-            }
-            .values.sumOf { it.manifests["public"]?.download ?: 0 }
+        val totalDownloadBytes = selectedGames.sumOf { it.downloadSize }
+        val totalInstallBytes = selectedGames.sumOf { it.installSize }
 
         return InstallSizeInfo(
-            downloadSize = StorageUtils.formatBinarySize(baseGameDownloadBytes + selectedDownloadBytes),
-            installSize = StorageUtils.formatBinarySize(baseGameInstallBytes + selectedInstallBytes),
-            availableSpace = StorageUtils.formatBinarySize(availableBytes),
-            installBytes = baseGameInstallBytes + selectedInstallBytes,
+            downloadSize = StringUtils.formatBytes(totalDownloadBytes),
+            installSize = StringUtils.formatBytes(totalInstallBytes),
+            availableSpace = StringUtils.formatBytes(availableBytes),
+            installBytes = totalInstallBytes,
             availableBytes = availableBytes
         )
     }
 
-    val selectableAppIds by remember(enabledAppIds.toMap()) {
-        derivedStateOf {
-            enabledAppIds.filter { it.value }.keys.toList()
-        }
-    }
-
-    val allSelectableSelected by remember(selectedAppIds.toMap(), selectableAppIds) {
-        derivedStateOf {
-            selectableAppIds.isNotEmpty() && selectableAppIds.all { selectedAppIds[it] == true }
-        }
-    }
-
-    val installSizeInfo by remember(downloadableDepots.keys.toSet(), selectedAppIds.toMap(), enabledAppIds.toMap()) {
+    val installSizeInfo by remember(selectedGameIds.toMap()) {
         derivedStateOf { getInstallSizeInfo() }
     }
 
-    fun installSizeDisplay() : String {
+    fun installSizeDisplay(): String {
         return context.getString(
             R.string.steam_install_space,
             installSizeInfo.downloadSize,
@@ -266,18 +137,14 @@ fun GameManagerDialog(
         )
     }
 
-    fun installButtonEnabled() : Boolean {
+    fun installButtonEnabled(): Boolean {
+        // Check if there's enough space
         if (installSizeInfo.availableBytes < installSizeInfo.installBytes) {
             return false
         }
 
-        if (installedApp != null) {
-            val installed = installedDlcIds.toSet() - mainAppDlcIdsWithoutProperDepotDlcIds.toSet()
-            val realSelectedAppIds = selectedAppIds.filter { it.value }.keys - installed
-            return (realSelectedAppIds.size - 1) > 0 // -1 for main app
-        }
-
-        return selectedAppIds.filter { it.value }.isNotEmpty()
+        // At least base game should be selected
+        return selectedGameIds.filter { it.value }.isNotEmpty()
     }
 
     when {
@@ -395,61 +262,50 @@ fun GameManagerDialog(
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Select All toggle
-                            if (selectableAppIds.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            val newState = !allSelectableSelected
-                                            selectableAppIds.forEach { appId ->
-                                                selectedAppIds[appId] = newState
-                                            }
-                                        }
-                                    ) {
-                                        Text(
-                                            text = if (allSelectableSelected) "Deselect all" else "Select all"
-                                        )
-                                    }
-                                }
-                            }
-
-                            allDownloadableApps.forEach { (dlcAppId, depotInfo) ->
-                                val checked = selectedAppIds[dlcAppId] ?: false
-                                val enabled = enabledAppIds[dlcAppId] ?: false
+                            allDownloadableGames.forEach { game ->
+                                val gameIdValue = game.id ?: 0
+                                val checked = selectedGameIds[gameIdValue] ?: false
+                                val isBaseGame = gameIdValue == gameId
 
                                 ListItem(
                                     headlineContent = {
                                         Column {
                                             Text(
-                                                text = getDepotAppName(depotInfo)
+                                                text = game.title
                                             )
                                             // Add size display
-                                            val (downloadSize, installSize) = getSizeInfo(dlcAppId)
+                                            val downloadSize = StringUtils.formatBytes(game.downloadSize)
+                                            val installSize = StringUtils.formatBytes(game.installSize)
                                             Text(
                                                 text = "$downloadSize download • $installSize install",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                             )
+                                            // Show if it's DLC
+                                            if (game.isDLC) {
+                                                Text(
+                                                    text = "DLC",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
                                     },
                                     trailingContent = {
                                         Checkbox(
                                             checked = checked,
-                                            enabled = enabled,
+                                            enabled = !isBaseGame, // Base game can't be deselected
                                             onCheckedChange = { isChecked ->
-                                                // Update the local (unsaved) state only
-                                                selectedAppIds[dlcAppId] = isChecked
+                                                if (!isBaseGame) {
+                                                    selectedGameIds[gameIdValue] = isChecked
+                                                }
                                             }
                                         )
                                     },
-                                    modifier = Modifier.clickable(enabled = enabled) {
-                                        // Toggle checkbox when ListItem is clicked
-                                        selectedAppIds[dlcAppId] = !checked
+                                    modifier = Modifier.clickable(enabled = !isBaseGame) {
+                                        if (!isBaseGame) {
+                                            selectedGameIds[gameIdValue] = !checked
+                                        }
                                     }
                                 )
 
@@ -479,9 +335,11 @@ fun GameManagerDialog(
                                 Button(
                                     enabled = installButtonEnabled(),
                                     onClick = {
-                                        onInstall(selectedAppIds
-                                            .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
-                                            .filter { selectedId -> selectedId.value }.keys.toList())
+                                        val selectedIds = selectedGameIds
+                                            .filter { it.value }
+                                            .keys
+                                            .toList()
+                                        onInstall(selectedIds)
                                     }
                                 ) {
                                     Text(stringResource(R.string.install))
@@ -492,36 +350,5 @@ fun GameManagerDialog(
                 },
             )
         }
-    }
-}
-
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
-@Composable
-fun Preview_GameManagerDialog() {
-    val fakeApp = fakeAppInfo(1)
-    val displayInfo = GameDisplayInfo(
-        name = fakeApp.name,
-        developer = fakeApp.developer,
-        releaseDate = fakeApp.releaseDate,
-        heroImageUrl = fakeApp.getHeroUrl(),
-        iconUrl = fakeApp.iconUrl,
-        gameId = fakeApp.id,
-        appId = "STEAM_${fakeApp.id}",
-        installLocation = null,
-        sizeOnDisk = null,
-        sizeFromStore = null,
-        lastPlayedText = null,
-        playtimeText = null,
-    )
-
-    PluviaTheme {
-        GameManagerDialog(
-            visible = true,
-            onGetDisplayInfo = {
-                return@GameManagerDialog displayInfo
-            },
-            onInstall = {},
-            onDismissRequest = {}
-        )
     }
 }

@@ -95,7 +95,7 @@ data class EpicGame(
     val isDLC: Boolean = false,
 
     @ColumnInfo("base_game_app_name")
-    val baseGameAppName: String = "", // Used if the entry is_dlc. This allows us to collect them together.
+    val baseGameAppName: String = "", // Used if the entry is_dlc. it says app_name, but it actually means catalogId...
 
     // Metadata
     @ColumnInfo("description")
