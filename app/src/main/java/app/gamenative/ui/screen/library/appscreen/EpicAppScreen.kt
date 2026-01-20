@@ -371,8 +371,9 @@ class EpicAppScreen : BaseAppScreen() {
                 }
 
                 // Start download - EpicService will handle monitoring, database updates, verification, and events
-                // EpicService.downloadGame already downloads all DLCs by default (withDlcs = true)
-                val result = EpicService.downloadGame(context, libraryItem.gameId, installPath)
+                // Pass the selected DLC IDs (excluding the base game)
+                val dlcIds = selectedGameIds.filter { it != libraryItem.gameId }
+                val result = EpicService.downloadGame(context, libraryItem.gameId, dlcIds, installPath)
 
                 if (result.isSuccess) {
                     Timber.tag(TAG).i("Epic game download started successfully: ${libraryItem.gameId}")

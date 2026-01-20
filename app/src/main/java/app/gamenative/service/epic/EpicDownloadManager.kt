@@ -80,7 +80,7 @@ class EpicDownloadManager @Inject constructor(
         installPath: String,
         downloadInfo: DownloadInfo,
         language: String = "en-US",
-        dlcIds: List<Int>
+        dlcIds: List<Int>,
         commonRedistDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -109,7 +109,12 @@ class EpicDownloadManager @Inject constructor(
             } else {
                 emptyList()
             }
-            Timber.tag("Epic").i("Filtered to ${dlcs.size} DLC(s) for ${game.title}")
+
+
+            Timber.tag("Epic").i("Filtered to ${dlcsToDownload.size} DLC(s) for ${game.title}")
+
+            return@withContext Result.failure(Exception("TEST"))
+
             // Step 1: Fetch manifest binary and CDN URLs from Epic
             val manifestResult = epicManager.fetchManifestFromEpic(
                 context,

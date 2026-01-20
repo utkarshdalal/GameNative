@@ -38,6 +38,9 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE id = :appId")
     suspend fun getById(appId: Int): EpicGame?
 
+    @Query("SELECT * FROM epic_games WHERE id IN (:gameIds)")
+    suspend fun getGamesById(gameIds: List<Int>): List<EpicGame>
+
     @Query("SELECT * FROM epic_games WHERE catalog_id = :catalogId")
     suspend fun getByCatalogId(catalogId: String): EpicGame?
 

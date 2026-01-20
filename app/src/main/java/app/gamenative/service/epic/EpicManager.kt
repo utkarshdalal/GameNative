@@ -671,13 +671,13 @@ class EpicManager @Inject constructor(
     /**
      * Get a single game by ID
      */
-    suspend fun getGamesById(gameIds: List<Int>): EpicGame? {
+    suspend fun getGamesById(gameIds: List<Int>): List<EpicGame> {
         return withContext(Dispatchers.IO) {
             try {
                 epicGameDao.getGamesById(gameIds)
             } catch (e: Exception) {
-                Timber.e(e, "Failed to get Epic game by ID: $gameIds.size")
-                null
+                Timber.e(e, "Failed to get Epic games by IDs: ${gameIds.size}")
+                emptyList()
             }
         }
     }
