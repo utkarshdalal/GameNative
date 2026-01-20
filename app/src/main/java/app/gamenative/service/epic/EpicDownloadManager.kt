@@ -95,11 +95,10 @@ class EpicDownloadManager @Inject constructor(
             // Check for DLCs early to calculate total download size
             val dlcsToDownload = if (dlcIds.size > 0) {
                 try {
-                    Timber.tag("Epic").i("Checking for DLCs for ${game.title}...")
-                    Timber.tag("Epic").i("User has opted to download ${dlcIds.size} DLC titles")
+                    Timber.tag("Epic").d("User has opted to download ${dlcIds.size} DLC titles for game: ${game.title}")
                     val dlcs = epicManager.getGamesById(dlcIds)
                     if (dlcs.isNotEmpty()) {
-                        Timber.tag("Epic").i("Found ${dlcs.size} DLC(s) for ${game.title}")
+                        Timber.tag("Epic").d("Found ${dlcs.size} DLC(s) for ${game.title}")
                     }
                     dlcs.filter { dlcIds.contains(it.id) }
                 } catch (e: Exception) {
@@ -109,11 +108,6 @@ class EpicDownloadManager @Inject constructor(
             } else {
                 emptyList()
             }
-
-
-            Timber.tag("Epic").i("Filtered to ${dlcsToDownload.size} DLC(s) for ${game.title}")
-
-            return@withContext Result.failure(Exception("TEST"))
 
             // Step 1: Fetch manifest binary and CDN URLs from Epic
             val manifestResult = epicManager.fetchManifestFromEpic(
