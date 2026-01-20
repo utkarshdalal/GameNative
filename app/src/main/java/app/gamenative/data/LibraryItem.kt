@@ -57,11 +57,7 @@ data class LibraryItem(
                 }
             }
             GameSource.EPIC -> {
-                if(iconHash.isEmpty()){
-                    ""
-                } else {
-                    iconHash // EPIC stores the full URL.
-                }
+                iconHash
             }
         }
 
