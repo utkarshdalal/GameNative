@@ -121,7 +121,7 @@ fun LibraryBottomSheet(
              FlowFilterChip(
                 onClick = { onSourceToggle(GameSource.EPIC) },
                 label = { Text(text = "Epic") },
-                selected = showGOG,
+                selected = showEpic,
                 leadingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_epic),
