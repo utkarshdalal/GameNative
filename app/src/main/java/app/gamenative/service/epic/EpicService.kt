@@ -88,6 +88,13 @@ class EpicService : Service() {
             context.startForegroundService(intent)
         }
 
+        fun triggerLibrarySync(context: Context) {
+            Timber.tag("EPIC").i("Triggering manual library sync (bypasses throttle)")
+            val intent = Intent(context, EpicService::class.java)
+            intent.action = ACTION_MANUAL_SYNC
+            context.startForegroundService(intent)
+        }
+
         fun stop() {
             instance?.let { service ->
                 service.stopSelf()

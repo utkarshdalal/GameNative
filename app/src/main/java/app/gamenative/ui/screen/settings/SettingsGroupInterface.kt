@@ -159,9 +159,10 @@ private suspend fun handleEpicAuthentication(
         if (result.isSuccess) {
             Timber.i("[SettingsEpic]: ✓ Authentication successful!")
 
-            // Start EpicService
-            Timber.i("[SettingsEpic]: Starting EpicService")
+            // Start EpicService and trigger immediate library sync (bypasses throttle)
+            Timber.i("[SettingsEpic]: Starting EpicService and triggering immediate library sync")
             EpicService.start(context)
+            EpicService.triggerLibrarySync(context)
 
             onSuccess()
             onLoadingChange(false)
