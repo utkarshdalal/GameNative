@@ -612,6 +612,29 @@ class EpicAppScreen : BaseAppScreen() {
         val disposables = mutableListOf<() -> Unit>()
         var currentProgressListener: ((Float) -> Unit)? = null
 
+        // Check if download is already in progress and attach listener immediately
+        val existingDownloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
+        if (existingDownloadInfo != null && (existingDownloadInfo.getProgress() ?: 0f) < 1f) {
+            Timber.tag(TAG).d("[OBSERVE] Download already in progress for ${libraryItem.gameId}, attaching progress listener immediately")
+            val progressListener: (Float) -> Unit = { progress ->
+                onProgressChanged(progress)
+            }
+            existingDownloadInfo.addProgressListener(progressListener)
+            currentProgressListener = progressListener
+            
+            // Add cleanup for this listener
+            disposables += {
+                currentProgressListener?.let { listener ->
+                    existingDownloadInfo.removeProgressListener(listener)
+                    currentProgressListener = null
+                }
+            }
+            // Report current progress immediately
+            existingDownloadInfo.getProgress()?.let { currentProgress ->
+                onProgressChanged(currentProgress)
+            }
+        }
+
         // Listen for download status changes
         val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
@@ -627,6 +650,7 @@ class EpicAppScreen : BaseAppScreen() {
                         }
                         // Add new listener and track it
                         val progressListener: (Float) -> Unit = { progress ->
+                            Timber.tag(TAG).v("[OBSERVE] Progress update received for ${libraryItem.gameId}: $progress")
                             onProgressChanged(progress)
                         }
                         downloadInfo.addProgressListener(progressListener)

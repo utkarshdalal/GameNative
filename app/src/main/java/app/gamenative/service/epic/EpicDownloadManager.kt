@@ -109,6 +109,8 @@ class EpicDownloadManager @Inject constructor(
                 emptyList()
             }
 
+            Timber.tag("Epic").i("Filtered to ${dlcsToDownload.size} DLC(s) for ${game.title}")
+
             // Step 1: Fetch manifest binary and CDN URLs from Epic
             val manifestResult = epicManager.fetchManifestFromEpic(
                 context,
@@ -310,15 +312,12 @@ class EpicDownloadManager @Inject constructor(
                             Timber.tag("Epic").i("Downloading DLC ${index + 1}/${dlcManifestData.size}: ${dlc.title}")
                             downloadInfo.updateStatusMessage("Downloading DLC: ${dlc.title} (${index + 1}/${dlcManifestData.size})")
 
-                            // DLC install path should be subdirectory of base game
-                            val dlcInstallPath = "$installPath/${dlc.appName}"
-
                             // Download the DLC using already-fetched manifest
                             val dlcResult = downloadGameWithManifest(
                                 context = context,
                                 game = dlc,
                                 manifestData = manifestData,
-                                installPath = dlcInstallPath,
+                                installPath = installPath,
                                 downloadInfo = downloadInfo,
                             )
 
