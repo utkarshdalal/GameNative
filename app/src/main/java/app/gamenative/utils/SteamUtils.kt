@@ -241,6 +241,13 @@ object SteamUtils {
         // Make a backup before extracting
         backupSteamclientFiles(context, steamAppId)
 
+        // Delete extra_dlls folder before extraction to prevent conflicts
+        val extraDllDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/extra_dlls")
+        if (extraDllDir.exists()) {
+            extraDllDir.deleteRecursively()
+            Timber.i("Deleted extra_dlls directory before extraction for appId: $steamAppId")
+        }
+
         val imageFs = ImageFs.find(context)
         val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260116.tzst")
         TarCompressorUtils.extract(
@@ -249,7 +256,7 @@ object SteamUtils {
             imageFs.getRootDir(),
         )
         putBackSteamDlls(appDirPath)
-        restoreOriginalExecutable(context, steamAppId)
+        restoreUnpackedExecutable(context, steamAppId)
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
@@ -321,6 +328,21 @@ object SteamUtils {
         val exeCommandLine = container.execArgs
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
         iniFile.parentFile?.mkdirs()
+
+        // Only include DllsToInjectFolder if unpackFiles is enabled
+        val injectionSection = if (container.isUnpackFiles) {
+            """
+                [Injection]
+                IgnoreLoaderArchDifference=1
+                DllsToInjectFolder=extra_dlls
+            """
+        } else {
+            """
+                [Injection]
+                IgnoreLoaderArchDifference=1
+            """
+        }
+
         iniFile.writeText(
             """
                 [SteamClient]
@@ -334,9 +356,7 @@ object SteamUtils {
                 SteamClientDll=steamclient.dll
                 SteamClient64Dll=steamclient64.dll
 
-                [Injection]
-                IgnoreLoaderArchDifference=1
-                DllsToInjectFolder=extra_dlls
+                $injectionSection
             """.trimIndent(),
         )
     }

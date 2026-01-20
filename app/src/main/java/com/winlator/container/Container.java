@@ -123,6 +123,8 @@ public class Container {
 
     private boolean useLegacyDRM = false;
 
+    private boolean unpackFiles = false;
+
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -660,6 +662,9 @@ public class Container {
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
+            // Unpack Files setting
+            data.put("unpackFiles", unpackFiles);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -831,6 +836,9 @@ public class Container {
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
+                case "unpackFiles":
+                    this.unpackFiles = data.getBoolean(key);
+                    break;
             }
         }
     }
@@ -900,6 +908,14 @@ public class Container {
 
     public void setUseLegacyDRM(boolean useLegacyDRM) {
         this.useLegacyDRM = useLegacyDRM;
+    }
+
+    public boolean isUnpackFiles() {
+        return unpackFiles;
+    }
+
+    public void setUnpackFiles(boolean unpackFiles) {
+        this.unpackFiles = unpackFiles;
     }
 
     public String getContainerJson() {

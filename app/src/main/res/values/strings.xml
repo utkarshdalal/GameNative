@@ -468,6 +468,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Use Legacy DRM</string>
+    <string name="unpack_files">Unpack Files</string>
+    <string name="unpack_files_description">Only use if you get \'Application Load Error\'. May reduce FPS.</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>

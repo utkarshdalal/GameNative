@@ -1173,6 +1173,17 @@ fun ContainerConfigDialog(
                                         config = config.copy(useLegacyDRM = it)
                                     },
                                 )
+                                if (!config.useLegacyDRM) {
+                                    SettingsSwitch(
+                                        colors = settingsTileColorsAlt(),
+                                        title = { Text(text = stringResource(R.string.unpack_files)) },
+                                        subtitle = { Text(text = stringResource(R.string.unpack_files_description)) },
+                                        state = config.unpackFiles,
+                                        onCheckedChange = {
+                                            config = config.copy(unpackFiles = it)
+                                        },
+                                    )
+                                }
                                 SettingsSwitch(
                                     colors = settingsTileColorsAlt(),
                                     title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },

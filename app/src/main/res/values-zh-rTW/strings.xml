@@ -462,6 +462,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">使用舊版 DRM</string>
+    <string name="unpack_files">解壓檔案</string>
+    <string name="unpack_files_description">僅在出現\'應用程式載入錯誤\'時使用。可能會降低幀率。</string>
     <string name="force_dlc">強制開啟DLC</string>
     <string name="force_dlc_description">僅在未偵測到 DLC 或包含 DLC 的存檔無法運作時啟用</string>
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>

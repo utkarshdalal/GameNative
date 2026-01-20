@@ -464,6 +464,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Utiliser le DRM hérité</string>
+    <string name="unpack_files">Décompresser les fichiers</string>
+    <string name="unpack_files_description">Utiliser uniquement si vous obtenez \'Application Load Error\'. Peut réduire les FPS.</string>
     <string name="force_dlc">Forcer les DLC</string>
     <string name="force_dlc_description">N\'activer que si les DLC ne sont pas détectés ou si les sauvegardes avec DLC ne fonctionnent pas</string>
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>

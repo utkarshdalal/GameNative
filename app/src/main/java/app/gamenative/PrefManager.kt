@@ -289,6 +289,13 @@ object PrefManager {
             setPref(USE_LEGACY_DRM, value)
         }
 
+    private val UNPACK_FILES = booleanPreferencesKey("unpack_files")
+    var unpackFiles: Boolean
+        get() = getPref(UNPACK_FILES, false)
+        set(value) {
+            setPref(UNPACK_FILES, value)
+        }
+
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String
         get() = getPref(CPU_LIST, Container.getFallbackCPUList())

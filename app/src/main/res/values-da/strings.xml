@@ -722,6 +722,8 @@
 
     <!-- TODO: Manual review - Container Configuration: Steam Integration (missing) -->
     <string name="use_legacy_drm">Brug ældre DRM</string>
+    <string name="unpack_files">Udpak filer</string>
+    <string name="unpack_files_description">Brug kun, hvis du får \'Application Load Error\'. Kan reducere FPS.</string>
 
     <!-- TODO: Manual review - Library Status -->
     <string name="library_status_ready">Klar</string>

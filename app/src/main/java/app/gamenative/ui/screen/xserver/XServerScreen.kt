@@ -1899,19 +1899,6 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
-/**
- * Filters executables to exclude _CommonRedist folder and files ending in original.exe or unpacked.exe
- */
-private fun filterExecutablesForSteamless(executables: List<String>): List<String> {
-    return executables.filter { exePath ->
-        val lowerPath = exePath.lowercase()
-        // Exclude _CommonRedist folder
-        !lowerPath.contains("_commonredist") &&
-        // Exclude files ending in original.exe or unpacked.exe
-        !lowerPath.endsWith("original.exe") &&
-        !lowerPath.endsWith("unpacked.exe")
-    }
-}
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
 
@@ -2257,85 +2244,72 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
 
-        if (!container.isLaunchRealSteam && container.isUseLegacyDRM) {
-            // Scan all executables from A: drive and filter them
-            val allExecutables = ContainerUtils.scanExecutablesInADrive(container.drives)
-            Timber.i("Found ${allExecutables.size} executables in A: drive")
-
-            val filteredExecutables = filterExecutablesForSteamless(allExecutables)
-            Timber.i("Filtered to ${filteredExecutables.size} executables for Steamless processing")
-
-            if (filteredExecutables.isEmpty()) {
-                Timber.w("No executables to process with Steamless")
+        if (!container.isLaunchRealSteam && !container.isUnpackFiles) {
+            val executablePath = container.executablePath
+            if (executablePath.isEmpty()) {
+                Timber.w("No executable path set, skipping Steamless")
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
 
-                // Process each executable individually to handle errors per file
-                filteredExecutables.forEachIndexed { index, exePath ->
-                    var batchFile: File? = null
-                    try {
-                        val normalizedPath = exePath.replace('/', '\\')
-                        val windowsPath = "A:\\$normalizedPath"
+                var batchFile: File? = null
+                try {
+                    // Normalize path: container.executablePath uses forward slashes, convert to Windows format
+                    val normalizedPath = executablePath.replace('/', '\\')
+                    val windowsPath = "A:\\$normalizedPath"
 
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM... (${index + 1}/${filteredExecutables.size})"))
+                    // Create a batch file that Wine can execute, to handle paths with spaces in them
+                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper.bat")
+                    batchFile.parentFile?.mkdirs()
+                    batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
 
-                        // Create a batch file that Wine can execute, to handle paths with spaces in them
-                        batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper_${index}.bat")
-                        batchFile.parentFile?.mkdirs()
-                        batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
-
-                        val slCmd = "wine z:\\tmp\\steamless_wrapper_${index}.bat"
-                        val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
-                        output.append(slOutput)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error running Steamless on $exePath, continuing with next file")
-                        output.append("Error processing $exePath: ${e.message}\n")
-                    } finally {
-                        // Clean up batch file
-                        batchFile?.delete()
-                    }
+                    val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
+                    val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
+                    output.append(slOutput)
+                    Timber.i("Finished processing executable. Result: $output")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error running Steamless on $executablePath")
+                    output.append("Error processing $executablePath: ${e.message}\n")
+                } finally {
+                    // Clean up batch file
+                    batchFile?.delete()
                 }
 
-                Timber.i("Finished processing ${filteredExecutables.size} executables. Result: $output")
+                // Process file moving for the executable
+                try {
+                    // container.executablePath uses forward slashes (Unix format)
+                    // Use as-is for File operations (forward slashes work on Unix/Android)
+                    val unixPath = executablePath.replace('\\', '/')
+                    val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
+                    val unpackedExe = File(
+                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
+                    )
+                    val originalExe = File(
+                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
+                    )
 
-                // Process file moving for all filtered executables
-                for (exePath in filteredExecutables) {
-                    try {
-                        // Paths from scanExecutablesInADrive use forward slashes (Unix format from URI)
-                        // Use as-is for File operations (forward slashes work on Unix/Android)
-                        val unixPath = exePath.replace('\\', '/')
-                        val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
-                        val unpackedExe = File(
-                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
-                        )
-                        val originalExe = File(
-                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
-                        )
+                    // For logging, show Windows format
+                    val windowsPath = "A:\\${executablePath.replace('/', '\\')}"
 
-                        // For logging, show Windows format
-                        val windowsPath = "A:\\${exePath.replace('/', '\\')}"
-
-                        Timber.i("Moving files for $windowsPath")
-                        if (exe.exists() && unpackedExe.exists()) {
-                            if (originalExe.exists()) {
-                                Timber.i("Original backup exists for $windowsPath; skipping overwrite")
-                            } else {
-                                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
-                            }
-                            Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
-                            Timber.i("Successfully moved files for $windowsPath")
+                    Timber.i("Moving files for $windowsPath")
+                    if (exe.exists() && unpackedExe.exists()) {
+                        if (originalExe.exists()) {
+                            Timber.i("Original backup exists for $windowsPath; skipping overwrite")
                         } else {
-                            val errorMsg =
-                                "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
-                            Timber.w(errorMsg)
+                            Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
                         }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error moving files for $exePath, continuing with next executable")
+                        Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                        Timber.i("Successfully moved files for $windowsPath")
+                    } else {
+                        val errorMsg =
+                            "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                        Timber.w(errorMsg)
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error moving files for $executablePath")
                 }
             }
         } else {
-            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM})")
+            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM}, unpackFiles=${container.isUnpackFiles})")
         }
 
         output = StringBuilder()
