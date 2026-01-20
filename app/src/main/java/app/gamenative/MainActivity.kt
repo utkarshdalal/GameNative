@@ -296,7 +296,7 @@ class MainActivity : ComponentActivity() {
             isChangingConfigurations,
         )
 
-        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.isGameRunning) {
+        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.keepAlive) {
             Timber.i("Stopping Steam Service")
             SteamService.stopService()
         }
@@ -313,7 +313,7 @@ class MainActivity : ComponentActivity() {
         SteamService.autoStopWhenIdle = false
 
         // Resume game if it was running
-        if (SteamService.isGameRunning) {
+        if (SteamService.keepAlive) {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
@@ -331,6 +331,9 @@ class MainActivity : ComponentActivity() {
         if (SteamService.isGameRunning) {
             // PluviaApp.xEnvironment?.onPause()
             // Timber.d("Game paused due to app backgrounded")
+        if (SteamService.keepAlive) {
+            PluviaApp.xEnvironment?.onPause()
+            Timber.d("Game paused due to app backgrounded")
         }
         PostHog.capture(event = "app_backgrounded")
         super.onPause()
@@ -344,19 +347,33 @@ class MainActivity : ComponentActivity() {
         // enable auto-stop behavior if backgrounded
         // SteamService.autoStopWhenIdle = true
 
+        Timber.d(
+            "onStop - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Keep Alive: %b, Is Importing: %b",
+            index,
+            SteamService.isConnected,
+            SteamService.isLoggedIn,
+            isChangingConfigurations,
+            SteamService.keepAlive,
+            SteamService.isImporting,
+        )
         // stop SteamService only if no downloads or sync are in progress
         /*
         if (!isChangingConfigurations &&
             SteamService.isConnected &&
             !SteamService.hasActiveOperations() &&
             !SteamService.isLoginInProgress &&
-            !SteamService.isGameRunning &&
+            !SteamService.keepAlive &&
             !SteamService.isImporting
         ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stopService()
         }
          */
+
+        if (GOGService.isRunning) {
+            Timber.i("Stopping GOG Service")
+            GOGService.stop()
+        }
     }
 
     // override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -382,6 +399,7 @@ class MainActivity : ComponentActivity() {
         if (!eventDispatched) {
             if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
                 if (SteamService.isGameRunning) {
+                if (SteamService.keepAlive){
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
                     eventDispatched = true
                 }

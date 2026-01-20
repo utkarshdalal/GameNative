@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">%d dossiers trouvés</string>
     <string name="custom_games_scan_description">Les dossiers dans ces chemins sont analysés pour les fichiers .exe et listés comme jeux personnalisés. Cela peut ralentir le démarrage de l\'application.</string>
     <string name="custom_game_folder_picker_error">Échec de la résolution du chemin du dossier</string>
+    <string name="container_config_drive_letter_missing">La lettre du lecteur est manquante</string>
+    <string name="container_config_invalid_drive_path">Chemin du lecteur invalide</string>
     <string name="custom_game_exe_selection_title">Sélection d\'exécutable requise</string>
     <string name="custom_game_exe_selection_message">Ce jeu possède plusieurs exécutables. Veuillez ouvrir les paramètres de jeu personnalisé pour sélectionner celui à lancer.</string>
     <string name="custom_game_settings">Paramètres du jeu personnalisé</string>
@@ -464,6 +466,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Utiliser le DRM hérité</string>
+    <string name="unpack_files">Décompresser les fichiers</string>
+    <string name="unpack_files_description">Utiliser uniquement si vous obtenez \'Application Load Error\'. Peut réduire les FPS.</string>
     <string name="force_dlc">Forcer les DLC</string>
     <string name="force_dlc_description">N\'activer que si les DLC ne sont pas détectés ou si les sauvegardes avec DLC ne fonctionnent pas</string>
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
@@ -536,6 +540,9 @@
     <string name="environment_variables">Variables d\'environnement</string>
     <string name="no_environment_variables">Aucune variable d\'environnement</string>
     <string name="no_drives">Aucun lecteur</string>
+    <string name="add_drive">Ajouter un lecteur</string>
+    <string name="drive_letter">Lettre de lecteur</string>
+    <string name="no_available_drive_letters">Aucune lettre de lecteur disponible</string>
     <string name="startup_selection">Sélection de démarrage</string>
     <string name="processor_affinity_32bit">Affinité du processeur (apps 32 bits)</string>
     <string name="executable_path">Chemin de l\'exécutable</string>

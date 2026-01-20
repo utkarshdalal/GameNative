@@ -116,12 +116,14 @@ data class CustomGameFolderPicker(
 fun rememberCustomGameFolderPicker(
     onPathSelected: (String) -> Unit,
     onFailure: (String) -> Unit = {},
+    onCancel: () -> Unit = {},
 ): CustomGameFolderPicker {
     val context = LocalContext.current
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri: Uri? ->
         if (uri == null) {
+            onCancel()
             return@rememberLauncherForActivityResult
         }
 

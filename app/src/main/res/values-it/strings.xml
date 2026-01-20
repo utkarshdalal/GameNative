@@ -13,6 +13,7 @@
     <string name="steam_2fa_device">Inserisci il codice di autenticazione a due fattori dalla tua app di autenticazione.</string>
     <string name="steam_2fa_email">Inserisci il codice di autenticazione inviato all\'email %s</string>
     <string name="steam_install_space_prompt">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tDimensione su Disco: %2$s\n\tSpazio Disponibile: %3$s</string>
+    <string name="steam_install_space">Dimensione Download: %1$s\nSpazio su Disco: %2$s\nSpazio Disponibile: %3$s</string>
     <string name="steam_install_not_enough_space">L\'app che stai installando richiede %1$s di spazio ma sono rimasti solo %2$s su questo dispositivo</string>
     <string name="steam_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="steam_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
@@ -89,6 +90,8 @@
     <string name="custom_games_folders_found">%d cartelle trovate</string>
     <string name="custom_games_scan_description">Le cartelle in questi percorsi vengono scansionate per file .exe ed elencate come giochi personalizzati. Questo potrebbe rallentare l\'avvio dell\'app.</string>
     <string name="custom_game_folder_picker_error">Impossibile risolvere il percorso della cartella</string>
+    <string name="container_config_drive_letter_missing">Manca la lettera dell\'unità</string>
+    <string name="container_config_invalid_drive_path">Percorso dell\'unità non valido</string>
     <string name="custom_game_exe_selection_title">Selezione Eseguibile Richiesta</string>
     <string name="custom_game_exe_selection_message">Questo gioco ha più eseguibili. Apri le Impostazioni Gioco Personalizzato per selezionare quale avviare.</string>
     <string name="custom_game_settings">Impostazioni Gioco Personalizzato</string>
@@ -467,6 +470,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Usa DRM Legacy</string>
+    <string name="unpack_files">Estrai file</string>
+    <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error\'. Può ridurre gli FPS.</string>
     <string name="force_dlc">Forza DLC</string>
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
@@ -539,6 +544,9 @@
     <string name="environment_variables">Variabili d\'Ambiente</string>
     <string name="no_environment_variables">Nessuna variabile d\'ambiente</string>
     <string name="no_drives">Nessuna unità</string>
+    <string name="add_drive">Aggiungi unità</string>
+    <string name="drive_letter">Lettera dell\'unità</string>
+    <string name="no_available_drive_letters">Nessuna lettera di unità disponibile</string>
     <string name="startup_selection">Selezione Avvio</string>
     <string name="processor_affinity_32bit">Affinità Processore (app 32-bit)</string>
     <string name="executable_path">Percorso Eseguibile</string>

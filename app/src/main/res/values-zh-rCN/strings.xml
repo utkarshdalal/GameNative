@@ -89,6 +89,8 @@
     <string name="custom_games_folders_found">找到 %d 个文件夹</string>
     <string name="custom_games_scan_description">将扫描这些路径中文件夹内的 .exe 文件并将其列为自定义游戏，可能会减慢应用启动速度</string>
     <string name="custom_game_folder_picker_error">无法解析文件夹路径</string>
+    <string name="container_config_drive_letter_missing">缺少驱动器字母</string>
+    <string name="container_config_invalid_drive_path">驱动器路径无效</string>
     <string name="custom_game_exe_selection_title">需要选择可执行文件</string>
     <string name="custom_game_exe_selection_message">此游戏有多个可执行文件，请打开 自定义游戏设置 以选择要启动的游戏</string>
     <string name="custom_game_settings">自定义游戏设置</string>
@@ -459,6 +461,8 @@
 
     <!-- 容器配置：Steam 集成 -->
     <string name="use_legacy_drm">使用旧版 DRM</string>
+    <string name="unpack_files">解压文件</string>
+    <string name="unpack_files_description">仅在出现\'应用程序加载错误\'时使用。可能会降低帧率。</string>
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
@@ -532,6 +536,9 @@
     <string name="environment_variables">环境变量</string>
     <string name="no_environment_variables">没有环境变量</string>
     <string name="no_drives">未挂载任何存储设备</string>
+    <string name="add_drive">添加驱动器</string>
+    <string name="drive_letter">驱动器盘符</string>
+    <string name="no_available_drive_letters">没有可用的驱动器盘符</string>
     <string name="startup_selection">启动选项</string>
     <string name="processor_affinity_32bit">处理器关联性（32 位应用程序）</string>
     <string name="executable_path">执行路径</string>

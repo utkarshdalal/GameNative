@@ -2,6 +2,8 @@ package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,9 +70,12 @@ import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.components.rememberCustomGameFolderPicker
+import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ContainerUtils
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -91,6 +96,9 @@ import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCorePresetManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
@@ -712,6 +720,77 @@ fun ContainerConfigDialog(
             mutableStateOf(MessageDialogState(visible = false))
         }
         var showEnvVarCreateDialog by rememberSaveable { mutableStateOf(false) }
+        var showAddDriveDialog by rememberSaveable { mutableStateOf(false) }
+        var selectedDriveLetter by rememberSaveable { mutableStateOf("") }
+        var pendingDriveLetter by rememberSaveable { mutableStateOf("") }
+        var driveLetterMenuExpanded by rememberSaveable { mutableStateOf(false) }
+
+        val reservedDriveLetters = setOf("C", "Z")
+        val nonDeletableDriveLetters = setOf("A", "C", "D", "Z")
+        val availableDriveLetters = remember(config.drives) {
+            val usedDriveLetters = Container.drivesIterator(config.drives)
+                .map { it[0].uppercase(Locale.ENGLISH) }
+                .toSet()
+            ('A'..'Z').map { it.toString() }
+                .filter { it !in usedDriveLetters && it !in reservedDriveLetters }
+        }
+
+        val storagePermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { }
+
+        val folderPicker = rememberCustomGameFolderPicker(
+            onPathSelected = { path ->
+                SteamService.keepAlive = false
+                val letter = pendingDriveLetter.uppercase(Locale.ENGLISH)
+                if (letter.isBlank()) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.container_config_drive_letter_missing),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@rememberCustomGameFolderPicker
+                }
+                if (!availableDriveLetters.contains(letter)) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.no_available_drive_letters),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    pendingDriveLetter = ""
+                    return@rememberCustomGameFolderPicker
+                }
+                if (path.isBlank() || path.contains(":")) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.container_config_invalid_drive_path),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    pendingDriveLetter = ""
+                    return@rememberCustomGameFolderPicker
+                }
+
+                val folder = File(path)
+                val canAccess = try {
+                    folder.exists() && folder.isDirectory && folder.canRead()
+                } catch (_: Exception) {
+                    false
+                }
+                if (!canAccess && !CustomGameScanner.hasStoragePermission(context, path)) {
+                    requestPermissionsForPath(context, path, storagePermissionLauncher)
+                }
+
+                config = config.copy(drives = "${config.drives}${letter}:${path}")
+                pendingDriveLetter = ""
+            },
+            onFailure = { message ->
+                SteamService.keepAlive = false
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            },
+            onCancel = {
+                SteamService.keepAlive = false
+            },
+        )
 
         val applyScreenSizeToConfig: () -> Unit = {
             val screenSize = if (screenSizeIndex == 0) {
@@ -928,6 +1007,75 @@ fun ContainerConfigDialog(
             )
         }
 
+        if (showAddDriveDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddDriveDialog = false },
+                title = { Text(text = stringResource(R.string.add_drive)) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = selectedDriveLetter,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(text = stringResource(R.string.drive_letter)) },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { driveLetterMenuExpanded = true },
+                                    content = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.ViewList,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                        DropdownMenu(
+                            expanded = driveLetterMenuExpanded,
+                            onDismissRequest = { driveLetterMenuExpanded = false },
+                        ) {
+                            availableDriveLetters.forEach { letter ->
+                                DropdownMenuItem(
+                                    text = { Text(text = letter) },
+                                    onClick = {
+                                        selectedDriveLetter = letter
+                                        driveLetterMenuExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                        if (availableDriveLetters.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.no_available_drive_letters),
+                                color = MaterialTheme.colorScheme.error,
+                                style = TextStyle(fontSize = 14.sp),
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = selectedDriveLetter.isNotBlank() &&
+                            availableDriveLetters.contains(selectedDriveLetter),
+                        onClick = {
+                            pendingDriveLetter = selectedDriveLetter
+                            showAddDriveDialog = false
+                            SteamService.keepAlive = true
+                            folderPicker.launchPicker()
+                        },
+                        content = { Text(text = stringResource(R.string.ok)) },
+                    )
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAddDriveDialog = false },
+                        content = { Text(text = stringResource(R.string.cancel)) },
+                    )
+                },
+            )
+        }
+
         Dialog(
             onDismissRequest = onDismissCheck,
             properties = DialogProperties(
@@ -1114,6 +1262,143 @@ fun ContainerConfigDialog(
                                                     config = config.copy(wineVersion = bionicWineEntries[idx])
                                                 },
                                             )
+                                    }
+                                }
+                                // Executable Path dropdown with all EXEs from A: drive
+                                ExecutablePathDropdown(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    value = config.executablePath,
+                                    onValueChange = { config = config.copy(executablePath = it) },
+                                    containerData = config,
+                                )
+                                OutlinedTextField(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    value = config.execArgs,
+                                    onValueChange = { config = config.copy(execArgs = it) },
+                                    label = { Text(text = stringResource(R.string.exec_arguments)) },
+                                    placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
+                                )
+                                val displayNameForLanguage: (String) -> String = { code ->
+                                    when (code) {
+                                        "schinese" -> "Simplified Chinese"
+                                        "tchinese" -> "Traditional Chinese"
+                                        "koreana" -> "Korean"
+                                        "latam" -> "Spanish (Latin America)"
+                                        "brazilian" -> "Portuguese (Brazil)"
+                                        else -> code.replaceFirstChar { ch -> ch.titlecase(Locale.getDefault()) }
+                                    }
+                                }
+                                SettingsListDropdown(
+                                    enabled = true,
+                                    value = languageIndex,
+                                    items = languages.map(displayNameForLanguage),
+                                    fallbackDisplay = displayNameForLanguage("english"),
+                                    onItemSelected = { index ->
+                                        languageIndex = index
+                                        config = config.copy(language = languages[index])
+                                    },
+                                    title = { Text(text = stringResource(R.string.language)) },
+                                    colors = settingsTileColors(),
+                                )
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = stringResource(R.string.screen_size)) },
+                                    value = screenSizeIndex,
+                                    items = screenSizes,
+                                    onItemSelected = {
+                                        screenSizeIndex = it
+                                        if (it == 0) {
+                                            showCustomResolutionDialog = true
+                                        } else {
+                                            applyScreenSizeToConfig()
+                                        }
+                                    },
+                                )
+                                // Audio Driver Dropdown
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = stringResource(R.string.audio_driver)) },
+                                    value = audioDriverIndex,
+                                    items = audioDrivers,
+                                    onItemSelected = {
+                                        audioDriverIndex = it
+                                        config = config.copy(audioDriver = StringUtils.parseIdentifier(audioDrivers[it]))
+                                    },
+                                )
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = stringResource(R.string.show_fps)) },
+                                    state = config.showFPS,
+                                    onCheckedChange = {
+                                        config = config.copy(showFPS = it)
+                                    },
+                                )
+
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = stringResource(R.string.force_dlc)) },
+                                    subtitle = { Text(text = stringResource(R.string.force_dlc_description)) },
+                                    state = config.forceDlc,
+                                    onCheckedChange = {
+                                        config = config.copy(forceDlc = it)
+                                    },
+                                )
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = stringResource(R.string.use_legacy_drm)) },
+                                    state = config.useLegacyDRM,
+                                    onCheckedChange = {
+                                        config = config.copy(useLegacyDRM = it)
+                                    },
+                                )
+                                if (!config.useLegacyDRM) {
+                                    SettingsSwitch(
+                                        colors = settingsTileColorsAlt(),
+                                        title = { Text(text = stringResource(R.string.unpack_files)) },
+                                        subtitle = { Text(text = stringResource(R.string.unpack_files_description)) },
+                                        state = config.unpackFiles,
+                                        onCheckedChange = {
+                                            config = config.copy(unpackFiles = it)
+                                        },
+                                    )
+                                }
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
+                                    subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
+                                    state = config.launchRealSteam,
+                                    onCheckedChange = {
+                                        config = config.copy(launchRealSteam = it)
+                                    },
+                                )
+                                if (config.launchRealSteam) {
+                                    SettingsSwitch(
+                                        colors = settingsTileColorsAlt(),
+                                        title = { Text(text = stringResource(R.string.allow_steam_updates)) },
+                                        subtitle = { Text(text = stringResource(R.string.allow_steam_updates_description)) },
+                                        state = config.allowSteamUpdates,
+                                        onCheckedChange = {
+                                            config = config.copy(allowSteamUpdates = it)
+                                        },
+                                    )
+                                }
+                                // Steam Type Dropdown
+                                val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
+                                val currentSteamTypeIndex = when (config.steamType.lowercase()) {
+                                    Container.STEAM_TYPE_LIGHT -> 1
+                                    Container.STEAM_TYPE_ULTRALIGHT -> 2
+                                    else -> 0
+                                }
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = stringResource(R.string.steam_type)) },
+                                    value = currentSteamTypeIndex,
+                                    items = steamTypeItems,
+                                    onItemSelected = {
+                                        val type = when (it) {
+                                            1 -> Container.STEAM_TYPE_LIGHT
+                                            2 -> Container.STEAM_TYPE_ULTRALIGHT
+                                            else -> Container.STEAM_TYPE_NORMAL
                                         }
                                     }
                                     // Executable Path dropdown with all EXEs from A: drive
@@ -1862,6 +2147,35 @@ fun ContainerConfigDialog(
                                                 config = config.copy(
                                                     wincomponents = config.wincomponents.replace("$compId=$compValue", "$compId=$it"),
                                                 )
+                                            title = { Text(driveLetter) },
+                                            subtitle = { Text(drivePath) },
+                                            onClick = {},
+                                            action = if (driveLetter !in nonDeletableDriveLetters) {
+                                                {
+                                                    IconButton(
+                                                        onClick = {
+                                                            // Rebuild drives string excluding the drive to delete
+                                                            val drivesBuilder = StringBuilder()
+                                                            for (existingDrive in Container.drivesIterator(config.drives)) {
+                                                                if (existingDrive[0] != driveLetter) {
+                                                                    drivesBuilder.append("${existingDrive[0]}:${existingDrive[1]}")
+                                                                }
+                                                            }
+                                                            config = config.copy(
+                                                                drives = drivesBuilder.toString(),
+                                                            )
+                                                        },
+                                                        content = {
+                                                            Icon(
+                                                                Icons.Filled.Delete,
+                                                                contentDescription = "Delete drive",
+                                                                tint = MaterialTheme.colorScheme.error,
+                                                            )
+                                                        },
+                                                    )
+                                                }
+                                            } else {
+                                                null
                                             },
                                         )
                                     }
@@ -1952,6 +2266,41 @@ fun ContainerConfigDialog(
                                         SettingsCenteredLabel(
                                             colors = settingsTileColors(),
                                             title = { Text(text = stringResource(R.string.no_drives)) },
+                                    },
+                                    onClick = {
+                                        if (availableDriveLetters.isEmpty()) {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.no_available_drive_letters),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                            return@SettingsMenuLink
+                                        }
+                                        selectedDriveLetter = availableDriveLetters.first()
+                                        driveLetterMenuExpanded = false
+                                        showAddDriveDialog = true
+                                    },
+                                )
+                            }
+                            if (selectedTab == 8) SettingsGroup() {
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = stringResource(R.string.startup_selection)) },
+                                    value = config.startupSelection.toInt().takeIf { it in getStartupSelectionOptions().indices } ?: 1,
+                                    items = getStartupSelectionOptions(),
+                                    onItemSelected = {
+                                        config = config.copy(
+                                            startupSelection = it.toByte(),
+                                        )
+                                    },
+                                )
+                                SettingsCPUList(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = stringResource(R.string.processor_affinity)) },
+                                    value = config.cpuList,
+                                    onValueChange = {
+                                        config = config.copy(
+                                            cpuList = it,
                                         )
                                     }
 
