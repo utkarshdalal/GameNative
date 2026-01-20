@@ -1209,8 +1209,6 @@ fun preLaunchApp(
         val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
         if (isEpicGame) {
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
-
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
             // Sync cloud saves (download latest saves before playing)
             Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
             val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(

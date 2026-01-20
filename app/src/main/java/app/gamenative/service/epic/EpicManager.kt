@@ -518,7 +518,7 @@ class EpicManager @Inject constructor(
             canSkipKoreanIdVerification = getBooleanAttribute("CanSkipKoreanIdVerification", true),
             thirdPartyManagedApp = getAttribute("ThirdPartyManagedApp"),
             thirdPartyManagedProvider = getAttribute("ThirdPartyManagedProvider"),
-            partnerLinkType = getAttribute("PartnerLinkType"),
+            partnerLinkType = getAttribute("partnerLinkType"),
             executableName = getAttribute("MainWindowProcessName"),
         )
     }

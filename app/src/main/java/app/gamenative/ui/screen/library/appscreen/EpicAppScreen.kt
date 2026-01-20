@@ -621,7 +621,7 @@ class EpicAppScreen : BaseAppScreen() {
             }
             existingDownloadInfo.addProgressListener(progressListener)
             currentProgressListener = progressListener
-            
+
             // Add cleanup for this listener
             disposables += {
                 currentProgressListener?.let { listener ->
@@ -775,23 +775,6 @@ class EpicAppScreen : BaseAppScreen() {
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,
                 message = installDialogState.message,
-            )
-        }
-
-        // Game manager dialog (DLC selection)
-        if (gameManagerDialogState.visible) {
-            app.gamenative.ui.component.dialog.EpicGameManagerDialog(
-                visible = true,
-                onGetDisplayInfo = { context ->
-                    getGameDisplayInfo(context, libraryItem)
-                },
-                onInstall = { selectedGameIds ->
-                    hideGameManagerDialog(gameId)
-                    performDownload(context, libraryItem, selectedGameIds) {}
-                },
-                onDismissRequest = {
-                    hideGameManagerDialog(gameId)
-                }
             )
         }
 

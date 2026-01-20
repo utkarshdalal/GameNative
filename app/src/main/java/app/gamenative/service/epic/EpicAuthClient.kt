@@ -78,7 +78,7 @@ object EpicAuthClient {
                 expiresIn = json.getInt("expires_in"),
             )
 
-            Timber.i("Successfully authenticated with Epic: ${authResponse.displayName} (${authResponse.accountId})")
+            Timber.i("Successfully authenticated with Epic")
             Result.success(authResponse)
         } catch (e: Exception) {
             Timber.e(e, "Failed to authenticate with Epic")

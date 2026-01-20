@@ -677,33 +677,6 @@ class EpicDownloadManager @Inject constructor(
     }
 
     /**
-     * Verify chunk SHA-1 hash from file
-     */
-    private fun verifyChunkHash(file: File, expectedHash: String): Boolean {
-        return try {
-            val digest = MessageDigest.getInstance("SHA-1")
-            file.inputStream().use { input ->
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    digest.update(buffer, 0, bytesRead)
-                }
-            }
-            val actualHash = digest.digest().joinToString("") { "%02x".format(it) }
-            val matches = actualHash.equals(expectedHash, ignoreCase = true)
-
-            if (!matches) {
-                Timber.tag("Epic").e("Hash mismatch: expected $expectedHash, got $actualHash")
-            }
-
-            matches
-        } catch (e: Exception) {
-            Timber.tag("Epic").e(e, "Hash verification failed")
-            false
-        }
-    }
-
-    /**
      * Assemble a file from its chunks
      */
     private suspend fun assembleFile(
