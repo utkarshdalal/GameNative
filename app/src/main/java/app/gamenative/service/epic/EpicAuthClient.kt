@@ -5,6 +5,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -40,8 +41,11 @@ object EpicAuthClient {
         try {
             val url = "https://${EpicConstants.OAUTH_HOST}/account/api/oauth/token"
 
-            val formBody = "grant_type=authorization_code&code=$authorizationCode&token_type=eg1"
-            val requestBody = formBody.toRequestBody("application/x-www-form-urlencoded".toMediaTypeOrNull())
+            val requestBody = FormBody.Builder()
+                .add("grant_type", "authorization_code")
+                .add("code", authorizationCode)
+                .add("token_type", "eg1")
+                .build()
 
             val credentials = okhttp3.Credentials.basic(EpicConstants.EPIC_CLIENT_ID, EpicConstants.EPIC_CLIENT_SECRET)
 
@@ -93,8 +97,11 @@ object EpicAuthClient {
         try {
             val url = "https://${EpicConstants.OAUTH_HOST}/account/api/oauth/token"
 
-            val formBody = "grant_type=refresh_token&refresh_token=$refreshToken&token_type=eg1"
-            val requestBody = formBody.toRequestBody("application/x-www-form-urlencoded".toMediaTypeOrNull())
+            val requestBody = FormBody.Builder()
+                .add("grant_type", "refresh_token")
+                .add("refresh_token", refreshToken)
+                .add("token_type", "eg1")
+                .build()
 
             val credentials = okhttp3.Credentials.basic(EpicConstants.EPIC_CLIENT_ID, EpicConstants.EPIC_CLIENT_SECRET)
 

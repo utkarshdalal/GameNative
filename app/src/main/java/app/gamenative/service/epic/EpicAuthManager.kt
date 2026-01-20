@@ -171,22 +171,18 @@ object EpicAuthManager {
     }
 
     private fun saveCredentials(context: Context, credentials: EpicCredentials) {
-        try {
-            val json = JSONObject().apply {
-                put("access_token", credentials.accessToken)
-                put("refresh_token", credentials.refreshToken)
-                put("account_id", credentials.accountId)
-                put("display_name", credentials.displayName)
-                put("expires_at", credentials.expiresAt)
-            }
-
-            val file = File(getCredentialsFilePath(context))
-            file.writeText(json.toString())
-
-            Timber.d("Credentials saved to ${file.absolutePath}")
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to save credentials")
+        val json = JSONObject().apply {
+            put("access_token", credentials.accessToken)
+            put("refresh_token", credentials.refreshToken)
+            put("account_id", credentials.accountId)
+            put("display_name", credentials.displayName)
+            put("expires_at", credentials.expiresAt)
         }
+
+        val file = File(getCredentialsFilePath(context))
+        file.writeText(json.toString())
+
+        Timber.d("Credentials saved to ${file.absolutePath}")
     }
 
     private fun loadCredentials(context: Context): EpicCredentials? {
