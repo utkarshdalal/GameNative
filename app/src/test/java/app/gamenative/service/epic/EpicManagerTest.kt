@@ -44,7 +44,7 @@ class EpicManagerTest {
         val game = epicManager.parseGameFromCatalog(gameData, "Darksiders2")
 
         // Basic info
-        assertEquals("8c04901974534bd0818f747952b0a19b", game.id)
+        assertEquals("8c04901974534bd0818f747952b0a19b", game.catalogId)
         assertEquals("Darksiders2", game.appName)
         assertEquals("Darksiders II Deathinitive Edition", game.title)
         assertEquals("091d95ea332843498122beee1a786d71", game.namespace)
@@ -76,7 +76,7 @@ class EpicManagerTest {
         val game = epicManager.parseGameFromCatalog(gameData, "WatchDogs")
 
         // Basic info
-        assertEquals("6dc445f656de4e029834b2d32b6a2f77", game.id)
+        assertEquals("6dc445f656de4e029834b2d32b6a2f77", game.catalogId)
         assertEquals("WatchDogs", game.appName)
         assertEquals("Watch Dogs", game.title)
         assertEquals("ecebf45065bc4993abfe0e84c40ff18e", game.namespace)
@@ -107,7 +107,7 @@ class EpicManagerTest {
         val game = epicManager.parseGameFromCatalog(gameData, "DragonAgeInquisition")
 
         // Basic info
-        assertEquals("1860f41341d1499fa4a06ae064340bbe", game.id)
+        assertEquals("1860f41341d1499fa4a06ae064340bbe", game.catalogId)
         assertEquals("DragonAgeInquisition", game.appName)
         assertEquals("Dragon Age: Inquisition – Game of the Year Edition", game.title)
         assertEquals("afe2527e29b94db48b2eef984e34d81a", game.namespace)

@@ -992,7 +992,7 @@
     <!-- Epic Login Dialog -->
     <string name="epic_login_title">Sign in to Epic Games</string>
     <string name="epic_login_auto_auth_info">Tap \'Open Epic Login\' and sign in. Once logged in, please copy the URL and paste below</string>
-    <string name="epic_login_auth_example">Example: https://epicgames.com/id/login?clientId=client&amp;authorizationCode=aaa"</string>
+    <string name="epic_login_auth_example">Example: https://epicgames.com/id/login?clientId=client&amp;authorizationCode=aaa</string>
     <string name="epic_login_open_button">Open Epic Login</string>
     <string name="epic_login_auth_code_label">Authorization Code or login success URL</string>
     <string name="epic_login_auth_code_placeholder">Paste Code here</string>
