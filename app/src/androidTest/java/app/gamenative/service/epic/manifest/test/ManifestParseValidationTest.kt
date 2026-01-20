@@ -21,8 +21,9 @@ class ManifestParseValidationTest {
     private fun getContext(): Context = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun getManifestBytes(assetName: String): ByteArray {
-        val inputStream = InstrumentationRegistry.getInstrumentation().context.assets.open(assetName)
-        return inputStream.readBytes()
+        return InstrumentationRegistry.getInstrumentation().context.assets.open(assetName).use { inputStream ->
+            inputStream.readBytes()
+        }
     }
 
     private fun getExpectedJson(assetName: String): JSONObject {

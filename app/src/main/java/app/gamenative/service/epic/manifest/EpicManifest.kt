@@ -156,7 +156,9 @@ class BinaryManifest : EpicManifest() {
     override fun serialize(): ByteArray {
         // Build uncompressed body data using dynamic buffer
         val bodyStream = java.io.ByteArrayOutputStream()
-        val bodyBuffer = ByteBuffer.wrap(ByteArray(8192)).order(ByteOrder.LITTLE_ENDIAN)
+        // Use 256KB buffer to handle large manifests with many chunks
+        // ChunkDataList.write() writes all chunks at once (~57 bytes per chunk)
+        val bodyBuffer = ByteBuffer.wrap(ByteArray(256 * 1024)).order(ByteOrder.LITTLE_ENDIAN)
 
         // Helper to flush buffer to stream and reset
         fun flushBuffer() {
