@@ -106,6 +106,7 @@
     <string name="compatibility">Сумісність</string>
     <string name="intermediate">Збалансований</string>
     <string name="performance">Продуктивність</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -883,7 +884,7 @@
     <string name="contents_install_success">Вміст успішно інстальовано</string>
     <string name="contents_install_failed">Не вдалося інсталювати вміст</string>
     <string name="contents_install_error">Помилка інсталяції: %1$s</string>
-    
+
     <!-- Library Status -->
     <string name="library_status_ready">Готова</string>
     <!-- Wine/Proton Manager -->

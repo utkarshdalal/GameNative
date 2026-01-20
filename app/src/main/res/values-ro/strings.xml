@@ -69,7 +69,7 @@
     <string name="destination_library">Bibliotecă</string>
     <string name="destination_downloads">Descărcări</string>
     <string name="destination_friends">Prieteni</string>
-    
+
     <!-- Custom Games -->
     <string name="custom_games_title">Jocuri personalizate</string>
     <string name="custom_games_no_paths">Nicio cale adăugată</string>
@@ -107,6 +107,7 @@
     <string name="performance">Performanță</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="denuvo">Denuvo</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
@@ -184,7 +185,7 @@
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>
-        
+
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Selectează acțiunea</string>
     <string name="bind_button">Asociere: %1$s</string>
@@ -245,7 +246,7 @@
     <string name="preset_dpad">D‑Pad</string>
     <string name="preset_left_stick">Stick stânga</string>
     <string name="preset_right_stick">Stick dreapta</string>
-    
+
     <!-- Physical Controller Config -->
     <string name="physical_controller_config">Editor asocieri controller fizic</string>
     <string name="physical_controller_config_subtitle">Configurează mapările butoanelor pentru controllerul fizic</string>
@@ -288,7 +289,7 @@
     <string name="button_home">Home / Guide / PS</string>
     <string name="reset_to_default_bindings">Resetează la asocierile implicite</string>
     <string name="not_set">Nesetat</string>
-    
+
     <!-- Toast -->
     <string name="toast_controls_reset">Controalele au fost resetate</string>
     <string name="toast_failed_log_save">Nu s-a putut salva logcat la destinație</string>
@@ -382,7 +383,7 @@
     <string name="fexcore_env_var_help__maxinst">Numărul maxim de instrucțiuni per bloc de traducere (mai mare = performanță mai bună, stabilitate mai mică)</string>
     <string name="resume_download">Reia</string>
     <string name="pause_download">Pauză</string>
-        
+
     <!-- Library & Game Management -->
     <string name="create_shortcut">Creează shortcut</string>
     <string name="label">Etichetă</string>
@@ -601,7 +602,7 @@
 	<string name="settings_emulation_contents_manager_subtitle">Instalează componente suplimentare (.wcp)</string>
 	<string name="settings_emulation_wine_proton_manager_title">Manager Wine/Proton</string>
 	<string name="settings_emulation_wine_proton_manager_subtitle">Importă versiuni personalizate de Wine/Proton (doar Bionic)</string>
- 
+
 	<!-- Settings: Debug Group -->
 	<string name="settings_debug_title">Depanare</string>
 	<string name="settings_debug_wine_channels_title">Selectează canalele de debug Wine</string>
@@ -703,7 +704,7 @@
 	<string name="library_need_internet">Este necesar internet pentru instalare</string>
 	<string name="library_wifi_only_enabled">Instalare doar prin Wi‑Fi/LAN activată</string>
 	<string name="library_file_count">Fișier %1$d din %2$d</string>
-    
+
 	<!-- PluviaMain: Update & App Info -->
 	<string name="main_update_available_title">Actualizare disponibilă</string>
 	<string name="main_update_available_message">O nouă versiune (%1$s) este disponibilă!%2$s</string>
@@ -803,7 +804,7 @@
 	<string name="library_compatible">Compatibil</string>
 	<string name="library_compatibility_unknown">Necunoscut</string>
 	<string name="library_not_compatible">Necompatibil</string>
-    
+
 	<!-- Best Config Compatibility Messages -->
 	<string name="best_config_exact_gpu_match">Config cunoscut funcționează pe GPU-ul tău</string>
 	<string name="best_config_gpu_family_match">Config cunoscut ar trebui să funcționeze pe GPU-ul tău</string>
@@ -883,7 +884,7 @@
 	<string name="contents_install_success">Conținut instalat cu succes</string>
 	<string name="contents_install_failed">Instalarea conținutului a eșuat</string>
 	<string name="contents_install_error">Eroare la instalare: %1$s</string>
-    
+
 	<!-- Library Status -->
 	<string name="library_status_ready">Gata</string>
 
