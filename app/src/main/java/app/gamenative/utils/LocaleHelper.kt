@@ -19,13 +19,13 @@ object LocaleHelper {
         "" to "System Default",
         "da" to "Dansk (Danish)",
         "en" to "English",
-        "it" to "Italiano",
+        "it" to "Italiano (Italian)",
         "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
-		"uk" to "Українська",
-        "zh-TW" to "正體中文",
-        "zh-CN" to "简体中文",
-        "fr" to "Français",
-        "de" to "Deutsch"
+		"uk" to "Українська (Ukrainian)",
+        "zh-TW" to "正體中文 (Traditional Chinese)",
+        "zh-CN" to "简体中文 (Simplified Chinese)",
+        "fr" to "Français (French)",
+        "de" to "Deutsch (German)"
     )
 
     /**
