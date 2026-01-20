@@ -73,6 +73,12 @@ class EpicDownloadManager @Inject constructor(
         try {
             Timber.tag("Epic").i("Starting download for ${game.title} to $installPath")
 
+            // Emit download started event so UI can attach progress listeners
+            val gameId = game.id
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, true),
+            )
+
             // Step 1: Fetch manifest binary and CDN URLs from Epic
             val manifestResult = epicManager.fetchManifestFromEpic(
                 context,
@@ -185,14 +191,43 @@ class EpicDownloadManager @Inject constructor(
             Timber.tag("Epic").i("Download completed successfully for ${game.title}")
             logDirectoryStructure(installDir)
 
+            // Step 6: Update database with install info
+            try {
+                val updatedGame = game.copy(
+                    isInstalled = true,
+                    installPath = installPath,
+                )
+                epicManager.updateGame(updatedGame)
+                Timber.tag("Epic").i("Updated database: game marked as installed")
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "Failed to update database for game ${game.id}")
+                // Don't fail the entire download for DB issues
+            }
+
             downloadInfo.updateStatusMessage("Complete")
             downloadInfo.setProgress(1.0f)
+            downloadInfo.setActive(false)
             downloadInfo.emitProgressChange() // Force final progress update
 
+            // Notify UI that installation status changed
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId),
+            )
+
+            Timber.tag("Epic").i("Download completed successfully for game $gameId")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "Download failed: ${e.message}")
+            downloadInfo.updateStatusMessage("Failed: ${e.message}")
+            downloadInfo.setProgress(-1.0f)
+            downloadInfo.setActive(false)
             Result.failure(e)
+        } finally {
+            // Always emit download stopped event
+            val gameId = game.id ?: 0
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false),
+            )
         }
     }
 

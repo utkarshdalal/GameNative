@@ -345,11 +345,12 @@ class EpicService : Service() {
 
             instance.activeDownloads[appId] = downloadInfo
             downloadInfo.setActive(true)
+            
             // Start download in background
             instance.scope.launch {
                 try {
                     val commonRedistDir = File(installPath, "_CommonRedist")
-                    Timber.tag("Epic").i("Starting download for ${game.title}")
+                    Timber.tag("Epic").i("Starting download for game: ${game.title}, gameId: ${game.id}")
 
                     val result = instance.epicDownloadManager.downloadGame(
                         context,
