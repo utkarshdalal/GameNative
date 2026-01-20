@@ -80,7 +80,7 @@ class EpicDownloadManager @Inject constructor(
         installPath: String,
         downloadInfo: DownloadInfo,
         language: String = "en-US",
-        withDlcs: Boolean = false,
+        dlcIds: List<Int>
         commonRedistDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -93,13 +93,15 @@ class EpicDownloadManager @Inject constructor(
             )
 
             // Check for DLCs early to calculate total download size
-            val dlcsToDownload = if (withDlcs) {
+            val dlcsToDownload = if (dlcIds.size > 0) {
                 try {
                     Timber.tag("Epic").i("Checking for DLCs for ${game.title}...")
-                    val dlcs = epicManager.getDLCForTitle(game.id ?: 0)
+                    Timber.tag("Epic").i("User has opted to download ${dlcIds.size} DLC titles")
+                    val dlcs = epicManager.getGamesById(dlcIds)
                     if (dlcs.isNotEmpty()) {
                         Timber.tag("Epic").i("Found ${dlcs.size} DLC(s) for ${game.title}")
                     }
+                    Timber.tag("Epic").i("Found ${dlcs.size} owned DLC titles")
                     dlcs
                 } catch (e: Exception) {
                     Timber.tag("Epic").e(e, "Error checking for DLCs, continuing without")

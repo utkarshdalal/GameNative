@@ -320,15 +320,12 @@ class EpicService : Service() {
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
         }
 
-        fun downloadGame(context: Context, appId: Int, installPath: String): Result<DownloadInfo> {
+        fun downloadGame(context: Context, appId: Int, dlcGameIds: List<Int>, installPath: String): Result<DownloadInfo> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             val game = runBlocking { instance.epicManager.getGameById(appId) }
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
-
-
-
 
             // Check if already downloading
             if (instance.activeDownloads.containsKey(appId)) {
@@ -345,7 +342,7 @@ class EpicService : Service() {
 
             instance.activeDownloads[appId] = downloadInfo
             downloadInfo.setActive(true)
-            
+
             // Start download in background
             instance.scope.launch {
                 try {
@@ -358,7 +355,7 @@ class EpicService : Service() {
                         installPath,
                         downloadInfo,
                         "en-US",
-                        true,
+                        dlcGameIds,
                         commonRedistDir,
                     )
 
