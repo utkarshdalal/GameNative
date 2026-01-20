@@ -1,39 +1,56 @@
 package app.gamenative.service.epic.manifest.test
 
+import android.content.Context
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import app.gamenative.service.epic.manifest.ManifestUtils
-import java.io.File
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import timber.log.Timber
 
 /**
- * Simple test to verify Kotlin manifest parsing works correctly
+ * Basic manifest parsing test to verify Kotlin manifest parsing works correctly
  */
-fun main(args: Array<String>) {
-    if (args.isEmpty()) {
-        println("Usage: ManifestParseTest <manifest_file>")
-        return
+@RunWith(AndroidJUnit4::class)
+class ManifestParseTest {
+
+    private fun getContext(): Context = InstrumentationRegistry.getInstrumentation().targetContext
+
+    private fun getManifestBytes(assetName: String): ByteArray {
+        val inputStream = InstrumentationRegistry.getInstrumentation().context.assets.open(assetName)
+        return inputStream.readBytes()
     }
 
-    val manifestFile = File(args[0])
-    if (!manifestFile.exists()) {
-        println("Error: File not found: ${args[0]}")
-        return
-    }
+    @Test
+    fun testBasicManifestParsing() {
+        // Test that we can parse a basic manifest without errors
+        val testManifests = listOf(
+            "test-manifest.json",
+            "test-v3-manifest.json",
+            "binary-control-file.manifest"
+        )
 
-    try {
-        println("Parsing manifest: ${manifestFile.name}")
-        println("File size: ${manifestFile.length()} bytes")
-        println()
-
-        // Parse the manifest
-        val manifest = ManifestUtils.loadFromFile(manifestFile)
-
-        // Create summary
-        val summary = ManifestTestSerializer.createManifestSummary(manifest)
-
-        // Output as JSON
-        println(summary.toString(2))
-
-    } catch (e: Exception) {
-        println("Error parsing manifest: ${e.message}")
-        e.printStackTrace()
+        testManifests.forEach { manifestAsset ->
+            try {
+                Timber.i("Parsing manifest: $manifestAsset")
+                
+                val manifestBytes = getManifestBytes(manifestAsset)
+                val manifest = ManifestUtils.loadFromBytes(manifestBytes)
+                
+                // Create summary to verify structure
+                val summary = ManifestTestSerializer.createManifestSummary(manifest)
+                
+                Timber.i("Manifest parsed successfully:")
+                Timber.i(summary.toString(2))
+                
+                // Basic assertions
+                assertNotNull("Manifest should not be null", manifest)
+                assertTrue("Manifest version should be positive", manifest.version > 0)
+                
+            } catch (e: Exception) {
+                fail("Failed to parse manifest $manifestAsset: ${e.message}")
+            }
+        }
     }
 }

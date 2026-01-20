@@ -122,6 +122,11 @@ class BinaryManifest : EpicManifest() {
             val resultLength = inflater.inflate(decompressed)
             inflater.end()
 
+            // Validate decompressed length matches expected size
+            if (resultLength != sizeUncompressed) {
+                throw IllegalStateException("Manifest decompression size mismatch: expected $sizeUncompressed, got $resultLength")
+            }
+
             // Verify hash
             val md = MessageDigest.getInstance("SHA-1")
             val computedHash = md.digest(decompressed)
@@ -149,16 +154,30 @@ class BinaryManifest : EpicManifest() {
     }
 
     override fun serialize(): ByteArray {
-        // Build uncompressed body data
-        val bodyBuffer = ByteBuffer.allocate(1024 * 1024).order(ByteOrder.LITTLE_ENDIAN)
+        // Build uncompressed body data using dynamic buffer
+        val bodyStream = java.io.ByteArrayOutputStream()
+        val bodyBuffer = ByteBuffer.wrap(ByteArray(8192)).order(ByteOrder.LITTLE_ENDIAN)
 
-        // Write components in order
+        // Helper to flush buffer to stream and reset
+        fun flushBuffer() {
+            bodyStream.write(bodyBuffer.array(), 0, bodyBuffer.position())
+            bodyBuffer.clear()
+        }
+
+        // Write components in order, flushing as needed
         meta?.write(bodyBuffer)
-        chunkDataList?.write(bodyBuffer, meta?.featureLevel ?: version)
-        fileManifestList?.write(bodyBuffer)
-        customFields?.write(bodyBuffer)
+        if (bodyBuffer.remaining() < 4096) flushBuffer()
 
-        val uncompressedData = bodyBuffer.array().copyOf(bodyBuffer.position())
+        chunkDataList?.write(bodyBuffer, meta?.featureLevel ?: version)
+        if (bodyBuffer.remaining() < 4096) flushBuffer()
+
+        fileManifestList?.write(bodyBuffer)
+        if (bodyBuffer.remaining() < 4096) flushBuffer()
+
+        customFields?.write(bodyBuffer)
+        flushBuffer() // Final flush
+
+        val uncompressedData = bodyStream.toByteArray()
 
         // Compress the body
         val compressedData = java.io.ByteArrayOutputStream()
@@ -347,7 +366,7 @@ data class ChunkDataList(
         elements.mapIndexed { index, chunk -> chunk.guidStr to index }.toMap(mutableMapOf())
     }
 
-    private val guidIntMap: MutableMap<ULong, Int> by lazy {
+    private val guidIntMap: MutableMap<Pair<ULong, ULong>, Int> by lazy {
         elements.mapIndexed { index, chunk -> chunk.guidNum to index }.toMap(mutableMapOf())
     }
 
@@ -355,7 +374,7 @@ data class ChunkDataList(
         return guidMap[guid.lowercase()]?.let { elements[it] }
     }
 
-    fun getChunkByGuidNum(guidNum: ULong): ChunkInfo? {
+    fun getChunkByGuidNum(guidNum: Pair<ULong, ULong>): ChunkInfo? {
         return guidIntMap[guidNum]?.let { elements[it] }
     }
 
@@ -479,11 +498,11 @@ data class ChunkInfo(
         guid.joinToString("-") { "%08x".format(it) }
     }
 
-    val guidNum: ULong by lazy {
-        (guid[0].toULong() shl 96) or
-                (guid[1].toULong() shl 64) or
-                (guid[2].toULong() shl 32) or
-                guid[3].toULong()
+    // 128-bit GUID represented as Pair<ULong, ULong> (high 64 bits, low 64 bits)
+    val guidNum: Pair<ULong, ULong> by lazy {
+        val high = (guid[0].toULong() shl 32) or guid[1].toULong()
+        val low = (guid[2].toULong() shl 32) or guid[3].toULong()
+        Pair(high, low)
     }
 
     /**

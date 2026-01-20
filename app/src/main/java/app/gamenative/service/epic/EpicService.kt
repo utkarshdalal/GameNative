@@ -253,23 +253,23 @@ class EpicService : Service() {
         }
 
         // ==========================================================================
-        // GAME & LIBRARY OPERATIONS - Delegate to instance EpicManager (Stubs)
+        // GAME & LIBRARY OPERATIONS
         // ==========================================================================
 
         fun getEpicGameOf(appId: Int): EpicGame? {
-            return runBlocking {
+            return runBlocking(Dispatchers.IO) {
                 getInstance()?.epicManager?.getGameById(appId)
             }
         }
 
         fun getEpicGameByAppName(appName: String): EpicGame? {
-            return runBlocking {
+            return runBlocking(Dispatchers.IO) {
                 getInstance()?.epicManager?.getGameByAppName(appName)
             }
         }
 
         fun getDLCForGame(appId: Int): List<EpicGame> {
-            return runBlocking {
+            return runBlocking(Dispatchers.IO) {
                 getInstance()?.epicManager?.getDLCForTitle(appId) ?: emptyList()
             }
         }

@@ -628,8 +628,11 @@ class EpicDownloadManager @Inject constructor(
         val storedAs = buffer.get().toInt() and 0xFF
         val isCompressed = (storedAs and 0x1) == 0x1
 
-        // Skip SHA hash (20 bytes), hash type (1 byte), uncompressed size (4 bytes)
-        buffer.position(buffer.position() + 25)
+        // Skip SHA hash (20 bytes), hash type (1 byte)
+        buffer.position(buffer.position() + 21)
+
+        // Read uncompressed size (4 bytes)
+        val uncompressedSize = buffer.int
 
         // Read chunk data starting from header end
         val dataStart = headerSize
@@ -641,9 +644,12 @@ class EpicDownloadManager @Inject constructor(
             val inflater = Inflater()
             try {
                 inflater.setInput(dataBytes)
-                val result = ByteArray(1024 * 1024) // Epic chunks are always 1 MiB uncompressed
+                val result = ByteArray(uncompressedSize)
                 val resultLength = inflater.inflate(result)
-                result.copyOf(resultLength)
+                if (resultLength != uncompressedSize) {
+                    throw IllegalStateException("Decompressed chunk size mismatch: expected $uncompressedSize, got $resultLength")
+                }
+                result
             } finally {
                 inflater.end()
             }

@@ -167,8 +167,12 @@ class EpicAppScreen : BaseAppScreen() {
             }
         }
 
-        val epicGame = remember(gameId, refreshTrigger) {
+        var epicGame by remember(gameId, refreshTrigger) { mutableStateOf<EpicGame?>(null) }
+        var dlcTitles by remember(gameId, refreshTrigger) { mutableStateOf<List<EpicGame>>(emptyList()) }
+
+        LaunchedEffect(gameId, refreshTrigger) {
             val game = EpicService.getEpicGameOf(gameId)
+            epicGame = game
 
             // We should be able to get the developer most of the time (which can populate).
             // The installSize & download Size are empty until we grab the manifest. We can MAYBE do this parallel and then update them.
@@ -189,25 +193,23 @@ class EpicAppScreen : BaseAppScreen() {
                 Timber.tag(TAG).i("Cloud Save Enabled: ${game.cloudSaveEnabled}")
                 Timber.tag(TAG).i("========================")
 
-                val dlcTitles = EpicService.getDLCForGame(game.id)
-                if (dlcTitles.isNotEmpty()) {
-                    Timber.tag(TAG).i("DLC Count: ${dlcTitles.size}")
-                    for (title in dlcTitles) {
+                val fetchedDlcTitles = EpicService.getDLCForGame(game.id)
+                dlcTitles = fetchedDlcTitles
+                if (fetchedDlcTitles.isNotEmpty()) {
+                    Timber.tag(TAG).i("DLC Count: ${fetchedDlcTitles.size}")
+                    for (title in fetchedDlcTitles) {
                         Timber.tag("Epic").d("DLC Found: ${title.title}")
                     }
                 } else {
                     Timber.tag(TAG).i("DLC Count: 0")
                 }
-                // TODO: Implement DLC Management
-                // TODO: Give them a list of DLC and allow them to pick which ones to download
-                if (dlcTitles.isNotEmpty()) {
-                    val installedDlcs = dlcTitles.count { it.isInstalled }
-                    Timber.tag(TAG).i("DLC Manager: $installedDlcs/${dlcTitles.size} installed")
+                if (fetchedDlcTitles.isNotEmpty()) {
+                    val installedDlcs = fetchedDlcTitles.count { it.isInstalled }
+                    Timber.tag(TAG).i("DLC Manager: $installedDlcs/${fetchedDlcTitles.size} installed")
                 }
             } else {
                 Timber.tag(TAG).w("No Epic game found for gameId: $gameId")
             }
-            game
         }
 
         val game = epicGame
@@ -301,6 +303,7 @@ class EpicAppScreen : BaseAppScreen() {
 
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
         Timber.tag(TAG).i("onDownloadInstallClick: appId=${libraryItem.appId}, name=${libraryItem.name}")
+
         val game = EpicService.getEpicGameOf(libraryItem.gameId)
 
         if (game == null) {
