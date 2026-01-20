@@ -7,7 +7,7 @@ package app.gamenative.data
  */
 data class GOGCloudSavesLocationTemplate(
     val name: String,
-    val location: String
+    val location: String,
 )
 
 /**
@@ -21,6 +21,5 @@ data class GOGCloudSavesLocation(
     val name: String,
     val location: String,
     val clientId: String,
-    val clientSecret: String = ""  // Default empty for backward compatibility
+    val clientSecret: String = "", // Default empty for backward compatibility
 )
-

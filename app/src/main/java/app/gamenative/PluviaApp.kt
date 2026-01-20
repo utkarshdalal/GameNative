@@ -1,9 +1,7 @@
 package app.gamenative
 
 import android.os.StrictMode
-import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
-import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
@@ -27,7 +25,6 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.network.supabaseApi
 import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +70,7 @@ class PluviaApp : SplitCompatApplication() {
             ContainerMigrator.migrateLegacyContainersIfNeeded(
                 context = applicationContext,
                 onProgressUpdate = null,
-                onComplete = null
+                onComplete = null,
             )
         }
 
@@ -86,14 +83,23 @@ class PluviaApp : SplitCompatApplication() {
         }
 
         // Initialize PostHog Analytics
-        val postHogConfig = PostHogAndroidConfig(
-            apiKey = BuildConfig.POSTHOG_API_KEY,
-            host = BuildConfig.POSTHOG_HOST,
-        ).apply {
-            /* turn every event into an identified one */
-            personProfiles = PersonProfiles.ALWAYS
+        try {
+            if (BuildConfig.POSTHOG_API_KEY.isNotBlank()) {
+                val postHogConfig = PostHogAndroidConfig(
+                    apiKey = BuildConfig.POSTHOG_API_KEY,
+                    host = BuildConfig.POSTHOG_HOST,
+                ).apply {
+                    /* turn every event into an identified one */
+                    personProfiles = PersonProfiles.ALWAYS
+                }
+                PostHogAndroid.setup(this, postHogConfig)
+                Timber.d("PostHog initialized successfully")
+            } else {
+                Timber.w("PostHog API key is blank, skipping initialization")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize PostHog: ${e.message}")
         }
-        PostHogAndroid.setup(this, postHogConfig)
 
         // Initialize Supabase client
         try {
@@ -107,10 +113,26 @@ class PluviaApp : SplitCompatApplication() {
         // Initialize GOG service
         appScope.launch {
             try {
-                app.gamenative.service.gog.GOGService.start(applicationContext)
-                Timber.d("GOGService started successfully")
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to start GOGService: ${e.message}")
+                if (app.gamenative.service.gog.GOGService.initialize(applicationContext)) {
+                    Timber.d("GOGService initialized successfully")
+                } else {
+                    Timber.w("GOGService initialization returned false")
+                }
+            } catch (e: Throwable) {
+                Timber.e(e, "Failed to initialize GOGService: ${e.message}")
+            }
+        }
+
+        // Initialize Epic service
+        appScope.launch {
+            try {
+                if (app.gamenative.service.epic.EpicService.initialize(applicationContext)) {
+                    Timber.d("EpicService initialized successfully")
+                } else {
+                    Timber.w("EpicService initialization returned false")
+                }
+            } catch (e: Throwable) {
+                Timber.e(e, "Failed to initialize EpicService: ${e.message}")
             }
         }
     }
@@ -120,7 +142,7 @@ class PluviaApp : SplitCompatApplication() {
         val events: EventDispatcher = EventDispatcher()
         internal var onDestinationChangedListener: NavChangedListener? = null
 
-        // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
+        // These are managed by GameSessionManager to prevent memory leaks
         internal var xEnvironment: XEnvironment? = null
         internal var xServerView: XServerView? = null
         var inputControlsView: InputControlsView? = null
@@ -128,8 +150,11 @@ class PluviaApp : SplitCompatApplication() {
         var touchpadView: TouchpadView? = null
 
         // Supabase client for game feedback
-        lateinit var supabase: SupabaseClient
+        var supabase: SupabaseClient? = null
             private set
+
+        val isSupabaseInitialized: Boolean
+            get() = supabase != null
 
         // Initialize Supabase client
         @OptIn(SupabaseInternal::class)
@@ -142,15 +167,15 @@ class PluviaApp : SplitCompatApplication() {
 
             supabase = createSupabaseClient(
                 supabaseUrl = BuildConfig.SUPABASE_URL,
-                supabaseKey = BuildConfig.SUPABASE_KEY
+                supabaseKey = BuildConfig.SUPABASE_KEY,
             ) {
                 Timber.d("Configuring Supabase client")
                 httpConfig {
                     Timber.d("Setting up HTTP timeouts")
                     install(HttpTimeout) {
-                        requestTimeoutMillis = 30_000   // overall call
-                        connectTimeoutMillis = 15_000   // TCP handshake / TLS
-                        socketTimeoutMillis  = 30_000   // idle socket
+                        requestTimeoutMillis = 30_000 // overall call
+                        connectTimeoutMillis = 15_000 // TCP handshake / TLS
+                        socketTimeoutMillis = 30_000 // idle socket
                     }
                 }
                 install(Postgrest)

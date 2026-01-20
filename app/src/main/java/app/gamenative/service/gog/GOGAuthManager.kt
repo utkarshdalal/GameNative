@@ -5,10 +5,8 @@ import app.gamenative.data.GOGCredentials
 import app.gamenative.utils.Net
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -44,7 +42,7 @@ object GOGAuthManager {
      */
     suspend fun authenticateWithCode(context: Context, authorizationCode: String): Result<GOGCredentials> {
         return try {
-            Timber.tag("GOG").i("Starting GOG authentication with authorization code...")
+            Timber.i("Starting GOG authentication with authorization code...")
 
             // Extract the actual authorization code from URL if needed
             val actualCode = extractCodeFromInput(authorizationCode)
@@ -97,7 +95,7 @@ object GOGAuthManager {
             // Check for error in response
             if (tokenJson.has("error")) {
                 val errorMsg = tokenJson.optString("error_description", "Authentication failed")
-                Timber.tag("GOG").e("GOG authentication failed: $errorMsg")
+                Timber.e("GOG authentication failed: $errorMsg")
                 return Result.failure(Exception("Authentication failed: $errorMsg"))
             }
 
@@ -108,7 +106,7 @@ object GOGAuthManager {
             val expiresIn = tokenJson.optInt("expires_in", 3600)
 
             if (accessToken.isEmpty() || userId.isEmpty()) {
-                Timber.tag("GOG").e("GOG authentication incomplete: missing access_token or user_id")
+                Timber.e("GOG authentication incomplete: missing access_token or user_id")
                 return Result.failure(Exception("Authentication incomplete: missing required data"))
             }
 
@@ -117,24 +115,27 @@ object GOGAuthManager {
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 userId = userId,
-                username = "GOG User"
+                username = "GOG User",
             )
 
             // Store credentials to file
             val authData = JSONObject().apply {
-                put(GOGConstants.GOG_CLIENT_ID, JSONObject().apply {
-                    put("access_token", accessToken)
-                    put("refresh_token", refreshToken)
-                    put("user_id", userId)
-                    put("expires_in", expiresIn)
-                    put("loginTime", System.currentTimeMillis() / 1000.0)
-                })
+                put(
+                    GOGConstants.GOG_CLIENT_ID,
+                    JSONObject().apply {
+                        put("access_token", accessToken)
+                        put("refresh_token", refreshToken)
+                        put("user_id", userId)
+                        put("expires_in", expiresIn)
+                        put("loginTime", System.currentTimeMillis() / 1000.0)
+                    },
+                )
             }
 
             withContext(Dispatchers.IO) {
                 authFile.writeText(authData.toString(2))
             }
-            Timber.tag("GOG").i("GOG authentication successful for user: $userId")
+            Timber.i("GOG authentication successful for user: $userId")
 
             Result.success(credentials)
         } catch (e: Exception) {
@@ -174,7 +175,7 @@ object GOGAuthManager {
             val isExpired = System.currentTimeMillis() / 1000.0 >= loginTime + expiresIn
 
             if (isExpired) {
-                Timber.tag("GOG").d("Credentials expired, refreshing...")
+                Timber.d("Credentials expired, refreshing...")
                 // Refresh the token
                 val refreshResult = refreshCredentials(context, GOGConstants.GOG_CLIENT_ID, GOGConstants.GOG_CLIENT_SECRET)
                 if (refreshResult.isFailure) {
@@ -189,13 +190,13 @@ object GOGAuthManager {
                 accessToken = credentialsJson.getString("access_token"),
                 refreshToken = credentialsJson.optString("refresh_token", ""),
                 userId = credentialsJson.getString("user_id"),
-                username = credentialsJson.optString("username", "GOG User")
+                username = credentialsJson.optString("username", "GOG User"),
             )
 
-            Timber.tag("GOG").d("Retrieved stored credentials for user: ${credentials.userId}")
+            Timber.d("Retrieved stored credentials for user: ${credentials.userId}")
             Result.success(credentials)
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to get stored credentials")
+            Timber.e(e, "Failed to get stored credentials")
             Result.failure(e)
         }
     }
@@ -212,7 +213,7 @@ object GOGAuthManager {
     suspend fun getGameCredentials(
         context: Context,
         clientId: String,
-        clientSecret: String
+        clientSecret: String,
     ): Result<GOGCredentials> {
         return try {
             val authFile = File(getAuthConfigPath(context))
@@ -235,12 +236,14 @@ object GOGAuthManager {
 
                 if (!isExpired) {
                     // Return existing valid credentials
-                    return Result.success(GOGCredentials(
-                        accessToken = gameCredentials.getString("access_token"),
-                        refreshToken = gameCredentials.optString("refresh_token", ""),
-                        userId = gameCredentials.getString("user_id"),
-                        username = gameCredentials.optString("username", "GOG User")
-                    ))
+                    return Result.success(
+                        GOGCredentials(
+                            accessToken = gameCredentials.getString("access_token"),
+                            refreshToken = gameCredentials.optString("refresh_token", ""),
+                            userId = gameCredentials.getString("user_id"),
+                            username = gameCredentials.optString("username", "GOG User"),
+                        ),
+                    )
                 }
             }
 
@@ -258,7 +261,7 @@ object GOGAuthManager {
             }
 
             // Request game-specific token using Galaxy's refresh token
-            Timber.tag("GOG").d("Requesting game-specific token for clientId: $clientId")
+            Timber.d("Requesting game-specific token for clientId: $clientId")
             val url = tokenUrl.toHttpUrl().newBuilder()
                 .addQueryParameter("client_id", clientId)
                 .addQueryParameter("client_secret", clientSecret)
@@ -276,7 +279,7 @@ object GOGAuthManager {
             }.use { response ->
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
-                    Timber.tag("GOG").e("Failed to get game token: HTTP ${response.code} - $errorBody")
+                    Timber.e("Failed to get game token: HTTP ${response.code} - $errorBody")
                     return Result.failure(Exception("Failed to get game-specific token: HTTP ${response.code}"))
                 }
 
@@ -290,18 +293,20 @@ object GOGAuthManager {
                 // Write updated auth file
                 withContext(Dispatchers.IO) { authFile.writeText(authJson.toString(2)) }
 
-                Timber.tag("GOG").i("Successfully obtained game-specific token for clientId: $clientId")
+                Timber.i("Successfully obtained game-specific token for clientId: $clientId")
                 json
             }
 
-            return Result.success(GOGCredentials(
-                accessToken = tokenJson.getString("access_token"),
-                refreshToken = tokenJson.optString("refresh_token", refreshToken),
-                userId = tokenJson.getString("user_id"),
-                username = tokenJson.optString("username", "GOG User")
-            ))
+            return Result.success(
+                GOGCredentials(
+                    accessToken = tokenJson.getString("access_token"),
+                    refreshToken = tokenJson.optString("refresh_token", refreshToken),
+                    userId = tokenJson.getString("user_id"),
+                    username = tokenJson.optString("username", "GOG User"),
+                ),
+            )
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to get game-specific credentials")
+            Timber.e(e, "Failed to get game-specific credentials")
             Result.failure(e)
         }
     }
@@ -312,24 +317,24 @@ object GOGAuthManager {
     suspend fun validateCredentials(context: Context): Result<Boolean> {
         return try {
             if (!hasStoredCredentials(context)) {
-                Timber.tag("GOG").d("No stored credentials found for validation")
+                Timber.d("No stored credentials found for validation")
                 return Result.success(false)
             }
 
-            Timber.tag("GOG").d("Starting credentials validation")
+            Timber.d("Starting credentials validation")
 
             // Try to get credentials - this will automatically refresh if needed
             val credentialsResult = getStoredCredentials(context)
 
             if (credentialsResult.isSuccess) {
-                Timber.tag("GOG").d("Credentials validation successful")
+                Timber.d("Credentials validation successful")
                 Result.success(true)
             } else {
-                Timber.tag("GOG").e("Credentials validation failed: ${credentialsResult.exceptionOrNull()?.message}")
+                Timber.e("Credentials validation failed: ${credentialsResult.exceptionOrNull()?.message}")
                 Result.success(false)
             }
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to validate credentials")
+            Timber.e(e, "Failed to validate credentials")
             Result.failure(e)
         }
     }
@@ -346,7 +351,7 @@ object GOGAuthManager {
                 true
             }
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to clear GOG credentials")
+            Timber.e(e, "Failed to clear GOG credentials")
             false
         }
     }
@@ -378,7 +383,7 @@ object GOGAuthManager {
             }
 
             // Request new tokens
-            Timber.tag("GOG").d("Refreshing credentials for clientId: $clientId")
+            Timber.d("Refreshing credentials for clientId: $clientId")
             val tokenUrlWithParams = tokenUrl.toHttpUrl().newBuilder()
                 .addQueryParameter("client_id", clientId)
                 .addQueryParameter("client_secret", clientSecret)
@@ -396,7 +401,7 @@ object GOGAuthManager {
             }.use { response ->
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
-                    Timber.tag("GOG").e("Failed to refresh credentials: HTTP ${response.code} - $errorBody")
+                    Timber.e("Failed to refresh credentials: HTTP ${response.code} - $errorBody")
                     return Result.failure(Exception("Failed to refresh credentials: HTTP ${response.code}"))
                 }
 
@@ -409,10 +414,10 @@ object GOGAuthManager {
             authJson.put(clientId, tokenJson)
             withContext(Dispatchers.IO) { authFile.writeText(authJson.toString(2)) }
 
-            Timber.tag("GOG").i("Successfully refreshed credentials for clientId: $clientId")
+            Timber.i("Successfully refreshed credentials for clientId: $clientId")
             Result.success(true)
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to refresh credentials")
+            Timber.e(e, "Failed to refresh credentials")
             Result.failure(e)
         }
     }
@@ -432,7 +437,7 @@ object GOGAuthManager {
             } else {
                 // Remove any additional parameters after the code
                 val cleanCode = codeParam.substringBefore("&")
-                Timber.tag("GOG").d("Extracted authorization code")
+                Timber.d("Extracted authorization code")
                 cleanCode
             }
         } else {

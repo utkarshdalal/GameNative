@@ -26,8 +26,10 @@ public abstract class WineThemeManager {
         public final Theme theme;
         public final BackgroundType backgroundType;
         public final int backgroundColor;
+        public final String name;
 
         public ThemeInfo(String value) {
+            this.name = value;
             String[] values = value.split(",");
             theme = Theme.valueOf(values[0]);
             if (values.length < 3) {
@@ -39,6 +41,13 @@ public abstract class WineThemeManager {
                 backgroundColor = Color.parseColor(values[2]);
             }
         }
+    }
+
+    public static java.util.List<ThemeInfo> getThemes() {
+        java.util.List<ThemeInfo> themes = new java.util.ArrayList<>();
+        themes.add(new ThemeInfo(Theme.LIGHT + "," + BackgroundType.IMAGE + ",#0277bd"));
+        themes.add(new ThemeInfo(Theme.DARK + "," + BackgroundType.IMAGE + ",#0277bd"));
+        return themes;
     }
 
     public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo) {

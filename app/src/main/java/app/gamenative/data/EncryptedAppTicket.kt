@@ -10,31 +10,31 @@ data class EncryptedAppTicket(
     @PrimaryKey
     @ColumnInfo("app_id")
     val appId: Int,
-    
+
     @ColumnInfo("result")
     val result: Int, // EResult stored as Int
-    
+
     @ColumnInfo("ticket_version_no")
     val ticketVersionNo: Int,
-    
+
     @ColumnInfo("crc_encrypted_ticket")
     val crcEncryptedTicket: Int,
-    
+
     @ColumnInfo("cb_encrypted_user_data")
     val cbEncryptedUserData: Int,
-    
+
     @ColumnInfo("cb_encrypted_app_ownership_ticket")
     val cbEncryptedAppOwnershipTicket: Int,
-    
+
     @ColumnInfo("encrypted_ticket")
     val encryptedTicket: ByteArray,
-    
+
     @ColumnInfo("timestamp")
     val timestamp: Long,
 ) {
     // Helper to get EResult
     fun getResult(): EResult = EResult.from(result)
-    
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -65,4 +65,3 @@ data class EncryptedAppTicket(
         return result1
     }
 }
-

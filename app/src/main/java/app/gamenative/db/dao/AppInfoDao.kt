@@ -6,7 +6,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import app.gamenative.data.AppInfo
-import app.gamenative.data.DepotInfo
 
 @Dao
 interface AppInfoDao {

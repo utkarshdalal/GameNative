@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.winlator.core.FileUtils;
 import com.winlator.core.TarCompressorUtils;
@@ -14,6 +15,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -84,7 +87,7 @@ public class ContentsManager {
     }
 
     public interface OnInstallFinishedCallback {
-        void onFailed(InstallFailedReason reason, Exception e);
+        void onFailed(InstallFailedReason reason, @Nullable Exception e);
 
         void onSucceed(ContentProfile profile);
     }
@@ -163,12 +166,45 @@ public class ContentsManager {
 
         File file = getTmpDir(context);
 
-        boolean ret;
-        ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file);
-        if (!ret)
-            ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
-        if (!ret) {
-            callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
+        Exception lastException = null;
+        boolean success = false;
+
+        // Try XZ
+        try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+            if (is != null) {
+                TarCompressorUtils.extractEx(TarCompressorUtils.Type.XZ, is, file, null);
+                success = true;
+            }
+        } catch (IOException e) {
+            lastException = e;
+        }
+
+        // Try ZSTD
+        if (!success) {
+            try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+                if (is != null) {
+                    TarCompressorUtils.extractEx(TarCompressorUtils.Type.ZSTD, is, file, null);
+                    success = true;
+                }
+            } catch (IOException e) {
+                lastException = e;
+            }
+        }
+
+        // Try GZIP
+        if (!success) {
+            try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+                if (is != null) {
+                    TarCompressorUtils.extractEx(TarCompressorUtils.Type.GZIP, is, file, null);
+                    success = true;
+                }
+            } catch (IOException e) {
+                lastException = e;
+            }
+        }
+
+        if (!success) {
+            callback.onFailed(InstallFailedReason.ERROR_BADTAR, lastException);
             return;
         }
 
@@ -255,7 +291,7 @@ public class ContentsManager {
             String typeName = profileJSONObject.getString(ContentProfile.MARK_TYPE);
             String verName = profileJSONObject.getString(ContentProfile.MARK_VERSION_NAME);
             int verCode = profileJSONObject.getInt(ContentProfile.MARK_VERSION_CODE);
-            String desc = profileJSONObject.getString(ContentProfile.MARK_DESC);
+            String desc = profileJSONObject.optString(ContentProfile.MARK_DESC, "");
 
             JSONArray fileJSONArray = profileJSONObject.getJSONArray(ContentProfile.MARK_FILE_LIST);
             List<ContentProfile.ContentFile> fileList = new ArrayList<>();

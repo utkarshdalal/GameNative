@@ -1,10 +1,10 @@
 package app.gamenative.utils
 
-import timber.log.Timber
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import timber.log.Timber
 
 /**
  * Minimal PE resource parser to extract icon(s) from a Windows EXE/DLL.
@@ -62,7 +62,8 @@ object ExeIconExtractor {
                         val virtualAddress = bb.getInt(base + 12)
                         val sizeOfRawData = bb.getInt(base + 16)
                         val pointerToRawData = bb.getInt(base + 20)
-                        if (rva >= virtualAddress && rva < virtualAddress + sizeOfRawData &&
+                        if (rva >= virtualAddress &&
+                            rva < virtualAddress + sizeOfRawData &&
                             pointerToRawData > 0
                         ) {
                             val off = pointerToRawData + (rva - virtualAddress)

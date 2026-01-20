@@ -31,7 +31,7 @@ object GameCompatibilityService {
      */
     data class GameCompatibilityRequest(
         val gameNames: List<String>,
-        val gpuName: String
+        val gpuName: String,
     )
 
     /**
@@ -43,7 +43,7 @@ object GameCompatibilityService {
         val gpuPlayableCount: Int,
         val avgRating: Float,
         val hasBeenTried: Boolean,
-        val isNotWorking: Boolean
+        val isNotWorking: Boolean,
     )
 
     /**
@@ -77,7 +77,7 @@ object GameCompatibilityService {
      */
     suspend fun fetchCompatibility(
         gameNames: List<String>,
-        gpuName: String
+        gpuName: String,
     ): Map<String, GameCompatibilityResponse>? = withContext(Dispatchers.IO) {
         if (gameNames.isEmpty()) {
             return@withContext emptyMap()
@@ -123,7 +123,7 @@ object GameCompatibilityService {
                         gpuPlayableCount = gameData.optInt("gpuPlayableCount", 0),
                         avgRating = gameData.optDouble("avgRating", 0.0).toFloat(),
                         hasBeenTried = gameData.optBoolean("hasBeenTried", false),
-                        isNotWorking = gameData.optBoolean("isNotWorking", false)
+                        isNotWorking = gameData.optBoolean("isNotWorking", false),
                     )
 
                     result[gameName] = compatibilityResponse
@@ -144,4 +144,3 @@ object GameCompatibilityService {
         }
     }
 }
-

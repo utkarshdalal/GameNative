@@ -10,9 +10,11 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.UserLoginState
-import app.gamenative.ui.screen.PluviaScreen
+import com.posthog.PostHog
+import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import java.util.concurrent.CompletableFuture
+import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +23,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import com.posthog.PostHog
 
-class UserLoginViewModel : ViewModel() {
+@HiltViewModel
+class UserLoginViewModel @Inject constructor() : ViewModel() {
     private val _loginState = MutableStateFlow(UserLoginState())
     val loginState: StateFlow<UserLoginState> = _loginState.asStateFlow()
 
@@ -41,7 +43,7 @@ class UserLoginViewModel : ViewModel() {
                     loginResult = LoginResult.DeviceConfirm,
                     loginScreen = LoginScreen.TWO_FACTOR,
                     isLoggingIn = false,
-                    lastTwoFactorMethod = "steam_guard"
+                    lastTwoFactorMethod = "steam_guard",
                 )
             }
 
@@ -57,7 +59,7 @@ class UserLoginViewModel : ViewModel() {
                     loginScreen = LoginScreen.TWO_FACTOR,
                     isLoggingIn = false,
                     previousCodeIncorrect = previousCodeWasIncorrect,
-                    lastTwoFactorMethod = "authenticator_code"
+                    lastTwoFactorMethod = "authenticator_code",
                 )
             }
 
@@ -82,7 +84,7 @@ class UserLoginViewModel : ViewModel() {
                     isLoggingIn = false,
                     email = email,
                     previousCodeIncorrect = previousCodeWasIncorrect,
-                    lastTwoFactorMethod = "email_code"
+                    lastTwoFactorMethod = "email_code",
                 )
             }
 
@@ -316,7 +318,7 @@ class UserLoginViewModel : ViewModel() {
                 loginResult = LoginResult.Failed,
                 isSteamConnected = false,
                 isQrFailed = false,
-                qrCode = null
+                qrCode = null,
             )
         }
         // Restart the SteamService

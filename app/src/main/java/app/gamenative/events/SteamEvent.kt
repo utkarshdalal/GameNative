@@ -2,7 +2,6 @@ package app.gamenative.events
 
 import app.gamenative.data.SteamFriend
 import app.gamenative.enums.LoginResult
-import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.ProfileInfoCallback
 
 sealed interface SteamEvent<T> : Event<T> {
     data class Connected(val isAutoLoggingIn: Boolean) : SteamEvent<Unit>

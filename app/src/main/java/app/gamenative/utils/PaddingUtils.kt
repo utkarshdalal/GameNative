@@ -15,16 +15,15 @@ object `PaddingUtils` {
      * @return PaddingValues with the appropriate padding values
      */
     fun statusBarAwarePadding(
-        defaultPadding: Dp = 16.dp
+        defaultPadding: Dp = 16.dp,
     ): PaddingValues {
-
         val hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
 
         return PaddingValues(
             top = if (hideStatusBar) 0.dp else defaultPadding,
             start = defaultPadding,
             end = defaultPadding,
-            bottom = defaultPadding
+            bottom = defaultPadding,
         )
     }
 }

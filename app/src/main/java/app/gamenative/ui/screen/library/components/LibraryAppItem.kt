@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.QuestionMark
@@ -43,7 +42,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +65,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.icons.Steam
@@ -166,7 +165,7 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
-                    val iconUrl = remember(appInfo.appId) {
+                    val iconUrl = remember(appInfo.appId, imageRefreshCounter) {
                         if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
                             val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
                             if (!path.isNullOrEmpty()) {
@@ -213,26 +212,22 @@ internal fun AppItem(
                     val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
                         val url = when (appInfo.gameSource) {
                             GameSource.CUSTOM_GAME -> {
-                                // For Custom Games, use SteamGridDB images
+                                // For Custom Games, use SteamGridDB images only
                                 when (paneType) {
                                     PaneType.GRID_CAPSULE -> {
                                         // Vertical grid for capsule
                                         findSteamGridDBImage("grid_capsule")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/library_600x900.jpg"
                                     }
 
                                     PaneType.GRID_HERO -> {
                                         // Horizontal grid for hero view
                                         findSteamGridDBImage("grid_hero")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/header.jpg"
                                     }
 
                                     else -> {
                                         // For list view, use heroes endpoint (not grid_hero)
                                         val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
-                                        val heroUrl = gameFolderPath?.let { path ->
+                                        gameFolderPath?.let { path ->
                                             val folder = java.io.File(path)
                                             val heroFile = folder.listFiles()?.firstOrNull { file ->
                                                 file.name.startsWith("steamgriddb_hero") &&
@@ -245,15 +240,26 @@ internal fun AppItem(
                                             }
                                             heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                         }
-                                        heroUrl
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/header.jpg"
                                     }
                                 }
                             }
 
                             GameSource.GOG -> {
                                 appInfo.iconHash
+                            }
+
+                            GameSource.EPIC -> {
+                                val game = EpicService.getEpicGameOf(appInfo.appId.removePrefix("EPIC_"))
+
+                                val epicUrl = when (paneType) {
+                                    PaneType.GRID_CAPSULE -> {
+                                        game?.artCover
+                                    }
+                                    else -> {
+                                        game?.artSquare
+                                    }
+                                }
+                                epicUrl
                             }
 
                             GameSource.STEAM -> {
@@ -276,16 +282,45 @@ internal fun AppItem(
                         }
                     }
 
+                    // Track fallback state
+                    // Pre-resolve native icon for custom games
+                    val nativeIconPath = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                        CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
+                    } else null
+                    
+                    val formattedIconPath = nativeIconPath?.let { 
+                        if (it.startsWith("file://")) it else "file://$it"
+                    }
+
+                    // If url is null (no SteamGridDB image), immediately use icon fallback for Custom Games
+                    val initialImageUrl = imageUrl ?: formattedIconPath
+
+                    var currentImageUrl by remember(initialImageUrl) { mutableStateOf(initialImageUrl) }
+                    var isUsingFallback by remember(initialImageUrl) {
+                        mutableStateOf(appInfo.gameSource == GameSource.CUSTOM_GAME && imageUrl == null && initialImageUrl != null)
+                    }
+
                     Box {
                         ListItemImage(
                             modifier = Modifier.aspectRatio(aspectRatio),
                             imageModifier = Modifier
                                 .clip(RoundedCornerShape(3.dp))
                                 .alpha(alpha),
-                            image = { imageUrl },
+                            image = { currentImageUrl },
                             onFailure = {
-                                hideText = false
-                                alpha = 0.1f
+                                if (appInfo.gameSource == GameSource.CUSTOM_GAME && !isUsingFallback) {
+                                    // Try using the icon as a fallback if SteamGridDB image failed to load
+                                    if (!formattedIconPath.isNullOrEmpty()) {
+                                        currentImageUrl = formattedIconPath
+                                        isUsingFallback = true
+                                    } else {
+                                        hideText = false
+                                        alpha = 0.1f
+                                    }
+                                } else {
+                                    hideText = false
+                                    alpha = 0.1f
+                                }
                             },
                         )
 
@@ -339,6 +374,7 @@ internal fun AppItem(
                             isInstalled = when (appInfo.gameSource) {
                                 GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                 GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId.removePrefix("EPIC_"))
                                 GameSource.CUSTOM_GAME -> true
                                 else -> false
                             }
@@ -351,6 +387,7 @@ internal fun AppItem(
                                 isInstalled = when (appInfo.gameSource) {
                                     GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                     GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId.removePrefix("EPIC_"))
                                     GameSource.CUSTOM_GAME -> true
                                     else -> false
                                 }
@@ -525,20 +562,48 @@ internal fun GameInfoBlock(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // Status indicator
-            val (statusText, statusColor) = if (isSteam) {
-                val text = when {
-                    isDownloading -> stringResource(R.string.library_installing)
-                    isInstalledSteam -> stringResource(R.string.library_installed)
-                    else -> stringResource(R.string.library_not_installed)
+            val (statusText, statusColor) = when (appInfo.gameSource) {
+                GameSource.STEAM -> {
+                    val text = when {
+                        isDownloading -> stringResource(R.string.library_installing)
+                        isInstalledSteam -> stringResource(R.string.library_installed)
+                        else -> stringResource(R.string.library_not_installed)
+                    }
+                    val color = when {
+                        isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    }
+                    text to color
                 }
-                val color = when {
-                    isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+
+                GameSource.GOG, GameSource.EPIC -> {
+                    // GOG and Epic games - check installation status from their respective services
+                    val isInstalled = when (appInfo.gameSource) {
+                        GameSource.GOG -> GOGService.isGameInstalled(appInfo.appId)
+                        GameSource.EPIC -> EpicService.isGameInstalled(appInfo.appId.removePrefix("EPIC_"))
+                        else -> false
+                    }
+                    val text = if (isInstalled) {
+                        stringResource(R.string.library_installed)
+                    } else {
+                        stringResource(R.string.library_not_installed)
+                    }
+                    val color = if (isInstalled) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    }
+                    text to color
                 }
-                text to color
-            } else {
-                // Custom Games are considered ready (no Steam install tracking)
-                stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
+
+                GameSource.CUSTOM_GAME -> {
+                    // Custom Games are considered ready (no install tracking)
+                    stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
+                }
+
+                else -> {
+                    stringResource(R.string.library_not_installed) to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
             }
 
             Row(
@@ -612,6 +677,7 @@ fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSi
         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 

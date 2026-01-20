@@ -1,21 +1,21 @@
 package app.gamenative.utils
 
+import android.util.Base64
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
 import `in`.dragonbra.javasteam.enums.ELicenseType
 import `in`.dragonbra.javasteam.enums.EPaymentMethod
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientserver
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
 import `in`.dragonbra.javasteam.types.DepotManifest
-import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientserver
-import org.json.JSONArray
-import org.json.JSONObject
-import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.util.Date
 import java.util.EnumSet
-import android.util.Base64
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
 
 object LicenseSerializer {
 
@@ -152,4 +152,3 @@ object LicenseSerializer {
         }
     }
 }
-

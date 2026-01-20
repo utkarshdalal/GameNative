@@ -1,77 +1,82 @@
 package app.gamenative.ui.screen.settings
 
+import android.content.Context
 import android.content.res.Configuration
 import android.os.Environment
 import android.os.storage.StorageManager
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.clickable
+import android.widget.ImageView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import app.gamenative.R
-import app.gamenative.PrefManager
-import app.gamenative.enums.AppTheme
-import app.gamenative.ui.component.dialog.SingleChoiceDialog
-import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
-import com.materialkolor.PaletteStyle
-import kotlinx.serialization.json.Json
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.enums.AppTheme
+import app.gamenative.events.AndroidEvent
+import app.gamenative.service.SteamService
+import app.gamenative.service.gog.GOGService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.ui.component.dialog.EpicLoginDialog
+import app.gamenative.ui.component.dialog.GOGLoginDialog
+import app.gamenative.ui.component.dialog.SteamLoginDialog
+import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.SingleChoiceDialog
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
-import androidx.compose.ui.viewinterop.AndroidView
-import android.widget.ImageView
+import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.IconSwitcher
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import androidx.compose.material3.Slider
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
-import kotlin.math.roundToInt
-import com.winlator.core.AppUtils
-import app.gamenative.ui.component.dialog.MessageDialog
-import app.gamenative.ui.component.dialog.LoadingDialog
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
 import app.gamenative.utils.LocaleHelper
-import app.gamenative.ui.component.dialog.GOGLoginDialog
-import app.gamenative.service.gog.GOGService
-import android.content.Context
+import com.alorma.compose.settings.ui.SettingsGroup
+import com.alorma.compose.settings.ui.SettingsMenuLink
+import com.alorma.compose.settings.ui.SettingsSwitch
+import com.materialkolor.PaletteStyle
+import com.winlator.core.AppUtils
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import timber.log.Timber
-import app.gamenative.PluviaApp
-import app.gamenative.events.AndroidEvent
 
 /**
  * Shared GOG authentication handler that manages the complete auth flow.
@@ -91,7 +96,7 @@ private suspend fun handleGogAuthentication(
     onLoadingChange: (Boolean) -> Unit,
     onError: (String?) -> Unit,
     onSuccess: (Int) -> Unit,
-    onDialogClose: () -> Unit
+    onDialogClose: () -> Unit,
 ) {
     onLoadingChange(true)
     onError(null)
@@ -103,12 +108,11 @@ private suspend fun handleGogAuthentication(
         if (result.isSuccess) {
             Timber.i("[SettingsGOG]: ✓ Authentication successful!")
 
-            // Start GOGService and trigger immediate library sync (bypasses throttle)
-            Timber.i("[SettingsGOG]: Starting GOGService and triggering immediate library sync")
+            // Start GOGService which will automatically trigger background library sync
+            Timber.i("[SettingsGOG]: Starting GOGService (will sync library in background)")
             GOGService.start(context)
-            GOGService.triggerLibrarySync(context)
 
-            // Authentication succeeded - manual sync triggered
+            // Authentication succeeded - service will handle library sync in background
             onSuccess(0)
             onLoadingChange(false)
             onDialogClose()
@@ -120,6 +124,56 @@ private suspend fun handleGogAuthentication(
         }
     } catch (e: Exception) {
         Timber.e(e, "[SettingsGOG]: Authentication exception: ${e.message}")
+        onLoadingChange(false)
+        onError(e.message ?: "Authentication failed")
+    }
+}
+
+/**
+ * Shared Epic authentication handler that manages the complete auth flow.
+ *
+ * @param context Android context for service operations
+ * @param authCode The OAuth authorization code
+ * @param coroutineScope Coroutine scope for async operations
+ * @param onLoadingChange Callback when loading state changes
+ * @param onError Callback when an error occurs (receives error message)
+ * @param onSuccess Callback when authentication succeeds
+ * @param onDialogClose Callback to close the login dialog
+ */
+private suspend fun handleEpicAuthentication(
+    context: Context,
+    authCode: String,
+    coroutineScope: CoroutineScope,
+    onLoadingChange: (Boolean) -> Unit,
+    onError: (String?) -> Unit,
+    onSuccess: () -> Unit,
+    onDialogClose: () -> Unit,
+) {
+    onLoadingChange(true)
+    onError(null)
+
+    try {
+        Timber.d("[SettingsEpic]: Starting authentication...")
+        val result = EpicService.authenticateWithCode(context, authCode)
+
+        if (result.isSuccess) {
+            Timber.i("[SettingsEpic]: ✓ Authentication successful!")
+
+            // Start EpicService
+            Timber.i("[SettingsEpic]: Starting EpicService")
+            EpicService.start(context)
+
+            onSuccess()
+            onLoadingChange(false)
+            onDialogClose()
+        } else {
+            val error = result.exceptionOrNull()?.message ?: "Authentication failed"
+            Timber.e("[SettingsEpic]: Authentication failed: $error")
+            onLoadingChange(false)
+            onError(error)
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "[SettingsEpic]: Authentication exception: ${e.message}")
         onLoadingChange(false)
         onError(e.message ?: "Authentication failed")
     }
@@ -156,8 +210,8 @@ fun SettingsGroupInterface(
     val languageCodes = remember { LocaleHelper.getSupportedLanguageCodes() }
     val languageNames = remember { LocaleHelper.getSupportedLanguageNames() }
     var selectedLanguageIndex by rememberSaveable {
-        mutableStateOf(
-            languageCodes.indexOf(PrefManager.appLanguage).takeIf { it >= 0 } ?: 0
+        mutableIntStateOf(
+            languageCodes.indexOf(PrefManager.appLanguage).takeIf { it >= 0 } ?: 0,
         )
     }
 
@@ -173,9 +227,11 @@ fun SettingsGroupInterface(
         autoEntries + otherEntries.sortedBy { it.second }
     }
     var openRegionDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedRegionIndex by rememberSaveable { mutableStateOf(
-        steamRegionsList.indexOfFirst { it.first == PrefManager.cellId }.takeIf { it >= 0 } ?: 0
-    ) }
+    var selectedRegionIndex by rememberSaveable {
+        mutableIntStateOf(
+            steamRegionsList.indexOfFirst { it.first == PrefManager.cellId }.takeIf { it >= 0 } ?: 0,
+        )
+    }
 
     // GOG login dialog state
     var openGOGLoginDialog by rememberSaveable { mutableStateOf(false) }
@@ -187,7 +243,21 @@ fun SettingsGroupInterface(
     var gogLibrarySyncing by rememberSaveable { mutableStateOf(false) }
     var gogLibrarySyncError by rememberSaveable { mutableStateOf<String?>(null) }
     var gogLibrarySyncSuccess by rememberSaveable { mutableStateOf(false) }
-    var gogLibraryGameCount by rememberSaveable { mutableStateOf(0) }
+    var gogLibraryGameCount by rememberSaveable { mutableIntStateOf(0) }
+
+    // Epic login dialog state
+    var openEpicLoginDialog by rememberSaveable { mutableStateOf(false) }
+    var epicLoginLoading by rememberSaveable { mutableStateOf(false) }
+    var epicLoginError by rememberSaveable { mutableStateOf<String?>(null) }
+    var epicLoginSuccess by rememberSaveable { mutableStateOf(false) }
+
+    // Epic logout confirmation dialog state
+    var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
+    var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
+
+    // Steam login dialog state
+    var openSteamLoginDialog by rememberSaveable { mutableStateOf(false) }
+    var showSteamLogoutDialog by rememberSaveable { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -208,7 +278,7 @@ fun SettingsGroupInterface(
                         gogLibraryGameCount = count
                         gogLoginSuccess = true
                     },
-                    onDialogClose = { openGOGLoginDialog = false }
+                    onDialogClose = { openGOGLoginDialog = false },
                 )
             }
         }
@@ -253,11 +323,21 @@ fun SettingsGroupInterface(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_language)) },
             subtitle = { Text(text = LocaleHelper.getLanguageDisplayName(PrefManager.appLanguage)) },
-            onClick = { openLanguageDialog = true }
+            onClick = { openLanguageDialog = true },
         )
 
         // Unified visual icon picker (affects app and notification icons)
-        var selectedVariant by rememberSaveable { mutableStateOf(if (PrefManager.useAltLauncherIcon || PrefManager.useAltNotificationIcon) 1 else 0) }
+        var selectedVariant by rememberSaveable {
+            mutableIntStateOf(
+                if (PrefManager.useAltLauncherIcon ||
+                    PrefManager.useAltNotificationIcon
+                ) {
+                    1
+                } else {
+                    0
+                },
+            )
+        }
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(text = stringResource(R.string.settings_interface_icon_style))
             Spacer(modifier = Modifier.size(12.dp))
@@ -294,6 +374,30 @@ fun SettingsGroupInterface(
     var showGOGLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var gogLogoutLoading by rememberSaveable { mutableStateOf(false) }
 
+    // Steam Integration
+    SettingsGroup(title = { Text(text = "Steam Integration") }) {
+        SettingsMenuLink(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = "Sign in to Steam") },
+            subtitle = { Text(text = "Access your Steam library and cloud saves") },
+            onClick = {
+                openSteamLoginDialog = true
+            },
+        )
+
+        // Logout button - only show if logged in
+        if (SteamService.isLoggedIn) {
+            SettingsMenuLink(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = "Sign out of Steam") },
+                subtitle = { Text(text = "Disconnect your account and clear local data") },
+                onClick = {
+                    showSteamLogoutDialog = true
+                },
+            )
+        }
+    }
+
     // GOG Integration
     SettingsGroup(title = { Text(text = stringResource(R.string.gog_integration_title)) }) {
         SettingsMenuLink(
@@ -304,7 +408,7 @@ fun SettingsGroupInterface(
                 openGOGLoginDialog = true
                 gogLoginError = null
                 gogLoginSuccess = false
-            }
+            },
         )
 
         // Logout button - only show if credentials exist
@@ -315,7 +419,33 @@ fun SettingsGroupInterface(
                 subtitle = { Text(text = stringResource(R.string.gog_settings_logout_subtitle)) },
                 onClick = {
                     showGOGLogoutDialog = true
-                }
+                },
+            )
+        }
+    }
+
+    // Epic Games Integration
+    SettingsGroup(title = { Text(text = "Epic Games Integration") }) {
+        SettingsMenuLink(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = "Sign in to Epic Games") },
+            subtitle = { Text(text = "Connect your Epic Games account") },
+            onClick = {
+                openEpicLoginDialog = true
+                epicLoginError = null
+                epicLoginSuccess = false
+            },
+        )
+
+        // Logout button - only show if credentials exist
+        if (app.gamenative.service.epic.EpicService.hasStoredCredentials(context)) {
+            SettingsMenuLink(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = "Sign out of Epic Games") },
+                subtitle = { Text(text = "Disconnect your account and clear local data") },
+                onClick = {
+                    showEpicLogoutDialog = true
+                },
             )
         }
     }
@@ -339,26 +469,26 @@ fun SettingsGroupInterface(
             stringResource(R.string.settings_download_slow),
             stringResource(R.string.settings_download_medium),
             stringResource(R.string.settings_download_fast),
-            stringResource(R.string.settings_download_blazing)
+            stringResource(R.string.settings_download_blazing),
         )
         val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
         var downloadSpeedValue by rememberSaveable {
             mutableStateOf(
-                downloadSpeedValues.indexOf(PrefManager.downloadSpeed).takeIf { it >= 0 }?.toFloat() ?: 2f
+                downloadSpeedValues.indexOf(PrefManager.downloadSpeed).takeIf { it >= 0 }?.toFloat() ?: 2f,
             )
         }
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Text(
                 text = stringResource(R.string.settings_download_speed),
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.size(4.dp))
             Text(
                 text = stringResource(R.string.settings_download_heat_warning),
                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.size(8.dp))
             Slider(
@@ -374,7 +504,7 @@ fun SettingsGroupInterface(
             // Labels below slider
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 downloadSpeedLabels.forEach { label ->
                     Text(
@@ -382,7 +512,7 @@ fun SettingsGroupInterface(
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.width(60.dp)
+                        modifier = Modifier.width(60.dp),
                     )
                 }
             }
@@ -408,13 +538,14 @@ fun SettingsGroupInterface(
         var useExternalStorage by rememberSaveable { mutableStateOf(PrefManager.useExternalStorage) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            enabled  = dirs.isNotEmpty(),
+            enabled = dirs.isNotEmpty(),
             title = { Text(text = stringResource(R.string.settings_interface_external_storage_title)) },
             subtitle = {
-                if (dirs.isEmpty())
+                if (dirs.isEmpty()) {
                     Text(stringResource(R.string.settings_interface_no_external_storage))
-                else
+                } else {
                     Text(stringResource(R.string.settings_interface_external_storage_subtitle))
+                }
             },
             state = useExternalStorage,
             onCheckedChange = {
@@ -428,9 +559,9 @@ fun SettingsGroupInterface(
         if (useExternalStorage) {
             // Currently selected item
             var selectedIndex by rememberSaveable {
-                mutableStateOf(
+                mutableIntStateOf(
                     dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
-                        .takeIf { it >= 0 } ?: 0
+                        .takeIf { it >= 0 } ?: 0,
                 )
             }
             SettingsListDropdown(
@@ -441,15 +572,20 @@ fun SettingsGroupInterface(
                     selectedIndex = idx
                     PrefManager.externalStoragePath = dirs[idx].absolutePath
                 },
-                colors = settingsTileColorsAlt()
+                colors = settingsTileColorsAlt(),
             )
         }
         // Steam download server selection
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_download_server_title)) },
-            subtitle = { Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default)) },
-            onClick = { openRegionDialog = true }
+            subtitle = {
+                Text(
+                    text =
+                    steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default),
+                )
+            },
+            onClick = { openRegionDialog = true },
         )
     }
 
@@ -467,7 +603,7 @@ fun SettingsGroupInterface(
             PrefManager.cellId = selectedId
             PrefManager.cellIdManuallySet = selectedId != 0
         },
-        onDismiss = { openRegionDialog = false }
+        onDismiss = { openRegionDialog = false },
     )
 
     // Status bar restart confirmation dialog
@@ -496,7 +632,7 @@ fun SettingsGroupInterface(
             // Revert toggle to original value
             hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
             pendingStatusBarValue = null
-        }
+        },
     )
 
     // Loading dialog while saving and restarting
@@ -517,7 +653,7 @@ fun SettingsGroupInterface(
     LoadingDialog(
         visible = showStatusBarLoadingDialog,
         progress = -1f, // Indeterminate progress
-        message = context.getString(R.string.settings_saving_restarting)
+        message = context.getString(R.string.settings_saving_restarting),
     )
 
     // Language selection dialog
@@ -538,7 +674,7 @@ fun SettingsGroupInterface(
             }
             openLanguageDialog = false
         },
-        onDismiss = { openLanguageDialog = false }
+        onDismiss = { openLanguageDialog = false },
     )
 
     // Language change restart confirmation dialog
@@ -567,7 +703,7 @@ fun SettingsGroupInterface(
             // Revert selection to original value
             selectedLanguageIndex = languageCodes.indexOf(PrefManager.appLanguage).takeIf { it >= 0 } ?: 0
             pendingLanguageCode = null
-        }
+        },
     )
 
     // Loading dialog while saving and restarting for language change
@@ -588,7 +724,7 @@ fun SettingsGroupInterface(
     LoadingDialog(
         visible = showLanguageLoadingDialog,
         progress = -1f, // Indeterminate progress
-        message = stringResource(R.string.settings_language_changing)
+        message = stringResource(R.string.settings_language_changing),
     )
 
     // GOG Login Dialog
@@ -611,12 +747,12 @@ fun SettingsGroupInterface(
                         gogLibraryGameCount = count
                         gogLoginSuccess = true
                     },
-                    onDialogClose = { openGOGLoginDialog = false }
+                    onDialogClose = { openGOGLoginDialog = false },
                 )
             }
         },
         isLoading = gogLoginLoading,
-        errorMessage = gogLoginError
+        errorMessage = gogLoginError,
     )
 
     // Success message dialog
@@ -628,7 +764,7 @@ fun SettingsGroupInterface(
             confirmBtnText = "OK",
             icon = Icons.Default.Login,
             title = stringResource(R.string.gog_login_success_title),
-            message = stringResource(R.string.gog_login_success_message)
+            message = stringResource(R.string.gog_login_success_message),
         )
     }
 
@@ -653,7 +789,7 @@ fun SettingsGroupInterface(
                             android.widget.Toast.makeText(
                                 context,
                                 context.getString(R.string.gog_logout_success),
-                                android.widget.Toast.LENGTH_SHORT
+                                android.widget.Toast.LENGTH_SHORT,
                             ).show()
                         }
                     } else {
@@ -663,7 +799,7 @@ fun SettingsGroupInterface(
                             android.widget.Toast.makeText(
                                 context,
                                 context.getString(R.string.gog_logout_failed, error?.message ?: "Unknown error"),
-                                android.widget.Toast.LENGTH_LONG
+                                android.widget.Toast.LENGTH_LONG,
                             ).show()
                         }
                     }
@@ -673,7 +809,7 @@ fun SettingsGroupInterface(
                         android.widget.Toast.makeText(
                             context,
                             context.getString(R.string.gog_logout_failed, e.message ?: "Unknown error"),
-                            android.widget.Toast.LENGTH_LONG
+                            android.widget.Toast.LENGTH_LONG,
                         ).show()
                     }
                 } finally {
@@ -682,17 +818,140 @@ fun SettingsGroupInterface(
             }
         },
         onDismissRequest = { showGOGLogoutDialog = false },
-        onDismissClick = { showGOGLogoutDialog = false }
+        onDismissClick = { showGOGLogoutDialog = false },
     )
 
     // GOG logout loading dialog
     LoadingDialog(
         visible = gogLogoutLoading,
         progress = -1f,
-        message = stringResource(R.string.gog_logout_in_progress)
+        message = stringResource(R.string.gog_logout_in_progress),
+    )
+
+    // Epic Login Dialog
+    EpicLoginDialog(
+        visible = openEpicLoginDialog,
+        onDismissRequest = {
+            openEpicLoginDialog = false
+            epicLoginError = null
+            epicLoginLoading = false
+        },
+        onAuthCodeClick = { authCode ->
+            coroutineScope.launch {
+                handleEpicAuthentication(
+                    context = context,
+                    authCode = authCode,
+                    coroutineScope = coroutineScope,
+                    onLoadingChange = { epicLoginLoading = it },
+                    onError = { epicLoginError = it },
+                    onSuccess = { epicLoginSuccess = true },
+                    onDialogClose = { openEpicLoginDialog = false },
+                )
+            }
+        },
+        isLoading = epicLoginLoading,
+        errorMessage = epicLoginError,
+    )
+
+    // Epic success message dialog
+    if (epicLoginSuccess) {
+        MessageDialog(
+            visible = true,
+            onDismissRequest = { epicLoginSuccess = false },
+            onConfirmClick = { epicLoginSuccess = false },
+            confirmBtnText = "OK",
+            icon = Icons.Default.Login,
+            title = "Login Successful",
+            message = "You are now signed in to Epic Games.",
+        )
+    }
+
+    // Epic logout confirmation dialog
+    MessageDialog(
+        visible = showEpicLogoutDialog,
+        title = "Sign Out of Epic Games?",
+        message = "Are you sure you want to sign out? This will remove your account credentials and clear the Epic Games library cache. Installed games will remain but may not be launchable if they require authentication.",
+        confirmBtnText = "Sign Out",
+        dismissBtnText = stringResource(R.string.cancel),
+        onConfirmClick = {
+            showEpicLogoutDialog = false
+            epicLogoutLoading = true
+            coroutineScope.launch {
+                try {
+                    Timber.d("[SettingsEpic] Starting logout...")
+                    val result = EpicService.logout(context)
+
+                    if (result.isSuccess) {
+                        Timber.i("[SettingsEpic] Logout successful")
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Signed out of Epic Games",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    } else {
+                        val error = result.exceptionOrNull()
+                        Timber.e(error, "[SettingsEpic] Logout failed")
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Failed to sign out: ${error?.message ?: "Unknown error"}",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "[SettingsEpic] Exception during logout")
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Failed to sign out: ${e.message ?: "Unknown error"}",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                } finally {
+                    epicLogoutLoading = false
+                }
+            }
+        },
+        onDismissRequest = { showEpicLogoutDialog = false },
+        onDismissClick = { showEpicLogoutDialog = false },
+    )
+
+    // Epic logout loading dialog
+    LoadingDialog(
+        visible = epicLogoutLoading,
+        progress = -1f,
+        message = "Signing out...",
+    )
+
+    // Steam Login Dialog
+    SteamLoginDialog(
+        visible = openSteamLoginDialog,
+        onDismissRequest = { openSteamLoginDialog = false }
+    )
+
+    // Steam Logout Confirmation
+    MessageDialog(
+        visible = showSteamLogoutDialog,
+        title = "Sign Out of Steam?",
+        message = "Are you sure you want to sign out? This will remove your account credentials and clear the local Steam library cache. Installed games will remain on disk but may not be launchable without re-authenticating.",
+        confirmBtnText = "Sign Out",
+        dismissBtnText = stringResource(R.string.cancel),
+        onConfirmClick = {
+            showSteamLogoutDialog = false
+            SteamService.logOut()
+            coroutineScope.launch {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Signed out of Steam", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
+        onDismissRequest = { showSteamLogoutDialog = false },
+        onDismissClick = { showSteamLogoutDialog = false }
     )
 }
-
 
 @Composable
 private fun IconVariantCard(
@@ -739,7 +998,7 @@ private fun Preview_SettingsScreen() {
     val context = LocalContext.current
     PrefManager.init(context)
     PluviaTheme {
-        SettingsGroupInterface (
+        SettingsGroupInterface(
             appTheme = AppTheme.DAY,
             paletteStyle = PaletteStyle.TonalSpot,
             onAppTheme = { },
@@ -747,5 +1006,3 @@ private fun Preview_SettingsScreen() {
         )
     }
 }
-
-

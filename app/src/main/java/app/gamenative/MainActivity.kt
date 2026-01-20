@@ -8,29 +8,23 @@ import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.OrientationEventListener
 import androidx.activity.ComponentActivity
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import coil.ImageLoader
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
-import coil.request.CachePolicy
+import androidx.lifecycle.lifecycleScope
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
@@ -41,14 +35,18 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.LocaleHelper
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
+import coil.request.CachePolicy
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 import java.util.EnumSet
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
 
@@ -105,7 +103,53 @@ class MainActivity : ComponentActivity() {
     }
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
+        Timber.i("FORCE CLOSING APPLICATION")
+
+        // 0. Unregister event listeners
+        PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
+        PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.off<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
+        PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
+
+        // 1. Stop all services
+        try {
+            SteamService.stopService()
+            GOGService.stop()
+            app.gamenative.service.epic.EpicService.stop()
+        } catch (e: Exception) {
+            Timber.e(e, "Error stopping services during force close")
+        }
+
+        // 2. Kill all child processes (Wine, etc.)
+        try {
+            com.winlator.core.ProcessHelper.terminateAllWineProcesses()
+            val subProcesses = com.winlator.core.ProcessHelper.listSubProcesses()
+            for (proc in subProcesses) {
+                android.os.Process.killProcess(proc.pid)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error killing sub-processes")
+        }
+
+        // 3. Stop XEnvironment
+        try {
+            PluviaApp.xEnvironment?.stopEnvironmentComponents()
+        } catch (e: Exception) {
+            Timber.e(e, "Error stopping environment components")
+        }
+
+        // 4. Cleanup Notifications
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            notificationManager.cancelAll()
+        } catch (e: Exception) {
+            Timber.e(e, "Error cancelling notifications")
+        }
+
+        // 5. Final Termination
         finishAndRemoveTask()
+        android.os.Process.killProcess(android.os.Process.myPid())
+        System.exit(0)
     }
 
     private var index = totalIndex++
@@ -131,7 +175,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Initialize the controller management system
-        ControllerManager.getInstance().init(getApplicationContext());
+        ControllerManager.getInstance().init(getApplicationContext())
+
+        // Start services
+        SteamService.start(this)
+        if (GOGService.hasStoredCredentials(this)) GOGService.start(this)
+        if (app.gamenative.service.epic.EpicService.hasStoredCredentials(this)) app.gamenative.service.epic.EpicService.start(this)
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
@@ -249,10 +298,10 @@ class MainActivity : ComponentActivity() {
 
         if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.isGameRunning) {
             Timber.i("Stopping Steam Service")
-            SteamService.stop()
+            SteamService.stopService()
         }
 
-        if(GOGService.isRunning) {
+        if (GOGService.isRunning) {
             Timber.i("Stopping GOG Service")
             GOGService.stop()
         }
@@ -280,8 +329,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         if (SteamService.isGameRunning) {
-            PluviaApp.xEnvironment?.onPause()
-            Timber.d("Game paused due to app backgrounded")
+            // PluviaApp.xEnvironment?.onPause()
+            // Timber.d("Game paused due to app backgrounded")
         }
         PostHog.capture(event = "app_backgrounded")
         super.onPause()
@@ -293,9 +342,10 @@ class MainActivity : ComponentActivity() {
         orientationSensorListener?.disable()
         orientationSensorListener = null
         // enable auto-stop behavior if backgrounded
-        SteamService.autoStopWhenIdle = true
+        // SteamService.autoStopWhenIdle = true
 
         // stop SteamService only if no downloads or sync are in progress
+        /*
         if (!isChangingConfigurations &&
             SteamService.isConnected &&
             !SteamService.hasActiveOperations() &&
@@ -304,8 +354,9 @@ class MainActivity : ComponentActivity() {
             !SteamService.isImporting
         ) {
             Timber.i("Stopping SteamService - no active operations")
-            SteamService.stop()
+            SteamService.stopService()
         }
+         */
     }
 
     // override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -330,7 +381,7 @@ class MainActivity : ComponentActivity() {
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
             if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (SteamService.isGameRunning){
+                if (SteamService.isGameRunning) {
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
                     eventDispatched = true
                 }
@@ -396,8 +447,10 @@ class MainActivity : ComponentActivity() {
 
         // find the nearest orientation to the reported
         val distances = orientations.map {
-            it to it.angleRanges.minOf { angleRange ->
-                angleRange.minOf { angle ->
+            it to it.angleRanges.minOf {
+                angleRange ->
+                angleRange.minOf {
+                    angle ->
                     // since 0 can be represented as 360 and vice versa
                     if (adjustedOrientation == 0 || adjustedOrientation == 360) {
                         minOf(abs(angle), abs(angle - 360))

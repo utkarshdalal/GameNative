@@ -25,7 +25,7 @@ fun HomeScreen(
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
-    isOffline: Boolean = false
+    isOffline: Boolean = false,
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
 

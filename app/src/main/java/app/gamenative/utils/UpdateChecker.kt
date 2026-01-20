@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.BuildConfig
 import app.gamenative.Constants
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -10,7 +11,6 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 
 @Serializable
 data class UpdateInfo(
@@ -18,7 +18,7 @@ data class UpdateInfo(
     val versionCode: Int,
     val versionName: String,
     val downloadUrl: String,
-    val releaseNotes: String? = null
+    val releaseNotes: String? = null,
 )
 
 object UpdateChecker {
@@ -35,7 +35,7 @@ object UpdateChecker {
                 .build()
 
             val response = httpClient.newCall(request).execute()
-            
+
             if (response.isSuccessful) {
                 val body = response.body?.string()
                 if (body != null) {
@@ -52,4 +52,3 @@ object UpdateChecker {
         return@withContext null
     }
 }
-

@@ -13,8 +13,7 @@ import androidx.room.PrimaryKey
 data class CachedLicense(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    
+
     @ColumnInfo("license_json")
     val licenseJson: String, // Serialized License object as Base64
 )
-

@@ -1,35 +1,31 @@
 package app.gamenative.service.gog
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.OkHttpClient
-import org.json.JSONArray
-import org.json.JSONObject
-import timber.log.Timber
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.Instant
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
 import java.util.concurrent.TimeUnit
-
+import java.util.zip.GZIPOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import timber.log.Timber
 
 class GOGCloudSavesManager(
-    private val context: Context
+    private val context: Context,
 ) {
 
     private val httpClient = OkHttpClient.Builder()
-    .connectTimeout(30, TimeUnit.SECONDS)
-    .readTimeout(30, TimeUnit.SECONDS)
-    .build()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     companion object {
         private const val CLOUD_STORAGE_BASE_URL = "https://cloudstorage.gog.com"
@@ -41,7 +37,7 @@ class GOGCloudSavesManager(
         UPLOAD,
         DOWNLOAD,
         CONFLICT,
-        NONE
+        NONE,
     }
 
     /**
@@ -52,7 +48,7 @@ class GOGCloudSavesManager(
         val absolutePath: String,
         var md5Hash: String? = null,
         var updateTime: String? = null,
-        var updateTimestamp: Long? = null
+        var updateTimestamp: Long? = null,
     ) {
         /**
          * Calculate MD5 hash and metadata for this file
@@ -102,7 +98,7 @@ class GOGCloudSavesManager(
         val relativePath: String,
         val md5Hash: String,
         val updateTime: String?,
-        val updateTimestamp: Long?
+        val updateTimestamp: Long?,
     ) {
         val isDeleted: Boolean
             get() = md5Hash == DELETION_MD5
@@ -115,7 +111,7 @@ class GOGCloudSavesManager(
         val updatedLocal: List<SyncFile> = emptyList(),
         val updatedCloud: List<CloudFile> = emptyList(),
         val notExistingLocally: List<CloudFile> = emptyList(),
-        val notExistingRemotely: List<SyncFile> = emptyList()
+        val notExistingRemotely: List<SyncFile> = emptyList(),
     ) {
         fun determineAction(): SyncAction {
             return when {
@@ -143,7 +139,7 @@ class GOGCloudSavesManager(
         clientId: String,
         clientSecret: String,
         lastSyncTimestamp: Long = 0,
-        preferredAction: String = "none"
+        preferredAction: String = "none",
     ): Long = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG-CloudSaves").i("Starting sync for path: $localPath")
@@ -250,69 +246,9 @@ class GOGCloudSavesManager(
                 }
 
                 SyncAction.CONFLICT -> {
-                    Timber.tag("GOG-CloudSaves").w("Sync conflict detected - comparing timestamps")
-
-                    // Compare timestamps for matching files
-                    val localMap = classifier.updatedLocal.associateBy { it.relativePath }
-                    val cloudMap = classifier.updatedCloud.associateBy { it.relativePath }
-
-                    val toUpload = mutableListOf<SyncFile>()
-                    val toDownload = mutableListOf<CloudFile>()
-
-                    // Check files that exist in both and were both updated
-                    val commonPaths = localMap.keys.intersect(cloudMap.keys)
-                    commonPaths.forEach { path ->
-                        val localFile = localMap[path]!!
-                        val cloudFile = cloudMap[path]!!
-
-                        val localTime = localFile.updateTimestamp ?: 0L
-                        val cloudTime = cloudFile.updateTimestamp ?: 0L
-
-                        when {
-                            localTime > cloudTime -> {
-                                Timber.tag("GOG-CloudSaves").i("Local file is newer: $path (local: $localTime > cloud: $cloudTime)")
-                                toUpload.add(localFile)
-                            }
-                            cloudTime > localTime -> {
-                                Timber.tag("GOG-CloudSaves").i("Cloud file is newer: $path (cloud: $cloudTime > local: $localTime)")
-                                toDownload.add(cloudFile)
-                            }
-                            else -> {
-                                Timber.tag("GOG-CloudSaves").w("Files have same timestamp, skipping: $path")
-                            }
-                        }
-                    }
-
-                    // Upload files that only exist locally or are newer locally
-                    (localMap.keys - commonPaths).forEach { path ->
-                        toUpload.add(localMap[path]!!)
-                    }
-
-                    // Download files that only exist in cloud or are newer in cloud
-                    (cloudMap.keys - commonPaths).forEach { path ->
-                        toDownload.add(cloudMap[path]!!)
-                    }
-
-                    // Handle files not existing in either location
-                    toUpload.addAll(classifier.notExistingRemotely)
-                    toDownload.addAll(classifier.notExistingLocally.filter { !it.isDeleted })
-
-                    // Execute uploads
-                    if (toUpload.isNotEmpty()) {
-                        Timber.tag("GOG-CloudSaves").i("Uploading ${toUpload.size} file(s) based on timestamp comparison")
-                        toUpload.forEach { file ->
-                            uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
-                        }
-                    }
-
-                    // Execute downloads
-                    if (toDownload.isNotEmpty()) {
-                        Timber.tag("GOG-CloudSaves").i("Downloading ${toDownload.size} file(s) based on timestamp comparison")
-                        toDownload.forEach { file ->
-                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
-                        }
-                    }
+                    Timber.tag("GOG-CloudSaves").w("Sync conflict detected - manual intervention required")
                 }
+
                 SyncAction.NONE -> {
                     Timber.tag("GOG-CloudSaves").i("No sync needed - files are up to date")
                 }
@@ -320,7 +256,6 @@ class GOGCloudSavesManager(
 
             Timber.tag("GOG-CloudSaves").i("Sync completed successfully")
             return@withContext currentTimestamp()
-
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Sync failed: ${e.message}")
             return@withContext 0L
@@ -361,7 +296,7 @@ class GOGCloudSavesManager(
         userId: String,
         clientId: String,
         dirname: String,
-        authToken: String
+        authToken: String,
     ): List<CloudFile> = withContext(Dispatchers.IO) {
         try {
             // List all files (don't include dirname in URL - it's used as a prefix filter)
@@ -430,7 +365,6 @@ class GOGCloudSavesManager(
                 Timber.tag("GOG").i("[Cloud Saves] Retrieved ${files.size} cloud files for dirname '$dirname'")
                 files
             }
-
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to get cloud files")
             emptyList()
@@ -445,13 +379,13 @@ class GOGCloudSavesManager(
         clientId: String,
         dirname: String,
         file: SyncFile,
-        authToken: String
+        authToken: String,
     ) = withContext(Dispatchers.IO) {
         try {
             val localFile = File(file.absolutePath)
             val fileSize = localFile.length()
 
-            Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} (${fileSize} bytes)")
+            Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} ($fileSize bytes)")
 
             val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath}"
 
@@ -480,7 +414,6 @@ class GOGCloudSavesManager(
                     Timber.tag("GOG-CloudSaves").e("Upload error body: $errorBody")
                 }
             }
-
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to upload ${file.relativePath}")
         }
@@ -495,7 +428,7 @@ class GOGCloudSavesManager(
         dirname: String,
         file: CloudFile,
         syncDir: File,
-        authToken: String
+        authToken: String,
     ) = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
@@ -536,7 +469,6 @@ class GOGCloudSavesManager(
 
                 Timber.tag("GOG-CloudSaves").i("Successfully downloaded: ${file.relativePath}")
             }
-
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to download ${file.relativePath}")
         }
@@ -548,7 +480,7 @@ class GOGCloudSavesManager(
     private fun classifyFiles(
         localFiles: List<SyncFile>,
         cloudFiles: List<CloudFile>,
-        timestamp: Long
+        timestamp: Long,
     ): SyncClassifier {
         val updatedLocal = mutableListOf<SyncFile>()
         val updatedCloud = mutableListOf<CloudFile>()

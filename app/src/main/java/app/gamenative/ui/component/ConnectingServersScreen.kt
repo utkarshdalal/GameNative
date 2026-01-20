@@ -14,31 +14,31 @@ import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
 fun ConnectingServersScreen(
-    onContinueOffline: () -> Unit
+    onContinueOffline: () -> Unit,
 ) {
     Surface(
         color = Color.Black,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = stringResource(R.string.connect_to_remote_server),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 24.dp),
             )
 
             CircularProgressIndicator(
                 modifier = Modifier
                     .size(64.dp)
                     .padding(bottom = 24.dp),
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -55,7 +55,7 @@ fun ConnectingServersScreen(
 private fun Preview_ConnectSteamScreen() {
     PluviaTheme {
         ConnectingServersScreen(
-            onContinueOffline = {}
+            onContinueOffline = {},
         )
     }
 }

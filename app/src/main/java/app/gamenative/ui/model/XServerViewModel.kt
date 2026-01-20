@@ -4,13 +4,16 @@ import androidx.lifecycle.ViewModel
 import app.gamenative.ui.data.XServerState
 import com.winlator.core.KeyValueSet
 import com.winlator.core.WineInfo
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import timber.log.Timber
 
-class XServerViewModel : ViewModel() {
+@HiltViewModel
+class XServerViewModel @Inject constructor() : ViewModel() {
     private val _xServerState = MutableStateFlow(XServerState())
     val xServerState: StateFlow<XServerState> = _xServerState.asStateFlow()
 

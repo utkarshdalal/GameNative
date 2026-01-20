@@ -33,7 +33,7 @@ public abstract class ProcessHelper {
     }
 
     public static void terminateProcess(int pid) {
-        Process.sendSignal(pid, SIGTERM);
+        Process.sendSignal(pid, SIGKILL);
 //        Log.d("ProcessHelper", "Process terminated with pid: " + pid);
     }
 

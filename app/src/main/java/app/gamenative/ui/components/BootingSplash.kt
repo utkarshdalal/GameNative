@@ -22,17 +22,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
-import kotlinx.coroutines.delay
 import kotlin.random.Random
+import kotlinx.coroutines.delay
 
 @Composable
 fun BootingSplash(
     visible: Boolean = true,
     text: String = "Booting...",
-    onBootCompleted: () -> Unit = {}
+    onBootCompleted: () -> Unit = {},
 ) {
     // Tailwind-style “animate-pulse”: opacity 0.3 → 0.5 → 0.3
     val pulseAlpha by rememberInfiniteTransition(label = "pulse")
@@ -41,9 +41,9 @@ fun BootingSplash(
             targetValue = 0.65f,
             animationSpec = infiniteRepeatable(
                 animation = tween(3000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
+                repeatMode = RepeatMode.Reverse,
             ),
-            label = "alpha"
+            label = "alpha",
         )
 
     val tips = remember {
@@ -87,13 +87,13 @@ fun BootingSplash(
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(animationSpec = tween(durationMillis = 99)),
-        exit = fadeOut()
+        exit = fadeOut(),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             // Gradient overlay (drawn first, so it sits behind the text)
             Box(
@@ -103,15 +103,15 @@ fun BootingSplash(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFFA21CAF),   // purple start
-                                Color.Black,         // black centre 1
-                                Color.Black,         // black centre 2
+                                Color(0xFFA21CAF), // purple start
+                                Color.Black, // black centre 1
+                                Color.Black, // black centre 2
                                 Color.Black,
                                 Color.Black,
-                                Color(0xFF06B6D4)    // cyan end
-                            )
-                        )
-                    )
+                                Color(0xFF06B6D4), // cyan end
+                            ),
+                        ),
+                    ),
             )
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -122,30 +122,29 @@ fun BootingSplash(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
                                 MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary
-                            )
-                        )
-                    )
+                                MaterialTheme.colorScheme.tertiary,
+                            ),
+                        ),
+                    ),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
-
 
                 if (tips.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(24.dp))
                     Box(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Crossfade(
                             targetState = tipIndex,
                             animationSpec = tween(durationMillis = 600),
-                            label = "tipCrossfade"
+                            label = "tipCrossfade",
                         ) { idx ->
                             Text(
                                 text = tips[idx],
@@ -154,7 +153,7 @@ fun BootingSplash(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 24.dp)
+                                    .padding(horizontal = 24.dp),
                             )
                         }
                     }
@@ -167,7 +166,7 @@ fun BootingSplash(
 @Preview(name = "BootingSplash")
 @Composable
 fun BootingSplashPreview() {
-	PluviaTheme {
-		BootingSplash(visible = true)
-	}
+    PluviaTheme {
+        BootingSplash(visible = true)
+    }
 }

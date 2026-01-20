@@ -6,16 +6,15 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
-import com.winlator.container.ContainerData
-import com.winlator.fexcore.FEXCorePresetManager
-import com.winlator.contents.AdrenotoolsManager
 import com.winlator.core.KeyValueSet
+import com.winlator.fexcore.FEXCorePresetManager
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -23,8 +22,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Service for fetching best configurations for games from GameNative API.
@@ -48,7 +45,7 @@ object BestConfigService {
         val bestConfig: JsonObject,
         val matchType: String, // "exact_gpu_match" | "gpu_family_match" | "fallback_match" | "no_match"
         val matchedGpu: String,
-        val matchedDeviceId: Int
+        val matchedDeviceId: Int,
     )
 
     /**
@@ -56,7 +53,7 @@ object BestConfigService {
      */
     data class CompatibilityMessage(
         val text: String,
-        val color: Color
+        val color: Color,
     )
 
     /**
@@ -65,9 +62,9 @@ object BestConfigService {
      */
     suspend fun fetchBestConfig(
         gameName: String,
-        gpuName: String
+        gpuName: String,
     ): BestConfigResponse? = withContext(Dispatchers.IO) {
-        val cacheKey = "${gameName}_${gpuName}"
+        val cacheKey = "${gameName}_$gpuName"
 
         // Check cache first
         cache[cacheKey]?.let {
@@ -109,7 +106,7 @@ object BestConfigService {
                     bestConfig = bestConfig,
                     matchType = jsonResponse.getString("matchType"),
                     matchedGpu = jsonResponse.getString("matchedGpu"),
-                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
+                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId"),
                 )
 
                 // Cache the response
@@ -138,19 +135,19 @@ object BestConfigService {
         return when (matchType) {
             "exact_gpu_match" -> CompatibilityMessage(
                 text = context.getString(R.string.best_config_exact_gpu_match),
-                color = Color.Green
+                color = Color.Green,
             )
             "gpu_family_match" -> CompatibilityMessage(
                 text = context.getString(R.string.best_config_gpu_family_match),
-                color = Color.Green
+                color = Color.Green,
             )
             "fallback_match" -> CompatibilityMessage(
                 text = context.getString(R.string.best_config_fallback_match),
-                color = Color.Yellow
+                color = Color.Yellow,
             )
             else -> CompatibilityMessage(
                 text = context.getString(R.string.best_config_compatibility_unknown),
-                color = Color.Gray
+                color = Color.Gray,
             )
         }
     }
@@ -205,8 +202,8 @@ object BestConfigService {
             val normalizedVersion = version.trim()
             return available.any {
                 extractVersion(it).trim().equals(normalizedVersion, ignoreCase = true) ||
-                extractVersion(it).trim().contains(normalizedVersion, ignoreCase = true) ||
-                normalizedVersion.contains(extractVersion(it).trim(), ignoreCase = true)
+                    extractVersion(it).trim().contains(normalizedVersion, ignoreCase = true) ||
+                    normalizedVersion.contains(extractVersion(it).trim(), ignoreCase = true)
             }
         }
 
@@ -349,11 +346,16 @@ object BestConfigService {
      * First parses values (using PrefManager defaults for validation), then validates component versions.
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      */
-    fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String, applyKnownConfig: Boolean): Map<String, Any?>? {
+    fun parseConfigToContainerData(
+        context: Context,
+        configJson: JsonObject,
+        matchType: String,
+        applyKnownConfig: Boolean,
+    ): Map<String, Any?>? {
         try {
             val originalJson = JSONObject(configJson.toString())
 
-            if (!applyKnownConfig){
+            if (!applyKnownConfig) {
                 val resultMap = mutableMapOf<String, Any?>()
                 if (originalJson.has("executablePath") && !originalJson.isNull("executablePath")) {
                     resultMap["executablePath"] = originalJson.optString("executablePath", "")
@@ -362,9 +364,7 @@ object BestConfigService {
                     resultMap["useLegacyDRM"] = originalJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
                 }
                 return resultMap
-            }
-
-            else {
+            } else {
                 if (!originalJson.has("containerVariant") || originalJson.isNull("containerVariant")) {
                     Timber.tag("BestConfigService").w("containerVariant is missing or null in original config, returning empty map")
                     return mapOf()
@@ -375,8 +375,7 @@ object BestConfigService {
                 if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
                     if (containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
                         originalJson.put("wineVersion", "wine-9.2-x86_64")
-                    }
-                    else {
+                    } else {
                         Timber.tag("BestConfigService").w("wineVersion is missing or null in original config, returning empty map")
                         return mapOf()
                     }
@@ -491,4 +490,3 @@ object BestConfigService {
         }
     }
 }
-

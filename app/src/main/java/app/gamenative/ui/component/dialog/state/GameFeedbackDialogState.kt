@@ -20,7 +20,7 @@ data class GameFeedbackDialogState(
             "graphics_glitches",
             "audio_glitches",
             "does_not_open",
-            "directx_error"
+            "directx_error",
         )
 
         val Saver = mapSaver(

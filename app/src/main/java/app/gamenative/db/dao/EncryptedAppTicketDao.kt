@@ -24,4 +24,3 @@ interface EncryptedAppTicketDao {
     @Query("DELETE from encrypted_app_ticket")
     suspend fun deleteAll()
 }
-

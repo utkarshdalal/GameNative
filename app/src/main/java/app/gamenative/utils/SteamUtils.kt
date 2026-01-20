@@ -6,16 +6,12 @@ import android.provider.Settings
 import androidx.navigation.ActivityNavigator
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
-import app.gamenative.data.LibraryItem
-import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
-import app.gamenative.enums.PathType
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
 import com.winlator.container.Container
-import com.winlator.container.ContainerManager
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
@@ -24,6 +20,7 @@ import `in`.dragonbra.javasteam.util.HardwareUtils
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.URLEncoder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -32,20 +29,19 @@ import java.nio.file.StandardOpenOption
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.name
-import timber.log.Timber
 import okhttp3.*
 import org.json.JSONObject
-import java.net.URLEncoder
-import java.util.concurrent.TimeUnit
+import timber.log.Timber
 
 object SteamUtils {
 
     internal val http = OkHttpClient.Builder()
-        .readTimeout(5, TimeUnit.MINUTES)      // from 2 min → 5 min
-        .protocols(listOf(Protocol.HTTP_1_1))  // skip HTTP/2 stream stalls
+        .readTimeout(5, TimeUnit.MINUTES) // from 2 min → 5 min
+        .protocols(listOf(Protocol.HTTP_1_1)) // skip HTTP/2 stream stalls
         .retryOnConnectionFailure(true)
         .build()
 
@@ -85,7 +81,7 @@ object SteamUtils {
 
     private fun generateInterfacesFile(dllPath: Path) {
         val outFile = dllPath.parent.resolve("steam_interfaces.txt")
-        if (Files.exists(outFile)) return          // already generated on a previous boot
+        if (Files.exists(outFile)) return // already generated on a previous boot
 
         // -------- read DLL into memory ----------------------------------------
         val bytes = Files.readAllBytes(dllPath)
@@ -93,23 +89,24 @@ object SteamUtils {
 
         val sb = StringBuilder()
         fun flush() {
-            if (sb.length >= 10) {                 // only consider reasonably long strings
+            if (sb.length >= 10) { // only consider reasonably long strings
                 val candidate = sb.toString()
-                if (candidate.matches(Regex("^Steam[A-Za-z]+[0-9]{3}\$", RegexOption.IGNORE_CASE)))
+                if (candidate.matches(Regex("^Steam[A-Za-z]+[0-9]{3}\$", RegexOption.IGNORE_CASE))) {
                     strings += candidate
+                }
             }
             sb.setLength(0)
         }
 
         for (b in bytes) {
             val ch = b.toInt() and 0xFF
-            if (ch in 0x20..0x7E) {                // printable ASCII
+            if (ch in 0x20..0x7E) { // printable ASCII
                 sb.append(ch.toChar())
             } else {
                 flush()
             }
         }
-        flush()                                    // catch trailing string
+        flush() // catch trailing string
 
         if (strings.isEmpty()) {
             Timber.w("No Steam interface strings found in ${dllPath.fileName}")
@@ -232,7 +229,9 @@ object SteamUtils {
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
 
-        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) &&
+            File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()
+        ) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -467,10 +466,12 @@ object SteamUtils {
                 Timber.e("Could not locate game drive")
                 'D'
             }
-            val executableFile = "$drive:\\${executablePath}"
+            val executableFile = "$drive:\\$executablePath"
 
             val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
-            val unpackedExe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/') + ".unpacked.exe")
+            val unpackedExe = File(
+                imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/') + ".unpacked.exe",
+            )
 
             if (unpackedExe.exists()) {
                 // Check if files are different (compare size and last modified time for efficiency)
@@ -624,7 +625,6 @@ object SteamUtils {
 
                 Timber.i("Created Steamworks Common Redistributables ACF manifest at ${steamworksAcfFile.absolutePath}")
             }
-
         } catch (e: Exception) {
             Timber.e(e, "Failed to create ACF manifest for appId $steamAppId")
         }
@@ -659,20 +659,19 @@ object SteamUtils {
      * if they exist. Does not error if backup files are not found.
      */
     fun restoreSteamApi(context: Context, appId: String) {
-
-        Timber.i("Starting restoreSteamApi for appId: ${appId}")
+        Timber.i("Starting restoreSteamApi for appId: $appId")
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val imageFs = ImageFs.find(context)
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val cfgFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steam.cfg")
-        if (container.isAllowSteamUpdates){
+        if (container.isAllowSteamUpdates) {
             Timber.i("Allowing steam updates, deleting the steam.cfg file")
-            if (cfgFile.exists()){
+            if (cfgFile.exists()) {
                 Timber.i("Allowing steam updates and file exists, deleting the steam.cfg file")
                 cfgFile.delete()
             }
         } else {
-            if (!cfgFile.exists()){
+            if (!cfgFile.exists()) {
                 cfgFile.parentFile?.mkdirs()
                 Files.createFile(cfgFile.toPath())
                 cfgFile.writeText("BootStrapperInhibitAll=Enable\nBootStrapperForceSelfUpdate=False")
@@ -696,7 +695,7 @@ object SteamUtils {
 
         putBackSteamDlls(appDirPath)
 
-        Timber.i("Finished restoreSteamApi for appId: ${appId}")
+        Timber.i("Finished restoreSteamApi for appId: $appId")
 
         // Restore original executable if it exists (for real Steam mode)
         restoreOriginalExecutable(context, steamAppId)
@@ -714,7 +713,12 @@ object SteamUtils {
 
         rootPath.toFile().walkTopDown().maxDepth(10).forEach { file ->
             val path = file.toPath()
-            if (!file.isFile || !path.name.startsWith("steam_api", ignoreCase = true) || !path.name.endsWith(".orig", ignoreCase = true)) return@forEach
+            if (!file.isFile ||
+                !path.name.startsWith("steam_api", ignoreCase = true) ||
+                !path.name.endsWith(".orig", ignoreCase = true)
+            ) {
+                return@forEach
+            }
 
             val is64Bit = path.name.equals("steam_api64.dll.orig", ignoreCase = true)
             val is32Bit = path.name.equals("steam_api.dll.orig", ignoreCase = true)
@@ -822,8 +826,10 @@ object SteamUtils {
             ?: 0L
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val language = runCatching {
-            (container.getExtra("language", null)
-                ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
+            (
+                container.getExtra("language", null)
+                    ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String
+                )
                 ?: "english"
         }.getOrDefault("english").lowercase()
 
@@ -903,7 +909,6 @@ object SteamUtils {
 
         if (Files.notExists(mainIni)) Files.createFile(mainIni)
         mainIni.toFile().writeText(mainIniContent)
-
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
@@ -1024,24 +1029,24 @@ object SteamUtils {
     private fun skipFirstTimeSteamSetup(rootDir: File?) {
         val systemRegFile = File(rootDir, ImageFs.WINEPREFIX + "/system.reg")
         val redistributables = listOf(
-            "DirectX\\Jun2010" to "DXSetup",              // DirectX Jun 2010
-            ".NET\\3.5" to "3.5 SP1",              // .NET 3.5
+            "DirectX\\Jun2010" to "DXSetup", // DirectX Jun 2010
+            ".NET\\3.5" to "3.5 SP1", // .NET 3.5
             ".NET\\3.5 Client Profile" to "3.5 Client Profile SP1",
-            ".NET\\4.0" to "4.0",                   // .NET 4.0
+            ".NET\\4.0" to "4.0", // .NET 4.0
             ".NET\\4.0 Client Profile" to "4.0 Client Profile",
             ".NET\\4.5.2" to "4.5.2",
             ".NET\\4.6" to "4.6",
             ".NET\\4.7" to "4.7",
             ".NET\\4.8" to "4.8",
-            "XNA\\3.0" to "3.0",                   // XNA 3.0
+            "XNA\\3.0" to "3.0", // XNA 3.0
             "XNA\\3.1" to "3.1",
             "XNA\\4.0" to "4.0",
-            "OpenAL\\2.0.7.0" to "2.0.7.0",               // OpenAL 2.0.7.0
-            ".NET\\4.5.1" to "4.5.1",   // some Unity 5 titles
-            ".NET\\4.6.1" to "4.6.1",   // Space Engineers, Far Cry 5 :contentReference[oaicite:1]{index=1}
+            "OpenAL\\2.0.7.0" to "2.0.7.0", // OpenAL 2.0.7.0
+            ".NET\\4.5.1" to "4.5.1", // some Unity 5 titles
+            ".NET\\4.6.1" to "4.6.1", // Space Engineers, Far Cry 5 :contentReference[oaicite:1]{index=1}
             ".NET\\4.6.2" to "4.6.2",
             ".NET\\4.7.1" to "4.7.1",
-            ".NET\\4.7.2" to "4.7.2",   // common fix loops :contentReference[oaicite:2]{index=2}
+            ".NET\\4.7.2" to "4.7.2", // common fix loops :contentReference[oaicite:2]{index=2}
             ".NET\\4.8.1" to "4.8.1",
         )
 
@@ -1067,12 +1072,12 @@ object SteamUtils {
         val where = URLEncoder.encode("Infobox_game.Steam_AppID HOLDS \"$steamAppId\"", "UTF-8")
         val url =
             "https://pcgamingwiki.com/w/api.php" +
-                    "?action=cargoquery" +
-                    "&tables=Infobox_game,AP" +
-                    "I&join_on=Infobox_game._pageID=API._pageID" +
-                    "&fields=API.Direct3D_versions" +
-                    "&where=$where" +
-                    "&format=json"
+                "?action=cargoquery" +
+                "&tables=Infobox_game,AP" +
+                "I&join_on=Infobox_game._pageID=API._pageID" +
+                "&fields=API.Direct3D_versions" +
+                "&where=$where" +
+                "&format=json"
 
         Timber.i("[DX Fetch] Starting fetchDirect3DMajor for query=%s", url)
 
@@ -1082,10 +1087,16 @@ object SteamUtils {
             override fun onResponse(call: Call, res: Response) {
                 res.use {
                     try {
-                        val body = it.body?.string() ?: run { callback(-1); return }
+                        val body = it.body?.string() ?: run {
+                            callback(-1)
+                            return
+                        }
                         Timber.i("[DX Fetch] Raw body fetchDirect3DMajor for body=%s", body)
                         val arr = JSONObject(body)
-                            .optJSONArray("cargoquery") ?: run { callback(-1); return }
+                            .optJSONArray("cargoquery") ?: run {
+                            callback(-1)
+                            return
+                        }
 
                         // There should be at most one row; take the first.
                         val raw = arr.optJSONObject(0)
@@ -1104,7 +1115,7 @@ object SteamUtils {
                         Timber.i("[DX Fetch] dx fetchDirect3DMajor is dx=%d", dx)
 
                         callback(dx)
-                    } catch (e: Exception){
+                    } catch (e: Exception) {
                         callback(-1)
                     }
                 }

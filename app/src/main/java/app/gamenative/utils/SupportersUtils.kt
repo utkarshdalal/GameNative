@@ -18,7 +18,11 @@ data class KofiSupporter(
  * Fetch supporters from Supabase `kofi_supporters` table.
  * Only fetches fields needed for display.
  */
-suspend fun fetchKofiSupporters(supabase: SupabaseClient): List<KofiSupporter> {
+suspend fun fetchKofiSupporters(supabase: SupabaseClient?): List<KofiSupporter> {
+    if (supabase == null) {
+        Timber.w("fetchKofiSupporters: Supabase client is null")
+        return emptyList()
+    }
     return try {
         Timber.d("Fetching Ko-fi supporters from Supabase")
         supabase
@@ -30,5 +34,3 @@ suspend fun fetchKofiSupporters(supabase: SupabaseClient): List<KofiSupporter> {
         emptyList()
     }
 }
-
-

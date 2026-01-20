@@ -9,7 +9,6 @@ import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.enums.AppType
-import app.gamenative.R
 import java.util.EnumSet
 
 enum class AppFilter(

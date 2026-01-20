@@ -18,15 +18,17 @@ object IconSwitcher {
             "app.gamenative.MainActivityAliasAlt",
         )
 
-        val defaultState = if (useAltIcon)
+        val defaultState = if (useAltIcon) {
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        else
+        } else {
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        }
 
-        val altState = if (useAltIcon)
+        val altState = if (useAltIcon) {
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        else
+        } else {
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
 
         packageManager.setComponentEnabledSetting(
             defaultAlias,
@@ -40,5 +42,3 @@ object IconSwitcher {
         )
     }
 }
-
-

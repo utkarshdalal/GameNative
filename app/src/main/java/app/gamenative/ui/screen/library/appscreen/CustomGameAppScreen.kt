@@ -1,34 +1,34 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
-import app.gamenative.PluviaApp
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import android.net.Uri
-import app.gamenative.ui.enums.AppOptionMenuType
 import timber.log.Timber
 
 /**
@@ -70,12 +70,13 @@ class CustomGameAppScreen : BaseAppScreen() {
             return deleteDialogAppIds.contains(appId)
         }
     }
+
     @Composable
     override fun getGameDisplayInfo(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): GameDisplayInfo {
-        val gameFolderPath = remember(libraryItem.appId) {
+        val gameFolderPath = remember(libraryItem) {
             CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
         }
 
@@ -83,15 +84,17 @@ class CustomGameAppScreen : BaseAppScreen() {
         fun findSteamGridDBImage(folder: File, imageType: String): String? {
             return folder.listFiles()?.firstOrNull { file ->
                 file.name.startsWith("steamgriddb_$imageType") &&
-                (file.name.endsWith(".png", ignoreCase = true) ||
-                 file.name.endsWith(".jpg", ignoreCase = true) ||
-                 file.name.endsWith(".webp", ignoreCase = true))
+                    (
+                        file.name.endsWith(".png", ignoreCase = true) ||
+                            file.name.endsWith(".jpg", ignoreCase = true) ||
+                            file.name.endsWith(".webp", ignoreCase = true)
+                        )
             }?.let { Uri.fromFile(it).toString() }
         }
 
         // Check for all SteamGridDB images in the game folder
         // Hero view uses horizontal grid (grid_hero)
-        val heroImageUrl = remember(gameFolderPath) {
+        val heroImageUrl = remember(libraryItem, gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "grid_hero")
@@ -99,7 +102,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
 
         // Capsule view uses vertical grid (grid_capsule)
-        val capsuleUrl = remember(gameFolderPath) {
+        val capsuleUrl = remember(libraryItem, gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "grid_capsule")
@@ -107,21 +110,23 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
 
         // Header view uses heroes endpoint (hero, but not grid_hero)
-        val headerUrl = remember(gameFolderPath) {
+        val headerUrl = remember(libraryItem, gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 // Find hero image but exclude grid_hero
                 folder.listFiles()?.firstOrNull { file ->
                     file.name.startsWith("steamgriddb_hero") &&
-                    !file.name.contains("grid") &&
-                    (file.name.endsWith(".png", ignoreCase = true) ||
-                     file.name.endsWith(".jpg", ignoreCase = true) ||
-                     file.name.endsWith(".webp", ignoreCase = true))
+                        !file.name.contains("grid") &&
+                        (
+                            file.name.endsWith(".png", ignoreCase = true) ||
+                                file.name.endsWith(".jpg", ignoreCase = true) ||
+                                file.name.endsWith(".webp", ignoreCase = true)
+                            )
                 }?.let { Uri.fromFile(it).toString() }
             }
         }
 
-        val logoUrl = remember(gameFolderPath) {
+        val logoUrl = remember(libraryItem, gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "logo")
@@ -132,8 +137,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         // and don't use SteamGridDB icons
 
         // Try to get release date from .gamenative metadata if available
-        var releaseDate by remember { mutableStateOf(0L) }
-        LaunchedEffect(gameFolderPath) {
+        var releaseDate by remember(libraryItem) { mutableStateOf(0L) }
+        LaunchedEffect(libraryItem, gameFolderPath) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 // Get release date from metadata
@@ -143,8 +148,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
 
         // Calculate folder size on disk (async, will update via state)
-        var sizeOnDisk by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(gameFolderPath) {
+        var sizeOnDisk by remember(libraryItem) { mutableStateOf<String?>(null) }
+        LaunchedEffect(libraryItem, gameFolderPath) {
             gameFolderPath?.let { path ->
                 withContext(Dispatchers.IO) {
                     try {
@@ -164,7 +169,7 @@ class CustomGameAppScreen : BaseAppScreen() {
             developer = context.getString(R.string.custom_game_unknown_developer), // Custom Games don't have developer info
             releaseDate = releaseDate,
             heroImageUrl = heroImageUrl,
-            iconUrl = null, // Icons are extracted from exe files, not from SteamGridDB
+            iconUrl = CustomGameScanner.findIconFileForCustomGame(context, libraryItem.appId), // Use local icon extraction
             gameId = libraryItem.gameId,
             appId = libraryItem.appId,
             installLocation = gameFolderPath,
@@ -204,7 +209,7 @@ class CustomGameAppScreen : BaseAppScreen() {
     override fun onDownloadInstallClick(
         context: Context,
         libraryItem: LibraryItem,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
         if (container.executablePath.isEmpty()) {
@@ -364,7 +369,7 @@ class CustomGameAppScreen : BaseAppScreen() {
     @Composable
     override fun getResetContainerOption(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): AppMenuOption {
         var showResetConfirmDialog by remember { mutableStateOf(false) }
 
@@ -374,13 +379,13 @@ class CustomGameAppScreen : BaseAppScreen() {
                     showResetConfirmDialog = false
                     resetContainerToDefaults(context, libraryItem)
                 },
-                onDismiss = { showResetConfirmDialog = false }
+                onDismiss = { showResetConfirmDialog = false },
             )
         }
 
         return AppMenuOption(
             optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true }
+            onClick = { showResetConfirmDialog = true },
         )
     }
 
@@ -394,7 +399,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
-        isInstalled: Boolean
+        isInstalled: Boolean,
     ): List<AppMenuOption> {
         return emptyList()
     }
@@ -417,7 +422,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
-        onBack: () -> Unit
+        onBack: () -> Unit,
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
@@ -458,7 +463,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                             hideExeSelectionDialog(libraryItem.appId)
                             // Open container settings dialog
                             onEditContainer()
-                        }
+                        },
                     ) {
                         Text(stringResource(R.string.custom_game_settings))
                     }
@@ -469,7 +474,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                     }) {
                         Text(stringResource(R.string.close))
                     }
-                }
+                },
             )
         }
 
@@ -512,7 +517,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         Toast.makeText(
                                             context,
                                             "\"${libraryItem.name}\" has been deleted",
-                                            Toast.LENGTH_SHORT
+                                            Toast.LENGTH_SHORT,
                                         ).show()
 
                                         // Small delay to ensure file system updates are complete
@@ -527,12 +532,12 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         Toast.makeText(
                                             context,
                                             "Failed to delete game: ${e.message}",
-                                            Toast.LENGTH_LONG
+                                            Toast.LENGTH_LONG,
                                         ).show()
                                     }
                                 }
                             }
-                        }
+                        },
                     ) {
                         Text("Delete", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
                     }
@@ -543,12 +548,8 @@ class CustomGameAppScreen : BaseAppScreen() {
                     }) {
                         Text("Cancel")
                     }
-                }
+                },
             )
         }
     }
 }
-
-
-
-

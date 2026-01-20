@@ -29,9 +29,9 @@ fun GameSkeletonLoader(
         targetValue = 0.25f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "alpha"
+        label = "alpha",
     )
 
     val skeletonColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
@@ -42,7 +42,7 @@ fun GameSkeletonLoader(
             .padding(vertical = 8.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         ),
     ) {
         val outerPadding = if (paneType == PaneType.LIST) {
@@ -56,7 +56,7 @@ fun GameSkeletonLoader(
                 .fillMaxWidth()
                 .padding(outerPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when (paneType) {
                 PaneType.LIST -> {
@@ -65,12 +65,12 @@ fun GameSkeletonLoader(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(skeletonColor)
+                            .background(skeletonColor),
                     )
-                    
+
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         // Title
                         Box(
@@ -78,7 +78,7 @@ fun GameSkeletonLoader(
                                 .fillMaxWidth(0.7f)
                                 .height(20.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(skeletonColor)
+                                .background(skeletonColor),
                         )
                         // Status line
                         Box(
@@ -86,17 +86,17 @@ fun GameSkeletonLoader(
                                 .fillMaxWidth(0.5f)
                                 .height(16.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(skeletonColor)
+                                .background(skeletonColor),
                         )
                     }
-                    
+
                     // Button skeleton
                     Box(
                         modifier = Modifier
                             .width(80.dp)
                             .height(40.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(skeletonColor)
+                            .background(skeletonColor),
                     )
                 }
                 PaneType.GRID_CAPSULE -> {
@@ -106,7 +106,7 @@ fun GameSkeletonLoader(
                             .aspectRatio(2f / 3f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(3.dp))
-                            .background(skeletonColor)
+                            .background(skeletonColor),
                     )
                 }
                 PaneType.GRID_HERO -> {
@@ -116,7 +116,7 @@ fun GameSkeletonLoader(
                             .aspectRatio(460f / 215f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(3.dp))
-                            .background(skeletonColor)
+                            .background(skeletonColor),
                     )
                 }
                 else -> {
@@ -125,11 +125,10 @@ fun GameSkeletonLoader(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(skeletonColor)
+                            .background(skeletonColor),
                     )
                 }
             }
         }
     }
 }
-

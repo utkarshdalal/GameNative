@@ -11,7 +11,6 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.SteamService.Companion.FileChanges
-import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.SteamUtils
 import `in`.dragonbra.javasteam.enums.EResult
@@ -21,7 +20,9 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.util.crypto.CryptoHelper
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.io.OutputStream
 import java.io.RandomAccessFile
+import java.net.SocketTimeoutException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -36,14 +37,13 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
-import java.io.OutputStream
-import java.net.SocketTimeoutException
 
 /**
  * [Steam Auto Cloud](https://partner.steamgames.com/doc/features/cloud#steam_auto-cloud)
@@ -167,14 +167,14 @@ object SteamAutoCloud {
                 !currentFiles.any { oldFile.prefixPath == it.prefixPath }
             }
 
-            val modifiedFiles = overlappingFiles.filter { file ->
+            val modifiedFiles = overlappingFiles.filter { currentFile ->
                 oldFiles.first {
-                    it.prefixPath == file.prefixPath
-                }.let {
-                    Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
-                    Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
+                    it.prefixPath == currentFile.prefixPath
+                }.let { oldFile ->
+                    Timber.i("Comparing SHA of ${oldFile.prefixPath} and ${currentFile.prefixPath}")
+                    Timber.i("[${oldFile.sha.joinToString(", ")}]\n[${currentFile.sha.joinToString(", ")}]")
 
-                    !it.sha.contentEquals(file.sha)
+                    !oldFile.sha.contentEquals(currentFile.sha)
                 }
             }
 
@@ -189,15 +189,15 @@ object SteamAutoCloud {
                     Timber.i("Checking for " + "${getFilePrefix(file, fileList)} in ${localUserFiles.keys}")
 
                     localUserFiles[getFilePrefix(file, fileList)]?.let { localUserFile ->
-                        localUserFile.firstOrNull {
-                            Timber.i("Comparing ${file.filename} and ${it.filename}")
+                        localUserFile.firstOrNull { localFile ->
+                            Timber.i("Comparing ${file.filename} and ${localFile.filename}")
 
-                            it.filename == file.filename
-                        }?.let {
-                            Timber.i("Comparing SHA of ${getFilePrefixPath(file, fileList)} and ${it.prefixPath}")
-                            Timber.i("[${file.shaFile.joinToString(", ")}]\n[${it.sha.joinToString(", ")}]")
+                            localFile.filename == file.filename
+                        }?.let { localFile ->
+                            Timber.i("Comparing SHA of ${getFilePrefixPath(file, fileList)} and ${localFile.prefixPath}")
+                            Timber.i("[${file.shaFile.joinToString(", ")}]\n[${localFile.sha.joinToString(", ")}]")
 
-                            !file.shaFile.contentEquals(it.sha)
+                            !file.shaFile.contentEquals(localFile.sha)
                         }
                     } == true
                 }
@@ -218,14 +218,14 @@ object SteamAutoCloud {
                         rootPath = basePath,
                         pattern = userFile.pattern,
                         maxDepth = 5,
-                    ).map {
-                        val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
+                    ).map { path ->
+                        val sha = CryptoHelper.shaHash(Files.readAllBytes(path))
 
-                        Timber.i("Found ${it.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+                        Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
 
-                        val relativePath = basePath.relativize(it).pathString
+                        val relativePath = basePath.relativize(path).pathString
 
-                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
+                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(path).toMillis(), sha)
                     }.collect(Collectors.toList())
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
@@ -246,15 +246,15 @@ object SteamAutoCloud {
                     rootPath = basePath,
                     pattern = "*",
                     maxDepth = 5,
-                ).map {
-                    val sha = CryptoHelper.shaHash(Files.readAllBytes(it))
+                ).map { path ->
+                    val sha = CryptoHelper.shaHash(Files.readAllBytes(path))
 
-                    val relativePath = basePath.relativize(it).pathString
+                    val relativePath = basePath.relativize(path).pathString
 
-                    Timber.i("Found ${it.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
+                    Timber.i("Found ${path.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
 
                     // Store relative path in filename; empty path component
-                    UserFileInfo(rootType, "", relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
+                    UserFileInfo(rootType, "", relativePath, Files.getLastModifiedTime(path).toMillis(), sha)
                 }.collect(Collectors.toList())
 
                 Timber.i("Found ${files.size} file(s) in $basePath for fallback recursive scan")
@@ -392,9 +392,9 @@ object SteamAutoCloud {
                                 bytesDownloaded += fileDownloadInfo.fileSize
                             }
                         } catch (e: FileSystemException) {
-                            Timber.w("Could not download $actualFilePath: %s", e.message);
+                            Timber.w("Could not download $actualFilePath: %s", e.message)
                         } catch (e: SocketTimeoutException) {
-                            Timber.w("Could not download $actualFilePath: %s", e.message);
+                            Timber.w("Could not download $actualFilePath: %s", e.message)
                         }
 
                         response.close()
@@ -492,10 +492,10 @@ object SteamAutoCloud {
                                 "Block Request:" +
                                     "\n\tblockOffset: ${blockRequest.blockOffset}" +
                                     "\n\tblockLength: ${blockRequest.blockLength}" +
-                                    "\n\trequestHeaders:\n\t\t${
+                                    "\n\trequestHeaders:\n\t\t${ 
                                         blockRequest.requestHeaders.joinToString("\n\t\t") { "${it.name}: ${it.value}" }
                                     }" +
-                                    "\n\texplicitBodyData: [${
+                                    "\n\texplicitBodyData: [${ 
                                         blockRequest.explicitBodyData.joinToString(
                                             ", ",
                                         )
@@ -512,7 +512,9 @@ object SteamAutoCloud {
                             Timber.i("Read $bytesRead byte(s) for block")
 
                             val mediaType = if (blockRequest.requestHeaders.any { it.name.equals("Content-Type", ignoreCase = true) }) {
-                                blockRequest.requestHeaders.first { it.name.equals("Content-Type", ignoreCase = true) }.value.toMediaTypeOrNull()
+                                blockRequest.requestHeaders.first {
+                                    it.name.equals("Content-Type", ignoreCase = true)
+                                }.value.toMediaTypeOrNull()
                             } else {
                                 "application/octet-stream".toMediaTypeOrNull()
                             }
@@ -629,7 +631,8 @@ object SteamAutoCloud {
         var microsecUploadFiles = 0L
 
         microsecTotal = measureTime {
-            val localAppChangeNumber = overrideLocalChangeNumber ?: steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
+            val localAppChangeNumber =
+                overrideLocalChangeNumber ?: steamInstance.changeNumbersDao.getByAppId(appInfo.id)?.changeNumber ?: -1
 
             val changeNumber = if (localAppChangeNumber >= 0) localAppChangeNumber else 0
             val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()

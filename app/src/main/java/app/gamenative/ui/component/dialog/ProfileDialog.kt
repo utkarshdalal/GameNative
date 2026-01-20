@@ -6,33 +6,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AirplaneTicket
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.ReplyAll
 import androidx.compose.material.icons.automirrored.filled.StarHalf
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -48,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -142,21 +134,25 @@ fun ProfileDialog(
                             scrollState.value < scrollState.maxValue
                         }
                     }
-                    
+
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.weight(1f)) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .verticalScroll(scrollState)
+                                    .verticalScroll(scrollState),
                             ) {
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                                    onNavigateRoute(PluviaScreen.Settings.route)
+                                }) {
                                     Icon(imageVector = Icons.Default.Settings, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.settings_text))
                                 }
 
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                                    uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+                                }) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.help_and_support))
@@ -168,7 +164,7 @@ fun ProfileDialog(
                                     Text(text = stringResource(R.string.hall_of_fame))
                                 }
 
-                                if(isOffline) {
+                                if (isOffline) {
                                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
@@ -176,7 +172,7 @@ fun ProfileDialog(
                                     }
                                 } else {
                                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                                        SteamService.stop()
+                                        SteamService.stopService()
                                         onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
                                     }) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
@@ -190,7 +186,7 @@ fun ProfileDialog(
                                     }
                                 }
                             }
-                            
+
                             // Top fade gradient
                             if (showTopFade.value) {
                                 Box(
@@ -202,13 +198,13 @@ fun ProfileDialog(
                                             brush = Brush.verticalGradient(
                                                 colors = listOf(
                                                     dialogBackgroundColor,
-                                                    dialogBackgroundColor.copy(alpha = 0f)
-                                                )
-                                            )
-                                        )
+                                                    dialogBackgroundColor.copy(alpha = 0f),
+                                                ),
+                                            ),
+                                        ),
                                 )
                             }
-                            
+
                             // Bottom fade gradient
                             if (showBottomFade.value) {
                                 Box(
@@ -220,10 +216,10 @@ fun ProfileDialog(
                                             brush = Brush.verticalGradient(
                                                 colors = listOf(
                                                     dialogBackgroundColor.copy(alpha = 0f),
-                                                    dialogBackgroundColor
-                                                )
-                                            )
-                                        )
+                                                    dialogBackgroundColor,
+                                                ),
+                                            ),
+                                        ),
                                 )
                             }
                         }

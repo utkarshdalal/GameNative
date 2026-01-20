@@ -6,5 +6,5 @@ enum class LoginResult {
     DeviceConfirm,
     EmailAuth,
     Failed,
-    InProgress
+    InProgress,
 }

@@ -1,8 +1,8 @@
 package app.gamenative.utils
 
 import java.io.File
-import timber.log.Timber
 import org.json.JSONObject
+import timber.log.Timber
 
 /**
  * Data class representing the metadata stored in a .gamenative file.
@@ -11,7 +11,7 @@ import org.json.JSONObject
 data class GameMetadata(
     val appId: Int,
     val steamgriddbFetched: Boolean = false,
-    val releaseDate: Long? = null
+    val releaseDate: Long? = null,
 )
 
 /**
@@ -37,11 +37,11 @@ object GameMetadataManager {
             if (content.isEmpty()) {
                 return null
             }
-            
+
             // Try to parse as JSON
             try {
                 val json = JSONObject(content)
-                
+
                 // Handle legacy format: if it's just a number, treat it as appId only
                 if (json.length() == 1 && json.has("appId")) {
                     val appId = json.optInt("appId", -1)
@@ -49,20 +49,20 @@ object GameMetadataManager {
                         return GameMetadata(appId = appId)
                     }
                 }
-                
+
                 // Parse full metadata
                 val appId = json.optInt("appId", -1)
                 if (appId <= 0) {
                     return null
                 }
-                
+
                 val steamgriddbFetched = json.optBoolean("steamgriddbFetched", false)
                 val releaseDate = json.optLong("releaseDate", -1).takeIf { it > 0 }
-                
+
                 GameMetadata(
                     appId = appId,
                     steamgriddbFetched = steamgriddbFetched,
-                    releaseDate = releaseDate
+                    releaseDate = releaseDate,
                 )
             } catch (e: Exception) {
                 // If not JSON, try parsing as plain integer (legacy format)
@@ -94,10 +94,10 @@ object GameMetadataManager {
                 GameMetadata(
                     appId = metadata.appId, // appId always takes precedence
                     steamgriddbFetched = metadata.steamgriddbFetched || existingMetadata.steamgriddbFetched,
-                    releaseDate = metadata.releaseDate ?: existingMetadata.releaseDate
+                    releaseDate = metadata.releaseDate ?: existingMetadata.releaseDate,
                 )
             } ?: metadata
-            
+
             val json = JSONObject().apply {
                 put("appId", merged.appId)
                 if (merged.steamgriddbFetched) {
@@ -107,7 +107,7 @@ object GameMetadataManager {
                     put("releaseDate", merged.releaseDate)
                 }
             }
-            
+
             gamenativeFile.writeText(json.toString())
             Timber.tag("GameMetadataManager").d("Wrote metadata to ${gamenativeFile.absolutePath}: appId=${merged.appId}, fetched=${merged.steamgriddbFetched}, releaseDate=${merged.releaseDate}")
         } catch (e: Exception) {
@@ -127,13 +127,13 @@ object GameMetadataManager {
             Timber.tag("GameMetadataManager").w("Cannot update metadata: no appId provided and no existing metadata found for ${folder.absolutePath}")
             return
         }
-        
+
         val updated = GameMetadata(
-            appId = finalAppId
+            appId = finalAppId,
         ).let { base ->
             base.copy(
                 steamgriddbFetched = steamgriddbFetched ?: existing?.steamgriddbFetched ?: false,
-                releaseDate = releaseDate ?: existing?.releaseDate
+                releaseDate = releaseDate ?: existing?.releaseDate,
             )
         }
         write(folder, updated)
@@ -161,4 +161,3 @@ object GameMetadataManager {
         return read(folder)?.releaseDate
     }
 }
-

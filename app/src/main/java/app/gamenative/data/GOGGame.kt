@@ -65,9 +65,6 @@ data class GOGGame(
 
     @ColumnInfo("type")
     val type: AppType = AppType.game,
-
-    @ColumnInfo(name = "exclude", defaultValue = "0")
-    val exclude: Boolean = false,
 ) {
     companion object {
         const val GOG_IMAGE_BASE_URL = "https://images.gog.com/images"

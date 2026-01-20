@@ -64,7 +64,7 @@ fun TwoFactorAuthScreenContent(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 24.dp),
         )
 
         if (userLoginState.loginResult == LoginResult.DeviceConfirm) {
@@ -111,7 +111,7 @@ private fun TwoFactorTextField(
             text = stringResource(R.string.two_factor_verification_code),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
         )
 
         OutlinedTextField(
@@ -121,7 +121,7 @@ private fun TwoFactorTextField(
                 .border(
                     width = 1.dp,
                     color = MaterialTheme.colorScheme.outline,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
                 ),
             value = twoFactorText,
             onValueChange = { value ->
@@ -132,7 +132,7 @@ private fun TwoFactorTextField(
             placeholder = {
                 Text(
                     stringResource(R.string.two_factor_enter_code),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
             },
             keyboardOptions = KeyboardOptions(
@@ -146,8 +146,8 @@ private fun TwoFactorTextField(
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                 focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-            )
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            ),
         )
     }
 }

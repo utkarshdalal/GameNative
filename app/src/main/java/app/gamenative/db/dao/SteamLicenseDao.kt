@@ -38,13 +38,13 @@ interface SteamLicenseDao {
 
     @Query(
         "SELECT * FROM steam_license " +
-                "WHERE packageId NOT IN (:packageIds)"
+            "WHERE packageId NOT IN (:packageIds)",
     )
     suspend fun _findStaleLicences(packageIds: List<Int>): List<SteamLicense>
 
     @Query(
         "DELETE FROM steam_license " +
-                "WHERE packageId IN (:packageIds)"
+            "WHERE packageId IN (:packageIds)",
     )
     suspend fun _deleteStaleLicenses(packageIds: List<Int>)
 

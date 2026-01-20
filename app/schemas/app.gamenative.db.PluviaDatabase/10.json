@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "e857f30812e2e97aac7e3f026771f71e",
+    "identityHash": "d699c8b43487f9d0f5de1e922d7aebdb",
     "entities": [
       {
         "tableName": "app_info",
@@ -764,6 +764,222 @@
         }
       },
       {
+        "tableName": "epic_games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `app_name` TEXT NOT NULL, `title` TEXT NOT NULL, `namespace` TEXT NOT NULL, `developer` TEXT NOT NULL, `publisher` TEXT NOT NULL, `is_installed` INTEGER NOT NULL, `install_path` TEXT NOT NULL, `platform` TEXT NOT NULL, `version` TEXT NOT NULL, `executable` TEXT NOT NULL, `install_size` INTEGER NOT NULL, `download_size` INTEGER NOT NULL, `art_cover` TEXT NOT NULL, `art_square` TEXT NOT NULL, `art_logo` TEXT NOT NULL, `art_portrait` TEXT NOT NULL, `can_run_offline` INTEGER NOT NULL, `requires_ot` INTEGER NOT NULL, `cloud_save_enabled` INTEGER NOT NULL, `save_folder` TEXT NOT NULL, `third_party_managed_app` TEXT NOT NULL, `is_ea_managed` INTEGER NOT NULL, `is_dlc` INTEGER NOT NULL, `base_game_app_name` TEXT NOT NULL, `description` TEXT NOT NULL, `release_date` TEXT NOT NULL, `genres` TEXT NOT NULL, `tags` TEXT NOT NULL, `last_played` INTEGER NOT NULL, `play_time` INTEGER NOT NULL, `type` INTEGER NOT NULL, `eos_catalog_item_id` TEXT NOT NULL, `eos_app_id` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appName",
+            "columnName": "app_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "namespace",
+            "columnName": "namespace",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "developer",
+            "columnName": "developer",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publisher",
+            "columnName": "publisher",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isInstalled",
+            "columnName": "is_installed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "installPath",
+            "columnName": "install_path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platform",
+            "columnName": "platform",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "executable",
+            "columnName": "executable",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "installSize",
+            "columnName": "install_size",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadSize",
+            "columnName": "download_size",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artCover",
+            "columnName": "art_cover",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artSquare",
+            "columnName": "art_square",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artLogo",
+            "columnName": "art_logo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artPortrait",
+            "columnName": "art_portrait",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canRunOffline",
+            "columnName": "can_run_offline",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requiresOT",
+            "columnName": "requires_ot",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cloudSaveEnabled",
+            "columnName": "cloud_save_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saveFolder",
+            "columnName": "save_folder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "thirdPartyManagedApp",
+            "columnName": "third_party_managed_app",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isEAManaged",
+            "columnName": "is_ea_managed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDLC",
+            "columnName": "is_dlc",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseGameAppName",
+            "columnName": "base_game_app_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseDate",
+            "columnName": "release_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genres",
+            "columnName": "genres",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPlayed",
+            "columnName": "last_played",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playTime",
+            "columnName": "play_time",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eosCatalogItemId",
+            "columnName": "eos_catalog_item_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eosAppId",
+            "columnName": "eos_app_id",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
         "tableName": "downloading_app_info",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appId` INTEGER NOT NULL, `dlcAppIds` TEXT NOT NULL, PRIMARY KEY(`appId`))",
         "fields": [
@@ -790,7 +1006,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e857f30812e2e97aac7e3f026771f71e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd699c8b43487f9d0f5de1e922d7aebdb')"
     ]
   }
 }

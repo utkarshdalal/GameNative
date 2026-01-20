@@ -1,6 +1,8 @@
 package app.gamenative.ui.screen.library.components
 
 import android.content.res.Configuration
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,9 +12,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -21,57 +28,43 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.service.DownloadService
+import app.gamenative.ui.component.topbar.AccountButton
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
-import app.gamenative.ui.internal.fakeAppInfo
-import app.gamenative.service.DownloadService
-import app.gamenative.service.SteamService
-import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.component.topbar.AccountButton
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import kotlinx.coroutines.delay
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.snapshotFlow
-import app.gamenative.PrefManager
-import app.gamenative.utils.DeviceUtils
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.distinctUntilChanged
-import app.gamenative.data.GameSource
 import app.gamenative.ui.enums.PaneType
-import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.internal.fakeAppInfo
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.DeviceUtils
 import app.gamenative.utils.PaddingUtils
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import timber.log.Timber
 
 /**
@@ -110,7 +103,14 @@ private fun calculateInstalledCount(state: LibraryState): Int {
         0
     }
 
-    return steamCount + customGameCount + gogCount
+    // Count Epic games that are installed (from PrefManager)
+    val epicCount = if (state.showEpicInLibrary) {
+        PrefManager.epicInstalledGamesCount
+    } else {
+        0
+    }
+
+    return steamCount + customGameCount + gogCount + epicCount
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -141,16 +141,13 @@ internal fun LibraryListPane(
         state.showSteamInLibrary,
         state.showCustomGamesInLibrary,
         state.showGOGInLibrary,
+        state.showEpicInLibrary,
         state.totalAppsInFilter,
     ) {
         calculateInstalledCount(state)
     }
 
-
     val pullToRefreshState = rememberPullToRefreshState()
-
-
-
 
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
@@ -170,8 +167,9 @@ internal fun LibraryListPane(
             .filterNotNull()
             .distinctUntilChanged()
             .collect { lastVisibleIndex ->
-                if (lastVisibleIndex >= state.appInfoList.lastIndex
-                    && state.appInfoList.size < state.totalAppsInFilter) {
+                if (lastVisibleIndex >= state.appInfoList.lastIndex &&
+                    state.appInfoList.size < state.totalAppsInFilter
+                ) {
                     onPageChange(1)
                 }
             }
@@ -188,7 +186,6 @@ internal fun LibraryListPane(
             }
             PrefManager.libraryLayout = paneType
         }
-
     }
 
     var targetOfScroll by remember { mutableIntStateOf(-1) }
@@ -201,24 +198,24 @@ internal fun LibraryListPane(
     val headerTopPadding = PaddingUtils.statusBarAwarePadding().calculateTopPadding()
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackBarHost) }
+        snackbarHost = { SnackbarHost(snackBarHost) },
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
+                .padding(top = paddingValues.calculateTopPadding()),
         ) {
             // Modern Header with gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(vertical = headerTopPadding)
+                    .padding(vertical = headerTopPadding),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
                 ) {
                     Column {
                         Text(
@@ -228,19 +225,19 @@ internal fun LibraryListPane(
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
-                                    )
-                                )
-                            )
+                                        MaterialTheme.colorScheme.tertiary,
+                                    ),
+                                ),
+                            ),
                         )
                         Text(
                             text = androidx.compose.ui.res.stringResource(
                                 app.gamenative.R.string.library_game_count,
                                 state.totalAppsInFilter,
-                                installedCount
+                                installedCount,
                             ),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
@@ -248,7 +245,7 @@ internal fun LibraryListPane(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 30.dp)
+                                .padding(horizontal = 30.dp),
                         ) {
                             LibrarySearchBar(
                                 state = state,
@@ -263,7 +260,7 @@ internal fun LibraryListPane(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                            .padding(8.dp)
+                            .padding(8.dp),
                     ) {
                         AccountButton(
                             onNavigateRoute = onNavigateRoute,
@@ -275,12 +272,12 @@ internal fun LibraryListPane(
                 }
             }
 
-            if (! isViewWide) {
+            if (!isViewWide) {
                 // Search bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
                 ) {
                     LibrarySearchBar(
                         state = state,
@@ -305,7 +302,7 @@ internal fun LibraryListPane(
                 val skeletonAlpha by animateFloatAsState(
                     targetValue = if (shouldShowSkeletonOverlay) 1f else 0f,
                     animationSpec = tween(durationMillis = 300),
-                    label = "skeletonFadeOut"
+                    label = "skeletonFadeOut",
                 )
 
                 // Update skeleton overlay visibility based on loading state and games
@@ -326,22 +323,24 @@ internal fun LibraryListPane(
                     }
                 }
 
-                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary) {
-                    val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
-                    val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
-                    val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0
-                    val total = customCount + steamCount + gogInstalledCount
-                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Total: $total")
-                    // Show at least a few skeletons, but not more than a reasonable amount
-                    if (total == 0) 6 else minOf(total, 20)
-                }
+                val totalSkeletonCount =
+                    remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary) {
+                        val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
+                        val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
+                        val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0
+                        val epicInstalledCount = if (state.showEpicInLibrary) PrefManager.epicInstalledGamesCount else 0
+                        val total = customCount + steamCount + gogInstalledCount + epicInstalledCount
+                        Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Epic installed: $epicInstalledCount, Total: $total")
+                        // Show at least a few skeletons, but not more than a reasonable amount
+                        if (total == 0) 6 else minOf(total, 20)
+                    }
 
                 // Show actual games (base layer)
                 if (state.appInfoList.isNotEmpty()) {
                     PullToRefreshBox(
                         isRefreshing = state.isRefreshing,
                         onRefresh = onRefresh,
-                        state = pullToRefreshState
+                        state = pullToRefreshState,
                     ) {
                         LazyVerticalGrid(
                             columns = columnType,
@@ -351,16 +350,16 @@ internal fun LibraryListPane(
                             contentPadding = PaddingValues(
                                 start = 20.dp,
                                 end = 20.dp,
-                                bottom = 72.dp
+                                bottom = 72.dp,
                             ),
                         ) {
-                            items(items = state.appInfoList, key = { it.index }) { item ->
+                            items(items = state.appInfoList, key = { it.appId }) { item ->
                                 // Fade-in animation for items
                                 var isVisible by remember(item.index) { mutableStateOf(false) }
                                 val alpha by animateFloatAsState(
                                     targetValue = if (isVisible) 1f else 0f,
                                     animationSpec = tween(durationMillis = 300),
-                                    label = "fadeIn"
+                                    label = "fadeIn",
                                 )
 
                                 LaunchedEffect(item.index) {
@@ -388,7 +387,7 @@ internal fun LibraryListPane(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(16.dp),
-                                        contentAlignment = Alignment.Center
+                                        contentAlignment = Alignment.Center,
                                     ) {
                                         CircularProgressIndicator()
                                     }
@@ -406,7 +405,7 @@ internal fun LibraryListPane(
                         modifier = Modifier
                             .fillMaxSize()
                             .alpha(skeletonAlpha)
-                            .pointerInteropFilter { false } // Non-interactive - allows touch events to pass through
+                            .pointerInteropFilter { false }, // Non-interactive - allows touch events to pass through
                     ) {
                         LazyVerticalGrid(
                             columns = columnType,
@@ -416,7 +415,7 @@ internal fun LibraryListPane(
                             contentPadding = PaddingValues(
                                 start = 20.dp,
                                 end = 20.dp,
-                                bottom = 72.dp
+                                bottom = 72.dp,
                             ),
                         ) {
                             items(totalSkeletonCount) { index ->
@@ -447,6 +446,7 @@ internal fun LibraryListPane(
                                 showSteam = state.showSteamInLibrary,
                                 showCustomGames = state.showCustomGamesInLibrary,
                                 showGOG = state.showGOGInLibrary,
+                                showEpic = state.showEpicInLibrary,
                                 onSourceToggle = onSourceToggle,
                             )
                         },

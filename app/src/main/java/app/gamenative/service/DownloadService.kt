@@ -2,10 +2,10 @@ package app.gamenative.service
 
 import android.content.Context
 import app.gamenative.utils.StorageUtils
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.io.File
 
 object DownloadService {
     private var lastUpdateTime: Long = 0
@@ -18,6 +18,7 @@ object DownloadService {
         private set(value) {
             field = value
         }
+
     // Base path to the app-specific external storage directory (Android/data/<package>)
     var baseExternalAppDirPath: String = ""
         private set(value) {
@@ -32,7 +33,7 @@ object DownloadService {
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
     }
 
-    fun getDownloadDirectoryApps (): MutableList<String> {
+    fun getDownloadDirectoryApps(): MutableList<String> {
         // What apps have folders in the download area?
         // Isn't checking for "complete" marker - incomplete is accepted
 
@@ -51,29 +52,29 @@ object DownloadService {
         return downloadDirectoryApps ?: mutableListOf()
     }
 
-    private fun getSubdirectories (path: String): MutableList<String> {
+    private fun getSubdirectories(path: String): MutableList<String> {
         // Names of immediate subdirectories
-        val subDir = File(path).list() { dir, name -> File(dir, name).isDirectory}
+        val subDir = File(path).list { dir, name -> File(dir, name).isDirectory }
         if (subDir == null) {
             return emptyList<String>().toMutableList()
         }
         return subDir.toMutableList()
     }
 
-    fun getSizeFromStoreDisplay (appId: Int): String {
+    fun getSizeFromStoreDisplay(appId: Int): String {
         // How big is the game? The store should know. Human readable.
         val depots = SteamService.getDownloadableDepots(appId)
         val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0L }
         return StorageUtils.formatBinarySize(installBytes)
     }
 
-    suspend fun getSizeOnDiskDisplay (appId: Int, setResult: (String) -> Unit) {
+    suspend fun getSizeOnDiskDisplay(appId: Int, setResult: (String) -> Unit) {
         // Outputs "3.76GiB" etc to the result lambda without locking up the main thread
         withContext(Dispatchers.IO) {
             // Do it async
             if (SteamService.isAppInstalled(appId)) {
                 val appSizeText = StorageUtils.formatBinarySize(
-                    StorageUtils.getFolderSize(SteamService.getAppDirPath(appId))
+                    StorageUtils.getFolderSize(SteamService.getAppDirPath(appId)),
                 )
 
                 Timber.d("Finding $appId size on disk $appSizeText")

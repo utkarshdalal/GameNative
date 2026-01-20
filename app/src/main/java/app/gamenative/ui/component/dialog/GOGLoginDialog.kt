@@ -1,6 +1,9 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,9 +22,6 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.ui.theme.PluviaTheme
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
 
 private fun extractCodeFromInput(input: String): String {
     val trimmed = input.trim()
@@ -58,119 +58,119 @@ fun GOGLoginDialog(
     val scrollState = rememberScrollState()
 
     if (!visible) return
-        AlertDialog(
-            onDismissRequest = onDismissRequest,
-            icon = { Icon(imageVector = Icons.Default.Login, contentDescription = null) },
-            title = { Text(stringResource(R.string.gog_login_title)) },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (isLandscape) {
-                                Modifier
-                                    .heightIn(max = 300.dp)
-                                    .verticalScroll(scrollState)
-                            } else {
-                                Modifier
-                            }
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else 12.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.gog_login_auto_auth_info),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    // Open browser button
-                    Button(
-                        onClick = {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GOGConstants.GOG_AUTH_LOGIN_URL))
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.gog_login_browser_error),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        icon = { Icon(imageVector = Icons.Default.Login, contentDescription = null) },
+        title = { Text(stringResource(R.string.gog_login_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isLandscape) {
+                            Modifier
+                                .heightIn(max = 300.dp)
+                                .verticalScroll(scrollState)
+                        } else {
+                            Modifier
                         },
-                        enabled = !isLoading,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = if (isLandscape) PaddingValues(8.dp) else ButtonDefaults.ContentPadding
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.OpenInBrowser,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.gog_login_open_button))
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = if (isLandscape) 4.dp else 8.dp))
-
-                    // Manual code entry fallback
-                    Text(
-                        text = stringResource(R.string.gog_login_auth_example),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    // Authorization code input
-                    OutlinedTextField(
-                        value = authCode,
-                        onValueChange = { authCode = it.trim() },
-                        label = { Text(stringResource(R.string.gog_login_auth_code_label)) },
-                        placeholder = { Text(stringResource(R.string.gog_login_auth_code_placeholder)) },
-                        singleLine = true,
-                        enabled = !isLoading,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Error message
-                    if (errorMessage != null) {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    // Loading indicator
-                    if (isLoading) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
+                    ),
+                verticalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else 12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.gog_login_auto_auth_info),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // Open browser button
+                Button(
                     onClick = {
-                        if (authCode.isNotBlank()) {
-                            val extractedCode = extractCodeFromInput(authCode)
-                            if (extractedCode.isNotEmpty()) {
-                                onAuthCodeClick(extractedCode)
-                            }
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GOGConstants.GOG_AUTH_LOGIN_URL))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.gog_login_browser_error),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     },
-                    enabled = !isLoading && authCode.isNotBlank()
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = if (isLandscape) PaddingValues(8.dp) else ButtonDefaults.ContentPadding,
                 ) {
-                    Text(stringResource(R.string.gog_login_button))
+                    Icon(
+                        imageVector = Icons.Default.OpenInBrowser,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.gog_login_open_button))
                 }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = onDismissRequest,
-                    enabled = !isLoading
-                ) {
-                    Text(stringResource(R.string.gog_login_cancel))
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = if (isLandscape) 4.dp else 8.dp))
+
+                // Manual code entry fallback
+                Text(
+                    text = stringResource(R.string.gog_login_auth_example),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                // Authorization code input
+                OutlinedTextField(
+                    value = authCode,
+                    onValueChange = { authCode = it.trim() },
+                    label = { Text(stringResource(R.string.gog_login_auth_code_label)) },
+                    placeholder = { Text(stringResource(R.string.gog_login_auth_code_placeholder)) },
+                    singleLine = true,
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // Error message
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                // Loading indicator
+                if (isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
-        )
-    }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (authCode.isNotBlank()) {
+                        val extractedCode = extractCodeFromInput(authCode)
+                        if (extractedCode.isNotEmpty()) {
+                            onAuthCodeClick(extractedCode)
+                        }
+                    }
+                },
+                enabled = !isLoading && authCode.isNotBlank(),
+            ) {
+                Text(stringResource(R.string.gog_login_button))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest,
+                enabled = !isLoading,
+            ) {
+                Text(stringResource(R.string.gog_login_cancel))
+            }
+        },
+    )
+}
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Composable
@@ -181,7 +181,7 @@ private fun Preview_GOGLoginDialog() {
             onDismissRequest = {},
             onAuthCodeClick = {},
             isLoading = false,
-            errorMessage = null
+            errorMessage = null,
         )
     }
 }
@@ -195,7 +195,7 @@ private fun Preview_GOGLoginDialogWithError() {
             onDismissRequest = {},
             onAuthCodeClick = {},
             isLoading = false,
-            errorMessage = "Invalid authorization code. Please try again."
+            errorMessage = "Invalid authorization code. Please try again.",
         )
     }
 }
@@ -209,7 +209,7 @@ private fun Preview_GOGLoginDialogLoading() {
             onDismissRequest = {},
             onAuthCodeClick = {},
             isLoading = true,
-            errorMessage = null
+            errorMessage = null,
         )
     }
 }

@@ -17,9 +17,9 @@ import app.gamenative.R
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import java.util.Arrays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Arrays
 
 private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     val density = context.resources.displayMetrics.density
@@ -71,7 +71,7 @@ private fun createAdaptiveIconBitmap(context: Context, src: Bitmap): Bitmap {
     // Center-fit scale to keep entire icon visible inside the padded area
     val scale = minOf(
         availSize.toFloat() / src.width.coerceAtLeast(1),
-        availSize.toFloat() / src.height.coerceAtLeast(1)
+        availSize.toFloat() / src.height.coerceAtLeast(1),
     )
     val drawW = src.width * scale
     val drawH = src.height * scale
@@ -112,17 +112,21 @@ internal suspend fun createPinnedShortcut(context: Context, gameId: Int, label: 
                             val bmp = Bitmap.createBitmap(
                                 drawable.intrinsicWidth.coerceAtLeast(1),
                                 drawable.intrinsicHeight.coerceAtLeast(1),
-                                Bitmap.Config.ARGB_8888
+                                Bitmap.Config.ARGB_8888,
                             )
                             val canvas = Canvas(bmp)
                             drawable.setBounds(0, 0, canvas.width, canvas.height)
                             drawable.draw(canvas)
                             bmp
-                        } else null
+                        } else {
+                            null
+                        }
                     }
                 }
                 rawBitmap
-            } else null
+            } else {
+                null
+            }
         } catch (_: Throwable) {
             null
         }

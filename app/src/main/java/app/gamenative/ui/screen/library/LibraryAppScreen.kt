@@ -1,13 +1,14 @@
 package app.gamenative.ui.screen.library
 
-import android.Manifest
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +22,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -39,23 +42,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -70,71 +68,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
-import app.gamenative.Constants
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
-import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
-import app.gamenative.ui.component.dialog.ContainerConfigDialog
-import app.gamenative.ui.component.dialog.LoadingDialog
-import app.gamenative.ui.component.dialog.MessageDialog
-import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
-import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.internal.fakeAppInfo
+import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
+import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
+import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
+import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.StorageUtils
-import com.google.android.play.core.splitcompat.SplitCompat
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
-import app.gamenative.utils.SteamUtils
-import com.winlator.container.ContainerData
-import com.winlator.xenvironment.ImageFsInstaller
-import com.winlator.fexcore.FEXCoreManager
-import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
-import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
-import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
-import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import timber.log.Timber
-import app.gamenative.service.SteamService.Companion.getAppDirPath
-import com.posthog.PostHog
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.os.Environment
-import androidx.compose.foundation.border
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import app.gamenative.PrefManager
-import app.gamenative.service.DownloadService
-import java.nio.file.Paths
-import kotlin.io.path.pathString
 import kotlin.math.roundToInt
-import app.gamenative.enums.PathType
-import com.winlator.container.ContainerManager
-import app.gamenative.enums.SyncResult
-import android.widget.Toast
-import app.gamenative.enums.Marker
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import app.gamenative.PluviaApp
-import app.gamenative.events.AndroidEvent
-import app.gamenative.utils.MarkerUtils
-import app.gamenative.utils.createPinnedShortcut
-import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -142,7 +96,7 @@ import kotlinx.coroutines.withContext
 private fun SkeletonText(
     modifier: Modifier = Modifier,
     lines: Int = 1,
-    lineHeight: Int = 16
+    lineHeight: Int = 16,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
     val alpha by infiniteTransition.animateFloat(
@@ -150,9 +104,9 @@ private fun SkeletonText(
         targetValue = 0.25f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "alpha"
+        label = "alpha",
     )
 
     val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
@@ -165,8 +119,8 @@ private fun SkeletonText(
                     .height(lineHeight.dp)
                     .background(
                         color = color,
-                        shape = RoundedCornerShape(4.dp)
-                    )
+                        shape = RoundedCornerShape(4.dp),
+                    ),
             )
             if (index < lines - 1) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -189,6 +143,7 @@ fun AppScreen(
             app.gamenative.data.GameSource.STEAM -> SteamAppScreen()
             app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
             app.gamenative.data.GameSource.GOG -> GOGAppScreen()
+            app.gamenative.data.GameSource.EPIC -> EpicAppScreen()
         }
     }
 
@@ -242,7 +197,7 @@ internal fun AppScreenContent(
     val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     val wifiConnected = capabilities?.run {
         hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-        hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     } == true
     val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
     val scrollState = rememberScrollState()
@@ -263,34 +218,34 @@ internal fun AppScreenContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp)
+                .height(250.dp),
         ) {
             // Hero background image
             if (displayInfo.heroImageUrl != null) {
-            CoilImage(
-                modifier = Modifier.fillMaxSize(),
+                CoilImage(
+                    modifier = Modifier.fillMaxSize(),
                     imageModel = { displayInfo.heroImageUrl },
-                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                loading = { LoadingScreen() },
-                failure = {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // Gradient background as fallback
-                        Surface(
+                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                    loading = { LoadingScreen() },
+                    failure = {
+                        Box(
                             modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primary
-                        ) { }
-                    }
-                },
-                previewPlaceholder = painterResource(R.drawable.testhero),
-            )
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // Gradient background as fallback
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.primary,
+                            ) { }
+                        }
+                    },
+                    previewPlaceholder = painterResource(R.drawable.testhero),
+                )
             } else {
                 // Fallback gradient background when no hero image
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 ) { }
             }
 
@@ -302,10 +257,10 @@ internal fun AppScreenContent(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.8f)
-                            )
-                        )
-                    )
+                                Color.Black.copy(alpha = 0.8f),
+                            ),
+                        ),
+                    ),
             )
 
             // Compatibility status overlay (bottom center)
@@ -316,7 +271,7 @@ internal fun AppScreenContent(
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .background(Color.Black.copy(alpha = 0.4f))
-                        .padding(horizontal = 8.dp, vertical = 1.dp)
+                        .padding(horizontal = 8.dp, vertical = 1.dp),
                 ) {
                     Text(
                         text = displayInfo.compatibilityMessage,
@@ -324,7 +279,7 @@ internal fun AppScreenContent(
                         color = Color(displayInfo.compatibilityColor),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.align(Alignment.Center),
                     )
                 }
             }
@@ -335,8 +290,8 @@ internal fun AppScreenContent(
                     .padding(20.dp)
                     .background(
                         color = Color.Black.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        shape = RoundedCornerShape(12.dp),
+                    ),
             ) {
                 BackButton(onClick = onBack)
             }
@@ -345,20 +300,20 @@ internal fun AppScreenContent(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(20.dp)
+                    .padding(20.dp),
             ) {
                 IconButton(
                     modifier = Modifier
                         .background(
                             color = Color.Black.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
                         ),
                     onClick = { optionsMenuVisible = !optionsMenuVisible },
                     content = {
                         Icon(
                             Icons.Filled.MoreVert,
                             contentDescription = "Settings",
-                            tint = Color.White
+                            tint = Color.White,
                         )
                     },
                 )
@@ -383,7 +338,7 @@ internal fun AppScreenContent(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(20.dp)
+                    .padding(20.dp),
             ) {
                 Text(
                     text = displayInfo.name,
@@ -392,10 +347,10 @@ internal fun AppScreenContent(
                         shadow = Shadow(
                             color = Color.Black.copy(alpha = 0.5f),
                             offset = Offset(0f, 2f),
-                            blurRadius = 10f
-                        )
+                            blurRadius = 10f,
+                        ),
                     ),
-                    color = Color.White
+                    color = Color.White,
                 )
 
                 Text(
@@ -407,7 +362,7 @@ internal fun AppScreenContent(
                         }
                     }}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = Color.White.copy(alpha = 0.9f),
                 )
             }
         }
@@ -416,12 +371,12 @@ internal fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(24.dp),
         ) {
             // Action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Pause/Resume and Delete when downloading or paused
                 // Use hasPartialDownload from BaseAppScreen (implemented per game source)
@@ -436,12 +391,15 @@ internal fun AppScreenContent(
                         onClick = onPauseResumeClick,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(16.dp),
                     ) {
                         Text(
-                            text = if (isDownloading) stringResource(R.string.pause_download)
-                                   else stringResource(R.string.resume_download),
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            text = if (isDownloading) {
+                                stringResource(R.string.pause_download)
+                            } else {
+                                stringResource(R.string.resume_download)
+                            },
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         )
                     }
                     // Delete (Cancel) download data
@@ -451,7 +409,7 @@ internal fun AppScreenContent(
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(16.dp),
                     ) {
                         Text(stringResource(R.string.delete_app), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     }
@@ -475,7 +433,7 @@ internal fun AppScreenContent(
                         },
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(16.dp),
                     ) {
                         val text = when {
                             isInstalled -> stringResource(R.string.run_app)
@@ -485,7 +443,7 @@ internal fun AppScreenContent(
                         }
                         Text(
                             text = text,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         )
                     }
                     // Uninstall/Delete button if already installed
@@ -498,11 +456,11 @@ internal fun AppScreenContent(
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(16.dp)
+                            contentPadding = PaddingValues(16.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.uninstall),
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             )
                         }
                     }
@@ -534,21 +492,21 @@ internal fun AppScreenContent(
                     }
                 }
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = stringResource(R.string.installation_progress),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
                             text = "${(downloadProgress * 100f).toInt()}%",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.tertiary
+                            color = MaterialTheme.colorScheme.tertiary,
                         )
                     }
 
@@ -561,7 +519,7 @@ internal fun AppScreenContent(
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
                         color = MaterialTheme.colorScheme.tertiary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -580,12 +538,12 @@ internal fun AppScreenContent(
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             text = sizeText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -593,7 +551,7 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
 
@@ -611,32 +569,32 @@ internal fun AppScreenContent(
                             brush = Brush.linearGradient(
                                 colors = listOf(
                                     Color(0x1A06B6D4),
-                                    Color(0x1AA21CAF)
+                                    Color(0x1AA21CAF),
                                 ),
                                 start = Offset(0f, 0f),
-                                end = Offset(1000f, 1000f)
-                            )
+                                end = Offset(1000f, 1000f),
+                            ),
                         )
                         .border(1.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
-                        .padding(20.dp)
+                        .padding(20.dp),
                 ) {
                     Column {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .background(MaterialTheme.colorScheme.tertiary, CircleShape),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text("↑", color = MaterialTheme.colorScheme.onTertiary, fontSize = 14.sp)
                             }
                             Text(
                                 stringResource(R.string.update_available),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.tertiary
+                                color = MaterialTheme.colorScheme.tertiary,
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -646,9 +604,9 @@ internal fun AppScreenContent(
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary,
-                                contentColor = MaterialTheme.colorScheme.onTertiary
+                                contentColor = MaterialTheme.colorScheme.onTertiary,
                             ),
-                            contentPadding = PaddingValues(12.dp)
+                            contentPadding = PaddingValues(12.dp),
                         ) {
                             Text(stringResource(R.string.update_now), color = MaterialTheme.colorScheme.onTertiary)
                         }
@@ -662,7 +620,7 @@ internal fun AppScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // Colored top border
@@ -674,17 +632,17 @@ internal fun AppScreenContent(
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
-                                    )
-                                )
-                            )
+                                        MaterialTheme.colorScheme.tertiary,
+                                    ),
+                                ),
+                            ),
                     )
 
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
                             text = stringResource(R.string.game_information),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 16.dp),
                         )
 
                         LazyVerticalGrid(
@@ -692,7 +650,7 @@ internal fun AppScreenContent(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             // Setting a fixed height to avoid nested scrolling issues
-                            modifier = Modifier.height(220.dp)
+                            modifier = Modifier.height(220.dp),
                         ) {
                             // Status item
                             item {
@@ -700,13 +658,13 @@ internal fun AppScreenContent(
                                     Text(
                                         text = stringResource(R.string.status),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Surface(
                                         shape = RoundedCornerShape(20.dp),
                                         color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f))
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)),
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -717,8 +675,8 @@ internal fun AppScreenContent(
                                                     .size(8.dp)
                                                     .background(
                                                         color = MaterialTheme.colorScheme.tertiary,
-                                                        shape = CircleShape
-                                                    )
+                                                        shape = CircleShape,
+                                                    ),
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
@@ -728,7 +686,7 @@ internal fun AppScreenContent(
                                                     else -> stringResource(R.string.not_installed)
                                                 },
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                                color = MaterialTheme.colorScheme.tertiary
+                                                color = MaterialTheme.colorScheme.tertiary,
                                             )
                                         }
                                     }
@@ -741,7 +699,7 @@ internal fun AppScreenContent(
                                     Text(
                                         text = stringResource(R.string.size),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     // Show size from displayInfo
@@ -751,20 +709,19 @@ internal fun AppScreenContent(
                                             !isInstalled && displayInfo.sizeFromStore != null -> displayInfo.sizeFromStore
                                             else -> "Unknown"
                                         },
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                     )
                                 }
                             }
 
                             // Location item
                             if (isInstalled) {
-                                item (span = { GridItemSpan(maxLineSpan) }) {
-
+                                item(span = { GridItemSpan(maxLineSpan) }) {
                                     Column {
                                         Text(
                                             text = stringResource(R.string.location),
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Surface(
@@ -789,12 +746,12 @@ internal fun AppScreenContent(
                                     Text(
                                         text = stringResource(R.string.developer),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = displayInfo.developer,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                     )
                                 }
                             }
@@ -805,19 +762,19 @@ internal fun AppScreenContent(
                                     Text(
                                         text = stringResource(R.string.release_date),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = remember(displayInfo.releaseDate) {
                                             if (displayInfo.releaseDate > 0) {
                                                 val date = Date(displayInfo.releaseDate * 1000)
-                                            SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
+                                                SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
                                             } else {
                                                 "Unknown"
                                             }
                                         },
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                     )
                                 }
                             }
@@ -881,7 +838,6 @@ internal fun GameMigrationDialog(
     )
 }
 
-
 /***********
  * PREVIEW *
  ***********/
@@ -938,4 +894,3 @@ private fun Preview_AppScreen() {
         }
     }
 }
-

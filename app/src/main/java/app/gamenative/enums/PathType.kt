@@ -120,7 +120,7 @@ enum class PathType {
                 "APPLICATION_DATA_LOCAL" to "%LOCALAPPDATA%",
                 "APPLICATION_DATA_LOCAL_LOW" to "%APPDATA%\\..\\LocalLow",
                 "APPLICATION_DATA_ROAMING" to "%APPDATA%",
-                "DOCUMENTS" to "%USERPROFILE%\\Documents"
+                "DOCUMENTS" to "%USERPROFILE%\\Documents",
             )
 
             // Find and replace <?VARIABLE?> patterns
@@ -178,7 +178,7 @@ enum class PathType {
             if (mappedPath.contains("%USERPROFILE%/Saved Games") || mappedPath.contains("%USERPROFILE%\\Saved Games")) {
                 val savedGamesPath = Paths.get(
                     winePrefix, winePrefixPath,
-                    "drive_c/users/", user, "Saved Games/"
+                    "drive_c/users/", user, "Saved Games/",
                 ).toString()
                 mappedPath = mappedPath.replace("%USERPROFILE%/Saved Games", savedGamesPath)
                     .replace("%USERPROFILE%\\Saved Games", savedGamesPath)
@@ -187,19 +187,25 @@ enum class PathType {
             if (mappedPath.contains("%USERPROFILE%/Documents") || mappedPath.contains("%USERPROFILE%\\Documents")) {
                 val documentsPath = Paths.get(
                     winePrefix, winePrefixPath,
-                    "drive_c/users/", user, "Documents/"
+                    "drive_c/users/", user, "Documents/",
                 ).toString()
                 mappedPath = mappedPath.replace("%USERPROFILE%/Documents", documentsPath)
                     .replace("%USERPROFILE%\\Documents", documentsPath)
             }
 
             // Map standard Windows environment variables
-            mappedPath = mappedPath.replace("%LOCALAPPDATA%",
-                Paths.get(winePrefix, winePrefixPath, "drive_c/users/", user, "AppData/Local/").toString())
-            mappedPath = mappedPath.replace("%APPDATA%",
-                Paths.get(winePrefix, winePrefixPath, "drive_c/users/", user, "AppData/Roaming/").toString())
-            mappedPath = mappedPath.replace("%USERPROFILE%",
-                Paths.get(winePrefix, winePrefixPath, "drive_c/users/", user, "").toString())
+            mappedPath = mappedPath.replace(
+                "%LOCALAPPDATA%",
+                Paths.get(winePrefix, winePrefixPath, "drive_c/users/", user, "AppData/Local/").toString(),
+            )
+            mappedPath = mappedPath.replace(
+                "%APPDATA%",
+                Paths.get(winePrefix, winePrefixPath, "drive_c/users/", user, "AppData/Roaming/").toString(),
+            )
+            mappedPath = mappedPath.replace(
+                "%USERPROFILE%",
+                Paths.get(winePrefix, winePrefixPath, "drive_c/users/", user, "").toString(),
+            )
 
             // Normalize path separators
             mappedPath = mappedPath.replace("\\", "/")

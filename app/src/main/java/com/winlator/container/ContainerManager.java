@@ -5,6 +5,7 @@ import static com.winlator.container.Container.STEAM_TYPE_NORMAL;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 // import com.winlator.R;
@@ -90,7 +91,7 @@ public class ContainerManager {
     }
 
     public void createContainerAsync(String containerId, final JSONObject data, Callback<Container> callback) {
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
         Executors.newSingleThreadExecutor().execute(() -> {
             final Container container = createContainer(containerId, data);
             handler.post(() -> callback.call(container));
@@ -147,7 +148,7 @@ public class ContainerManager {
     }
 
     public void duplicateContainerAsync(Container container, Runnable callback) {
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
         Executors.newSingleThreadExecutor().execute(() -> {
             duplicateContainer(container);
             handler.post(callback);
@@ -155,7 +156,7 @@ public class ContainerManager {
     }
 
     public void removeContainerAsync(Container container, Runnable callback) {
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
         Executors.newSingleThreadExecutor().execute(() -> {
             removeContainer(container);
             handler.post(callback);

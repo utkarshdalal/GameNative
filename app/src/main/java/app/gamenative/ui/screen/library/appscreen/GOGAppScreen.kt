@@ -92,7 +92,7 @@ class GOGAppScreen : BaseAppScreen() {
         // Listen for install status changes to refresh game data
         LaunchedEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-                if (event.appId == libraryItem.gameId) {
+                if (event.appId == libraryItem.gameId.toString()) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
                     refreshTrigger++
                 }
@@ -233,13 +233,13 @@ class GOGAppScreen : BaseAppScreen() {
                     // Calculate sizes
                     val downloadSize = app.gamenative.utils.StorageUtils.formatBinarySize(game?.downloadSize ?: 0L)
                     val availableSpace = app.gamenative.utils.StorageUtils.formatBinarySize(
-                        app.gamenative.utils.StorageUtils.getAvailableSpace(app.gamenative.service.gog.GOGConstants.defaultGOGGamesPath)
+                        app.gamenative.utils.StorageUtils.getAvailableSpace(app.gamenative.service.gog.GOGConstants.defaultGOGGamesPath),
                     )
 
                     val message = context.getString(
                         R.string.gog_install_confirmation_message,
                         downloadSize,
-                        availableSpace
+                        availableSpace,
                     )
                     val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
                         visible = true,
@@ -247,7 +247,7 @@ class GOGAppScreen : BaseAppScreen() {
                         title = context.getString(R.string.gog_install_game_title),
                         message = message,
                         confirmBtnText = context.getString(R.string.download),
-                        dismissBtnText = context.getString(R.string.cancel)
+                        dismissBtnText = context.getString(R.string.cancel),
                     )
                     BaseAppScreen.showInstallDialog(libraryItem.appId, state)
                 } catch (e: Exception) {
@@ -466,8 +466,8 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Listen for download status changes
         val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
-            Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
-            if (event.appId == libraryItem.gameId) {
+            Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId.toString()}")
+            if (event.appId == libraryItem.gameId.toString()) {
                 Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.appId}, isDownloading=${event.isDownloading}")
                 if (event.isDownloading) {
                     // Download started - attach progress listener
@@ -511,8 +511,8 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Listen for install status changes
         val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
-            Timber.tag(TAG).d("[OBSERVE] LibraryInstallStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
-            if (event.appId == libraryItem.gameId) {
+            Timber.tag(TAG).d("[OBSERVE] LibraryInstallStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId.toString()}")
+            if (event.appId == libraryItem.gameId.toString()) {
                 Timber.tag(TAG).d("[OBSERVE] Install status changed for ${libraryItem.appId}, calling onStateChanged()")
                 onStateChanged()
             }
@@ -539,7 +539,6 @@ class GOGAppScreen : BaseAppScreen() {
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current
-
 
         // Monitor uninstall dialog state
         var showUninstallDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }

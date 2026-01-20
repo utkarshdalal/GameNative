@@ -17,12 +17,13 @@ internal object CustomGameCache {
      * Builds the appId cache by scanning all Custom Game manual folders.
      * Returns a map of appId (Int) -> folder path (String).
      */
+    @Synchronized
     fun buildCache(
         getManualFolders: () -> Set<String>,
-        readGameIdFromFile: (File) -> Int?
+        readGameIdFromFile: (File) -> Int?,
     ): Map<Int, String> {
         val cache = mutableMapOf<Int, String>()
-        
+
         val manualFolders = getManualFolders()
         for (path in manualFolders) {
             val folder = File(path)
@@ -42,19 +43,20 @@ internal object CustomGameCache {
      * Gets or rebuilds the appId cache if needed.
      * Cache is invalidated when Custom Game manual folders change.
      */
+    @Synchronized
     fun getOrRebuildCache(
         getManualFolders: () -> Set<String>,
-        readGameIdFromFile: (File) -> Int?
+        readGameIdFromFile: (File) -> Int?,
     ): Map<Int, String> {
         val currentManualFolders = getManualFolders()
         val cachedManual = cacheManualFolders
-        
+
         // Rebuild if manual folders changed or cache is null
         if (appIdCache == null || cachedManual != currentManualFolders) {
             appIdCache = buildCache(getManualFolders, readGameIdFromFile)
             cacheManualFolders = currentManualFolders
         }
-        
+
         return appIdCache!!
     }
 
@@ -62,6 +64,7 @@ internal object CustomGameCache {
      * Invalidates the appId cache, forcing a rebuild on next access.
      * Call this when Custom Game paths change, after deletion, or after manual refresh.
      */
+    @Synchronized
     fun invalidate() {
         appIdCache = null
         cacheManualFolders = null
@@ -73,13 +76,14 @@ internal object CustomGameCache {
      * Removes any stale entries with the same path but different appId to maintain consistency.
      * Used for incremental updates when scanning new games.
      */
+    @Synchronized
     fun addEntry(appId: Int, folderPath: String) {
         if (appIdCache != null) {
             appIdCache = appIdCache!!.toMutableMap().apply {
                 // Remove any stale entries with the same path but different appId
                 val staleEntries = filter { it.value == folderPath && it.key != appId }.keys
                 staleEntries.forEach { remove(it) }
-                
+
                 // Add or update the entry with the correct appId
                 put(appId, folderPath)
             }
@@ -90,6 +94,6 @@ internal object CustomGameCache {
      * Gets the current cache (without rebuilding).
      * Returns null if cache is not built yet.
      */
+    @Synchronized
     fun getCache(): Map<Int, String>? = appIdCache
 }
-

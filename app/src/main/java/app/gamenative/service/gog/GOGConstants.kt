@@ -18,6 +18,7 @@ object GOGConstants {
     fun init(context: Context) {
         appContext = context.applicationContext
     }
+
     // GOG API URLs
     const val GOG_BASE_API_URL = "https://api.gog.com"
     const val GOG_AUTH_URL = "https://auth.gog.com"

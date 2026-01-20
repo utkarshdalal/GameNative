@@ -22,11 +22,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,25 +50,21 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.utils.Net
-import com.winlator.core.StringUtils
-import com.winlator.container.ContainerManager
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
+import java.io.File
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
-import java.io.File
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,7 +145,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     onError = { error ->
                         manifestError = error
                         isLoadingManifest = false
-                    }
+                    },
                 )
             }
         }
@@ -186,7 +182,6 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 else -> null
             }
 
-
             if (detectedType == null) {
                 statusMessage = ctx.getString(R.string.wine_proton_filename_error)
                 isStatusSuccess = false
@@ -217,18 +212,21 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
                     val startTime = System.currentTimeMillis()
 
-                    mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
-                            failReason = reason
-                            err = e
-                            latch.countDown()
-                        }
+                    mgr.extraContentFile(
+                        uri,
+                        object : ContentsManager.OnInstallFinishedCallback {
+                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                                failReason = reason
+                                err = e
+                                latch.countDown()
+                            }
 
-                        override fun onSucceed(profileArg: ContentProfile) {
-                            profile = profileArg
-                            latch.countDown()
-                        }
-                    })
+                            override fun onSucceed(profileArg: ContentProfile) {
+                                profile = profileArg
+                                latch.countDown()
+                            }
+                        },
+                    )
                 } catch (e: Exception) {
                     Timber.tag("WineProtonManagerDialog").e(e, "Exception during extraction")
                     err = e
@@ -251,7 +249,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     ContentsManager.InstallFailedReason.ERROR_MISSINGFILES -> ctx.getString(R.string.wine_proton_error_missingfiles)
                     ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE -> ctx.getString(R.string.wine_proton_error_untrustprofile)
                     ContentsManager.InstallFailedReason.ERROR_NOSPACE -> ctx.getString(R.string.wine_proton_error_nospace)
-                    null -> error?.let { "Error: ${it.javaClass.simpleName} - ${it.message}" } ?: ctx.getString(R.string.wine_proton_error_unknown)
+                    null -> error?.let { "Error: ${it.javaClass.simpleName} - ${it.message}" }
+                        ?: ctx.getString(R.string.wine_proton_error_unknown)
                     else -> ctx.getString(R.string.wine_proton_error_unable_install)
                 }
                 statusMessage = if (error != null && fail != null) {
@@ -269,7 +268,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
             // Validate it's Wine or Proton and matches detected type
             if (profile.type != ContentProfile.ContentType.CONTENT_TYPE_WINE &&
-                profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
+                profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON
+            ) {
                 statusMessage = ctx.getString(R.string.wine_proton_not_wine_or_proton, profile.type)
                 isStatusSuccess = false
                 Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
@@ -351,7 +351,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 SteamService.fetchFileWithFallback(
                     fileName = "$wineFileName",
                     dest = destFile,
-                    context = ctx
+                    context = ctx,
                 ) { progress ->
                     val now = System.currentTimeMillis()
                     if (now - lastUpdate > 300) {
@@ -401,25 +401,28 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     var err: Exception? = null
                     val latch = CountDownLatch(1)
                     try {
-                        mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
-                                failReason = reason
-                                err = e
-                                latch.countDown()
-                            }
+                        mgr.extraContentFile(
+                            uri,
+                            object : ContentsManager.OnInstallFinishedCallback {
+                                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                                    failReason = reason
+                                    err = e
+                                    latch.countDown()
+                                }
 
-                            override fun onSucceed(profileArg: ContentProfile) {
-                                profile = profileArg
-                                latch.countDown()
-                            }
-                        })
+                                override fun onSucceed(profileArg: ContentProfile) {
+                                    profile = profileArg
+                                    latch.countDown()
+                                }
+                            },
+                        )
                     } catch (e: Exception) {
                         err = e
                         latch.countDown()
                     }
-                if (!latch.await(240, TimeUnit.SECONDS)) {
-                       err = Exception("Installation timed out after 240 seconds")
-                   }
+                    if (!latch.await(240, TimeUnit.SECONDS)) {
+                        err = Exception("Installation timed out after 240 seconds")
+                    }
                     Triple(profile, failReason, err)
                 }
 
@@ -433,7 +436,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         ContentsManager.InstallFailedReason.ERROR_MISSINGFILES -> ctx.getString(R.string.wine_proton_error_missingfiles)
                         ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE -> ctx.getString(R.string.wine_proton_error_untrustprofile)
                         ContentsManager.InstallFailedReason.ERROR_NOSPACE -> ctx.getString(R.string.wine_proton_error_nospace)
-                        null -> error?.let { "Error: ${it.javaClass.simpleName} - ${it.message}" } ?: ctx.getString(R.string.wine_proton_error_unknown)
+                        null -> error?.let { "Error: ${it.javaClass.simpleName} - ${it.message}" }
+                            ?: ctx.getString(R.string.wine_proton_error_unknown)
                         else -> ctx.getString(R.string.wine_proton_error_unable_install)
                     }
                     val errorMessage = if (error != null && fail != null) {
@@ -452,7 +456,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
                 // Validate it's Wine or Proton and matches detected type
                 if (profile.type != ContentProfile.ContentType.CONTENT_TYPE_WINE &&
-                    profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
+                    profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON
+                ) {
                     val errorMsg = ctx.getString(R.string.wine_proton_not_wine_or_proton, profile.type)
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
@@ -477,7 +482,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 val tmpDir = ContentsManager.getTmpDir(ctx)
                 val binaryVariant = detectBinaryVariant(tmpDir)
 
-                //! We currently are not supporting GLIBC but we will in future.
+                // ! We currently are not supporting GLIBC but we will in future.
                 if (binaryVariant == "glibc") {
                     val errorMsg = ctx.getString(R.string.wine_proton_glibc_incompatible)
                     withContext(Dispatchers.Main) {
@@ -571,37 +576,37 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 500.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
             ) {
                 // Info card
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                        .padding(bottom = 12.dp),
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.Top,
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Info,
                             contentDescription = "Info",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                         Column {
                             Text(
                                 text = stringResource(R.string.wine_proton_bionic_notice_header),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
                                 text = stringResource(R.string.wine_proton_info_description),
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 4.dp)
+                                modifier = Modifier.padding(top = 4.dp),
                             )
                         }
                     }
@@ -611,15 +616,15 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 if (isLoadingManifest) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        modifier = Modifier.padding(vertical = 8.dp),
                     ) {
                         Text(
                             text = "Loading available Wine/Proton versions...",
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                         CircularProgressIndicator(
-                            modifier = Modifier.padding(start = 8.dp).height(24.dp)
+                            modifier = Modifier.padding(start = 8.dp).height(24.dp),
                         )
                     }
                 } else if (manifestError != null) {
@@ -627,19 +632,19 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         text = manifestError ?: "Unknown error",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        modifier = Modifier.padding(vertical = 8.dp),
                     )
                 } else if (wineProtonManifest.isNotEmpty()) {
                     Text(
                         text = "Available online versions:",
                         style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                     )
 
                     ExposedDropdownMenuBox(
                         expanded = isExpanded,
                         onExpandedChange = { isExpanded = !isExpanded },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         OutlinedTextField(
                             value = selectedWineKey,
@@ -647,12 +652,12 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             readOnly = true,
                             label = { Text("Select Wine/Proton version") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
                         )
 
                         ExposedDropdownMenu(
                             expanded = isExpanded,
-                            onDismissRequest = { isExpanded = false }
+                            onDismissRequest = { isExpanded = false },
                         ) {
                             wineProtonManifest.keys.sorted().forEach { key ->
                                 DropdownMenuItem(
@@ -660,7 +665,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     onClick = {
                                         selectedWineKey = key
                                         isExpanded = false
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -670,12 +675,12 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 16.dp)
+                            modifier = Modifier.padding(top = 16.dp),
                         ) {
                             Button(
                                 onClick = { downloadAndInstallWineProton(wineProtonManifest[selectedWineKey]!!) },
                                 enabled = !isBusy && !isDownloading && !isInstalling,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             ) {
                                 when {
                                     isDownloading -> Text("Downloading...")
@@ -689,12 +694,12 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             Column(modifier = Modifier.padding(top = 8.dp)) {
                                 androidx.compose.material3.LinearProgressIndicator(
                                     progress = { downloadProgress },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                                 Text(
                                     text = "Downloading: ${(downloadProgress * 100).toInt()}%",
                                     style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
                         }
@@ -702,15 +707,15 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         if (isInstalling) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 8.dp),
                             ) {
                                 Text(
                                     text = "Installing Wine/Proton package...",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
                                 )
                                 CircularProgressIndicator(
-                                    modifier = Modifier.padding(start = 8.dp).height(24.dp)
+                                    modifier = Modifier.padding(start = 8.dp).height(24.dp),
                                 )
                             }
                         }
@@ -723,25 +728,25 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 Text(
                     text = "Import from local storage:",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 Text(
                     text = stringResource(R.string.wine_proton_import_package),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 Text(
                     text = stringResource(R.string.wine_proton_select_file_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
                 Text(
                     text = stringResource(R.string.win_proton_example),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 8.dp),
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
 
                 Button(
@@ -756,13 +761,13 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         }
                     },
                     enabled = !isBusy,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = 12.dp),
                 ) { Text(stringResource(R.string.wine_proton_import_wcp_button)) }
 
                 if (isBusy) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
                     ) {
                         CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
                         Text(text = statusMessage ?: stringResource(R.string.wine_proton_processing))
@@ -771,7 +776,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Text(
                         text = statusMessage ?: "",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isStatusSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        color = if (isStatusSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                     )
                 }
 
@@ -781,7 +786,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp)
+                            .padding(top = 8.dp),
                     ) {
                         InfoRow(label = stringResource(R.string.wine_proton_type), value = profile.type.toString())
                         InfoRow(label = stringResource(R.string.wine_proton_version), value = profile.verName)
@@ -802,7 +807,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             text = stringResource(R.string.wine_proton_all_files_trusted),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                         Button(
                             onClick = {
@@ -816,7 +821,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 }
                             },
                             enabled = !isBusy,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
                         ) { Text(stringResource(R.string.wine_proton_install_package)) }
                     }
                 }
@@ -828,11 +833,11 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Text(
                         text = stringResource(R.string.wine_proton_no_versions_found),
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 } else {
                     Column(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         installedProfiles.forEachIndexed { index, p ->
                             Row(
@@ -840,7 +845,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = "${p.type}: ${p.verName}", style = MaterialTheme.typography.bodyMedium)
@@ -850,12 +855,12 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 }
                                 IconButton(
                                     onClick = { deleteTarget = p },
-                                    modifier = Modifier.padding(start = 8.dp)
+                                    modifier = Modifier.padding(start = 8.dp),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Delete,
                                         contentDescription = stringResource(R.string.wine_proton_delete_content_desc),
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = MaterialTheme.colorScheme.error,
                                     )
                                 }
                             }
@@ -872,7 +877,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }
-        }
+        },
     )
 
     // Untrusted files confirmation
@@ -885,12 +890,12 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Text(
                         text = stringResource(R.string.wine_proton_untrusted_files_message),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = 12.dp),
                     )
                     Text(
                         text = stringResource(R.string.wine_proton_untrusted_files_label),
                         style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        modifier = Modifier.padding(bottom = 4.dp),
                     )
                     untrustedFiles.forEach { cf ->
                         Text(text = "• ${cf.target}", style = MaterialTheme.typography.bodySmall)
@@ -920,7 +925,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     statusMessage = null
                     isStatusSuccess = false
                 }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
         )
     }
 
@@ -931,7 +936,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             title = { Text(stringResource(R.string.wine_proton_remove_title)) },
             text = {
                 Text(
-                    text = stringResource(R.string.wine_proton_remove_message, target.type, target.verName, target.verCode)
+                    text = stringResource(R.string.wine_proton_remove_message, target.type, target.verName, target.verCode),
                 )
             },
             confirmButton = {
@@ -957,7 +962,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
         )
     }
 }
@@ -970,7 +975,7 @@ private fun InfoRow(label: String, value: String) {
             value = value,
             onValueChange = {},
             readOnly = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -987,35 +992,41 @@ private suspend fun performFinishInstall(
         var success = false
         val latch = CountDownLatch(1)
         try {
-            mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
-                    Timber.tag("WineProtonManagerDialog").e(e, "   ❌ finishInstallContent FAILED: $reason")
-                    message = when (reason) {
-                        ContentsManager.InstallFailedReason.ERROR_EXIST -> context.getString(R.string.wine_proton_version_already_exists)
-                        ContentsManager.InstallFailedReason.ERROR_NOSPACE -> context.getString(R.string.wine_proton_error_nospace)
-                        else -> context.getString(R.string.wine_proton_install_failed, e.message ?: context.getString(R.string.wine_proton_error_unknown))
+            mgr.finishInstallContent(
+                profile,
+                object : ContentsManager.OnInstallFinishedCallback {
+                    override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                        Timber.tag("WineProtonManagerDialog").e(e, "   ❌ finishInstallContent FAILED: $reason")
+                        message = when (reason) {
+                            ContentsManager.InstallFailedReason.ERROR_EXIST -> context.getString(R.string.wine_proton_version_already_exists)
+                            ContentsManager.InstallFailedReason.ERROR_NOSPACE -> context.getString(R.string.wine_proton_error_nospace)
+                            else -> context.getString(
+                                R.string.wine_proton_install_failed,
+                                e?.message ?: context.getString(R.string.wine_proton_error_unknown),
+                            )
+                        }
+                        success = false
+                        latch.countDown()
                     }
-                    success = false
-                    latch.countDown()
-                }
 
-                override fun onSucceed(profileArg: ContentProfile) {
-                    Timber.tag("WineProtonManagerDialog").d("   ✅ finishInstallContent SUCCESS: type=${profileArg.type}, verName=${profileArg.verName}, verCode=${profileArg.verCode}")
-                    message = context.getString(R.string.wine_proton_install_success, profileArg.type, profileArg.verName)
-                    success = true
-                    latch.countDown()
-                }
-            })
+                    override fun onSucceed(profileArg: ContentProfile) {
+                        Timber.tag("WineProtonManagerDialog").d("   ✅ finishInstallContent SUCCESS: type=${profileArg.type}, verName=${profileArg.verName}, verCode=${profileArg.verCode}")
+                        message = context.getString(R.string.wine_proton_install_success, profileArg.type, profileArg.verName)
+                        success = true
+                        latch.countDown()
+                    }
+                },
+            )
         } catch (e: Exception) {
             Timber.tag("WineProtonManagerDialog").e(e, "   ❌ Exception during finishInstallContent")
             message = context.getString(R.string.wine_proton_install_error, e.message ?: "")
             success = false
             latch.countDown()
         }
-       if (!latch.await(240, TimeUnit.SECONDS)) {
-           message = "Installation timed out after 240 seconds"
-           success = false
-       }
+        if (!latch.await(240, TimeUnit.SECONDS)) {
+            message = "Installation timed out after 240 seconds"
+            success = false
+        }
 
         // Sync contents after installation completes (success or failure)
         try {
@@ -1037,7 +1048,7 @@ private suspend fun performFinishInstall(
  */
 private suspend fun loadWineProtonManifest(
     onSuccess: suspend (Map<String, String>) -> Unit,
-    onError: suspend (String) -> Unit
+    onError: suspend (String) -> Unit,
 ) {
     try {
         val manifestUrl = "https://downloads.gamenative.app/component-manifest.json"
@@ -1051,8 +1062,10 @@ private suspend fun loadWineProtonManifest(
             val jsonObject = Json.decodeFromString<JsonObject>(jsonString)
 
             val manifest = jsonObject.entries
-                .filter { it.key.startsWith("wine", ignoreCase = true) ||
-                         it.key.startsWith("proton", ignoreCase = true) }
+                .filter {
+                    it.key.startsWith("wine", ignoreCase = true) ||
+                        it.key.startsWith("proton", ignoreCase = true)
+                }
                 .associate { it.key to it.value.toString().removeSurrounding("\"") }
 
             withContext(Dispatchers.Main) {

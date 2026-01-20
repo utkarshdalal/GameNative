@@ -20,23 +20,23 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,10 +46,10 @@ import app.gamenative.R
 import app.gamenative.service.SteamService
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
+import java.util.concurrent.CountDownLatch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.CountDownLatch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,18 +101,21 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 var err: Exception? = null
                 val latch = CountDownLatch(1)
                 try {
-                    mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
-                            failReason = reason
-                            err = e
-                            latch.countDown()
-                        }
+                    mgr.extraContentFile(
+                        uri,
+                        object : ContentsManager.OnInstallFinishedCallback {
+                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                                failReason = reason
+                                err = e
+                                latch.countDown()
+                            }
 
-                        override fun onSucceed(profileArg: ContentProfile) {
-                            profile = profileArg
-                            latch.countDown()
-                        }
-                    })
+                            override fun onSucceed(profileArg: ContentProfile) {
+                                profile = profileArg
+                                latch.countDown()
+                            }
+                        },
+                    )
                 } catch (e: Exception) {
                     err = e
                     latch.countDown()
@@ -170,12 +173,12 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 460.dp)
+                    .heightIn(max = 460.dp),
             ) {
                 Text(
                     text = "Install additional components (.wcp: tar.xz/zst)",
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
 
                 Button(
@@ -185,13 +188,13 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         importLauncher.launch(arrayOf("*/*"))
                     },
                     enabled = !isBusy,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
                 ) { Text(stringResource(R.string.import_wcp_from_device)) }
 
                 if (isBusy) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
                     ) {
                         CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
                         Text(text = statusMessage ?: stringResource(R.string.working))
@@ -207,7 +210,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(top = 8.dp)
+                            .padding(top = 8.dp),
                     ) {
                         InfoRow(label = "Type", value = profile.type.toString())
                         InfoRow(label = "Version", value = profile.verName)
@@ -219,7 +222,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         Text(
                             text = "All files are trusted. Ready to install.",
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                         Button(
                             onClick = {
@@ -233,7 +236,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 }
                             },
                             enabled = !isBusy,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
                         ) { Text(stringResource(R.string.install)) }
                     }
                 }
@@ -245,7 +248,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 ExposedDropdownMenuBox(
                     expanded = typeExpanded,
                     onExpandedChange = { typeExpanded = !typeExpanded },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 ) {
                     OutlinedTextField(
                         value = currentType.toString(),
@@ -255,19 +258,19 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        placeholder = { Text(stringResource(R.string.select_type)) }
+                        placeholder = { Text(stringResource(R.string.select_type)) },
                     )
 
                     ExposedDropdownMenu(
                         expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
+                        onDismissRequest = { typeExpanded = false },
                     ) {
                         val allowed = listOf(
                             ContentProfile.ContentType.CONTENT_TYPE_DXVK,
                             ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
                             ContentProfile.ContentType.CONTENT_TYPE_BOX64,
                             ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
-                            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
+                            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
                         )
                         ContentProfile.ContentType.values().filter { it in allowed }.forEach { t ->
                             DropdownMenuItem(
@@ -275,7 +278,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 onClick = {
                                     currentType = t
                                     typeExpanded = false
-                                }
+                                },
                             )
                         }
                     }
@@ -286,21 +289,21 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Text(
                         text = "No installed content for this type.",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 } else {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(top = 8.dp)
+                            .padding(top = 8.dp),
                     ) {
                         installedProfiles.forEach { p ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = "${p.verName} (${p.verCode})", style = MaterialTheme.typography.bodyMedium)
@@ -310,12 +313,12 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 }
                                 IconButton(
                                     onClick = { deleteTarget = p },
-                                    modifier = Modifier.padding(start = 8.dp)
+                                    modifier = Modifier.padding(start = 8.dp),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Delete,
                                         contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = MaterialTheme.colorScheme.error,
                                     )
                                 }
                             }
@@ -327,7 +330,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
-        }
+        },
     )
 
     if (showUntrustedConfirm && pendingProfile != null) {
@@ -339,7 +342,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Text(
                         text = "This content includes files outside the trusted set. Review and confirm to proceed.",
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
                     )
                     untrustedFiles.forEach { cf ->
                         Text(text = "- ${cf.target}", style = MaterialTheme.typography.bodySmall)
@@ -364,7 +367,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { showUntrustedConfirm = false }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
         )
     }
 
@@ -384,7 +387,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     }
                 }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } }
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -407,21 +410,24 @@ private suspend fun performFinishInstall(
         var message = ""
         val latch = CountDownLatch(1)
         try {
-            mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
-                    message = when (reason) {
-                        ContentsManager.InstallFailedReason.ERROR_EXIST -> "Content already exists"
-                        ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough space"
-                        else -> "Failed to install content"
+            mgr.finishInstallContent(
+                profile,
+                object : ContentsManager.OnInstallFinishedCallback {
+                    override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                        message = when (reason) {
+                            ContentsManager.InstallFailedReason.ERROR_EXIST -> "Content already exists"
+                            ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough space"
+                            else -> "Failed to install content"
+                        }
+                        latch.countDown()
                     }
-                    latch.countDown()
-                }
 
-                override fun onSucceed(profileArg: ContentProfile) {
-                    message = "Content installed successfully"
-                    latch.countDown()
-                }
-            })
+                    override fun onSucceed(profileArg: ContentProfile) {
+                        message = "Content installed successfully"
+                        latch.countDown()
+                    }
+                },
+            )
         } catch (e: Exception) {
             message = "Installation error: ${e.message}"
             latch.countDown()
@@ -432,5 +438,3 @@ private suspend fun performFinishInstall(
     onDone(msg)
     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 }
-
-

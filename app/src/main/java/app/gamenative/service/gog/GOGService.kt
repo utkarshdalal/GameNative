@@ -12,27 +12,22 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import dagger.hilt.android.AndroidEntryPoint
-import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import kotlinx.coroutines.*
 import timber.log.Timber
 
-
 /**
- * GOG Service - thin abstraction layer that delegates to managers.
+ * GOG Service - thin coordinator that delegates to specialized managers.
  *
  * Architecture:
- * - GOGApiClient: Api Layer for interacting with GOG's APIs
- * - GOGDownloadManager: Handles Download Logic for Games
- * - GOGConstants: Shared Constants for our GOG-related data
- * - GOGCloudSavesManager: Handler for Cloud Saves
+ * - GOGPythonBridge: Low-level Python/GOGDL command execution
  * - GOGAuthManager: Authentication and account management
  * - GOGManager: Game library, downloads, and installation
- * - GOGManifestParser: Parses and has utils for parsing/extracting/decompressing manifests.
- * - GOGDataMdoels: Data Models for GOG-related Data types such as API responses
  *
+ * This service maintains backward compatibility through static accessors
+ * while delegating all operations to the appropriate managers.
  */
 @AndroidEntryPoint
 class GOGService : Service() {
@@ -53,6 +48,11 @@ class GOGService : Service() {
         val isRunning: Boolean
             get() = instance != null
 
+        /**
+         * Start the GOG service. Handles both first-time start and subsequent automatic syncs.
+         * - First-time start: Always syncs (no throttle)
+         * - Subsequent starts: Throttled to once per 15 minutes
+         */
         fun start(context: Context) {
             // If already running, do nothing
             if (isRunning) {
@@ -69,20 +69,19 @@ class GOGService : Service() {
                 return
             }
 
-            // Subsequent starts: always start service, but check throttle for sync
+            // Subsequent starts: check throttle
             val now = System.currentTimeMillis()
             val timeSinceLastSync = now - lastSyncTimestamp
 
-            val intent = Intent(context, GOGService::class.java)
             if (timeSinceLastSync >= SYNC_THROTTLE_MILLIS) {
                 Timber.i("[GOGService] Starting service with automatic sync (throttle passed)")
+                val intent = Intent(context, GOGService::class.java)
                 intent.action = ACTION_SYNC_LIBRARY
+                context.startForegroundService(intent)
             } else {
                 val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
-                Timber.d("[GOGService] Starting service without sync - throttled (${remainingMinutes}min remaining)")
-                // Start service without sync action
+                Timber.d("[GOGService] Skipping start - throttled (${remainingMinutes}min remaining)")
             }
-            context.startForegroundService(intent)
         }
 
         fun triggerLibrarySync(context: Context) {
@@ -98,9 +97,13 @@ class GOGService : Service() {
             }
         }
 
-        // ==========================================================================
+        fun initialize(context: Context): Boolean {
+            return GOGPythonBridge.initialize(context)
+        }
+
+        // ========================================================================== 
         // AUTHENTICATION - Delegate to GOGAuthManager
-        // ==========================================================================
+        // ========================================================================== 
 
         suspend fun authenticateWithCode(context: Context, authorizationCode: String): Result<GOGCredentials> {
             return GOGAuthManager.authenticateWithCode(context, authorizationCode)
@@ -159,9 +162,9 @@ class GOGService : Service() {
             }
         }
 
-        // ==========================================================================
+        // ========================================================================== 
         // SYNC & OPERATIONS
-        // ==========================================================================
+        // ========================================================================== 
 
         fun hasActiveOperations(): Boolean {
             return syncInProgress || backgroundSyncJob?.isActive == true
@@ -175,9 +178,9 @@ class GOGService : Service() {
 
         fun getInstance(): GOGService? = instance
 
-        // ==========================================================================
+        // ========================================================================== 
         // DOWNLOAD OPERATIONS - Delegate to instance GOGManager
-        // ==========================================================================
+        // ========================================================================== 
 
         fun hasActiveDownload(): Boolean {
             return getInstance()?.activeDownloads?.isNotEmpty() ?: false
@@ -211,13 +214,13 @@ class GOGService : Service() {
             }
         }
 
-        // ==========================================================================
+        // ========================================================================== 
         // GAME & LIBRARY OPERATIONS - Delegate to instance GOGManager
-        // ==========================================================================
+        // ========================================================================== 
 
         fun getGOGGameOf(gameId: String): GOGGame? {
             return runBlocking(Dispatchers.IO) {
-                getInstance()?.gogManager?.getGameFromDbById(gameId)
+                getInstance()?.gogManager?.getGameById(gameId)
             }
         }
 
@@ -227,7 +230,7 @@ class GOGService : Service() {
 
         fun isGameInstalled(gameId: String): Boolean {
             return runBlocking(Dispatchers.IO) {
-                val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
+                val game = getInstance()?.gogManager?.getGameById(gameId)
                 if (game?.isInstalled != true) {
                     return@runBlocking false
                 }
@@ -244,7 +247,7 @@ class GOGService : Service() {
 
         fun getInstallPath(gameId: String): String? {
             return runBlocking(Dispatchers.IO) {
-                val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
+                val game = getInstance()?.gogManager?.getGameById(gameId)
                 if (game?.isInstalled == true) game.installPath else null
             }
         }
@@ -254,12 +257,13 @@ class GOGService : Service() {
                 ?: Pair(false, "Service not available")
         }
 
-        suspend fun getInstalledExe(libraryItem: LibraryItem): String {
-            return getInstance()?.gogManager?.getInstalledExe(libraryItem)
+        suspend fun getInstalledExe(context: Context, libraryItem: LibraryItem): String {
+            return getInstance()?.gogManager?.getInstalledExe(context, libraryItem)
                 ?: ""
         }
 
-        fun getGogWineStartCommand(
+        fun getWineStartCommand(
+            context: Context,
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,
             bootToContainer: Boolean,
@@ -267,8 +271,8 @@ class GOGService : Service() {
             envVars: com.winlator.core.envvars.EnvVars,
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
         ): String {
-            return getInstance()?.gogManager?.getGogWineStartCommand(
-                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
+            return getInstance()?.gogManager?.getWineStartCommand(
+                context, libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
             ) ?: "\"explorer.exe\""
         }
 
@@ -290,55 +294,21 @@ class GOGService : Service() {
             instance.scope.launch {
                 try {
                     Timber.d("[Download] Starting download for game $gameId")
-                    val commonRedistDir = File(installPath, "_CommonRedist")
-                    Timber.tag("GOG").d("Will install dependencies to _CommonRedist")
-
-                    val result = instance.gogDownloadManager.downloadGame(
-                        gameId, File(installPath),
-                        downloadInfo, "en-US", true, commonRedistDir,
-                    )
+                    val result = instance.gogManager.downloadGame(context, gameId, installPath, downloadInfo)
 
                     if (result.isFailure) {
-                        val error = result.exceptionOrNull()
-                        Timber.e(error, "[Download] Failed for game $gameId")
+                        Timber.e(result.exceptionOrNull(), "[Download] Failed for game $gameId")
                         downloadInfo.setProgress(-1.0f)
                         downloadInfo.setActive(false)
-
-                        // Show failure toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
-                        }
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
-
-                        // Show success toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download completed successfully!",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
-
-                    // Show error toast
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Download error: ${e.message ?: "Unknown error"}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
                 } finally {
                     // Remove from activeDownloads for both success and failure
                     // so UI knows download is complete and to prevent stale entries
@@ -409,7 +379,7 @@ class GOGService : Service() {
                     // Get game info
                     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                     Timber.tag("GOG").d("[Cloud Saves] Extracted game ID: $gameId from appId: $appId")
-                    val game = instance.gogManager.getGameFromDbById(gameId.toString())
+                    val game = instance.gogManager.getGameById(gameId.toString())
 
                     if (game == null) {
                         Timber.tag("GOG").e("[Cloud Saves] Game not found for appId: $appId")
@@ -443,7 +413,7 @@ class GOGService : Service() {
                                     val filesBefore = saveDir.listFiles()
                                     if (filesBefore != null && filesBefore.isNotEmpty()) {
                                         Timber.tag("GOG").i(
-                                            "[Cloud Saves] [BEFORE] ${filesBefore.size} files in '${location.name}': ${filesBefore.joinToString(", ") {
+                                            "[Cloud Saves] [BEFORE] ${filesBefore.size} files in '${location.name}': ${filesBefore.joinToString(", ") { 
                                                 it.name
                                             }}",
                                         )
@@ -458,7 +428,7 @@ class GOGService : Service() {
                             }
 
                             // Get stored timestamp for this location
-                            val timestampStr = instance.gogManager.getCloudSaveSyncTimestamp(appId, location.name)
+                            val timestampStr = instance.gogManager.getSyncTimestamp(appId, location.name)
                             val timestamp = timestampStr.toLongOrNull() ?: 0L
 
                             Timber.tag("GOG").i("[Cloud Saves] Syncing '${location.name}' for game $gameId (clientId: ${location.clientId}, path: ${location.location}, timestamp: $timestamp, action: $preferredAction)")
@@ -469,6 +439,7 @@ class GOGService : Service() {
                                 continue
                             }
 
+                            // Use Kotlin cloud saves manager instead of Python
                             val cloudSavesManager = GOGCloudSavesManager(context)
                             val newTimestamp = cloudSavesManager.syncSaves(
                                 clientId = location.clientId,
@@ -481,7 +452,7 @@ class GOGService : Service() {
 
                             if (newTimestamp > 0) {
                                 // Success - store new timestamp
-                                instance.gogManager.setCloudSaveSyncTimestamp(appId, location.name, newTimestamp.toString())
+                                instance.gogManager.setSyncTimestamp(appId, location.name, newTimestamp.toString())
                                 Timber.tag("GOG").d("[Cloud Saves] Updated timestamp for '${location.name}': $newTimestamp")
 
                                 // Log the save files in the directory after sync
@@ -543,9 +514,6 @@ class GOGService : Service() {
     @Inject
     lateinit var gogManager: GOGManager
 
-    @Inject
-    lateinit var gogDownloadManager: GOGDownloadManager
-
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Track active downloads by game ID
@@ -558,14 +526,16 @@ class GOGService : Service() {
 
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
+        val notification = notificationHelper.createForegroundNotification("GOG Service running...")
+        startForeground(2, notification)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Timber.d("[GOGService] onStartCommand() - action: ${intent?.action}")
 
-        // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification) // Use different ID than SteamService (which uses 1)
+        // Ensure foreground state is maintained
+        val notification = notificationHelper.createForegroundNotification("GOG Service active")
+        startForeground(2, notification)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -573,27 +543,10 @@ class GOGService : Service() {
                 Timber.i("[GOGService] Manual sync requested - bypassing throttle")
                 true
             }
-
             ACTION_SYNC_LIBRARY -> {
                 Timber.i("[GOGService] Automatic sync requested")
                 true
             }
-
-            null -> {
-                // Service restarted by Android with null intent (START_STICKY behavior)
-                // Only sync if we haven't done initial sync yet, or if it's been a while
-                val timeSinceLastSync = System.currentTimeMillis() - lastSyncTimestamp
-                val shouldResync = !hasPerformedInitialSync || timeSinceLastSync >= SYNC_THROTTLE_MILLIS
-
-                if (shouldResync) {
-                    Timber.i("[GOGService] Service restarted by Android - performing sync (hasPerformedInitialSync=$hasPerformedInitialSync, timeSinceLastSync=${timeSinceLastSync}ms)")
-                    true
-                } else {
-                    Timber.d("[GOGService] Service restarted by Android - skipping sync (throttled)")
-                    false
-                }
-            }
-
             else -> {
                 // Service started without sync action (e.g., just to keep it alive)
                 Timber.d("[GOGService] Service started without sync action")

@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -44,7 +43,7 @@ fun ElementEditorDialog(
     element: ControlElement,
     view: InputControlsView,
     onDismiss: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -57,7 +56,7 @@ fun ElementEditorDialog(
     // Store original bindings for restore on cancel
     val originalBindings by remember {
         mutableStateOf(
-            (0 until 4).map { element.getBindingAt(it) }
+            (0 until 4).map { element.getBindingAt(it) },
         )
     }
 
@@ -139,8 +138,8 @@ fun ElementEditorDialog(
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
-            dismissOnClickOutside = false
-        )
+            dismissOnClickOutside = false,
+        ),
     ) {
         // Show either full settings dialog or minimized size adjuster
         if (showSizeAdjuster) {
@@ -163,286 +162,290 @@ fun ElementEditorDialog(
                     currentScale = 1.0f
                     element.setScale(1.0f)
                     view.invalidate()
-                }
+                },
             )
         } else {
             // Full settings dialog
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.edit_element, element.type.name),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = stringResource(R.string.element_position_size, element.x.toInt(), element.y.toInt(), currentScale),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.edit_element, element.type.name),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = stringResource(R.string.element_position_size, element.x.toInt(), element.y.toInt(), currentScale),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                if (hasUnsavedChanges) {
+                                    showExitConfirmation = true
+                                } else {
+                                    onDismiss()
+                                }
+                            }) {
+                                Icon(Icons.Default.Close, null)
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = {
+                                // Save changes to element
+                                element.setScale(currentScale)
+                                // If currentText is empty string, set to null to use binding-based text
+                                // Otherwise use the current text value
+                                element.setText(if (currentText.isEmpty()) null else currentText)
+                                // Change type without resetting bindings
+                                if (element.type != types[currentTypeIndex]) {
+                                    element.setTypeWithoutReset(types[currentTypeIndex])
+                                }
+
+                                // Save to disk
+                                view.profile?.save()
+
+                                // Update canvas to show new bindings
+                                view.invalidate()
+
+                                // Mark as saved
+                                hasUnsavedChanges = false
+
+                                // Close dialog
+                                onSave()
+                            }) {
+                                Icon(Icons.Default.Save, null)
+                            }
+                        },
+                    )
+                },
+            ) { padding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    // Appearance Section
+                    SettingsGroup(title = { Text(stringResource(R.string.appearance)) }) {
+                        // Scale/Size - click to enter adjustment mode
+                        SettingsMenuLink(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.size)) },
+                            subtitle = { Text(stringResource(R.string.size_subtitle, currentScale)) },
+                            onClick = {
+                                showSizeAdjuster = true
+                            },
+                        )
+
+                        // Text/Label - only for BUTTON type
+                        if (element.type == ControlElement.Type.BUTTON) {
+                            SettingsTextField(
+                                colors = settingsTileColors(),
+                                title = { Text(stringResource(R.string.label_text)) },
+                                subtitle = { Text(stringResource(R.string.label_text_subtitle)) },
+                                value = currentText,
+                                onValueChange = { currentText = it },
+                                action = {
+                                    // Reset button to restore original text
+                                    IconButton(onClick = {
+                                        // Reset to initial display text (binding-based or original custom text)
+                                        currentText = initialDisplayText
+                                        element.setText(originalText)
+                                        view.invalidate()
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    }
+                                },
                             )
                         }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            if (hasUnsavedChanges) {
-                                showExitConfirmation = true
-                            } else {
-                                onDismiss()
+
+                        // Element Type
+                        val types = ControlElement.Type.values()
+                        val typeNames = types.map { it.name.replace("_", " ") }
+                        SettingsListDropdown(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.element_type)) },
+                            subtitle = { Text(stringResource(R.string.element_type_subtitle)) },
+                            value = currentTypeIndex,
+                            items = typeNames,
+                            onItemSelected = { index ->
+                                val newType = types[index]
+                                currentTypeIndex = index
+                                element.setTypeWithoutReset(newType)
+
+                                // Mark as having unsaved changes
+                                hasUnsavedChanges = true
+
+                                // Force UI refresh
+                                bindingsRefreshKey++
+                                view.invalidate()
+                            },
+                        )
+
+                        // Element Shape (with restrictions)
+                        // STICK, TRACKPAD, RANGE_BUTTON have fixed rendering shapes
+                        // D_PAD uses custom cross-shaped path and doesn't respect shape
+                        val availableShapes = when (element.type) {
+                            ControlElement.Type.STICK -> {
+                                // Stick is always rendered as CIRCLE
+                                listOf(ControlElement.Shape.CIRCLE)
                             }
-                        }) {
-                            Icon(Icons.Default.Close, null)
+                            ControlElement.Type.TRACKPAD,
+                            ControlElement.Type.RANGE_BUTTON,
+                            -> {
+                                // Trackpad and Range Button are always rendered as ROUND_RECT
+                                listOf(ControlElement.Shape.ROUND_RECT)
+                            }
+                            ControlElement.Type.D_PAD -> {
+                                // D-Pad uses custom cross-shaped path, shape doesn't affect rendering
+                                // Don't allow changing shape
+                                listOf(element.shape)
+                            }
+                            ControlElement.Type.BUTTON -> {
+                                // Buttons fully support all shapes
+                                ControlElement.Shape.values().toList()
+                            }
+                            else -> ControlElement.Shape.values().toList()
                         }
-                    },
-                    actions = {
-                        IconButton(onClick = {
-                            // Save changes to element
-                            element.setScale(currentScale)
-                            // If currentText is empty string, set to null to use binding-based text
-                            // Otherwise use the current text value
-                            element.setText(if (currentText.isEmpty()) null else currentText)
-                            // Change type without resetting bindings
-                            if (element.type != types[currentTypeIndex]) {
-                                element.setTypeWithoutReset(types[currentTypeIndex])
-                            }
 
-                            // Save to disk
-                            view.profile?.save()
-
-                            // Update canvas to show new bindings
-                            view.invalidate()
-
-                            // Mark as saved
-                            hasUnsavedChanges = false
-
-                            // Close dialog
-                            onSave()
-                        }) {
-                            Icon(Icons.Default.Save, null)
+                        if (availableShapes.size > 1) {
+                            val shapeNames = availableShapes.map { it.name.replace("_", " ") }
+                            val currentShapeIndexInList = availableShapes.indexOf(element.shape).coerceAtLeast(0)
+                            SettingsListDropdown(
+                                colors = settingsTileColors(),
+                                title = { Text(stringResource(R.string.shape)) },
+                                subtitle = { Text(stringResource(R.string.shape_subtitle)) },
+                                value = currentShapeIndexInList,
+                                items = shapeNames,
+                                onItemSelected = { index ->
+                                    element.shape = availableShapes[index]
+                                    view.invalidate()
+                                },
+                            )
+                        } else if (availableShapes.size == 1 && element.type != ControlElement.Type.D_PAD) {
+                            // Show info for restricted types (but not D-PAD since it's obvious)
+                            SettingsMenuLink(
+                                colors = settingsTileColors(),
+                                title = { Text(stringResource(R.string.shape)) },
+                                subtitle = {
+                                    Text(stringResource(R.string.shape_restricted, element.type.name, availableShapes[0].name.replace("_", " ")))
+                                },
+                                enabled = false,
+                                onClick = {},
+                            )
                         }
                     }
-                )
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Appearance Section
-                SettingsGroup(title = { Text(stringResource(R.string.appearance)) }) {
-                    // Scale/Size - click to enter adjustment mode
-                    SettingsMenuLink(
-                        colors = settingsTileColors(),
-                        title = { Text(stringResource(R.string.size)) },
-                        subtitle = { Text(stringResource(R.string.size_subtitle, currentScale)) },
-                        onClick = {
-                            showSizeAdjuster = true
-                        }
-                    )
 
-                    // Text/Label - only for BUTTON type
-                    if (element.type == ControlElement.Type.BUTTON) {
-                        SettingsTextField(
-                            colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.label_text)) },
-                            subtitle = { Text(stringResource(R.string.label_text_subtitle)) },
-                            value = currentText,
-                            onValueChange = { currentText = it },
-                            action = {
-                                // Reset button to restore original text
-                                IconButton(onClick = {
-                                    // Reset to initial display text (binding-based or original custom text)
-                                    currentText = initialDisplayText
-                                    element.setText(originalText)
-                                    view.invalidate()
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
+                    // Bindings Section
+                    // Use key() with bindingsRefreshKey to force recomposition when bindings change
+                    key(bindingsRefreshKey) {
+                        SettingsGroup(title = { Text(stringResource(R.string.bindings)) }) {
+                            // Quick Presets for directional controls (D-Pad and Stick only)
+                            if (element.type == ControlElement.Type.D_PAD || element.type == ControlElement.Type.STICK) {
+                                VirtualControlPresets(
+                                    element = element,
+                                    view = view,
+                                    onPresetsApplied = {
+                                        // Mark as having unsaved changes
+                                        hasUnsavedChanges = true
+                                        // Force UI refresh after presets are applied
+                                        bindingsRefreshKey++
+                                    },
+                                )
+                            }
+
+                            if (element.type == ControlElement.Type.RANGE_BUTTON) {
+                                SettingsMenuLink(
+                                    colors = settingsTileColors(),
+                                    title = { Text(stringResource(R.string.bindings_auto_generated)) },
+                                    subtitle = { Text(stringResource(R.string.bindings_auto_generated_subtitle)) },
+                                    enabled = false,
+                                    onClick = {},
+                                )
+                            } else {
+                                val bindingCount = when (element.type) {
+                                    ControlElement.Type.BUTTON -> 2
+                                    else -> 4
+                                }
+
+                                for (i in 0 until bindingCount) {
+                                    val binding = element.getBindingAt(i)
+                                    val bindingName = binding?.toString() ?: "NONE"
+
+                                    val slotLabel = when (element.type) {
+                                        ControlElement.Type.BUTTON -> {
+                                            stringResource(if (i == 0) R.string.primary_action else R.string.secondary_action)
+                                        }
+                                        ControlElement.Type.D_PAD,
+                                        ControlElement.Type.STICK,
+                                        -> {
+                                            val directionResId = when (i) {
+                                                0 -> R.string.direction_up
+                                                1 -> R.string.direction_right
+                                                2 -> R.string.direction_down
+                                                else -> R.string.direction_left
+                                            }
+                                            stringResource(directionResId)
+                                        }
+                                        ControlElement.Type.TRACKPAD -> {
+                                            val directionResId = when (i) {
+                                                0 -> R.string.direction_up
+                                                1 -> R.string.direction_right
+                                                2 -> R.string.direction_down
+                                                else -> R.string.direction_left
+                                            }
+                                            stringResource(directionResId) + stringResource(R.string.mouse_suffix)
+                                        }
+                                        else -> stringResource(R.string.slot_number, i + 1)
+                                    }
+
+                                    SettingsMenuLink(
+                                        colors = settingsTileColors(),
+                                        title = { Text(slotLabel) },
+                                        subtitle = { Text(bindingName) },
+                                        onClick = {
+                                            bindingSlotToEdit = Pair(i, slotLabel)
+                                        },
+                                    )
+                                }
+
+                                // Helper text for buttons
+                                if (element.type == ControlElement.Type.BUTTON) {
+                                    Text(
+                                        text = stringResource(R.string.button_slots_help),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(16.dp),
                                     )
                                 }
                             }
-                        )
+                        }
                     }
 
-                    // Element Type
-                    val types = ControlElement.Type.values()
-                    val typeNames = types.map { it.name.replace("_", " ") }
-                    SettingsListDropdown(
-                        colors = settingsTileColors(),
-                        title = { Text(stringResource(R.string.element_type)) },
-                        subtitle = { Text(stringResource(R.string.element_type_subtitle)) },
-                        value = currentTypeIndex,
-                        items = typeNames,
-                        onItemSelected = { index ->
-                            val newType = types[index]
-                            currentTypeIndex = index
-                            element.setTypeWithoutReset(newType)
-
-                            // Mark as having unsaved changes
-                            hasUnsavedChanges = true
-
-                            // Force UI refresh
-                            bindingsRefreshKey++
-                            view.invalidate()
-                        }
-                    )
-
-                    // Element Shape (with restrictions)
-                    // STICK, TRACKPAD, RANGE_BUTTON have fixed rendering shapes
-                    // D_PAD uses custom cross-shaped path and doesn't respect shape
-                    val availableShapes = when (element.type) {
-                        ControlElement.Type.STICK -> {
-                            // Stick is always rendered as CIRCLE
-                            listOf(ControlElement.Shape.CIRCLE)
-                        }
-                        ControlElement.Type.TRACKPAD,
-                        ControlElement.Type.RANGE_BUTTON -> {
-                            // Trackpad and Range Button are always rendered as ROUND_RECT
-                            listOf(ControlElement.Shape.ROUND_RECT)
-                        }
-                        ControlElement.Type.D_PAD -> {
-                            // D-Pad uses custom cross-shaped path, shape doesn't affect rendering
-                            // Don't allow changing shape
-                            listOf(element.shape)
-                        }
-                        ControlElement.Type.BUTTON -> {
-                            // Buttons fully support all shapes
-                            ControlElement.Shape.values().toList()
-                        }
-                        else -> ControlElement.Shape.values().toList()
-                    }
-
-                    if (availableShapes.size > 1) {
-                        val shapeNames = availableShapes.map { it.name.replace("_", " ") }
-                        val currentShapeIndexInList = availableShapes.indexOf(element.shape).coerceAtLeast(0)
-                        SettingsListDropdown(
-                            colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.shape)) },
-                            subtitle = { Text(stringResource(R.string.shape_subtitle)) },
-                            value = currentShapeIndexInList,
-                            items = shapeNames,
-                            onItemSelected = { index ->
-                                element.shape = availableShapes[index]
-                                view.invalidate()
-                            }
-                        )
-                    } else if (availableShapes.size == 1 && element.type != ControlElement.Type.D_PAD) {
-                        // Show info for restricted types (but not D-PAD since it's obvious)
+                    // Properties Section
+                    SettingsGroup(title = { Text(stringResource(R.string.properties)) }) {
                         SettingsMenuLink(
                             colors = settingsTileColors(),
-                            title = { Text(stringResource(R.string.shape)) },
-                            subtitle = { Text(stringResource(R.string.shape_restricted, element.type.name, availableShapes[0].name.replace("_", " "))) },
+                            title = { Text(stringResource(R.string.position)) },
+                            subtitle = { Text(stringResource(R.string.position_value, element.x, element.y)) },
                             enabled = false,
-                            onClick = {}
+                            onClick = {},
                         )
                     }
                 }
-
-                // Bindings Section
-                // Use key() with bindingsRefreshKey to force recomposition when bindings change
-                key(bindingsRefreshKey) {
-                    SettingsGroup(title = { Text(stringResource(R.string.bindings)) }) {
-                        // Quick Presets for directional controls (D-Pad and Stick only)
-                        if (element.type == ControlElement.Type.D_PAD || element.type == ControlElement.Type.STICK) {
-                            VirtualControlPresets(
-                                element = element,
-                                view = view,
-                                onPresetsApplied = {
-                                    // Mark as having unsaved changes
-                                    hasUnsavedChanges = true
-                                    // Force UI refresh after presets are applied
-                                    bindingsRefreshKey++
-                                }
-                            )
-                        }
-
-                        if (element.type == ControlElement.Type.RANGE_BUTTON) {
-                            SettingsMenuLink(
-                                colors = settingsTileColors(),
-                                title = { Text(stringResource(R.string.bindings_auto_generated)) },
-                                subtitle = { Text(stringResource(R.string.bindings_auto_generated_subtitle)) },
-                                enabled = false,
-                                onClick = {}
-                            )
-                        } else {
-                            val bindingCount = when (element.type) {
-                                ControlElement.Type.BUTTON -> 2
-                                else -> 4
-                            }
-
-                            for (i in 0 until bindingCount) {
-                                val binding = element.getBindingAt(i)
-                                val bindingName = binding?.toString() ?: "NONE"
-
-                                val slotLabel = when (element.type) {
-                                    ControlElement.Type.BUTTON -> {
-                                        stringResource(if (i == 0) R.string.primary_action else R.string.secondary_action)
-                                    }
-                                    ControlElement.Type.D_PAD,
-                                    ControlElement.Type.STICK -> {
-                                        val directionResId = when (i) {
-                                            0 -> R.string.direction_up
-                                            1 -> R.string.direction_right
-                                            2 -> R.string.direction_down
-                                            else -> R.string.direction_left
-                                        }
-                                        stringResource(directionResId)
-                                    }
-                                    ControlElement.Type.TRACKPAD -> {
-                                        val directionResId = when (i) {
-                                            0 -> R.string.direction_up
-                                            1 -> R.string.direction_right
-                                            2 -> R.string.direction_down
-                                            else -> R.string.direction_left
-                                        }
-                                        stringResource(directionResId) + stringResource(R.string.mouse_suffix)
-                                    }
-                                    else -> stringResource(R.string.slot_number, i + 1)
-                                }
-
-                                SettingsMenuLink(
-                                    colors = settingsTileColors(),
-                                    title = { Text(slotLabel) },
-                                    subtitle = { Text(bindingName) },
-                                    onClick = {
-                                        bindingSlotToEdit = Pair(i, slotLabel)
-                                    }
-                                )
-                            }
-
-                            // Helper text for buttons
-                            if (element.type == ControlElement.Type.BUTTON) {
-                                Text(
-                                    text = stringResource(R.string.button_slots_help),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Properties Section
-                SettingsGroup(title = { Text(stringResource(R.string.properties)) }) {
-                    SettingsMenuLink(
-                        colors = settingsTileColors(),
-                        title = { Text(stringResource(R.string.position)) },
-                        subtitle = { Text(stringResource(R.string.position_value, element.x, element.y)) },
-                        enabled = false,
-                        onClick = {}
-                    )
-                }
             }
-        }
         }
     }
 
@@ -468,7 +471,9 @@ fun ElementEditorDialog(
                 if (element.type == ControlElement.Type.BUTTON && slotIndex == 0) {
                     // Check if custom text is empty or same as old binding text
                     val customText = element.text
-                    if (customText.isNullOrEmpty() || customText == currentBinding?.toString()?.replace("NUMPAD ", "NP")?.replace("BUTTON ", "")) {
+                    if (customText.isNullOrEmpty() ||
+                        customText == currentBinding?.toString()?.replace("NUMPAD ", "NP")?.replace("BUTTON ", "")
+                    ) {
                         // Clear custom text so new binding text will show
                         element.setText(null)
 
@@ -499,7 +504,7 @@ fun ElementEditorDialog(
 
                 // Force UI refresh to show updated binding in list
                 bindingsRefreshKey++
-            }
+            },
         )
     }
 
@@ -545,7 +550,7 @@ fun ElementEditorDialog(
                 }) {
                     Text(stringResource(R.string.discard))
                 }
-            }
+            },
         )
     }
 }
@@ -563,7 +568,7 @@ private fun SizeAdjusterOverlay(
     onScaleChange: (Float) -> Unit,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
 ) {
     // Determine if element is in top or bottom half of screen
     // Coordinates are in actual screen pixels (not normalized)
@@ -577,7 +582,7 @@ private fun SizeAdjusterOverlay(
 
     // Full screen transparent overlay
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ) {
         // Position slider opposite to element location - more compact and transparent
         Surface(
@@ -588,27 +593,27 @@ private fun SizeAdjusterOverlay(
                 .padding(16.dp),
             shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-            tonalElevation = 4.dp
+            tonalElevation = 4.dp,
         ) {
             Column(
                 modifier = Modifier
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 // Title and current scale
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = stringResource(R.string.adjust_size),
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
                     )
                     Text(
                         text = String.format("%.2fx", currentScale),
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                     )
                 }
 
@@ -619,13 +624,13 @@ private fun SizeAdjusterOverlay(
                     valueRange = 0.1f..5.0f,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(32.dp)
+                        .height(32.dp),
                 )
 
                 // All 4 buttons in one row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     // Copy Size button
                     OutlinedButton(
@@ -636,12 +641,12 @@ private fun SizeAdjusterOverlay(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.FileCopy,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(14.dp),
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(stringResource(R.string.copy), style = MaterialTheme.typography.labelSmall)
@@ -651,7 +656,7 @@ private fun SizeAdjusterOverlay(
                     OutlinedButton(
                         onClick = onReset,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                     ) {
                         Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                     }
@@ -660,12 +665,12 @@ private fun SizeAdjusterOverlay(
                     OutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(14.dp),
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelSmall)
@@ -675,12 +680,12 @@ private fun SizeAdjusterOverlay(
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(14.dp),
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(stringResource(R.string.done), style = MaterialTheme.typography.labelSmall)
@@ -698,7 +703,7 @@ private fun showCopySizeDialog(
     context: android.content.Context,
     currentElement: ControlElement,
     view: InputControlsView,
-    onSizeCopied: (Float) -> Unit
+    onSizeCopied: (Float) -> Unit,
 ) {
     val profile = view.profile ?: return
     val elements = profile.getElements()
@@ -710,7 +715,7 @@ private fun showCopySizeDialog(
         android.widget.Toast.makeText(
             context,
             context.getString(R.string.toast_no_elements_to_copy),
-            android.widget.Toast.LENGTH_SHORT
+            android.widget.Toast.LENGTH_SHORT,
         ).show()
         return
     }
@@ -744,7 +749,7 @@ private fun showCopySizeDialog(
             android.widget.Toast.makeText(
                 context,
                 context.getString(R.string.toast_copied_size, selectedElement.scale),
-                android.widget.Toast.LENGTH_SHORT
+                android.widget.Toast.LENGTH_SHORT,
             ).show()
         }
         .setNegativeButton(context.getString(R.string.cancel), null)
@@ -758,32 +763,32 @@ private fun showCopySizeDialog(
 private fun VirtualControlPresets(
     element: ControlElement,
     view: InputControlsView,
-    onPresetsApplied: () -> Unit = {}
+    onPresetsApplied: () -> Unit = {},
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             val context = LocalContext.current
             Text(
                 text = stringResource(R.string.quick_presets),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
 
             // Keyboard layouts
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 OutlinedButton(
                     onClick = {
@@ -791,7 +796,7 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                 ) {
                     Text(stringResource(R.string.preset_wasd), style = MaterialTheme.typography.labelSmall)
                 }
@@ -801,7 +806,7 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                 ) {
                     Text(stringResource(R.string.preset_arrows), style = MaterialTheme.typography.labelSmall)
                 }
@@ -811,7 +816,7 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                 ) {
                     Text(stringResource(R.string.preset_mouse), style = MaterialTheme.typography.labelSmall)
                 }
@@ -820,7 +825,7 @@ private fun VirtualControlPresets(
             // Gamepad modes
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 OutlinedButton(
                     onClick = {
@@ -828,7 +833,7 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                 ) {
                     Text(stringResource(R.string.preset_dpad), style = MaterialTheme.typography.labelSmall)
                 }
@@ -838,7 +843,7 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                 ) {
                     Text(stringResource(R.string.preset_left_stick), style = MaterialTheme.typography.labelSmall)
                 }
@@ -848,7 +853,7 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                 ) {
                     Text(stringResource(R.string.preset_right_stick), style = MaterialTheme.typography.labelSmall)
                 }
@@ -861,7 +866,12 @@ private fun VirtualControlPresets(
  * Preset types for virtual control bindings
  */
 private enum class VirtualPresetType {
-    WASD, ARROW_KEYS, MOUSE_MOVE, DPAD, LEFT_STICK, RIGHT_STICK
+    WASD,
+    ARROW_KEYS,
+    MOUSE_MOVE,
+    DPAD,
+    LEFT_STICK,
+    RIGHT_STICK,
 }
 
 /**
@@ -870,7 +880,7 @@ private enum class VirtualPresetType {
 private fun applyVirtualPreset(
     element: ControlElement,
     presetType: VirtualPresetType,
-    view: InputControlsView
+    view: InputControlsView,
 ) {
     // Define bindings for each preset (Up, Right, Down, Left order)
     val bindings = when (presetType) {
@@ -878,37 +888,37 @@ private fun applyVirtualPreset(
             com.winlator.inputcontrols.Binding.KEY_W,
             com.winlator.inputcontrols.Binding.KEY_D,
             com.winlator.inputcontrols.Binding.KEY_S,
-            com.winlator.inputcontrols.Binding.KEY_A
+            com.winlator.inputcontrols.Binding.KEY_A,
         )
         VirtualPresetType.ARROW_KEYS -> listOf(
             com.winlator.inputcontrols.Binding.KEY_UP,
             com.winlator.inputcontrols.Binding.KEY_RIGHT,
             com.winlator.inputcontrols.Binding.KEY_DOWN,
-            com.winlator.inputcontrols.Binding.KEY_LEFT
+            com.winlator.inputcontrols.Binding.KEY_LEFT,
         )
         VirtualPresetType.MOUSE_MOVE -> listOf(
             com.winlator.inputcontrols.Binding.MOUSE_MOVE_UP,
             com.winlator.inputcontrols.Binding.MOUSE_MOVE_RIGHT,
             com.winlator.inputcontrols.Binding.MOUSE_MOVE_DOWN,
-            com.winlator.inputcontrols.Binding.MOUSE_MOVE_LEFT
+            com.winlator.inputcontrols.Binding.MOUSE_MOVE_LEFT,
         )
         VirtualPresetType.DPAD -> listOf(
             com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_UP,
             com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_RIGHT,
             com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_DOWN,
-            com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_LEFT
+            com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_LEFT,
         )
         VirtualPresetType.LEFT_STICK -> listOf(
             com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_UP,
             com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_RIGHT,
             com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_DOWN,
-            com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_LEFT
+            com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_LEFT,
         )
         VirtualPresetType.RIGHT_STICK -> listOf(
             com.winlator.inputcontrols.Binding.GAMEPAD_RIGHT_THUMB_UP,
             com.winlator.inputcontrols.Binding.GAMEPAD_RIGHT_THUMB_RIGHT,
             com.winlator.inputcontrols.Binding.GAMEPAD_RIGHT_THUMB_DOWN,
-            com.winlator.inputcontrols.Binding.GAMEPAD_RIGHT_THUMB_LEFT
+            com.winlator.inputcontrols.Binding.GAMEPAD_RIGHT_THUMB_LEFT,
         )
     }
 
@@ -931,26 +941,26 @@ private fun getDefaultBindingsForType(type: ControlElement.Type): List<com.winla
             com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_UP,
             com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_RIGHT,
             com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_DOWN,
-            com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_LEFT
+            com.winlator.inputcontrols.Binding.GAMEPAD_DPAD_LEFT,
         )
         ControlElement.Type.STICK -> listOf(
             com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_UP,
             com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_RIGHT,
             com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_DOWN,
-            com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_LEFT
+            com.winlator.inputcontrols.Binding.GAMEPAD_LEFT_THUMB_LEFT,
         )
         ControlElement.Type.TRACKPAD -> listOf(
             com.winlator.inputcontrols.Binding.MOUSE_MOVE_UP,
             com.winlator.inputcontrols.Binding.MOUSE_MOVE_RIGHT,
             com.winlator.inputcontrols.Binding.MOUSE_MOVE_DOWN,
-            com.winlator.inputcontrols.Binding.MOUSE_MOVE_LEFT
+            com.winlator.inputcontrols.Binding.MOUSE_MOVE_LEFT,
         )
         // BUTTON and RANGE_BUTTON get no defaults
         else -> listOf(
             com.winlator.inputcontrols.Binding.NONE,
             com.winlator.inputcontrols.Binding.NONE,
             com.winlator.inputcontrols.Binding.NONE,
-            com.winlator.inputcontrols.Binding.NONE
+            com.winlator.inputcontrols.Binding.NONE,
         )
     }
 }

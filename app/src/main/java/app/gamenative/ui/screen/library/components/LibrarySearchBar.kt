@@ -36,8 +36,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
-import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryItem
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
@@ -70,7 +70,7 @@ internal fun LibrarySearchBar(
     }
 
     // Prevent focus by default, so it doesn't scoop up every controller input for focus
-    val allowFocusing = remember { mutableStateOf(false)  }
+    val allowFocusing = remember { mutableStateOf(false) }
 
     // Modern search field with rounded corners
     Box(
@@ -78,12 +78,12 @@ internal fun LibrarySearchBar(
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null
+                indication = null,
             ) {
                 // When tapped, allow and request focus
                 allowFocusing.value = true
             },
-        contentAlignment = Alignment.CenterStart
+        contentAlignment = Alignment.CenterStart,
     ) {
         TextField(
             value = state.searchQuery,
@@ -96,14 +96,14 @@ internal fun LibrarySearchBar(
             placeholder = {
                 Text(
                     text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
             trailingIcon = {
@@ -114,9 +114,9 @@ internal fun LibrarySearchBar(
                             Icon(
                                 Icons.Default.Clear,
                                 contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                        }
+                        },
                     )
                 }
             },
@@ -128,7 +128,7 @@ internal fun LibrarySearchBar(
             ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
         )
     }
 

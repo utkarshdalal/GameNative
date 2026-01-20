@@ -9,9 +9,7 @@ import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
-import com.winlator.inputcontrols.GamepadState
 import com.winlator.math.Mathf
-import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.XServer
 import java.util.Timer
 import java.util.TimerTask
@@ -23,7 +21,7 @@ import java.util.TimerTask
 class PhysicalControllerHandler(
     private var profile: ControlsProfile?,
     private val xServer: XServer?,
-    private val onOpenNavigationMenu: (() -> Unit)? = null
+    private val onOpenNavigationMenu: (() -> Unit)? = null,
 ) {
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
@@ -85,7 +83,7 @@ class PhysicalControllerHandler(
                 if (controllerBinding != null) {
                     handleInputEvent(
                         controllerBinding.binding,
-                        controller.state.isPressed(ExternalController.IDX_BUTTON_L2.toInt())
+                        controller.state.isPressed(ExternalController.IDX_BUTTON_L2.toInt()),
                     )
                 }
 
@@ -93,7 +91,7 @@ class PhysicalControllerHandler(
                 if (controllerBinding != null) {
                     handleInputEvent(
                         controllerBinding.binding,
-                        controller.state.isPressed(ExternalController.IDX_BUTTON_R2.toInt())
+                        controller.state.isPressed(ExternalController.IDX_BUTTON_R2.toInt()),
                     )
                 }
 
@@ -112,19 +110,22 @@ class PhysicalControllerHandler(
     private fun createMouseMoveTimer() {
         if (profile != null && mouseMoveTimer == null) {
             mouseMoveTimer = Timer()
-            mouseMoveTimer?.schedule(object : TimerTask() {
-                override fun run() {
-                    // Skip injection if movement is below 8% deadzone to save CPU cycles
-                    val magnitude = Math.sqrt((mouseMoveOffset.x * mouseMoveOffset.x + mouseMoveOffset.y * mouseMoveOffset.y).toDouble())
-                    if (magnitude < 0.08) return
+            mouseMoveTimer?.schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        // Skip injection if movement is below 8% deadzone to save CPU cycles
+                        val magnitude = Math.sqrt((mouseMoveOffset.x * mouseMoveOffset.x + mouseMoveOffset.y * mouseMoveOffset.y).toDouble())
+                        if (magnitude < 0.08) return
 
-                    // Look up cursor speed dynamically so it updates when profile changes
-                    val cursorSpeed = profile?.cursorSpeed ?: 1f
-                    val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
-                    val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
-                    xServer?.injectPointerMoveDelta(deltaX, deltaY)
-                }
-            }, 0, 1000 / 60)
+                        // Look up cursor speed dynamically so it updates when profile changes
+                        val cursorSpeed = profile?.cursorSpeed ?: 1f
+                        val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
+                        val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
+                        xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                    }
+                },
+                0, 1000 / 60,
+            )
         }
     }
 
@@ -142,7 +143,7 @@ class PhysicalControllerHandler(
             MotionEvent.AXIS_Z,
             MotionEvent.AXIS_RZ,
             MotionEvent.AXIS_HAT_X,
-            MotionEvent.AXIS_HAT_Y
+            MotionEvent.AXIS_HAT_Y,
         )
         val values = floatArrayOf(
             controller.state.thumbLX,
@@ -150,7 +151,7 @@ class PhysicalControllerHandler(
             controller.state.thumbRX,
             controller.state.thumbRY,
             controller.state.dPadX.toFloat(),
-            controller.state.dPadY.toFloat()
+            controller.state.dPadY.toFloat(),
         )
 
         for (i in axes.indices) {
@@ -163,13 +164,13 @@ class PhysicalControllerHandler(
                 }
             } else {
                 controllerBinding = controller.getControllerBinding(
-                    ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
+                    ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte()),
                 )
                 if (controllerBinding != null) {
                     handleInputEvent(controllerBinding.binding, false, values[i])
                 }
                 controllerBinding = controller.getControllerBinding(
-                    ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte())
+                    ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte()),
                 )
                 if (controllerBinding != null) {
                     handleInputEvent(controllerBinding.binding, false, values[i])
@@ -216,7 +217,8 @@ class PhysicalControllerHandler(
                             state.thumbRX = if (isActionDown) offset else 0f
                         }
                         Binding.GAMEPAD_DPAD_UP, Binding.GAMEPAD_DPAD_RIGHT,
-                        Binding.GAMEPAD_DPAD_DOWN, Binding.GAMEPAD_DPAD_LEFT -> {
+                        Binding.GAMEPAD_DPAD_DOWN, Binding.GAMEPAD_DPAD_LEFT,
+                        -> {
                             state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
                         }
                         else -> {}
@@ -242,7 +244,13 @@ class PhysicalControllerHandler(
             } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 // Handle horizontal mouse movement - ADD contribution from this input
                 if (isActionDown) {
-                    val contribution = if (offset != 0f) offset else if (binding == Binding.MOUSE_MOVE_LEFT) -1f else 1f
+                    val contribution = if (offset != 0f) {
+                        offset
+                    } else if (binding == Binding.MOUSE_MOVE_LEFT) {
+                        -1f
+                    } else {
+                        1f
+                    }
                     mouseMoveOffset.x += contribution
                     createMouseMoveTimer()
                 }
@@ -250,7 +258,13 @@ class PhysicalControllerHandler(
             } else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
                 // Handle vertical mouse movement - ADD contribution from this input
                 if (isActionDown) {
-                    val contribution = if (offset != 0f) offset else if (binding == Binding.MOUSE_MOVE_UP) -1f else 1f
+                    val contribution = if (offset != 0f) {
+                        offset
+                    } else if (binding == Binding.MOUSE_MOVE_UP) {
+                        -1f
+                    } else {
+                        1f
+                    }
                     mouseMoveOffset.y += contribution
                     createMouseMoveTimer()
                 }

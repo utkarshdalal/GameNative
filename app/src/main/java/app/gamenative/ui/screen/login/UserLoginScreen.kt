@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.login
 
+import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -61,12 +63,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -78,7 +82,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.Constants
 import app.gamenative.R
 import app.gamenative.enums.LoginResult
@@ -87,24 +92,14 @@ import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.UserLoginState
 import app.gamenative.ui.model.UserLoginViewModel
 import app.gamenative.ui.theme.PluviaTheme
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import app.gamenative.ui.enums.Orientation
-import app.gamenative.PluviaApp
-import app.gamenative.events.AndroidEvent
-import java.util.EnumSet
-import android.content.Context
-import androidx.compose.material3.FilledTonalButton
-import app.gamenative.PrefManager
 
 @Composable
 fun UserLoginScreen(
-    viewModel: UserLoginViewModel = viewModel(),
+    viewModel: UserLoginViewModel = hiltViewModel(),
     onContinueOffline: () -> Unit,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
-    val userLoginState by viewModel.loginState.collectAsState()
+    val userLoginState by viewModel.loginState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.snackEvents.collect { message ->
@@ -155,12 +150,12 @@ private fun UserLoginScreenContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .imePadding()
+            .imePadding(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
         ) {
             // Header
             Row(
@@ -168,7 +163,7 @@ private fun UserLoginScreenContent(
                     .fillMaxWidth()
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Logo
                 Text(
@@ -176,9 +171,9 @@ private fun UserLoginScreenContent(
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         brush = Brush.horizontalGradient(
-                            colors = listOf(primaryColor, tertiaryColor)
-                        )
-                    )
+                            colors = listOf(primaryColor, tertiaryColor),
+                        ),
+                    ),
                 )
 
                 // Privacy Policy Button
@@ -186,11 +181,11 @@ private fun UserLoginScreenContent(
                 TextButton(
                     onClick = { uriHandler.openUri(Constants.Misc.PRIVACY_LINK) },
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.login_privacy_policy),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -200,12 +195,12 @@ private fun UserLoginScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 // SnackBar
                 SnackbarHost(
                     hostState = snackBarHostState,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
 
                 if (
@@ -220,10 +215,10 @@ private fun UserLoginScreenContent(
                             .width(400.dp)
                             .heightIn(min = 450.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
                         ),
                         border = BorderStroke(1.dp, primaryColor.copy(alpha = 0.2f)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
                     ) {
                         // Top gradient border
                         Box(
@@ -232,9 +227,9 @@ private fun UserLoginScreenContent(
                                 .height(2.dp)
                                 .background(
                                     brush = Brush.horizontalGradient(
-                                        colors = listOf(primaryColor, tertiaryColor, primaryColor)
-                                    )
-                                )
+                                        colors = listOf(primaryColor, tertiaryColor, primaryColor),
+                                    ),
+                                ),
                         )
 
                         // Make the content scrollable
@@ -250,9 +245,9 @@ private fun UserLoginScreenContent(
                             Text(
                                 text = stringResource(R.string.login_welcome_back),
                                 style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
                                 ),
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
 
                             // Subtitle
@@ -260,7 +255,7 @@ private fun UserLoginScreenContent(
                                 text = stringResource(R.string.login_subtitle),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 24.dp)
+                                modifier = Modifier.padding(bottom = 24.dp),
                             )
 
                             // Tab selection between Credentials and QR Code
@@ -269,7 +264,7 @@ private fun UserLoginScreenContent(
                                     when (userLoginState.loginScreen) {
                                         LoginScreen.QR -> 1
                                         else -> 0
-                                    }
+                                    },
                                 )
                             }
 
@@ -285,10 +280,10 @@ private fun UserLoginScreenContent(
                                         TabRowDefaults.Indicator(
                                             modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
                                             height = 3.dp,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
                                     }
-                                }
+                                },
                             ) {
                                 Tab(
                                     selected = selectedTabIndex == 0,
@@ -299,12 +294,13 @@ private fun UserLoginScreenContent(
                                     text = {
                                         Text(
                                             "Credentials",
-                                            color = if (selectedTabIndex == 0)
+                                            color = if (selectedTabIndex == 0) {
                                                 MaterialTheme.colorScheme.primary
-                                            else
+                                            } else {
                                                 MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
                                         )
-                                    }
+                                    },
                                 )
                                 Tab(
                                     selected = selectedTabIndex == 1,
@@ -315,12 +311,13 @@ private fun UserLoginScreenContent(
                                     text = {
                                         Text(
                                             "QR Code",
-                                            color = if (selectedTabIndex == 1)
+                                            color = if (selectedTabIndex == 1) {
                                                 MaterialTheme.colorScheme.primary
-                                            else
+                                            } else {
                                                 MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
                                         )
-                                    }
+                                    },
                                 )
                             }
 
@@ -329,12 +326,12 @@ private fun UserLoginScreenContent(
                             // Content based on selected tab
                             Crossfade(
                                 targetState = userLoginState.loginScreen,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) { screen ->
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .heightIn(min = 350.dp)
+                                        .heightIn(min = 350.dp),
                                 ) {
                                     when (screen) {
                                         LoginScreen.CREDENTIAL -> {
@@ -383,7 +380,7 @@ private fun UserLoginScreenContent(
                                             ModernQRCode(
                                                 isQrFailed = userLoginState.isQrFailed,
                                                 qrCode = userLoginState.qrCode,
-                                                onQrRetry = onQrRetry
+                                                onQrRetry = onQrRetry,
                                             )
                                         }
                                     }
@@ -434,7 +431,7 @@ private fun ModernUsernamePassword(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 16.dp),
         ) {
             if (!isSteamConnected) {
                 Row(
@@ -442,29 +439,28 @@ private fun ModernUsernamePassword(
                         .fillMaxWidth()
                         .padding(vertical = 16.dp),
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .border(
                                 BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = RoundedCornerShape(16.dp),
                             )
-                            .padding(24.dp) // Padding inside the border
+                            .padding(24.dp), // Padding inside the border
                     ) {
                         Text(stringResource(R.string.no_connection_to_steam), color = Color.White)
                         Box(contentAlignment = Alignment.Center) {
-                            OutlinedButton (
+                            OutlinedButton(
                                 onClick = { onRetryConnection(context) },
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     // transparent container keeps the outline style
                                     containerColor = Color.Transparent,
                                     // secondary-style text instead of primary
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                            {
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
+                            ) {
                                 Text(stringResource(R.string.retry_steam_connection))
                             }
                         }
@@ -483,7 +479,7 @@ private fun ModernUsernamePassword(
                 text = stringResource(R.string.login_username),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             OutlinedTextField(
@@ -495,21 +491,21 @@ private fun ModernUsernamePassword(
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
                     )
                     .focusRequester(usernameFocusRequester),
                 placeholder = {
                     Text(
                         "Enter your Steam username",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
                 },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
+                    imeAction = ImeAction.Next,
                 ),
                 keyboardActions = KeyboardActions(
-                    onNext = { passwordFocusRequester.requestFocus() }
+                    onNext = { passwordFocusRequester.requestFocus() },
                 ),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -518,8 +514,8 @@ private fun ModernUsernamePassword(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                )
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         }
 
@@ -527,13 +523,13 @@ private fun ModernUsernamePassword(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 16.dp),
         ) {
             Text(
                 text = stringResource(R.string.login_password),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             OutlinedTextField(
@@ -545,25 +541,25 @@ private fun ModernUsernamePassword(
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
                     )
                     .focusRequester(passwordFocusRequester),
                 placeholder = {
                     Text(
                         "Enter your password",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
                         keyboardController?.hide()
                         onLoginBtnClick()
-                    }
+                    },
                 ),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -572,7 +568,7 @@ private fun ModernUsernamePassword(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                 ),
                 trailingIcon = {
                     val image = if (passwordVisible) {
@@ -587,10 +583,10 @@ private fun ModernUsernamePassword(
                         Icon(
                             imageVector = image,
                             contentDescription = description,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
+                },
             )
         }
 
@@ -599,7 +595,7 @@ private fun ModernUsernamePassword(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Checkbox(
                 checked = rememberSession,
@@ -608,7 +604,7 @@ private fun ModernUsernamePassword(
             Text(
                 text = stringResource(R.string.login_remember_session),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -627,16 +623,15 @@ private fun ModernUsernamePassword(
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
-                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-            )
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            ),
         ) {
             Text(
                 text = stringResource(R.string.login_sign_in),
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimary
+                color = MaterialTheme.colorScheme.onPrimary,
             )
         }
-
     }
 }
 
@@ -644,7 +639,7 @@ private fun ModernUsernamePassword(
 private fun ModernQRCode(
     isQrFailed: Boolean,
     qrCode: String?,
-    onQrRetry: () -> Unit
+    onQrRetry: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -652,14 +647,14 @@ private fun ModernQRCode(
             .heightIn(min = 350.dp)
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         if (isQrFailed) {
             Text(
                 text = stringResource(R.string.login_qr_failed),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             OutlinedButton(
@@ -668,12 +663,12 @@ private fun ModernQRCode(
                 modifier = Modifier.padding(top = 16.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.tertiary
-                )
+                    contentColor = MaterialTheme.colorScheme.tertiary,
+                ),
             ) {
                 Text(
                     text = stringResource(R.string.login_retry_qr),
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = MaterialTheme.colorScheme.tertiary,
                 )
             }
         } else if (qrCode.isNullOrEmpty()) {
@@ -681,7 +676,7 @@ private fun ModernQRCode(
                 modifier = Modifier
                     .padding(32.dp)
                     .size(48.dp),
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
         } else {
             // QR Code with fancy border
@@ -694,27 +689,27 @@ private fun ModernQRCode(
                             colors = listOf(
                                 MaterialTheme.colorScheme.primary,
                                 MaterialTheme.colorScheme.tertiary,
-                                MaterialTheme.colorScheme.primary
-                            )
+                                MaterialTheme.colorScheme.primary,
+                            ),
                         ),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
                     )
                     .padding(2.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.White,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         QrCodeImage(
                             modifier = Modifier.fillMaxSize(0.95f),
                             content = qrCode,
-                            size = 200.dp
+                            size = 200.dp,
                         )
                     }
                 }
@@ -727,7 +722,7 @@ private fun ModernQRCode(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
     }
@@ -763,7 +758,7 @@ private fun Preview_UserLoginScreen(
                 onSetTwoFactor = { },
                 onShowLoginScreen = { },
                 onRetryConnection = { context -> },
-                onContinueOffline = { }
+                onContinueOffline = { },
             )
         }
     }

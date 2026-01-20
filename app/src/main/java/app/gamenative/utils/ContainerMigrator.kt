@@ -1,15 +1,13 @@
 package app.gamenative.utils
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.winlator.core.FileUtils
 import com.winlator.xenvironment.ImageFs
 import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
-import android.os.Handler
-import android.os.Looper
 
 /**
  * Handles migration of legacy container formats.

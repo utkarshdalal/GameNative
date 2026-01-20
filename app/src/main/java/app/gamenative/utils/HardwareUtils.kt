@@ -1,20 +1,18 @@
 package app.gamenative.utils
 
 import android.content.Context
-import android.os.Build
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
-import android.view.Surface
-import android.view.SurfaceControl
+import android.os.Build
 import android.view.SurfaceHolder
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 object HardwareUtils {
-    
+
     /**
      * Gets a human-readable device model name
      */
@@ -27,7 +25,7 @@ object HardwareUtils {
             "$manufacturer $model"
         }
     }
-    
+
     /**
      * Gets SOC (System on Chip) identifier for grouping devices with the same chip.
      * Returns Build.SOC_MODEL on Android 12+ (API 31+) if it exists and is not empty,
@@ -45,7 +43,7 @@ object HardwareUtils {
             null
         }
     }
-    
+
     /**
      * Gets GPU information if available
      */
@@ -76,7 +74,7 @@ object HardwareUtils {
                 override fun onSurfaceChanged(gl: GL10, width: Int, height: Int) {}
                 override fun onDrawFrame(gl: GL10) {}
             })
-            
+
             // Create a temporary surface
             surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {}
@@ -87,7 +85,7 @@ object HardwareUtils {
                     }
                 }
             })
-            
+
             // Timeout after 2 seconds
             continuation.invokeOnCancellation {
                 surfaceView.onPause()

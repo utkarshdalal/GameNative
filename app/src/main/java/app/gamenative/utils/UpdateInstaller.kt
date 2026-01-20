@@ -7,17 +7,17 @@ import android.os.Build
 import androidx.core.content.FileProvider
 import app.gamenative.BuildConfig
 import app.gamenative.service.SteamService
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.io.File
 
 object UpdateInstaller {
     suspend fun downloadAndInstall(
         context: Context,
         downloadUrl: String,
         versionName: String,
-        onProgress: (Float) -> Unit
+        onProgress: (Float) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             val apkFileName = "gamenative-v$versionName.apk"
@@ -35,7 +35,7 @@ object UpdateInstaller {
                 fileName = fileName,
                 dest = destFile,
                 context = context,
-                onProgress = onProgress
+                onProgress = onProgress,
             )
 
             // Verify the file exists and has content
@@ -80,7 +80,7 @@ object UpdateInstaller {
                     FileProvider.getUriForFile(
                         context,
                         "${BuildConfig.APPLICATION_ID}.fileprovider",
-                        apkFile
+                        apkFile,
                     )
                 } catch (e: Exception) {
                     Timber.e(e, "Error getting FileProvider URI")
@@ -108,7 +108,7 @@ object UpdateInstaller {
                 context.grantUriPermission(
                     packageName,
                     uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
                 )
             }
 
@@ -119,4 +119,3 @@ object UpdateInstaller {
         }
     }
 }
-

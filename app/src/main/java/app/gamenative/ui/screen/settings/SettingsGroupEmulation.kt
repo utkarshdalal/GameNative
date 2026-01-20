@@ -66,7 +66,10 @@ fun SettingsGroupEmulation() {
 
         var showWineProtonManager by rememberSaveable { mutableStateOf(false) }
         if (showWineProtonManager) {
-            app.gamenative.ui.screen.settings.WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
+            app.gamenative.ui.screen.settings.WineProtonManagerDialog(open = showWineProtonManager, onDismiss = {
+                showWineProtonManager =
+                    false
+            })
         }
 
         SettingsMenuLink(

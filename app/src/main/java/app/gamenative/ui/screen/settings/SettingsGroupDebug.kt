@@ -18,23 +18,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.CrashHandler
-import coil.annotation.ExperimentalCoilApi
-import coil.imageLoader
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.CrashLogDialog
+import app.gamenative.ui.component.dialog.WineDebugChannelsDialog
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.ui.theme.settingsTileColorsDebug
+import coil.annotation.ExperimentalCoilApi
+import coil.imageLoader
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
-import app.gamenative.PrefManager
-import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.winlator.PrefManager as WinlatorPrefManager
 import java.io.File
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import app.gamenative.ui.component.dialog.WineDebugChannelsDialog
 
 @Suppress("UnnecessaryOptInAnnotation") // ExperimentalFoundationApi
 @OptIn(ExperimentalCoilApi::class, ExperimentalFoundationApi::class)
@@ -65,7 +65,7 @@ fun SettingsGroupDebug() {
             PrefManager.wineDebugChannels = newSelection.joinToString(",")
             showChannelsDialog = false
         },
-        onDismiss = { showChannelsDialog = false }
+        onDismiss = { showChannelsDialog = false },
     )
 
     /* Crash Log stuff */
@@ -166,7 +166,9 @@ fun SettingsGroupDebug() {
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_debug_wine_channels_title)) },
-            subtitle = { Text(text = if (selectedWineChannels.isNotEmpty()) selectedWineChannels.joinToString(",") else "No channels selected") },
+            subtitle = {
+                Text(text = if (selectedWineChannels.isNotEmpty()) selectedWineChannels.joinToString(",") else "No channels selected")
+            },
             onClick = { showChannelsDialog = true },
         )
         SettingsSwitch(
@@ -238,7 +240,7 @@ fun SettingsGroupDebug() {
         SettingsMenuLink(
             modifier = Modifier.combinedClickable(
                 onLongClick = {
-                    SteamService.stop()
+                    SteamService.stopService()
                     SteamService.clearDatabase()
                     (context as ComponentActivity).finishAffinity()
                 },
