@@ -153,30 +153,73 @@ class BinaryManifest : EpicManifest() {
         data = ByteArray(0)
     }
 
+    private fun estimateBodySize(): Int {
+        var size = 0
+        // Meta section estimate
+        meta?.let { size += 10000 }
+        // Chunk data list estimate (~57 bytes per chunk)
+        chunkDataList?.let { size += it.elements.size * 57 + 1000 }
+        // File manifest list estimate
+        fileManifestList?.let { fml ->
+            size += fml.elements.sumOf { fm ->
+                fm.filename.length + fm.symlinkTarget.length + 100 +
+                fm.installTags.sumOf { it.length + 4 } +
+                fm.chunkParts.size * 28
+            }
+        }
+        // Custom fields estimate
+        customFields?.let { size += 1000 }
+        return maxOf(size, 256 * 1024) // At least 256KB
+    }
+
     override fun serialize(): ByteArray {
-        // Build uncompressed body data using dynamic buffer
-        val bodyStream = java.io.ByteArrayOutputStream()
-        // Use 256KB buffer to handle large manifests with many chunks
-        // ChunkDataList.write() writes all chunks at once (~57 bytes per chunk)
-        val bodyBuffer = ByteBuffer.wrap(ByteArray(256 * 1024)).order(ByteOrder.LITTLE_ENDIAN)
+        // Estimate body size to allocate sufficient buffer
+        val estimatedSize = estimateBodySize()
+        val bodyStream = java.io.ByteArrayOutputStream(estimatedSize)
+        val bodyBuffer = ByteBuffer.allocate(maxOf(estimatedSize, 1024 * 1024)).order(ByteOrder.LITTLE_ENDIAN)
 
         // Helper to flush buffer to stream and reset
         fun flushBuffer() {
-            bodyStream.write(bodyBuffer.array(), 0, bodyBuffer.position())
-            bodyBuffer.clear()
+            if (bodyBuffer.position() > 0) {
+                bodyStream.write(bodyBuffer.array(), 0, bodyBuffer.position())
+                bodyBuffer.clear()
+            }
         }
 
-        // Write components in order, flushing as needed
-        meta?.write(bodyBuffer)
-        if (bodyBuffer.remaining() < 4096) flushBuffer()
+        // Helper to ensure minimum space available before write
+        fun ensureCapacity(minBytes: Int) {
+            if (bodyBuffer.remaining() < minBytes) {
+                flushBuffer()
+            }
+        }
 
-        chunkDataList?.write(bodyBuffer, meta?.featureLevel ?: version)
-        if (bodyBuffer.remaining() < 4096) flushBuffer()
+        // Write components with capacity checks
+        meta?.let {
+            ensureCapacity(10000) // Reserve space for meta
+            it.write(bodyBuffer)
+        }
 
-        fileManifestList?.write(bodyBuffer)
-        if (bodyBuffer.remaining() < 4096) flushBuffer()
+        chunkDataList?.let { cdl ->
+            val chunkBytes = cdl.elements.size * 57 + 1000 // ~57 bytes per chunk + overhead
+            ensureCapacity(chunkBytes)
+            cdl.write(bodyBuffer, meta?.featureLevel ?: version)
+        }
 
-        customFields?.write(bodyBuffer)
+        fileManifestList?.let { fml ->
+            val fileBytes = fml.elements.sumOf { fm ->
+                fm.filename.length + fm.symlinkTarget.length + 100 + // strings + fixed fields
+                fm.installTags.sumOf { it.length + 4 } + // tags
+                fm.chunkParts.size * 28 // chunk parts
+            }
+            ensureCapacity(fileBytes)
+            fml.write(bodyBuffer)
+        }
+
+        customFields?.let {
+            ensureCapacity(1000)
+            it.write(bodyBuffer)
+        }
+
         flushBuffer() // Final flush
 
         val uncompressedData = bodyStream.toByteArray()
