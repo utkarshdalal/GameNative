@@ -51,7 +51,7 @@ public final class FEXCoreManager {
         try {
             ImageFs imageFs = ImageFs.find(context);
             File rootDir = imageFs.getRootDir();
-            File baseDir = new File(rootDir, "/home/xuser/.config/.fex-emu");
+            File baseDir = new File(rootDir, "/home/xuser/.fex-emu");
             File appConfigDir = new File(baseDir, "AppConfig");
 
             for (String exeName : APP_CONFIG_EXE_NAMES) {
