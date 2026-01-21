@@ -25,21 +25,6 @@ import timber.log.Timber
 /**
  * EpicDownloadManager handles downloading Epic games
  *
- * Epic's CDN structure:
- * 1. Fetch manifest from CDN (contains list of chunks and files)
- * 2. Download chunks from CDN (compressed data)
- * 3. Decompress and assemble chunks into files
- * 4. Verify file hashes
- *
- * Performance optimizations:
- * - Increased parallel downloads from 4 to 8 for better throughput
- * - Connection pool with 32 connections for reduced connection overhead
- * - Retry logic with exponential backoff for transient network errors
- * - Deferred hash verification to not block network I/O
- * - Parallel file assembly in batches of 4
- * - Larger I/O buffers (64KB) for file assembly
- * - Proper response.close() calls to release connections faster
- *
  * Manifest structure (from legendary.models.manifest):
  * - meta: App metadata (app_name, build_version, etc.)
  * - chunk_data_list: List of chunks to download
@@ -111,7 +96,7 @@ class EpicDownloadManager @Inject constructor(
 
             Timber.tag("Epic").i("Filtered to ${dlcsToDownload.size} DLC(s) for ${game.title}")
 
-            // Step 1: Fetch manifest binary and CDN URLs from Epic
+            // Fetch manifest binary and CDN URLs from Epic
             val manifestResult = epicManager.fetchManifestFromEpic(
                 context,
                 game.namespace,
@@ -131,7 +116,7 @@ class EpicDownloadManager @Inject constructor(
 
             Timber.tag("Epic").d("Manifest fetched with ${cdnUrls.size} CDN URLs, parsing...")
 
-            // Step 2: Parse manifest binary to get chunks and files
+            // Parse manifest binary to get chunks and files
             val manifest = EpicManifest.readAll(manifestData.manifestBytes)
 
             // Extract chunk and file data from parsed manifest
@@ -194,7 +179,7 @@ class EpicDownloadManager @Inject constructor(
             downloadInfo.setTotalExpectedBytes(totalSize)
             downloadInfo.updateStatusMessage("Downloading base game...")
 
-            // Step 3: Download chunks in parallel
+            // Download chunks in parallel
             val chunkCacheDir = File(installPath, ".chunks")
             chunkCacheDir.mkdirs()
 
@@ -254,7 +239,7 @@ class EpicDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Assembling files...")
 
-            // Step 4: Assemble files from chunks in parallel batches
+            // Assemble files from chunks in parallel batches
             val installDir = File(installPath)
             installDir.mkdirs()
 
@@ -282,25 +267,12 @@ class EpicDownloadManager @Inject constructor(
                 Timber.tag("Epic").d("File assembly progress: $assembledFiles/$totalFiles (${(assemblyProgress * 100).toInt()}%)")
             }
 
-            // Step 5: Cleanup chunk directory
+            // Cleanup chunk directory
             chunkCacheDir.deleteRecursively()
 
             // Log final directory structure
             Timber.tag("Epic").i("Download completed successfully for ${game.title}")
             logDirectoryStructure(installDir)
-
-            // Step 6: Update database with install info
-            try {
-                val updatedGame = game.copy(
-                    isInstalled = true,
-                    installPath = installPath,
-                )
-                epicManager.updateGame(updatedGame)
-                Timber.tag("Epic").i("Updated database: game marked as installed")
-            } catch (e: Exception) {
-                Timber.tag("Epic").e(e, "Failed to update database for game ${game.id}")
-                // Don't fail the entire download for DB issues
-            }
 
             // Download DLCs using pre-fetched manifest data
             if (dlcManifestData.isNotEmpty()) {
@@ -340,6 +312,21 @@ class EpicDownloadManager @Inject constructor(
                     // Don't fail the base game download if DLC fails
                 }
             }
+            // Update database with install info
+            try {
+                val updatedGame = game.copy(
+                    isInstalled = true,
+                    installPath = installPath,
+                    installSize = totalSize,
+                )
+                epicManager.updateGame(updatedGame)
+                Timber.tag("Epic").i("Updated database: game marked as installed")
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "Failed to update database for game ${game.id}")
+                // Don't fail the entire download for DB issues
+            }
+
+            // Clean up
             downloadInfo.updateStatusMessage("Complete")
             downloadInfo.setProgress(1.0f)
             downloadInfo.setActive(false)
