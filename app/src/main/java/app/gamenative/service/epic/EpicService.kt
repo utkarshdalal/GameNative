@@ -125,25 +125,24 @@ class EpicService : Service() {
                 try {
                     Timber.tag("EPIC").i("Logging out from Epic...")
 
-                    // Get instance first before stopping the service
-                    val instance = getInstance()
-                    if (instance == null) {
-                        Timber.tag("Epic").w("Service not running during logout")
-                        return@withContext Result.failure(Exception("Service not running"))
-                    }
-
-                    // Clear stored credentials
+                    // Clear stored credentials first, regardless of service state
                     val credentialsCleared = EpicAuthManager.clearStoredCredentials(context)
                     if (!credentialsCleared) {
                         Timber.tag("Epic").w("Failed to clear credentials during logout")
                     }
 
-                    // Clear all Epic games from database
-                    instance?.epicManager?.deleteAllGames()
-                    Timber.tag("Epic").i("All Epic games removed from database")
+                    // Get instance to clean up service-specific data
+                    val instance = getInstance()
+                    if (instance != null) {
+                        // Clear all Epic games from database
+                        instance.epicManager.deleteAllGames()
+                        Timber.tag("Epic").i("All Epic games removed from database")
 
-                    // Stop the service
-                    stop()
+                        // Stop the service
+                        stop()
+                    } else {
+                        Timber.tag("Epic").w("Service not running during logout, but credentials were cleared")
+                    }
 
                     Timber.tag("Epic").i("Logout completed successfully")
                     Result.success(Unit)
