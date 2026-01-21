@@ -925,6 +925,16 @@ object SteamUtils {
         if (Files.notExists(mainIni)) Files.createFile(mainIni)
         mainIni.toFile().writeText(mainIniContent)
 
+        val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
+        if (!controllerVdfText.isNullOrEmpty()) {
+            runCatching {
+                val controllerDir = settingsDir.resolve("controller")
+                SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
+            }.onFailure { error ->
+                Timber.w(error, "Failed to generate controller config for $steamAppId")
+            }
+        }
+
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
