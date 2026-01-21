@@ -817,18 +817,18 @@ class EpicManager @Inject constructor(
                 .get()
                 .build()
 
-            val response = httpClient.newCall(request).execute()
+            val manifestJson = httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("Manifest API request failed: ${response.code}"))
+                }
 
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("Manifest API request failed: ${response.code}"))
+                val body = response.body?.string()
+                if (body.isNullOrEmpty()) {
+                    return@withContext Result.failure(Exception("Empty manifest API response"))
+                }
+
+                JSONObject(body)
             }
-
-            val body = response.body?.string()
-            if (body.isNullOrEmpty()) {
-                return@withContext Result.failure(Exception("Empty manifest API response"))
-            }
-
-            val manifestJson = JSONObject(body)
             val elements = manifestJson.optJSONArray("elements")
 
             if (elements == null || elements.length() == 0) {
