@@ -1007,5 +1007,7 @@
     <string name="epic_logout_confirm_message">This will remove all Epic Games from your library and disconnect your account.</string>
     <string name="epic_logout_confirm">Logout</string>
     <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
+    <string name="epic_logout_failed">Failure to logout of Epic Games, please try again</string>
+
 </resources>
 

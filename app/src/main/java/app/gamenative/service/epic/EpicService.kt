@@ -128,7 +128,8 @@ class EpicService : Service() {
                     // Clear stored credentials first, regardless of service state
                     val credentialsCleared = EpicAuthManager.clearStoredCredentials(context)
                     if (!credentialsCleared) {
-                        Timber.tag("Epic").w("Failed to clear credentials during logout")
+                        Timber.tag("Epic").e("Failed to clear credentials during logout")
+                        return@withContext Result.failure(Exception("Failed to clear stored credentials"))
                     }
 
                     // Get instance to clean up service-specific data
