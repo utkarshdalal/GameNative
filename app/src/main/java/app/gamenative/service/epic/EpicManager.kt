@@ -333,7 +333,7 @@ class EpicManager @Inject constructor(
                 // Get cursor for next page - stop if cursor is null or same as previous
                 val metadata = json.optJSONObject("responseMetadata")
                 val oldCursor = cursor
-                cursor = metadata?.optString("nextCursor")?.takeIf { it.isNotEmpty() }
+                cursor = metadata?.optString("nextCursor")?.takeIf { it: String -> it.isNotEmpty() }
             } while (cursor != null && cursor != oldCursor)
 
             Timber.tag("Epic").i("Successfully fetched ${gameList.size} games from Epic library")
@@ -813,7 +813,7 @@ class EpicManager @Inject constructor(
                 .get()
                 .build()
 
-            val manifestJson = httpClient.newCall(request).execute().use { response ->
+            val manifestJson = httpClient.newCall(request).execute().use { response: okhttp3.Response ->
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(Exception("Manifest API request failed: ${response.code}"))
                 }
@@ -919,15 +919,17 @@ class EpicManager @Inject constructor(
                 .get()
                 .build()
 
-            val manifestResponse = cdnClient.newCall(manifestRequest).execute()
+            val manifestBytes = cdnClient.newCall(manifestRequest).execute().use { manifestResponse: okhttp3.Response ->
+                if (!manifestResponse.isSuccessful) {
+                    return@withContext Result.failure(Exception("Failed to download manifest binary: ${manifestResponse.code}"))
+                }
 
-            if (!manifestResponse.isSuccessful) {
-                return@withContext Result.failure(Exception("Failed to download manifest binary: ${manifestResponse.code}"))
-            }
+                val bytes = manifestResponse.body?.bytes()
+                if (bytes == null) {
+                    return@withContext Result.failure(Exception("Empty manifest bytes from CDN"))
+                }
 
-            val manifestBytes = manifestResponse.body?.bytes()
-            if (manifestBytes == null) {
-                return@withContext Result.failure(Exception("Empty manifest bytes from CDN"))
+                bytes
             }
 
             Timber.tag("Epic").d("Manifest fetched with ${cdnUrls.size} CDN URLs")
