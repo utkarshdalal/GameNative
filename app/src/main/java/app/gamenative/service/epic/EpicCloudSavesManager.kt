@@ -518,7 +518,8 @@ object EpicCloudSavesManager {
             var uploadSuccess = true
             if (toUpload.isNotEmpty()) {
                 Timber.tag("Epic").i("[Cloud Saves] Uploading ${toUpload.size} files based on timestamp comparison")
-                uploadSuccess = uploadSaves(context, accountId, game, toUpload)
+                // ! Upload ALL local files, to ensure the manifest is correct with save-state
+                uploadSuccess = uploadSaves(context, accountId, game)
             }
 
             // 7. Update sync timestamp if both operations succeeded
