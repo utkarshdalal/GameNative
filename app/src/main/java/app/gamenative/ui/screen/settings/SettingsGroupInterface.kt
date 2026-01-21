@@ -847,21 +847,29 @@ fun SettingsGroupInterface(
                         epicLogoutLoading = false
                         if (result.isSuccess) {
                             Timber.i("[SettingsEpic]: ✓ Logout successful!")
-                            withContext(Dispatchers.Main) {
                             android.widget.Toast.makeText(
                                 context,
                                 context.getString(R.string.epic_logout_success),
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
-                        }
                         } else {
                             Timber.e("[SettingsEpic]: ✗ Logout failed: ${result.exceptionOrNull()?.message}")
+                            android.widget.Toast.makeText(
+                                context,
+                                context.getString(R.string.epic_logout_failed),
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[SettingsEpic]: Logout exception: ${e.message}")
                     withContext(Dispatchers.Main) {
                         epicLogoutLoading = false
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.epic_logout_failed),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
