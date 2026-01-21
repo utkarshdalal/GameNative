@@ -1833,7 +1833,10 @@ private fun setupXEnvironment(
     )
     environment.addComponent(XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)))
     environment.addComponent(NetworkInfoUpdateComponent())
-    environment.addComponent(SteamClientComponent())
+
+    if (!container.isLaunchRealSteam) {
+        environment.addComponent(SteamClientComponent())
+    }
 
     // environment.addComponent(SteamClientComponent(UnixSocketConfig.createSocket(
     //     rootPath,
