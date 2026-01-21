@@ -48,10 +48,7 @@ object EpicCloudSavesManager {
 
     private val baseCloudSyncUrl = "https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com"
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     data class CloudFileInfo(
         val hash: String,

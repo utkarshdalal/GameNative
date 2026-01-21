@@ -12,6 +12,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
+import app.gamenative.utils.Net
+
 
 data class EpicAuthResponse(
     val accessToken: String,
@@ -28,11 +30,7 @@ data class EpicAuthResponse(
  */
 
 object EpicAuthClient {
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     /**
      * Authenticate with Epic using authorization code

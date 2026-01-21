@@ -29,11 +29,7 @@ class EpicManager @Inject constructor(
 
     private val REFRESH_BATCH_SIZE = 10
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     // Separate client for CDN downloads - no connection pooling, follows redirects
     private val cdnClient = OkHttpClient.Builder()
