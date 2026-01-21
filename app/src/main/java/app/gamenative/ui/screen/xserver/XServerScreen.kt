@@ -1758,6 +1758,12 @@ private fun getWineStartCommand(
             // Create ColdClientLoader.ini file
             SteamUtils.writeColdClientIni(gameId, container)
         }
+        val controllerVdfText = SteamService.resolveSteamControllerVdfText(gameId)
+        if (controllerVdfText.isNullOrEmpty()) {
+            Timber.tag("XServerScreen").i("No steam controller VDF resolved for $gameId")
+        } else {
+            Timber.tag("XServerScreen").i("Resolved steam controller VDF for $gameId:\n$controllerVdfText")
+        }
     }
 
     val args = if (testGraphics) {
