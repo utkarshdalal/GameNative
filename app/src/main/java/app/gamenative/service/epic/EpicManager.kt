@@ -5,6 +5,7 @@ import app.gamenative.data.EpicGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.EpicGameDao
+import app.gamenative.utils.Net
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -333,7 +334,7 @@ class EpicManager @Inject constructor(
                 // Get cursor for next page - stop if cursor is null or same as previous
                 val metadata = json.optJSONObject("responseMetadata")
                 val oldCursor = cursor
-                cursor = metadata?.optString("nextCursor")?.takeIf { it: String -> it.isNotEmpty() }
+                cursor = metadata?.optString("nextCursor")?.takeIf { it.isNotEmpty() }
             } while (cursor != null && cursor != oldCursor)
 
             Timber.tag("Epic").i("Successfully fetched ${gameList.size} games from Epic library")
@@ -465,7 +466,7 @@ class EpicManager @Inject constructor(
             }
 
             val json = JSONObject(body)
-            val gameData = json.optJSONObject(game.catalogItemId)
+            val gameData: JSONObject? = json.optJSONObject(game.catalogItemId)
 
             if (gameData != null) {
                 val epicGame = parseGameFromCatalog(gameData, game.appName)
@@ -813,7 +814,7 @@ class EpicManager @Inject constructor(
                 .get()
                 .build()
 
-            val manifestJson = httpClient.newCall(request).execute().use { response: okhttp3.Response ->
+            val manifestJson = httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(Exception("Manifest API request failed: ${response.code}"))
                 }
@@ -919,7 +920,7 @@ class EpicManager @Inject constructor(
                 .get()
                 .build()
 
-            val manifestBytes = cdnClient.newCall(manifestRequest).execute().use { manifestResponse: okhttp3.Response ->
+            val manifestBytes = cdnClient.newCall(manifestRequest).execute().use { manifestResponse ->
                 if (!manifestResponse.isSuccessful) {
                     return@withContext Result.failure(Exception("Failed to download manifest binary: ${manifestResponse.code}"))
                 }
