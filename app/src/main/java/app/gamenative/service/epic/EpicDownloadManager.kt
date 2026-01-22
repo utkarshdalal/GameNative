@@ -50,7 +50,6 @@ class EpicDownloadManager @Inject constructor(
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
-        private const val LOG_TAG = "Epic"
     }
 
     /**
@@ -709,7 +708,7 @@ class EpicDownloadManager @Inject constructor(
             buffer.position(46)  // Jump to where uncompressedSize should be (58-12=46)
             val uncompressedSize = buffer.int  // offset 46-49 (file offset 58-61)
 
-            Log.d(LOG_TAG, "Chunk header: magic=0x${magic.toString(16)}, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
+            Log.d("Epic", "Chunk header: magic=0x${magic.toString(16)}, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
 
             outputFile.outputStream().buffered().use { output ->
                 if (isCompressed) {
@@ -727,10 +726,10 @@ class EpicDownloadManager @Inject constructor(
                                 val bytesRead = input.read(inputBuffer)
                                 if (bytesRead == -1) {
                                     endOfStream = true
-                                    Log.w(LOG_TAG, "Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
+                                    Timber.d("Epic", "Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
                                 } else {
                                     if (firstRead) {
-                                        Log.d(LOG_TAG, "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
+                                        Log.d("Epic", "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
                                         firstRead = false
                                     }
                                     inflater.setInput(inputBuffer, 0, bytesRead)
@@ -749,9 +748,9 @@ class EpicDownloadManager @Inject constructor(
                                     break
                                 }
                             } catch (e: java.util.zip.DataFormatException) {
-                                Timber.d(LOG_TAG, "DataFormatException during inflate: ${e.message}")
-                                Timber.d(LOG_TAG, "  totalBytesWritten=$totalBytesWritten, expectedSize=$uncompressedSize")
-                                Timber.d(LOG_TAG, "  inflater: finished=${inflater.finished()}, needsInput=${inflater.needsInput()}")
+                                Timber.d("Epic", "DataFormatException during inflate: ${e.message}")
+                                Timber.d("Epic", "  totalBytesWritten=$totalBytesWritten, expectedSize=$uncompressedSize")
+                                Timber.d("Epic", "  inflater: finished=${inflater.finished()}, needsInput=${inflater.needsInput()}")
                                 throw Exception("Failed to decompress chunk: ${e.message}", e)
                             }
                         }
@@ -777,7 +776,7 @@ class EpicDownloadManager @Inject constructor(
 
         // Verify size
         if (totalBytesWritten != expectedSize) {
-            Timber.d(LOG_TAG, "Size mismatch: expected=$expectedSize, actual=$totalBytesWritten, diff=${expectedSize - totalBytesWritten}")
+            Timber.d("Epic", "Size mismatch: expected=$expectedSize, actual=$totalBytesWritten, diff=${expectedSize - totalBytesWritten}")
             outputFile.delete()
             throw Exception("Decompressed size mismatch: expected $expectedSize, got $totalBytesWritten")
         }
