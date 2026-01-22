@@ -45,6 +45,14 @@
     <string name="gog_install_game_title">下載遊戲</string>
     <string name="gog_install_confirmation_message">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t可用空間: %2$s</string>
     <string name="steam_never">從不</string>
+    <string name="epic_cancel_download_message">確定要取消下載應用程式嗎？</string>
+    <string name="epic_delete_download_message">刪除此遊戲的所有已下載資料？</string>
+    <string name="epic_cloud_sync_starting">正在開始雲端存檔同步…</string>
+    <string name="epic_cloud_sync_success">雲端存檔同步成功</string>
+    <string name="epic_cloud_sync_failed">雲端存檔同步失敗</string>
+    <string name="epic_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
+    <string name="epic_uninstall_failed">解除安裝失敗：%1$s</string>
+    <string name="epic_uninstall_error">解除安裝錯誤：%1$s</string>
     <string name="steam_continue">繼續</string>
     <string name="header_img_desc">App header image</string>
     <string name="download">下載</string>

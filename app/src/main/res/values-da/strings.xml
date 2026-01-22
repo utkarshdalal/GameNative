@@ -21,6 +21,14 @@
     <string name="gog_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
     <string name="gog_install_game_title">Download spil</string>
     <string name="gog_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tTilgængelig plads: %2$s</string>
+    <string name="epic_cancel_download_message">Er du sikker på, at du vil annullere download af appen?</string>
+    <string name="epic_delete_download_message">Slet alle downloadede data for dette spil?</string>
+    <string name="epic_cloud_sync_starting">Starter synkronisering af cloud-gemmer…</string>
+    <string name="epic_cloud_sync_success">Cloud-gemmer synkroniseret med succes</string>
+    <string name="epic_cloud_sync_failed">Synkronisering af cloud-gemmer mislykkedes</string>
+    <string name="epic_cloud_sync_error">Fejl ved synkronisering af cloud-gemmer: %1$s</string>
+    <string name="epic_uninstall_failed">Afinstallation mislykkedes: %1$s</string>
+    <string name="epic_uninstall_error">Afinstallationsfejl: %1$s</string>
     <string name="download_prompt_title">Installér app</string>
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>

@@ -475,7 +475,7 @@ class EpicAppScreen : BaseAppScreen() {
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context,
-                            "Uninstall failed: ${result.exceptionOrNull()?.message}",
+                            context.getString(R.string.epic_uninstall_failed, result.exceptionOrNull()?.message ?: ""),
                             android.widget.Toast.LENGTH_SHORT,
                         ).show()
                     }
@@ -485,7 +485,7 @@ class EpicAppScreen : BaseAppScreen() {
                 withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(
                         context,
-                        "Uninstall error: ${e.message}",
+                        context.getString(R.string.epic_uninstall_error, e.message ?: ""),
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }
@@ -562,7 +562,7 @@ class EpicAppScreen : BaseAppScreen() {
                             try {
                                 Toast.makeText(
                                     context,
-                                    "Starting cloud save sync...",
+                                    context.getString(R.string.epic_cloud_sync_starting),
                                     Toast.LENGTH_SHORT,
                                 ).show()
 
@@ -576,14 +576,14 @@ class EpicAppScreen : BaseAppScreen() {
 
                                 Toast.makeText(
                                     context,
-                                    if (result) "Cloud saves synced successfully" else "Cloud save sync failed",
+                                    if (result) context.getString(R.string.epic_cloud_sync_success) else context.getString(R.string.epic_cloud_sync_failed),
                                     Toast.LENGTH_LONG,
                                 ).show()
                             } catch (e: Exception) {
                                 Timber.tag(TAG).e(e, "[Cloud Saves] Sync failed")
                                 Toast.makeText(
                                     context,
-                                    "Cloud save sync error: ${e.message}",
+                                    context.getString(R.string.epic_cloud_sync_error, e.message ?: ""),
                                     Toast.LENGTH_LONG,
                                 ).show()
                             }

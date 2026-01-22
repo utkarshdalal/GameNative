@@ -46,6 +46,14 @@
     <string name="gog_install_game_title">Scarica Gioco</string>
     <string name="gog_install_confirmation_message">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tSpazio Disponibile: %2$s</string>
     <string name="steam_never">Mai</string>
+    <string name="epic_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
+    <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
+    <string name="epic_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
+    <string name="epic_cloud_sync_success">Salvataggi cloud sincronizzati con successo</string>
+    <string name="epic_cloud_sync_failed">Sincronizzazione salvataggi cloud non riuscita</string>
+    <string name="epic_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
+    <string name="epic_uninstall_failed">Disinstallazione non riuscita: %1$s</string>
+    <string name="epic_uninstall_error">Errore di disinstallazione: %1$s</string>
     <string name="steam_continue">Continua</string>
     <string name="header_img_desc">Immagine intestazione app</string>
     <string name="download">Scarica</string>

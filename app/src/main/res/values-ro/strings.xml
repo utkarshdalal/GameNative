@@ -46,6 +46,14 @@
     <string name="gog_install_game_title">Descărcare joc</string>
     <string name="gog_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
     <string name="steam_never">Niciodată</string>
+    <string name="epic_cancel_download_message">Sigur doriți să anulați descărcarea aplicației?</string>
+    <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>
+    <string name="epic_cloud_sync_starting">Se pornește sincronizarea salvărilor din cloud…</string>
+    <string name="epic_cloud_sync_success">Salvările din cloud au fost sincronizate cu succes</string>
+    <string name="epic_cloud_sync_failed">Sincronizarea salvărilor din cloud a eșuat</string>
+    <string name="epic_cloud_sync_error">Eroare la sincronizarea salvărilor din cloud: %1$s</string>
+    <string name="epic_uninstall_failed">Dezinstalarea a eșuat: %1$s</string>
+    <string name="epic_uninstall_error">Eroare la dezinstalare: %1$s</string>
     <string name="steam_continue">Continuă</string>
     <string name="header_img_desc">Imagine antet aplicație</string>
     <string name="download">Descărcare</string>

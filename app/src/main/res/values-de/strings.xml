@@ -41,6 +41,14 @@
     <string name="steam_uninstall_success">%1$s wurde deinstalliert</string>
     <string name="steam_uninstall_failed">Spiel konnte nicht deinstalliert werden</string>
     <string name="steam_never">Nie</string>
+    <string name="epic_cancel_download_message">Möchten Sie den Download der App wirklich abbrechen?</string>
+    <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
+    <string name="epic_cloud_sync_starting">Starte Cloud-Speicherstand-Synchronisation…</string>
+    <string name="epic_cloud_sync_success">Cloud-Spielstände erfolgreich synchronisiert</string>
+    <string name="epic_cloud_sync_failed">Cloud-Spielstand-Synchronisation fehlgeschlagen</string>
+    <string name="epic_cloud_sync_error">Fehler bei Cloud-Spielstand-Synchronisation: %1$s</string>
+    <string name="epic_uninstall_failed">Deinstallation fehlgeschlagen: %1$s</string>
+    <string name="epic_uninstall_error">Deinstallationsfehler: %1$s</string>
     <string name="steam_continue">Weiter</string>
     <string name="header_img_desc">App-Kopfzeilenbild</string>
     <string name="download">Herunterladen</string>
