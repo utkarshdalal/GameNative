@@ -1163,7 +1163,7 @@ object EpicCloudSavesManager {
         // Reference: legendary/core.py get_save_path()
         val pathVars = mutableMapOf<String, String>(
             "{epicid}" to accountId,
-            "{installdir}" to (game.installPath.ifEmpty { "/data/data/${context.packageName}/files/games/${game.appName}" }),
+            "{installdir}" to (game.installPath.ifEmpty { EpicConstants.getGameInstallPath(context, game.appName) }),
             "{appname}" to game.appName,
         )
 
