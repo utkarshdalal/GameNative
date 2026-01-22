@@ -1178,7 +1178,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val manifestDirPath = manifestFile.parentFile?.path ?: return null
 
             val manifestText = manifestFile.readText(Charsets.UTF_8)
-            val configText = parseManifestForConfig(manifestDirPath, manifestText)
+            val configText = runCatching { parseManifestForConfig(manifestDirPath, manifestText) }.getOrNull()
             return configText ?: manifestText
         }
 
