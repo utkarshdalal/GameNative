@@ -34,6 +34,7 @@ import coil.request.CachePolicy
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
@@ -252,9 +253,15 @@ class MainActivity : ComponentActivity() {
             SteamService.stop()
         }
 
-        if (GOGService.isRunning) {
+        if (GOGService.isRunning && !isChangingConfigurations) {
             Timber.i("Stopping GOG Service")
             GOGService.stop()
+        }
+
+        // Stop EpicService when app is destroyed (unless config change)
+        if (EpicService.isRunning && !isChangingConfigurations) {
+            Timber.i("Stopping EpicService - app destroyed")
+            EpicService.stop()
         }
     }
 
@@ -273,6 +280,13 @@ class MainActivity : ComponentActivity() {
         if (GOGService.hasStoredCredentials(this) && !GOGService.isRunning) {
             Timber.i("GOG service was down on resume - restarting")
             GOGService.start(this)
+        }
+
+        // Restart EpicService if it went down and user is authenticated
+        if (EpicService.hasStoredCredentials(this) &&
+            !EpicService.isRunning) {
+            Timber.i("EpicService was down on resume - restarting")
+            EpicService.start(this)
         }
 
         PostHog.capture(event = "app_foregrounded")
@@ -316,9 +330,21 @@ class MainActivity : ComponentActivity() {
             SteamService.stop()
         }
 
-        if (GOGService.isRunning) {
+        // Stop GOGService if running and no downloads in progress
+        if (GOGService.isRunning && !isChangingConfigurations) {
             Timber.i("Stopping GOG Service")
             GOGService.stop()
+        }
+
+        // Stop EpicService if running, unless there are active downloads or sync operations
+        if (EpicService.isRunning && !isChangingConfigurations) {
+            if (!EpicService.hasActiveDownload() &&
+                !EpicService.hasActiveOperations()) {
+                Timber.i("Stopping EpicService - no active operations or downloads")
+                EpicService.stop()
+            } else {
+                Timber.d("EpicService kept running - has active downloads or operations")
+            }
         }
     }
 

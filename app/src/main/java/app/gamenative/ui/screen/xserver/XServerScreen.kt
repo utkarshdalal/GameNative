@@ -1749,6 +1749,7 @@ private fun getWineStartCommand(
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val isGOGGame = gameSource == GameSource.GOG
     val isEpicGame = gameSource == GameSource.EPIC
+    val isSteamGame = gameSource == GameSource.STEAM
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
     if (isSteamGame) {
