@@ -320,10 +320,18 @@ class EpicAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, gameId=$gameId, isDownloading=$isDownloading, installed=$installed")
 
         if (isDownloading) {
-            // Cancel ongoing download
-            Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
-            EpicService.cleanupDownload(gameId)
-            downloadInfo.cancel()
+            // Show cancel download dialog
+            showInstallDialog(
+                libraryItem.appId,
+                app.gamenative.ui.component.dialog.state.MessageDialogState(
+                    visible = true,
+                    type = app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD,
+                    title = context.getString(R.string.cancel_download_prompt_title),
+                    message = context.getString(R.string.epic_cancel_download_message),
+                    confirmBtnText = context.getString(R.string.yes),
+                    dismissBtnText = context.getString(R.string.no),
+                )
+            )
         } else if (installed) {
             // Already installed: launch game
             Timber.tag(TAG).i("Epic game already installed, launching: $gameId")
@@ -431,17 +439,18 @@ class EpicAppScreen : BaseAppScreen() {
         Timber.tag(TAG).i("onDeleteDownloadClick: appId=${libraryItem.appId}")
 
         if (isDownloading(context, libraryItem)) {
-            val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
-            // Cancel download immediately if currently downloading
-            Timber.tag(TAG).i("Cancelling active download for Epic game: ${libraryItem.gameId}")
-            downloadInfo?.cancel()
-            EpicService.cleanupDownload(libraryItem.gameId)
-
-            android.widget.Toast.makeText(
-                context,
-                "Download cancelled",
-                android.widget.Toast.LENGTH_SHORT,
-            ).show()
+            // Show cancel download dialog when downloading
+            showInstallDialog(
+                libraryItem.appId,
+                app.gamenative.ui.component.dialog.state.MessageDialogState(
+                    visible = true,
+                    type = app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD,
+                    title = context.getString(R.string.cancel_download_prompt_title),
+                    message = context.getString(R.string.epic_delete_download_message),
+                    confirmBtnText = context.getString(R.string.yes),
+                    dismissBtnText = context.getString(R.string.no)
+                )
+            )
         } else if (isInstalled(context, libraryItem)) {
             // Show uninstall confirmation dialog
             Timber.tag(TAG).i("Showing uninstall dialog for: ${libraryItem.appId}")
@@ -772,6 +781,26 @@ class EpicAppScreen : BaseAppScreen() {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
                         performDownload(scope, context, libraryItem, listOf(libraryItem.gameId)) {}
+                    }
+                }
+                app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
+                    {
+                        Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
+                        val downloadInfo = EpicService.getDownloadInfo(gameId)
+                        downloadInfo?.cancel()
+                        EpicService.cleanupDownload(gameId)
+                        BaseAppScreen.hideInstallDialog(appId)
+                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
+                    }
+                }
+                app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
+                    {
+                        Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
+                        val downloadInfo = EpicService.getDownloadInfo(gameId)
+                        downloadInfo?.cancel()
+                        EpicService.cleanupDownload(gameId)
+                        BaseAppScreen.hideInstallDialog(appId)
+                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
                     }
                 }
 
