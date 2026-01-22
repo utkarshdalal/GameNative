@@ -332,8 +332,10 @@ class MainActivity : ComponentActivity() {
 
         // Stop GOGService if running and no downloads in progress
         if (GOGService.isRunning && !isChangingConfigurations) {
-            Timber.i("Stopping GOG Service")
-            GOGService.stop()
+            if(!GOGService.hasActiveOperations()) {
+                Timber.i("Stopping GOG Service - no active operations")
+                GOGService.stop()
+            }
         }
 
         // Stop EpicService if running, unless there are active downloads or sync operations

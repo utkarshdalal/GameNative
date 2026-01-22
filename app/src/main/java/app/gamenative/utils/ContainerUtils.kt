@@ -586,11 +586,12 @@ object ContainerUtils {
                 // For Epic games, map the specific game directory to A: drive
                 val gameId = extractGameIdFromContainerId(appId)
                 val game = EpicService.getEpicGameOf(gameId)
-                Timber.tag("Epic").d("EPIC GAME FOUND FOR DRIVE: $gameId")
+                
                 if (game != null && game.installPath.isNotEmpty()) {
                     val gameInstallPath = game.installPath
-
+                    Timber.tag("Epic").d("EPIC GAME FOUND FOR DRIVE: $gameId")
                     Timber.tag("Epic").d("EPIC INSTALL PATH FOUND FOR DRIVE: $gameInstallPath")
+                    
                     val drive: Char = if (defaultDrives.contains("A:")) {
                         Container.getNextAvailableDriveLetter(defaultDrives)
                     } else {
@@ -598,6 +599,11 @@ object ContainerUtils {
                     }
                     "$defaultDrives$drive:$gameInstallPath"
                 } else {
+                    if (game == null) {
+                        Timber.tag("Epic").w("Could not find Epic game info for: $gameId, using default drives")
+                    } else {
+                        Timber.tag("Epic").w("Epic game $gameId has empty install path, using default drives")
+                    }
                     defaultDrives
                 }
             }
