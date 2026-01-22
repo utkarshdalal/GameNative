@@ -161,8 +161,10 @@ class EpicAppScreen : BaseAppScreen() {
                                 downloadSize = sizes.downloadSize,
                             )
                             EpicService.updateEpicGame(updatedGame)
-                            // Update state directly to show updated size
-                            epicGame = updatedGame
+                            // Update state on Main dispatcher to ensure thread safety
+                            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                epicGame = updatedGame
+                            }
                         }
                     } catch (e: Exception) {
                         Timber.tag("Epic").e(e, "Failed to fetch install size for ${game.title}")
@@ -781,16 +783,6 @@ class EpicAppScreen : BaseAppScreen() {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
                         performDownload(scope, context, libraryItem, listOf(libraryItem.gameId)) {}
-                    }
-                }
-                app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
-                    {
-                        Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
-                        val downloadInfo = EpicService.getDownloadInfo(gameId)
-                        downloadInfo?.cancel()
-                        EpicService.cleanupDownload(gameId)
-                        BaseAppScreen.hideInstallDialog(appId)
-                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
                     }
                 }
                 app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
