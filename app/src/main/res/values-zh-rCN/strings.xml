@@ -965,4 +965,43 @@
     <string name="gog_logout_success">成功从 GOG 注销</string>
     <string name="gog_logout_failed">注销失败: %s</string>
     <string name="gog_logout_in_progress">正在从 GOG 注销…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games 集成</string>
+    <string name="epic_settings_login_title">登录 Epic Games</string>
+    <string name="epic_settings_login_subtitle">连接您的 Epic Games 账户</string>
+    <string name="epic_login_success_title">登录成功</string>
+    <string name="epic_login_success_message">您现已登录到 Epic Games。</string>
+    <string name="epic_logout_success">成功从 Epic 注销</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">登录到 Epic Games</string>
+    <string name="epic_login_auto_auth_info">点击\'打开 Epic 登录\'并登录。登录后，从结果屏幕复制授权码并粘贴到下方</string>
+    <string name="epic_login_auth_example">示例: authorization code: "example"</string>
+    <string name="epic_login_open_button">打开 Epic 登录</string>
+    <string name="epic_login_auth_code_label">授权码</string>
+    <string name="epic_login_auth_code_placeholder">在此粘贴代码或 URL</string>
+    <string name="epic_login_button">登录</string>
+    <string name="epic_login_cancel">取消</string>
+    <string name="epic_login_browser_error">无法打开浏览器</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">从 Epic Games 注销</string>
+    <string name="epic_settings_logout_subtitle">断开您的 Epic Games 账户连接</string>
+    <string name="epic_logout_confirm_title">从 Epic Games 注销？</string>
+    <string name="epic_logout_confirm_message">这将从您的游戏库中移除所有 Epic Games 游戏并断开您的账户连接。</string>
+    <string name="epic_logout_confirm">注销</string>
+    <string name="epic_logout_in_progress">正在从 Epic Games 注销…</string>
+    <string name="epic_logout_failed">无法从 Epic Games 注销，请重试</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">卸载游戏</string>
+    <string name="epic_uninstall_game_message">您确定要卸载 %1$s 吗？此操作无法撤回。</string>
+    <string name="epic_install_game_title">下载游戏</string>
+    <string name="epic_install_game_message">正在安装的应用程序有以下空间需求。是否继续？\n\n\t下载大小: %1$s\n\t磁盘大小: %2$s\n\t可用空间: %3$s</string>
+    <string name="epic_game_not_found">找不到游戏</string>
+    <string name="epic_starting_download">开始下载: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">开始下载: %1$s + DLC</string>
+    <string name="epic_download_failed">无法开始下载: %1$s</string>
+    <string name="epic_download_error">下载错误: %1$s</string>
 </resources>

@@ -352,7 +352,7 @@ class EpicAppScreen : BaseAppScreen() {
                 if (game == null) {
                     Timber.e("Game not found: ${libraryItem.gameId}")
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Game not found", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.epic_game_not_found), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -367,9 +367,14 @@ class EpicAppScreen : BaseAppScreen() {
 
                 // Show starting download toast
                 withContext(Dispatchers.Main) {
+                    val message = if (withDlcs) {
+                        context.getString(R.string.epic_starting_download_with_dlcs, game.title)
+                    } else {
+                        context.getString(R.string.epic_starting_download, game.title)
+                    }
                     android.widget.Toast.makeText(
                         context,
-                        if (withDlcs) "Starting download: ${game.title} + DLCs" else "Starting download: ${game.title}",
+                        message,
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }
@@ -387,7 +392,7 @@ class EpicAppScreen : BaseAppScreen() {
                     withContext(Dispatchers.Main) {
                         android.widget.Toast.makeText(
                             context,
-                            "Failed to start download: ${result.exceptionOrNull()?.message}",
+                            context.getString(R.string.epic_download_failed, result.exceptionOrNull()?.message ?: ""),
                             android.widget.Toast.LENGTH_LONG,
                         ).show()
                     }
@@ -397,7 +402,7 @@ class EpicAppScreen : BaseAppScreen() {
                 withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(
                         context,
-                        "Download error: ${e.message}",
+                        context.getString(R.string.epic_download_error, e.message ?: ""),
                         android.widget.Toast.LENGTH_LONG,
                     ).show()
                 }

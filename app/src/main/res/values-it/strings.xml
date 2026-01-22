@@ -976,4 +976,43 @@
     <string name="gog_logout_success">Disconnesso da GOG con successo</string>
     <string name="gog_logout_failed">Impossibile disconnettersi: %s</string>
     <string name="gog_logout_in_progress">Disconnessione da GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Integrazione Epic Games</string>
+    <string name="epic_settings_login_title">Accedi a Epic Games</string>
+    <string name="epic_settings_login_subtitle">Connetti il tuo account Epic Games</string>
+    <string name="epic_login_success_title">Accesso riuscito</string>
+    <string name="epic_login_success_message">Ora sei connesso a Epic Games.</string>
+    <string name="epic_logout_success">Disconnesso da Epic con successo</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Accedi a Epic Games</string>
+    <string name="epic_login_auto_auth_info">Tocca \'Apri login Epic\' e accedi. Dopo l\'accesso, copia il codice di autorizzazione dalla schermata dei risultati e incollalo sotto</string>
+    <string name="epic_login_auth_example">Esempio: authorization code: "example"</string>
+    <string name="epic_login_open_button">Apri login Epic</string>
+    <string name="epic_login_auth_code_label">Codice di autorizzazione</string>
+    <string name="epic_login_auth_code_placeholder">Incolla il codice o l\'URL qui</string>
+    <string name="epic_login_button">Accedi</string>
+    <string name="epic_login_cancel">Annulla</string>
+    <string name="epic_login_browser_error">Impossibile aprire il browser</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Esci da Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Disconnetti il tuo account Epic Games</string>
+    <string name="epic_logout_confirm_title">Uscire da Epic Games?</string>
+    <string name="epic_logout_confirm_message">Questo rimuoverà tutti i giochi Epic Games dalla tua libreria e disconnetterà il tuo account.</string>
+    <string name="epic_logout_confirm">Esci</string>
+    <string name="epic_logout_in_progress">Uscita da Epic Games…</string>
+    <string name="epic_logout_failed">Impossibile uscire da Epic Games, riprova</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Disinstalla gioco</string>
+    <string name="epic_uninstall_game_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
+    <string name="epic_install_game_title">Scarica gioco</string>
+    <string name="epic_install_game_message">L\'app in fase di installazione ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione download: %1$s\n\tDimensione su disco: %2$s\n\tSpazio disponibile: %3$s</string>
+    <string name="epic_game_not_found">Gioco non trovato</string>
+    <string name="epic_starting_download">Avvio download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Avvio download: %1$s + DLC</string>
+    <string name="epic_download_failed">Impossibile avviare il download: %1$s</string>
+    <string name="epic_download_error">Errore download: %1$s</string>
 </resources>

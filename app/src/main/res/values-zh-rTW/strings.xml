@@ -969,6 +969,45 @@
     <string name="gog_logout_success">成功從 GOG 登出</string>
     <string name="gog_logout_failed">登出失敗: %s</string>
     <string name="gog_logout_in_progress">正在從 GOG 登出…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games 整合</string>
+    <string name="epic_settings_login_title">登入 Epic Games</string>
+    <string name="epic_settings_login_subtitle">連接您的 Epic Games 帳戶</string>
+    <string name="epic_login_success_title">登入成功</string>
+    <string name="epic_login_success_message">您現已登入到 Epic Games。</string>
+    <string name="epic_logout_success">成功從 Epic 登出</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">登入到 Epic Games</string>
+    <string name="epic_login_auto_auth_info">點擊\'開啟 Epic 登入\'並登入。登入後，從結果畫面複製授權碼並貼到下方</string>
+    <string name="epic_login_auth_example">範例: authorization code: "example"</string>
+    <string name="epic_login_open_button">開啟 Epic 登入</string>
+    <string name="epic_login_auth_code_label">授權碼</string>
+    <string name="epic_login_auth_code_placeholder">在此貼上代碼或 URL</string>
+    <string name="epic_login_button">登入</string>
+    <string name="epic_login_cancel">取消</string>
+    <string name="epic_login_browser_error">無法開啟瀏覽器</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">從 Epic Games 登出</string>
+    <string name="epic_settings_logout_subtitle">中斷您的 Epic Games 帳戶連接</string>
+    <string name="epic_logout_confirm_title">從 Epic Games 登出？</string>
+    <string name="epic_logout_confirm_message">這將從您的遊戲庫中移除所有 Epic Games 遊戲並中斷您的帳戶連接。</string>
+    <string name="epic_logout_confirm">登出</string>
+    <string name="epic_logout_in_progress">正在從 Epic Games 登出…</string>
+    <string name="epic_logout_failed">無法從 Epic Games 登出，請重試</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">卸載遊戲</string>
+    <string name="epic_uninstall_game_message">您確定要卸載 %1$s 嗎？此操作無法撤回。</string>
+    <string name="epic_install_game_title">下載遊戲</string>
+    <string name="epic_install_game_message">正在安裝的應用程式有以下空間需求。是否繼續？\n\n\t下載大小: %1$s\n\t磁碟大小: %2$s\n\t可用空間: %3$s</string>
+    <string name="epic_game_not_found">找不到遊戲</string>
+    <string name="epic_starting_download">開始下載: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">開始下載: %1$s + DLC</string>
+    <string name="epic_download_failed">無法開始下載: %1$s</string>
+    <string name="epic_download_error">下載錯誤: %1$s</string>
 </resources>
 
 

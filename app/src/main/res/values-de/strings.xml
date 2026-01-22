@@ -910,4 +910,43 @@
     <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="gog_install_game_title">Spiel herunterladen</string>
     <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_settings_login_title">Bei Epic Games anmelden</string>
+    <string name="epic_settings_login_subtitle">Verbinde dein Epic Games-Konto</string>
+    <string name="epic_login_success_title">Anmeldung erfolgreich</string>
+    <string name="epic_login_success_message">Du bist jetzt bei Epic Games angemeldet.</string>
+    <string name="epic_logout_success">Erfolgreich von Epic abgemeldet</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Bei Epic Games anmelden</string>
+    <string name="epic_login_auto_auth_info">Tippe auf \'Epic-Anmeldung öffnen\' und melde dich an. Nach der Anmeldung kopiere bitte den Autorisierungscode aus dem Ergebnisbildschirm und füge ihn unten ein</string>
+    <string name="epic_login_auth_example">Beispiel: authorization code: "example"</string>
+    <string name="epic_login_open_button">Epic-Anmeldung öffnen</string>
+    <string name="epic_login_auth_code_label">Autorisierungscode</string>
+    <string name="epic_login_auth_code_placeholder">Code oder URL hier einfügen</string>
+    <string name="epic_login_button">Anmelden</string>
+    <string name="epic_login_cancel">Abbrechen</string>
+    <string name="epic_login_browser_error">Browser konnte nicht geöffnet werden</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Von Epic Games abmelden</string>
+    <string name="epic_settings_logout_subtitle">Trenne dein Epic Games-Konto</string>
+    <string name="epic_logout_confirm_title">Von Epic Games abmelden?</string>
+    <string name="epic_logout_confirm_message">Dies entfernt alle Epic Games aus deiner Bibliothek und trennt dein Konto.</string>
+    <string name="epic_logout_confirm">Abmelden</string>
+    <string name="epic_logout_in_progress">Melde von Epic Games ab…</string>
+    <string name="epic_logout_failed">Abmeldung von Epic Games fehlgeschlagen, bitte versuche es erneut</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Spiel deinstallieren</string>
+    <string name="epic_uninstall_game_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="epic_install_game_title">Spiel herunterladen</string>
+    <string name="epic_install_game_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tGröße auf Festplatte: %2$s\n\tVerfügbarer Speicher: %3$s</string>
+    <string name="epic_game_not_found">Spiel nicht gefunden</string>
+    <string name="epic_starting_download">Download wird gestartet: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Download wird gestartet: %1$s + DLCs</string>
+    <string name="epic_download_failed">Download konnte nicht gestartet werden: %1$s</string>
+    <string name="epic_download_error">Download-Fehler: %1$s</string>
 </resources>

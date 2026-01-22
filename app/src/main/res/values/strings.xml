@@ -49,6 +49,11 @@
     <string name="epic_uninstall_game_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="epic_install_game_title">Download Game</string>
     <string name="epic_install_game_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="epic_game_not_found">Game not found</string>
+    <string name="epic_starting_download">Starting download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Starting download: %1$s + DLCs</string>
+    <string name="epic_download_failed">Failed to start download: %1$s</string>
+    <string name="epic_download_error">Download error: %1$s</string>
     <string name="steam_never">Never</string>
     <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>

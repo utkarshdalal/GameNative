@@ -977,4 +977,42 @@
 	<string name="gog_logout_success">Deconectare reușită de la GOG</string>
 	<string name="gog_logout_failed">Deconectare eșuată: %s</string>
 	<string name="gog_logout_in_progress">Se deconectează de la GOG…</string>
-</resources>
+
+	<!-- Epic Games Integration -->
+	<string name="epic_integration_title">Integrare Epic Games</string>
+	<string name="epic_settings_login_title">Autentificare Epic Games</string>
+	<string name="epic_settings_login_subtitle">Conectează contul tău Epic Games</string>
+	<string name="epic_login_success_title">Autentificare reușită</string>
+	<string name="epic_login_success_message">Ești acum conectat la Epic Games.</string>
+	<string name="epic_logout_success">Deconectat de la Epic cu succes</string>
+
+	<!-- Epic Login Dialog -->
+	<string name="epic_login_title">Autentificare Epic Games</string>
+	<string name="epic_login_auto_auth_info">Apasă \'Deschide autentificare Epic\' și autentifică-te. După autentificare, copiază codul de autorizare din ecranul de rezultat și lipește-l mai jos</string>
+	<string name="epic_login_auth_example">Exemplu: authorization code: "example"</string>
+	<string name="epic_login_open_button">Deschide autentificare Epic</string>
+	<string name="epic_login_auth_code_label">Cod de autorizare</string>
+	<string name="epic_login_auth_code_placeholder">Lipește codul sau URL-ul aici</string>
+	<string name="epic_login_button">Autentificare</string>
+	<string name="epic_login_cancel">Anulează</string>
+	<string name="epic_login_browser_error">Nu s-a putut deschide browserul</string>
+
+	<!-- Epic Games Logout -->
+	<string name="epic_settings_logout_title">Deconectare Epic Games</string>
+	<string name="epic_settings_logout_subtitle">Deconectează contul tău Epic Games</string>
+	<string name="epic_logout_confirm_title">Te deconectezi de la Epic Games?</string>
+	<string name="epic_logout_confirm_message">Aceasta va elimina toate jocurile Epic Games din biblioteca ta și va deconecta contul tău.</string>
+	<string name="epic_logout_confirm">Deconectare</string>
+	<string name="epic_logout_in_progress">Se deconectează de la Epic Games…</string>
+	<string name="epic_logout_failed">Deconectare eșuată de la Epic Games, încearcă din nou</string>
+
+	<!-- Epic Install/Uninstall -->
+	<string name="epic_uninstall_game_title">Dezinstalare joc</string>
+	<string name="epic_uninstall_game_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
+	<string name="epic_install_game_title">Descărcare joc</string>
+	<string name="epic_install_game_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tDimensiune pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
+	<string name="epic_game_not_found">Joc negăsit</string>
+	<string name="epic_starting_download">Se pornește descărcarea: %1$s</string>
+	<string name="epic_starting_download_with_dlcs">Se pornește descărcarea: %1$s + DLC-uri</string>
+	<string name="epic_download_failed">Descărcarea nu a putut fi pornită: %1$s</string>
+	<string name="epic_download_error">Eroare la descărcare: %1$s</string>

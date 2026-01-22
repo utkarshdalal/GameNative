@@ -839,4 +839,43 @@
     <string name="gog_logout_success">Logget ud fra GOG</string>
     <string name="gog_logout_failed">Kunne ikke logge ud: %s</string>
     <string name="gog_logout_in_progress">Logger ud fra GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_settings_login_title">Log ind på Epic Games</string>
+    <string name="epic_settings_login_subtitle">Forbind din Epic Games-konto</string>
+    <string name="epic_login_success_title">Login lykkedes</string>
+    <string name="epic_login_success_message">Du er nu logget ind på Epic Games.</string>
+    <string name="epic_logout_success">Logget ud fra Epic</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Log ind på Epic Games</string>
+    <string name="epic_login_auto_auth_info">Tryk på \'Åbn Epic login\' og log ind. Efter login, kopier autorisationskoden fra resultatskærmen og indsæt nedenfor</string>
+    <string name="epic_login_auth_example">Eksempel: authorization code: "example"</string>
+    <string name="epic_login_open_button">Åbn Epic login</string>
+    <string name="epic_login_auth_code_label">Autorisationskode</string>
+    <string name="epic_login_auth_code_placeholder">Indsæt kode eller URL her</string>
+    <string name="epic_login_button">Log ind</string>
+    <string name="epic_login_cancel">Annuller</string>
+    <string name="epic_login_browser_error">Kunne ikke åbne browser</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Log ud fra Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Afbryd din Epic Games-konto</string>
+    <string name="epic_logout_confirm_title">Log ud fra Epic Games?</string>
+    <string name="epic_logout_confirm_message">Dette vil fjerne alle Epic Games-spil fra dit bibliotek og afbryde din konto.</string>
+    <string name="epic_logout_confirm">Log ud</string>
+    <string name="epic_logout_in_progress">Logger ud fra Epic Games…</string>
+    <string name="epic_logout_failed">Kunne ikke logge ud fra Epic Games, prøv igen</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Afinstallér spil</string>
+    <string name="epic_uninstall_game_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="epic_install_game_title">Download spil</string>
+    <string name="epic_install_game_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tStørrelse på disk: %2$s\n\tTilgængelig plads: %3$s</string>
+    <string name="epic_game_not_found">Spil ikke fundet</string>
+    <string name="epic_starting_download">Starter download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Starter download: %1$s + DLC</string>
+    <string name="epic_download_failed">Kunne ikke starte download: %1$s</string>
+    <string name="epic_download_error">Download-fejl: %1$s</string>
 </resources>

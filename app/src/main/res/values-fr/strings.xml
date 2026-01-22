@@ -972,6 +972,45 @@
     <string name="gog_logout_success">Déconnecté de GOG avec succès</string>
     <string name="gog_logout_failed">Échec de la déconnexion : %s</string>
     <string name="gog_logout_in_progress">Déconnexion de GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Intégration Epic Games</string>
+    <string name="epic_settings_login_title">Se connecter à Epic Games</string>
+    <string name="epic_settings_login_subtitle">Connectez votre compte Epic Games</string>
+    <string name="epic_login_success_title">Connexion réussie</string>
+    <string name="epic_login_success_message">Vous êtes maintenant connecté à Epic Games.</string>
+    <string name="epic_logout_success">Déconnecté d\'Epic avec succès</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Se connecter à Epic Games</string>
+    <string name="epic_login_auto_auth_info">Appuyez sur \'Ouvrir la connexion Epic\' et connectez-vous. Une fois connecté, veuillez copier le code d\'autorisation dans l\'écran de résultat et le coller ci-dessous</string>
+    <string name="epic_login_auth_example">Exemple : authorization code: "example"</string>
+    <string name="epic_login_open_button">Ouvrir la connexion Epic</string>
+    <string name="epic_login_auth_code_label">Code d\'autorisation</string>
+    <string name="epic_login_auth_code_placeholder">Collez le code ou l\'URL ici</string>
+    <string name="epic_login_button">Connexion</string>
+    <string name="epic_login_cancel">Annuler</string>
+    <string name="epic_login_browser_error">Impossible d\'ouvrir le navigateur</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Se déconnecter d\'Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Déconnectez votre compte Epic Games</string>
+    <string name="epic_logout_confirm_title">Se déconnecter d\'Epic Games ?</string>
+    <string name="epic_logout_confirm_message">Cela supprimera tous les jeux Epic Games de votre bibliothèque et déconnectera votre compte.</string>
+    <string name="epic_logout_confirm">Déconnexion</string>
+    <string name="epic_logout_in_progress">Déconnexion d\'Epic Games…</string>
+    <string name="epic_logout_failed">Échec de la déconnexion d\'Epic Games, veuillez réessayer</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Désinstaller le jeu</string>
+    <string name="epic_uninstall_game_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
+    <string name="epic_install_game_title">Télécharger le jeu</string>
+    <string name="epic_install_game_message">L\'application en cours d\'installation nécessite l\'espace suivant. Voulez-vous continuer ?\n\n\tTaille du téléchargement : %1$s\n\tTaille sur le disque : %2$s\n\tEspace disponible : %3$s</string>
+    <string name="epic_game_not_found">Jeu non trouvé</string>
+    <string name="epic_starting_download">Début du téléchargement : %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Début du téléchargement : %1$s + DLC</string>
+    <string name="epic_download_failed">Échec du démarrage du téléchargement : %1$s</string>
+    <string name="epic_download_error">Erreur de téléchargement : %1$s</string>
 </resources>
 
 

@@ -976,5 +976,44 @@
     <string name="gog_logout_success">Успішно вийшли з GOG</string>
     <string name="gog_logout_failed">Не вдалося вийти: %s</string>
     <string name="gog_logout_in_progress">Вихід з GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Інтеграція Epic Games</string>
+    <string name="epic_settings_login_title">Вхід у Epic Games</string>
+    <string name="epic_settings_login_subtitle">Підключіть свій обліковий запис Epic Games</string>
+    <string name="epic_login_success_title">Вхід успішний</string>
+    <string name="epic_login_success_message">Ви увійшли в Epic Games.</string>
+    <string name="epic_logout_success">Успішно вийшли з Epic</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Увійти в Epic Games</string>
+    <string name="epic_login_auto_auth_info">Натисніть \'Відкрити вхід Epic\' та увійдіть. Після входу скопіюйте код авторизації з екрану результатів і вставте нижче</string>
+    <string name="epic_login_auth_example">Приклад: authorization code: "example"</string>
+    <string name="epic_login_open_button">Відкрити вхід Epic</string>
+    <string name="epic_login_auth_code_label">Код авторизації</string>
+    <string name="epic_login_auth_code_placeholder">Вставте код або URL сюди</string>
+    <string name="epic_login_button">Увійти</string>
+    <string name="epic_login_cancel">Скасувати</string>
+    <string name="epic_login_browser_error">Не вдалося відкрити браузер</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Вийти з Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Відключіть свій обліковий запис Epic Games</string>
+    <string name="epic_logout_confirm_title">Вийти з Epic Games?</string>
+    <string name="epic_logout_confirm_message">Це видалить усі ігри Epic Games з вашої бібліотеки та відключить ваш обліковий запис.</string>
+    <string name="epic_logout_confirm">Вийти</string>
+    <string name="epic_logout_in_progress">Вихід з Epic Games…</string>
+    <string name="epic_logout_failed">Не вдалося вийти з Epic Games, спробуйте ще раз</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Деінсталювати гру</string>
+    <string name="epic_uninstall_game_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
+    <string name="epic_install_game_title">Завантажити гру</string>
+    <string name="epic_install_game_message">Гра має наступні вимоги до простору. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступний простір: %3$s</string>
+    <string name="epic_game_not_found">Гру не знайдено</string>
+    <string name="epic_starting_download">Початок завантаження: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Початок завантаження: %1$s + DLC</string>
+    <string name="epic_download_failed">Не вдалося розпочати завантаження: %1$s</string>
+    <string name="epic_download_error">Помилка завантаження: %1$s</string>
 </resources>
 
