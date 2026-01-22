@@ -84,6 +84,7 @@ android {
         // Localization support - specify which languages to include
         resourceConfigurations += listOf(
             "en",      // English (default)
+            "es",      // Spanish
             "da",      // Danish
             "pt-rBR",  // Portuguese (Brazilian)
             "zh-rTW",  // Traditional Chinese
