@@ -440,7 +440,7 @@ class EpicService : Service() {
         fun getAccountId(): String? {
             return try {
                 val context = getInstance()?.applicationContext ?: return null
-                val credentialsResult = kotlinx.coroutines.runBlocking {
+                val credentialsResult = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
                     EpicAuthManager.getStoredCredentials(context)
                 }
                 credentialsResult.getOrNull()?.accountId
