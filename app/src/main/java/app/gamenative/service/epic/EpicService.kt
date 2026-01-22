@@ -480,8 +480,8 @@ class EpicService : Service() {
 
         val instance = getInstance()
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(3, notification) // Use different ID than SteamService (which uses 1)
+        val notification = notificationHelper.createForegroundNotification("EGS Connected")
+        startForeground(3, notification)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -548,36 +548,6 @@ class EpicService : Service() {
 
         return START_STICKY
     }
-
-    // override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    //     Timber.tag("Epic").i("[EpicService] onStartCommand() called")
-
-    //     // Start as foreground service
-    //     val notification = notificationHelper.createForegroundNotification("Epic Games Service running...")
-    //     startForeground(3, notification) // Use different ID than Steam (1) and GOG (2)
-    //     Timber.tag("Epic").i("[EpicService] Started as foreground service")
-
-    //     // Start background library sync automatically when service starts
-    //     backgroundSyncJob = scope.launch {
-    //         try {
-    //             setSyncInProgress(true)
-    //             Timber.tag("Epic").i("[EpicService] Starting background library sync...")
-
-    //             val syncResult = epicManager.startBackgroundSync(applicationContext)
-    //             if (syncResult.isFailure) {
-    //                 Timber.tag("Epic").w("[EpicService] Failed to start background sync: ${syncResult.exceptionOrNull()?.message}")
-    //             } else {
-    //                 Timber.tag("Epic").i("[EpicService] Background library sync completed successfully")
-    //             }
-    //         } catch (e: Exception) {
-    //             Timber.tag("Epic").e(e, "[EpicService] Exception starting background sync")
-    //         } finally {
-    //             setSyncInProgress(false)
-    //         }
-    //     }
-
-    //     return START_STICKY
-    // }
 
     override fun onDestroy() {
         super.onDestroy()
