@@ -726,7 +726,7 @@ class EpicDownloadManager @Inject constructor(
                                 val bytesRead = input.read(inputBuffer)
                                 if (bytesRead == -1) {
                                     endOfStream = true
-                                    Timber.d("Epic", "Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
+                                    Timber.tag("Epic").d("Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
                                 } else {
                                     if (firstRead) {
                                         Log.d("Epic", "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
@@ -748,9 +748,9 @@ class EpicDownloadManager @Inject constructor(
                                     break
                                 }
                             } catch (e: java.util.zip.DataFormatException) {
-                                Timber.d("Epic", "DataFormatException during inflate: ${e.message}")
-                                Timber.d("Epic", "  totalBytesWritten=$totalBytesWritten, expectedSize=$uncompressedSize")
-                                Timber.d("Epic", "  inflater: finished=${inflater.finished()}, needsInput=${inflater.needsInput()}")
+                                Timber.tag("Epic").d("DataFormatException during inflate: ${e.message}")
+                                Timber.tag("Epic").d("  totalBytesWritten=$totalBytesWritten, expectedSize=$uncompressedSize")
+                                Timber.tag("Epic").d("  inflater: finished=${inflater.finished()}, needsInput=${inflater.needsInput()}")
                                 throw Exception("Failed to decompress chunk: ${e.message}", e)
                             }
                         }
@@ -776,7 +776,7 @@ class EpicDownloadManager @Inject constructor(
 
         // Verify size
         if (totalBytesWritten != expectedSize) {
-            Timber.d("Epic", "Size mismatch: expected=$expectedSize, actual=$totalBytesWritten, diff=${expectedSize - totalBytesWritten}")
+            Timber.tag("Epic").d("Size mismatch: expected=$expectedSize, actual=$totalBytesWritten, diff=${expectedSize - totalBytesWritten}")
             outputFile.delete()
             throw Exception("Decompressed size mismatch: expected $expectedSize, got $totalBytesWritten")
         }
