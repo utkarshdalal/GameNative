@@ -118,15 +118,19 @@ class EpicAppScreen : BaseAppScreen() {
         // Use gameId to look up the Epic game
         val gameId = libraryItem.gameId
 
-        // Add a refresh trigger to re-fetch game data when install status changes
-        var refreshTrigger by remember { mutableStateOf(0) }
+        var epicGame by remember(gameId) { mutableStateOf<EpicGame?>(null) }
+        var dlcTitles by remember(gameId) { mutableStateOf<List<EpicGame>>(emptyList()) }
 
         // Listen for install status changes to refresh game data
         DisposableEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
-                    refreshTrigger++
+                    val game = EpicService.getEpicGameOf(gameId)
+                    epicGame = game
+                    if (game != null) {
+                        dlcTitles = EpicService.getDLCForGame(game.id)
+                    }
                 }
             }
             app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
@@ -157,8 +161,8 @@ class EpicAppScreen : BaseAppScreen() {
                                 downloadSize = sizes.downloadSize,
                             )
                             EpicService.updateEpicGame(updatedGame)
-                            // Trigger refresh to show updated size
-                            refreshTrigger++
+                            // Update state directly to show updated size
+                            epicGame = updatedGame
                         }
                     } catch (e: Exception) {
                         Timber.tag("Epic").e(e, "Failed to fetch install size for ${game.title}")
@@ -167,10 +171,7 @@ class EpicAppScreen : BaseAppScreen() {
             }
         }
 
-        var epicGame by remember(gameId, refreshTrigger) { mutableStateOf<EpicGame?>(null) }
-        var dlcTitles by remember(gameId, refreshTrigger) { mutableStateOf<List<EpicGame>>(emptyList()) }
-
-        LaunchedEffect(gameId, refreshTrigger) {
+        LaunchedEffect(gameId) {
             val game = EpicService.getEpicGameOf(gameId)
             epicGame = game
 
