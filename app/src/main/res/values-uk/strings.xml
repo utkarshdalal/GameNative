@@ -521,6 +521,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Використовувати SDL API</string>
+    <string name="use_steam_input">Використовувати Steam Input</string>
     <string name="enable_xinput_api">Увімкнути XInput API</string>
     <string name="enable_directinput_api">Увімкнути DirectInput API</string>
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>

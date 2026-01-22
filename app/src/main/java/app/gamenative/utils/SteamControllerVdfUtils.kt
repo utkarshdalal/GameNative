@@ -39,82 +39,27 @@ object SteamControllerVdfUtils {
         }
 
         val presets = controllerMappings.getObjects("preset")
+        val presetsByName = presets.mapNotNull { preset ->
+            preset.getString("name")?.let { name -> name to preset }
+        }.toMap()
         val allBindings = LinkedHashMap<String, LinkedHashMap<String, MutableList<String>>>()
 
         for (preset in presets) {
             val name = preset.getString("name") ?: continue
             if (!actionList.contains(name) && name.lowercase() != "default") continue
 
-            val groupBindings = preset.getObject("group_source_bindings") ?: continue
-            val bindings = LinkedHashMap<String, MutableList<String>>()
-
-            for ((groupId, groupBinding) in groupBindings.stringEntries()) {
-                val tokens = groupBinding.split(Regex("\\s+"))
-                if (tokens.size < 2 || tokens[1].lowercase() != "active") continue
-
-                val group = groupsById[groupId] ?: continue
-                val groupMode = group.getString("mode")?.lowercase().orEmpty()
-                val bindingType = tokens[0].lowercase()
-
-                if (bindingType in listOf("switch", "button_diamond", "dpad")) {
-                    addInputBindings(group, bindings)
-                }
-
-                if (bindingType in listOf("left_trigger", "right_trigger")) {
-                    if (groupMode == "trigger") {
-                        val actionName = group.getObject("gameactions")?.getString(name)
-                        if (!actionName.isNullOrEmpty()) {
-                            val binding = if (bindingType == "left_trigger") "LTRIGGER" else "RTRIGGER"
-                            addActionBinding(bindings, actionName, binding, bindingSuffix = "trigger")
-                        }
-                        val forceBinding = if (bindingType == "left_trigger") "DLTRIGGER" else "DRTRIGGER"
-                        addInputBindings(group, bindings, forceBinding = forceBinding)
-                    } else {
-                        Timber.tag("SteamControllerVdf").d("Unhandled trigger mode: $groupMode")
-                    }
-                }
-
-                if (bindingType in listOf("joystick", "right_joystick", "dpad")) {
-                    if (groupMode == "joystick_move") {
-                        val actionName = group.getObject("gameactions")?.getString(name)
-                        if (!actionName.isNullOrEmpty()) {
-                            val binding = when (bindingType) {
-                                "joystick" -> "LJOY"
-                                "right_joystick" -> "RJOY"
-                                "dpad" -> "DPAD"
-                                else -> ""
-                            }
-                            if (binding.isNotEmpty()) {
-                                addActionBinding(bindings, actionName, binding, bindingSuffix = "joystick_move")
-                            }
-                        }
-                        val forceBinding = if (bindingType == "joystick") "LSTICK" else "RSTICK"
-                        addInputBindings(group, bindings, forceBinding = forceBinding)
-                    } else if (groupMode == "dpad") {
-                        if (bindingType == "joystick") {
-                            val bindingMap = mapOf(
-                                "dpad_north" to "DLJOYUP",
-                                "dpad_south" to "DLJOYDOWN",
-                                "dpad_west" to "DLJOYLEFT",
-                                "dpad_east" to "DLJOYRIGHT",
-                                "click" to "LSTICK",
-                            )
-                            addInputBindings(group, bindings, keymap = bindingMap)
-                        } else if (bindingType == "right_joystick") {
-                            val bindingMap = mapOf(
-                                "dpad_north" to "DRJOYUP",
-                                "dpad_south" to "DRJOYDOWN",
-                                "dpad_west" to "DRJOYLEFT",
-                                "dpad_east" to "DRJOYRIGHT",
-                                "click" to "RSTICK",
-                            )
-                            addInputBindings(group, bindings, keymap = bindingMap)
-                        }
-                    }
-                }
-            }
-
+            val bindings = buildPresetBindings(name, preset, groupsById)
             allBindings[name] = bindings
+        }
+
+        controllerMappings.getObject("action_layers")?.keys()?.forEach { layerName ->
+            val preset = presetsByName[layerName]
+            if (preset == null) {
+                Timber.tag("SteamControllerVdf").d("Missing preset for action layer $layerName")
+                return@forEach
+            }
+            val bindings = buildPresetBindings(layerName, preset, groupsById)
+            allBindings[layerName] = bindings
         }
 
         if (allBindings.isEmpty()) return
@@ -189,6 +134,83 @@ object SteamControllerVdfUtils {
                 list.add(0, binding)
             }
         }
+    }
+
+    private fun buildPresetBindings(
+        presetName: String,
+        preset: VdfObject,
+        groupsById: Map<String, VdfObject>,
+    ): LinkedHashMap<String, MutableList<String>> {
+        val groupBindings = preset.getObject("group_source_bindings") ?: return LinkedHashMap()
+        val bindings = LinkedHashMap<String, MutableList<String>>()
+
+        for ((groupId, groupBinding) in groupBindings.stringEntries()) {
+            val tokens = groupBinding.split(Regex("\\s+"))
+            if (tokens.size < 2 || tokens[1].lowercase() != "active") continue
+
+            val group = groupsById[groupId] ?: continue
+            val groupMode = group.getString("mode")?.lowercase().orEmpty()
+            val bindingType = tokens[0].lowercase()
+
+            if (bindingType in listOf("switch", "button_diamond", "dpad")) {
+                addInputBindings(group, bindings)
+            }
+
+            if (bindingType in listOf("left_trigger", "right_trigger")) {
+                if (groupMode == "trigger") {
+                    val actionName = group.getObject("gameactions")?.getString(presetName)
+                    if (!actionName.isNullOrEmpty()) {
+                        val binding = if (bindingType == "left_trigger") "LTRIGGER" else "RTRIGGER"
+                        addActionBinding(bindings, actionName, binding, bindingSuffix = "trigger")
+                    }
+                    val forceBinding = if (bindingType == "left_trigger") "DLTRIGGER" else "DRTRIGGER"
+                    addInputBindings(group, bindings, forceBinding = forceBinding)
+                } else {
+                    Timber.tag("SteamControllerVdf").d("Unhandled trigger mode: $groupMode")
+                }
+            }
+
+            if (bindingType in listOf("joystick", "right_joystick", "dpad")) {
+                if (groupMode == "joystick_move") {
+                    val actionName = group.getObject("gameactions")?.getString(presetName)
+                    if (!actionName.isNullOrEmpty()) {
+                        val binding = when (bindingType) {
+                            "joystick" -> "LJOY"
+                            "right_joystick" -> "RJOY"
+                            "dpad" -> "DPAD"
+                            else -> ""
+                        }
+                        if (binding.isNotEmpty()) {
+                            addActionBinding(bindings, actionName, binding, bindingSuffix = "joystick_move")
+                        }
+                    }
+                    val forceBinding = if (bindingType == "joystick") "LSTICK" else "RSTICK"
+                    addInputBindings(group, bindings, forceBinding = forceBinding)
+                } else if (groupMode == "dpad") {
+                    if (bindingType == "joystick") {
+                        val bindingMap = mapOf(
+                            "dpad_north" to "DLJOYUP",
+                            "dpad_south" to "DLJOYDOWN",
+                            "dpad_west" to "DLJOYLEFT",
+                            "dpad_east" to "DLJOYRIGHT",
+                            "click" to "LSTICK",
+                        )
+                        addInputBindings(group, bindings, keymap = bindingMap)
+                    } else if (bindingType == "right_joystick") {
+                        val bindingMap = mapOf(
+                            "dpad_north" to "DRJOYUP",
+                            "dpad_south" to "DRJOYDOWN",
+                            "dpad_west" to "DRJOYLEFT",
+                            "dpad_east" to "DRJOYRIGHT",
+                            "click" to "RSTICK",
+                        )
+                        addInputBindings(group, bindings, keymap = bindingMap)
+                    }
+                }
+            }
+        }
+
+        return bindings
     }
 }
 

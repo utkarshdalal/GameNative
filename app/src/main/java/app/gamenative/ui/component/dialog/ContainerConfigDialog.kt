@@ -1817,6 +1817,14 @@ fun ContainerConfigDialog(
                                         },
                                     )
                                 }
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = stringResource(R.string.use_steam_input)) },
+                                    state = config.useSteamInput,
+                                    onCheckedChange = {
+                                        config = config.copy(useSteamInput = it)
+                                    },
+                                )
                                 // Enable XInput API
                                 SettingsSwitch(
                                     colors = settingsTileColorsAlt(),

@@ -522,6 +522,7 @@
 
     	<!-- Container Configuration: Input -->
 	<string name="use_sdl_api">Folosește API SDL</string>
+	<string name="use_steam_input">Folosește Steam Input</string>
 	<string name="enable_xinput_api">Activează API XInput</string>
 	<string name="enable_directinput_api">Activează API DirectInput</string>
 	<string name="directinput_mapper_type">Tip mapper DirectInput</string>

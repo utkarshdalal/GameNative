@@ -118,7 +118,8 @@ object ContainerUtils {
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
-			enableXInput = PrefManager.xinputEnabled,
+            useSteamInput = PrefManager.useSteamInput,
+            enableXInput = PrefManager.xinputEnabled,
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
@@ -171,7 +172,8 @@ object ContainerUtils {
         PrefManager.fexcorePreset = containerData.fexcorePreset
 		// Persist renderer and controller defaults
 		PrefManager.renderer = containerData.renderer
-		PrefManager.xinputEnabled = containerData.enableXInput
+        PrefManager.useSteamInput = containerData.useSteamInput
+        PrefManager.xinputEnabled = containerData.enableXInput
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
@@ -220,6 +222,7 @@ object ContainerUtils {
         val enableX = apiOrdinal == PreferredInputApi.XINPUT.ordinal || apiOrdinal == PreferredInputApi.BOTH.ordinal
         val enableD = apiOrdinal == PreferredInputApi.DINPUT.ordinal || apiOrdinal == PreferredInputApi.BOTH.ordinal
         val mapperType = container.getDinputMapperType()
+        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
         // Read disable-mouse flag from container
         val disableMouse = container.isDisableMouseInput()
         // Read touchscreen-mode flag from container
@@ -259,6 +262,7 @@ object ContainerUtils {
             fexcorePreset = container.getFEXCorePreset(),
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
+            useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
@@ -379,6 +383,7 @@ object ContainerUtils {
         container.box86Preset = containerData.box86Preset
         container.box64Preset = containerData.box64Preset
         container.isSdlControllerAPI = containerData.sdlControllerAPI
+        container.putExtra("useSteamInput", containerData.useSteamInput)
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.containerVariant = containerData.containerVariant

@@ -350,6 +350,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usar API SDL</string>
+    <string name="use_steam_input">Usar Steam Input</string>
     <string name="enable_xinput_api">Habilitar API XInput</string>
     <string name="enable_directinput_api">Habilitar API DirectInput</string>
     <string name="directinput_mapper_type">Tipo de mapeador DirectInput</string>

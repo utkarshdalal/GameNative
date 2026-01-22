@@ -513,6 +513,7 @@
 
     <!-- 容器配置：输入 -->
     <string name="use_sdl_api">使用 SDL API</string>
+    <string name="use_steam_input">使用 Steam Input</string>
     <string name="enable_xinput_api">启用 XInput API</string>
     <string name="enable_directinput_api">启用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput 映射器类型</string>

@@ -39,6 +39,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
@@ -62,7 +63,7 @@ import `in`.dragonbra.javasteam.steam.authentication.IChallengeUrlChanged
 import `in`.dragonbra.javasteam.steam.authentication.QrAuthSession
 import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
 import `in`.dragonbra.javasteam.depotdownloader.IDownloadListener
-import `in`.dragonbra.javasteam.depotdownloader.data.PubFileItem
+import `in`.dragonbra.javasteam.depotdownloader.Steam3Session
 import `in`.dragonbra.javasteam.steam.discovery.FileServerListProvider
 import `in`.dragonbra.javasteam.steam.discovery.ServerQuality
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
@@ -90,6 +91,7 @@ import `in`.dragonbra.javasteam.steam.steamclient.callbacks.DisconnectedCallback
 import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfiguration
 import `in`.dragonbra.javasteam.types.FileData
 import `in`.dragonbra.javasteam.types.KeyValue
+import `in`.dragonbra.javasteam.types.PublishedFileID
 import `in`.dragonbra.javasteam.types.SteamID
 import `in`.dragonbra.javasteam.util.log.LogListener
 import `in`.dragonbra.javasteam.util.log.LogManager
@@ -140,8 +142,12 @@ import `in`.dragonbra.javasteam.types.DepotManifest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
 import android.util.Base64
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.db.dao.DownloadingAppInfoDao
@@ -269,6 +275,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
+        private const val STEAM_CONTROLLER_CONFIG_FILENAME = "steam_controller_config.vdf"
 
         /**
          * Default timeout to use when making requests
@@ -1255,11 +1262,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         private fun readDownloadedSteamInputTemplate(appId: Int): String? {
-            val configDir = File(getAppDirPath(appId), "steam_controller_configs")
-            val files = configDir.listFiles().orEmpty()
-            val vdfFile = files.firstOrNull { it.isFile && it.extension.equals("vdf", true) }
-                ?: files.firstOrNull { it.isFile }
-            return vdfFile?.readText(Charsets.UTF_8)
+            val configFile = File(getAppDirPath(appId), STEAM_CONTROLLER_CONFIG_FILENAME)
+            if (!configFile.exists()) return null
+            return configFile.readText(Charsets.UTF_8)
         }
 
         fun resolveSteamControllerVdfText(appId: Int): String? {
@@ -1488,21 +1493,104 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 .let { selectSteamControllerConfig(it) }
 
                             if (controllerConfig != null) {
-                                val controllerConfigDir = File(
-                                    getAppDirPath(appId),
-                                    "steam_controller_configs",
-                                ).apply { mkdirs() }
+                                val appDirPath = getAppDirPath(appId)
+                                val publishedFileId = controllerConfig.publishedFileId
 
-                                val pubFileItem = PubFileItem(
-                                    appId = appId,
-                                    pubFile = controllerConfig.publishedFileId,
-                                    installDirectory = controllerConfigDir.path,
-                                )
-                                depotDownloader.add(pubFileItem)
-                                Timber.i(
-                                    "Queued steam controller config ${controllerConfig.publishedFileId} " +
-                                        "to ${controllerConfigDir.path}",
-                                )
+                                runCatching {
+                                    // Build POST request to steamworkshopdownloader.io API
+                                    val requestBody = "[$publishedFileId]".toRequestBody(
+                                        "application/x-www-form-urlencoded".toMediaType()
+                                    )
+
+                                    val request = Request.Builder()
+                                        .url("https://steamworkshopdownloader.io/api/details/file")
+                                        .post(requestBody)
+                                        .build()
+
+                                    Net.http.newCall(request).execute().use { response ->
+                                        if (!response.isSuccessful) {
+                                            Timber.w(
+                                                "Failed to get steam controller config details " +
+                                                    "for ${publishedFileId}: ${response.code}",
+                                            )
+                                            return@use
+                                        }
+
+                                        val responseBody = response.body?.string()
+                                        if (responseBody.isNullOrEmpty()) {
+                                            Timber.w(
+                                                "Empty response body for steam controller config " +
+                                                    publishedFileId,
+                                            )
+                                            return@use
+                                        }
+
+                                        // Parse JSON array response
+                                        val jsonArray = JSONArray(responseBody)
+                                        if (jsonArray.length() == 0) {
+                                            Timber.w(
+                                                "Empty JSON array for steam controller config " +
+                                                    publishedFileId,
+                                            )
+                                            return@use
+                                        }
+
+                                        val fileDetails = jsonArray.getJSONObject(0)
+                                        val fileUrl = fileDetails.optString("file_url", "").trim()
+
+                                        if (fileUrl.isEmpty()) {
+                                            Timber.w(
+                                                "Steam controller config ${publishedFileId} " +
+                                                    "missing fileUrl",
+                                            )
+                                            return@use
+                                        }
+
+                                        val configFile = File(appDirPath, STEAM_CONTROLLER_CONFIG_FILENAME)
+
+                                        // Download the file
+                                        val downloadRequest = Request.Builder()
+                                            .url(fileUrl)
+                                            .get()
+                                            .build()
+
+                                        Net.http.newCall(downloadRequest).execute().use { downloadResponse ->
+                                            if (!downloadResponse.isSuccessful) {
+                                                Timber.w(
+                                                    "Failed to download steam controller config " +
+                                                        "${publishedFileId}: ${downloadResponse.code}",
+                                                )
+                                                return@use
+                                            }
+
+                                            val downloadBody = downloadResponse.body
+                                            if (downloadBody == null) {
+                                                Timber.w(
+                                                    "Empty body for steam controller config " +
+                                                        publishedFileId,
+                                                )
+                                                return@use
+                                            }
+
+                                            configFile.outputStream().use { output ->
+                                                downloadBody.byteStream().use { input ->
+                                                    input.copyTo(output)
+                                                }
+                                            }
+
+                                            Timber.i(
+                                                "Downloaded steam controller config " +
+                                                    "${publishedFileId} to ${configFile.path}",
+                                            )
+                                        }
+                                    }
+                                }.onFailure { error ->
+                                    Timber.w(
+                                        error,
+                                        "Steam controller config download failed for " +
+                                            publishedFileId,
+                                    )
+                                }
                             }
                         }
 
@@ -2233,6 +2321,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
+                        appDao.deleteAll()
                         changeNumbersDao.deleteAll()
                         fileChangeListsDao.deleteAll()
                         licenseDao.deleteAll()
