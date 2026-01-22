@@ -338,12 +338,11 @@ class MainActivity : ComponentActivity() {
 
         // Stop EpicService if running, unless there are active downloads or sync operations
         if (EpicService.isRunning && !isChangingConfigurations) {
-            if (!EpicService.hasActiveDownload() &&
-                !EpicService.hasActiveOperations()) {
-                Timber.i("Stopping EpicService - no active operations or downloads")
+            if (!EpicService.hasActiveOperations()) {
+                Timber.i("Stopping EpicService - no active operations")
                 EpicService.stop()
             } else {
-                Timber.d("EpicService kept running - has active downloads or operations")
+                Timber.d("EpicService kept running - has active operations")
             }
         }
     }
