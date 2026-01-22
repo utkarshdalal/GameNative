@@ -142,11 +142,9 @@ import `in`.dragonbra.javasteam.types.DepotManifest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
+import okhttp3.FormBody
 import org.json.JSONObject
 import android.util.Base64
 import app.gamenative.data.DownloadingAppInfo
@@ -1178,7 +1176,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             val manifestDirPath = manifestFile.parentFile?.path ?: return null
 
             val manifestText = manifestFile.readText(Charsets.UTF_8)
-            val configText = parseManifestForConfig(manifestDirPath, manifestText)
+            val configText = try {
+                parseManifestForConfig(manifestDirPath, manifestText)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to parse Steam Input manifest config at ${manifestFile.path}")
+                return null
+            }
             return configText ?: manifestText
         }
 
@@ -1186,42 +1189,47 @@ class SteamService : Service(), IChallengeUrlChanged {
             manifestDirPath: String,
             manifestText: String,
         ): String? {
-            val kv = KeyValue.loadFromString(manifestText) ?: return null
-            val actionManifest = if (kv.name?.equals("Action Manifest", ignoreCase = true) == true) {
-                kv
-            } else {
-                kv["Action Manifest"]
-            }
-            if (actionManifest === KeyValue.INVALID) return null
-
-            val configs = actionManifest["configurations"]
-            if (configs === KeyValue.INVALID || configs.children.isEmpty()) {
-                throw IllegalStateException("No configurations found in Action Manifest")
-            }
-
-            val preferredControllers = listOf(
-                "controller_xboxone",
-                "controller_steamcontroller_gordon",
-                "controller_generic",
-                "controller_xbox360",
-            )
-
-            for (controllerType in preferredControllers) {
-                val controllerBlock = configs[controllerType]
-                if (controllerBlock === KeyValue.INVALID) continue
-
-                for (entry in controllerBlock.children) {
-                    val pathNode = entry["path"]
-                    val configPath = pathNode.asString().orEmpty()
-                    if (pathNode === KeyValue.INVALID || configPath.isEmpty()) continue
-
-                    val configFile = resolvePathCaseInsensitive(manifestDirPath, configPath)
-                        ?: continue
-                    return configFile.readText(Charsets.UTF_8)
+            return try {
+                val kv = KeyValue.loadFromString(manifestText) ?: return null
+                val actionManifest = if (kv.name?.equals("Action Manifest", ignoreCase = true) == true) {
+                    kv
+                } else {
+                    kv["Action Manifest"]
                 }
-            }
+                if (actionManifest === KeyValue.INVALID) return null
 
-            throw IllegalStateException("No valid controller configuration found in Action Manifest")
+                val configs = actionManifest["configurations"]
+                if (configs === KeyValue.INVALID || configs.children.isEmpty()) {
+                    throw IllegalStateException("No configurations found in Action Manifest")
+                }
+
+                val preferredControllers = listOf(
+                    "controller_xboxone",
+                    "controller_steamcontroller_gordon",
+                    "controller_generic",
+                    "controller_xbox360",
+                )
+
+                for (controllerType in preferredControllers) {
+                    val controllerBlock = configs[controllerType]
+                    if (controllerBlock === KeyValue.INVALID) continue
+
+                    for (entry in controllerBlock.children) {
+                        val pathNode = entry["path"]
+                        val configPath = pathNode.asString().orEmpty()
+                        if (pathNode === KeyValue.INVALID || configPath.isEmpty()) continue
+
+                        val configFile = resolvePathCaseInsensitive(manifestDirPath, configPath)
+                            ?: continue
+                        return configFile.readText(Charsets.UTF_8)
+                    }
+                }
+
+                throw IllegalStateException("No valid controller configuration found in Action Manifest")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to parse Steam Input manifest config")
+                null
+            }
         }
 
         private fun resolvePathCaseInsensitive(
@@ -1497,13 +1505,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 val publishedFileId = controllerConfig.publishedFileId
 
                                 runCatching {
-                                    // Build POST request to steamworkshopdownloader.io API
-                                    val requestBody = "[$publishedFileId]".toRequestBody(
-                                        "application/x-www-form-urlencoded".toMediaType()
-                                    )
+                                    // Build POST request to Steam GetPublishedFileDetails API
+                                    val requestBody = FormBody.Builder()
+                                        .add("itemcount", "1")
+                                        .add("publishedfileids[0]", publishedFileId.toString())
+                                        .build()
 
                                     val request = Request.Builder()
-                                        .url("https://steamworkshopdownloader.io/api/details/file")
+                                        .url(
+                                            "https://api.steampowered.com/" +
+                                                "ISteamRemoteStorage/GetPublishedFileDetails/v1"
+                                        )
                                         .post(requestBody)
                                         .build()
 
@@ -1525,17 +1537,38 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             return@use
                                         }
 
-                                        // Parse JSON array response
-                                        val jsonArray = JSONArray(responseBody)
-                                        if (jsonArray.length() == 0) {
+                                        // Parse JSON object response
+                                        val responseJson = JSONObject(responseBody)
+                                        val responseData = responseJson.optJSONObject("response")
+                                        if (responseData == null) {
                                             Timber.w(
-                                                "Empty JSON array for steam controller config " +
-                                                    publishedFileId,
+                                                "Steam controller config ${publishedFileId} " +
+                                                    "missing response data",
                                             )
                                             return@use
                                         }
 
-                                        val fileDetails = jsonArray.getJSONObject(0)
+                                        val result = responseData.optInt("result", 0)
+                                        val resultCount = responseData.optInt("resultcount", 0)
+                                        if (result != 1 || resultCount < 1) {
+                                            Timber.w(
+                                                "Steam controller config ${publishedFileId} " +
+                                                    "returned result=$result resultcount=$resultCount",
+                                            )
+                                            return@use
+                                        }
+
+                                        val fileDetails = responseData
+                                            .optJSONArray("publishedfiledetails")
+                                            ?.optJSONObject(0)
+                                        if (fileDetails == null) {
+                                            Timber.w(
+                                                "Steam controller config ${publishedFileId} " +
+                                                    "missing publishedfiledetails",
+                                            )
+                                            return@use
+                                        }
+
                                         val fileUrl = fileDetails.optString("file_url", "").trim()
 
                                         if (fileUrl.isEmpty()) {
