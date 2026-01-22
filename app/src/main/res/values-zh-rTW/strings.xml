@@ -105,6 +105,7 @@
     <string name="compatibility">相容性</string>
     <string name="intermediate">平衡</string>
     <string name="performance">高性能</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -515,6 +516,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">使用 SDL API</string>
+    <string name="use_steam_input">使用 Steam Input</string>
     <string name="enable_xinput_api">啟用 XInput API</string>
     <string name="enable_directinput_api">啟用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper 類型</string>

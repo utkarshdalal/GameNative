@@ -847,6 +847,7 @@ object SteamUtils {
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
         }.getOrDefault("english").lowercase()
+        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
 
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
@@ -924,6 +925,26 @@ object SteamUtils {
 
         if (Files.notExists(mainIni)) Files.createFile(mainIni)
         mainIni.toFile().writeText(mainIniContent)
+
+        val controllerDir = settingsDir.resolve("controller")
+        if (useSteamInput) {
+            val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
+            if (!controllerVdfText.isNullOrEmpty()) {
+                runCatching {
+                    SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
+                }.onFailure { error ->
+                    Timber.w(error, "Failed to generate controller config for $steamAppId")
+                }
+            }
+        } else {
+            runCatching {
+                if (Files.exists(controllerDir)) {
+                    controllerDir.toFile().deleteRecursively()
+                }
+            }.onFailure { error ->
+                Timber.w(error, "Failed to delete controller config for $steamAppId")
+            }
+        }
 
 
         // Write supported languages list

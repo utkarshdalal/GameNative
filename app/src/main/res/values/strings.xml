@@ -117,6 +117,7 @@
     <string name="compatibility">Compatibility</string>
     <string name="intermediate">Intermediate</string>
     <string name="performance">Performance</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -531,6 +532,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Use SDL API</string>
+    <string name="use_steam_input">Use Steam Input</string>
     <string name="enable_xinput_api">Enable XInput API</string>
     <string name="enable_directinput_api">Enable DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>

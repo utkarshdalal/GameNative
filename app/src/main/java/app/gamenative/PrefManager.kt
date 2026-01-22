@@ -409,6 +409,13 @@ object PrefManager {
         }
 
     // Controller Input Defaults
+    private val USE_STEAM_INPUT = booleanPreferencesKey("use_steam_input")
+    var useSteamInput: Boolean
+        get() = getPref(USE_STEAM_INPUT, false)
+        set(value) {
+            setPref(USE_STEAM_INPUT, value)
+        }
+
     private val XINPUT_ENABLED = booleanPreferencesKey("xinput_enabled")
     var xinputEnabled: Boolean
         get() = getPref(XINPUT_ENABLED, true)
