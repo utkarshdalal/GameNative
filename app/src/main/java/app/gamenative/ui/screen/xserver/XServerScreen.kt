@@ -1751,7 +1751,7 @@ private fun getWineStartCommand(
     val isEpicGame = gameSource == GameSource.EPIC
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-    if (!isCustomGame && !isGOGGame && !isEpicGame) {
+    if (isSteamGame) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)

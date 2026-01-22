@@ -340,11 +340,12 @@ class EpicAppScreen : BaseAppScreen() {
     /**
      * Perform the actual download after confirmation
      * Delegates to EpicService/EpicManager for proper service layer separation
+     * @param scope Lifecycle-aware CoroutineScope from the calling composable
      * @param selectedGameIds List of game IDs to download (base game + selected DLCs)
      */
-    private fun performDownload(context: Context, libraryItem: LibraryItem, selectedGameIds: List<Int>, onClickPlay: (Boolean) -> Unit) {
+    private fun performDownload(scope: CoroutineScope, context: Context, libraryItem: LibraryItem, selectedGameIds: List<Int>, onClickPlay: (Boolean) -> Unit) {
         Timber.tag(TAG).i("Starting Epic game download: ${libraryItem.gameId} with ${selectedGameIds.size} items (including DLCs)")
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 // Get the game to access its title/appName
                 val game = EpicService.getEpicGameOf(libraryItem.gameId)
@@ -715,6 +716,7 @@ class EpicAppScreen : BaseAppScreen() {
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
 
         // Monitor uninstall dialog state
         var showUninstallDialog by remember { mutableStateOf(shouldShowUninstallDialog(libraryItem.appId)) }
@@ -763,7 +765,7 @@ class EpicAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
-                        performDownload(context, libraryItem, listOf(libraryItem.gameId)) {}
+                        performDownload(scope, context, libraryItem, listOf(libraryItem.gameId)) {}
                     }
                 }
 
@@ -790,7 +792,7 @@ class EpicAppScreen : BaseAppScreen() {
                 },
                 onInstall = { selectedGameIds ->
                     hideGameManagerDialog(gameId)
-                    performDownload(context, libraryItem, selectedGameIds) {}
+                    performDownload(scope, context, libraryItem, selectedGameIds) {}
                 },
                 onDismissRequest = {
                     hideGameManagerDialog(gameId)
