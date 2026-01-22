@@ -43,7 +43,7 @@
     <string name="steam_uninstall_failed">Error al desinstalar el juego</string>
     <string name="gog_uninstall_game_title">Desinstalar juego</string>
     <string name="gog_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
-    <string name="gog_install_game_title">Descargar juego</string>
+    <string name="gog_install_game_title">Instalar juego</string>
     <string name="gog_install_confirmation_message">La aplicación que se está instalando tiene los siguientes requisitos de espacio. ¿Deseas continuar?\n\n\tTamaño de descarga: %1$s\n\tEspacio disponible: %2$s</string>
     <string name="steam_never">Nunca</string>
     <string name="steam_continue">Continuar</string>
@@ -74,7 +74,7 @@
     <string name="custom_games_title">Juegos personalizados</string>
     <string name="custom_games_no_paths">No se han añadido rutas</string>
     <string name="custom_games_grant_permission">Dar permiso</string>
-    <string name="custom_games_manual_subtitle">Añadido desde la biblioteca</string>
+    <string name="custom_games_manual_subtitle">Añadido manualmente</string>
     <string name="custom_games_no_manual_entries">Aún no hay juegos añadidos manualmente.</string>
     <string name="custom_games_remove_path_title">Eliminar ruta</string>
     <string name="custom_games_remove_path_message">¿Deseas eliminar esta ruta del escaneo? El contenido de la carpeta permanecerá en el disco.</string>
@@ -94,7 +94,7 @@
     <string name="custom_game_exe_selection_message">Este juego tiene múltiples ejecutables. Abre los Ajustes de Juego Personalizado para seleccionar cuál lanzar.</string>
     <string name="custom_game_settings">Ajustes de juego personalizado</string>
     <string name="custom_game_delete_title">Eliminar juego</string>
-    <string name="custom_game_delete_message">¿Deseas desinstalar %1$s?</string>
+    <string name="custom_game_delete_message">¿Deseas eliminar %1$s?</string>
     <string name="custom_game_unknown_developer">Desconocido</string>
 
     <!--Winlator-->
@@ -428,7 +428,7 @@
     <string name="app_filter_application">Aplicación</string>
     <string name="app_filter_tool">Herramienta</string>
     <string name="app_filter_demo">Demo</string>
-    <string name="app_filter_family">Familia</string>
+    <string name="app_filter_family">Préstamo familiar</string>
 
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">Sin conexión a Steam</string>
@@ -484,7 +484,7 @@
     <string name="use_adrenotools_turnip">Usar Adrenotools Turnip</string>
     <string name="vulkan_version">Versión Vulkan</string>
     <string name="image_cache_size">Tamaño de caché de imagen</string>
-    <string name="dx_wrapper">Envoltorio DX</string>
+    <string name="dx_wrapper">Wrapper DX</string>
     <string name="vkd3d_feature_level">Nivel de función VKD3D</string>
     <string name="use_dri3">Usar DRI3</string>
     <string name="use_dri3_description">Desactivarlo puede corregir fallos gráficos en algunos dispositivos</string>
@@ -521,7 +521,7 @@
     <string name="directinput_mapper_type">Tipo de mapeo DirectInput</string>
     <string name="disable_mouse_input">Desactivar entrada de ratón</string>
     <string name="touchscreen_mode">Modo pantalla táctil</string>
-    <string name="touchscreen_mode_description">Movimiento directo toque-a-cursor (ON) vs movimiento relativo estilo touchpad (OFF)</string>
+    <string name="touchscreen_mode_description">Movimiento absoluto (ON) vs movimiento relativo tipo touchpad (OFF)</string>
     <string name="start_with_controls_hidden">Iniciar con controles en pantalla ocultos</string>
     <string name="start_with_controls_hidden_description">Los controles en pantalla se ocultarán al iniciar el juego. Alternar mediante el menú de navegación.</string>
     <string name="emulate_keyboard_mouse">Emular teclado y ratón</string>
@@ -532,15 +532,15 @@
     <string name="gpu_name">Nombre de la GPU</string>
     <string name="offscreen_rendering_mode">Modo de renderizado offscreen</string>
     <string name="video_memory_size">Tamaño de memoria de vídeo</string>
-    <string name="enable_csmt">Activar CSMT (Command Stream Multi-Thread)</string>
-    <string name="enable_strict_shader_math">Activar Strict Shader Math</string>
-    <string name="mouse_warp_override">Anular Mouse Warp</string>
+    <string name="enable_csmt">Activar renderizado multihilo (CSMT)</string>
+    <string name="enable_strict_shader_math">Activar precisión estricta de shaders</string>
+    <string name="mouse_warp_override">Recentrado del ratón</string>
 
     <!-- Container Configuration: Management -->
     <string name="environment_variables">Variables de entorno</string>
     <string name="no_environment_variables">Sin variables de entorno</string>
     <string name="no_drives">Sin unidades</string>
-    <string name="startup_selection">Selección de inicio</string>
+    <string name="startup_selection">Servicios de inicio</string>
     <string name="processor_affinity_32bit">Afinidad de procesador (apps 32-bit)</string>
     <string name="executable_path">Ruta del ejecutable</string>
     <string name="executable_path_placeholder">ej., ruta\\al\\exe</string>
@@ -582,7 +582,7 @@
     <string name="settings_emulation_title">Emulación</string>
     <string name="settings_emulation_orientations_title">Orientaciones permitidas</string>
     <string name="settings_emulation_orientations_subtitle">Elige qué orientaciones se pueden rotar durante el juego</string>
-    <string name="settings_emulation_default_config_title">Modificar config. predeterminada</string>
+    <string name="settings_emulation_default_config_title">Configuración predeterminada</string>
     <string name="settings_emulation_default_config_subtitle">Los ajustes iniciales del contenedor para cada juego (no afecta a juegos ya instalados)</string>
     <string name="settings_emulation_default_config_dialog_title">Configuración predeterminada del contenedor</string>
     <string name="settings_emulation_box64_presets_title">Preajustes Box64</string>
@@ -631,11 +631,11 @@
     <string name="settings_interface_hide_statusbar_subtitle">Oculta la barra de estado de Android en la lista de juegos, ajustes, etc. La aplicación se reiniciará al cambiar.</string>
     <string name="settings_interface_icon_style">Estilo de icono</string>
     <string name="settings_interface_wifi_only_title">Descargar solo por Wi-Fi</string>
-    <string name="settings_interface_wifi_only_subtitle">Prevenir descargas con datos móviles</string>
-    <string name="settings_interface_external_storage_title">Escribir en almacenamiento externo</string>
+    <string name="settings_interface_wifi_only_subtitle">Evitar descargas con datos móviles</string>
+    <string name="settings_interface_external_storage_title">Usar almacenamiento externo</string>
     <string name="settings_interface_no_external_storage">No se detectó almacenamiento externo</string>
     <string name="settings_interface_external_storage_subtitle">Guardar juegos en el almacenamiento externo</string>
-    <string name="settings_interface_storage_volume_title">Volumen de almacenamiento</string>
+    <string name="settings_interface_storage_volume_title">Unidad de almacenamiento</string>
     <string name="settings_interface_download_server_title">Servidor de descarga de Steam</string>
     <string name="settings_interface_restart_required_title">Reinicio requerido</string>
 
@@ -707,7 +707,7 @@
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Fallo reciente</string>
-    <string name="main_recent_crash_message">¡Lo sentimos!\nSería de gran ayuda conocer el problema reciente que has tenido.\nPuedes ver y exportar el registro de fallos más reciente en los ajustes de la aplicación y adjuntarlo como un \"issue\" de GitHub en el repositorio del proyecto.\n¡El enlace al repositorio de GitHub también está en los ajustes!</string>
+    <string name="main_recent_crash_message">¡Lo sentimos!\nSería de gran ayuda conocer el problema reciente que has tenido.\nPuedes ver y exportar el registro de fallos más reciente en los ajustes de la aplicación y adjuntarlo como un \'issue\' de GitHub en el repositorio del proyecto.\n¡El enlace al repositorio de GitHub también está en los ajustes!</string>
     <string name="main_thank_you_title">¡Gracias por usar GameNative!</string>
     <string name="main_thank_you_message">Apoya el juego en PC de código abierto en Android compartiendo la aplicación con tus amigos o haciéndote miembro en Ko-fi.</string>
     <string name="main_join_kofi">Unirse en Ko-fi</string>
@@ -755,9 +755,9 @@
     <string name="container_config_tab_general">General</string>
     <string name="container_config_tab_graphics">Gráficos</string>
     <string name="container_config_tab_emulation">Emulación</string>
-    <string name="container_config_tab_controller">Mando</string>
+    <string name="container_config_tab_controller">Controles</string>
     <string name="container_config_tab_wine">Wine</string>
-    <string name="container_config_tab_win_components">Componentes Win</string>
+    <string name="container_config_tab_win_components">Componentes de Windows</string>
     <string name="container_config_tab_environment">Entorno</string>
     <string name="container_config_tab_drives">Unidades</string>
     <string name="container_config_tab_advanced">Avanzado</string>
@@ -780,7 +780,7 @@
     <string name="supporters_anonymous">Anónimo</string>
 
     <!-- Chat Screen -->
-    <string name="chat_preview_warning">El chat es todavía una función temprana.\nPor favor, informa de cualquier problema en el repositorio del proyecto.</string>
+    <string name="chat_preview_warning">El chat está en fase experimental.\nPor favor, informa de cualquier problema en el repositorio del proyecto.</string>
     <string name="chat_no_history">No hay historial de chat</string>
     <string name="chat_send_message">Enviar un mensaje</string>
     <string name="chat_send">Enviar</string>
@@ -810,10 +810,10 @@
     <string name="best_config_apply_failed">Error al aplicar la configuración: %s</string>
     <string name="library_app_type">Tipo de aplicación</string>
     <string name="library_app_status">Estado de la aplicación</string>
-    <string name="library_layout">Diseño</string>
+    <string name="library_layout">Fuente</string>
     <string name="library_layout_list">Lista</string>
-    <string name="library_layout_capsule">Cápsula</string>
-    <string name="library_layout_hero">Héroe</string>
+    <string name="library_layout_capsule">Portada</string>
+    <string name="library_layout_hero">Banner</string>
     <string name="library_search_placeholder">Busca tus juegos…</string>
     <string name="library_search_description">Buscar</string>
     <string name="library_search_clear">Limpiar búsqueda</string>
@@ -822,7 +822,7 @@
     <string name="library_game_count">%1$d juegos • %2$d instalados</string>
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">Juegos personalizados</string>
-    <string name="library_layout_title">Diseño</string>
+    <string name="library_layout_title">Vista</string>
 
     <!-- Two Factor Auth -->
     <string name="two_factor_login">Iniciar sesión</string>
@@ -831,24 +831,24 @@
 
     <!-- Contents Manager -->
     <string name="contents_validating">Validando contenido…</string>
-    <string name="contents_error_badtar">El archivo no puede ser reconocido</string>
+    <string name="contents_error_badtar">El archivo no se pudo reconocer</string>
     <string name="contents_error_noprofile">Perfil no encontrado en el contenido</string>
-    <string name="contents_error_badprofile">El perfil no puede ser reconocido</string>
+    <string name="contents_error_badprofile">El perfil no se pudo reconocer</string>
     <string name="contents_error_exist">El contenido ya existe</string>
     <string name="contents_error_missingfiles">El contenido está incompleto</string>
-    <string name="contents_error_untrustprofile">El contenido no es confiable</string>
+    <string name="contents_error_untrustprofile">El contenido no es de confianza</string>
     <string name="contents_error_nospace">Espacio insuficiente</string>
-    <string name="contents_error_generic">Incapaz de instalar el contenido</string>
-    <string name="contents_untrusted_files">Este contenido incluye archivos fuera del conjunto confiable.</string>
+    <string name="contents_error_generic">El contenido no se pudo instalar</string>
+    <string name="contents_untrusted_files">Este contenido incluye archivos fuera del conjunto de confianza.</string>
     <string name="contents_install_components">Instalar componentes adicionales (.wcp: tar.xz/zst)</string>
     <string name="contents_type">Tipo</string>
     <string name="contents_version">Versión</string>
     <string name="contents_code">Código</string>
     <string name="contents_description">Descripción</string>
-    <string name="contents_all_trusted">Todos los archivos son confiables. Listo para instalar.</string>
+    <string name="contents_all_trusted">Todos los archivos son de confianza. Listo para instalar.</string>
     <string name="contents_no_installed">No hay contenido instalado para este tipo.</string>
     <string name="contents_delete">Eliminar</string>
-    <string name="contents_review_confirm">Este contenido incluye archivos fuera del conjunto confiable. Revisa y confirma para proceder.</string>
+    <string name="contents_review_confirm">Este contenido incluye archivos fuera del conjunto de confianza. Revisa y confirma para proceder.</string>
     <string name="contents_removed">Eliminado %1$s</string>
 
     <!-- Driver Manager -->
@@ -882,7 +882,7 @@
     <!-- Wine/Proton Manager -->
     <string name="wine_proton_manager">Gestor de Wine/Proton</string>
     <string name="wine_proton_bionic_notice_header">Solo imágenes Bionic</string>
-    <string name="wine_proton_info_description">Importa versiones personalizadas de Wine o Proton para contenedores Bionic. El nombre del archivo debe comenzar con \'wine\' o \'proton\' (insensible a mayúsculas). Los paquetes deben incluir bin/, lib/ y prefixPack.txz. Todas las importaciones son compatibles únicamente con bionic.</string>
+    <string name="wine_proton_info_description">Importa versiones personalizadas de Wine o Proton para contenedores Bionic. El nombre del archivo debe comenzar con \'wine\' o \'proton\' (no distingue mayúsculas). Los paquetes deben incluir bin/, lib/ y prefixPack.txz. Todas las importaciones son compatibles únicamente con bionic.</string>
     <string name="win_proton_example">Por ejemplo: "proton-10.0-ARM64ec.wcp"</string>
     <string name="wine_proton_import_package">Importar paquete de Wine/Proton</string>
     <string name="wine_proton_select_file_description">Selecciona un archivo .wcp (con el nombre del archivo comenzando por \'wine\' o \'proton\')</string>
@@ -895,12 +895,12 @@
     <string name="wine_proton_bin_path">Ruta bin</string>
     <string name="wine_proton_lib_path">Ruta lib</string>
     <string name="wine_proton_description">Descripción</string>
-    <string name="wine_proton_all_files_trusted">✓ Todos los archivos son confiables. Listo para instalar.</string>
+    <string name="wine_proton_all_files_trusted">✓ Todos los archivos son de confianza. Listo para instalar.</string>
     <string name="wine_proton_install_package">Instalar paquete</string>
     <string name="wine_proton_installed_versions">Versiones de Wine/Proton instaladas</string>
     <string name="wine_proton_no_versions_found">No se encontraron versiones de Wine o Proton instaladas.</string>
     <string name="wine_proton_delete_content_desc">Eliminar</string>
-    <string name="wine_proton_untrusted_files_message">Este paquete incluye archivos fuera del conjunto confiable. Revisa y confirma para proceder con la instalación.</string>
+    <string name="wine_proton_untrusted_files_message">Este paquete incluye archivos fuera del conjunto de confianza. Revisa y confirma para proceder con la instalación.</string>
     <string name="wine_proton_untrusted_files_label">Archivos no confiables:</string>
     <string name="wine_proton_remove_title">Eliminar versión de Wine/Proton</string>
     <string name="wine_proton_remove_message">¿Deseas eliminar %1$s %2$s (%3$d)? Los contenedores que usen esta versión dejarán de funcionar.</string>
@@ -913,7 +913,7 @@
 
     <!-- Wine/Proton Manager - Status Messages -->
     <string name="wine_proton_extracting">Extrayendo y validando paquete (esto puede tardar 2-3 minutos para archivos grandes)…</string>
-    <string name="wine_proton_filename_error">El nombre del archivo debe comenzar por \'wine\' o \'proton\' (insensible a mayúsculas)</string>
+    <string name="wine_proton_filename_error">El nombre del archivo debe comenzar por \'wine\' o \'proton\' (no distingue mayúsculas)</string>
     <string name="wine_proton_file_empty">El archivo está vacío o no se puede leer</string>
     <string name="wine_proton_cannot_open">No se puede abrir el archivo</string>
     <string name="wine_proton_failed_file_picker">Fallo al abrir el selector de archivos: %s</string>
@@ -922,13 +922,13 @@
     <string name="wine_proton_error_badprofile">profile.json es inválido</string>
     <string name="wine_proton_error_exist">Esta versión de Wine/Proton ya existe</string>
     <string name="wine_proton_error_missingfiles">Al paquete le faltan archivos requeridos (bin/, lib/ o prefixPack.txz)</string>
-    <string name="wine_proton_error_untrustprofile">El paquete no es confiable</string>
+    <string name="wine_proton_error_untrustprofile">El paquete no es de confianza</string>
     <string name="wine_proton_error_nospace">No hay suficiente espacio de almacenamiento</string>
     <string name="wine_proton_error_unknown">Ocurrió un error desconocido</string>
     <string name="wine_proton_error_unable_install">No se pudo instalar el paquete de Wine/Proton</string>
     <string name="wine_proton_not_wine_or_proton">El paquete no es Wine ni Proton (tipo: %s)</string>
     <string name="wine_proton_type_mismatch">El nombre del archivo indica %1$s pero el paquete contiene %2$s</string>
-    <string name="wine_proton_untrusted_files_detected">Este paquete incluye archivos fuera del conjunto confiable.</string>
+    <string name="wine_proton_untrusted_files_detected">Este paquete incluye archivos fuera del conjunto de confianza.</string>
     <string name="wine_proton_version_already_exists">La versión de Wine/Proton ya existe</string>
     <string name="wine_proton_install_failed">Fallo al instalar: %s</string>
     <string name="wine_proton_install_error">Error de instalación: %s</string>
