@@ -108,6 +108,8 @@ import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
 import com.winlator.winhandler.WinHandler
 import com.winlator.winhandler.WinHandler.PreferredInputApi
+import com.winlator.winhandler.OnGetProcessInfoListener
+import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.XEnvironment
@@ -128,9 +130,14 @@ import com.winlator.xserver.ScreenInfo
 import com.winlator.xserver.Window
 import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -153,6 +160,50 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+
+private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
+private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
+private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
+private val CORE_WINE_PROCESSES = setOf(
+    "wineserver",
+    "services",
+    "start",
+    "winhandler",
+    "tabtip",
+    "explorer",
+    "winedevice",
+    "svchost",
+)
+
+private fun normalizeProcessName(name: String): String {
+    val trimmed = name.trim().trim('"')
+    val base = trimmed.substringAfterLast('/').substringAfterLast('\\')
+    val lower = base.lowercase(Locale.getDefault())
+    return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
+}
+
+private fun extractExecutableBasename(path: String): String {
+    if (path.isBlank()) return ""
+    return normalizeProcessName(path)
+}
+
+private fun windowMatchesExecutable(window: Window, targetExecutable: String): Boolean {
+    if (targetExecutable.isBlank()) return false
+    val normalizedTarget = normalizeProcessName(targetExecutable)
+    val candidates = listOf(window.name, window.className)
+    return candidates.any { candidate ->
+        candidate.split('\u0000')
+            .asSequence()
+            .map { normalizeProcessName(it) }
+            .any { it == normalizedTarget }
+    }
+}
+
+private fun buildEssentialProcessAllowlist(): Set<String> {
+    val essentialServices = WineUtils.getEssentialServiceNames()
+        .map { normalizeProcessName(it) }
+    return (essentialServices + CORE_WINE_PROCESSES).toSet()
+}
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -244,11 +295,14 @@ fun XServerScreen(
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
+    var exitWatchJob: Job? by remember { mutableStateOf(null) }
 
     DisposableEffect(Unit) {
         onDispose {
             physicalControllerHandler?.cleanup()
             physicalControllerHandler = null
+            exitWatchJob?.cancel()
+            exitWatchJob = null
         }
     }
     var isKeyboardVisible = false
@@ -259,6 +313,83 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+
+    fun startExitWatchForUnmappedGameWindow(window: Window) {
+        val winHandler = xServerView?.getxServer()?.winHandler ?: return
+        if (exitWatchJob?.isActive == true) return
+        val targetExecutable = extractExecutableBasename(container.executablePath)
+        if (!windowMatchesExecutable(window, targetExecutable)) return
+
+        exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
+            val allowlist = buildEssentialProcessAllowlist()
+            val previousListener = winHandler.getOnGetProcessInfoListener()
+            val lock = Any()
+            var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
+            var currentList = mutableListOf<ProcessInfo>()
+            var expectedCount = 0
+
+            val listener = OnGetProcessInfoListener { index, count, processInfo ->
+                previousListener?.onGetProcessInfo(index, count, processInfo)
+                synchronized(lock) {
+                    val deferred = pendingSnapshot ?: return@synchronized
+                    if (count == 0 && processInfo == null) {
+                        if (!deferred.isCompleted) deferred.complete(null)
+                        return@synchronized
+                    }
+                    if (index == 0) {
+                        currentList = mutableListOf()
+                        expectedCount = count
+                    }
+                    if (processInfo != null) {
+                        currentList.add(processInfo)
+                    }
+                    if (currentList.size >= expectedCount && !deferred.isCompleted) {
+                        deferred.complete(currentList.toList())
+                    }
+                }
+            }
+
+            winHandler.setOnGetProcessInfoListener(listener)
+            try {
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < EXIT_PROCESS_TIMEOUT_MS) {
+                    val deferred = CompletableDeferred<List<ProcessInfo>?>()
+                    synchronized(lock) {
+                        pendingSnapshot = deferred
+                    }
+                    winHandler.listProcesses()
+                    val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+                        deferred.await()
+                    }
+                    if (snapshot != null && snapshot.isNotEmpty()) {
+                        val hasNonEssential = snapshot.any {
+                            !allowlist.contains(normalizeProcessName(it.name))
+                        }
+                        if (!hasNonEssential) {
+                            withContext(Dispatchers.Main) {
+                                exit(
+                                    winHandler,
+                                    PluviaApp.xEnvironment,
+                                    frameRating,
+                                    currentAppInfo,
+                                    container,
+                                    onExit,
+                                    navigateBack,
+                                )
+                            }
+                            break
+                        }
+                    }
+                    delay(EXIT_PROCESS_POLL_INTERVAL_MS)
+                }
+            } finally {
+                winHandler.setOnGetProcessInfoListener(previousListener)
+                synchronized(lock) {
+                    pendingSnapshot = null
+                }
+            }
+        }
+    }
 
     val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
@@ -613,6 +744,7 @@ fun XServerScreen(
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
                             changeFrameRatingVisibility(window, null)
+                            startExitWatchForUnmappedGameWindow(window)
                             onWindowUnmapped?.invoke(window)
                         }
                     },
