@@ -648,7 +648,7 @@ fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSi
         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
-        GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 
