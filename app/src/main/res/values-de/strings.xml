@@ -690,6 +690,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Die Synchronisierung dauert zu lange. Bitte versuche, das Spiel später erneut zu starten.</string>
     <string name="main_sync_in_progress">Synchronisierung läuft. Bitte versuche es später noch einmal.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Die Cloud-Synchronisierung für dieses Spiel läuft bereits. Du kannst warten und es später erneut versuchen oder trotzdem starten ohne zu synchronisieren (kann Speicherstand-Konflikte verursachen).</string>
+    <string name="main_launch_anyway">Trotzdem starten</string>
+    <string name="main_wait">Warten</string>
     <string name="main_sync_failed">Speicherstände konnten nicht synchronisiert werden: %s.</string>
     <!-- PluviaMain: Pending Operations -->
     <string name="main_upload_in_progress_title">Upload läuft</string>

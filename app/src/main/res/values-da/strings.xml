@@ -575,6 +575,9 @@
     <!-- TODO: Manual review - PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Synkroniseringsoperationen tager for lang tid. Prøv venligst at starte spillet igen om et øjeblik.</string>
     <string name="main_sync_in_progress">Synkronisering er i gang. Prøv venligst igen om et øjeblik.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Cloud-synkronisering for dette spil er allerede i gang. Du kan vente og prøve igen eller starte alligevel uden synkronisering (kan give konflikter i gemte filer).</string>
+    <string name="main_launch_anyway">Start alligevel</string>
+    <string name="main_wait">Vent</string>
     <string name="main_sync_failed">Kunne ikke synkronisere gemfiler: %s.</string>
 
     <!-- TODO: Manual review - PluviaMain: Pending Operations -->

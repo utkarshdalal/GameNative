@@ -742,6 +742,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">L\'opération de synchronisation prend trop de temps. Veuillez réessayer de lancer le jeu dans un moment.</string>
     <string name="main_sync_in_progress">La synchronisation est en cours. Veuillez réessayer dans un moment.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">La synchronisation cloud des sauvegardes pour ce jeu est déjà en cours. Vous pouvez attendre et réessayer, ou lancer quand même sans synchroniser (peut causer des conflits de sauvegarde).</string>
+    <string name="main_launch_anyway">Lancer quand même</string>
+    <string name="main_wait">Attendre</string>
     <string name="main_sync_failed">Échec de la synchronisation des fichiers de sauvegarde : %s.</string>
 
     <!-- PluviaMain: Pending Operations -->

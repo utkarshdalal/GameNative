@@ -575,6 +575,9 @@
     <!-- TODO: Revisão manual - PluviaMain: Erros de sincronização -->
     <string name="main_sync_in_progress_retry">A operação de sincronização está demorando muito. Por favor, tente iniciar o jogo novamente em um momento.</string>
     <string name="main_sync_in_progress">A sincronização está em andamento. Por favor, tente novamente em um momento.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">A sincronização na nuvem deste jogo já está em andamento. Você pode esperar e tentar novamente ou iniciar mesmo assim sem sincronizar (pode causar conflitos de salvamento).</string>
+    <string name="main_launch_anyway">Iniciar mesmo assim</string>
+    <string name="main_wait">Esperar</string>
     <string name="main_sync_failed">Falha ao sincronizar arquivos de save: %s.</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Operações pendentes -->

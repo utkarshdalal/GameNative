@@ -746,6 +746,9 @@
 	<!-- PluviaMain: Sync Errors -->
 	<string name="main_sync_in_progress_retry">Operația de sincronizare durează prea mult. Încearcă să lansezi jocul din nou peste puțin timp.</string>
 	<string name="main_sync_in_progress">Sincronizarea este în desfășurare. Încearcă din nou peste puțin timp.</string>
+	<string name="main_sync_in_progress_launch_anyway_message">Sincronizarea în cloud pentru acest joc este deja în curs. Poți aștepta și încerca din nou sau poți porni oricum fără sincronizare (poate cauza conflicte de salvare).</string>
+	<string name="main_launch_anyway">Pornește oricum</string>
+	<string name="main_wait">Așteaptă</string>
 	<string name="main_sync_failed">Sincronizarea fișierelor de salvare a eșuat: %s.</string>
 
 	<!-- PluviaMain: Pending Operations -->

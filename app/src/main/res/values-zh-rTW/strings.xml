@@ -740,6 +740,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">同步操作耗時過久, 請稍後重新啟動遊戲</string>
     <string name="main_sync_in_progress">同步目前正在進行中, 請稍後再試</string>
+    <string name="main_sync_in_progress_launch_anyway_message">此遊戲的雲端存檔同步正在進行。你可以稍後再試，或繼續啟動但不進行同步（可能造成存檔衝突）。</string>
+    <string name="main_launch_anyway">仍然啟動</string>
+    <string name="main_wait">等待</string>
     <string name="main_sync_failed">同步存檔案失敗：%s</string>
 
     <!-- PluviaMain: Pending Operations -->

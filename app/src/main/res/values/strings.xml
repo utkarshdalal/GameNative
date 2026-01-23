@@ -746,6 +746,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>
     <string name="main_sync_in_progress">Sync is currently in progress. Please try again in a moment.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Cloud save sync for this game is already running. You can wait and try again, or launch anyway without syncing (may cause save conflicts).</string>
+    <string name="main_launch_anyway">Launch anyway</string>
+    <string name="main_wait">Wait</string>
     <string name="main_sync_failed">Failed to sync save files: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->

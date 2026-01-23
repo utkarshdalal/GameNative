@@ -736,6 +736,9 @@
     <!-- 主界面：同步错误 -->
     <string name="main_sync_in_progress_retry">同步操作耗时过久，请稍后重新启动游戏</string>
     <string name="main_sync_in_progress">同步目前正在进行中，请稍后再试</string>
+    <string name="main_sync_in_progress_launch_anyway_message">该游戏的云存档同步正在进行。你可以等待后重试，或继续启动但不进行同步（可能导致存档冲突）。</string>
+    <string name="main_launch_anyway">仍然启动</string>
+    <string name="main_wait">等待</string>
     <string name="main_sync_failed">同步存档失败：%s</string>
 
     <!-- 主界面：待处理操作 -->
