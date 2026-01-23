@@ -361,7 +361,7 @@ fun XServerScreen(
                     val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
                         deferred.await()
                     }
-                    if (snapshot != null && snapshot.isNotEmpty()) {
+                    if (snapshot != null) {
                         val hasNonEssential = snapshot.any {
                             !allowlist.contains(normalizeProcessName(it.name))
                         }
