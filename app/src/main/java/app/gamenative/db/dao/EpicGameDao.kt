@@ -77,13 +77,6 @@ interface EpicGameDao {
     @Query("SELECT catalog_id FROM epic_games")
     suspend fun getAllCatalogIds(): List<String>
 
-
-    @Transaction
-    suspend fun replaceAll(games: List<EpicGame>) {
-        deleteAll()
-        insertAll(games)
-    }
-
     /**
      * Upsert Epic games while preserving install status and paths
      * This is useful when refreshing the library from Epic/Legendary
