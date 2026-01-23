@@ -1020,7 +1020,7 @@
 
     <!-- Epic Games Logout -->
     <string name="epic_settings_logout_title">Logout from Epic Games</string>
-    <string name="epic_settings_logout_subtitle">Disconnect your Epic Games account</string>
+    <string name="epic_settings_logout_subtitle">Sign out from your Epic Games account</string>
     <string name="epic_logout_confirm_title">Logout from Epic Games?</string>
     <string name="epic_logout_confirm_message">This will remove all Epic Games from your library and disconnect your account.</string>
     <string name="epic_logout_confirm">Logout</string>
