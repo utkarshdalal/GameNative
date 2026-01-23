@@ -114,6 +114,8 @@ import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
 import com.winlator.winhandler.WinHandler
 import com.winlator.winhandler.WinHandler.PreferredInputApi
+import com.winlator.winhandler.OnGetProcessInfoListener
+import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.XEnvironment
@@ -134,9 +136,14 @@ import com.winlator.xserver.ScreenInfo
 import com.winlator.xserver.Window
 import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -159,6 +166,50 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+
+private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
+private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
+private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
+private val CORE_WINE_PROCESSES = setOf(
+    "wineserver",
+    "services",
+    "start",
+    "winhandler",
+    "tabtip",
+    "explorer",
+    "winedevice",
+    "svchost",
+)
+
+private fun normalizeProcessName(name: String): String {
+    val trimmed = name.trim().trim('"')
+    val base = trimmed.substringAfterLast('/').substringAfterLast('\\')
+    val lower = base.lowercase(Locale.getDefault())
+    return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
+}
+
+private fun extractExecutableBasename(path: String): String {
+    if (path.isBlank()) return ""
+    return normalizeProcessName(path)
+}
+
+private fun windowMatchesExecutable(window: Window, targetExecutable: String): Boolean {
+    if (targetExecutable.isBlank()) return false
+    val normalizedTarget = normalizeProcessName(targetExecutable)
+    val candidates = listOf(window.name, window.className)
+    return candidates.any { candidate ->
+        candidate.split('\u0000')
+            .asSequence()
+            .map { normalizeProcessName(it) }
+            .any { it == normalizedTarget }
+    }
+}
+
+private fun buildEssentialProcessAllowlist(): Set<String> {
+    val essentialServices = WineUtils.getEssentialServiceNames()
+        .map { normalizeProcessName(it) }
+    return (essentialServices + CORE_WINE_PROCESSES).toSet()
+}
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -252,11 +303,14 @@ fun XServerScreen(
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
+    var exitWatchJob: Job? by remember { mutableStateOf(null) }
 
     DisposableEffect(Unit) {
         onDispose {
             physicalControllerHandler?.cleanup()
             physicalControllerHandler = null
+            exitWatchJob?.cancel()
+            exitWatchJob = null
         }
     }
     var isKeyboardVisible = false
@@ -267,6 +321,83 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+
+    fun startExitWatchForUnmappedGameWindow(window: Window) {
+        val winHandler = xServerView?.getxServer()?.winHandler ?: return
+        if (exitWatchJob?.isActive == true) return
+        val targetExecutable = extractExecutableBasename(container.executablePath)
+        if (!windowMatchesExecutable(window, targetExecutable)) return
+
+        exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
+            val allowlist = buildEssentialProcessAllowlist()
+            val previousListener = winHandler.getOnGetProcessInfoListener()
+            val lock = Any()
+            var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
+            var currentList = mutableListOf<ProcessInfo>()
+            var expectedCount = 0
+
+            val listener = OnGetProcessInfoListener { index, count, processInfo ->
+                previousListener?.onGetProcessInfo(index, count, processInfo)
+                synchronized(lock) {
+                    val deferred = pendingSnapshot ?: return@synchronized
+                    if (count == 0 && processInfo == null) {
+                        if (!deferred.isCompleted) deferred.complete(null)
+                        return@synchronized
+                    }
+                    if (index == 0) {
+                        currentList = mutableListOf()
+                        expectedCount = count
+                    }
+                    if (processInfo != null) {
+                        currentList.add(processInfo)
+                    }
+                    if (currentList.size >= expectedCount && !deferred.isCompleted) {
+                        deferred.complete(currentList.toList())
+                    }
+                }
+            }
+
+            winHandler.setOnGetProcessInfoListener(listener)
+            try {
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < EXIT_PROCESS_TIMEOUT_MS) {
+                    val deferred = CompletableDeferred<List<ProcessInfo>?>()
+                    synchronized(lock) {
+                        pendingSnapshot = deferred
+                    }
+                    winHandler.listProcesses()
+                    val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+                        deferred.await()
+                    }
+                    if (snapshot != null) {
+                        val hasNonEssential = snapshot.any {
+                            !allowlist.contains(normalizeProcessName(it.name))
+                        }
+                        if (!hasNonEssential) {
+                            withContext(Dispatchers.Main) {
+                                exit(
+                                    winHandler,
+                                    PluviaApp.xEnvironment,
+                                    frameRating,
+                                    currentAppInfo,
+                                    container,
+                                    onExit,
+                                    navigateBack,
+                                )
+                            }
+                            break
+                        }
+                    }
+                    delay(EXIT_PROCESS_POLL_INTERVAL_MS)
+                }
+            } finally {
+                winHandler.setOnGetProcessInfoListener(previousListener)
+                synchronized(lock) {
+                    pendingSnapshot = null
+                }
+            }
+        }
+    }
 
     val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
@@ -563,7 +694,9 @@ fun XServerScreen(
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
-                    appLaunchInfo?.let { renderer.forceFullscreenWMClass = Paths.get(it.executable).name }
+                    if (container.executablePath.isNotBlank()) {
+                        renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
+                    }
                 }
                 getxServer().windowManager.addOnWindowModificationListener(
                     object : WindowManager.OnWindowModificationListener {
@@ -626,6 +759,7 @@ fun XServerScreen(
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
                             changeFrameRatingVisibility(window, null)
+                            startExitWatchForUnmappedGameWindow(window)
                             onWindowUnmapped?.invoke(window)
                         }
                     },
@@ -1748,6 +1882,8 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
+    FEXCoreManager.ensureAppConfigOverrides(context)
+
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
         if (container.isLaunchRealSteam) {
@@ -1842,6 +1978,12 @@ private fun getWineStartCommand(
         if (!container.isUseLegacyDRM){
             // Create ColdClientLoader.ini file
             SteamUtils.writeColdClientIni(gameId, container)
+        }
+        val controllerVdfText = SteamService.resolveSteamControllerVdfText(gameId)
+        if (controllerVdfText.isNullOrEmpty()) {
+            Timber.tag("XServerScreen").i("No steam controller VDF resolved for $gameId")
+        } else {
+            Timber.tag("XServerScreen").i("Resolved steam controller VDF for $gameId:\n$controllerVdfText")
         }
     }
 
@@ -1986,19 +2128,6 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
-/**
- * Filters executables to exclude _CommonRedist folder and files ending in original.exe or unpacked.exe
- */
-private fun filterExecutablesForSteamless(executables: List<String>): List<String> {
-    return executables.filter { exePath ->
-        val lowerPath = exePath.lowercase()
-        // Exclude _CommonRedist folder
-        !lowerPath.contains("_commonredist") &&
-        // Exclude files ending in original.exe or unpacked.exe
-        !lowerPath.endsWith("original.exe") &&
-        !lowerPath.endsWith("unpacked.exe")
-    }
-}
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
 
@@ -2024,7 +2153,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
 
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
-    SteamService.isGameRunning = false
+    SteamService.keepAlive = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null
@@ -2344,85 +2473,72 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
 
-        if (!container.isLaunchRealSteam && container.isUseLegacyDRM) {
-            // Scan all executables from A: drive and filter them
-            val allExecutables = ContainerUtils.scanExecutablesInADrive(container.drives)
-            Timber.i("Found ${allExecutables.size} executables in A: drive")
-
-            val filteredExecutables = filterExecutablesForSteamless(allExecutables)
-            Timber.i("Filtered to ${filteredExecutables.size} executables for Steamless processing")
-
-            if (filteredExecutables.isEmpty()) {
-                Timber.w("No executables to process with Steamless")
+        if (!container.isLaunchRealSteam && !container.isUnpackFiles) {
+            val executablePath = container.executablePath
+            if (executablePath.isEmpty()) {
+                Timber.w("No executable path set, skipping Steamless")
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
 
-                // Process each executable individually to handle errors per file
-                filteredExecutables.forEachIndexed { index, exePath ->
-                    var batchFile: File? = null
-                    try {
-                        val normalizedPath = exePath.replace('/', '\\')
-                        val windowsPath = "A:\\$normalizedPath"
+                var batchFile: File? = null
+                try {
+                    // Normalize path: container.executablePath uses forward slashes, convert to Windows format
+                    val normalizedPath = executablePath.replace('/', '\\')
+                    val windowsPath = "A:\\$normalizedPath"
 
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM... (${index + 1}/${filteredExecutables.size})"))
+                    // Create a batch file that Wine can execute, to handle paths with spaces in them
+                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper.bat")
+                    batchFile.parentFile?.mkdirs()
+                    batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
 
-                        // Create a batch file that Wine can execute, to handle paths with spaces in them
-                        batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper_${index}.bat")
-                        batchFile.parentFile?.mkdirs()
-                        batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
-
-                        val slCmd = "wine z:\\tmp\\steamless_wrapper_${index}.bat"
-                        val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
-                        output.append(slOutput)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error running Steamless on $exePath, continuing with next file")
-                        output.append("Error processing $exePath: ${e.message}\n")
-                    } finally {
-                        // Clean up batch file
-                        batchFile?.delete()
-                    }
+                    val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
+                    val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
+                    output.append(slOutput)
+                    Timber.i("Finished processing executable. Result: $output")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error running Steamless on $executablePath")
+                    output.append("Error processing $executablePath: ${e.message}\n")
+                } finally {
+                    // Clean up batch file
+                    batchFile?.delete()
                 }
 
-                Timber.i("Finished processing ${filteredExecutables.size} executables. Result: $output")
+                // Process file moving for the executable
+                try {
+                    // container.executablePath uses forward slashes (Unix format)
+                    // Use as-is for File operations (forward slashes work on Unix/Android)
+                    val unixPath = executablePath.replace('\\', '/')
+                    val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
+                    val unpackedExe = File(
+                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
+                    )
+                    val originalExe = File(
+                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
+                    )
 
-                // Process file moving for all filtered executables
-                for (exePath in filteredExecutables) {
-                    try {
-                        // Paths from scanExecutablesInADrive use forward slashes (Unix format from URI)
-                        // Use as-is for File operations (forward slashes work on Unix/Android)
-                        val unixPath = exePath.replace('\\', '/')
-                        val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
-                        val unpackedExe = File(
-                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
-                        )
-                        val originalExe = File(
-                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
-                        )
+                    // For logging, show Windows format
+                    val windowsPath = "A:\\${executablePath.replace('/', '\\')}"
 
-                        // For logging, show Windows format
-                        val windowsPath = "A:\\${exePath.replace('/', '\\')}"
-
-                        Timber.i("Moving files for $windowsPath")
-                        if (exe.exists() && unpackedExe.exists()) {
-                            if (originalExe.exists()) {
-                                Timber.i("Original backup exists for $windowsPath; skipping overwrite")
-                            } else {
-                                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
-                            }
-                            Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
-                            Timber.i("Successfully moved files for $windowsPath")
+                    Timber.i("Moving files for $windowsPath")
+                    if (exe.exists() && unpackedExe.exists()) {
+                        if (originalExe.exists()) {
+                            Timber.i("Original backup exists for $windowsPath; skipping overwrite")
                         } else {
-                            val errorMsg =
-                                "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
-                            Timber.w(errorMsg)
+                            Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
                         }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error moving files for $exePath, continuing with next executable")
+                        Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                        Timber.i("Successfully moved files for $windowsPath")
+                    } else {
+                        val errorMsg =
+                            "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                        Timber.w(errorMsg)
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error moving files for $executablePath")
                 }
             }
         } else {
-            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM})")
+            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM}, unpackFiles=${container.isUnpackFiles})")
         }
 
         output = StringBuilder()

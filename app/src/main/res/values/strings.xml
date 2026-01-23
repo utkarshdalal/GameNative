@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">%d folders found</string>
     <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games. This may slow down the app startup time.</string>
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
+    <string name="container_config_drive_letter_missing">Drive letter is missing</string>
+    <string name="container_config_invalid_drive_path">Invalid drive path</string>
     <string name="custom_game_exe_selection_title">Executable Selection Required</string>
     <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
@@ -104,6 +106,7 @@
     <string name="compatibility">Compatibility</string>
     <string name="intermediate">Intermediate</string>
     <string name="performance">Performance</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -468,6 +471,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Use Legacy DRM</string>
+    <string name="unpack_files">Unpack Files</string>
+    <string name="unpack_files_description">Only use if you get \'Application Load Error\'. May reduce FPS.</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
@@ -516,6 +521,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Use SDL API</string>
+    <string name="use_steam_input">Use Steam Input</string>
     <string name="enable_xinput_api">Enable XInput API</string>
     <string name="enable_directinput_api">Enable DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
@@ -548,6 +554,9 @@
     <string name="environment_variables">Environment Variables</string>
     <string name="no_environment_variables">No environment variables</string>
     <string name="no_drives">No drives</string>
+    <string name="add_drive">Add drive</string>
+    <string name="drive_letter">Drive letter</string>
+    <string name="no_available_drive_letters">No available drive letters</string>
     <string name="startup_selection">Startup Selection</string>
     <string name="processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="executable_path">Executable Path</string>
@@ -745,6 +754,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>
     <string name="main_sync_in_progress">Sync is currently in progress. Please try again in a moment.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Cloud save sync for this game is already running. You can wait and try again, or launch anyway without syncing (may cause save conflicts).</string>
+    <string name="main_launch_anyway">Launch anyway</string>
+    <string name="main_wait">Wait</string>
     <string name="main_sync_failed">Failed to sync save files: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->

@@ -102,6 +102,7 @@ object ContainerUtils {
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
             useLegacyDRM = PrefManager.useLegacyDRM,
+            unpackFiles = PrefManager.unpackFiles,
             wineVersion = PrefManager.wineVersion,
 			emulator = PrefManager.emulator,
 			fexcoreVersion = PrefManager.fexcoreVersion,
@@ -117,9 +118,10 @@ object ContainerUtils {
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
-			enableXInput = PrefManager.xinputEnabled,
+            useSteamInput = PrefManager.useSteamInput,
+            enableXInput = PrefManager.xinputEnabled,
 			enableDInput = PrefManager.dinputEnabled,
-            dinputMapperType = PrefManager.dinputMapperType.toByte(),
+			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
@@ -174,11 +176,13 @@ object ContainerUtils {
         PrefManager.fexcorePreset = containerData.fexcorePreset
 		// Persist renderer and controller defaults
 		PrefManager.renderer = containerData.renderer
-		PrefManager.xinputEnabled = containerData.enableXInput
+        PrefManager.useSteamInput = containerData.useSteamInput
+        PrefManager.xinputEnabled = containerData.enableXInput
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
+        PrefManager.unpackFiles = containerData.unpackFiles
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
@@ -222,6 +226,7 @@ object ContainerUtils {
         val enableX = apiOrdinal == PreferredInputApi.XINPUT.ordinal || apiOrdinal == PreferredInputApi.BOTH.ordinal
         val enableD = apiOrdinal == PreferredInputApi.DINPUT.ordinal || apiOrdinal == PreferredInputApi.BOTH.ordinal
         val mapperType = container.getDinputMapperType()
+        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
         // Read disable-mouse flag from container
         val disableMouse = container.isDisableMouseInput()
         // Read touchscreen-mode flag from container
@@ -263,8 +268,10 @@ object ContainerUtils {
             fexcorePreset = container.getFEXCorePreset(),
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
+            useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
             useLegacyDRM = container.isUseLegacyDRM(),
+            unpackFiles = container.isUnpackFiles(),
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -317,6 +324,7 @@ object ContainerUtils {
                 "fexcoreMultiBlock" -> value?.let { updatedData.copy(fexcoreMultiBlock = it as? String ?: updatedData.fexcoreMultiBlock) } ?: updatedData
                 "fexcorePreset" -> value?.let { updatedData.copy(fexcorePreset = it as? String ?: updatedData.fexcorePreset) } ?: updatedData
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+                "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -383,6 +391,7 @@ object ContainerUtils {
         container.box86Preset = containerData.box86Preset
         container.box64Preset = containerData.box64Preset
         container.isSdlControllerAPI = containerData.sdlControllerAPI
+        container.putExtra("useSteamInput", containerData.useSteamInput)
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.containerVariant = containerData.containerVariant
@@ -396,6 +405,7 @@ object ContainerUtils {
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
+        container.setUnpackFiles(containerData.unpackFiles)
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
@@ -708,13 +718,16 @@ object ContainerUtils {
 				enableDInput = PrefManager.dinputEnabled,
 				dinputMapperType = PrefManager.dinputMapperType.toByte(),
                 disableMouseInput = PrefManager.disableMouseInput,
+                forceDlc = PrefManager.forceDlc,
+                useLegacyDRM = PrefManager.useLegacyDRM,
+                unpackFiles = PrefManager.unpackFiles,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
             )
         }
 
         // Apply best config map to containerData if available
-        // Note: When applyKnownConfig=false (container creation), map only contains executablePath and useLegacyDRM
+        // Note: When applyKnownConfig=false (container creation), map only contains executablePath, useLegacyDRM, and unpackFiles
         // When applyKnownConfig=true, map contains all validated fields from the best config
         containerData = if (bestConfigMap != null && bestConfigMap.isNotEmpty()) {
             var updatedData = containerData
@@ -722,6 +735,7 @@ object ContainerUtils {
                 updatedData = when (key) {
                     "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
                     "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
+                    "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                     else -> updatedData
                 }
             }
@@ -792,9 +806,6 @@ object ContainerUtils {
         } else {
             createNewContainer(context, appId, appId, containerManager)
         }
-
-        // Delete any existing FEXCore config files (we use environment variables only)
-        FEXCoreManager.deleteConfigFiles(context, container.id)
 
         // Ensure Custom Games have the A: drive mapped to the game folder
         // and GOG games have a drive mapped to the GOG games directory

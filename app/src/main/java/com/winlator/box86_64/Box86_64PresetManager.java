@@ -80,6 +80,21 @@ public abstract class Box86_64PresetManager {
                 envVars.put("BOX64_UNITYPLAYER", "0");
                 envVars.put("BOX64_MMAP32", "1");
             }
+        } else if (id.equals(Box86_64Preset.DENUVO)) {
+            envVars.put(ucPrefix + "_DYNAREC_SAFEFLAGS", "2");
+            envVars.put(ucPrefix + "_DYNAREC_FASTNAN", "0");
+            envVars.put(ucPrefix + "_DYNAREC_FASTROUND", "0");
+            envVars.put(ucPrefix + "_DYNAREC_X87DOUBLE", "1");
+            envVars.put(ucPrefix + "_DYNAREC_BIGBLOCK", "0");
+            envVars.put(ucPrefix + "_DYNAREC_STRONGMEM", "3");
+            envVars.put(ucPrefix + "_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix + "_DYNAREC_CALLRET", "0");
+            envVars.put(ucPrefix + "_DYNAREC_WAIT", "0");
+            if (ucPrefix.equals("BOX64")) {
+                envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_UNITYPLAYER", "1");
+                envVars.put("BOX64_MMAP32", "0");
+            }
         } else if (id.equals(Box86_64Preset.UNITY)) {
             envVars.put(ucPrefix + "_DYNAREC_SAFEFLAGS", "1");
             envVars.put(ucPrefix + "_DYNAREC_FASTNAN", "1");
@@ -130,6 +145,7 @@ public abstract class Box86_64PresetManager {
         presets.add(new Box86_64Preset(Box86_64Preset.PERFORMANCE, context.getString(R.string.performance)));
         presets.add(new Box86_64Preset(Box86_64Preset.UNITY, context.getString(R.string.unity)));
         presets.add(new Box86_64Preset(Box86_64Preset.UNITY_MONO_BLEEDING_EDGE, context.getString(R.string.unity_mono_bleeding_edge)));
+        presets.add(new Box86_64Preset(Box86_64Preset.DENUVO, context.getString(R.string.denuvo)));
         for (String[] preset : customPresetsIterator(prefix, context))
             presets.add(new Box86_64Preset(preset[0], preset[1]));
         return presets;

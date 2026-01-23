@@ -45,6 +45,7 @@
     <string name="performance">Desempenho</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="denuvo">Denuvo</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
 
     <!-- Winlator: Win Components -->
@@ -349,6 +350,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usar API SDL</string>
+    <string name="use_steam_input">Usar Steam Input</string>
     <string name="enable_xinput_api">Habilitar API XInput</string>
     <string name="enable_directinput_api">Habilitar API DirectInput</string>
     <string name="directinput_mapper_type">Tipo de mapeador DirectInput</string>
@@ -381,6 +383,9 @@
     <string name="environment_variables">Variáveis de Ambiente</string>
     <string name="no_environment_variables">Sem variáveis de ambiente</string>
     <string name="no_drives">Sem drives</string>
+    <string name="add_drive">Adicionar unidade</string>
+    <string name="drive_letter">Letra da unidade</string>
+    <string name="no_available_drive_letters">Nenhuma letra de unidade disponível</string>
     <string name="startup_selection">Seleção de Inicialização</string>
     <string name="processor_affinity_32bit">Afinidade de processador (apps 32-bit)</string>
     <string name="executable_path">Caminho Executável</string>
@@ -578,6 +583,9 @@
     <!-- TODO: Revisão manual - PluviaMain: Erros de sincronização -->
     <string name="main_sync_in_progress_retry">A operação de sincronização está demorando muito. Por favor, tente iniciar o jogo novamente em um momento.</string>
     <string name="main_sync_in_progress">A sincronização está em andamento. Por favor, tente novamente em um momento.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">A sincronização na nuvem deste jogo já está em andamento. Você pode esperar e tentar novamente ou iniciar mesmo assim sem sincronizar (pode causar conflitos de salvamento).</string>
+    <string name="main_launch_anyway">Iniciar mesmo assim</string>
+    <string name="main_wait">Esperar</string>
     <string name="main_sync_failed">Falha ao sincronizar arquivos de save: %s.</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Operações pendentes -->
@@ -730,6 +738,8 @@
 
     <!-- TODO: Revisão manual - Container Configuration: Steam Integration (faltando) -->
     <string name="use_legacy_drm">Usar DRM legado</string>
+    <string name="unpack_files">Descompactar arquivos</string>
+    <string name="unpack_files_description">Use apenas se receber \'Application Load Error\'. Pode reduzir FPS.</string>
 
     <!-- TODO: Revisão manual - Library Status -->
     <string name="library_status_ready">Pronto</string>
@@ -780,6 +790,8 @@
     <string name="custom_games_folders_found">%d pastas encontradas</string>
     <string name="custom_games_scan_description">As pastas nesses caminhos são verificadas em busca de arquivos .exe e listadas como jogos personalizados.</string>
     <string name="custom_game_folder_picker_error">Falha ao resolver o caminho da pasta</string>
+    <string name="container_config_drive_letter_missing">A letra da unidade está faltando</string>
+    <string name="container_config_invalid_drive_path">Caminho da unidade inválido</string>
     <string name="custom_game_exe_selection_title">Seleção de executável necessária</string>
     <string name="custom_game_exe_selection_message">Este jogo tem vários executáveis. Por favor, abra as Configurações de jogo personalizado para selecionar qual iniciar.</string>
     <string name="custom_game_settings">Configurações de jogo personalizado</string>

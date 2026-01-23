@@ -11,7 +11,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 
 import timber.log.Timber;
@@ -355,8 +358,38 @@ public abstract class WineUtils {
         }
     }
 
+    private static final String[] SERVICE_DEFAULTS = {
+            "BITS:3",
+            "Eventlog:2",
+            "HTTP:3",
+            "LanmanServer:3",
+            "NDIS:2",
+            "PlugPlay:2",
+            "RpcSs:3",
+            "scardsvr:3",
+            "Schedule:3",
+            "Spooler:3",
+            "StiSvc:3",
+            "TermService:3",
+            "winebus:3",
+            "winehid:3",
+            "Winmgmt:3",
+            "wuauserv:3",
+    };
+
+    public static List<String> getEssentialServiceNames() {
+        ArrayList<String> names = new ArrayList<>();
+        for (String service : SERVICE_DEFAULTS) {
+            int separator = service.indexOf(":");
+            if (separator > 0) {
+                names.add(service.substring(0, separator));
+            }
+        }
+        return Collections.unmodifiableList(names);
+    }
+
     public static void changeServicesStatus(Container container, boolean onlyEssential) {
-        final String[] services = {"BITS:3", "Eventlog:2", "HTTP:3", "LanmanServer:3", "NDIS:2", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "Spooler:3", "StiSvc:3", "TermService:3", "winebus:3", "winehid:3", "Winmgmt:3", "wuauserv:3"};
+        final String[] services = SERVICE_DEFAULTS;
         File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {

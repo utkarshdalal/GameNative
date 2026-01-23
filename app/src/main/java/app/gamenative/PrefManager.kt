@@ -289,6 +289,13 @@ object PrefManager {
             setPref(USE_LEGACY_DRM, value)
         }
 
+    private val UNPACK_FILES = booleanPreferencesKey("unpack_files")
+    var unpackFiles: Boolean
+        get() = getPref(UNPACK_FILES, false)
+        set(value) {
+            setPref(UNPACK_FILES, value)
+        }
+
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String
         get() = getPref(CPU_LIST, Container.getFallbackCPUList())
@@ -402,6 +409,13 @@ object PrefManager {
         }
 
     // Controller Input Defaults
+    private val USE_STEAM_INPUT = booleanPreferencesKey("use_steam_input")
+    var useSteamInput: Boolean
+        get() = getPref(USE_STEAM_INPUT, false)
+        set(value) {
+            setPref(USE_STEAM_INPUT, value)
+        }
+
     private val XINPUT_ENABLED = booleanPreferencesKey("xinput_enabled")
     var xinputEnabled: Boolean
         get() = getPref(XINPUT_ENABLED, true)

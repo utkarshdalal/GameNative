@@ -62,6 +62,8 @@ data class ContainerData(
     val shaderBackend: String = "glsl",
     val useGLSL: String = "enabled",
     val sdlControllerAPI: Boolean = true,
+    /** Enable Steam Input **/
+    val useSteamInput: Boolean = false,
     /** Enable XInput API **/
     val enableXInput: Boolean = true,
     /** Enable DirectInput API **/
@@ -80,6 +82,7 @@ data class ContainerData(
     val language: String = "english",
     val forceDlc: Boolean = false,
     val useLegacyDRM: Boolean = false,
+    val unpackFiles: Boolean = false,
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
@@ -124,6 +127,7 @@ data class ContainerData(
                     "fexcoreMultiBlock" to state.fexcoreMultiBlock,
                     "fexcorePreset" to state.fexcorePreset,
                     "sdlControllerAPI" to state.sdlControllerAPI,
+                    "useSteamInput" to state.useSteamInput,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
                     "dinputMapperType" to state.dinputMapperType,
@@ -135,6 +139,7 @@ data class ContainerData(
                     "language" to state.language,
                     "forceDlc" to state.forceDlc,
                     "useLegacyDRM" to state.useLegacyDRM,
+                    "unpackFiles" to state.unpackFiles,
                     "sharpnessEffect" to state.sharpnessEffect,
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
@@ -178,6 +183,7 @@ data class ContainerData(
                     fexcoreMultiBlock = (savedMap["fexcoreMultiBlock"] as? String) ?: "Disabled",
                     fexcorePreset = (savedMap["fexcorePreset"] as? String) ?: FEXCorePreset.INTERMEDIATE,
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
+                    useSteamInput = (savedMap["useSteamInput"] as? Boolean) ?: false,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,
                     dinputMapperType = savedMap["dinputMapperType"] as Byte,
@@ -189,6 +195,7 @@ data class ContainerData(
                     language = (savedMap["language"] as? String) ?: "english",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,
                     useLegacyDRM = (savedMap["useLegacyDRM"] as? Boolean) ?: false,
+                    unpackFiles = (savedMap["unpackFiles"] as? Boolean) ?: false,
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,

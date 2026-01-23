@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">Знайдено папок: %d</string>
     <string name="custom_games_scan_description">Папки за цими шляхами скануються на наявність .exe файлів і відображаються як власні ігри. Це може сповільнити запуск застосунку.</string>
     <string name="custom_game_folder_picker_error">Не вдалося визначити шлях до папки</string>
+    <string name="container_config_drive_letter_missing">Відсутня літера диска</string>
+    <string name="container_config_invalid_drive_path">Неприпустимий шлях диска</string>
     <string name="custom_game_exe_selection_title">Потрібно вибрати виконуваний файл</string>
     <string name="custom_game_exe_selection_message">Ця гра має кілька виконуваних файлів. Відкрийте налаштування користувацької гри, щоб вибрати, який з них запускати.</string>
     <string name="custom_game_settings">Налаштування власної гри</string>
@@ -104,6 +106,7 @@
     <string name="compatibility">Сумісність</string>
     <string name="intermediate">Збалансований</string>
     <string name="performance">Продуктивність</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -468,6 +471,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Попередній метод DRM</string>
+    <string name="unpack_files">Розпакувати файли</string>
+    <string name="unpack_files_description">Використовувати лише якщо з\'являється \'Application Load Error\'. Може знизити FPS.</string>
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
@@ -516,6 +521,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Використовувати SDL API</string>
+    <string name="use_steam_input">Використовувати Steam Input</string>
     <string name="enable_xinput_api">Увімкнути XInput API</string>
     <string name="enable_directinput_api">Увімкнути DirectInput API</string>
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>
@@ -548,6 +554,9 @@
     <string name="environment_variables">Змінні середовища</string>
     <string name="no_environment_variables">Немає змінних середовища</string>
     <string name="no_drives">Немає дисків</string>
+    <string name="add_drive">Додати диск</string>
+    <string name="drive_letter">Літера диска</string>
+    <string name="no_available_drive_letters">Немає доступних літер дисків</string>
     <string name="startup_selection">Налаштування при запуску</string>
     <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
     <string name="executable_path">Шлях .exe файлу</string>
@@ -745,6 +754,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Операція синхронізації триває занадто довго. Спробуйте запустити гру ще раз через деякий час.</string>
     <string name="main_sync_in_progress">Наразі триває синхронізація. Спробуйте ще раз за мить.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Синхронізація хмарних збережень для цієї гри вже триває. Ви можете зачекати й спробувати знову або запустити без синхронізації (може спричинити конфлікти збережень).</string>
+    <string name="main_launch_anyway">Запустити попри це</string>
+    <string name="main_wait">Зачекати</string>
     <string name="main_sync_failed">Помилка синхронізації файлів збереження: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->

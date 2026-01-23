@@ -75,7 +75,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("GlibcProgramLauncherComponent", "Process " + pid + " started");
-            SteamService.setGameRunning(true);
+            SteamService.setKeepAlive(true);
         }
     }
 
@@ -91,7 +91,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
                 }
-                SteamService.setGameRunning(false);
+                SteamService.setKeepAlive(false);
             }
             execShellCommand("wineserver -k");
         }
@@ -216,7 +216,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             synchronized (lock) {
                 pid = -1;
             }
-            SteamService.setGameRunning(false);
+            SteamService.setKeepAlive(false);
             if (terminationCallback != null) terminationCallback.call(status);
         });
     }
