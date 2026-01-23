@@ -46,15 +46,11 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE catalog_id = :catalogId")
     suspend fun getByCatalogId(catalogId: String): EpicGame?
 
-
     @Query("SELECT * FROM epic_games WHERE app_name = :appName")
     suspend fun getByAppName(appName: String): EpicGame?
 
-    @Query("SELECT * FROM epic_games ORDER BY title ASC")
+    @Query("SELECT * FROM epic_games WHERE is_dlc = false ORDER BY title ASC")
     fun getAll(): Flow<List<EpicGame>>
-
-    @Query("SELECT * FROM epic_games ORDER BY title ASC")
-    suspend fun getAllAsList(): List<EpicGame>
 
     @Query("SELECT * FROM epic_games WHERE is_installed = :isInstalled ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<EpicGame>>
