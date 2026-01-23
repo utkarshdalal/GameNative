@@ -1738,7 +1738,7 @@ private fun getWineStartCommand(
     appLaunchInfo: LaunchInfo?,
     envVars: EnvVars,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
-): String? {
+): String {
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
 
@@ -1799,7 +1799,6 @@ private fun getWineStartCommand(
     } else if (isEpicGame) {
         // For Epic games, use EpicService to get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
-
         // Create a LibraryItem from the appId
         val libraryItem = LibraryItem(
             appId = appId,
@@ -1814,7 +1813,6 @@ private fun getWineStartCommand(
             appLaunchInfo = appLaunchInfo,
             envVars = envVars,
             guestProgramLauncherComponent = guestProgramLauncherComponent
-        )
 
         Timber.tag("XServerScreen").i("Epic launch command: $epicCommand")
         return "winhandler.exe $epicCommand"

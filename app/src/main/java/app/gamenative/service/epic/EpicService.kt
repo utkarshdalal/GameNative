@@ -314,7 +314,7 @@ class EpicService : Service() {
         ): String {
             return getInstance()?.epicManager?.getWineStartCommand(
                 libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
-            ) ?: "\"explorer.exe\""
+            )
         }
 
         suspend fun refreshLibrary(context: Context): Result<Int> {
@@ -480,7 +480,7 @@ class EpicService : Service() {
 
         val instance = getInstance()
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("EGS Connected")
+        val notification = notificationHelper.createForegroundNotification("Connected")
         startForeground(3, notification)
 
         // Determine if we should sync based on the action
