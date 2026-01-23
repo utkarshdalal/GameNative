@@ -550,7 +550,7 @@ internal fun GameInfoBlock(
                 GameSource.GOG, GameSource.EPIC -> {
                     // GOG and Epic games - check installation status from their respective services
                     val isInstalled = when (appInfo.gameSource) {
-                        GameSource.GOG -> GOGService.isGameInstalled(appInfo.appId)
+                        GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
                         GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                         else -> false
                     }
