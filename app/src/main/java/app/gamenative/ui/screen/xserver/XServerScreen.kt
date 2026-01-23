@@ -681,7 +681,9 @@ fun XServerScreen(
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
-                    appLaunchInfo?.let { renderer.forceFullscreenWMClass = Paths.get(it.executable).name }
+                    if (container.executablePath.isNotBlank()) {
+                        renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
+                    }
                 }
                 getxServer().windowManager.addOnWindowModificationListener(
                     object : WindowManager.OnWindowModificationListener {
