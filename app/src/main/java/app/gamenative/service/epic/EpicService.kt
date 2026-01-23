@@ -304,19 +304,6 @@ class EpicService : Service() {
             return getInstance()?.epicManager?.getInstalledExe(appId) ?: ""
         }
 
-        fun getWineStartCommand(
-            libraryItem: LibraryItem,
-            container: com.winlator.container.Container,
-            bootToContainer: Boolean,
-            appLaunchInfo: LaunchInfo?,
-            envVars: com.winlator.core.envvars.EnvVars,
-            guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
-        ): String {
-            return getInstance()?.epicManager?.getWineStartCommand(
-                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
-            )
-        }
-
         suspend fun refreshLibrary(context: Context): Result<Int> {
             return getInstance()?.epicManager?.refreshLibrary(context)
                 ?: Result.failure(Exception("Service not available"))

@@ -381,46 +381,6 @@ class EpicManager @Inject constructor(
         return ""
     }
 
-    fun getWineStartCommand(
-        libraryItem: LibraryItem,
-        container: com.winlator.container.Container,
-        bootToContainer: Boolean,
-        appLaunchInfo: LaunchInfo?,
-        envVars: com.winlator.core.envvars.EnvVars,
-        guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
-    ): String {
-        val game = runBlocking {
-            getGameById(libraryItem.gameId)
-        }
-
-        if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
-            Timber.tag("Epic").e("Cannot launch: game not installed")
-            return "\"explorer.exe\""
-        }
-
-        // Get the executable path
-        val exePath = runBlocking {
-            getInstalledExe(game.id)
-        }
-
-        if (exePath.isEmpty()) {
-            Timber.tag("Epic").e("Cannot launch: executable not found")
-            return "\"explorer.exe\""
-        }
-
-        // Convert to relative path from install directory
-        val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
-
-        // Use A: drive (or the mapped drive letter) instead of Z:
-        // The container setup in ContainerUtils maps the game install path to A: drive
-        val winePath = "A:\\$relativePath".replace("/", "\\")
-
-        Timber.tag("Epic").i("Launching Epic game with exe: $winePath")
-
-        // Build Wine command with proper escaping
-        return "\"$winePath\""
-    }
-
     private suspend fun fetchGameInfo(
         context: Context,
         game: ParsedLibraryItem,

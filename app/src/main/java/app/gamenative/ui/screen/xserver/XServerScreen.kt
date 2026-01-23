@@ -133,6 +133,7 @@ import com.winlator.xserver.XServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -1797,22 +1798,33 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
         return "winhandler.exe $gogCommand"
     } else if (isEpicGame) {
-        // For Epic games, use EpicService to get the launch command
+        // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
-        // Create a LibraryItem from the appId
-        val libraryItem = LibraryItem(
-            appId = appId,
-            name = "", // Name not needed for launch command
-            gameSource = GameSource.EPIC
-        )
+        val game = runBlocking {
+            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+        }
 
-        val epicCommand = EpicService.getWineStartCommand(
-            libraryItem = libraryItem,
-            container = container,
-            bootToContainer = bootToContainer,
-            appLaunchInfo = appLaunchInfo,
-            envVars = envVars,
-            guestProgramLauncherComponent = guestProgramLauncherComponent
+        if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: Epic game not installed")
+            return "\"explorer.exe\""
+        }
+
+        // Get the executable path
+        val exePath = runBlocking {
+            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        }
+
+        if (exePath.isEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: executable not found for Epic game")
+            return "\"explorer.exe\""
+        }
+
+        // Convert to relative path from install directory
+        val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
+
+        // Use A: drive (or the mapped drive letter) instead of Z:
+        // The container setup in ContainerUtils maps the game install path to A: drive
+        val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
         Timber.tag("XServerScreen").i("Epic launch command: $epicCommand")
         return "winhandler.exe $epicCommand"
