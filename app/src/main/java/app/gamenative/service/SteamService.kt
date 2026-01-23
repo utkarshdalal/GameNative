@@ -1445,32 +1445,30 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         when (PrefManager.downloadSpeed) {
                             8 -> {
-                                downloadRatio = 0.3
-                                decompressRatio = 0.3
+                                downloadRatio = 0.6
+                                decompressRatio = 0.2
                             }
                             16 -> {
-                                downloadRatio = 0.5
-                                decompressRatio = 0.5
+                                downloadRatio = 1.2
+                                decompressRatio = 0.4
                             }
                             24 -> {
-                                downloadRatio = 0.8
-                                decompressRatio = 0.8
+                                downloadRatio = 1.5
+                                decompressRatio = 0.5
                             }
                             32 -> {
-                                downloadRatio = 1.0
-                                decompressRatio = 1.0
+                                downloadRatio = 2.4
+                                decompressRatio = 0.8
                             }
                         }
 
                         val cpuCores = Runtime.getRuntime().availableProcessors()
                         val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
                         val maxDecompress = (cpuCores * decompressRatio).toInt().coerceAtLeast(1)
-                        val maxFileWrites = 1
 
-                        Timber.i("CPU Cores: $cpuCores,")
+                        Timber.i("CPU Cores: $cpuCores")
                         Timber.i("maxDownloads: $maxDownloads")
                         Timber.i("maxDecompress: $maxDecompress")
-                        Timber.i("maxFileWrites: $maxFileWrites")
 
                         // Create DepotDownloader instance
                         val depotDownloader = DepotDownloader(
@@ -1480,7 +1478,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                             androidEmulation = true,
                             maxDownloads = maxDownloads,
                             maxDecompress = maxDecompress,
-                            maxFileWrites = maxFileWrites,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
                         )
