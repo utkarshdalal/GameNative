@@ -585,6 +585,29 @@ fun PluviaMain(
             }
         }
 
+        DialogType.SYNC_IN_PROGRESS -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    skipCloudSync = true,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                )
+            }
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+        }
+
         DialogType.PENDING_UPLOAD_IN_PROGRESS -> {
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -1017,6 +1040,7 @@ fun preLaunchApp(
     ignorePendingOperations: Boolean = false,
     preferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
+    skipCloudSync: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
     setLoadingProgress: (Float) -> Unit,
     setLoadingMessage: (String) -> Unit,
@@ -1222,7 +1246,13 @@ fun preLaunchApp(
             } else {
                 Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
 
+        if (skipCloudSync) {
+            Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch
@@ -1286,18 +1316,14 @@ fun preLaunchApp(
                         retryCount = retryCount + 1,
                     )
                 } else {
-                    val message = if (useTemporaryOverride) {
-                        context.getString(R.string.main_sync_in_progress_retry)
-                    } else {
-                        context.getString(R.string.main_sync_in_progress)
-                    }
                     setMessageDialogState(
                         MessageDialogState(
                             visible = true,
-                            type = DialogType.SYNC_FAIL,
+                            type = DialogType.SYNC_IN_PROGRESS,
                             title = context.getString(R.string.sync_error_title),
-                            message = message,
-                            dismissBtnText = context.getString(R.string.ok),
+                            message = context.getString(R.string.main_sync_in_progress_launch_anyway_message),
+                            confirmBtnText = context.getString(R.string.main_launch_anyway),
+                            dismissBtnText = context.getString(R.string.main_wait),
                         ),
                     )
                 }

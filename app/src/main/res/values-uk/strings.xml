@@ -746,6 +746,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Операція синхронізації триває занадто довго. Спробуйте запустити гру ще раз через деякий час.</string>
     <string name="main_sync_in_progress">Наразі триває синхронізація. Спробуйте ще раз за мить.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Синхронізація хмарних збережень для цієї гри вже триває. Ви можете зачекати й спробувати знову або запустити без синхронізації (може спричинити конфлікти збережень).</string>
+    <string name="main_launch_anyway">Запустити попри це</string>
+    <string name="main_wait">Зачекати</string>
     <string name="main_sync_failed">Помилка синхронізації файлів збереження: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->

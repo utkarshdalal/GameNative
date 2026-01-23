@@ -103,6 +103,7 @@ import java.util.Collections
 import java.util.EnumSet
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
@@ -317,7 +318,30 @@ class SteamService : Service(), IChallengeUrlChanged {
             return File(dirPath).exists() && !MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
         }
 
-        private var syncInProgress: Boolean = false
+        private val syncInProgressApps = ConcurrentHashMap<Int, AtomicBoolean>()
+
+        private fun getSyncFlag(appId: Int): AtomicBoolean {
+            val existing = syncInProgressApps[appId]
+            if (existing != null) {
+                return existing
+            }
+            val created = AtomicBoolean(false)
+            val prior = syncInProgressApps.putIfAbsent(appId, created)
+            return prior ?: created
+        }
+
+        private fun tryAcquireSync(appId: Int): Boolean {
+            val flag = getSyncFlag(appId)
+            return flag.compareAndSet(false, true)
+        }
+
+        private fun releaseSync(appId: Int) {
+            val flag = syncInProgressApps[appId]
+            flag?.set(false)
+            if (flag != null && !flag.get()) {
+                syncInProgressApps.remove(appId, flag)
+            }
+        }
 
         // Track whether a game is currently running to prevent premature service stop
         @JvmStatic
@@ -1916,130 +1940,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (isOffline || !isConnected) {
                 return@async PostSyncInfo(SyncResult.UpToDate)
             }
-            if (syncInProgress) {
-                Timber.w("Cannot launch app when sync already in progress")
+            if (!tryAcquireSync(appId)) {
+                Timber.w("Cannot launch app when sync already in progress for appId=$appId")
                 return@async PostSyncInfo(SyncResult.InProgress)
             }
 
-            syncInProgress = true
-
-            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
-
-            PrefManager.clientId?.let { clientId ->
-                instance?.let { steamInstance ->
-                    getAppInfoOf(appId)?.let { appInfo ->
-                        steamInstance._steamCloud?.let { steamCloud ->
-                            val postSyncInfo = SteamAutoCloud.syncUserFiles(
-                                appInfo = appInfo,
-                                clientId = clientId,
-                                steamInstance = steamInstance,
-                                steamCloud = steamCloud,
-                                preferredSave = preferredSave,
-                                parentScope = parentScope,
-                                prefixToPath = prefixToPath,
-                                onProgress = onProgress,
-                            ).await()
-
-                            postSyncInfo?.let { info ->
-                                syncResult = info
-
-                                if (info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate) {
-                                    Timber.i(
-                                        "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
-                                        appId,
-                                        PrefManager.clientId,
-                                        EOSType.AndroidUnknown,
-                                    )
-
-                                    val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
-                                        appId = appId,
-                                        clientId = clientId,
-                                        machineName = SteamUtils.getMachineName(steamInstance),
-                                        ignorePendingOperations = ignorePendingOperations,
-                                        osType = EOSType.AndroidUnknown,
-                                    ).await()
-
-                                    if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
-                                        syncResult = PostSyncInfo(
-                                            syncResult = SyncResult.PendingOperations,
-                                            pendingRemoteOperations = pendingRemoteOperations,
-                                        )
-                                    } else if (ignorePendingOperations &&
-                                        pendingRemoteOperations.any {
-                                            it.operation == ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionActive
-                                        }
-                                    ) {
-                                        steamInstance._steamUser!!.kickPlayingSession()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            syncInProgress = false
-
-            return@async syncResult
-        }
-
-        suspend fun forceSyncUserFiles(
-            appId: Int,
-            prefixToPath: (String) -> String,
-            preferredSave: SaveLocation = SaveLocation.None,
-            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-            overrideLocalChangeNumber: Long? = null,
-        ): Deferred<PostSyncInfo> = parentScope.async {
-            if (syncInProgress) {
-                Timber.w("Cannot force sync when sync already in progress")
-                return@async PostSyncInfo(SyncResult.InProgress)
-            }
-
-            syncInProgress = true
-
-            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
-
-            PrefManager.clientId?.let { clientId ->
-                instance?.let { steamInstance ->
-                    getAppInfoOf(appId)?.let { appInfo ->
-                        steamInstance._steamCloud?.let { steamCloud ->
-                            val postSyncInfo = SteamAutoCloud.syncUserFiles(
-                                appInfo = appInfo,
-                                clientId = clientId,
-                                steamInstance = steamInstance,
-                                steamCloud = steamCloud,
-                                preferredSave = preferredSave,
-                                parentScope = parentScope,
-                                prefixToPath = prefixToPath,
-                                overrideLocalChangeNumber = overrideLocalChangeNumber,
-                            ).await()
-
-                            postSyncInfo?.let { info ->
-                                syncResult = info
-                                Timber.i("Force cloud sync completed for app $appId with result: ${info.syncResult}")
-                            }
-                        }
-                    }
-                }
-            }
-
-            syncInProgress = false
-
-            return@async syncResult
-        }
-
-        suspend fun closeApp(appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
-            async {
-                if (syncInProgress) {
-                    Timber.w("Cannot close app when sync already in progress")
-                    return@async
-                }
-
-                if (isOffline || !isConnected) {
-                    return@async
-                }
-
-                syncInProgress = true
+            try {
+                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 PrefManager.clientId?.let { clientId ->
                     instance?.let { steamInstance ->
@@ -2050,22 +1957,139 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     clientId = clientId,
                                     steamInstance = steamInstance,
                                     steamCloud = steamCloud,
-                                    parentScope = this,
+                                    preferredSave = preferredSave,
+                                    parentScope = parentScope,
                                     prefixToPath = prefixToPath,
+                                    onProgress = onProgress,
                                 ).await()
 
-                                steamCloud.signalAppExitSyncDone(
-                                    appId = appId,
-                                    clientId = clientId,
-                                    uploadsCompleted = postSyncInfo?.uploadsCompleted == true,
-                                    uploadsRequired = postSyncInfo?.uploadsRequired == false,
-                                )
+                                postSyncInfo?.let { info ->
+                                    syncResult = info
+
+                                    if (info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate) {
+                                        Timber.i(
+                                            "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
+                                            appId,
+                                            PrefManager.clientId,
+                                            EOSType.AndroidUnknown,
+                                        )
+
+                                        val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
+                                            appId = appId,
+                                            clientId = clientId,
+                                            machineName = SteamUtils.getMachineName(steamInstance),
+                                            ignorePendingOperations = ignorePendingOperations,
+                                            osType = EOSType.AndroidUnknown,
+                                        ).await()
+
+                                        if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
+                                            syncResult = PostSyncInfo(
+                                                syncResult = SyncResult.PendingOperations,
+                                                pendingRemoteOperations = pendingRemoteOperations,
+                                            )
+                                        } else if (ignorePendingOperations &&
+                                            pendingRemoteOperations.any {
+                                                it.operation == ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionActive
+                                            }
+                                        ) {
+                                            steamInstance._steamUser!!.kickPlayingSession()
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                syncInProgress = false
+                return@async syncResult
+            } finally {
+                releaseSync(appId)
+            }
+        }
+
+        suspend fun forceSyncUserFiles(
+            appId: Int,
+            prefixToPath: (String) -> String,
+            preferredSave: SaveLocation = SaveLocation.None,
+            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+            overrideLocalChangeNumber: Long? = null,
+        ): Deferred<PostSyncInfo> = parentScope.async {
+            if (!tryAcquireSync(appId)) {
+                Timber.w("Cannot force sync when sync already in progress for appId=$appId")
+                return@async PostSyncInfo(SyncResult.InProgress)
+            }
+
+            try {
+                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
+
+                PrefManager.clientId?.let { clientId ->
+                    instance?.let { steamInstance ->
+                        getAppInfoOf(appId)?.let { appInfo ->
+                            steamInstance._steamCloud?.let { steamCloud ->
+                                val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                                    appInfo = appInfo,
+                                    clientId = clientId,
+                                    steamInstance = steamInstance,
+                                    steamCloud = steamCloud,
+                                    preferredSave = preferredSave,
+                                    parentScope = parentScope,
+                                    prefixToPath = prefixToPath,
+                                    overrideLocalChangeNumber = overrideLocalChangeNumber,
+                                ).await()
+
+                                postSyncInfo?.let { info ->
+                                    syncResult = info
+                                    Timber.i("Force cloud sync completed for app $appId with result: ${info.syncResult}")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return@async syncResult
+            } finally {
+                releaseSync(appId)
+            }
+        }
+
+        suspend fun closeApp(appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+            async {
+                if (isOffline || !isConnected) {
+                    return@async
+                }
+
+                if (!tryAcquireSync(appId)) {
+                    Timber.w("Cannot close app when sync already in progress for appId=$appId")
+                    return@async
+                }
+
+                try {
+                    PrefManager.clientId?.let { clientId ->
+                        instance?.let { steamInstance ->
+                            getAppInfoOf(appId)?.let { appInfo ->
+                                steamInstance._steamCloud?.let { steamCloud ->
+                                    val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                                        appInfo = appInfo,
+                                        clientId = clientId,
+                                        steamInstance = steamInstance,
+                                        steamCloud = steamCloud,
+                                        parentScope = this,
+                                        prefixToPath = prefixToPath,
+                                    ).await()
+
+                                    steamCloud.signalAppExitSyncDone(
+                                        appId = appId,
+                                        clientId = clientId,
+                                        uploadsCompleted = postSyncInfo?.uploadsCompleted == true,
+                                        uploadsRequired = postSyncInfo?.uploadsRequired == false,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } finally {
+                    releaseSync(appId)
+                }
             }
         }
 
@@ -2385,7 +2409,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         // Add helper to detect if any downloads or cloud sync are in progress
         fun hasActiveOperations(): Boolean {
-            return syncInProgress || downloadJobs.values.any { it.getProgress() < 1f }
+            val anySyncInProgress = syncInProgressApps.values.any { it.get() }
+            return anySyncInProgress || downloadJobs.values.any { it.getProgress() < 1f }
         }
 
         // Should service auto-stop when idle (backgrounded)?
