@@ -317,19 +317,19 @@ class MainViewModel @Inject constructor(
                 // Run in background, don't block UI
                 viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $appId")
+                        Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
                         val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
                             context = context,
                             appId = gameId,
                             preferredAction = "upload",
                         )
                         if (syncSuccess) {
-                            Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $appId")
+                            Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
                         } else {
-                            Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $appId")
+                            Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
                         }
                     } catch (e: Exception) {
-                        Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $appId")
+                        Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
                     }
                 }
             } else {
