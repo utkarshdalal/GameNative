@@ -16,6 +16,8 @@ import timber.log.Timber
  */
 @Dao
 interface EpicGameDao {
+    @Query("SELECT * FROM epic_games WHERE catalog_id IN (:catalogIds)")
+    suspend fun getGamesByCatalogIds(catalogIds: List<String>): List<EpicGame>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(game: EpicGame)
@@ -88,24 +90,26 @@ interface EpicGameDao {
      */
     @Transaction
     suspend fun upsertPreservingInstallStatus(games: List<EpicGame>) {
-        games.forEach { newGame ->
-            // Look up by appName since id is auto-generated
-            val existingGame = getByCatalogId(newGame.catalogId)
+
+        val catalogIds = games.map { it.catalogId }
+        val existingGames = getGamesByCatalogIds(catalogIds)
+        val existingMap = existingGames.associateBy { it.catalogId }
+
+        val toInsert = games.map { newGame ->
+            val existingGame = existingMap[newGame.catalogId]
             if (existingGame != null) {
-                // Preserve installation status, path, and size from existing game
-                val gameToInsert = newGame.copy(
-                    id = existingGame.id, // Keep the existing ID
+                newGame.copy(
+                    id = existingGame.id,
                     isInstalled = existingGame.isInstalled,
                     installPath = existingGame.installPath,
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
                 )
-                insert(gameToInsert)
             } else {
-                // New game, insert as-is (id = 0 will auto-generate)
-                insert(newGame)
+                newGame
             }
         }
+        insertAll(toInsert)
     }
 }
