@@ -16,7 +16,7 @@ package app.gamenative.enums
  * - {64BitSteamID} - Replaced with the user's 64-bit Steam ID
  * - {Steam3AccountID} - Replaced with the user's Steam3 account ID
  */
-data class SaveLocationWorkaround(
+data class SpecialGameSaveMapping(
     val appId: Int,
     val pathType: PathType,
     val sourceRelativePath: String,
@@ -29,7 +29,7 @@ data class SaveLocationWorkaround(
          * Add new entries here for games that need save folder symlinks
          */
         val registry = listOf(
-            SaveLocationWorkaround(
+            SpecialGameSaveMapping(
                 appId = 2680010,
                 pathType = PathType.WinAppDataLocal,
                 sourceRelativePath = "The First Berserker Khazan/Saved/SaveGames/{64BitSteamID}",
