@@ -405,21 +405,24 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("Extraction", "fexcoreVersion in use: " + fexcoreVersion);
 
         ContentProfile wowboxprofile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
-        if (wowboxprofile != null)
+        if (wowboxprofile != null) {
             contentsManager.applyContent(wowboxprofile);
-        else
+        } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+        }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
 
         ContentProfile fexprofile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
-        if (fexprofile != null)
+        if (fexprofile != null) {
             contentsManager.applyContent(fexprofile);
-        else
+        } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+        }
         container.putExtra("fexcoreVersion", fexcoreVersion);
+
         containerDataChanged = true;
         if (containerDataChanged) container.saveData();
     }
