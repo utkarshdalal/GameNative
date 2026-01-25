@@ -1,8 +1,7 @@
 package app.gamenative.ui.screen.library.appscreen
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Environment
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,21 +9,34 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.content.ContextCompat
+import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
-import app.gamenative.PluviaApp
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
+import app.gamenative.ui.component.dialog.GameManagerDialog
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -36,23 +48,19 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.MarkerUtils
-import app.gamenative.utils.StorageUtils
+import app.gamenative.utils.PermissionManager
 import app.gamenative.utils.SteamUtils
-import com.posthog.PostHog
+import app.gamenative.utils.StorageUtils
 import com.google.android.play.core.splitcompat.SplitCompat
+import com.posthog.PostHog
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
-import com.winlator.fexcore.FEXCoreManager
+import com.winlator.core.GPUInformation
 import com.winlator.xenvironment.ImageFsInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
-import app.gamenative.ui.component.dialog.GameManagerDialog
-import app.gamenative.ui.component.dialog.state.GameManagerDialogState
-import com.winlator.core.GPUInformation
 import timber.log.Timber
 import java.nio.file.Paths
 import kotlin.io.path.pathString
@@ -318,7 +326,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId)
-        return downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        return downloadInfo != null && downloadInfo.getProgress() < 1f
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -337,7 +345,7 @@ class SteamAppScreen : BaseAppScreen() {
         onStateChanged: () -> Unit,
         onProgressChanged: (Float) -> Unit,
         onHasPartialDownloadChanged: ((Boolean) -> Unit)?
-    ): (() -> Unit)? {
+    ): () -> Unit {
         val appId = libraryItem.gameId
         val disposables = mutableListOf<() -> Unit>()
 
@@ -430,7 +438,7 @@ class SteamAppScreen : BaseAppScreen() {
     ) {
         val gameId = libraryItem.gameId
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = downloadInfo != null && downloadInfo.getProgress() < 1f
         val isInstalled = SteamService.isAppInstalled(gameId)
 
         if (isDownloading) {
@@ -474,10 +482,10 @@ class SteamAppScreen : BaseAppScreen() {
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         val gameId = libraryItem.gameId
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = downloadInfo != null && downloadInfo.getProgress() < 1f
 
         if (isDownloading) {
-            downloadInfo?.cancel()
+            downloadInfo.cancel()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
@@ -489,7 +497,7 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val isInstalled = SteamService.isAppInstalled(gameId)
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = downloadInfo != null && downloadInfo.getProgress() < 1f
 
         if (isDownloading || SteamService.hasPartialDownload(gameId)) {
             // Show cancel download dialog when downloading
@@ -876,17 +884,7 @@ class SteamAppScreen : BaseAppScreen() {
         val oldGamesDirectory = remember {
             Paths.get(SteamService.defaultAppInstallPath).pathString
         }
-        val initialStoragePermissionGranted = remember {
-            val writePermissionGranted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-            val readPermissionGranted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-            writePermissionGranted && readPermissionGranted
-        }
+        val initialStoragePermissionGranted = remember { PermissionManager.hasStorageAccess(context) }
         var hasStoragePermission by remember { mutableStateOf(initialStoragePermissionGranted) }
         var installSizeInfo by remember(gameId) { mutableStateOf<InstallSizeInfo?>(null) }
 
@@ -917,11 +915,8 @@ class SteamAppScreen : BaseAppScreen() {
         val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
-            val writePermissionGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
-            val readPermissionGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
-            val granted = writePermissionGranted && readPermissionGranted
-            hasStoragePermission = granted
-            if (!granted) {
+            hasStoragePermission = PermissionManager.hasStorageAccess(context)
+            if (!hasStoragePermission) {
                 // Permissions denied
                 Toast.makeText(
                     context,
@@ -962,17 +957,28 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
+        fun requestStorageAccessIfNeeded(onDenied: () -> Unit) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val launched = PermissionManager.requestAllFilesAccess(context)
+                if (!launched) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.steam_storage_permission_required),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    onDenied()
+                }
+            } else {
+                PermissionManager.requestStorageAccess(context, permissionLauncher)
+            }
+        }
+
         LaunchedEffect(installDialogState.visible, installDialogState.type, hasStoragePermission, installSizeInfo) {
             if (!installDialogState.visible) return@LaunchedEffect
             if (installDialogState.type != DialogType.INSTALL_APP_PENDING) return@LaunchedEffect
 
             if (!hasStoragePermission) {
-                permissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    ),
-                )
+                requestStorageAccessIfNeeded { hideInstallDialog(gameId) }
             } else {
                 val info = installSizeInfo ?: return@LaunchedEffect
                 val state = if (info.availableBytes < info.installBytes) {
@@ -987,21 +993,16 @@ class SteamAppScreen : BaseAppScreen() {
         LaunchedEffect(gameManagerDialogState.visible, hasStoragePermission) {
             if (!gameManagerDialogState.visible) return@LaunchedEffect
             if (!hasStoragePermission) {
-                permissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    ),
-                )
+                requestStorageAccessIfNeeded { hideGameManagerDialog(gameId) }
             }
         }
 
         // Install dialog (INSTALL_APP, NOT_ENOUGH_SPACE, CANCEL_APP_DOWNLOAD)
         if (installDialogState.visible) {
-            val onDismissRequest: (() -> Unit)? = {
+            val onDismissRequest: () -> Unit = {
                 hideInstallDialog(gameId)
             }
-            val onDismissClick: (() -> Unit)? = {
+            val onDismissClick: () -> Unit = {
                 hideInstallDialog(gameId)
             }
             val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
@@ -1254,4 +1255,3 @@ class SteamAppScreen : BaseAppScreen() {
         }
     }
 }
-

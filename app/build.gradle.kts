@@ -53,8 +53,8 @@ android {
     defaultConfig {
         applicationId = "app.gamenative"
 
-        minSdk = 26
-        targetSdk = 28
+        minSdk = 28
+        targetSdk = 31
 
         versionCode = 9
         versionName = "0.7.0"

@@ -1,27 +1,21 @@
 package app.gamenative.ui.component.dialog
 
-import android.widget.Toast
-import android.widget.Spinner
-import android.widget.ArrayAdapter
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,6 +26,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,11 +35,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,13 +57,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
+import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -78,32 +72,28 @@ import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
-import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.service.SteamService
-import com.winlator.contents.ContentProfile
-import com.winlator.contents.ContentsManager
-import com.winlator.contents.AdrenotoolsManager
+import app.gamenative.utils.PermissionManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
-import com.winlator.core.KeyValueSet
-import com.winlator.core.StringUtils
-import com.winlator.core.envvars.EnvVarInfo
-import com.winlator.core.envvars.EnvVars
-import com.winlator.core.envvars.EnvVarSelectionType
+import com.winlator.contents.AdrenotoolsManager
+import com.winlator.contents.ContentProfile
+import com.winlator.contents.ContentsManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
-import com.winlator.core.WineInfo
+import com.winlator.core.KeyValueSet
+import com.winlator.core.StringUtils
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
-import com.winlator.fexcore.FEXCoreManager
+import com.winlator.core.envvars.EnvVarInfo
+import com.winlator.core.envvars.EnvVarSelectionType
+import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCorePresetManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -764,8 +754,8 @@ fun ContainerConfigDialog(
                 } catch (_: Exception) {
                     false
                 }
-                if (!canAccess && !CustomGameScanner.hasStoragePermission(context, path)) {
-                    requestPermissionsForPath(context, path, storagePermissionLauncher)
+                if (!canAccess && !PermissionManager.hasStorageAccessForPath(context, path)) {
+                    PermissionManager.requestStorageAccess(context, storagePermissionLauncher)
                 }
 
                 config = config.copy(drives = "${config.drives}${letter}:${path}")

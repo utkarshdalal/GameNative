@@ -1,19 +1,15 @@
 package app.gamenative.ui.components
 
-import android.Manifest
-import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import app.gamenative.R
-import app.gamenative.utils.CustomGameScanner
 
 /**
  * Converts a document tree URI to a file path.
@@ -79,32 +75,6 @@ fun getPathFromTreeUri(uri: Uri?): String? {
     }
 }
 
-/**
- * Ensures we have the correct permissions for the provided path.
- */
-fun requestPermissionsForPath(
-    context: Context,
-    path: String,
-    storagePermissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>?,
-) {
-    val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") &&
-        !path.contains(context.dataDir.path)
-
-    if (!isOutsideSandbox) {
-        return
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        CustomGameScanner.requestManageExternalStoragePermission(context)
-    } else {
-        val permissions = arrayOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        )
-        storagePermissionLauncher?.launch(permissions)
-    }
-}
-
 data class CustomGameFolderPicker(
     val launchPicker: () -> Unit,
 )
@@ -141,4 +111,3 @@ fun rememberCustomGameFolderPicker(
         )
     }
 }
-

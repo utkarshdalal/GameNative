@@ -1,25 +1,15 @@
 package app.gamenative.utils
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.Settings
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
-import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
 import com.winlator.container.ContainerManager
-import java.io.File
-import kotlin.math.abs
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import org.json.JSONObject
+import java.io.File
+import kotlin.math.abs
 
 object CustomGameScanner {
 
@@ -353,63 +343,6 @@ object CustomGameScanner {
     }
 
     /**
-     * Checks if we have permission to access a given path.
-     * On Android 11+ (API 30+), this checks for MANAGE_EXTERNAL_STORAGE permission.
-     * On older versions, checks for READ_EXTERNAL_STORAGE.
-     */
-    fun hasStoragePermission(context: Context, path: String): Boolean {
-        // Check if path is outside app sandbox
-        val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") &&
-                               !path.contains(context.dataDir.path)
-
-        if (!isOutsideSandbox) {
-            // Path is in app sandbox, no special permission needed
-            return true
-        }
-
-        // For paths outside sandbox, check permissions
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ requires MANAGE_EXTERNAL_STORAGE for broad access
-            return Environment.isExternalStorageManager()
-        } else {
-            // Android 10 and below use standard storage permissions
-            return ContextCompat.checkSelfPermission(
-                context,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    /**
-     * Opens the Android settings page to grant MANAGE_EXTERNAL_STORAGE permission.
-     * This is required for Android 11+ to access paths outside the app sandbox.
-     * Returns true if the intent was launched, false otherwise.
-     */
-    fun requestManageExternalStoragePermission(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                intent.data = Uri.parse("package:${context.packageName}")
-                context.startActivity(intent)
-                return true
-            } catch (e: Exception) {
-                Timber.tag("CustomGameScanner").e(e, "Failed to open settings for MANAGE_EXTERNAL_STORAGE")
-                // Fallback: try generic app settings
-                try {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    intent.data = Uri.parse("package:${context.packageName}")
-                    context.startActivity(intent)
-                    return true
-                } catch (e2: Exception) {
-                    Timber.tag("CustomGameScanner").e(e2, "Failed to open app settings")
-                    return false
-                }
-            }
-        }
-        return false
-    }
-
-    /**
      * All manually added folders are included regardless of content.
      * Optionally filter by [query] contained in folder name (case-insensitive).
      */
@@ -427,7 +360,7 @@ object CustomGameScanner {
                     val folderName = File(manualPath).name
                     if (!folderName.contains(q, ignoreCase = true)) continue
                 }
-                
+
                 val manualItem = createLibraryItemFromFolder(manualPath)
                 if (manualItem != null && existingAppIds.add(manualItem.appId)) {
                     items.add(manualItem.copy(index = indexCounter++))
