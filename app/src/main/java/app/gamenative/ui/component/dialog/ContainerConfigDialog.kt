@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -716,6 +717,9 @@ fun ContainerConfigDialog(
         val storagePermissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { }
+        val allFilesAccessLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult(),
+        ) { }
 
         val folderPicker = rememberCustomGameFolderPicker(
             onPathSelected = { path ->
@@ -755,7 +759,11 @@ fun ContainerConfigDialog(
                     false
                 }
                 if (!canAccess && !PermissionManager.hasStorageAccessForPath(context, path)) {
-                    PermissionManager.requestStorageAccess(context, storagePermissionLauncher)
+                    PermissionManager.requestStorageAccess(
+                        context,
+                        storagePermissionLauncher,
+                        allFilesAccessLauncher,
+                    )
                 }
 
                 config = config.copy(drives = "${config.drives}${letter}:${path}")

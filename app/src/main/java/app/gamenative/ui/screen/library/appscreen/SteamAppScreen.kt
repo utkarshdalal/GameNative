@@ -927,6 +927,11 @@ class SteamAppScreen : BaseAppScreen() {
                 hideGameManagerDialog(gameId)
             }
         }
+        val allFilesAccessLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult()
+        ) {
+            hasStoragePermission = PermissionManager.hasStorageAccess(context)
+        }
 
         LaunchedEffect(gameId, hasStoragePermission) {
             if (!hasStoragePermission) {
@@ -959,7 +964,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun requestStorageAccessIfNeeded(onDenied: () -> Unit) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val launched = PermissionManager.requestAllFilesAccess(context)
+                val launched = PermissionManager.requestAllFilesAccess(context, allFilesAccessLauncher)
                 if (!launched) {
                     Toast.makeText(
                         context,
@@ -969,7 +974,7 @@ class SteamAppScreen : BaseAppScreen() {
                     onDenied()
                 }
             } else {
-                PermissionManager.requestStorageAccess(context, permissionLauncher)
+                PermissionManager.requestStorageAccess(context, permissionLauncher, allFilesAccessLauncher)
             }
         }
 

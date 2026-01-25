@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.result.ActivityResult
 import androidx.core.content.ContextCompat
 import timber.log.Timber
 
@@ -47,28 +48,42 @@ object PermissionManager {
     fun requestStorageAccess(
         context: Context,
         legacyPermissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>?,
+        allFilesAccessLauncher: ManagedActivityResultLauncher<Intent, ActivityResult>? = null,
     ): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            requestAllFilesAccess(context)
+            requestAllFilesAccess(context, allFilesAccessLauncher)
         } else {
-            legacyPermissionLauncher?.launch(legacyStoragePermissions)
-            true
+            legacyPermissionLauncher?.let {
+                it.launch(legacyStoragePermissions)
+                true
+            } ?: false
         }
     }
 
-    fun requestAllFilesAccess(context: Context): Boolean {
+    fun requestAllFilesAccess(
+        context: Context,
+        launcher: ManagedActivityResultLauncher<Intent, ActivityResult>? = null,
+    ): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         try {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
             intent.data = Uri.parse("package:${context.packageName}")
-            context.startActivity(intent)
+            if (launcher != null) {
+                launcher.launch(intent)
+            } else {
+                context.startActivity(intent)
+            }
             return true
         } catch (e: Exception) {
             Timber.tag("PermissionManager").e(e, "Failed to open settings for all files access")
             return try {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = Uri.parse("package:${context.packageName}")
-                context.startActivity(intent)
+                if (launcher != null) {
+                    launcher.launch(intent)
+                } else {
+                    context.startActivity(intent)
+                }
                 true
             } catch (e2: Exception) {
                 Timber.tag("PermissionManager").e(e2, "Failed to open app settings")
@@ -91,7 +106,9 @@ object PermissionManager {
     ): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
         if (hasNotificationPermission(context)) return true
-        launcher?.launch(NOTIFICATION_PERMISSION)
-        return true
+        return launcher?.let {
+            it.launch(NOTIFICATION_PERMISSION)
+            true
+        } ?: false
     }
 }

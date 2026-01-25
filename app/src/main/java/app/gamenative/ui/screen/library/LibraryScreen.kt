@@ -135,6 +135,9 @@ private fun LibraryScreenContent(
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { }
+    val allFilesAccessLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { }
 
     val folderPicker = rememberCustomGameFolderPicker(
         onPathSelected = { path ->
@@ -151,7 +154,11 @@ private fun LibraryScreenContent(
             // Only request permissions if we can't access the folder AND it's outside the sandbox
             // (folders selected via OpenDocumentTree should already be accessible)
             if (!canAccess && !PermissionManager.hasStorageAccessForPath(context, path)) {
-                PermissionManager.requestStorageAccess(context, storagePermissionLauncher)
+                PermissionManager.requestStorageAccess(
+                    context,
+                    storagePermissionLauncher,
+                    allFilesAccessLauncher,
+                )
             }
             onAddCustomGameFolder(path)
         },
