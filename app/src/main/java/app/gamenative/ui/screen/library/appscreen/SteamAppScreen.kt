@@ -485,7 +485,7 @@ class SteamAppScreen : BaseAppScreen() {
         val isDownloading = downloadInfo != null && downloadInfo.getProgress() < 1f
 
         if (isDownloading) {
-            downloadInfo.cancel()
+            downloadInfo?.cancel()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
@@ -891,22 +891,32 @@ class SteamAppScreen : BaseAppScreen() {
         // Permission launcher for game migration
         val permissionMovingInternalLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
-            onResult = { permission ->
-                scope.launch {
-                    showMoveDialog = true
-                    StorageUtils.moveGamesFromOldPath(
-                        Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam").pathString,
-                        oldGamesDirectory,
-                        onProgressUpdate = { currentFile, fileProgress, movedFiles, totalFiles ->
-                            current = currentFile
-                            progress = fileProgress
-                            moved = movedFiles
-                            total = totalFiles
-                        },
-                        onComplete = {
-                            showMoveDialog = false
-                        },
-                    )
+
+            onResult = { permissions ->
+                val allGranted = permissions.values.all { it }
+                if (allGranted) {
+                    scope.launch {
+                        showMoveDialog = true
+                        StorageUtils.moveGamesFromOldPath(
+                            Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam").pathString,
+                            oldGamesDirectory,
+                            onProgressUpdate = { currentFile, fileProgress, movedFiles, totalFiles ->
+                                current = currentFile
+                                progress = fileProgress
+                                moved = movedFiles
+                                total = totalFiles
+                            },
+                            onComplete = {
+                                showMoveDialog = false
+                            },
+                        )
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.steam_storage_permission_required),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             },
         )
