@@ -24,17 +24,6 @@ import timber.log.Timber
 /**
  * Epic Games Service - thin coordinator that delegates to other Epic managers.
  */
-
- /**
-  * For Follow-up:
-  * TODO: Pausing and Cancelling Downloads
-  * TODO: DLC Support
- */
- // checklist:
- // Syncing Library
- // Authentication
- // Pull games correctly
- // TODO: Check Installing works
 @AndroidEntryPoint
 class EpicService : Service() {
 
