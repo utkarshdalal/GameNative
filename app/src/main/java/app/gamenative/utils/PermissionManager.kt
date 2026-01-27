@@ -66,13 +66,13 @@ object PermissionManager {
     ): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         try {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-            intent.data = Uri.parse("package:${context.packageName}")
-            if (launcher != null) {
-                launcher.launch(intent)
-            } else {
-                context.startActivity(intent)
-            }
+        //    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+        //    intent.data = Uri.parse("package:${context.packageName}")
+        //    if (launcher != null) {
+        //        launcher.launch(intent)
+        //    } else {
+        //        context.startActivity(intent)
+        //    }
             return true
         } catch (e: Exception) {
             Timber.tag("PermissionManager").e(e, "Failed to open settings for all files access")
