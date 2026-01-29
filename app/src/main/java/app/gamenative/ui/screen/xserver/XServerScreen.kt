@@ -2984,9 +2984,11 @@ private fun extractWinComponentFiles(
                 Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
             }
             val identifier = wincomponent[0]
-            val useNative = wincomponent[1].equals("1")
+            var useNative = wincomponent[1].equals("1")
 
-            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
+            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) {
+                useNative = false
+            }
 
             if (useNative) {
                 TarCompressorUtils.extract(
