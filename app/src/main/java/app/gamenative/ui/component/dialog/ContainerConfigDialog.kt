@@ -1392,7 +1392,7 @@ fun ContainerConfigDialog(
                                                     if (get("presentMode").isEmpty()) put("presentMode", "mailbox")
                                                     if (get("resourceType").isEmpty()) put("resourceType", "auto")
                                                     if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
-                                                    if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "software")
+                                                    if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
                                                     if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
                                                     put("adrenotoolsTurnip", "1")
                                                 }
@@ -1431,7 +1431,7 @@ fun ContainerConfigDialog(
                                                     if (get("presentMode").isEmpty()) put("presentMode", "mailbox")
                                                     if (get("resourceType").isEmpty()) put("resourceType", "auto")
                                                     if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
-                                                    if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "software")
+                                                    if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
                                                     if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
                                                 }
                                                 bionicDriverIndex = 0
@@ -2213,6 +2213,9 @@ fun ContainerConfigDialog(
                                     onItemSelected = {
                                         gpuNameIndex = it
                                         config = config.copy(videoPciDeviceID = gpuCards.values.toList()[it].deviceId)
+                                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                        cfg.put("gpuName", gpuCards.values.toList()[it].deviceId)
+                                        config = config.copy(graphicsDriverConfig = cfg.toString())
                                     },
                                 )
                                 SettingsListDropdown(
