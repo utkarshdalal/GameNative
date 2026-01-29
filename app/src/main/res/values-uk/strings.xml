@@ -992,12 +992,12 @@
     <string name="gog_logout_success">Успішно вийшли з GOG</string>
     <string name="gog_logout_failed">Не вдалося вийти: %s</string>
     <string name="gog_logout_in_progress">Вихід з GOG…</string>
-    <string name="manifest_downloading_item">Downloading %1$s...</string>
-    <string name="manifest_download_failed">Download failed: %1$s</string>
-    <string name="manifest_install_failed">Failed to install %1$s</string>
-    <string name="manifest_install_success">%1$s installed</string>
-    <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
-    <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
-    <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+    <string name="manifest_downloading_item">Завантаження %1$s...</string>
+    <string name="manifest_download_failed">Помилка завантаження: %1$s</string>
+    <string name="manifest_install_failed">Не вдалося інсталювати %1$s</string>
+    <string name="manifest_install_success">%1$s інстальовано</string>
+    <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
+    <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
+    <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
 </resources>
 

@@ -170,7 +170,10 @@ object ManifestInstaller {
         } catch (_: Exception) {
             latch.countDown()
         }
-        latch.await()
-        success
+        if (!latch.await(240, TimeUnit.SECONDS)) {
+            Timber.w("ManifestInstaller: finishInstall timed out after 240 seconds")
+            return@withContext false
+        }
+        return@withContext success
     }
 }

@@ -621,7 +621,7 @@ fun ContainerConfigDialog(
         }
 
         fun getVersionsForBox64(): VersionOptionList {
-            return if (config.wineVersion.equals(MAIN_WINE_VERSION.identifier())) {
+            return if (config.containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
                 box64Options
             } else if (config.wineVersion.contains("x86_64", true)) {
                 box64BionicOptions

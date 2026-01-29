@@ -25,9 +25,13 @@ object ManifestRepository {
 
         val fetched = fetchManifestJson()
         if (fetched != null) {
-            PrefManager.componentManifestJson = fetched
-            PrefManager.componentManifestFetchedAt = System.currentTimeMillis()
-            return parseManifest(fetched) ?: cachedManifest
+            val parsed = parseManifest(fetched)
+            if (parsed != null) {
+                val now = System.currentTimeMillis()
+                PrefManager.componentManifestJson = fetched
+                PrefManager.componentManifestFetchedAt = now
+                return parsed
+            }
         }
 
         return cachedManifest
