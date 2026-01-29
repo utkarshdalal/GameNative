@@ -531,6 +531,14 @@
     <string name="disable_mouse_input">停用滑鼠輸入</string>
     <string name="touchscreen_mode">觸屏模式</string>
     <string name="touchscreen_mode_description">直接觸控到游標移動 (開啟) vs 觸控板式相對移動 (關閉)</string>
+    <string name="external_display_input">外接顯示器輸入</string>
+    <string name="external_display_input_subtitle">選擇已連接的簡報顯示器應如何運作</string>
+    <string name="external_display_mode_off">不使用外接顯示器</string>
+    <string name="external_display_mode_touchpad">作為觸控板表面</string>
+    <string name="external_display_mode_keyboard">作為完整鍵盤</string>
+    <string name="external_display_mode_hybrid">混合（觸控板 + 鍵盤按鈕）</string>
+    <string name="external_display_swap">在外接顯示器上顯示遊戲</string>
+    <string name="external_display_swap_subtitle">交換螢幕，讓遊戲在外接顯示器上渲染，此裝置成為控制表面</string>
     <string name="start_with_controls_hidden">開始時隱藏螢幕控制器</string>
     <string name="start_with_controls_hidden_description">遊戲開始時螢幕控制器將被隱藏。可透過導航選單切換。</string>
     <string name="emulate_keyboard_mouse">模擬鍵盤與滑鼠</string>
@@ -815,10 +823,13 @@
     <string name="best_config_compatibility_unknown">沒有已知配置</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">最佳配置已成功套用</string>
+    <string name="best_config_applied_successfully">配置已成功套用</string>
     <string name="best_config_known_config_invalid">已知配置無效</string>
     <string name="best_config_no_config_available">此遊戲沒有可用的最佳配置</string>
     <string name="best_config_apply_failed">套用配置失敗: %s</string>
+    <string name="best_config_missing_content">%s 缺少</string>
+    <string name="import_config">匯入設定</string>
+    <string name="export_config">匯出設定</string>
 
     <string name="library_app_type">應用程式類型</string>
     <string name="library_app_status">應用程式狀態</string>
@@ -1021,6 +1032,13 @@
     <string name="epic_starting_download_with_dlcs">開始下載: %1$s + DLC</string>
     <string name="epic_download_failed">無法開始下載: %1$s</string>
     <string name="epic_download_error">下載錯誤: %1$s</string>
+    <string name="manifest_downloading_item">正在下載 %1$s...</string>
+    <string name="manifest_download_failed">下載失敗: %1$s</string>
+    <string name="manifest_install_failed">安裝 %1$s 失敗</string>
+    <string name="manifest_install_success">%1$s 已安裝</string>
+    <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
+    <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
+    <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
 </resources>
 
 

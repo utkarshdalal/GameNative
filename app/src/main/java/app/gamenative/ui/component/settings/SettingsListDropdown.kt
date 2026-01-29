@@ -43,6 +43,7 @@ fun SettingsListDropdown(
     enabled: Boolean = LocalSettingsGroupEnabled.current,
     value: Int,
     items: List<String>,
+    itemMuted: List<Boolean>? = null,
     fallbackDisplay: String = "",
     onItemSelected: (Int) -> Unit,
     title: @Composable () -> Unit,
@@ -95,9 +96,15 @@ fun SettingsListDropdown(
             onDismissRequest = { isDropdownExpanded = false },
         ) {
             items.forEachIndexed { index, text ->
+                val isMuted = itemMuted?.getOrNull(index) == true
+                val textColor = if (isMuted) {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
                 DropdownMenuItem(
                     enabled = enabled,
-                    text = { Text(text = text) },
+                    text = { Text(text = text, color = textColor) },
                     onClick = {
                         onItemSelected(index)
                         isDropdownExpanded = false

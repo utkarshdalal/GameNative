@@ -112,6 +112,21 @@ object PrefManager {
         }
     }
 
+    /* Manifest Cache */
+    private val COMPONENT_MANIFEST_JSON = stringPreferencesKey("component_manifest_json")
+    var componentManifestJson: String
+        get() = getPref(COMPONENT_MANIFEST_JSON, "")
+        set(value) {
+            setPref(COMPONENT_MANIFEST_JSON, value)
+        }
+
+    private val COMPONENT_MANIFEST_FETCHED_AT = longPreferencesKey("component_manifest_fetched_at")
+    var componentManifestFetchedAt: Long
+        get() = getPref(COMPONENT_MANIFEST_FETCHED_AT, 0L)
+        set(value) {
+            setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
@@ -436,6 +451,17 @@ object PrefManager {
         set(value) {
             setPref(DINPUT_MAPPER_TYPE, value)
         }
+
+    // External display input mode (off|touchpad|keyboard|hybrid)
+    private val EXTERNAL_DISPLAY_INPUT_MODE = stringPreferencesKey("external_display_input_mode")
+    var externalDisplayInputMode: String
+        get() = getPref(EXTERNAL_DISPLAY_INPUT_MODE, Container.DEFAULT_EXTERNAL_DISPLAY_MODE)
+        set(value) { setPref(EXTERNAL_DISPLAY_INPUT_MODE, value) }
+
+    private val EXTERNAL_DISPLAY_SWAP = booleanPreferencesKey("external_display_swap")
+    var externalDisplaySwap: Boolean
+        get() = getPref(EXTERNAL_DISPLAY_SWAP, false)
+        set(value) { setPref(EXTERNAL_DISPLAY_SWAP, value) }
 
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")

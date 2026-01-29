@@ -365,6 +365,14 @@
     <string name="disable_mouse_input">Deaktivér musinput</string>
     <string name="touchscreen_mode">Touchskærmstilstand</string>
     <string name="touchscreen_mode_description">Direkte touch-til-cursor-bevægelse (TIL) vs touchpad-stil relativ bevægelse (FRA)</string>
+    <string name="external_display_input">Ekstern skærm-input</string>
+    <string name="external_display_input_subtitle">Vælg hvordan en tilsluttet præsentationsskærm skal opføre sig</string>
+    <string name="external_display_mode_off">Brug ikke ekstern skærm</string>
+    <string name="external_display_mode_touchpad">Brug som touchpad-overflade</string>
+    <string name="external_display_mode_keyboard">Brug som fuldt tastatur</string>
+    <string name="external_display_mode_hybrid">Hybrid (touchpad + tastaturknap)</string>
+    <string name="external_display_swap">Vis spil på ekstern skærm</string>
+    <string name="external_display_swap_subtitle">Byt skærme, så spillet gengives på den eksterne skærm og denne enhed bliver controlleroverfladen</string>
     <string name="start_with_controls_hidden">Start med on-screen-kontroller skjult</string>
     <string name="start_with_controls_hidden_description">On-screen-kontroller vil være skjult når spillet starter. Skift via navigationsmenuen.</string>
     <string name="emulate_keyboard_mouse">Emulér tastatur og mus</string>
@@ -653,10 +661,13 @@
     <string name="best_config_compatibility_unknown">Ingen kendt konfiguration</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Bedste konfiguration anvendt med succes</string>
+    <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
+    <string name="best_config_missing_content">%s mangler</string>
+    <string name="import_config">Importér konfiguration</string>
+    <string name="export_config">Eksportér konfiguration</string>
 
     <string name="library_app_type">App-type</string>
     <string name="library_app_status">App-status</string>
@@ -891,4 +902,11 @@
     <string name="epic_starting_download_with_dlcs">Starter download: %1$s + DLC</string>
     <string name="epic_download_failed">Kunne ikke starte download: %1$s</string>
     <string name="epic_download_error">Download-fejl: %1$s</string>
+    <string name="manifest_downloading_item">Henter %1$s...</string>
+    <string name="manifest_download_failed">Download mislykkedes: %1$s</string>
+    <string name="manifest_install_failed">Kunne ikke installere %1$s</string>
+    <string name="manifest_install_success">%1$s installeret</string>
+    <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
+    <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
 </resources>

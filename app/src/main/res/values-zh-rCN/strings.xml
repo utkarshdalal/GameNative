@@ -528,6 +528,14 @@
     <string name="disable_mouse_input">禁用鼠标输入</string>
     <string name="touchscreen_mode">触屏模式</string>
     <string name="touchscreen_mode_description">直接触控到光标移动（开启） vs 触摸板式相对移动（关闭）</string>
+    <string name="external_display_input">外接显示器输入</string>
+    <string name="external_display_input_subtitle">选择已连接的演示显示器的行为方式</string>
+    <string name="external_display_mode_off">不使用外接显示器</string>
+    <string name="external_display_mode_touchpad">用作触摸板表面</string>
+    <string name="external_display_mode_keyboard">用作完整键盘</string>
+    <string name="external_display_mode_hybrid">混合（触摸板 + 键盘按钮）</string>
+    <string name="external_display_swap">在外接显示器上显示游戏</string>
+    <string name="external_display_swap_subtitle">交换屏幕，使游戏在外接显示器上渲染，此设备成为控制表面</string>
     <string name="start_with_controls_hidden">开始时隐藏屏幕控制器</string>
     <string name="start_with_controls_hidden_description">游戏开始时屏幕控制器将被隐藏。可通过导航菜单切换。</string>
     <string name="emulate_keyboard_mouse">模拟键盘与鼠标</string>
@@ -811,10 +819,13 @@
     <string name="best_config_compatibility_unknown">没有已知配置</string>
 
     <!-- 最佳配置提示消息 -->
-    <string name="best_config_applied_successfully">最佳配置已成功应用</string>
+    <string name="best_config_applied_successfully">配置已成功应用</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
+    <string name="best_config_missing_content">%s 缺失</string>
+    <string name="import_config">导入配置</string>
+    <string name="export_config">导出配置</string>
 
     <string name="library_app_type">应用程序类型</string>
     <string name="library_app_status">应用程序状态</string>
@@ -1017,4 +1028,11 @@
     <string name="epic_starting_download_with_dlcs">开始下载: %1$s + DLC</string>
     <string name="epic_download_failed">无法开始下载: %1$s</string>
     <string name="epic_download_error">下载错误: %1$s</string>
+    <string name="manifest_downloading_item">正在下载 %1$s…</string>
+    <string name="manifest_download_failed">下载失败：%1$s</string>
+    <string name="manifest_install_failed">安装 %1$s 失败</string>
+    <string name="manifest_install_success">%1$s 已安装</string>
+    <string name="manifest_content_untrusted">内容不可信，未安装。</string>
+    <string name="manifest_type_mismatch">下载的内容与预期类型不匹配。</string>
+    <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
 </resources>

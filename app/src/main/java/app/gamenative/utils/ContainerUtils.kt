@@ -124,6 +124,8 @@ object ContainerUtils {
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
+            externalDisplayMode = PrefManager.externalDisplayInputMode,
+            externalDisplaySwap = PrefManager.externalDisplaySwap,
             sharpnessEffect = PrefManager.sharpnessEffect,
             sharpnessLevel = PrefManager.sharpnessLevel,
             sharpnessDenoise = PrefManager.sharpnessDenoise,
@@ -161,6 +163,8 @@ object ContainerUtils {
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.useDRI3 = containerData.useDRI3
         PrefManager.disableMouseInput = containerData.disableMouseInput
+        PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
+        PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
         PrefManager.containerLanguage = containerData.language
         PrefManager.containerVariant = containerData.containerVariant
         PrefManager.wineVersion = containerData.wineVersion
@@ -228,6 +232,8 @@ object ContainerUtils {
         val disableMouse = container.isDisableMouseInput()
         // Read touchscreen-mode flag from container
         val touchscreenMode = container.isTouchscreenMode()
+        val externalDisplayMode = container.getExternalDisplayMode()
+        val externalDisplaySwap = container.isExternalDisplaySwap()
 
         return ContainerData(
             name = container.name,
@@ -272,6 +278,8 @@ object ContainerUtils {
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
+            externalDisplayMode = externalDisplayMode,
+            externalDisplaySwap = externalDisplaySwap,
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -421,6 +429,8 @@ object ContainerUtils {
         container.setFEXCorePreset(containerData.fexcorePreset)
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
+        container.setExternalDisplayMode(containerData.externalDisplayMode)
+        container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
@@ -767,6 +777,8 @@ object ContainerUtils {
                 forceDlc = PrefManager.forceDlc,
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
+                externalDisplayMode = PrefManager.externalDisplayInputMode,
+                externalDisplaySwap = PrefManager.externalDisplaySwap,
             )
         }
 

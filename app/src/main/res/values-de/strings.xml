@@ -504,6 +504,14 @@
     <string name="disable_mouse_input">Mauseingabe deaktivieren</string>
     <string name="touchscreen_mode">Touchscreen-Modus</string>
     <string name="touchscreen_mode_description">Direkte Zeigerbewegung (AN) vs. Touchpad-ähnliche relative Bewegung (AUS)</string>
+    <string name="external_display_input">Externe Bildschirm-Eingabe</string>
+    <string name="external_display_input_subtitle">Wähle, wie ein angeschlossener Präsentationsbildschirm sich verhalten soll</string>
+    <string name="external_display_mode_off">Externen Bildschirm nicht verwenden</string>
+    <string name="external_display_mode_touchpad">Als Touchpad-Oberfläche verwenden</string>
+    <string name="external_display_mode_keyboard">Als vollständige Tastatur verwenden</string>
+    <string name="external_display_mode_hybrid">Hybrid (Touchpad + Tastaturtaste)</string>
+    <string name="external_display_swap">Spiel auf externem Bildschirm anzeigen</string>
+    <string name="external_display_swap_subtitle">Bildschirme tauschen, damit das Spiel auf dem externen Bildschirm gerendert wird und dieses Gerät zur Controller-Oberfläche wird</string>
     <string name="start_with_controls_hidden">Mit versteckten On-Screen-Controls starten</string>
     <string name="start_with_controls_hidden_description">On-Screen-Controls sind beim Spielstart ausgeblendet. Über das Menü ein-/ausblendbar.</string>
     <string name="emulate_keyboard_mouse">Tastatur und Maus emulieren</string>
@@ -760,10 +768,13 @@
     <string name="best_config_fallback_match">Bekannte Konfiguration könnte funktionieren</string>
     <string name="best_config_compatibility_unknown">Keine bekannte Konfiguration</string>
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Beste Konfiguration erfolgreich übernommen</string>
+    <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
+    <string name="best_config_missing_content">%s fehlt</string>
+    <string name="import_config">Konfiguration importieren</string>
+    <string name="export_config">Konfiguration exportieren</string>
     <string name="library_app_type">App-Typ</string>
     <string name="library_app_status">App-Status</string>
     <string name="library_layout">Layout</string>
@@ -962,4 +973,11 @@
     <string name="epic_starting_download_with_dlcs">Download wird gestartet: %1$s + DLCs</string>
     <string name="epic_download_failed">Download konnte nicht gestartet werden: %1$s</string>
     <string name="epic_download_error">Download-Fehler: %1$s</string>
+    <string name="manifest_downloading_item">%1$s wird heruntergeladen…</string>
+    <string name="manifest_download_failed">Download fehlgeschlagen: %1$s</string>
+    <string name="manifest_install_failed">%1$s konnte nicht installiert werden</string>
+    <string name="manifest_install_success">%1$s installiert</string>
+    <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
+    <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
+    <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
 </resources>

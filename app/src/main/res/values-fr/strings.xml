@@ -532,6 +532,14 @@
     <string name="disable_mouse_input">Désactiver l\'entrée souris</string>
     <string name="touchscreen_mode">Mode écran tactile</string>
     <string name="touchscreen_mode_description">Mouvement tactile direct vers le curseur (ON) vs mouvement relatif style pavé tactile (OFF)</string>
+    <string name="external_display_input">Entrée d\'écran externe</string>
+    <string name="external_display_input_subtitle">Choisissez comment un écran de présentation connecté doit se comporter</string>
+    <string name="external_display_mode_off">Ne pas utiliser l\'écran externe</string>
+    <string name="external_display_mode_touchpad">Utiliser comme surface de pavé tactile</string>
+    <string name="external_display_mode_keyboard">Utiliser comme clavier complet</string>
+    <string name="external_display_mode_hybrid">Hybride (pavé tactile + bouton clavier)</string>
+    <string name="external_display_swap">Afficher le jeu sur l\'écran externe</string>
+    <string name="external_display_swap_subtitle">Permuter les écrans pour que le jeu s\'affiche sur l\'écran externe et que cet appareil devienne la surface de contrôle</string>
     <string name="start_with_controls_hidden">Démarrer avec les contrôles à l\'écran masqués</string>
     <string name="start_with_controls_hidden_description">Les contrôles à l\'écran seront masqués au démarrage du jeu. Basculez via le menu de navigation.</string>
     <string name="emulate_keyboard_mouse">Émuler clavier et souris</string>
@@ -820,10 +828,13 @@
     <string name="best_config_compatibility_unknown">Aucune configuration connue</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Meilleure configuration appliquée avec succès</string>
+    <string name="best_config_applied_successfully">Configuration appliquée avec succès</string>
     <string name="best_config_known_config_invalid">Configuration connue invalide</string>
     <string name="best_config_no_config_available">Aucune meilleure configuration disponible pour ce jeu</string>
     <string name="best_config_apply_failed">Échec de l\'application de la configuration : %s</string>
+    <string name="best_config_missing_content">%s manquant</string>
+    <string name="import_config">Importer la configuration</string>
+    <string name="export_config">Exporter la configuration</string>
     <string name="library_app_type">Type d\'app</string>
     <string name="library_app_status">Statut de l\'app</string>
     <string name="library_layout">Disposition</string>
@@ -1024,6 +1035,13 @@
     <string name="epic_starting_download_with_dlcs">Début du téléchargement : %1$s + DLC</string>
     <string name="epic_download_failed">Échec du démarrage du téléchargement : %1$s</string>
     <string name="epic_download_error">Erreur de téléchargement : %1$s</string>
+    <string name="manifest_downloading_item">Téléchargement de %1$s…</string>
+    <string name="manifest_download_failed">Échec du téléchargement : %1$s</string>
+    <string name="manifest_install_failed">Échec de l’installation de %1$s</string>
+    <string name="manifest_install_success">%1$s installé</string>
+    <string name="manifest_content_untrusted">Le contenu n’est pas fiable et n’a pas été installé.</string>
+    <string name="manifest_type_mismatch">Le contenu téléchargé ne correspond pas au type attendu.</string>
+    <string name="manifest_glibc_not_supported">Les builds GLIBC ne sont pas pris en charge.</string>
 </resources>
 
 

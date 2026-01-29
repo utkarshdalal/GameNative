@@ -2,9 +2,11 @@ package app.gamenative.ui.screen.xserver
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
@@ -48,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
@@ -60,6 +63,9 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.externaldisplay.ExternalDisplayInputController
+import app.gamenative.externaldisplay.ExternalDisplaySwapController
+import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -295,6 +301,8 @@ fun XServerScreen(
         Timber.i("Remembering xServerView as $result")
         result
     }
+
+    var swapInputOverlay: SwapInputOverlayView? by remember { mutableStateOf(null) }
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
@@ -638,17 +646,22 @@ fun XServerScreen(
         modifier = Modifier
             .fillMaxSize()
             .pointerHoverIcon(PointerIcon(0))
-            .pointerInteropFilter {
+            .pointerInteropFilter { event ->
+                val overlayHandled = swapInputOverlay
+                    ?.takeIf { it.visibility == View.VISIBLE }
+                    ?.dispatchTouchEvent(event) == true
+                if (overlayHandled) return@pointerInteropFilter true
+
                 // If controls are visible, let them handle it first
                 val controlsHandled = if (areControlsVisible) {
-                    PluviaApp.inputControlsView?.onTouchEvent(it) ?: false
+                    PluviaApp.inputControlsView?.onTouchEvent(event) ?: false
                 } else {
                     false
                 }
 
                 // If controls didn't handle it or aren't visible, send to touchMouse
                 if (!controlsHandled) {
-                    PluviaApp.touchpadView?.onTouchEvent(it)
+                    PluviaApp.touchpadView?.onTouchEvent(event)
                 }
 
                 true
@@ -884,9 +897,16 @@ fun XServerScreen(
                     }
                 }
             }
-            PluviaApp.xServerView = xServerView;
+            PluviaApp.xServerView = xServerView
 
-            frameLayout.addView(xServerView)
+            val gameHost = FrameLayout(context).apply {
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            }
+            frameLayout.addView(gameHost)
+            gameHost.addView(xServerView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
 
@@ -953,6 +973,73 @@ fun XServerScreen(
 
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)
+            val configuredExternalMode = ExternalDisplayInputController.fromConfig(container.externalDisplayMode)
+            val swapEnabled = container.isExternalDisplaySwap
+
+            val overlay = SwapInputOverlayView(context, xServerView.getxServer()).apply {
+                visibility = View.GONE
+                setMode(ExternalDisplayInputController.Mode.OFF)
+            }
+            frameLayout.addView(overlay)
+            swapInputOverlay = overlay
+
+            val externalDisplayController =
+                if (!swapEnabled && configuredExternalMode != ExternalDisplayInputController.Mode.OFF) {
+                    ExternalDisplayInputController(
+                        context = context,
+                        xServer = xServerView.getxServer(),
+                        touchpadViewProvider = { PluviaApp.touchpadView },
+                    ).apply {
+                        setMode(configuredExternalMode)
+                        start()
+                    }
+                } else {
+                    null
+                }
+
+            val swapController =
+                if (swapEnabled) {
+                    val surfaceBg = ContextCompat.getColor(context, R.color.external_display_surface_background)
+                    ExternalDisplaySwapController(
+                        context = context,
+                        xServerViewProvider = { xServerView },
+                        internalGameHostProvider = { gameHost },
+                        onGameOnExternalChanged = { gameOnExternal ->
+                            if (gameOnExternal) {
+                                PluviaApp.touchpadView?.setBackgroundColor(surfaceBg)
+                                when (configuredExternalMode) {
+                                    ExternalDisplayInputController.Mode.KEYBOARD,
+                                    ExternalDisplayInputController.Mode.HYBRID,
+                                    -> {
+                                        overlay.visibility = View.VISIBLE
+                                        overlay.setMode(configuredExternalMode)
+                                    }
+                                    else -> {
+                                        overlay.visibility = View.GONE
+                                        overlay.setMode(ExternalDisplayInputController.Mode.OFF)
+                                    }
+                                }
+                            } else {
+                                PluviaApp.touchpadView?.setBackgroundColor(Color.TRANSPARENT)
+                                overlay.visibility = View.GONE
+                                overlay.setMode(ExternalDisplayInputController.Mode.OFF)
+                            }
+                        },
+                    ).apply {
+                        setSwapEnabled(true)
+                        start()
+                    }
+                } else {
+                    null
+                }
+            frameLayout.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {}
+
+                override fun onViewDetachedFromWindow(v: View) {
+                    externalDisplayController?.stop()
+                    swapController?.stop()
+                }
+            })
             // Don't call hideInputControls() here - let the auto-show logic below handle visibility
             // so that the view gets measured/laid out and has valid dimensions for element loading
 

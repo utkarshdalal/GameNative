@@ -7,8 +7,8 @@ import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.contents.ContentProfile
 import com.winlator.fexcore.FEXCorePresetManager
-import com.winlator.contents.AdrenotoolsManager
 import com.winlator.core.KeyValueSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,6 +23,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
 
@@ -41,6 +42,14 @@ object BestConfigService {
     // In-memory cache keyed by "${gameName}_${gpuName}"
     private val cache = ConcurrentHashMap<String, BestConfigResponse>()
 
+    // Last missing content description from validation (e.g. "DXVK 1.10.3")
+    private var lastMissingContentDescription: String? = null
+
+    fun consumeLastMissingContentDescription(): String? {
+        val result = lastMissingContentDescription
+        lastMissingContentDescription = null
+        return result
+    }
     /**
      * Data class for API response.
      */
@@ -57,6 +66,12 @@ object BestConfigService {
     data class CompatibilityMessage(
         val text: String,
         val color: Color
+    )
+
+    data class ManifestInstallRequest(
+        val entry: ManifestEntry,
+        val contentType: ContentProfile.ContentType? = null,
+        val isDriver: Boolean = false,
     )
 
     /**
@@ -183,9 +198,10 @@ object BestConfigService {
 
     /**
      * Validates component versions in the filtered JSON.
-     * Updates invalid versions to PrefManager defaults and continues validation.
+     * Returns a human-readable description of the first missing component (e.g. "DXVK 1.10.3"),
+     * or null if all referenced versions exist.
      */
-    private fun validateComponentVersions(context: Context, filteredJson: JSONObject): Boolean {
+    private suspend fun validateComponentVersions(context: Context, filteredJson: JSONObject): String? {
         // Get resource arrays (same as ContainerConfigDialog)
         val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
         val vkd3dVersions = context.resources.getStringArray(R.array.vkd3d_version_entries).toList()
@@ -195,20 +211,8 @@ object BestConfigService {
         val fexcoreVersions = context.resources.getStringArray(R.array.fexcore_version_entries).toList()
         val bionicWineEntries = context.resources.getStringArray(R.array.bionic_wine_entries).toList()
         val glibcWineEntries = context.resources.getStringArray(R.array.glibc_wine_entries).toList()
-
-        // Helper to extract version from display string (e.g., "0.3.6 (Default)" -> "0.3.6")
-        fun extractVersion(display: String): String = display.split(" ").first().trim()
-
-        // Helper to check if version exists in list
-        fun versionExists(version: String, available: List<String>): Boolean {
-            if (version.isEmpty()) return false
-            val normalizedVersion = version.trim()
-            return available.any {
-                extractVersion(it).trim().equals(normalizedVersion, ignoreCase = true) ||
-                extractVersion(it).trim().contains(normalizedVersion, ignoreCase = true) ||
-                normalizedVersion.contains(extractVersion(it).trim(), ignoreCase = true)
-            }
-        }
+        val installed = ManifestComponentHelper.loadInstalledContentLists(context)
+        val manifest = ManifestRepository.loadManifest(context)
 
         // Get values from JSON (only if present)
         val dxwrapper = filteredJson.optString("dxwrapper", "")
@@ -221,14 +225,94 @@ object BestConfigService {
         val graphicsDriver = filteredJson.optString("graphicsDriver", "")
         val graphicsDriverConfig = filteredJson.optString("graphicsDriverConfig", "")
         val box64Preset = filteredJson.optString("box64Preset", "")
+        val manifestDxvk = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.DXVK].orEmpty(),
+            containerVariant,
+        )
+        val manifestVkd3d = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.VKD3D].orEmpty(),
+            containerVariant,
+        )
+        val manifestBox64 = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.BOX64].orEmpty(),
+            containerVariant,
+        )
+        val manifestWowBox64 = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.WOWBOX64].orEmpty(),
+            containerVariant,
+        )
+        val manifestFexcore = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.FEXCORE].orEmpty(),
+            containerVariant,
+        )
+        val manifestDrivers = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.DRIVER].orEmpty(),
+            containerVariant,
+        )
+        val manifestWine = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.WINE].orEmpty(),
+            containerVariant,
+        )
+        val manifestProton = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.PROTON].orEmpty(),
+            containerVariant,
+        )
+
+        // Build available versions upfront (base + installed + manifest)
+        val installedContent = installed.installed
+        val availableDxvk = ManifestComponentHelper.buildAvailableVersions(
+            dxvkVersions,
+            installedContent.dxvk,
+            manifestDxvk,
+        )
+        val availableVkd3d = ManifestComponentHelper.buildAvailableVersions(
+            vkd3dVersions,
+            installedContent.vkd3d,
+            manifestVkd3d,
+        )
+        val availableBox64Bionic = ManifestComponentHelper.buildAvailableVersions(
+            box64BionicVersions,
+            installedContent.box64,
+            manifestBox64,
+        )
+        val availableBox64Glibc = ManifestComponentHelper.buildAvailableVersions(
+            box64Versions,
+            installedContent.box64,
+            manifestBox64,
+        )
+        val availableWowBox64 = ManifestComponentHelper.buildAvailableVersions(
+            wowBox64Versions,
+            installedContent.wowBox64,
+            manifestWowBox64,
+        )
+        val availableFexcore = ManifestComponentHelper.buildAvailableVersions(
+            fexcoreVersions,
+            installedContent.fexcore,
+            manifestFexcore,
+        )
+        val availableWineBionic = ManifestComponentHelper.buildAvailableVersions(
+            bionicWineEntries,
+            installedContent.wine + installedContent.proton,
+            manifestWine + manifestProton,
+        )
+        val availableWineGlibc = ManifestComponentHelper.buildAvailableVersions(
+            glibcWineEntries,
+            installedContent.wine + installedContent.proton,
+            manifestWine + manifestProton,
+        )
+        val availableDrivers = ManifestComponentHelper.buildAvailableVersions(
+            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
+            installed.installedDrivers,
+            manifestDrivers,
+        )
 
         // Validate DXVK version
         if (dxwrapper == "dxvk" && dxwrapperConfig.isNotEmpty()) {
             val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("version")
-            if (version.isNotEmpty() && !versionExists(version, dxvkVersions)) {
+            if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableDxvk)) {
                 Timber.tag("BestConfigService").w("DXVK version $version not found, updating to PrefManager default")
-                return false
+                return "DXVK $version"
                 filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
@@ -237,86 +321,75 @@ object BestConfigService {
         if (dxwrapper == "vkd3d" && dxwrapperConfig.isNotEmpty()) {
             val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("vkd3dVersion")
-            if (version.isNotEmpty() && !versionExists(version, vkd3dVersions)) {
+            if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableVkd3d)) {
                 Timber.tag("BestConfigService").w("VKD3D version $version not found, updating to PrefManager default")
-                return false
+                return "VKD3D $version"
                 filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
         // Validate Box64 version (check separately based on container variant)
-        // Box64 has different version entries for bionic and glibc containers
         if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
             val box64VersionsToCheck = when {
-                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> box64BionicVersions
-                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> box64Versions
+                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> availableBox64Bionic
+                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> availableBox64Glibc
                 else -> {
-                    // Default based on container variant, but log warning
                     Timber.tag("BestConfigService").w("Unknown container variant '$containerVariant', defaulting to glibc Box64 versions")
-                    box64Versions
+                    availableBox64Glibc
                 }
             }
-            if (!versionExists(box64Version, box64VersionsToCheck)) {
+            if (!ManifestComponentHelper.versionExists(box64Version, box64VersionsToCheck)) {
                 Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries, updating to PrefManager default")
-                return false
+                return "Box64 $box64Version"
                 filteredJson.put("box64Version", PrefManager.box64Version)
             }
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
         if (wineVersion.contains("arm64ec", ignoreCase = true)) {
-            if (box64Version.isNotEmpty() && !versionExists(box64Version, wowBox64Versions) && emulator != "FEXCore") {
+            if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64) && emulator != "FEXCore") {
                 Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found, updating to PrefManager default")
-                return false
-                filteredJson.put("box64Version", PrefManager.box64Version)
+                return "WoWBox64 $box64Version"
             }
         }
 
         // Validate FEXCore version
-        if (fexcoreVersion.isNotEmpty() && !versionExists(fexcoreVersion, fexcoreVersions)) {
+        if (fexcoreVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(fexcoreVersion, availableFexcore)) {
             Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found, updating to PrefManager default")
-            return false
+            return "FEXCore $fexcoreVersion"
             filteredJson.put("fexcoreVersion", PrefManager.fexcoreVersion)
         }
 
         // Validate Wine/Proton version (check separately based on container variant)
-        // Wine versions are different for bionic and glibc containers
         if (wineVersion.isNotEmpty() && containerVariant.isNotEmpty()) {
             val wineVersionsToCheck = when {
-                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> bionicWineEntries
-                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> glibcWineEntries
+                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> availableWineBionic
+                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> availableWineGlibc
                 else -> {
-                    // Default to all versions if variant is unknown
                     Timber.tag("BestConfigService").w("Unknown container variant '$containerVariant', checking against all wine versions")
-                    (bionicWineEntries + glibcWineEntries).distinct()
+                    (availableWineBionic + availableWineGlibc).distinct()
                 }
             }
-            if (!versionExists(wineVersion, wineVersionsToCheck)) {
+            if (!ManifestComponentHelper.versionExists(wineVersion, wineVersionsToCheck)) {
                 Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries, updating to PrefManager default")
-                return false
+                return "Wine $wineVersion"
                 filteredJson.put("wineVersion", PrefManager.wineVersion)
             }
         }
 
         // Validate graphics driver version (from graphicsDriverConfig)
         if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
-            val configMap = graphicsDriverConfig.split(";").associate { part ->
+            val firstSplit = graphicsDriverConfig.split(";")
+            val parts = if (firstSplit.size > 1) firstSplit else graphicsDriverConfig.split(",")
+            val configMap = parts.associate { part ->
                 val kv = part.split("=", limit = 2)
                 if (kv.size == 2) kv[0] to kv[1] else part to ""
             }
             val driverVersion = configMap["version"] ?: ""
-
-            if (driverVersion.isNotEmpty()) {
-                if (containerVariant == Container.BIONIC) {
-                    // For bionic containers, check against wrapper_graphics_driver_version_entries
-                    val availableVersions = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList()
-                    if (!versionExists(driverVersion, availableVersions)) {
-                        Timber.tag("BestConfigService")
-                            .w("Graphics driver version $driverVersion not found for $containerVariant variant, updating to PrefManager default")
-                        return false
-                        filteredJson.put("graphicsDriverConfig", PrefManager.graphicsDriverConfig)
-                    }
-                }
+            if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
+                Timber.tag("BestConfigService")
+                    .w("Graphics driver version $driverVersion not found for $containerVariant variant, updating to PrefManager default")
+                return "Graphics driver $driverVersion"
             }
         }
 
@@ -325,7 +398,7 @@ object BestConfigService {
             val preset = Box86_64PresetManager.getPreset("box64", context, box64Preset)
             if (preset == null) {
                 Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found, updating to PrefManager default")
-                return false
+                return "Box64 preset $box64Preset"
                 filteredJson.put("box64Preset", PrefManager.box64Preset)
             }
         }
@@ -333,15 +406,226 @@ object BestConfigService {
         // Validate FEXCore preset
         val fexcorePreset = filteredJson.optString("fexcorePreset", "")
         if (fexcorePreset.isNotEmpty()) {
-            val preset = com.winlator.fexcore.FEXCorePresetManager.getPreset(context, fexcorePreset)
+            val preset = FEXCorePresetManager.getPreset(context, fexcorePreset)
             if (preset == null) {
                 Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found, updating to PrefManager default")
-                return false
+                return "FEXCore preset $fexcorePreset"
                 filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
             }
         }
 
-        return true
+        return null
+    }
+
+    suspend fun resolveMissingManifestInstallRequests(
+        context: Context,
+        configJson: JsonObject,
+        matchType: String,
+    ): List<ManifestInstallRequest> {
+        val updatedConfigJson = Json.parseToJsonElement(configJson.toString()).jsonObject
+        val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType)
+        val filteredJson = JSONObject(filteredConfig.toString())
+        val installed = ManifestComponentHelper.loadInstalledContentLists(context)
+        val manifest = ManifestRepository.loadManifest(context)
+        val installedContent = installed.installed
+
+        val containerVariant = filteredJson.optString("containerVariant", "")
+        val dxwrapper = filteredJson.optString("dxwrapper", "")
+        val dxwrapperConfig = filteredJson.optString("dxwrapperConfig", "")
+        val box64Version = filteredJson.optString("box64Version", "")
+        val wineVersion = filteredJson.optString("wineVersion", "")
+        val emulator = filteredJson.optString("emulator", "")
+        val fexcoreVersion = filteredJson.optString("fexcoreVersion", "")
+        val graphicsDriverConfig = filteredJson.optString("graphicsDriverConfig", "")
+
+        val manifestDxvk = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.DXVK].orEmpty(),
+            containerVariant,
+        )
+        val manifestVkd3d = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.VKD3D].orEmpty(),
+            containerVariant,
+        )
+        val manifestBox64 = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.BOX64].orEmpty(),
+            containerVariant,
+        )
+        val manifestWowBox64 = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.WOWBOX64].orEmpty(),
+            containerVariant,
+        )
+        val manifestFexcore = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.FEXCORE].orEmpty(),
+            containerVariant,
+        )
+        val manifestDrivers = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.DRIVER].orEmpty(),
+            containerVariant,
+        )
+        val manifestWine = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.WINE].orEmpty(),
+            containerVariant,
+        )
+        val manifestProton = ManifestComponentHelper.filterManifestByVariant(
+            manifest.items[ManifestContentTypes.PROTON].orEmpty(),
+            containerVariant,
+        )
+
+        // Build locally available versions upfront (base + installed, NO manifest)
+        val baseDxvk = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
+        val baseVkd3d = context.resources.getStringArray(R.array.vkd3d_version_entries).toList()
+        val baseBox64Bionic = context.resources.getStringArray(R.array.box64_bionic_version_entries).toList()
+        val baseBox64Glibc = context.resources.getStringArray(R.array.box64_version_entries).toList()
+        val baseWowBox64 = context.resources.getStringArray(R.array.wowbox64_version_entries).toList()
+        val baseFexcore = context.resources.getStringArray(R.array.fexcore_version_entries).toList()
+        val baseWineBionic = context.resources.getStringArray(R.array.bionic_wine_entries).toList()
+        val baseWineGlibc = context.resources.getStringArray(R.array.glibc_wine_entries).toList()
+        val baseDrivers = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList()
+
+        val locallyAvailableDxvk = ManifestComponentHelper.buildAvailableVersions(
+            base = baseDxvk,
+            installed = installedContent.dxvk,
+            manifest = emptyList(),
+        )
+        val locallyAvailableVkd3d = ManifestComponentHelper.buildAvailableVersions(
+            base = baseVkd3d,
+            installed = installedContent.vkd3d,
+            manifest = emptyList(),
+        )
+        val locallyAvailableBox64Bionic = ManifestComponentHelper.buildAvailableVersions(
+            base = baseBox64Bionic,
+            installed = installedContent.box64,
+            manifest = emptyList(),
+        )
+        val locallyAvailableBox64Glibc = ManifestComponentHelper.buildAvailableVersions(
+            base = baseBox64Glibc,
+            installed = installedContent.box64,
+            manifest = emptyList(),
+        )
+        val locallyAvailableWowBox64 = ManifestComponentHelper.buildAvailableVersions(
+            base = baseWowBox64,
+            installed = installedContent.wowBox64,
+            manifest = emptyList(),
+        )
+        val locallyAvailableFexcore = ManifestComponentHelper.buildAvailableVersions(
+            base = baseFexcore,
+            installed = installedContent.fexcore,
+            manifest = emptyList(),
+        )
+        val locallyAvailableWineBionic = ManifestComponentHelper.buildAvailableVersions(
+            base = baseWineBionic,
+            installed = installedContent.wine + installedContent.proton,
+            manifest = emptyList(),
+        )
+        val locallyAvailableWineGlibc = ManifestComponentHelper.buildAvailableVersions(
+            base = baseWineGlibc,
+            installed = installedContent.wine + installedContent.proton,
+            manifest = emptyList(),
+        )
+        val locallyAvailableDrivers = ManifestComponentHelper.buildAvailableVersions(
+            base = baseDrivers,
+            installed = installed.installedDrivers,
+            manifest = emptyList(),
+        )
+
+        val requests = LinkedHashMap<String, ManifestInstallRequest>()
+        fun addRequest(entry: ManifestEntry, contentType: ContentProfile.ContentType? = null, isDriver: Boolean = false) {
+            val key = entry.id.lowercase(Locale.ENGLISH)
+            if (!requests.containsKey(key)) {
+                requests[key] = ManifestInstallRequest(entry = entry, contentType = contentType, isDriver = isDriver)
+            }
+        }
+
+        if (dxwrapper == "dxvk" && dxwrapperConfig.isNotEmpty()) {
+            val kvs = KeyValueSet(dxwrapperConfig)
+            val version = kvs.get("version")
+            if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, locallyAvailableDxvk)) {
+                // Not locally available: if it exists in the manifest, enqueue it for download
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(version, manifestDxvk)
+                if (entry != null) {
+                    addRequest(entry, ContentProfile.ContentType.CONTENT_TYPE_DXVK)
+                }
+            }
+        }
+
+        if (dxwrapper == "vkd3d" && dxwrapperConfig.isNotEmpty()) {
+            val kvs = KeyValueSet(dxwrapperConfig)
+            val version = kvs.get("vkd3dVersion")
+            if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, locallyAvailableVkd3d)) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(version, manifestVkd3d)
+                if (entry != null) {
+                    addRequest(entry, ContentProfile.ContentType.CONTENT_TYPE_VKD3D)
+                }
+            }
+        }
+
+        if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
+            val locallyAvailableBox64 = when {
+                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> locallyAvailableBox64Bionic
+                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> locallyAvailableBox64Glibc
+                else -> locallyAvailableBox64Glibc
+            }
+            if (!ManifestComponentHelper.versionExists(box64Version, locallyAvailableBox64)) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(box64Version, manifestBox64)
+                if (entry != null) {
+                    addRequest(entry, ContentProfile.ContentType.CONTENT_TYPE_BOX64)
+                }
+            }
+        }
+
+        if (wineVersion.contains("arm64ec", ignoreCase = true) && emulator != "FEXCore") {
+            if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, locallyAvailableWowBox64)) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(box64Version, manifestWowBox64)
+                if (entry != null) {
+                    addRequest(entry, ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64)
+                }
+            }
+        }
+
+        if (fexcoreVersion.isNotEmpty()) {
+            if (!ManifestComponentHelper.versionExists(fexcoreVersion, locallyAvailableFexcore)) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(fexcoreVersion, manifestFexcore)
+                if (entry != null) {
+                    addRequest(entry, ContentProfile.ContentType.CONTENT_TYPE_FEXCORE)
+                }
+            }
+        }
+
+        if (wineVersion.isNotEmpty() && containerVariant.isNotEmpty()) {
+            val locallyAvailableWine = when {
+                containerVariant.equals(Container.BIONIC, ignoreCase = true) -> locallyAvailableWineBionic
+                containerVariant.equals(Container.GLIBC, ignoreCase = true) -> locallyAvailableWineGlibc
+                else -> (locallyAvailableWineBionic + locallyAvailableWineGlibc).distinct()
+            }
+            if (!ManifestComponentHelper.versionExists(wineVersion, locallyAvailableWine)) {
+                val wineEntry = ManifestComponentHelper.findManifestEntryForVersion(wineVersion, manifestWine)
+                val protonEntry = if (wineEntry == null) {
+                    ManifestComponentHelper.findManifestEntryForVersion(wineVersion, manifestProton)
+                } else null
+                when {
+                    wineEntry != null -> addRequest(wineEntry, ContentProfile.ContentType.CONTENT_TYPE_WINE)
+                    protonEntry != null -> addRequest(protonEntry, ContentProfile.ContentType.CONTENT_TYPE_PROTON)
+                }
+            }
+        }
+
+        if (containerVariant.equals(Container.BIONIC, ignoreCase = true) && graphicsDriverConfig.isNotEmpty()) {
+            val firstSplit = graphicsDriverConfig.split(";")
+            val parts = if (firstSplit.size > 1) firstSplit else graphicsDriverConfig.split(",")
+            val configMap = parts.associate { part ->
+                val kv = part.split("=", limit = 2)
+                if (kv.size == 2) kv[0] to kv[1] else part to ""
+            }
+            val driverVersion = configMap["version"] ?: ""
+            if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, locallyAvailableDrivers)) {
+                val entry = ManifestComponentHelper.findManifestEntryForVersion(driverVersion, manifestDrivers)
+                if (entry != null) {
+                    addRequest(entry, isDriver = true)
+                }
+            }
+        }
+
+        return requests.values.toList()
     }
 
     /**
@@ -349,7 +633,7 @@ object BestConfigService {
      * First parses values (using PrefManager defaults for validation), then validates component versions.
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      */
-    fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String, applyKnownConfig: Boolean): Map<String, Any?>? {
+    suspend fun parseConfigToContainerData(context: Context, configJson: JsonObject, matchType: String, applyKnownConfig: Boolean): Map<String, Any?>? {
         try {
             val originalJson = JSONObject(configJson.toString())
 
@@ -418,8 +702,10 @@ object BestConfigService {
                 val filteredJson = JSONObject(filteredConfig.toString())
 
                 // Step 2: Validate component versions against resource arrays
-                if (!validateComponentVersions(context, filteredJson)) {
-                    Timber.tag("BestConfigService").w("Component version validation failed, returning empty map")
+                val missingContent = validateComponentVersions(context, filteredJson)
+                if (missingContent != null) {
+                    lastMissingContentDescription = missingContent
+                    Timber.tag("BestConfigService").w("Component version validation failed for: $missingContent, returning empty map")
                     return mapOf()
                 }
 

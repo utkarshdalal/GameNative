@@ -545,6 +545,14 @@
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="touchscreen_mode">Touchscreen Mode</string>
     <string name="touchscreen_mode_description">Direct touch-to-cursor movement (ON) vs touchpad-style relative movement (OFF)</string>
+    <string name="external_display_input">External Display Input</string>
+    <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>
+    <string name="external_display_mode_off">Do not use external display</string>
+    <string name="external_display_mode_touchpad">Use as touchpad surface</string>
+    <string name="external_display_mode_keyboard">Use as full keyboard</string>
+    <string name="external_display_mode_hybrid">Hybrid (touchpad + keyboard button)</string>
+    <string name="external_display_swap">Show Game on External Display</string>
+    <string name="external_display_swap_subtitle">Swap screens so the game renders on the external display and this device becomes the controller surface</string>
     <string name="start_with_controls_hidden">Start With On-Screen Controls Hidden</string>
     <string name="start_with_controls_hidden_description">On-screen controls will be hidden when the game starts. Toggle via the navigation menu.</string>
     <string name="emulate_keyboard_mouse">Emulate keyboard and mouse</string>
@@ -833,10 +841,13 @@
     <string name="best_config_compatibility_unknown">No known config</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Best config applied successfully</string>
+    <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
+    <string name="best_config_missing_content">%s missing</string>
+    <string name="import_config">Import config</string>
+    <string name="export_config">Export config</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>
@@ -1027,5 +1038,11 @@
     <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
     <string name="epic_logout_failed">Failure to logout of Epic Games, please try again</string>
 
+    <string name="manifest_downloading_item">Downloading %1$s...</string>
+    <string name="manifest_download_failed">Download failed: %1$s</string>
+    <string name="manifest_install_failed">Failed to install %1$s</string>
+    <string name="manifest_install_success">%1$s installed</string>
+    <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
+    <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
 </resources>
-

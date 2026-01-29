@@ -824,10 +824,13 @@
     <string name="best_config_compatibility_unknown">Nessuna config nota</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Miglior config applicata con successo</string>
+    <string name="best_config_applied_successfully">Config applicata con successo</string>
     <string name="best_config_known_config_invalid">Config nota non valida</string>
     <string name="best_config_no_config_available">Nessuna miglior config disponibile per questo gioco</string>
     <string name="best_config_apply_failed">Impossibile applicare config: %s</string>
+    <string name="best_config_missing_content">%s mancante</string>
+    <string name="import_config">Importa configurazione</string>
+    <string name="export_config">Esporta configurazione</string>
     <string name="library_app_type">Tipo App</string>
     <string name="library_app_status">Stato App</string>
     <string name="library_layout">Layout</string>
@@ -1028,4 +1031,11 @@
     <string name="epic_starting_download_with_dlcs">Avvio download: %1$s + DLC</string>
     <string name="epic_download_failed">Impossibile avviare il download: %1$s</string>
     <string name="epic_download_error">Errore download: %1$s</string>
+    <string name="manifest_downloading_item">Download di %1$s…</string>
+    <string name="manifest_download_failed">Download failed: %1$s</string>
+    <string name="manifest_install_failed">Failed to install %1$s</string>
+    <string name="manifest_install_success">%1$s installed</string>
+    <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
+    <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
 </resources>

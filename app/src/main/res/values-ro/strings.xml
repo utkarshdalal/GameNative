@@ -537,6 +537,14 @@
 	<string name="disable_mouse_input">Dezactivează input-ul de mouse</string>
 	<string name="touchscreen_mode">Mod touchscreen</string>
 	<string name="touchscreen_mode_description">Mișcare directă touch-la-cursor (ON) vs mișcare relativă tip touchpad (OFF)</string>
+	<string name="external_display_input">Intrare afișaj extern</string>
+	<string name="external_display_input_subtitle">Alege cum ar trebui să se comporte un afișaj de prezentare conectat</string>
+	<string name="external_display_mode_off">Nu utiliza afișaj extern</string>
+	<string name="external_display_mode_touchpad">Folosește ca suprafață de touchpad</string>
+	<string name="external_display_mode_keyboard">Folosește ca tastatură completă</string>
+	<string name="external_display_mode_hybrid">Hibrid (touchpad + buton tastatură)</string>
+	<string name="external_display_swap">Afișează jocul pe afișajul extern</string>
+	<string name="external_display_swap_subtitle">Schimbă ecranele astfel încât jocul să fie redat pe afișajul extern și acest dispozitiv să devină suprafața de control</string>
 	<string name="start_with_controls_hidden">Pornește cu controalele pe ecran ascunse</string>
 	<string name="start_with_controls_hidden_description">Controalele pe ecran vor fi ascunse la pornirea jocului. Le poți comuta din meniul de navigare.</string>
 	<string name="emulate_keyboard_mouse">Emulează tastatura și mouse-ul</string>
@@ -824,10 +832,13 @@
 	<string name="best_config_compatibility_unknown">Nicio configurație cunoscută</string>
 
 	<!-- Best Config Toast Messages -->
-	<string name="best_config_applied_successfully">Cea mai bună configurație a fost aplicată cu succes</string>
+	<string name="best_config_applied_successfully">Configurația a fost aplicată cu succes</string>
 	<string name="best_config_known_config_invalid">Config cunoscut invalid</string>
 	<string name="best_config_no_config_available">Nu există o configurație optimă pentru acest joc</string>
 	<string name="best_config_apply_failed">Aplicarea configurației a eșuat: %s</string>
+	<string name="best_config_missing_content">%s lipsește</string>
+	<string name="import_config">Importă configurarea</string>
+	<string name="export_config">Exportă configurarea</string>
 	<string name="library_app_type">Tip aplicație</string>
 	<string name="library_app_status">Stare aplicație</string>
 	<string name="library_layout">Aspect</string>
@@ -1029,4 +1040,11 @@
 	<string name="epic_starting_download_with_dlcs">Se pornește descărcarea: %1$s + DLC-uri</string>
 	<string name="epic_download_failed">Descărcarea nu a putut fi pornită: %1$s</string>
 	<string name="epic_download_error">Eroare la descărcare: %1$s</string>
+    <string name="manifest_downloading_item">Se descarcă %1$s…</string>
+    <string name="manifest_download_failed">Descărcarea a eșuat: %1$s</string>
+    <string name="manifest_install_failed">Instalarea %1$s a eșuat</string>
+    <string name="manifest_install_success">%1$s instalat cu succes</string>
+    <string name="manifest_content_untrusted">Conținutul nu este de încredere și nu a fost instalat.</string>
+    <string name="manifest_type_mismatch">Conținutul descărcat nu corespunde tipului așteptat.</string>
+    <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
 </resources>
