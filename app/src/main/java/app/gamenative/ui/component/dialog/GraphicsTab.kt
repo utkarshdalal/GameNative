@@ -38,16 +38,28 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                     state.config.value = config.copy(graphicsDriver = StringUtils.parseIdentifier(state.bionicGraphicsDrivers[idx]))
                 },
             )
-            // Bionic: Graphics Driver Version (stored in graphicsDriverConfig.version)
+            // Bionic: Graphics Driver Version (stored in graphicsDriverConfig.version; list from manifest + installed)
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.graphics_driver_version)) },
-                value = state.wrapperVersionIndex.value,
-                items = state.wrapperVersions.value,
+                value = state.wrapperVersionIndex.value.coerceIn(0, (state.wrapperOptions.labels.size - 1).coerceAtLeast(0)),
+                items = state.wrapperOptions.labels,
+                itemMuted = state.wrapperOptions.muted,
                 onItemSelected = { idx ->
+                    val selectedId = state.wrapperOptions.ids.getOrNull(idx).orEmpty()
+                    val isManifestNotInstalled = state.wrapperOptions.muted.getOrNull(idx) == true
+                    val manifestEntry = state.wrapperManifestById[selectedId]
+                    if (isManifestNotInstalled && manifestEntry != null) {
+                        state.launchManifestDriverInstall(manifestEntry) {
+                            val cfg = KeyValueSet(config.graphicsDriverConfig)
+                            cfg.put("version", selectedId)
+                            state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                        }
+                        return@SettingsListDropdown
+                    }
                     state.wrapperVersionIndex.value = idx
                     val cfg = KeyValueSet(config.graphicsDriverConfig)
-                    cfg.put("version", state.wrapperVersions.value[idx])
+                    cfg.put("version", selectedId.ifEmpty { state.wrapperOptions.labels[idx] })
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
