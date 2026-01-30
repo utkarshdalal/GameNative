@@ -2048,7 +2048,7 @@ private fun getWineStartCommand(
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
-        // Quote the path to handle any special characters properly (defensive programming)
+
         return "winhandler.exe \"$epicCommand\""
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
