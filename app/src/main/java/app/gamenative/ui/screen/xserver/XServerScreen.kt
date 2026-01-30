@@ -2603,7 +2603,7 @@ private fun extractArm64ecInputDLLs(context: Context, container: Container) {
     Log.d("XServerDisplayActivity", "arm64ec Input DLL Extraction Verification: Container Wine version: " + wineVersion)
 
     // Check if the wineVersion string is not null and contains "arm64ec"
-    if (wineVersion != null && wineVersion.contains("proton-9.0-arm64ec")) {
+    if (wineVersion != null && wineVersion.contains("arm64ec")) {
         val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
         Log.d("XServerDisplayActivity", "Wine version contains arm64ec. Extracting input dlls to " + wineFolder.getPath())
         val success: Boolean = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, inputAsset, wineFolder)
@@ -2984,11 +2984,9 @@ private fun extractWinComponentFiles(
                 Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
             }
             val identifier = wincomponent[0]
-            var useNative = wincomponent[1].equals("1")
+            val useNative = wincomponent[1].equals("1")
 
-            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) {
-                useNative = false
-            }
+            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
             if (useNative) {
                 TarCompressorUtils.extract(
@@ -3221,20 +3219,11 @@ private fun extractGraphicsDriverFiles(
         envVars.put("GALLIUM_DRIVER", "zink")
         envVars.put("LIBGL_KOPPER_DISABLE", "true")
 
-
-        //        if (firstTimeBoot) {
-//            Log.d("XServerDisplayActivity", "First time container boot, re-extracting wrapper");
-//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
-//        }
-
         // 1. Get the main WRAPPER selection (e.g., "Wrapper-v2") from the class field.
         val mainWrapperSelection: String = graphicsDriver
 
-
         // 2. Get the WRAPPER that was last saved to the container's settings.
         val lastInstalledMainWrapper = container.getExtra("lastInstalledMainWrapper")
-
 
         // 3. Check if we need to extract a new wrapper file.
         if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
@@ -3248,18 +3237,20 @@ private fun extractGraphicsDriverFiles(
                     container.putExtra("lastInstalledMainWrapper", mainWrapperSelection)
                     container.saveData()
                 }
-            }
-
-            // 4. Extract common libraries, but only when the container is first created.
-            if (firstTimeBoot) {
                 Log.d("XServerDisplayActivity", "First time container boot, extracting extra_libs.tzst")
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "graphics_driver/extra_libs.tzst", rootDir)
-                if (container.wineVersion.contains("arm64ec") && !GPUInformation.getRenderer(context).contains("Mali")) {
+                if (mainWrapperSelection.lowercase(Locale.getDefault()).equals("wrapper-20260130")) {
                     TarCompressorUtils.extract(
                         TarCompressorUtils.Type.ZSTD,
-                        context.assets,
-                        "graphics_driver/zink_dlls" + ".tzst",
-                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows"),
+                        context.getAssets(),
+                        "graphics_driver/extra_libs-20260130.tzst",
+                        rootDir
+                    )
+                } else {
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.ZSTD,
+                        context.getAssets(),
+                        "graphics_driver/extra_libs.tzst",
+                        rootDir
                     )
                 }
             }
