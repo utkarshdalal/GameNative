@@ -61,7 +61,7 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE base_game_app_name IS NOT NULL AND is_dlc = true")
     fun getAllDlcTitles(): Flow<List<EpicGame>>
 
-    @Query("SELECT * FROM epic_games WHERE title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
+    @Query("SELECT * FROM epic_games WHERE is_dlc = false AND namespace != 'ue' AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<EpicGame>>
 
     @Query("DELETE FROM epic_games")
