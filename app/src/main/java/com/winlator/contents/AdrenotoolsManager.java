@@ -200,6 +200,10 @@ public class AdrenotoolsManager {
                     FileUtils.writeToBinaryFile(driverPath + "notadreno_utils.so", 0x2680, 2);
                 }
             }
+        } else if (adrenotoolsDriverId != null && !adrenotoolsDriverId.isEmpty()
+                && !adrenotoolsDriverId.equalsIgnoreCase("System")) {
+            Log.w("AdrenotoolsManager", "Driver not found: " + adrenotoolsDriverId
+                + " - Falling back to System driver");
         }
     }
 }
