@@ -274,25 +274,32 @@ cleanup:
 JNIEXPORT jint JNICALL
 Java_com_winlator_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     VkPhysicalDeviceProperties props = {};
-    uint32_t vendorID;
+    uint32_t vendorID = 0;
 
     if  (create_instance(driverName, env, context) != VK_SUCCESS) {
         printf("Failed to create instance");
-        return 0;
+        goto cleanup;
     }
 
     if (enumerate_physical_devices() != VK_SUCCESS) {
         printf("Failed to query physical devices");
-        return 0;
+        goto cleanup;
     }
 
     getPhysicalDeviceProperties(physicalDevice, &props);
     vendorID = props.vendorID;
 
-    destroyInstance(instance, NULL);
+cleanup:
+    if (destroyInstance && instance != VK_NULL_HANDLE) {
+        destroyInstance(instance, NULL);
+        instance = VK_NULL_HANDLE;
+    }
+    physicalDevice = VK_NULL_HANDLE;
 
-    if (vulkan_handle)
+    if (vulkan_handle) {
         dlclose(vulkan_handle);
+        vulkan_handle = NULL;
+    }
 
     return vendorID;
 }
