@@ -2603,7 +2603,7 @@ private fun extractArm64ecInputDLLs(context: Context, container: Container) {
     Log.d("XServerDisplayActivity", "arm64ec Input DLL Extraction Verification: Container Wine version: " + wineVersion)
 
     // Check if the wineVersion string is not null and contains "arm64ec"
-    if (wineVersion != null && wineVersion.contains("arm64ec")) {
+    if (wineVersion != null && wineVersion.contains("proton-9.0-arm64ec")) {
         val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
         Log.d("XServerDisplayActivity", "Wine version contains arm64ec. Extracting input dlls to " + wineFolder.getPath())
         val success: Boolean = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, inputAsset, wineFolder)
