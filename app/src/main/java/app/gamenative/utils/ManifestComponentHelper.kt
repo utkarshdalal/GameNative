@@ -128,16 +128,14 @@ object ManifestComponentHelper {
         val options = LinkedHashMap<String, VersionOption>()
 
         (base + installed).forEach { label ->
-            val id = StringUtils.parseIdentifier(label)
-            options[id] = VersionOption(label, id, false, true)
+            options[label] = VersionOption(label, label, false, true)
         }
 
         val availableIds = options.keys.toSet()
         manifest.forEach { entry ->
-            val normalizedEntryId = StringUtils.parseIdentifier(entry.id)
-            if (!options.containsKey(normalizedEntryId)) {
-                val isInstalled = availableIds.contains(normalizedEntryId)
-                options[normalizedEntryId] = VersionOption(entry.id, normalizedEntryId, isManifest = true, isInstalled = isInstalled)
+            if (!options.containsKey(entry.id)) {
+                val isInstalled = availableIds.contains(entry.id)
+                options[entry.id] = VersionOption(entry.id, entry.id, isManifest = true, isInstalled = isInstalled)
             }
         }
 

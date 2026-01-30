@@ -34,14 +34,14 @@
         <item>System</item>
         <item>v762</item>
         <item>v805</item>
-        <item>a8xx-gen8-V22</item>
+        <item>Turnip_Gen8_V23</item>
         <item>turnip25.1.0</item>
         <item>turnip25.3.0_R3_Auto</item>
         <item>turnip25.3.0_R3_Gmem</item>
         <item>turnip25.3.0_R6_Gmem</item>
-        <item>25.3.0_R11</item>
-        <item>26.0.0_R4</item>
-        <item>26.0.0_R8</item>
+        <item>turnip25.3.0_R11</item>
+        <item>turnip26.0.0_R4</item>
+        <item>turnip26.0.0_R8</item>
     </string-array>
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>

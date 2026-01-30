@@ -338,28 +338,28 @@ fun ContainerConfigDialog(
         }
 
         val dxvkManifestById = remember(manifestDxvk) {
-            manifestDxvk.associateBy { StringUtils.parseIdentifier(it.id) }
+            manifestDxvk.associateBy { it.id }
         }
         val vkd3dManifestById = remember(manifestVkd3d) {
-            manifestVkd3d.associateBy { StringUtils.parseIdentifier(it.id) }
+            manifestVkd3d.associateBy { it.id }
         }
         val box64ManifestById = remember(manifestBox64) {
-            manifestBox64.associateBy { StringUtils.parseIdentifier(it.id) }
+            manifestBox64.associateBy { it.id }
         }
         val wowBox64ManifestById = remember(manifestWowBox64) {
-            manifestWowBox64.associateBy { StringUtils.parseIdentifier(it.id) }
+            manifestWowBox64.associateBy { it.id }
         }
         val fexcoreManifestById = remember(manifestFexcore) {
-            manifestFexcore.associateBy { StringUtils.parseIdentifier(it.id) }
+            manifestFexcore.associateBy { it.id }
         }
         val wrapperManifestById = remember(manifestDrivers) {
-            manifestDrivers.associateBy { StringUtils.parseIdentifier(it.id) }
+            manifestDrivers.associateBy { it.id }
         }
         val bionicWineManifestById = remember(bionicWineManifest) {
-            bionicWineManifest.associateBy { StringUtils.parseIdentifier(it.id) }
+            bionicWineManifest.associateBy { it.id }
         }
         val glibcWineManifestById = remember(glibcWineManifest) {
-            glibcWineManifest.associateBy { StringUtils.parseIdentifier(it.id) }
+            glibcWineManifest.associateBy { it.id }
         }
 
         suspend fun refreshInstalledLists() {

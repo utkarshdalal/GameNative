@@ -52,7 +52,7 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                     if (isManifestNotInstalled && manifestEntry != null) {
                         state.launchManifestDriverInstall(manifestEntry) {
                             val cfg = KeyValueSet(config.graphicsDriverConfig)
-                            cfg.put("version", selectedId)
+                            cfg.put("version", state.wrapperOptions.labels[idx])
                             state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                         }
                         return@SettingsListDropdown
