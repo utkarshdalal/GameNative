@@ -3227,6 +3227,23 @@ private fun extractGraphicsDriverFiles(
 
         // 3. Check if we need to extract a new wrapper file.
         if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
+            FileUtils.delete(File(imageFs.lib32Dir, "libvulkan_freedreno.so"))
+            FileUtils.delete(File(imageFs.lib64Dir, "libvulkan_freedreno.so"))
+            FileUtils.delete(File(imageFs.lib64Dir, "libvulkan_wrapper.so"))
+            FileUtils.delete(File(imageFs.lib32Dir, "libvulkan_wrapper.so"))
+            FileUtils.delete(File(imageFs.lib32Dir, "libglapi.so.0.0.0"))
+            FileUtils.delete(File(imageFs.lib64Dir, "libglapi.so.0.0.0"))
+            FileUtils.delete(File(imageFs.lib32Dir, "libGL.so.1.5.0"))
+            FileUtils.delete(File(imageFs.lib64Dir, "libGL.so.1.5.0"))
+            FileUtils.delete(File(imageFs.lib64Dir, "libutil_layer.so"))
+            FileUtils.delete(File(imageFs.lib32Dir, "libutil_layer.so"))
+            FileUtils.delete(File(imageFs.lib64Dir, "libbcn_layer.so"))
+            FileUtils.delete(File(imageFs.lib32Dir, "libbcn_layer.so"))
+            FileUtils.delete(File(rootDir, "/usr/share/vulkan/implicit_layer.d/libbcn_layer.json"))
+            FileUtils.delete(File(rootDir, "/usr/share/vulkan/implicit_layer.d/vkBasalt.json"))
+            val vulkanICDDir = File(rootDir, "/usr/share/vulkan/icd.d")
+            FileUtils.delete(vulkanICDDir)
+            vulkanICDDir.mkdirs()
             // We only extract if the selection is actually a wrapper file.
             if (mainWrapperSelection.lowercase(Locale.getDefault()).startsWith("wrapper")) {
                 val assetPath = "graphics_driver/" + mainWrapperSelection.lowercase(Locale.getDefault()) + ".tzst"
