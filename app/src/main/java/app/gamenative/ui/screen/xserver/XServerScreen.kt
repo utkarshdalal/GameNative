@@ -3244,7 +3244,8 @@ private fun extractGraphicsDriverFiles(
                     "graphics_driver/extra_libs.tzst",
                     rootDir,
                 )
-                if (container.wineVersion.contains("arm64ec") && !GPUInformation.getRenderer(null, null).contains("Mali")) {
+                val renderer = GPUInformation.getRenderer(null, null)
+                if (container.wineVersion.contains("arm64ec") && renderer?.contains("Mali") != true) {
                     TarCompressorUtils.extract(
                         TarCompressorUtils.Type.ZSTD,
                         context.assets,
