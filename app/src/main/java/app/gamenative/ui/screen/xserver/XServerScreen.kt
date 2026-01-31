@@ -2047,8 +2047,9 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
-        Timber.tag("XServerScreen").i("Epic launch command: $epicCommand")
-        return "winhandler.exe $epicCommand"
+        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
+
+        return "winhandler.exe \"$epicCommand\""
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect
