@@ -211,8 +211,8 @@ object ManifestComponentHelper {
 
     fun versionExists(version: String, available: List<String>): Boolean {
         if (version.isEmpty()) return false
-        val normalizedVersion = version.trim()
-        return available.any { StringUtils.parseIdentifier(it).equals(normalizedVersion, ignoreCase = true) }
+        val trimmed = version.trim()
+        return available.any { it.equals(trimmed, ignoreCase = true) }
     }
 
     fun findManifestEntryForVersion(
