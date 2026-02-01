@@ -135,7 +135,7 @@ class SteamAutoCloudTest {
             ),
             SaveFilePattern(
                 root = PathType.WinMyDocuments,
-                path = "My Games/TestGame/Steam/76561198025127569",
+                path = "My Games\\TestGame\\Steam\\76561198025127569",
                 pattern = "SystemData_0.sav",
             ),
         )
@@ -240,7 +240,7 @@ class SteamAutoCloudTest {
             if (imageFsRoot.exists()) {
                 imageFsRoot.deleteRecursively()
             }
-            
+
             // Reset ImageFs singleton to prevent issues across tests
             val instanceField = ImageFs::class.java.getDeclaredField("INSTANCE")
             instanceField.isAccessible = true
@@ -248,17 +248,17 @@ class SteamAutoCloudTest {
         } catch (e: Exception) {
             // Ignore cleanup errors - files might be locked, but Robolectric will handle it
         }
-        
+
         // Clean up temp directory
         try {
             tempDir.deleteRecursively()
         } catch (e: Exception) {
             // Ignore cleanup errors
         }
-        
+
         // Close database
         db.close()
-        
+
         // Give file system a moment to release locks (especially important in CI)
         Thread.sleep(50)
     }

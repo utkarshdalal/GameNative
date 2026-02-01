@@ -3,6 +3,7 @@ package app.gamenative.data
 import app.gamenative.enums.PathType
 import app.gamenative.utils.SteamUtils
 import kotlinx.serialization.Serializable
+import java.io.File
 
 @Serializable
 data class SaveFilePattern(
@@ -20,4 +21,5 @@ data class SaveFilePattern(
         get() = path
             .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
             .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+            .replace("\\", File.separator)
 }

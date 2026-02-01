@@ -12,7 +12,7 @@ import timber.log.Timber
  * Uses lazy expiration - checks expiration on access, not on load (optimizes performance).
  */
 object GameCompatibilityCache {
-    private const val CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000L // 1 day
+    private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6 hours
 
     private val inMemoryCache = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
     private val timestamps = mutableMapOf<String, Long>()

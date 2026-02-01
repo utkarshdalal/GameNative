@@ -1790,6 +1790,13 @@ private fun setupXEnvironment(
 
         envVars.putAll(container.envVars)
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+        val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
+        if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
+            var tuDebug = envVars.get("TU_DEBUG")
+            if (!tuDebug.contains("deck_emu")) tuDebug = (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "deck_emu"
+            if (!tuDebug.contains("nolrz")) tuDebug = (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "nolrz"
+            envVars.put("TU_DEBUG", tuDebug)
+        }
 
         // Timber.d("3 Container drives: ${container.drives}")
         val bindingPaths = mutableListOf<String>()
@@ -3077,11 +3084,6 @@ private fun extractGraphicsDriverFiles(
         }
         if (dxwrapper.contains("dxvk")) {
             DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
-            val version = dxwrapperConfig.get("version")
-            if (version == "1.11.1-sarek") {
-                Timber.tag("GraphicsDriverExtraction").d("Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass")
-                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1")
-            }
         } else if (dxwrapper.contains("vkd3d")) {
             DXVKHelper.setVKD3DEnvVars(context, dxwrapperConfig, envVars)
         }
@@ -3203,10 +3205,14 @@ private fun extractGraphicsDriverFiles(
 
         if (dxwrapper.contains("dxvk")) {
             DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
+            val version = dxwrapperConfig.get("version")
+            if (version == "1.11.1-sarek") {
+                Timber.tag("GraphicsDriverExtraction").d("Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass")
+                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1")
+            }
         } else if (dxwrapper.contains("vkd3d")) {
             DXVKHelper.setVKD3DEnvVars(context, dxwrapperConfig, envVars)
         }
-
 
         val useDRI3: Boolean = container.isUseDRI3
         if (!useDRI3) {
