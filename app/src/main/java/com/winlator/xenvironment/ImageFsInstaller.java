@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import app.gamenative.R;
 import app.gamenative.enums.Marker;
 import app.gamenative.service.SteamService;
@@ -77,6 +79,7 @@ public abstract class ImageFsInstaller {
         for (String version : versions) {
             File downloaded = new File(imageFs.getFilesDir(), version + ".txz");
             File outFile = new File(rootDir, "/opt/" + version);
+            if (outFile.exists()) continue;
             outFile.mkdirs();
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.XZ,
@@ -98,44 +101,7 @@ public abstract class ImageFsInstaller {
         // dialog.show(R.string.installing_system_files);
         return Executors.newSingleThreadExecutor().submit(() -> {
             clearRootDir(context, rootDir);
-            final byte compressionRatio = 22;
-            String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
-            File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
-
-            boolean success = false;
-
-            if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
-                final long contentLength = (long) (FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
-                AtomicLong totalSizeRef = new AtomicLong();
-                Log.d("Extraction", "extracting " + imagefsFile);
-
-                success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, imagefsFile, rootDir, (file, size) -> {
-                    if (size > 0) {
-                        long totalSize = totalSizeRef.addAndGet(size);
-                        if (onProgress != null) {
-                            final int progress = (int) (((float) totalSize / contentLength) * 100);
-                            onProgress.call(progress);
-                        }
-                    }
-                    return file;
-                });
-            }
-
-            else if (downloaded.exists()){
-                final long contentLength = (long) (FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
-                AtomicLong totalSizeRef = new AtomicLong();
-                Log.d("Extraction", "extracting " + imagefsFile);
-                success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, downloaded, rootDir, (file, size) -> {
-                    if (size > 0) {
-                        long totalSize = totalSizeRef.addAndGet(size);
-                        if (onProgress != null) {
-                            final int progress = (int) (((float) totalSize / contentLength) * 100);
-                            onProgress.call(progress);
-                        }
-                    }
-                    return file;
-                });
-            }
+            boolean success = extractImageFs(context, assetManager, containerVariant, onProgress, imageFs, rootDir);
 
             if (success) {
                 Log.d("ImageFsInstaller", "Successfully installed system files");
@@ -156,6 +122,76 @@ public abstract class ImageFsInstaller {
             return success;
             // dialog.closeOnUiThread();
         });
+    }
+
+    private static void mergeImageFsFolder(Context context, String containerVariant, File rootDir, Callback<Integer> onProgress, Boolean isCleanInstall) throws IOException {
+        File variantDir = getVariantDir(context, containerVariant);
+        FileUtils.mergeDirectoryRecursively(variantDir, rootDir, (done, filesCount) -> {
+            if (onProgress == null) return;
+
+            int progress = (int) (((float) done / filesCount) * 100);
+            if (isCleanInstall) {
+                onProgress.call(progress / 2 + 50);
+            } else {
+                onProgress.call(progress);
+            }
+        });
+    }
+
+    private static boolean extractImageFs(Context context, AssetManager assetManager, String containerVariant, Callback<Integer> onProgress, ImageFs imageFs, File rootDir) throws IOException {
+        final byte compressionRatio = 22;
+
+        String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
+        File downloaded = new File(context.getFilesDir(), imagefsFile);
+
+        File variantDir = getVariantDir(context, containerVariant);
+        if (variantDir.exists()) {
+            mergeImageFsFolder(context, containerVariant, rootDir, onProgress, false);
+            return true;
+        }
+
+
+        boolean success = false;
+
+        if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
+            final long contentLength = (long) (FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
+            AtomicLong totalSizeRef = new AtomicLong();
+            Log.d("Extraction", "extracting " + imagefsFile);
+
+            success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, imagefsFile, variantDir, (file, size) -> {
+                if (size > 0) {
+                    long totalSize = totalSizeRef.addAndGet(size);
+                    if (onProgress != null) {
+                        final int progress = (int) (((float) totalSize / contentLength) * 100 / 2);
+                        onProgress.call(progress);
+                    }
+                }
+                return file;
+            });
+        }
+
+        else if (downloaded.exists()){
+            final long contentLength = (long) (FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
+            AtomicLong totalSizeRef = new AtomicLong();
+            Log.d("Extraction", "extracting " + imagefsFile);
+            success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, downloaded, variantDir, (file, size) -> {
+                if (size > 0) {
+                    long totalSize = totalSizeRef.addAndGet(size);
+                    if (onProgress != null) {
+                        final int progress = (int) (((float) totalSize / contentLength) * 100 / 2);
+                        onProgress.call(progress);
+                    }
+                }
+                return file;
+            });
+        }
+        mergeImageFsFolder(context, containerVariant, rootDir, onProgress, true);
+        return success;
+    }
+
+    @NonNull
+    private static File getVariantDir(Context context, String containerVariant) {
+        return new File(context.getFilesDir(), containerVariant.equals(Container.GLIBC) ? "glibc/imagefs" : "bionic/imagefs");
     }
 
     private static void installGuestLibs(Context ctx) {
@@ -216,19 +252,6 @@ public abstract class ImageFsInstaller {
             return false;
         }
 
-        // Get bundled versions from resource arrays
-        String[] bionicWineEntries = context.getResources().getStringArray(R.array.bionic_wine_entries);
-        String[] glibcWineEntries = context.getResources().getStringArray(R.array.glibc_wine_entries);
-
-        // Check if it's a bundled version
-        for (String version : bionicWineEntries) {
-            if (lowerName.equals(version.toLowerCase())) return false;
-        }
-        for (String version : glibcWineEntries) {
-            if (lowerName.equals(version.toLowerCase())) return false;
-        }
-
-        // It's Wine/Proton but not bundled, so it's imported
         return true;
     }
 

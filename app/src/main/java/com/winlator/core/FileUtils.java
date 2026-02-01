@@ -25,15 +25,21 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -177,6 +183,45 @@ public abstract class FileUtils {
             return files == null || files.length == 0;
         }
         else return targetFile.length() == 0;
+    }
+
+    public static void mergeDirectoryRecursively(File srcFile, File dstFile, OnFileMergedListener onProgress) throws IOException {
+        Path source = srcFile.toPath();
+        Path target = dstFile.toPath();
+
+        Files.createDirectories(target);
+
+        AtomicLong totalFiles = new AtomicLong(0);
+        try (var stream = Files.walk(source)) {
+            stream.filter(Files::isRegularFile)
+                .forEach(p -> totalFiles.incrementAndGet());
+        }
+
+        long total = totalFiles.get();
+        AtomicLong processed = new AtomicLong(0);
+
+        Files.walkFileTree(source, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                Path targetDir = target.resolve(source.relativize(dir));
+                Files.createDirectories(targetDir);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Path targetFile = target.resolve(source.relativize(file));
+                Files.copy(file, targetFile, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.REPLACE_EXISTING);
+
+                long done = processed.incrementAndGet();
+
+                if (onProgress != null) {
+                    onProgress.onFileMerged(done, total);
+                }
+
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     public static boolean copy(File srcFile, File dstFile) {
