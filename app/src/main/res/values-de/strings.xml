@@ -41,6 +41,14 @@
     <string name="steam_uninstall_success">%1$s wurde deinstalliert</string>
     <string name="steam_uninstall_failed">Spiel konnte nicht deinstalliert werden</string>
     <string name="steam_never">Nie</string>
+    <string name="epic_cancel_download_message">Möchten Sie den Download der App wirklich abbrechen?</string>
+    <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
+    <string name="epic_cloud_sync_starting">Starte Cloud-Speicherstand-Synchronisation…</string>
+    <string name="epic_cloud_sync_success">Cloud-Spielstände erfolgreich synchronisiert</string>
+    <string name="epic_cloud_sync_failed">Cloud-Spielstand-Synchronisation fehlgeschlagen</string>
+    <string name="epic_cloud_sync_error">Fehler bei Cloud-Spielstand-Synchronisation: %1$s</string>
+    <string name="epic_uninstall_failed">Deinstallation fehlgeschlagen: %1$s</string>
+    <string name="epic_uninstall_error">Deinstallationsfehler: %1$s</string>
     <string name="steam_continue">Weiter</string>
     <string name="header_img_desc">App-Kopfzeilenbild</string>
     <string name="download">Herunterladen</string>
@@ -84,6 +92,8 @@
     <string name="custom_games_folders_found">%d Ordner gefunden</string>
     <string name="custom_games_scan_description">Ordner in diesen Pfaden werden nach .exe-Dateien durchsucht und als eigene Spiele gelistet. Das kann den App-Start verlangsamen.</string>
     <string name="custom_game_folder_picker_error">Ordnerpfad konnte nicht ermittelt werden</string>
+    <string name="container_config_drive_letter_missing">Laufwerksbuchstabe fehlt</string>
+    <string name="container_config_invalid_drive_path">Ungültiger Laufwerkspfad</string>
     <string name="custom_game_exe_selection_title">Auswahl erforderlich</string>
     <string name="custom_game_exe_selection_message">Für dieses Spiel gibt es mehrere ausführbare Dateien. Bitte wähle in den Einstellungen aus, welche gestartet werden soll.</string>
     <string name="custom_game_settings">Eigene Spiele-Einstellungen</string>
@@ -97,6 +107,7 @@
     <string name="compatibility">Kompatibilität</string>
     <string name="intermediate">Mittel</string>
     <string name="performance">Leistung</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -439,6 +450,8 @@
     <string name="remove_driver_confirmation">Möchtest du den Treiber "%s" wirklich entfernen? Dies kann nicht rückgängig gemacht werden.</string>
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Legacy DRM verwenden</string>
+    <string name="unpack_files">Dateien entpacken</string>
+    <string name="unpack_files_description">Nur verwenden, wenn \'Application Load Error\' auftritt. Kann die FPS reduzieren.</string>
     <string name="force_dlc">DLC erzwingen</string>
     <string name="force_dlc_description">Nur aktivieren, falls DLCs nicht erkannt werden oder Spielstände mit DLC nicht funktionieren</string>
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
@@ -484,12 +497,21 @@
     <string name="preset_name">Name der Voreinstellung</string>
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">SDL-API verwenden</string>
+    <string name="use_steam_input">Steam Input verwenden</string>
     <string name="enable_xinput_api">XInput-API aktivieren</string>
     <string name="enable_directinput_api">DirectInput-API aktivieren</string>
     <string name="directinput_mapper_type">DirectInput-Mapper-Typ</string>
     <string name="disable_mouse_input">Mauseingabe deaktivieren</string>
     <string name="touchscreen_mode">Touchscreen-Modus</string>
     <string name="touchscreen_mode_description">Direkte Zeigerbewegung (AN) vs. Touchpad-ähnliche relative Bewegung (AUS)</string>
+    <string name="external_display_input">Externe Bildschirm-Eingabe</string>
+    <string name="external_display_input_subtitle">Wähle, wie ein angeschlossener Präsentationsbildschirm sich verhalten soll</string>
+    <string name="external_display_mode_off">Externen Bildschirm nicht verwenden</string>
+    <string name="external_display_mode_touchpad">Als Touchpad-Oberfläche verwenden</string>
+    <string name="external_display_mode_keyboard">Als vollständige Tastatur verwenden</string>
+    <string name="external_display_mode_hybrid">Hybrid (Touchpad + Tastaturtaste)</string>
+    <string name="external_display_swap">Spiel auf externem Bildschirm anzeigen</string>
+    <string name="external_display_swap_subtitle">Bildschirme tauschen, damit das Spiel auf dem externen Bildschirm gerendert wird und dieses Gerät zur Controller-Oberfläche wird</string>
     <string name="start_with_controls_hidden">Mit versteckten On-Screen-Controls starten</string>
     <string name="start_with_controls_hidden_description">On-Screen-Controls sind beim Spielstart ausgeblendet. Über das Menü ein-/ausblendbar.</string>
     <string name="emulate_keyboard_mouse">Tastatur und Maus emulieren</string>
@@ -506,6 +528,9 @@
     <string name="environment_variables">Umgebungsvariablen</string>
     <string name="no_environment_variables">Keine Umgebungsvariablen</string>
     <string name="no_drives">Keine Laufwerke</string>
+    <string name="add_drive">Laufwerk hinzufügen</string>
+    <string name="drive_letter">Laufwerksbuchstabe</string>
+    <string name="no_available_drive_letters">Keine verfügbaren Laufwerksbuchstaben</string>
     <string name="startup_selection">Startauswahl</string>
     <string name="processor_affinity_32bit">Prozessorbindung (32-Bit-Apps)</string>
     <string name="executable_path">Pfad zur Ausführbaren Datei</string>
@@ -681,6 +706,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Die Synchronisierung dauert zu lange. Bitte versuche, das Spiel später erneut zu starten.</string>
     <string name="main_sync_in_progress">Synchronisierung läuft. Bitte versuche es später noch einmal.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Die Cloud-Synchronisierung für dieses Spiel läuft bereits. Du kannst warten und es später erneut versuchen oder trotzdem starten ohne zu synchronisieren (kann Speicherstand-Konflikte verursachen).</string>
+    <string name="main_launch_anyway">Trotzdem starten</string>
+    <string name="main_wait">Warten</string>
     <string name="main_sync_failed">Speicherstände konnten nicht synchronisiert werden: %s.</string>
     <!-- PluviaMain: Pending Operations -->
     <string name="main_upload_in_progress_title">Upload läuft</string>
@@ -740,10 +768,13 @@
     <string name="best_config_fallback_match">Bekannte Konfiguration könnte funktionieren</string>
     <string name="best_config_compatibility_unknown">Keine bekannte Konfiguration</string>
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Beste Konfiguration erfolgreich übernommen</string>
+    <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
+    <string name="best_config_missing_content">%s fehlt</string>
+    <string name="import_config">Konfiguration importieren</string>
+    <string name="export_config">Konfiguration exportieren</string>
     <string name="library_app_type">App-Typ</string>
     <string name="library_app_status">App-Status</string>
     <string name="library_layout">Layout</string>
@@ -903,4 +934,50 @@
     <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="gog_install_game_title">Spiel herunterladen</string>
     <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_settings_login_title">Bei Epic Games anmelden</string>
+    <string name="epic_settings_login_subtitle">Verbinde dein Epic Games-Konto</string>
+    <string name="epic_login_success_title">Anmeldung erfolgreich</string>
+    <string name="epic_login_success_message">Du bist jetzt bei Epic Games angemeldet.</string>
+    <string name="epic_logout_success">Erfolgreich von Epic abgemeldet</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Bei Epic Games anmelden</string>
+    <string name="epic_login_auto_auth_info">Tippe auf \'Epic-Anmeldung öffnen\' und melde dich an. Nach der Anmeldung kopiere bitte den Autorisierungscode aus dem Ergebnisbildschirm und füge ihn unten ein</string>
+    <string name="epic_login_auth_example">Beispiel: authorization code: "example"</string>
+    <string name="epic_login_open_button">Epic-Anmeldung öffnen</string>
+    <string name="epic_login_auth_code_label">Autorisierungscode</string>
+    <string name="epic_login_auth_code_placeholder">Code oder URL hier einfügen</string>
+    <string name="epic_login_button">Anmelden</string>
+    <string name="epic_login_cancel">Abbrechen</string>
+    <string name="epic_login_browser_error">Browser konnte nicht geöffnet werden</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Von Epic Games abmelden</string>
+    <string name="epic_settings_logout_subtitle">Trenne dein Epic Games-Konto</string>
+    <string name="epic_logout_confirm_title">Von Epic Games abmelden?</string>
+    <string name="epic_logout_confirm_message">Dies entfernt alle Epic Games aus deiner Bibliothek und trennt dein Konto.</string>
+    <string name="epic_logout_confirm">Abmelden</string>
+    <string name="epic_logout_in_progress">Melde von Epic Games ab…</string>
+    <string name="epic_logout_failed">Abmeldung von Epic Games fehlgeschlagen, bitte versuche es erneut</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Spiel deinstallieren</string>
+    <string name="epic_uninstall_game_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="epic_install_game_title">Spiel herunterladen</string>
+    <string name="epic_install_game_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tGröße auf Festplatte: %2$s\n\tVerfügbarer Speicher: %3$s</string>
+    <string name="epic_game_not_found">Spiel nicht gefunden</string>
+    <string name="epic_starting_download">Download wird gestartet: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Download wird gestartet: %1$s + DLCs</string>
+    <string name="epic_download_failed">Download konnte nicht gestartet werden: %1$s</string>
+    <string name="epic_download_error">Download-Fehler: %1$s</string>
+    <string name="manifest_downloading_item">%1$s wird heruntergeladen…</string>
+    <string name="manifest_download_failed">Download fehlgeschlagen: %1$s</string>
+    <string name="manifest_install_failed">%1$s konnte nicht installiert werden</string>
+    <string name="manifest_install_success">%1$s installiert</string>
+    <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
+    <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
+    <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
 </resources>

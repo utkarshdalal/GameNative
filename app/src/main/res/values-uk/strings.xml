@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">Знайдено папок: %d</string>
     <string name="custom_games_scan_description">Папки за цими шляхами скануються на наявність .exe файлів і відображаються як власні ігри. Це може сповільнити запуск застосунку.</string>
     <string name="custom_game_folder_picker_error">Не вдалося визначити шлях до папки</string>
+    <string name="container_config_drive_letter_missing">Відсутня літера диска</string>
+    <string name="container_config_invalid_drive_path">Неприпустимий шлях диска</string>
     <string name="custom_game_exe_selection_title">Потрібно вибрати виконуваний файл</string>
     <string name="custom_game_exe_selection_message">Ця гра має кілька виконуваних файлів. Відкрийте налаштування користувацької гри, щоб вибрати, який з них запускати.</string>
     <string name="custom_game_settings">Налаштування власної гри</string>
@@ -104,6 +106,7 @@
     <string name="compatibility">Сумісність</string>
     <string name="intermediate">Збалансований</string>
     <string name="performance">Продуктивність</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -468,6 +471,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Попередній метод DRM</string>
+    <string name="unpack_files">Розпакувати файли</string>
+    <string name="unpack_files_description">Використовувати лише якщо з\'являється \'Application Load Error\'. Може знизити FPS.</string>
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
@@ -516,6 +521,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Використовувати SDL API</string>
+    <string name="use_steam_input">Використовувати Steam Input</string>
     <string name="enable_xinput_api">Увімкнути XInput API</string>
     <string name="enable_directinput_api">Увімкнути DirectInput API</string>
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>
@@ -524,6 +530,14 @@
     <string name="touchscreen_mode_description">Пряме переміщення курсора (УВІМК) або відносне переміщення, як на тачпаді (ВИМК)</string>
     <string name="start_with_controls_hidden">Запускати з прихованими елементами керування</string>
     <string name="start_with_controls_hidden_description">Екранні елементи будуть приховані під час запуску гри. Перемикайте через меню навігації.</string>
+    <string name="external_display_input">Ввід зовнішнього дисплея</string>
+    <string name="external_display_input_subtitle">Виберіть, як має працювати підключений презентаційний дисплей</string>
+    <string name="external_display_mode_off">Не використовувати зовнішній дисплей</string>
+    <string name="external_display_mode_touchpad">Використовувати як поверхню тачпада</string>
+    <string name="external_display_mode_keyboard">Використовувати як повну клавіатуру</string>
+    <string name="external_display_mode_hybrid">Гібрид (тачпад + кнопка клавіатури)</string>
+    <string name="external_display_swap">Показувати гру на зовнішньому дисплеї</string>
+    <string name="external_display_swap_subtitle">Поміняти екрани місцями, щоб гра відображалася на зовнішньому дисплеї, а цей пристрій став поверхнею керування</string>
     <string name="emulate_keyboard_mouse">Емуляція клавіатури та миші</string>
     <string name="emulate_keyboard_mouse_description">Лівий стік = WASD, Правий стік = Миша. L2 = ЛКМ, R2 = ПКМ.</string>
 
@@ -540,6 +554,9 @@
     <string name="environment_variables">Змінні середовища</string>
     <string name="no_environment_variables">Немає змінних середовища</string>
     <string name="no_drives">Немає дисків</string>
+    <string name="add_drive">Додати диск</string>
+    <string name="drive_letter">Літера диска</string>
+    <string name="no_available_drive_letters">Немає доступних літер дисків</string>
     <string name="startup_selection">Налаштування при запуску</string>
     <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
     <string name="executable_path">Шлях .exe файлу</string>
@@ -737,6 +754,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Операція синхронізації триває занадто довго. Спробуйте запустити гру ще раз через деякий час.</string>
     <string name="main_sync_in_progress">Наразі триває синхронізація. Спробуйте ще раз за мить.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Синхронізація хмарних збережень для цієї гри вже триває. Ви можете зачекати й спробувати знову або запустити без синхронізації (може спричинити конфлікти збережень).</string>
+    <string name="main_launch_anyway">Запустити попри це</string>
+    <string name="main_wait">Зачекати</string>
     <string name="main_sync_failed">Помилка синхронізації файлів збереження: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->
@@ -804,10 +824,13 @@
     <string name="best_config_compatibility_unknown">Немає відомої конфігурації</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Найкращу конфігурацію успішно застосовано</string>
+    <string name="best_config_applied_successfully">Конфігурацію успішно застосовано</string>
     <string name="best_config_known_config_invalid">Відома конфігурація недійсна</string>
     <string name="best_config_no_config_available">Немає доступної найкращої конфігурації для цієї гри</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
+    <string name="best_config_missing_content">%s відсутній</string>
+    <string name="import_config">Імпортувати конфігурацію</string>
+    <string name="export_config">Експортувати конфігурацію</string>
     <string name="library_app_type">Тип застосунку</string>
     <string name="library_app_status">Статус застосунку</string>
     <string name="library_layout">Бібліотека</string>
@@ -876,7 +899,7 @@
     <string name="contents_install_success">Вміст успішно інстальовано</string>
     <string name="contents_install_failed">Не вдалося інсталювати вміст</string>
     <string name="contents_install_error">Помилка інсталяції: %1$s</string>
-    
+
     <!-- Library Status -->
     <string name="library_status_ready">Готова</string>
     <!-- Wine/Proton Manager -->
@@ -969,5 +992,51 @@
     <string name="gog_logout_success">Успішно вийшли з GOG</string>
     <string name="gog_logout_failed">Не вдалося вийти: %s</string>
     <string name="gog_logout_in_progress">Вихід з GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Інтеграція Epic Games</string>
+    <string name="epic_settings_login_title">Вхід у Epic Games</string>
+    <string name="epic_settings_login_subtitle">Підключіть свій обліковий запис Epic Games</string>
+    <string name="epic_login_success_title">Вхід успішний</string>
+    <string name="epic_login_success_message">Ви увійшли в Epic Games.</string>
+    <string name="epic_logout_success">Успішно вийшли з Epic</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Увійти в Epic Games</string>
+    <string name="epic_login_auto_auth_info">Натисніть \'Відкрити вхід Epic\' та увійдіть. Після входу скопіюйте код авторизації з екрану результатів і вставте нижче</string>
+    <string name="epic_login_auth_example">Приклад: authorization code: "example"</string>
+    <string name="epic_login_open_button">Відкрити вхід Epic</string>
+    <string name="epic_login_auth_code_label">Код авторизації</string>
+    <string name="epic_login_auth_code_placeholder">Вставте код або URL сюди</string>
+    <string name="epic_login_button">Увійти</string>
+    <string name="epic_login_cancel">Скасувати</string>
+    <string name="epic_login_browser_error">Не вдалося відкрити браузер</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Вийти з Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Відключіть свій обліковий запис Epic Games</string>
+    <string name="epic_logout_confirm_title">Вийти з Epic Games?</string>
+    <string name="epic_logout_confirm_message">Це видалить усі ігри Epic Games з вашої бібліотеки та відключить ваш обліковий запис.</string>
+    <string name="epic_logout_confirm">Вийти</string>
+    <string name="epic_logout_in_progress">Вихід з Epic Games…</string>
+    <string name="epic_logout_failed">Не вдалося вийти з Epic Games, спробуйте ще раз</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Деінсталювати гру</string>
+    <string name="epic_uninstall_game_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
+    <string name="epic_install_game_title">Завантажити гру</string>
+    <string name="epic_install_game_message">Гра має наступні вимоги до простору. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступний простір: %3$s</string>
+    <string name="epic_game_not_found">Гру не знайдено</string>
+    <string name="epic_starting_download">Початок завантаження: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Початок завантаження: %1$s + DLC</string>
+    <string name="epic_download_failed">Не вдалося розпочати завантаження: %1$s</string>
+    <string name="epic_download_error">Помилка завантаження: %1$s</string>
+    <string name="manifest_downloading_item">Завантаження %1$s...</string>
+    <string name="manifest_download_failed">Помилка завантаження: %1$s</string>
+    <string name="manifest_install_failed">Не вдалося інсталювати %1$s</string>
+    <string name="manifest_install_success">%1$s інстальовано</string>
+    <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
+    <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
+    <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
 </resources>
 

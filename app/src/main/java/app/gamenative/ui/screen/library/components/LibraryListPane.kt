@@ -110,7 +110,14 @@ private fun calculateInstalledCount(state: LibraryState): Int {
         0
     }
 
-    return steamCount + customGameCount + gogCount
+    // Count Epic games that are installed (from PrefManager)
+    val epicCount = if (state.showEpicInLibrary) {
+        PrefManager.epicInstalledGamesCount
+    } else {
+        0
+    }
+
+    return steamCount + customGameCount + gogCount + epicCount
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -141,6 +148,7 @@ internal fun LibraryListPane(
         state.showSteamInLibrary,
         state.showCustomGamesInLibrary,
         state.showGOGInLibrary,
+        state.showEpicInLibrary,
         state.totalAppsInFilter,
     ) {
         calculateInstalledCount(state)
@@ -326,12 +334,13 @@ internal fun LibraryListPane(
                     }
                 }
 
-                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary) {
+                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary) {
                     val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
                     val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
                     val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0
-                    val total = customCount + steamCount + gogInstalledCount
-                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Total: $total")
+                    val epicInstalledCount = if (state.showEpicInLibrary) PrefManager.epicInstalledGamesCount else 0
+                    val total = customCount + steamCount + gogInstalledCount + epicInstalledCount
+                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Epic installed: $epicInstalledCount, Total: $total")
                     // Show at least a few skeletons, but not more than a reasonable amount
                     if (total == 0) 6 else minOf(total, 20)
                 }
@@ -447,6 +456,7 @@ internal fun LibraryListPane(
                                 showSteam = state.showSteamInLibrary,
                                 showCustomGames = state.showCustomGamesInLibrary,
                                 showGOG = state.showGOGInLibrary,
+                                showEpic = state.showEpicInLibrary,
                                 onSourceToggle = onSourceToggle,
                             )
                         },

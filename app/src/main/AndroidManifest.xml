@@ -102,6 +102,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <service
+            android:name=".service.epic.EpicService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- FileProvider for secure file sharing (for APK installation) -->
         <provider
             android:name="androidx.core.content.FileProvider"

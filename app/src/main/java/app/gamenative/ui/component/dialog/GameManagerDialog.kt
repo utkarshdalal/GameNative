@@ -63,7 +63,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.collections.orEmpty
 
-private data class InstallSizeInfo(
+data class InstallSizeInfo(
     val downloadSize: String,
     val installSize: String,
     val availableSpace: String,

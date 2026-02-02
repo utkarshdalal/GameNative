@@ -67,6 +67,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.icons.Steam
@@ -75,6 +76,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import java.io.File
+import timber.log.Timber
 
 @Composable
 internal fun AppItem(
@@ -256,6 +258,10 @@ internal fun AppItem(
                                 appInfo.iconHash
                             }
 
+                            GameSource.EPIC -> {
+                                appInfo.iconHash
+                            }
+
                             GameSource.STEAM -> {
                                 // For Steam games, use standard Steam URLs
                                 if (paneType == PaneType.GRID_CAPSULE) {
@@ -339,6 +345,7 @@ internal fun AppItem(
                             isInstalled = when (appInfo.gameSource) {
                                 GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                 GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                                 GameSource.CUSTOM_GAME -> true
                                 else -> false
                             }
@@ -351,6 +358,7 @@ internal fun AppItem(
                                 isInstalled = when (appInfo.gameSource) {
                                     GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
                                     GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                                     GameSource.CUSTOM_GAME -> true
                                     else -> false
                                 }
@@ -525,20 +533,48 @@ internal fun GameInfoBlock(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // Status indicator
-            val (statusText, statusColor) = if (isSteam) {
-                val text = when {
-                    isDownloading -> stringResource(R.string.library_installing)
-                    isInstalledSteam -> stringResource(R.string.library_installed)
-                    else -> stringResource(R.string.library_not_installed)
+            val (statusText, statusColor) = when (appInfo.gameSource) {
+                GameSource.STEAM -> {
+                    val text = when {
+                        isDownloading -> stringResource(R.string.library_installing)
+                        isInstalledSteam -> stringResource(R.string.library_installed)
+                        else -> stringResource(R.string.library_not_installed)
+                    }
+                    val color = when {
+                        isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    }
+                    text to color
                 }
-                val color = when {
-                    isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+
+                GameSource.GOG, GameSource.EPIC -> {
+                    // GOG and Epic games - check installation status from their respective services
+                    val isInstalled = when (appInfo.gameSource) {
+                        GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                        GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
+                        else -> false
+                    }
+                    val text = if (isInstalled) {
+                        stringResource(R.string.library_installed)
+                    } else {
+                        stringResource(R.string.library_not_installed)
+                    }
+                    val color = if (isInstalled) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    }
+                    text to color
                 }
-                text to color
-            } else {
-                // Custom Games are considered ready (no Steam install tracking)
-                stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
+
+                GameSource.CUSTOM_GAME -> {
+                    // Custom Games are considered ready (no install tracking)
+                    stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
+                }
+
+                else -> {
+                    stringResource(R.string.library_not_installed) to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
             }
 
             Row(
@@ -612,6 +648,7 @@ fun GameSourceIcon(gameSource: GameSource, modifier: Modifier = Modifier, iconSi
         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = modifier.size(iconSize.dp).alpha(0.7f))
         GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = modifier.size(iconSize.dp).alpha(0.7f))
+        GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 

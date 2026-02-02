@@ -11,6 +11,8 @@ enum class AppOptionMenuType(val text: String) {
     SubmitFeedback("Submit feedback"),
     ResetDrm("Reset DRM"),
     UseKnownConfig("Use known config"),
+    ImportConfig("Import config"),
+    ExportConfig("Export config"),
     Uninstall("Uninstall"),
     VerifyFiles("Verify files"),
     Update("Update"),
@@ -21,5 +23,5 @@ enum class AppOptionMenuType(val text: String) {
     ForceUploadLocal("Force upload local saves"),
     FetchSteamGridDBImages("Fetch game images"),
     TestGraphics("Test graphics"),
-    ManageGameContent("Manage DLC")
+    ManageGameContent("Manage DLC");
 }

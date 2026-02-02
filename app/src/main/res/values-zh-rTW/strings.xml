@@ -45,6 +45,14 @@
     <string name="gog_install_game_title">下載遊戲</string>
     <string name="gog_install_confirmation_message">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t可用空間: %2$s</string>
     <string name="steam_never">從不</string>
+    <string name="epic_cancel_download_message">確定要取消下載應用程式嗎？</string>
+    <string name="epic_delete_download_message">刪除此遊戲的所有已下載資料？</string>
+    <string name="epic_cloud_sync_starting">正在開始雲端存檔同步…</string>
+    <string name="epic_cloud_sync_success">雲端存檔同步成功</string>
+    <string name="epic_cloud_sync_failed">雲端存檔同步失敗</string>
+    <string name="epic_cloud_sync_error">雲端存檔同步錯誤：%1$s</string>
+    <string name="epic_uninstall_failed">解除安裝失敗：%1$s</string>
+    <string name="epic_uninstall_error">解除安裝錯誤：%1$s</string>
     <string name="steam_continue">繼續</string>
     <string name="header_img_desc">App header image</string>
     <string name="download">下載</string>
@@ -89,6 +97,8 @@
     <string name="custom_games_folders_found">找到 %d 個文件夾</string>
     <string name="custom_games_scan_description">將掃描這些路徑中的文件夾中的 .exe 文件並將其列為自定義遊戲, 這可能會減慢應用程序的啟動時間</string>
     <string name="custom_game_folder_picker_error">無法解析文件夾路徑</string>
+    <string name="container_config_drive_letter_missing">缺少磁碟機代號</string>
+    <string name="container_config_invalid_drive_path">磁碟機路徑無效</string>
     <string name="custom_game_exe_selection_title">需要選擇可執行程序</string>
     <string name="custom_game_exe_selection_message">此遊戲有多個可執行文件, 請打開 自定義遊戲設置 以選擇要啟動的遊戲</string>
     <string name="custom_game_settings">自定義遊戲設置</string>
@@ -103,6 +113,7 @@
     <string name="compatibility">相容性</string>
     <string name="intermediate">平衡</string>
     <string name="performance">高性能</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -462,6 +473,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">使用舊版 DRM</string>
+    <string name="unpack_files">解壓檔案</string>
+    <string name="unpack_files_description">僅在出現\'應用程式載入錯誤\'時使用。可能會降低幀率。</string>
     <string name="force_dlc">強制開啟DLC</string>
     <string name="force_dlc_description">僅在未偵測到 DLC 或包含 DLC 的存檔無法運作時啟用</string>
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
@@ -511,12 +524,21 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">使用 SDL API</string>
+    <string name="use_steam_input">使用 Steam Input</string>
     <string name="enable_xinput_api">啟用 XInput API</string>
     <string name="enable_directinput_api">啟用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper 類型</string>
     <string name="disable_mouse_input">停用滑鼠輸入</string>
     <string name="touchscreen_mode">觸屏模式</string>
     <string name="touchscreen_mode_description">直接觸控到游標移動 (開啟) vs 觸控板式相對移動 (關閉)</string>
+    <string name="external_display_input">外接顯示器輸入</string>
+    <string name="external_display_input_subtitle">選擇已連接的簡報顯示器應如何運作</string>
+    <string name="external_display_mode_off">不使用外接顯示器</string>
+    <string name="external_display_mode_touchpad">作為觸控板表面</string>
+    <string name="external_display_mode_keyboard">作為完整鍵盤</string>
+    <string name="external_display_mode_hybrid">混合（觸控板 + 鍵盤按鈕）</string>
+    <string name="external_display_swap">在外接顯示器上顯示遊戲</string>
+    <string name="external_display_swap_subtitle">交換螢幕，讓遊戲在外接顯示器上渲染，此裝置成為控制表面</string>
     <string name="start_with_controls_hidden">開始時隱藏螢幕控制器</string>
     <string name="start_with_controls_hidden_description">遊戲開始時螢幕控制器將被隱藏。可透過導航選單切換。</string>
     <string name="emulate_keyboard_mouse">模擬鍵盤與滑鼠</string>
@@ -535,6 +557,9 @@
     <string name="environment_variables">環境變數</string>
     <string name="no_environment_variables">沒有環境變數</string>
     <string name="no_drives">未掛載任何儲存裝置</string>
+    <string name="add_drive">新增磁碟機</string>
+    <string name="drive_letter">磁碟機代號</string>
+    <string name="no_available_drive_letters">沒有可用的磁碟機代號</string>
     <string name="startup_selection">啟動選項</string>
     <string name="processor_affinity_32bit">處理器關聯 (32 位元應用程式)</string>
     <string name="executable_path">執行路徑</string>
@@ -731,6 +756,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">同步操作耗時過久, 請稍後重新啟動遊戲</string>
     <string name="main_sync_in_progress">同步目前正在進行中, 請稍後再試</string>
+    <string name="main_sync_in_progress_launch_anyway_message">此遊戲的雲端存檔同步正在進行。你可以稍後再試，或繼續啟動但不進行同步（可能造成存檔衝突）。</string>
+    <string name="main_launch_anyway">仍然啟動</string>
+    <string name="main_wait">等待</string>
     <string name="main_sync_failed">同步存檔案失敗：%s</string>
 
     <!-- PluviaMain: Pending Operations -->
@@ -795,10 +823,13 @@
     <string name="best_config_compatibility_unknown">沒有已知配置</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">最佳配置已成功套用</string>
+    <string name="best_config_applied_successfully">配置已成功套用</string>
     <string name="best_config_known_config_invalid">已知配置無效</string>
     <string name="best_config_no_config_available">此遊戲沒有可用的最佳配置</string>
     <string name="best_config_apply_failed">套用配置失敗: %s</string>
+    <string name="best_config_missing_content">%s 缺少</string>
+    <string name="import_config">匯入設定</string>
+    <string name="export_config">匯出設定</string>
 
     <string name="library_app_type">應用程式類型</string>
     <string name="library_app_status">應用程式狀態</string>
@@ -962,6 +993,52 @@
     <string name="gog_logout_success">成功從 GOG 登出</string>
     <string name="gog_logout_failed">登出失敗: %s</string>
     <string name="gog_logout_in_progress">正在從 GOG 登出…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games 整合</string>
+    <string name="epic_settings_login_title">登入 Epic Games</string>
+    <string name="epic_settings_login_subtitle">連接您的 Epic Games 帳戶</string>
+    <string name="epic_login_success_title">登入成功</string>
+    <string name="epic_login_success_message">您現已登入到 Epic Games。</string>
+    <string name="epic_logout_success">成功從 Epic 登出</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">登入到 Epic Games</string>
+    <string name="epic_login_auto_auth_info">點擊\'開啟 Epic 登入\'並登入。登入後，從結果畫面複製授權碼並貼到下方</string>
+    <string name="epic_login_auth_example">範例: authorization code: "example"</string>
+    <string name="epic_login_open_button">開啟 Epic 登入</string>
+    <string name="epic_login_auth_code_label">授權碼</string>
+    <string name="epic_login_auth_code_placeholder">在此貼上代碼或 URL</string>
+    <string name="epic_login_button">登入</string>
+    <string name="epic_login_cancel">取消</string>
+    <string name="epic_login_browser_error">無法開啟瀏覽器</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">從 Epic Games 登出</string>
+    <string name="epic_settings_logout_subtitle">中斷您的 Epic Games 帳戶連接</string>
+    <string name="epic_logout_confirm_title">從 Epic Games 登出？</string>
+    <string name="epic_logout_confirm_message">這將從您的遊戲庫中移除所有 Epic Games 遊戲並中斷您的帳戶連接。</string>
+    <string name="epic_logout_confirm">登出</string>
+    <string name="epic_logout_in_progress">正在從 Epic Games 登出…</string>
+    <string name="epic_logout_failed">無法從 Epic Games 登出，請重試</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">卸載遊戲</string>
+    <string name="epic_uninstall_game_message">您確定要卸載 %1$s 嗎？此操作無法撤回。</string>
+    <string name="epic_install_game_title">下載遊戲</string>
+    <string name="epic_install_game_message">正在安裝的應用程式有以下空間需求。是否繼續？\n\n\t下載大小: %1$s\n\t磁碟大小: %2$s\n\t可用空間: %3$s</string>
+    <string name="epic_game_not_found">找不到遊戲</string>
+    <string name="epic_starting_download">開始下載: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">開始下載: %1$s + DLC</string>
+    <string name="epic_download_failed">無法開始下載: %1$s</string>
+    <string name="epic_download_error">下載錯誤: %1$s</string>
+    <string name="manifest_downloading_item">正在下載 %1$s...</string>
+    <string name="manifest_download_failed">下載失敗: %1$s</string>
+    <string name="manifest_install_failed">安裝 %1$s 失敗</string>
+    <string name="manifest_install_success">%1$s 已安裝</string>
+    <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
+    <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
+    <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
 </resources>
 
 

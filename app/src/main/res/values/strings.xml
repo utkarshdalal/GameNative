@@ -45,6 +45,23 @@
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="gog_install_game_title">Download Game</string>
     <string name="gog_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="epic_uninstall_game_title">Uninstall Game</string>
+    <string name="epic_uninstall_game_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="epic_install_game_title">Download Game</string>
+    <string name="epic_install_game_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="epic_game_not_found">Game not found</string>
+    <string name="epic_starting_download">Starting download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Starting download: %1$s + DLCs</string>
+    <string name="epic_download_failed">Failed to start download: %1$s</string>
+    <string name="epic_download_error">Download error: %1$s</string>
+    <string name="epic_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
+    <string name="epic_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="epic_cloud_sync_starting">Starting cloud save sync…</string>
+    <string name="epic_cloud_sync_success">Cloud saves synced successfully</string>
+    <string name="epic_cloud_sync_failed">Cloud save sync failed</string>
+    <string name="epic_cloud_sync_error">Cloud save sync error: %1$s</string>
+    <string name="epic_uninstall_failed">Uninstall failed: %1$s</string>
+    <string name="epic_uninstall_error">Uninstall error: %1$s</string>
     <string name="steam_never">Never</string>
     <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>
@@ -90,6 +107,8 @@
     <string name="custom_games_folders_found">%d folders found</string>
     <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games. This may slow down the app startup time.</string>
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
+    <string name="container_config_drive_letter_missing">Drive letter is missing</string>
+    <string name="container_config_invalid_drive_path">Invalid drive path</string>
     <string name="custom_game_exe_selection_title">Executable Selection Required</string>
     <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
@@ -104,6 +123,7 @@
     <string name="compatibility">Compatibility</string>
     <string name="intermediate">Intermediate</string>
     <string name="performance">Performance</string>
+    <string name="denuvo">Denuvo</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -468,6 +488,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Use Legacy DRM</string>
+    <string name="unpack_files">Unpack Files</string>
+    <string name="unpack_files_description">Only use if you get \'Application Load Error\'. May reduce FPS.</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
@@ -516,12 +538,21 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Use SDL API</string>
+    <string name="use_steam_input">Use Steam Input</string>
     <string name="enable_xinput_api">Enable XInput API</string>
     <string name="enable_directinput_api">Enable DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="touchscreen_mode">Touchscreen Mode</string>
     <string name="touchscreen_mode_description">Direct touch-to-cursor movement (ON) vs touchpad-style relative movement (OFF)</string>
+    <string name="external_display_input">External Display Input</string>
+    <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>
+    <string name="external_display_mode_off">Do not use external display</string>
+    <string name="external_display_mode_touchpad">Use as touchpad surface</string>
+    <string name="external_display_mode_keyboard">Use as full keyboard</string>
+    <string name="external_display_mode_hybrid">Hybrid (touchpad + keyboard button)</string>
+    <string name="external_display_swap">Show Game on External Display</string>
+    <string name="external_display_swap_subtitle">Swap screens so the game renders on the external display and this device becomes the controller surface</string>
     <string name="start_with_controls_hidden">Start With On-Screen Controls Hidden</string>
     <string name="start_with_controls_hidden_description">On-screen controls will be hidden when the game starts. Toggle via the navigation menu.</string>
     <string name="emulate_keyboard_mouse">Emulate keyboard and mouse</string>
@@ -540,6 +571,9 @@
     <string name="environment_variables">Environment Variables</string>
     <string name="no_environment_variables">No environment variables</string>
     <string name="no_drives">No drives</string>
+    <string name="add_drive">Add drive</string>
+    <string name="drive_letter">Drive letter</string>
+    <string name="no_available_drive_letters">No available drive letters</string>
     <string name="startup_selection">Startup Selection</string>
     <string name="processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="executable_path">Executable Path</string>
@@ -737,6 +771,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>
     <string name="main_sync_in_progress">Sync is currently in progress. Please try again in a moment.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">Cloud save sync for this game is already running. You can wait and try again, or launch anyway without syncing (may cause save conflicts).</string>
+    <string name="main_launch_anyway">Launch anyway</string>
+    <string name="main_wait">Wait</string>
     <string name="main_sync_failed">Failed to sync save files: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->
@@ -804,10 +841,13 @@
     <string name="best_config_compatibility_unknown">No known config</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Best config applied successfully</string>
+    <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
+    <string name="best_config_missing_content">%s missing</string>
+    <string name="import_config">Import config</string>
+    <string name="export_config">Export config</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>
@@ -969,5 +1009,40 @@
     <string name="gog_logout_success">Logged out from GOG successfully</string>
     <string name="gog_logout_failed">Failed to logout: %s</string>
     <string name="gog_logout_in_progress">Logging out from GOG…</string>
-</resources>
 
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_settings_login_title">Sign in to Epic Games</string>
+    <string name="epic_settings_login_subtitle">Connect your Epic Games account</string>
+    <string name="epic_login_success_title">Login Successful</string>
+    <string name="epic_login_success_message">You are now signed in to Epic Games.</string>
+    <string name="epic_logout_success">Logged out from Epic successfully</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Sign in to Epic Games</string>
+    <string name="epic_login_auto_auth_info">Tap \'Open Epic Login\' and sign in. Once logged in, please copy the authorizationCode in the result screen and paste below</string>
+    <string name="epic_login_auth_example">Example: authorization code: "example"</string>
+    <string name="epic_login_open_button">Open Epic Login</string>
+    <string name="epic_login_auth_code_label">Authorization Code</string>
+    <string name="epic_login_auth_code_placeholder">Paste code or URL here</string>
+    <string name="epic_login_button">Login</string>
+    <string name="epic_login_cancel">Cancel</string>
+    <string name="epic_login_browser_error">Could not open browser</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Logout from Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Sign out from your Epic Games account</string>
+    <string name="epic_logout_confirm_title">Logout from Epic Games?</string>
+    <string name="epic_logout_confirm_message">This will remove all Epic Games from your library and disconnect your account.</string>
+    <string name="epic_logout_confirm">Logout</string>
+    <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
+    <string name="epic_logout_failed">Failure to logout of Epic Games, please try again</string>
+
+    <string name="manifest_downloading_item">Downloading %1$s...</string>
+    <string name="manifest_download_failed">Download failed: %1$s</string>
+    <string name="manifest_install_failed">Failed to install %1$s</string>
+    <string name="manifest_install_success">%1$s installed</string>
+    <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
+    <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+</resources>

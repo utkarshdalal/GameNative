@@ -181,7 +181,7 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
-                    if (SteamService.isGameRunning) {
+                    if (SteamService.keepAlive){
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
                     } else if (hasBack) {
                         // TODO: check if back leads to log out and present confidence modal
@@ -387,7 +387,7 @@ fun PluviaMain(
 
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            if (!state.isSteamConnected && !isConnecting && !SteamService.isGameRunning) {
+            if (!state.isSteamConnected && !isConnecting && !SteamService.keepAlive) {
                 Timber.d("[PluviaMain]: Steam not connected - attempt")
                 isConnecting = true
                 context.startForegroundService(Intent(context, SteamService::class.java))
@@ -403,7 +403,15 @@ fun PluviaMain(
                 Timber.tag("GOG").d("GOG SERVICE Not going to start: ${app.gamenative.service.gog.GOGService.isRunning}")
             }
 
-            if (SteamService.isLoggedIn && !SteamService.isGameRunning && state.currentScreen == PluviaScreen.LoginUser) {
+            // Start EpicService if user has Epic credentials
+            if (app.gamenative.service.epic.EpicService.hasStoredCredentials(context) &&
+                !app.gamenative.service.epic.EpicService.isRunning
+            ) {
+                Timber.d("[PluviaMain]: Starting EpicService for logged-in user")
+                app.gamenative.service.epic.EpicService.start(context)
+            }
+
+            if (SteamService.isLoggedIn && !SteamService.keepAlive && navController.currentDestination?.route == PluviaScreen.LoginUser.route) {
                 navController.navigate(PluviaScreen.Home.route)
             }
         }
@@ -560,6 +568,29 @@ fun PluviaMain(
 
         DialogType.SYNC_FAIL -> {
             onConfirmClick = null
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+        }
+
+        DialogType.SYNC_IN_PROGRESS -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    skipCloudSync = true,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                )
+            }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
             }
@@ -1000,6 +1031,7 @@ fun preLaunchApp(
     ignorePendingOperations: Boolean = false,
     preferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
+    skipCloudSync: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
     setLoadingProgress: (Float) -> Unit,
     setLoadingMessage: (String) -> Unit,
@@ -1092,14 +1124,14 @@ fun preLaunchApp(
             }
         }
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
-            !SteamService.isFileInstallable(context, "experimental-drm-20260101.tzst")
+            !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
         ) {
             setLoadingMessage("Downloading extras")
             SteamService.downloadFile(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 context = context,
-                "experimental-drm-20260101.tzst",
+                "experimental-drm-20260116.tzst",
             ).await()
         }
         if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
@@ -1137,24 +1169,27 @@ fun preLaunchApp(
         containerManager.activateContainer(container)
 
         // If another game is running on this account elsewhere, prompt user first (cross-app session)
-        try {
-            val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
-            if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
-                val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
-                setLoadingDialogVisible(false)
-                setMessageDialogState(
-                    MessageDialogState(
-                        visible = true,
-                        type = DialogType.ACCOUNT_SESSION_ACTIVE,
-                        title = context.getString(R.string.main_app_running_title),
-                        message = context.getString(R.string.main_app_running_message, otherGameName),
-                        confirmBtnText = context.getString(R.string.main_play_anyway),
-                        dismissBtnText = context.getString(R.string.cancel),
-                    ),
-                )
-                return@launch
-            }
-        } catch (_: Exception) { /* ignore persona read errors */ }
+        val isSteamGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
+        if(isSteamGame) {
+            try {
+                val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
+                if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
+                    val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.ACCOUNT_SESSION_ACTIVE,
+                            title = context.getString(R.string.main_app_running_title),
+                            message = context.getString(R.string.main_app_running_message, otherGameName),
+                            confirmBtnText = context.getString(R.string.main_play_anyway),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                    return@launch
+                }
+            } catch (_: Exception) { /* ignore persona read errors */ }
+        }
 
         // For Custom Games, bypass Steam Cloud operations entirely and proceed to launch
         if (isCustomGame) {
@@ -1183,6 +1218,35 @@ fun preLaunchApp(
                 Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
 
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
+        // For Epic Games, sync cloud saves before launch
+        val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
+        if (isEpicGame) {
+            Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
+            // Sync cloud saves (download latest saves before playing)
+            Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
+            val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+                context = context,
+                appId = gameId,
+            )
+
+            if (!syncSuccess) {
+                Timber.tag("Epic").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
+                // Don't block launch on sync failure - log warning and continue
+            } else {
+                Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
+            }
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
+        if (skipCloudSync) {
+            Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch
@@ -1246,18 +1310,14 @@ fun preLaunchApp(
                         retryCount = retryCount + 1,
                     )
                 } else {
-                    val message = if (useTemporaryOverride) {
-                        context.getString(R.string.main_sync_in_progress_retry)
-                    } else {
-                        context.getString(R.string.main_sync_in_progress)
-                    }
                     setMessageDialogState(
                         MessageDialogState(
                             visible = true,
-                            type = DialogType.SYNC_FAIL,
+                            type = DialogType.SYNC_IN_PROGRESS,
                             title = context.getString(R.string.sync_error_title),
-                            message = message,
-                            dismissBtnText = context.getString(R.string.ok),
+                            message = context.getString(R.string.main_sync_in_progress_launch_anyway_message),
+                            confirmBtnText = context.getString(R.string.main_launch_anyway),
+                            dismissBtnText = context.getString(R.string.main_wait),
                         ),
                     )
                 }

@@ -44,6 +44,7 @@ fun LibraryBottomSheet(
     showSteam: Boolean,
     showCustomGames: Boolean,
     showGOG: Boolean,
+    showEpic: Boolean,
     onSourceToggle: (app.gamenative.data.GameSource) -> Unit,
 ) {
     Column(
@@ -117,6 +118,18 @@ fun LibraryBottomSheet(
                     )
                 },
             )
+             FlowFilterChip(
+                onClick = { onSourceToggle(GameSource.EPIC) },
+                label = { Text(text = "Epic") },
+                selected = showEpic,
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_epic),
+                        contentDescription = "Epic",
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -168,6 +181,7 @@ private fun Preview_LibraryBottomSheet() {
                 showSteam = true,
                 showCustomGames = true,
                 showGOG = true,
+                showEpic = true,
                 onSourceToggle = { },
             )
         }

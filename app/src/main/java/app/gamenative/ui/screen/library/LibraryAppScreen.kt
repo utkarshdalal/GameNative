@@ -100,6 +100,7 @@ import com.winlator.fexcore.FEXCoreManager
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
 import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
+import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
 import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -189,6 +190,7 @@ fun AppScreen(
             app.gamenative.data.GameSource.STEAM -> SteamAppScreen()
             app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
             app.gamenative.data.GameSource.GOG -> GOGAppScreen()
+            app.gamenative.data.GameSource.EPIC -> EpicAppScreen()
         }
     }
 

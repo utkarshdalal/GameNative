@@ -241,8 +241,15 @@ object SteamUtils {
         // Make a backup before extracting
         backupSteamclientFiles(context, steamAppId)
 
+        // Delete extra_dlls folder before extraction to prevent conflicts
+        val extraDllDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/extra_dlls")
+        if (extraDllDir.exists()) {
+            extraDllDir.deleteRecursively()
+            Timber.i("Deleted extra_dlls directory before extraction for appId: $steamAppId")
+        }
+
         val imageFs = ImageFs.find(context)
-        val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260101.tzst")
+        val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260116.tzst")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             downloaded,
@@ -321,6 +328,21 @@ object SteamUtils {
         val exeCommandLine = container.execArgs
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
         iniFile.parentFile?.mkdirs()
+
+        // Only include DllsToInjectFolder if unpackFiles is enabled
+        val injectionSection = if (container.isUnpackFiles) {
+            """
+                [Injection]
+                IgnoreLoaderArchDifference=1
+                DllsToInjectFolder=extra_dlls
+            """
+        } else {
+            """
+                [Injection]
+                IgnoreLoaderArchDifference=1
+            """
+        }
+
         iniFile.writeText(
             """
                 [SteamClient]
@@ -334,8 +356,7 @@ object SteamUtils {
                 SteamClientDll=steamclient.dll
                 SteamClient64Dll=steamclient64.dll
 
-                [Injection]
-                IgnoreLoaderArchDifference=1
+                $injectionSection
             """.trimIndent(),
         )
     }
@@ -756,28 +777,28 @@ object SteamUtils {
         val imageFs = ImageFs.find(context)
         val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
 
-        dosDevicesPath.walkTopDown().maxDepth(10).firstOrNull {
-            it.isFile && it.name.endsWith(".original.exe", ignoreCase = true)
-        }?.let { file ->
-            try {
-                val origPath = file.toPath()
-                val originalPath = origPath.parent.resolve(origPath.name.removeSuffix(".original.exe"))
-                Timber.i("Found ${origPath.name} at ${origPath.absolutePathString()}, restoring...")
+        dosDevicesPath.walkTopDown().maxDepth(10)
+            .filter { it.isFile && it.name.endsWith(".original.exe", ignoreCase = true) }
+            .forEach { file ->
+                try {
+                    val origPath = file.toPath()
+                    val originalPath = origPath.parent.resolve(origPath.name.removeSuffix(".original.exe"))
+                    Timber.i("Found ${origPath.name} at ${origPath.absolutePathString()}, restoring...")
 
-                // Delete the current exe if it exists
-                if (Files.exists(originalPath)) {
-                    Files.delete(originalPath)
+                    // Delete the current exe if it exists
+                    if (Files.exists(originalPath)) {
+                        Files.delete(originalPath)
+                    }
+
+                    // Copy the backup back to the original location
+                    Files.copy(origPath, originalPath)
+
+                    Timber.i("Restored ${originalPath.fileName} from backup")
+                    restoredCount++
+                } catch (e: IOException) {
+                    Timber.w(e, "Failed to restore ${file.name} from backup")
                 }
-
-                // Copy the backup back to the original location
-                Files.copy(origPath, originalPath)
-
-                Timber.i("Restored ${originalPath.fileName} from backup")
-                restoredCount++
-            } catch (e: IOException) {
-                Timber.w(e, "Failed to restore ${file.name} from backup")
             }
-        }
 
         Timber.i("Finished restoreOriginalExecutable for appId: $steamAppId. Restored $restoredCount executable(s)")
     }
@@ -826,6 +847,7 @@ object SteamUtils {
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
         }.getOrDefault("english").lowercase()
+        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
 
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
@@ -903,6 +925,26 @@ object SteamUtils {
 
         if (Files.notExists(mainIni)) Files.createFile(mainIni)
         mainIni.toFile().writeText(mainIniContent)
+
+        val controllerDir = settingsDir.resolve("controller")
+        if (useSteamInput) {
+            val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
+            if (!controllerVdfText.isNullOrEmpty()) {
+                runCatching {
+                    SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
+                }.onFailure { error ->
+                    Timber.w(error, "Failed to generate controller config for $steamAppId")
+                }
+            }
+        } else {
+            runCatching {
+                if (Files.exists(controllerDir)) {
+                    controllerDir.toFile().deleteRecursively()
+                }
+            }.onFailure { error ->
+                Timber.w(error, "Failed to delete controller config for $steamAppId")
+            }
+        }
 
 
         // Write supported languages list

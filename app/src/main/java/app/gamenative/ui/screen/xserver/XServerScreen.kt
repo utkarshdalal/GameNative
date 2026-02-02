@@ -2,9 +2,11 @@ package app.gamenative.ui.screen.xserver
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
@@ -48,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
@@ -60,8 +63,13 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.externaldisplay.ExternalDisplayInputController
+import app.gamenative.externaldisplay.ExternalDisplaySwapController
+import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import android.widget.Toast
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
@@ -108,6 +116,8 @@ import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
 import com.winlator.winhandler.WinHandler
 import com.winlator.winhandler.WinHandler.PreferredInputApi
+import com.winlator.winhandler.OnGetProcessInfoListener
+import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.XEnvironment
@@ -128,9 +138,15 @@ import com.winlator.xserver.ScreenInfo
 import com.winlator.xserver.Window
 import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -153,6 +169,50 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+
+private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
+private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
+private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
+private val CORE_WINE_PROCESSES = setOf(
+    "wineserver",
+    "services",
+    "start",
+    "winhandler",
+    "tabtip",
+    "explorer",
+    "winedevice",
+    "svchost",
+)
+
+private fun normalizeProcessName(name: String): String {
+    val trimmed = name.trim().trim('"')
+    val base = trimmed.substringAfterLast('/').substringAfterLast('\\')
+    val lower = base.lowercase(Locale.getDefault())
+    return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
+}
+
+private fun extractExecutableBasename(path: String): String {
+    if (path.isBlank()) return ""
+    return normalizeProcessName(path)
+}
+
+private fun windowMatchesExecutable(window: Window, targetExecutable: String): Boolean {
+    if (targetExecutable.isBlank()) return false
+    val normalizedTarget = normalizeProcessName(targetExecutable)
+    val candidates = listOf(window.name, window.className)
+    return candidates.any { candidate ->
+        candidate.split('\u0000')
+            .asSequence()
+            .map { normalizeProcessName(it) }
+            .any { it == normalizedTarget }
+    }
+}
+
+private fun buildEssentialProcessAllowlist(): Set<String> {
+    val essentialServices = WineUtils.getEssentialServiceNames()
+        .map { normalizeProcessName(it) }
+    return (essentialServices + CORE_WINE_PROCESSES).toSet()
+}
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
@@ -242,13 +302,18 @@ fun XServerScreen(
         result
     }
 
+    var swapInputOverlay: SwapInputOverlayView? by remember { mutableStateOf(null) }
+
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
+    var exitWatchJob: Job? by remember { mutableStateOf(null) }
 
     DisposableEffect(Unit) {
         onDispose {
             physicalControllerHandler?.cleanup()
             physicalControllerHandler = null
+            exitWatchJob?.cancel()
+            exitWatchJob = null
         }
     }
     var isKeyboardVisible = false
@@ -259,6 +324,83 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+
+    fun startExitWatchForUnmappedGameWindow(window: Window) {
+        val winHandler = xServerView?.getxServer()?.winHandler ?: return
+        if (exitWatchJob?.isActive == true) return
+        val targetExecutable = extractExecutableBasename(container.executablePath)
+        if (!windowMatchesExecutable(window, targetExecutable)) return
+
+        exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
+            val allowlist = buildEssentialProcessAllowlist()
+            val previousListener = winHandler.getOnGetProcessInfoListener()
+            val lock = Any()
+            var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
+            var currentList = mutableListOf<ProcessInfo>()
+            var expectedCount = 0
+
+            val listener = OnGetProcessInfoListener { index, count, processInfo ->
+                previousListener?.onGetProcessInfo(index, count, processInfo)
+                synchronized(lock) {
+                    val deferred = pendingSnapshot ?: return@synchronized
+                    if (count == 0 && processInfo == null) {
+                        if (!deferred.isCompleted) deferred.complete(null)
+                        return@synchronized
+                    }
+                    if (index == 0) {
+                        currentList = mutableListOf()
+                        expectedCount = count
+                    }
+                    if (processInfo != null) {
+                        currentList.add(processInfo)
+                    }
+                    if (currentList.size >= expectedCount && !deferred.isCompleted) {
+                        deferred.complete(currentList.toList())
+                    }
+                }
+            }
+
+            winHandler.setOnGetProcessInfoListener(listener)
+            try {
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < EXIT_PROCESS_TIMEOUT_MS) {
+                    val deferred = CompletableDeferred<List<ProcessInfo>?>()
+                    synchronized(lock) {
+                        pendingSnapshot = deferred
+                    }
+                    winHandler.listProcesses()
+                    val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+                        deferred.await()
+                    }
+                    if (snapshot != null) {
+                        val hasNonEssential = snapshot.any {
+                            !allowlist.contains(normalizeProcessName(it.name))
+                        }
+                        if (!hasNonEssential) {
+                            withContext(Dispatchers.Main) {
+                                exit(
+                                    winHandler,
+                                    PluviaApp.xEnvironment,
+                                    frameRating,
+                                    currentAppInfo,
+                                    container,
+                                    onExit,
+                                    navigateBack,
+                                )
+                            }
+                            break
+                        }
+                    }
+                    delay(EXIT_PROCESS_POLL_INTERVAL_MS)
+                }
+            } finally {
+                winHandler.setOnGetProcessInfoListener(previousListener)
+                synchronized(lock) {
+                    pendingSnapshot = null
+                }
+            }
+        }
+    }
 
     val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
@@ -504,17 +646,22 @@ fun XServerScreen(
         modifier = Modifier
             .fillMaxSize()
             .pointerHoverIcon(PointerIcon(0))
-            .pointerInteropFilter {
+            .pointerInteropFilter { event ->
+                val overlayHandled = swapInputOverlay
+                    ?.takeIf { it.visibility == View.VISIBLE }
+                    ?.dispatchTouchEvent(event) == true
+                if (overlayHandled) return@pointerInteropFilter true
+
                 // If controls are visible, let them handle it first
                 val controlsHandled = if (areControlsVisible) {
-                    PluviaApp.inputControlsView?.onTouchEvent(it) ?: false
+                    PluviaApp.inputControlsView?.onTouchEvent(event) ?: false
                 } else {
                     false
                 }
 
                 // If controls didn't handle it or aren't visible, send to touchMouse
                 if (!controlsHandled) {
-                    PluviaApp.touchpadView?.onTouchEvent(it)
+                    PluviaApp.touchpadView?.onTouchEvent(event)
                 }
 
                 true
@@ -550,7 +697,9 @@ fun XServerScreen(
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
-                    appLaunchInfo?.let { renderer.forceFullscreenWMClass = Paths.get(it.executable).name }
+                    if (container.executablePath.isNotBlank()) {
+                        renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
+                    }
                 }
                 getxServer().windowManager.addOnWindowModificationListener(
                     object : WindowManager.OnWindowModificationListener {
@@ -613,6 +762,7 @@ fun XServerScreen(
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
                             changeFrameRatingVisibility(window, null)
+                            startExitWatchForUnmappedGameWindow(window)
                             onWindowUnmapped?.invoke(window)
                         }
                     },
@@ -747,9 +897,16 @@ fun XServerScreen(
                     }
                 }
             }
-            PluviaApp.xServerView = xServerView;
+            PluviaApp.xServerView = xServerView
 
-            frameLayout.addView(xServerView)
+            val gameHost = FrameLayout(context).apply {
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            }
+            frameLayout.addView(gameHost)
+            gameHost.addView(xServerView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
 
@@ -816,6 +973,73 @@ fun XServerScreen(
 
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)
+            val configuredExternalMode = ExternalDisplayInputController.fromConfig(container.externalDisplayMode)
+            val swapEnabled = container.isExternalDisplaySwap
+
+            val overlay = SwapInputOverlayView(context, xServerView.getxServer()).apply {
+                visibility = View.GONE
+                setMode(ExternalDisplayInputController.Mode.OFF)
+            }
+            frameLayout.addView(overlay)
+            swapInputOverlay = overlay
+
+            val externalDisplayController =
+                if (!swapEnabled && configuredExternalMode != ExternalDisplayInputController.Mode.OFF) {
+                    ExternalDisplayInputController(
+                        context = context,
+                        xServer = xServerView.getxServer(),
+                        touchpadViewProvider = { PluviaApp.touchpadView },
+                    ).apply {
+                        setMode(configuredExternalMode)
+                        start()
+                    }
+                } else {
+                    null
+                }
+
+            val swapController =
+                if (swapEnabled) {
+                    val surfaceBg = ContextCompat.getColor(context, R.color.external_display_surface_background)
+                    ExternalDisplaySwapController(
+                        context = context,
+                        xServerViewProvider = { xServerView },
+                        internalGameHostProvider = { gameHost },
+                        onGameOnExternalChanged = { gameOnExternal ->
+                            if (gameOnExternal) {
+                                PluviaApp.touchpadView?.setBackgroundColor(surfaceBg)
+                                when (configuredExternalMode) {
+                                    ExternalDisplayInputController.Mode.KEYBOARD,
+                                    ExternalDisplayInputController.Mode.HYBRID,
+                                    -> {
+                                        overlay.visibility = View.VISIBLE
+                                        overlay.setMode(configuredExternalMode)
+                                    }
+                                    else -> {
+                                        overlay.visibility = View.GONE
+                                        overlay.setMode(ExternalDisplayInputController.Mode.OFF)
+                                    }
+                                }
+                            } else {
+                                PluviaApp.touchpadView?.setBackgroundColor(Color.TRANSPARENT)
+                                overlay.visibility = View.GONE
+                                overlay.setMode(ExternalDisplayInputController.Mode.OFF)
+                            }
+                        },
+                    ).apply {
+                        setSwapEnabled(true)
+                        start()
+                    }
+                } else {
+                    null
+                }
+            frameLayout.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {}
+
+                override fun onViewDetachedFromWindow(v: View) {
+                    externalDisplayController?.stop()
+                    swapController?.stop()
+                }
+            })
             // Don't call hideInputControls() here - let the auto-show logic below handle visibility
             // so that the view gets measured/laid out and has valid dimensions for element loading
 
@@ -1566,6 +1790,13 @@ private fun setupXEnvironment(
 
         envVars.putAll(container.envVars)
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+        val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
+        if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
+            var tuDebug = envVars.get("TU_DEBUG")
+            if (!tuDebug.contains("deck_emu")) tuDebug = (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "deck_emu"
+            if (!tuDebug.contains("nolrz")) tuDebug = (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "nolrz"
+            envVars.put("TU_DEBUG", tuDebug)
+        }
 
         // Timber.d("3 Container drives: ${container.drives}")
         val bindingPaths = mutableListOf<String>()
@@ -1661,6 +1892,8 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
+    FEXCoreManager.ensureAppConfigOverrides(context)
+
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
         if (container.isLaunchRealSteam) {
@@ -1744,9 +1977,11 @@ private fun getWineStartCommand(
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val isGOGGame = gameSource == GameSource.GOG
+    val isEpicGame = gameSource == GameSource.EPIC
+    val isSteamGame = gameSource == GameSource.STEAM
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-    if (!isCustomGame && !isGOGGame) {
+    if (isSteamGame) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)
@@ -1755,6 +1990,12 @@ private fun getWineStartCommand(
         if (!container.isUseLegacyDRM){
             // Create ColdClientLoader.ini file
             SteamUtils.writeColdClientIni(gameId, container)
+        }
+        val controllerVdfText = SteamService.resolveSteamControllerVdfText(gameId)
+        if (controllerVdfText.isNullOrEmpty()) {
+            Timber.tag("XServerScreen").i("No steam controller VDF resolved for $gameId")
+        } else {
+            Timber.tag("XServerScreen").i("Resolved steam controller VDF for $gameId:\n$controllerVdfText")
         }
     }
 
@@ -1784,6 +2025,38 @@ private fun getWineStartCommand(
 
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
         return "winhandler.exe $gogCommand"
+    } else if (isEpicGame) {
+        // For Epic games, get the launch command
+        Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
+        val game = runBlocking {
+            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+        }
+
+        if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: Epic game not installed")
+            return "\"explorer.exe\""
+        }
+
+        // Get the executable path
+        val exePath = runBlocking {
+            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        }
+
+        if (exePath.isEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: executable not found for Epic game")
+            return "\"explorer.exe\""
+        }
+
+        // Convert to relative path from install directory
+        val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
+
+        // Use A: drive (or the mapped drive letter) instead of Z:
+        // The container setup in ContainerUtils maps the game install path to A: drive
+        val epicCommand = "A:\\$relativePath".replace("/", "\\")
+
+        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
+
+        return "winhandler.exe \"$epicCommand\""
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect
@@ -1899,22 +2172,9 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
-/**
- * Filters executables to exclude _CommonRedist folder and files ending in original.exe or unpacked.exe
- */
-private fun filterExecutablesForSteamless(executables: List<String>): List<String> {
-    return executables.filter { exePath ->
-        val lowerPath = exePath.lowercase()
-        // Exclude _CommonRedist folder
-        !lowerPath.contains("_commonredist") &&
-        // Exclude files ending in original.exe or unpacked.exe
-        !lowerPath.endsWith("original.exe") &&
-        !lowerPath.endsWith("unpacked.exe")
-    }
-}
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
-    
+
     // Prevent duplicate PostHog events when multiple exit triggers fire simultaneously
     if (isExiting.compareAndSet(false, true)) {
         PostHog.capture(
@@ -1937,7 +2197,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
 
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
-    SteamService.isGameRunning = false
+    SteamService.keepAlive = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null
@@ -2257,52 +2517,41 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
 
-        // Scan all executables from A: drive and filter them
-        val allExecutables = ContainerUtils.scanExecutablesInADrive(container.drives)
-        Timber.i("Found ${allExecutables.size} executables in A: drive")
+        if (!container.isLaunchRealSteam && !container.isUnpackFiles) {
+            val executablePath = container.executablePath
+            if (executablePath.isEmpty()) {
+                Timber.w("No executable path set, skipping Steamless")
+            } else {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
 
-        val filteredExecutables = filterExecutablesForSteamless(allExecutables)
-        Timber.i("Filtered to ${filteredExecutables.size} executables for Steamless processing")
-
-        if (filteredExecutables.isEmpty()) {
-            Timber.w("No executables to process with Steamless")
-        } else {
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
-
-            // Process each executable individually to handle errors per file
-            filteredExecutables.forEachIndexed { index, exePath ->
                 var batchFile: File? = null
                 try {
-                    val normalizedPath = exePath.replace('/', '\\')
+                    // Normalize path: container.executablePath uses forward slashes, convert to Windows format
+                    val normalizedPath = executablePath.replace('/', '\\')
                     val windowsPath = "A:\\$normalizedPath"
 
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM... (${index + 1}/${filteredExecutables.size})"))
-
                     // Create a batch file that Wine can execute, to handle paths with spaces in them
-                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper_${index}.bat")
+                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper.bat")
                     batchFile.parentFile?.mkdirs()
                     batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
 
-                    val slCmd = "wine z:\\tmp\\steamless_wrapper_${index}.bat"
+                    val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
                     val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
                     output.append(slOutput)
+                    Timber.i("Finished processing executable. Result: $output")
                 } catch (e: Exception) {
-                    Timber.e(e, "Error running Steamless on $exePath, continuing with next file")
-                    output.append("Error processing $exePath: ${e.message}\n")
+                    Timber.e(e, "Error running Steamless on $executablePath")
+                    output.append("Error processing $executablePath: ${e.message}\n")
                 } finally {
                     // Clean up batch file
                     batchFile?.delete()
                 }
-            }
 
-            Timber.i("Finished processing ${filteredExecutables.size} executables. Result: $output")
-
-            // Process file moving for all filtered executables
-            for (exePath in filteredExecutables) {
+                // Process file moving for the executable
                 try {
-                    // Paths from scanExecutablesInADrive use forward slashes (Unix format from URI)
+                    // container.executablePath uses forward slashes (Unix format)
                     // Use as-is for File operations (forward slashes work on Unix/Android)
-                    val unixPath = exePath.replace('\\', '/')
+                    val unixPath = executablePath.replace('\\', '/')
                     val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
                     val unpackedExe = File(
                         imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
@@ -2312,22 +2561,28 @@ private fun unpackExecutableFile(
                     )
 
                     // For logging, show Windows format
-                    val windowsPath = "A:\\${exePath.replace('/', '\\')}"
+                    val windowsPath = "A:\\${executablePath.replace('/', '\\')}"
 
                     Timber.i("Moving files for $windowsPath")
                     if (exe.exists() && unpackedExe.exists()) {
-                        Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                        if (originalExe.exists()) {
+                            Timber.i("Original backup exists for $windowsPath; skipping overwrite")
+                        } else {
+                            Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                        }
                         Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
                         Timber.i("Successfully moved files for $windowsPath")
                     } else {
                         val errorMsg =
-                            "Either original exe or unpacked exe does not exist for $windowsPath. Original: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                            "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
                         Timber.w(errorMsg)
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error moving files for $exePath, continuing with next executable")
+                    Timber.e(e, "Error moving files for $executablePath")
                 }
             }
+        } else {
+            Timber.i("Skipping Steamless (launchRealSteam=${container.isLaunchRealSteam}, useLegacyDRM=${container.isUseLegacyDRM}, unpackFiles=${container.isUnpackFiles})")
         }
 
         output = StringBuilder()
@@ -2739,7 +2994,7 @@ private fun extractWinComponentFiles(
             val identifier = wincomponent[0]
             val useNative = wincomponent[1].equals("1")
 
-            if (!container.wineVersion.contains("proton-9.0-arm64ec") && identifier.contains("opengl") && useNative) continue
+            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
             if (useNative) {
                 TarCompressorUtils.extract(
@@ -2950,10 +3205,14 @@ private fun extractGraphicsDriverFiles(
 
         if (dxwrapper.contains("dxvk")) {
             DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
+            val version = dxwrapperConfig.get("version")
+            if (version == "1.11.1-sarek") {
+                Timber.tag("GraphicsDriverExtraction").d("Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass")
+                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1")
+            }
         } else if (dxwrapper.contains("vkd3d")) {
             DXVKHelper.setVKD3DEnvVars(context, dxwrapperConfig, envVars)
         }
-
 
         val useDRI3: Boolean = container.isUseDRI3
         if (!useDRI3) {
@@ -2967,20 +3226,11 @@ private fun extractGraphicsDriverFiles(
         envVars.put("GALLIUM_DRIVER", "zink")
         envVars.put("LIBGL_KOPPER_DISABLE", "true")
 
-
-        //        if (firstTimeBoot) {
-//            Log.d("XServerDisplayActivity", "First time container boot, re-extracting wrapper");
-//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
-//        }
-
         // 1. Get the main WRAPPER selection (e.g., "Wrapper-v2") from the class field.
         val mainWrapperSelection: String = graphicsDriver
 
-
         // 2. Get the WRAPPER that was last saved to the container's settings.
         val lastInstalledMainWrapper = container.getExtra("lastInstalledMainWrapper")
-
 
         // 3. Check if we need to extract a new wrapper file.
         if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
@@ -2994,12 +3244,22 @@ private fun extractGraphicsDriverFiles(
                     container.putExtra("lastInstalledMainWrapper", mainWrapperSelection)
                     container.saveData()
                 }
-            }
-
-            // 4. Extract common libraries, but only when the container is first created.
-            if (firstTimeBoot) {
                 Log.d("XServerDisplayActivity", "First time container boot, extracting extra_libs.tzst")
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "graphics_driver/extra_libs.tzst", rootDir)
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD,
+                    context.getAssets(),
+                    "graphics_driver/extra_libs.tzst",
+                    rootDir,
+                )
+                val renderer = GPUInformation.getRenderer(null, null)
+                if (container.wineVersion.contains("arm64ec") && renderer?.contains("Mali") != true) {
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.ZSTD,
+                        context.assets,
+                        "graphics_driver/zink_dlls" + ".tzst",
+                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows"),
+                    )
+                }
             }
         }
 
@@ -3016,6 +3276,13 @@ private fun extractGraphicsDriverFiles(
 
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
+
+        val gpuName = graphicsDriverConfig.get("gpuName")
+        if (gpuName != "Device") {
+            envVars.put("WRAPPER_DEVICE_NAME", gpuName)
+            envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))
+            envVars.put("WRAPPER_VENDOR_ID", GPUInformation.getVendorIdFromGPUName(context, gpuName))
+        }
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
         if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0)
@@ -3037,9 +3304,22 @@ private fun extractGraphicsDriverFiles(
         envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait)
 
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
+        val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
-            "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3")
-            "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2")
+            "auto" -> {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                    envVars.put("ENABLE_BCN_COMPUTE", "1");
+                    envVars.put("BCN_COMPUTE_AUTO", "1");
+                }
+                envVars.put("WRAPPER_EMULATE_BCN", "3");
+            }
+            "full" -> {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                    envVars.put("ENABLE_BCN_COMPUTE", "1");
+                    envVars.put("BCN_COMPUTE_AUTO", "0");
+                }
+                envVars.put("WRAPPER_EMULATE_BCN", "2");
+            }
             "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0")
             else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
         }

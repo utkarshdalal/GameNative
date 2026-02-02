@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
-import app.gamenative.data.LibraryItem
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryItem
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
@@ -16,19 +16,23 @@ import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.ui.data.MainState
-import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
-import kotlinx.coroutines.Dispatchers
 import java.nio.file.Paths
 import javax.inject.Inject
 import kotlin.io.path.name
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,9 +42,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlinx.coroutines.Job
-import app.gamenative.utils.ContainerUtils
-import kotlinx.coroutines.async
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -67,7 +68,9 @@ class MainViewModel @Inject constructor(
     private val _offline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> get() = _offline
 
-    fun setOffline(value: Boolean) { _offline.value = value }
+    fun setOffline(value: Boolean) {
+        _offline.value = value
+    }
 
     private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
     val updateInfo: StateFlow<UpdateInfo?> = _updateInfo.asStateFlow()
@@ -285,7 +288,7 @@ class MainViewModel @Inject constructor(
             Timber.tag("Exit").i("Got game id: $gameId")
             SteamService.notifyRunningProcesses()
 
-            // Check if this is a GOG game and sync cloud saves
+            // Check if this is a GOG or Epic game and sync cloud saves
             val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
             if (gameSource == GameSource.GOG) {
                 Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
@@ -297,7 +300,7 @@ class MainViewModel @Inject constructor(
                         val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                             context = context,
                             appId = appId,
-                            preferredAction = "upload"
+                            preferredAction = "upload",
                         )
                         if (syncSuccess) {
                             Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
@@ -306,6 +309,27 @@ class MainViewModel @Inject constructor(
                         }
                     } catch (e: Exception) {
                         Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
+                    }
+                }
+            } else if (gameSource == GameSource.EPIC) {
+                Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
+                // Sync cloud saves (upload local changes to cloud)
+                // Run in background, don't block UI
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
+                        val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+                            context = context,
+                            appId = gameId,
+                            preferredAction = "upload",
+                        )
+                        if (syncSuccess) {
+                            Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
+                        } else {
+                            Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
                     }
                 }
             } else {
@@ -325,7 +349,7 @@ class MainViewModel @Inject constructor(
             try {
                 // Do not show the Feedback form for non-steam games until we can support.
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                if(gameSource == GameSource.STEAM) {
+                if (gameSource == GameSource.STEAM) {
                     val container = ContainerUtils.getContainer(context, appId)
 
                     val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
@@ -345,7 +369,7 @@ class MainViewModel @Inject constructor(
                         _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                     }
                 } else {
-                Timber.d("Non-Steam Game Detected, not showing feedback")
+                    Timber.d("Non-Steam Game Detected, not showing feedback")
                 }
             } catch (_: Exception) {
                 // ignore container errors

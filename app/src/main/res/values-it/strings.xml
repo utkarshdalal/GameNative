@@ -13,6 +13,7 @@
     <string name="steam_2fa_device">Inserisci il codice di autenticazione a due fattori dalla tua app di autenticazione.</string>
     <string name="steam_2fa_email">Inserisci il codice di autenticazione inviato all\'email %s</string>
     <string name="steam_install_space_prompt">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tDimensione su Disco: %2$s\n\tSpazio Disponibile: %3$s</string>
+    <string name="steam_install_space">Dimensione Download: %1$s\nSpazio su Disco: %2$s\nSpazio Disponibile: %3$s</string>
     <string name="steam_install_not_enough_space">L\'app che stai installando richiede %1$s di spazio ma sono rimasti solo %2$s su questo dispositivo</string>
     <string name="steam_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="steam_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
@@ -45,6 +46,14 @@
     <string name="gog_install_game_title">Scarica Gioco</string>
     <string name="gog_install_confirmation_message">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tSpazio Disponibile: %2$s</string>
     <string name="steam_never">Mai</string>
+    <string name="epic_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
+    <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
+    <string name="epic_cloud_sync_starting">Avvio sincronizzazione salvataggi cloud…</string>
+    <string name="epic_cloud_sync_success">Salvataggi cloud sincronizzati con successo</string>
+    <string name="epic_cloud_sync_failed">Sincronizzazione salvataggi cloud non riuscita</string>
+    <string name="epic_cloud_sync_error">Errore sincronizzazione salvataggi cloud: %1$s</string>
+    <string name="epic_uninstall_failed">Disinstallazione non riuscita: %1$s</string>
+    <string name="epic_uninstall_error">Errore di disinstallazione: %1$s</string>
     <string name="steam_continue">Continua</string>
     <string name="header_img_desc">Immagine intestazione app</string>
     <string name="download">Scarica</string>
@@ -89,6 +98,8 @@
     <string name="custom_games_folders_found">%d cartelle trovate</string>
     <string name="custom_games_scan_description">Le cartelle in questi percorsi vengono scansionate per file .exe ed elencate come giochi personalizzati. Questo potrebbe rallentare l\'avvio dell\'app.</string>
     <string name="custom_game_folder_picker_error">Impossibile risolvere il percorso della cartella</string>
+    <string name="container_config_drive_letter_missing">Manca la lettera dell\'unità</string>
+    <string name="container_config_invalid_drive_path">Percorso dell\'unità non valido</string>
     <string name="custom_game_exe_selection_title">Selezione Eseguibile Richiesta</string>
     <string name="custom_game_exe_selection_message">Questo gioco ha più eseguibili. Apri le Impostazioni Gioco Personalizzato per selezionare quale avviare.</string>
     <string name="custom_game_settings">Impostazioni Gioco Personalizzato</string>
@@ -105,6 +116,7 @@
     <string name="performance">Prestazioni</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="denuvo">Denuvo</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
 
     <!-- Winlator: Win Components -->
@@ -467,6 +479,8 @@
 
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Usa DRM Legacy</string>
+    <string name="unpack_files">Estrai file</string>
+    <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error\'. Può ridurre gli FPS.</string>
     <string name="force_dlc">Forza DLC</string>
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
@@ -515,6 +529,7 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usa API SDL</string>
+    <string name="use_steam_input">Usa Steam Input</string>
     <string name="enable_xinput_api">Abilita API XInput</string>
     <string name="enable_directinput_api">Abilita API DirectInput</string>
     <string name="directinput_mapper_type">Tipo Mapper DirectInput</string>
@@ -539,6 +554,9 @@
     <string name="environment_variables">Variabili d\'Ambiente</string>
     <string name="no_environment_variables">Nessuna variabile d\'ambiente</string>
     <string name="no_drives">Nessuna unità</string>
+    <string name="add_drive">Aggiungi unità</string>
+    <string name="drive_letter">Lettera dell\'unità</string>
+    <string name="no_available_drive_letters">Nessuna lettera di unità disponibile</string>
     <string name="startup_selection">Selezione Avvio</string>
     <string name="processor_affinity_32bit">Affinità Processore (app 32-bit)</string>
     <string name="executable_path">Percorso Eseguibile</string>
@@ -736,6 +754,9 @@
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">L\'operazione di sincronizzazione sta impiegando troppo tempo. Prova ad avviare nuovamente il gioco tra un momento.</string>
     <string name="main_sync_in_progress">La sincronizzazione è attualmente in corso. Riprova tra un momento.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">La sincronizzazione dei salvataggi cloud per questo gioco è già in corso. Puoi attendere e riprovare, oppure avviare comunque senza sincronizzare (può causare conflitti di salvataggio).</string>
+    <string name="main_launch_anyway">Avvia comunque</string>
+    <string name="main_wait">Attendi</string>
     <string name="main_sync_failed">Impossibile sincronizzare i file di salvataggio: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->
@@ -803,10 +824,13 @@
     <string name="best_config_compatibility_unknown">Nessuna config nota</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Miglior config applicata con successo</string>
+    <string name="best_config_applied_successfully">Config applicata con successo</string>
     <string name="best_config_known_config_invalid">Config nota non valida</string>
     <string name="best_config_no_config_available">Nessuna miglior config disponibile per questo gioco</string>
     <string name="best_config_apply_failed">Impossibile applicare config: %s</string>
+    <string name="best_config_missing_content">%s mancante</string>
+    <string name="import_config">Importa configurazione</string>
+    <string name="export_config">Esporta configurazione</string>
     <string name="library_app_type">Tipo App</string>
     <string name="library_app_status">Stato App</string>
     <string name="library_layout">Layout</string>
@@ -968,4 +992,50 @@
     <string name="gog_logout_success">Disconnesso da GOG con successo</string>
     <string name="gog_logout_failed">Impossibile disconnettersi: %s</string>
     <string name="gog_logout_in_progress">Disconnessione da GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Integrazione Epic Games</string>
+    <string name="epic_settings_login_title">Accedi a Epic Games</string>
+    <string name="epic_settings_login_subtitle">Connetti il tuo account Epic Games</string>
+    <string name="epic_login_success_title">Accesso riuscito</string>
+    <string name="epic_login_success_message">Ora sei connesso a Epic Games.</string>
+    <string name="epic_logout_success">Disconnesso da Epic con successo</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Accedi a Epic Games</string>
+    <string name="epic_login_auto_auth_info">Tocca \'Apri login Epic\' e accedi. Dopo l\'accesso, copia il codice di autorizzazione dalla schermata dei risultati e incollalo sotto</string>
+    <string name="epic_login_auth_example">Esempio: authorization code: "example"</string>
+    <string name="epic_login_open_button">Apri login Epic</string>
+    <string name="epic_login_auth_code_label">Codice di autorizzazione</string>
+    <string name="epic_login_auth_code_placeholder">Incolla il codice o l\'URL qui</string>
+    <string name="epic_login_button">Accedi</string>
+    <string name="epic_login_cancel">Annulla</string>
+    <string name="epic_login_browser_error">Impossibile aprire il browser</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Esci da Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Disconnetti il tuo account Epic Games</string>
+    <string name="epic_logout_confirm_title">Uscire da Epic Games?</string>
+    <string name="epic_logout_confirm_message">Questo rimuoverà tutti i giochi Epic Games dalla tua libreria e disconnetterà il tuo account.</string>
+    <string name="epic_logout_confirm">Esci</string>
+    <string name="epic_logout_in_progress">Uscita da Epic Games…</string>
+    <string name="epic_logout_failed">Impossibile uscire da Epic Games, riprova</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Disinstalla gioco</string>
+    <string name="epic_uninstall_game_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
+    <string name="epic_install_game_title">Scarica gioco</string>
+    <string name="epic_install_game_message">L\'app in fase di installazione ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione download: %1$s\n\tDimensione su disco: %2$s\n\tSpazio disponibile: %3$s</string>
+    <string name="epic_game_not_found">Gioco non trovato</string>
+    <string name="epic_starting_download">Avvio download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Avvio download: %1$s + DLC</string>
+    <string name="epic_download_failed">Impossibile avviare il download: %1$s</string>
+    <string name="epic_download_error">Errore download: %1$s</string>
+    <string name="manifest_downloading_item">Download di %1$s…</string>
+    <string name="manifest_download_failed">Download failed: %1$s</string>
+    <string name="manifest_install_failed">Failed to install %1$s</string>
+    <string name="manifest_install_success">%1$s installed</string>
+    <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
+    <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
 </resources>

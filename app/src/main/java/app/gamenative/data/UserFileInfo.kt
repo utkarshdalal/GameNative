@@ -6,6 +6,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlinx.serialization.Serializable
+import java.io.File
 import kotlin.text.replace
 
 /**
@@ -33,6 +34,7 @@ data class UserFileInfo(
         get() = path
             .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
             .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+            .replace("\\", File.separator)
 
     fun getAbsPath(prefixToPath: (String) -> String): Path {
         return Paths.get(prefixToPath(root.toString()), substitutedPath, filename)

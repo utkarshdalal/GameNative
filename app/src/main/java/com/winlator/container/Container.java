@@ -26,6 +26,13 @@ public class Container {
         THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
     }
 
+    // External display modes
+    public static final String EXTERNAL_DISPLAY_MODE_OFF = "off";
+    public static final String EXTERNAL_DISPLAY_MODE_TOUCHPAD = "touchpad";
+    public static final String EXTERNAL_DISPLAY_MODE_KEYBOARD = "keyboard";
+    public static final String EXTERNAL_DISPLAY_MODE_HYBRID = "hybrid";
+    public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
+
     public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_FRAME_RATE=60 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
@@ -34,7 +41,7 @@ public class Container {
     public static final String DEFAULT_DXWRAPPER = "dxvk";
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
-    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=software" + ",bcnEmulationCache=0";
+    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
@@ -112,6 +119,10 @@ public class Container {
     private boolean disableMouseInput = false;
     // Touchscreen mode
     private boolean touchscreenMode = false;
+    // External display input handling
+    private String externalDisplayMode = DEFAULT_EXTERNAL_DISPLAY_MODE;
+    // Swap game/input between internal and external displays
+    private boolean externalDisplaySwap = false;
     // Prefer DRI3 WSI path
     private boolean useDRI3 = true;
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
@@ -122,6 +133,8 @@ public class Container {
     private boolean forceDlc = false;
 
     private boolean useLegacyDRM = false;
+
+    private boolean unpackFiles = false;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -646,6 +659,8 @@ public class Container {
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
             data.put("touchscreenMode", touchscreenMode);
+            data.put("externalDisplayMode", externalDisplayMode);
+            data.put("externalDisplaySwap", externalDisplaySwap);
             data.put("useDRI3", useDRI3);
             data.put("installPath", installPath);
             data.put("steamType", steamType);
@@ -659,6 +674,9 @@ public class Container {
 
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
+
+            // Unpack Files setting
+            data.put("unpackFiles", unpackFiles);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -816,6 +834,12 @@ public class Container {
                 case "touchscreenMode" :
                     setTouchscreenMode(data.getBoolean(key));
                     break;
+                case "externalDisplayMode" :
+                    setExternalDisplayMode(data.getString(key));
+                    break;
+                case "externalDisplaySwap" :
+                    setExternalDisplaySwap(data.getBoolean(key));
+                    break;
                 case "useDRI3" :
                     setUseDRI3(data.getBoolean(key));
                     break;
@@ -830,6 +854,9 @@ public class Container {
                     break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
+                    break;
+                case "unpackFiles":
+                    this.unpackFiles = data.getBoolean(key);
                     break;
             }
         }
@@ -902,6 +929,14 @@ public class Container {
         this.useLegacyDRM = useLegacyDRM;
     }
 
+    public boolean isUnpackFiles() {
+        return unpackFiles;
+    }
+
+    public void setUnpackFiles(boolean unpackFiles) {
+        this.unpackFiles = unpackFiles;
+    }
+
     public String getContainerJson() {
         String content = FileUtils.readString(getConfigFile());
         if (content == null) {
@@ -941,6 +976,23 @@ public class Container {
 
     public void setTouchscreenMode(boolean touchscreenMode) {
         this.touchscreenMode = touchscreenMode;
+    }
+
+    // External display mode
+    public String getExternalDisplayMode() {
+        return externalDisplayMode != null ? externalDisplayMode : DEFAULT_EXTERNAL_DISPLAY_MODE;
+    }
+
+    public void setExternalDisplayMode(String externalDisplayMode) {
+        this.externalDisplayMode = externalDisplayMode != null ? externalDisplayMode : DEFAULT_EXTERNAL_DISPLAY_MODE;
+    }
+
+    public boolean isExternalDisplaySwap() {
+        return externalDisplaySwap;
+    }
+
+    public void setExternalDisplaySwap(boolean externalDisplaySwap) {
+        this.externalDisplaySwap = externalDisplaySwap;
     }
 
     // Use DRI3 WSI

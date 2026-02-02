@@ -8,6 +8,10 @@ import androidx.collection.ArrayMap;
 
 import com.winlator.PrefManager;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Locale;
 import java.util.Objects;
 
@@ -21,6 +25,40 @@ public abstract class GPUInformation {
 
     static {
         System.loadLibrary("extras");
+    }
+
+    public static String getDeviceIdFromGPUName(Context context, String gpuName) {
+        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+        String deviceId = "";
+        try {
+            JSONArray jsonArray = new JSONArray(gpuNameList);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jobj = jsonArray.getJSONObject(i);
+                if (jobj.getString("name").contains(gpuName)) {
+                    deviceId = jobj.getString("deviceID");
+                }
+            }
+        }
+        catch (JSONException e) {
+        }
+        return deviceId;
+    }
+
+    public static String getVendorIdFromGPUName(Context context, String gpuName) {
+        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+        String vendorId = "";
+        try {
+            JSONArray jsonArray = new JSONArray(gpuNameList);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jobj = jsonArray.getJSONObject(i);
+                if (jobj.getString("name").contains(gpuName)) {
+                    vendorId = jobj.getString("vendorID");
+                }
+            }
+        }
+        catch (JSONException e) {
+        }
+        return vendorId;
     }
 
     private static ArrayMap<String, String> loadGPUInformation(Context context) {
@@ -115,6 +153,12 @@ public abstract class GPUInformation {
         return getRenderer(context).toLowerCase(Locale.ENGLISH).matches(".*adreno[^6]+6[0-9]{2}.*");
     }
 
+    public static boolean isAdreno8Elite(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        // “adreno … 83x / 84x / 85x”
+        return r.contains("adreno") && r.matches(".*\\b8(3[0-9]|4[0-9]|5[0-9])\\b.*");
+    }
+
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
         // match “adreno 610…699” or “adreno 710…799”
@@ -150,4 +194,5 @@ public abstract class GPUInformation {
     public native static String getVulkanVersion(String driverName, Context context);
     public native static String getRenderer(String driverName, Context context);
     public native static String[] enumerateExtensions(String driverName, Context context);
+    public native static int getVendorID(String driverName, Context context);
 }

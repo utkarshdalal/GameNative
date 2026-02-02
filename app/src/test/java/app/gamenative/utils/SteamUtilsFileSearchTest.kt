@@ -225,9 +225,13 @@ class SteamUtilsFileSearchTest {
         val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
         dosDevicesPath.mkdirs()
 
-        // Create .original.exe file
+        // Create multiple .original.exe files in different folders
         val origExeFile = File(dosDevicesPath, "game.exe.original.exe")
         origExeFile.writeBytes("original exe content".toByteArray())
+        val nestedDir = File(dosDevicesPath, "bin")
+        nestedDir.mkdirs()
+        val origExeFile2 = File(nestedDir, "game2.exe.original.exe")
+        origExeFile2.writeBytes("original exe content 2".toByteArray())
 
         // Call the actual function
         SteamUtils.restoreOriginalExecutable(context, steamAppId)
@@ -237,6 +241,10 @@ class SteamUtilsFileSearchTest {
         assertTrue("Should restore exe to original location", restoredFile.exists())
         assertEquals("Restored content should match backup",
             "original exe content", restoredFile.readText())
+        val restoredFile2 = File(nestedDir, "game2.exe")
+        assertTrue("Should restore exe to original location in subdirectory", restoredFile2.exists())
+        assertEquals("Restored content should match backup for second exe",
+            "original exe content 2", restoredFile2.readText())
     }
 
     @Test
@@ -762,7 +770,7 @@ class SteamUtilsFileSearchTest {
             steamAppId.toString(), steamAppIdFile.readText().trim())
 
         // Verify game.exe is NOT overwritten after second replaceSteamClientDll call
-        assertEquals("game.exe should be overwritten after second replaceSteamClientDll",
+        assertEquals("game.exe should not be overwritten after second replaceSteamClientDll",
             "unpacked exe content", gameExe.readText())
 
         // Verify marker was set
