@@ -51,6 +51,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.ConnectingServersScreen
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
@@ -218,6 +219,10 @@ fun PluviaMain(
 
                                         GameSource.GOG -> {
                                             GOGService.isGameInstalled(gameId.toString())
+                                        }
+
+                                        GameSource.EPIC -> {
+                                            EpicService.isGameInstalled(gameId)
                                         }
 
                                         GameSource.CUSTOM_GAME -> {

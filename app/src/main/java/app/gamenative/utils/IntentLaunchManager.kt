@@ -43,7 +43,7 @@ object IntentLaunchManager {
         }
 
         // Get Game Source for launch intent
-        var gameSource = intent.getStringExtra(EXTRA_GAME_SOURCE)?.uppercase()
+        var gameSource = intent.getStringExtra(EXTRA_GAME_SOURCE)?.uppercase(java.util.Locale.ROOT)
         val isValidGameSource = GameSource.entries.any { it.name == gameSource }
         if (!isValidGameSource) {
             gameSource = GameSource.STEAM.name
