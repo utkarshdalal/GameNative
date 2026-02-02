@@ -1178,24 +1178,27 @@ fun preLaunchApp(
         containerManager.activateContainer(container)
 
         // If another game is running on this account elsewhere, prompt user first (cross-app session)
-        try {
-            val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
-            if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
-                val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
-                setLoadingDialogVisible(false)
-                setMessageDialogState(
-                    MessageDialogState(
-                        visible = true,
-                        type = DialogType.ACCOUNT_SESSION_ACTIVE,
-                        title = context.getString(R.string.main_app_running_title),
-                        message = context.getString(R.string.main_app_running_message, otherGameName),
-                        confirmBtnText = context.getString(R.string.main_play_anyway),
-                        dismissBtnText = context.getString(R.string.cancel),
-                    ),
-                )
-                return@launch
-            }
-        } catch (_: Exception) { /* ignore persona read errors */ }
+        val isSteamGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
+        if(isSteamGame) {
+            try {
+                val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
+                if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
+                    val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.ACCOUNT_SESSION_ACTIVE,
+                            title = context.getString(R.string.main_app_running_title),
+                            message = context.getString(R.string.main_app_running_message, otherGameName),
+                            confirmBtnText = context.getString(R.string.main_play_anyway),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                    return@launch
+                }
+            } catch (_: Exception) { /* ignore persona read errors */ }
+        }
 
         // For Custom Games, bypass Steam Cloud operations entirely and proceed to launch
         if (isCustomGame) {
