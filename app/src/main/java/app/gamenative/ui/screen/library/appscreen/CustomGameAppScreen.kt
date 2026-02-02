@@ -410,7 +410,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
     override fun supportsContainerConfig(): Boolean = true
 
-    override fun getExportFileExtension(): String = ".steam"
+    override fun getExportFileExtension(): String = ".pcgame"
 
     @Composable
     override fun AdditionalDialogs(
