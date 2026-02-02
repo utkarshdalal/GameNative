@@ -394,9 +394,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun getExportFileExtension(): String {
-        Timber.tag(TAG).d("getExportFileExtension: returning 'tzst'")
-        // GOG containers use the same export format as other Wine containers
-        return "tzst"
+        return ".gog"
     }
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
