@@ -683,8 +683,8 @@ class EpicDownloadManager @Inject constructor(
 
             // Epic chunks can have different header sizes (62 or 66 bytes)
             // Minimum viable header is 62 bytes
-            if (headerSize < 62) {
-                throw Exception("Invalid header size: $headerSize (minimum 62 bytes required)")
+            if (headerSize < 62 || headerSize > 66) {
+                throw Exception("Invalid header size: $headerSize (expected 62-66 bytes)")
             }
 
             // Read the remaining header bytes
