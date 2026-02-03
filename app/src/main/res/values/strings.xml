@@ -992,7 +992,7 @@
     <!-- GOG Login Dialog -->
     <string name="gog_login_title">Sign in to GOG</string>
     <string name="gog_login_in_app_button">Log in with GOG</string>
-    <string name="gog_login_auto_auth_info">Sign in with your GOG account in the next screen. You will not need to copy or paste anything.</string>
+    <string name="gog_login_auto_auth_info">Sign in with your GOG account in the next screen.</string>
     <string name="gog_login_cancel">Cancel</string>
 
     <!-- GOG Logout -->
@@ -1016,7 +1016,7 @@
     <!-- Epic Login Dialog -->
     <string name="epic_login_title">Sign in to Epic Games</string>
     <string name="epic_login_in_app_button">Log in with Epic</string>
-    <string name="epic_login_auto_auth_info">Sign in with your Epic account in the next screen. You will not need to copy or paste anything.</string>
+    <string name="epic_login_auto_auth_info">Sign in with your Epic account in the next screen.</string>
     <string name="epic_login_cancel">Cancel</string>
 
     <!-- Epic Games Logout -->
