@@ -81,6 +81,7 @@ import kotlinx.coroutines.CoroutineScope
 import timber.log.Timber
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
 
 /**
@@ -284,6 +285,26 @@ fun SettingsGroupInterface(
                     gogLoginSuccess = true
                 },
                 onDialogClose = { openGOGLoginDialog = false }
+            )
+        }
+    }
+
+    // Epic in-app OAuth (WebView) launcher; result delivers auth code automatically (lifecycleScope like GOG)
+    val epicOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val code = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_AUTH_CODE) ?: return@rememberLauncherForActivityResult
+        openEpicLoginDialog = false
+        lifecycleScope.launch {
+            handleEpicAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { epicLoginLoading = it },
+                onError = { epicLoginError = it },
+                onSuccess = { epicLoginSuccess = true },
+                onDialogClose = { openEpicLoginDialog = false }
             )
         }
     }
@@ -810,7 +831,7 @@ fun SettingsGroupInterface(
         message = stringResource(R.string.gog_logout_in_progress)
     )
 
-    // Epic Login Dialog
+    // Epic Login Dialog (in-app WebView only, automatic code capture – same pattern as GOG)
     EpicLoginDialog(
         visible = openEpicLoginDialog,
         onDismissRequest = {
@@ -818,18 +839,8 @@ fun SettingsGroupInterface(
             epicLoginError = null
             epicLoginLoading = false
         },
-        onAuthCodeClick = { authCode ->
-            coroutineScope.launch {
-                handleEpicAuthentication(
-                    context = context,
-                    authCode = authCode,
-                    coroutineScope = coroutineScope,
-                    onLoadingChange = { epicLoginLoading = it },
-                    onError = { epicLoginError = it },
-                    onSuccess = { epicLoginSuccess = true },
-                    onDialogClose = { openEpicLoginDialog = false }
-                )
-            }
+        onLaunchInAppLogin = {
+            epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java))
         },
         isLoading = epicLoginLoading,
         errorMessage = epicLoginError

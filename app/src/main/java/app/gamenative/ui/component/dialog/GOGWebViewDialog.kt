@@ -38,6 +38,7 @@ fun GOGWebViewDialog(
     url: String,
     onDismissRequest: () -> Unit,
     onUrlChange: ((String) -> Unit)? = null,
+    onPageFinished: ((url: String, webView: WebView) -> Unit)? = null,
 ) {
     if (isVisible) {
         var topBarTitle by rememberSaveable { mutableStateOf("GOG Authentication") }
@@ -121,6 +122,9 @@ fun GOGWebViewDialog(
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
                                         Timber.d("GOG WebView page finished loading: $url")
+                                        if (view != null && url != null) {
+                                            onPageFinished?.invoke(url, view)
+                                        }
                                     }
 
                                     override fun onReceivedError(

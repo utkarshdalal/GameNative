@@ -1015,14 +1015,9 @@
 
     <!-- Epic Login Dialog -->
     <string name="epic_login_title">Sign in to Epic Games</string>
-    <string name="epic_login_auto_auth_info">Tap \'Open Epic Login\' and sign in. Once logged in, please copy the authorizationCode in the result screen and paste below</string>
-    <string name="epic_login_auth_example">Example: authorization code: "example"</string>
-    <string name="epic_login_open_button">Open Epic Login</string>
-    <string name="epic_login_auth_code_label">Authorization Code</string>
-    <string name="epic_login_auth_code_placeholder">Paste code or URL here</string>
-    <string name="epic_login_button">Login</string>
+    <string name="epic_login_in_app_button">Log in with Epic</string>
+    <string name="epic_login_auto_auth_info">Sign in with your Epic account in the next screen. You will not need to copy or paste anything.</string>
     <string name="epic_login_cancel">Cancel</string>
-    <string name="epic_login_browser_error">Could not open browser</string>
 
     <!-- Epic Games Logout -->
     <string name="epic_settings_logout_title">Logout from Epic Games</string>

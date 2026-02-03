@@ -72,6 +72,12 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- Epic OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
+        <activity
+            android:name=".ui.screen.auth.EpicOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- Launcher icon aliases to allow switching app icon at runtime -->
         <activity-alias
             android:name=".MainActivityAliasDefault"
