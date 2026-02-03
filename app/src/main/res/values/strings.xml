@@ -991,14 +991,9 @@
 
     <!-- GOG Login Dialog -->
     <string name="gog_login_title">Sign in to GOG</string>
-    <string name="gog_login_auto_auth_info">Tap \'Open GOG Login\' and sign in. Once logged in, please copy the URL and paste below</string>
-    <string name="gog_login_auth_example">Example: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
-    <string name="gog_login_open_button">Open GOG Login</string>
-    <string name="gog_login_auth_code_label">Authorization Code or login success URL</string>
-    <string name="gog_login_auth_code_placeholder">Paste code or url here</string>
-    <string name="gog_login_button">Login</string>
+    <string name="gog_login_in_app_button">Log in with GOG</string>
+    <string name="gog_login_auto_auth_info">Sign in with your GOG account in the next screen. You will not need to copy or paste anything.</string>
     <string name="gog_login_cancel">Cancel</string>
-    <string name="gog_login_browser_error">Could not open browser</string>
 
     <!-- GOG Logout -->
     <string name="gog_settings_logout_title">Logout</string>

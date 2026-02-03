@@ -61,6 +61,8 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -72,10 +74,14 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.epic.EpicAuthManager
 import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.CoroutineScope
 import timber.log.Timber
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import app.gamenative.ui.screen.auth.GOGOAuthActivity
 
 /**
  * Shared GOG authentication handler that manages the complete auth flow.
@@ -255,8 +261,34 @@ fun SettingsGroupInterface(
     var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    // Use Activity lifecycle scope for the OAuth result callback so it stays valid after
+    // returning from GOGOAuthActivity (composition may have been left → rememberCoroutineScope cancelled).
+    val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
 
-    // Listen for GOG OAuth callback
+    // GOG in-app OAuth (WebView) launcher; result delivers auth code automatically
+    val gogOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val code = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_AUTH_CODE) ?: return@rememberLauncherForActivityResult
+        openGOGLoginDialog = false
+        lifecycleScope.launch {
+            handleGogAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { gogLoginLoading = it },
+                onError = { gogLoginError = it },
+                onSuccess = { count ->
+                    gogLibraryGameCount = count
+                    gogLoginSuccess = true
+                },
+                onDialogClose = { openGOGLoginDialog = false }
+            )
+        }
+    }
+
+    // Listen for GOG OAuth callback (e.g. from event)
     DisposableEffect(Unit) {
         Timber.d("[SettingsGOG]: Setting up GOG auth code event listener")
         val onGOGAuthCodeReceived: (AndroidEvent.GOGAuthCodeReceived) -> Unit = { event ->
@@ -690,7 +722,7 @@ fun SettingsGroupInterface(
         message = stringResource(R.string.settings_language_changing)
     )
 
-    // GOG Login Dialog
+    // GOG Login Dialog (in-app WebView only, automatic code capture)
     GOGLoginDialog(
         visible = openGOGLoginDialog,
         onDismissRequest = {
@@ -698,21 +730,8 @@ fun SettingsGroupInterface(
             gogLoginError = null
             gogLoginLoading = false
         },
-        onAuthCodeClick = { authCode ->
-            coroutineScope.launch {
-                handleGogAuthentication(
-                    context = context,
-                    authCode = authCode,
-                    coroutineScope = coroutineScope,
-                    onLoadingChange = { gogLoginLoading = it },
-                    onError = { gogLoginError = it },
-                    onSuccess = { count ->
-                        gogLibraryGameCount = count
-                        gogLoginSuccess = true
-                    },
-                    onDialogClose = { openGOGLoginDialog = false }
-                )
-            }
+        onLaunchInAppLogin = {
+            gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java))
         },
         isLoading = gogLoginLoading,
         errorMessage = gogLoginError
