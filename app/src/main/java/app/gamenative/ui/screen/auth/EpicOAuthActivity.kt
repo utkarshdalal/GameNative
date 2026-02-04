@@ -16,6 +16,7 @@ import timber.log.Timber
  * Epic OAuth Activity that hosts a WebView and automatically captures
  * the authorization code. Epic returns the code in the redirect page body as JSON
  * ({"authorizationCode":"...", ...}), not in the URL – so we read the body via JS.
+ * Uses a per-session state parameter for CSRF protection.
  */
 class EpicOAuthActivity : ComponentActivity() {
 
@@ -24,20 +25,29 @@ class EpicOAuthActivity : ComponentActivity() {
         const val EXTRA_ERROR = "error"
     }
 
+    private var oauthState: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val (authUrl, state) = EpicConstants.LoginUrlWithState()
+        oauthState = state
 
         setContent {
             PluviaTheme {
                 AuthWebViewDialog(
                     isVisible = true,
-                    url = EpicConstants.EPIC_AUTH_LOGIN_URL,
+                    url = authUrl,
                     onDismissRequest = {
                         setResult(Activity.RESULT_CANCELED)
                         finish()
                     },
                     onUrlChange = { currentUrl: String ->
                         if (isValidRedirectUrl(currentUrl)) {
+                            if (extractState(currentUrl) != oauthState) {
+                                Timber.w("OAuth callback state mismatch; ignoring (possible CSRF)")
+                                return@AuthWebViewDialog
+                            }
                             val code = extractAuthCode(currentUrl)
                             if (code != null) finishWithCode(code)
                             // else: URL has no code param; we'll get it from page body in onPageFinished
@@ -45,6 +55,10 @@ class EpicOAuthActivity : ComponentActivity() {
                     },
                     onPageFinished = { url, webView ->
                         if (!isValidRedirectUrl(url)) return@AuthWebViewDialog
+                        if (extractState(url) != oauthState) {
+                            Timber.w("OAuth callback state mismatch; ignoring (possible CSRF)")
+                            return@AuthWebViewDialog
+                        }
                         webView.evaluateJavascript(
                             "(function(){ try { var j = JSON.parse(document.body && document.body.innerText || '{}'); return j.authorizationCode || null; } catch(e){ return null; } })();"
                         ) { result ->
@@ -75,6 +89,14 @@ class EpicOAuthActivity : ComponentActivity() {
                 parsed.path == expected.path
         } catch (e: Exception) {
             false
+        }
+    }
+
+    private fun extractState(url: String): String? {
+        return try {
+            Uri.parse(url).getQueryParameter("state")
+        } catch (e: Exception) {
+            null
         }
     }
 

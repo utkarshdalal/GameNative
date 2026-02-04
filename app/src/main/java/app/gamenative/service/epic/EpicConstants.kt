@@ -1,8 +1,10 @@
 package app.gamenative.service.epic
 
+import android.net.Uri
 import app.gamenative.PrefManager
 import java.io.File
 import java.nio.file.Paths
+import java.security.SecureRandom
 import timber.log.Timber
 
 /**
@@ -23,13 +25,23 @@ object EpicConstants {
     const val OAUTH_HOST = "account-public-service-prod03.ol.epicgames.com"
     const val USER_AGENT = "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit"
 
-    // OAuth authorization URL with all required parameters
-    // This is the standard Epic Games OAuth login flow
-    const val EPIC_AUTH_LOGIN_URL =
-        "$EPIC_AUTH_BASE_URL/id/login" +
-        "?redirectUrl=$EPIC_REDIRECT_URI" +
-        "%3FclientId%3D$EPIC_CLIENT_ID" +
-        "%26responseType%3Dcode"
+    /** Base URL for OAuth login (append &state=... for CSRF protection). */
+    val EPIC_AUTH_LOGIN_URL: String
+        get() = "$EPIC_AUTH_BASE_URL/id/login" +
+            "?redirectUrl=$EPIC_REDIRECT_URI" +
+            "%3FclientId%3D$EPIC_CLIENT_ID" +
+            "%26responseType%3Dcode"
+
+    /**
+     * Builds a full OAuth login URL with a fresh state parameter for CSRF protection.
+     * @return Pair of (full auth URL, state) – store state and validate it on redirect.
+     */
+    fun LoginUrlWithState(): Pair<String, String> {
+        val state = ByteArray(32).also { SecureRandom().nextBytes(it) }
+            .joinToString("") { "%02x".format(it) }
+        val url = "$EPIC_AUTH_LOGIN_URL&state=${Uri.encode(state)}"
+        return url to state
+    }
 
     const val EPIC_LIBRARY_API_URL = "https://library-service.live.use1a.on.epicgames.com/library/api/public/items"
     // Epic CDN for game assets

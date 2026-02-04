@@ -1,6 +1,7 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -115,7 +116,7 @@ fun AuthWebViewDialog(
 
                                 webViewClient = object : WebViewClient() {
                                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                                        Timber.d("Auth WebView navigating to: $url")
+                                        Timber.d("Auth WebView navigating to: ${redactUrl(url)}")
                                         url?.let { currentUrl ->
                                             onUrlChange?.invoke(currentUrl)
                                         }
@@ -124,7 +125,7 @@ fun AuthWebViewDialog(
 
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
-                                        Timber.d("Auth WebView page finished loading: $url")
+                                        Timber.d("Auth WebView page finished loading: ${redactUrl(url)}")
                                         if (view != null && url != null) {
                                             onPageFinished?.invoke(url, view)
                                         }
@@ -137,7 +138,7 @@ fun AuthWebViewDialog(
                                         failingUrl: String?
                                     ) {
                                         super.onReceivedError(view, errorCode, description, failingUrl)
-                                        Timber.e("Auth WebView error: $errorCode - $description for URL: $failingUrl")
+                                        Timber.e("Auth WebView error: $errorCode - $description for URL: ${redactUrl(failingUrl)}")
                                     }
                                 }
 
@@ -158,7 +159,7 @@ fun AuthWebViewDialog(
                                 if (webViewState.size() > 0) {
                                     restoreState(webViewState)
                                 } else {
-                                    Timber.d("Loading Auth WebView URL: $startingUrl")
+                                    Timber.d("Loading Auth WebView URL: ${redactUrl(startingUrl)}")
                                     loadUrl(startingUrl)
                                 }
                                 webView = this
@@ -194,3 +195,10 @@ private fun Preview_AuthWebView() {
         )
     }
 }
+
+private fun redactUrl(url: String?): String =
+    url?.let {
+        runCatching {
+            Uri.parse(it).buildUpon().clearQuery().fragment(null).build().toString()
+        }.getOrDefault("<invalid-url>")
+    } ?: "null"

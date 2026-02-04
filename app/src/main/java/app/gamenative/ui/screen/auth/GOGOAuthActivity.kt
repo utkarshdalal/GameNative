@@ -14,34 +14,39 @@ import timber.log.Timber
 /**
  * GOG OAuth Activity that hosts AuthWebViewDialog and automatically captures
  * the authorization code when GOG redirects to the success URL (aligns with gog-support).
+ * Uses a per-session state parameter for CSRF protection.
  */
 class GOGOAuthActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_AUTH_CODE = "auth_code"
         const val EXTRA_ERROR = "error"
-        const val GOG_CLIENT_ID = "46899977096215655"
-        val GOG_AUTH_URL = "https://auth.gog.com/auth?" +
-            "client_id=$GOG_CLIENT_ID" +
-            "&redirect_uri=https%3A%2F%2Fembed.gog.com%2Fon_login_success%3Forigin%3Dclient" +
-            "&response_type=code" +
-            "&layout=galaxy"
     }
+
+    private var oauthState: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val (authUrl, state) = GOGConstants.LoginUrlWithState()
+        oauthState = state
 
         setContent {
             PluviaTheme {
                 AuthWebViewDialog(
                     isVisible = true,
-                    url = GOG_AUTH_URL,
+                    url = authUrl,
                     onDismissRequest = {
                         setResult(Activity.RESULT_CANCELED)
                         finish()
                     },
                     onUrlChange = { currentUrl: String ->
                         if (isValidRedirectUrl(currentUrl)) {
+                            val returnedState = extractState(currentUrl)
+                            if (returnedState != oauthState) {
+                                Timber.w("OAuth callback state mismatch; ignoring (possible CSRF)")
+                                return@AuthWebViewDialog
+                            }
                             val extractedCode = extractAuthCode(currentUrl)
                             if (extractedCode != null) {
                                 Timber.d("Automatically extracted auth code from URL")
@@ -55,6 +60,14 @@ class GOGOAuthActivity : ComponentActivity() {
                     },
                 )
             }
+        }
+    }
+
+    private fun extractState(url: String): String? {
+        return try {
+            Uri.parse(url).getQueryParameter("state")
+        } catch (e: Exception) {
+            null
         }
     }
 
