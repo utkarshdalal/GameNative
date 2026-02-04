@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.redactUrlForLogging
 import timber.log.Timber
 
 /**
@@ -67,6 +68,7 @@ class GOGOAuthActivity : ComponentActivity() {
         return try {
             Uri.parse(url).getQueryParameter("state")
         } catch (e: Exception) {
+            Timber.w(e, "Failed to extract state from URL: %s", redactUrlForLogging(url))
             null
         }
     }
@@ -79,6 +81,7 @@ class GOGOAuthActivity : ComponentActivity() {
                 parsed.host.equals(expected.host, ignoreCase = true) &&
                 parsed.path == expected.path
         } catch (e: Exception) {
+            Timber.w(e, "Failed to parse redirect URL: %s", redactUrlForLogging(url))
             false
         }
     }
@@ -88,7 +91,7 @@ class GOGOAuthActivity : ComponentActivity() {
             val uri = Uri.parse(url)
             uri.getQueryParameter("code")
         } catch (e: Exception) {
-            Timber.e(e, "Failed to extract auth code from URL: $url")
+            Timber.w(e, "Failed to extract auth code from URL: %s", redactUrlForLogging(url))
             null
         }
     }

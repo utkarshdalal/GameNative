@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.redactUrlForLogging
 import timber.log.Timber
 
 /**
@@ -88,6 +89,7 @@ class EpicOAuthActivity : ComponentActivity() {
                 parsed.host.equals(expected.host, ignoreCase = true) &&
                 parsed.path == expected.path
         } catch (e: Exception) {
+            Timber.w(e, "Failed to parse redirect URL: %s", redactUrlForLogging(url))
             false
         }
     }
@@ -96,6 +98,7 @@ class EpicOAuthActivity : ComponentActivity() {
         return try {
             Uri.parse(url).getQueryParameter("state")
         } catch (e: Exception) {
+            Timber.w(e, "Failed to extract state from URL: %s", redactUrlForLogging(url))
             null
         }
     }
@@ -104,6 +107,7 @@ class EpicOAuthActivity : ComponentActivity() {
         return try {
             Uri.parse(url).getQueryParameter("code")
         } catch (e: Exception) {
+            Timber.w(e, "Failed to extract auth code from URL: %s", redactUrlForLogging(url))
             null
         }
     }
