@@ -977,6 +977,7 @@
     <string name="wine_proton_containers_in_use">Containers using this version:</string>
     <string name="wine_proton_no_containers_warning">No containers are currently using this version.</string>
     <string name="wine_proton_containers_will_break">These containers will no longer work if you proceed:</string>
+    <string name="auth_webview_title">Authorization</string>
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">GOG Integration (Alpha)</string>

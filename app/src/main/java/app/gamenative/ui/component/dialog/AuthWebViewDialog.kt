@@ -44,7 +44,7 @@ fun AuthWebViewDialog(
     onPageFinished: ((url: String, webView: WebView) -> Unit)? = null,
 ) {
     if (isVisible) {
-        var topBarTitle by rememberSaveable { mutableStateOf("Authentication") }
+        var topBarTitle by rememberSaveable { mutableStateOf(stringResource(R.string.auth_webview_title)) }
         val startingUrl by rememberSaveable(url) { mutableStateOf(url) }
         var webView: WebView? = remember { null }
         val webViewState = rememberSaveable { Bundle() }
