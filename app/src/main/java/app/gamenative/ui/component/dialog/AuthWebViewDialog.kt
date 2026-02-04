@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -116,11 +117,21 @@ fun AuthWebViewDialog(
                                 }
 
                                 webViewClient = object : WebViewClient() {
-                                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                                    private fun handleUrl(url: String?) {
                                         Timber.d("Auth WebView navigating to: ${redactUrlForLogging(url)}")
-                                        url?.let { currentUrl ->
-                                            onUrlChange?.invoke(currentUrl)
-                                        }
+                                        url?.let { currentUrl -> onUrlChange?.invoke(currentUrl) }
+                                    }
+
+                                    override fun shouldOverrideUrlLoading(
+                                        view: WebView?,
+                                        request: WebResourceRequest?
+                                    ): Boolean {
+                                        handleUrl(request?.url?.toString())
+                                        return super.shouldOverrideUrlLoading(view, request)
+                                    }
+
+                                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                                        handleUrl(url)
                                         return super.shouldOverrideUrlLoading(view, url)
                                     }
 
