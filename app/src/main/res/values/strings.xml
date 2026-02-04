@@ -987,12 +987,6 @@
     <string name="gog_settings_sync_subtitle_success">✓ Synced %1$d games</string>
     <string name="gog_settings_sync_subtitle_default">Fetch your GOG games library</string>
     <string name="gog_login_success_title">Login Successful</string>
-    <string name="gog_login_success_message">You are now signed in to GOG.\nWe will now sync your library in the background.</string>
-
-    <!-- GOG Login Dialog -->
-    <string name="gog_login_title">Sign in to GOG</string>
-    <string name="gog_login_in_app_button">Log in with GOG</string>
-    <string name="gog_login_auto_auth_info">Sign in with your GOG account in the next screen.</string>
     <string name="gog_login_cancel">Cancel</string>
 
     <!-- GOG Logout -->
@@ -1010,14 +1004,8 @@
     <string name="epic_settings_login_title">Sign in to Epic Games</string>
     <string name="epic_settings_login_subtitle">Connect your Epic Games account</string>
     <string name="epic_login_success_title">Login Successful</string>
-    <string name="epic_login_success_message">You are now signed in to Epic Games.</string>
-    <string name="epic_logout_success">Logged out from Epic successfully</string>
-
-    <!-- Epic Login Dialog -->
-    <string name="epic_login_title">Sign in to Epic Games</string>
-    <string name="epic_login_in_app_button">Log in with Epic</string>
-    <string name="epic_login_auto_auth_info">Sign in with your Epic account in the next screen.</string>
     <string name="epic_login_cancel">Cancel</string>
+    <string name="epic_logout_success">Logged out from Epic successfully</string>
 
     <!-- Epic Games Logout -->
     <string name="epic_settings_logout_title">Logout from Epic Games</string>
