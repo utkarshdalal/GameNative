@@ -24,15 +24,35 @@ class EpicOAuthActivity : ComponentActivity() {
     companion object {
         const val EXTRA_AUTH_CODE = "auth_code"
         const val EXTRA_ERROR = "error"
+        private const val SAVED_OAUTH_STATE = "oauth_state"
+        private const val SAVED_AUTH_URL = "auth_url"
     }
 
     private var oauthState: String? = null
+    private var initialAuthUrl: String? = null
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        oauthState?.let { outState.putString(SAVED_OAUTH_STATE, it) }
+        initialAuthUrl?.let { outState.putString(SAVED_AUTH_URL, it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val (authUrl, state) = EpicConstants.LoginUrlWithState()
+        val (authUrl, state) = if (savedInstanceState != null) {
+            val savedState = savedInstanceState.getString(SAVED_OAUTH_STATE)
+            val savedUrl = savedInstanceState.getString(SAVED_AUTH_URL)
+            if (savedState != null && savedUrl != null) {
+                savedUrl to savedState
+            } else {
+                EpicConstants.LoginUrlWithState()
+            }
+        } else {
+            EpicConstants.LoginUrlWithState()
+        }
         oauthState = state
+        initialAuthUrl = authUrl
 
         setContent {
             PluviaTheme {
