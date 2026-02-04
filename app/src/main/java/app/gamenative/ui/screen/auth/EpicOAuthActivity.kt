@@ -37,14 +37,14 @@ class EpicOAuthActivity : ComponentActivity() {
                         finish()
                     },
                     onUrlChange = { currentUrl: String ->
-                        if (currentUrl.contains("epicgames.com/id/api/redirect")) {
-                            val code = extractCodeFromUrl(currentUrl)
+                        if (isValidRedirectUrl(currentUrl)) {
+                            val code = extractAuthCode(currentUrl)
                             if (code != null) finishWithCode(code)
                             // else: URL has no code param; we'll get it from page body in onPageFinished
                         }
                     },
                     onPageFinished = { url, webView ->
-                        if (!url.contains("epicgames.com/id/api/redirect")) return@GOGWebViewDialog
+                        if (!isValidRedirectUrl(url)) return@GOGWebViewDialog
                         webView.evaluateJavascript(
                             "(function(){ try { var j = JSON.parse(document.body && document.body.innerText || '{}'); return j.authorizationCode || null; } catch(e){ return null; } })();"
                         ) { result ->
@@ -66,7 +66,19 @@ class EpicOAuthActivity : ComponentActivity() {
         finish()
     }
 
-    private fun extractCodeFromUrl(url: String): String? {
+    private fun isValidRedirectUrl(url: String): Boolean {
+        return try {
+            val parsed = Uri.parse(url)
+            val expected = Uri.parse(EpicConstants.EPIC_REDIRECT_URI)
+            parsed.scheme.equals(expected.scheme, ignoreCase = true) &&
+                parsed.host.equals(expected.host, ignoreCase = true) &&
+                parsed.path == expected.path
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun extractAuthCode(url: String): String? {
         return try {
             Uri.parse(url).getQueryParameter("code")
         } catch (e: Exception) {

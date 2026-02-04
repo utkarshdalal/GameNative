@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import app.gamenative.service.gog.GOGConstants
 import app.gamenative.ui.component.dialog.GOGWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import timber.log.Timber
@@ -40,7 +41,7 @@ class GOGOAuthActivity : ComponentActivity() {
                         finish()
                     },
                     onUrlChange = { currentUrl: String ->
-                        if (currentUrl.contains("embed.gog.com/on_login_success")) {
+                        if (isValidRedirectUrl(currentUrl)) {
                             val extractedCode = extractAuthCode(currentUrl)
                             if (extractedCode != null) {
                                 Timber.d("Automatically extracted auth code from URL")
@@ -54,6 +55,18 @@ class GOGOAuthActivity : ComponentActivity() {
                     },
                 )
             }
+        }
+    }
+
+    private fun isValidRedirectUrl(url: String): Boolean {
+        return try {
+            val parsed = Uri.parse(url)
+            val expected = Uri.parse(GOGConstants.GOG_REDIRECT_URI)
+            parsed.scheme.equals(expected.scheme, ignoreCase = true) &&
+                parsed.host.equals(expected.host, ignoreCase = true) &&
+                parsed.path == expected.path
+        } catch (e: Exception) {
+            false
         }
     }
 
