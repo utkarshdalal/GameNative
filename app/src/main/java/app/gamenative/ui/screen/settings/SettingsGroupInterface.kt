@@ -878,7 +878,7 @@ fun SettingsGroupInterface(
                             Timber.e("[SettingsEpic]: ✗ Logout failed: ${result.exceptionOrNull()?.message}")
                             android.widget.Toast.makeText(
                                 context,
-                                context.getString(R.string.epic_logout_failed),
+                                context.getString(R.string.epic_logout_failed, result.exceptionOrNull()?.message ?: "Unknown"),
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -889,7 +889,7 @@ fun SettingsGroupInterface(
                         epicLogoutLoading = false
                         android.widget.Toast.makeText(
                             context,
-                            context.getString(R.string.epic_logout_failed),
+                            context.getString(R.string.epic_logout_failed, e.message ?: "Unknown"),
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }
