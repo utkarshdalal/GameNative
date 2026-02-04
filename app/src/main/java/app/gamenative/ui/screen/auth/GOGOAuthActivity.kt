@@ -7,12 +7,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import app.gamenative.service.gog.GOGConstants
-import app.gamenative.ui.component.dialog.GOGWebViewDialog
+import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import timber.log.Timber
 
 /**
- * GOG OAuth Activity that hosts GOGWebViewDialog and automatically captures
+ * GOG OAuth Activity that hosts AuthWebViewDialog and automatically captures
  * the authorization code when GOG redirects to the success URL (aligns with gog-support).
  */
 class GOGOAuthActivity : ComponentActivity() {
@@ -33,7 +33,7 @@ class GOGOAuthActivity : ComponentActivity() {
 
         setContent {
             PluviaTheme {
-                GOGWebViewDialog(
+                AuthWebViewDialog(
                     isVisible = true,
                     url = GOG_AUTH_URL,
                     onDismissRequest = {

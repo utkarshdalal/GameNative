@@ -25,15 +25,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GOGWebViewDialog(
+fun AuthWebViewDialog(
     isVisible: Boolean,
     url: String,
     onDismissRequest: () -> Unit,
@@ -41,7 +43,7 @@ fun GOGWebViewDialog(
     onPageFinished: ((url: String, webView: WebView) -> Unit)? = null,
 ) {
     if (isVisible) {
-        var topBarTitle by rememberSaveable { mutableStateOf("GOG Authentication") }
+        var topBarTitle by rememberSaveable { mutableStateOf("Authentication") }
         val startingUrl by rememberSaveable(url) { mutableStateOf(url) }
         var webView: WebView? = remember { null }
         val webViewState = rememberSaveable { Bundle() }
@@ -76,7 +78,7 @@ fun GOGWebViewDialog(
                                         webViewState.clear()
                                         onDismissRequest()
                                     },
-                                    content = { Icon(imageVector = Icons.Default.Close, contentDescription = null) },
+                                    content = { Icon(imageVector = Icons.Default.Close, contentDescription = stringResource(R.string.close)) },
                                 )
                             },
                         )
@@ -91,7 +93,7 @@ fun GOGWebViewDialog(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                 )
 
-                                // GOG-specific WebView settings
+                                // OAuth WebView settings (secure defaults for GOG/Epic etc.)
                                 settings.apply {
                                     javaScriptEnabled = true
                                     domStorageEnabled = true
@@ -100,19 +102,20 @@ fun GOGWebViewDialog(
                                     builtInZoomControls = true
                                     displayZoomControls = false
                                     setSupportZoom(true)
-                                    allowFileAccess = true
-                                    allowContentAccess = true
-                                    allowFileAccessFromFileURLs = true
-                                    allowUniversalAccessFromFileURLs = true
-                                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                                    // Secure defaults: no file/content access to limit OAuth surface
+                                    allowFileAccess = false
+                                    allowContentAccess = false
+                                    allowFileAccessFromFileURLs = false
+                                    allowUniversalAccessFromFileURLs = false
+                                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
 
-                                    // GOG-specific user agent (similar to Heroic)
+                                    // User agent for OAuth providers
                                     userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/200.0"
                                 }
 
                                 webViewClient = object : WebViewClient() {
                                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                                        Timber.d("GOG WebView navigating to: $url")
+                                        Timber.d("Auth WebView navigating to: $url")
                                         url?.let { currentUrl ->
                                             onUrlChange?.invoke(currentUrl)
                                         }
@@ -121,7 +124,7 @@ fun GOGWebViewDialog(
 
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
-                                        Timber.d("GOG WebView page finished loading: $url")
+                                        Timber.d("Auth WebView page finished loading: $url")
                                         if (view != null && url != null) {
                                             onPageFinished?.invoke(url, view)
                                         }
@@ -134,7 +137,7 @@ fun GOGWebViewDialog(
                                         failingUrl: String?
                                     ) {
                                         super.onReceivedError(view, errorCode, description, failingUrl)
-                                        Timber.e("GOG WebView error: $errorCode - $description for URL: $failingUrl")
+                                        Timber.e("Auth WebView error: $errorCode - $description for URL: $failingUrl")
                                     }
                                 }
 
@@ -142,20 +145,20 @@ fun GOGWebViewDialog(
                                     override fun onReceivedTitle(view: WebView?, title: String?) {
                                         title?.let { pageTitle ->
                                             topBarTitle = pageTitle
-                                            Timber.d("GOG WebView title: $pageTitle")
+                                            Timber.d("Auth WebView title: $pageTitle")
                                         }
                                     }
 
                                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
                                         super.onProgressChanged(view, newProgress)
-                                        Timber.d("GOG WebView progress: $newProgress%")
+                                        Timber.d("Auth WebView progress: $newProgress%")
                                     }
                                 }
 
                                 if (webViewState.size() > 0) {
                                     restoreState(webViewState)
                                 } else {
-                                    Timber.d("Loading GOG WebView URL: $startingUrl")
+                                    Timber.d("Loading Auth WebView URL: $startingUrl")
                                     loadUrl(startingUrl)
                                 }
                                 webView = this
@@ -166,6 +169,11 @@ fun GOGWebViewDialog(
                         },
                         onRelease = { view ->
                             view.saveState(webViewState)
+                            view.stopLoading()
+                            view.webViewClient = WebViewClient()
+                            view.webChromeClient = WebChromeClient()
+                            view.removeAllViews()
+                            view.destroy()
                         },
                     )
                 }
@@ -177,9 +185,9 @@ fun GOGWebViewDialog(
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Preview
 @Composable
-private fun Preview_GOGWebView() {
+private fun Preview_AuthWebView() {
     PluviaTheme {
-        GOGWebViewDialog(
+        AuthWebViewDialog(
             isVisible = true,
             url = "https://auth.gog.com/auth?client_id=46899977096215655&redirect_uri=https%3A%2F%2Fembed.gog.com%2Fon_login_success%3Forigin%3Dclient&response_type=code&layout=galaxy",
             onDismissRequest = {},

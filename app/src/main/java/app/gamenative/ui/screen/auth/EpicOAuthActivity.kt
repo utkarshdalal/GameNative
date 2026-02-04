@@ -8,7 +8,7 @@ import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import app.gamenative.service.epic.EpicConstants
-import app.gamenative.ui.component.dialog.GOGWebViewDialog
+import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import timber.log.Timber
 
@@ -29,7 +29,7 @@ class EpicOAuthActivity : ComponentActivity() {
 
         setContent {
             PluviaTheme {
-                GOGWebViewDialog(
+                AuthWebViewDialog(
                     isVisible = true,
                     url = EpicConstants.EPIC_AUTH_LOGIN_URL,
                     onDismissRequest = {
@@ -44,7 +44,7 @@ class EpicOAuthActivity : ComponentActivity() {
                         }
                     },
                     onPageFinished = { url, webView ->
-                        if (!isValidRedirectUrl(url)) return@GOGWebViewDialog
+                        if (!isValidRedirectUrl(url)) return@AuthWebViewDialog
                         webView.evaluateJavascript(
                             "(function(){ try { var j = JSON.parse(document.body && document.body.innerText || '{}'); return j.authorizationCode || null; } catch(e){ return null; } })();"
                         ) { result ->
