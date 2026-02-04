@@ -44,20 +44,6 @@ fun GOGLoginDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Button(
-                    onClick = onLaunchInAppLogin,
-                    enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = if (isLandscape) PaddingValues(8.dp) else ButtonDefaults.ContentPadding
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Login,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.gog_login_in_app_button))
-                }
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage,
@@ -70,7 +56,22 @@ fun GOGLoginDialog(
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            Button(
+                onClick = onLaunchInAppLogin,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = if (isLandscape) PaddingValues(8.dp) else ButtonDefaults.ContentPadding
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Login,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.gog_login_in_app_button))
+            }
+        },
         dismissButton = {
             TextButton(
                 onClick = onDismissRequest,
