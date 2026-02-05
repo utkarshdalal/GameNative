@@ -736,6 +736,32 @@ class SteamService : Service(), IChallengeUrlChanged {
             return internalPath.pathString
         }
 
+        fun getAppDirPath(gameId: Int, steamApp: Boolean): String {
+
+            val info = getAppInfoOf(gameId)
+            val appName = getAppDirName(info)
+            val oldName = info?.name.orEmpty()
+
+            // Internal first (legacy installs), external second
+            val internalPath = Paths.get(internalAppInstallPath, appName)
+            if (Files.exists(internalPath)) return internalPath.pathString
+            val internalOld = Paths.get(internalAppInstallPath, oldName)
+            if (oldName.isNotEmpty() && Files.exists(internalOld)) return internalOld.pathString
+
+            val externalPath = Paths.get(externalAppInstallPath, appName)
+            val externalOld = Paths.get(externalAppInstallPath, oldName)
+            if (steamApp) {
+                if (Files.exists(externalPath)) return externalPath.pathString
+                if (oldName.isNotEmpty() && Files.exists(externalOld)) return externalOld.pathString
+            }
+
+            // Nothing on disk yet – default to whatever location you want new installs to use
+            if (PrefManager.useExternalStorage && steamApp) {
+                return externalPath.pathString
+            }
+            return internalPath.pathString
+        }
+
         private fun isExecutable(flags: Any): Boolean = when (flags) {
             // SteamKit-JVM (most forks) – flags is EnumSet<EDepotFileFlag>
             is EnumSet<*> -> {

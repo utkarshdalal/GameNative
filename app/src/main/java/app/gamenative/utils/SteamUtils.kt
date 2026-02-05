@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.GameSource
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
@@ -228,7 +229,7 @@ object SteamUtils {
      */
     suspend fun replaceSteamclientDll(context: Context, appId: String) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-        val appDirPath = SteamService.getAppDirPath(steamAppId)
+        val appDirPath = SteamService.getAppDirPath(steamAppId, (appId.contains("${GameSource.STEAM.name}")))
         val container = ContainerUtils.getContainer(context, appId)
 
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
