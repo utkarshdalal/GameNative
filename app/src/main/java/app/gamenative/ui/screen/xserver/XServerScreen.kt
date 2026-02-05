@@ -2049,9 +2049,6 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
-
-
-
         // Convert to relative path from install directory
         val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
 
