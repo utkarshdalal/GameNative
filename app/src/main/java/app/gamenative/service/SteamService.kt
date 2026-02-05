@@ -146,6 +146,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.FormBody
+import org.json.JSONArray
 import org.json.JSONObject
 import android.util.Base64
 import app.gamenative.data.DownloadingAppInfo
@@ -2521,26 +2522,93 @@ class SteamService : Service(), IChallengeUrlChanged {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
             val schemaArray = userStats.schema.toByteArray()
-            val expandedAchievements = runCatching {
-                userStats.getExpandedAchievements("english")?.map { block ->
-                    Achievement(
-                        name = block.name?.takeIf { it.isNotEmpty() } ?: "",
-                        displayName = mapOf("english" to (block.displayName ?: "")),
-                        description = mapOf("english" to (block.description ?: "")),
-                        hidden = if (block.hidden == true) 1 else 0,
-                        icon = block.icon,
-                        iconGray = block.iconGray,
-                        icongray = null,
-                        progress = null,
-                        unlocked = block.isUnlocked,
-                        unlockTimestamp = (block.unlockTimestamp as? Number)?.toInt(),
-                        formattedUnlockTime = block.getFormattedUnlockTime()
-                    )
-                }?.takeIf { it.isNotEmpty() }
-            }.getOrNull()
+            val expandedRaw = runCatching { userStats.getExpandedAchievements("english") }.getOrNull()
+            val expandedAchievements = expandedRaw?.map { block ->
+                Achievement(
+                    name = block.name?.takeIf { it.isNotEmpty() } ?: "",
+                    displayName = mapOf("english" to (block.displayName ?: "")),
+                    description = mapOf("english" to (block.description ?: "")),
+                    hidden = if (block.hidden == true) 1 else 0,
+                    icon = block.icon,
+                    iconGray = block.iconGray,
+                    icongray = null,
+                    progress = null,
+                    unlocked = block.isUnlocked,
+                    unlockTimestamp = (block.unlockTimestamp as? Number)?.toInt(),
+                    formattedUnlockTime = block.getFormattedUnlockTime()
+                )
+            }?.takeIf { it.isNotEmpty() }
+            if (!expandedRaw.isNullOrEmpty()) {
+                val nameToBlockBit = expandedRaw
+                    .groupBy { (it.achievementId as? Number)?.toInt() ?: -1 }
+                    .filter { it.key >= 0 }
+                    .flatMap { (rawBlockId, list) ->
+                        val blockId = rawBlockId / 100
+                        list.mapIndexed { index, block ->
+                            (block.name?.takeIf { it.isNotEmpty() } ?: "") to listOf(blockId, index)
+                        }
+                    }
+                    .filter { it.first.isNotEmpty() }
+                    .toMap()
+                if (nameToBlockBit.isNotEmpty()) {
+                    val configDir = File(configDirectory)
+                    if (!configDir.exists()) configDir.mkdirs()
+                    val mappingJson = JSONObject()
+                    nameToBlockBit.forEach { (name, pair) ->
+                        mappingJson.put(name, JSONArray(pair))
+                    }
+                    File(configDir, "achievement_name_to_block.json").writeText(mappingJson.toString(), Charsets.UTF_8)
+                }
+            }
             val generator = StatsAchievementsGenerator()
             generator.generateStatsAchievements(schemaArray, configDirectory, expandedAchievements)
         }
+
+        suspend fun storeAchievementUnlocks(
+            appId: Int,
+            configDirectory: String,
+            unlockedNames: Set<String>
+        ): Result<Unit> = runCatching {
+            val mappingFile = File(configDirectory, "achievement_name_to_block.json")
+            if (!mappingFile.exists()) {
+                throw IllegalStateException("achievement_name_to_block.json not found in $configDirectory")
+            }
+            val mappingJson = JSONObject(mappingFile.readText(Charsets.UTF_8))
+            val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
+            for (key in mappingJson.keys()) {
+                val arr = mappingJson.optJSONArray(key) ?: continue
+                if (arr.length() >= 2) {
+                    nameToBlockBit[key] = Pair(arr.getInt(0), arr.getInt(1))
+                }
+            }
+            if (nameToBlockBit.isEmpty()) return@runCatching
+
+            val steamUser = instance!!._steamUser!!
+            val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
+            if (userStats.result != EResult.OK) {
+                throw IllegalStateException("getUserStats failed: ${userStats.result}")
+            }
+            val rawBlocks = userStats.achievementBlocks ?: emptyList()
+            val blockBitmasks = mutableMapOf<Int, Int>()
+            for (block in rawBlocks) {
+                val blockId = (block.achievementId as? Number)?.toInt() ?: continue
+                var bitmask = 0
+                val unlockTimes = block.unlockTime ?: emptyList()
+                for (i in unlockTimes.indices) {
+                    val t = unlockTimes[i]
+                    if ((t as? Number)?.toLong() != 0L) bitmask = bitmask or (1 shl i)
+                }
+                blockBitmasks[blockId] = bitmask
+            }
+            for (name in unlockedNames) {
+                val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
+                val current = blockBitmasks.getOrDefault(blockId, 0)
+                blockBitmasks[blockId] = current or (1 shl bitIndex)
+            }
+            val updates = blockBitmasks.map { (id, mask) -> id to mask }
+//            instance?._steamUserStats!!.storeUserStats(appId, steamUser.steamID!!, updates)
+        }
+
     }
 
     override fun onCreate() {
