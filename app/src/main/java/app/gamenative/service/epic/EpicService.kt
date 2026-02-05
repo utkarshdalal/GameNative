@@ -407,6 +407,32 @@ class EpicService : Service() {
         }
 
         // ==========================================================================
+        // Game Launcher Helpers
+        // ==========================================================================
+
+        suspend fun getGameLaunchToken(
+            context: Context,
+            namespace: String? = null,
+            catalogItemId: String? = null,
+            requiresOwnershipToken: Boolean = false
+        ): Result<EpicGameToken> {
+            return EpicAuthManager.getGameLaunchToken(context, namespace, catalogItemId, requiresOwnershipToken)
+        }
+
+        suspend fun buildLaunchParameters(
+            context: Context,
+            game: EpicGame,
+            offline: Boolean = false,
+            languageCode: String = "en-US"
+        ): Result<List<String>> {
+            return EpicGameLauncher.buildLaunchParameters(context, game, offline, languageCode)
+        }
+
+        fun cleanupLaunchTokens(context: Context) {
+            EpicGameLauncher.cleanupOwnershipTokens(context)
+        }
+
+        // ==========================================================================
         // CLOUD SAVES HELPERS
         // ==========================================================================
 
