@@ -2,6 +2,7 @@ package app.gamenative.service.epic
 
 import android.content.Context
 import app.gamenative.data.EpicCredentials
+import app.gamenative.data.EpicGameToken
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
