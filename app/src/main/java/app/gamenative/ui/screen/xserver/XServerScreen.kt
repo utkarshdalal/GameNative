@@ -2070,7 +2070,20 @@ private fun getWineStartCommand(
         }
 
         val launchCommand = if (runArguments.isNotEmpty()) {
-            "winhandler.exe \"$epicCommand\" " + runArguments.joinToString(" ")
+            // Quote each argument to handle spaces in paths (e.g., ownership token paths)
+            val args = runArguments.joinToString(" ") { arg ->
+                // If argument contains '=' and the value part might have spaces, quote the whole arg
+                if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
+                    val (key, value) = arg.split("=", limit = 2)
+                    "$key=\"$value\""
+                } else if (arg.contains(" ")) {
+                    // Quote standalone arguments with spaces
+                    "\"$arg\""
+                } else {
+                    arg
+                }
+            }
+            "winhandler.exe \"$epicCommand\" $args"
         } else {
             Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
             "winhandler.exe \"$epicCommand\""

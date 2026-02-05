@@ -55,17 +55,18 @@ object EpicGameLauncher {
                 return Result.failure(tokenResult.exceptionOrNull() ?: Exception("Failed to get launch token"))
             }
 
-            val gameToken:EpicGameToken? = tokenResult.getOrNull()!!
+            val gameToken: EpicGameToken? = tokenResult.getOrNull()
 
-            if(gameToken == null){
-                Timber.tag("EPIC").d("Game Token is blank for ${game.appName}")
-            } else {
-                Timber.tag("EPIC").d("Got Game Token for ${game.appName}")
+            if (gameToken == null) {
+                Timber.tag("EPIC").w("Game Token is null for ${game.appName}")
+                return Result.failure(Exception("Game token is null for ${game.appName}"))
             }
 
+            Timber.tag("EPIC").d("Got Game Token for ${game.appName}")
+
             // Save ownership token to temp file if present
-            val ownershipTokenPath = if (gameToken?.ownershipToken != null) {
-                saveOwnershipTokenToFile(context, game.namespace, game.catalogId, gameToken.ownershipToken!!)
+            val ownershipTokenPath = if (gameToken.ownershipToken != null) {
+                saveOwnershipTokenToFile(context, game.namespace, game.catalogId, gameToken.ownershipToken)
             } else {
                 null
             }
