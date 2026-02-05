@@ -115,6 +115,8 @@ object EpicGameLauncher {
      * File path format: {temp_dir}/{namespace}{catalogItemId}.ovt
      *
      * @return Absolute path to the saved token file
+     * @throws IllegalArgumentException if ownershipTokenHex is invalid
+     * @throws IOException if file write fails
      */
     private fun saveOwnershipTokenToFile(
         context: Context,
@@ -122,22 +124,49 @@ object EpicGameLauncher {
         catalogItemId: String,
         ownershipTokenHex: String
     ): String {
+        // Validate hex string
+        if (ownershipTokenHex.isEmpty()) {
+            throw IllegalArgumentException("Ownership token hex string is empty")
+        }
+        if (ownershipTokenHex.length % 2 != 0) {
+            throw IllegalArgumentException("Ownership token hex string has odd length: ${ownershipTokenHex.length}")
+        }
+        if (!ownershipTokenHex.matches(Regex("^[0-9A-Fa-f]+$"))) {
+            throw IllegalArgumentException("Ownership token hex string contains invalid characters")
+        }
+
         val tempDir = File(context.cacheDir, "epic_tokens")
         if (!tempDir.exists()) {
             tempDir.mkdirs()
         }
 
-        val tokenFile = File(tempDir, "$namespace$catalogItemId.ovt")
+        // Sanitize namespace and catalogItemId to prevent path traversal
+        val sanitizedNamespace = namespace.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val sanitizedCatalogId = catalogItemId.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val tokenFile = File(tempDir, "$sanitizedNamespace$sanitizedCatalogId.ovt")
 
-        // Convert hex string back to bytes
-        val tokenBytes = ownershipTokenHex.chunked(2)
-            .map { it.toInt(16).toByte() }
-            .toByteArray()
+        try {
+            // Convert hex string back to bytes
+            val tokenBytes = ownershipTokenHex.chunked(2)
+                .map { hexByte ->
+                    try {
+                        hexByte.toInt(16).toByte()
+                    } catch (e: NumberFormatException) {
+                        throw IllegalArgumentException("Invalid hex byte: $hexByte", e)
+                    }
+                }
+                .toByteArray()
 
-        tokenFile.writeBytes(tokenBytes)
-
-        Timber.tag("EPIC").d("Ownership token saved to: ${tokenFile.absolutePath}")
-        return tokenFile.absolutePath
+            tokenFile.writeBytes(tokenBytes)
+            Timber.tag("EPIC").d("Ownership token saved to: ${tokenFile.absolutePath}")
+            return tokenFile.absolutePath
+        } catch (e: IllegalArgumentException) {
+            Timber.tag("EPIC").e(e, "Failed to parse ownership token hex string")
+            throw e
+        } catch (e: IOException) {
+            Timber.tag("EPIC").e(e, "Failed to write ownership token file: ${tokenFile.absolutePath}")
+            throw e
+        }
     }
 
     /**

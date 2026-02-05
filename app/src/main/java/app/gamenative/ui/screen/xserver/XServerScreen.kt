@@ -2090,9 +2090,10 @@ private fun getWineStartCommand(
         }
 
         // Log command with sensitive auth tokens redacted
+        // Handle both quoted values (with spaces) and unquoted values
         val redactedCommand = launchCommand
-            .replace(Regex("-AUTH_PASSWORD=[^ ]+"), "-AUTH_PASSWORD=[REDACTED]")
-            .replace(Regex("-epicovt=[^ ]+"), "-epicovt=[REDACTED]")
+            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
         Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
 
         return launchCommand
