@@ -201,12 +201,16 @@ object EpicAuthManager {
                 )
 
                 if (ownershipResult.isFailure) {
-                    Timber.w("Failed to get ownership token: ${ownershipResult.exceptionOrNull()?.message}")
-                    // Continue without ownership token - game might still work
+                    val error = ownershipResult.exceptionOrNull()?.message ?: "Unknown error"
+                    Timber.e("Failed to get required ownership token: $error")
+                    return Result.failure(
+                        Exception("Failed to get ownership token for DRM-protected game: $error")
+                    )
                 } else {
                     // Convert binary token to hex string for easier handling
+                    // Use toInt() and 0xFF to prevent sign extension of negative bytes
                     val tokenBytes = ownershipResult.getOrNull()!!
-                    ownershipTokenHex = tokenBytes.joinToString("") { "%02x".format(it) }
+                    ownershipTokenHex = tokenBytes.joinToString("") { "%02x".format(it.toInt() and 0xFF) }
                     Timber.d("Ownership token obtained (${tokenBytes.size} bytes)")
                 }
             }

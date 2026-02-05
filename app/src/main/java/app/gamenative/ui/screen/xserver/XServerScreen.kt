@@ -2076,7 +2076,11 @@ private fun getWineStartCommand(
             "winhandler.exe \"$epicCommand\""
         }
 
-        Timber.tag("XServerScreen").i("Epic launch command: $launchCommand")
+        // Log command with sensitive auth tokens redacted
+        val redactedCommand = launchCommand
+            .replace(Regex("-AUTH_PASSWORD=[^ ]+"), "-AUTH_PASSWORD=[REDACTED]")
+            .replace(Regex("-epicovt=[^ ]+"), "-epicovt=[REDACTED]")
+        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
 
         return launchCommand
     } else if (isCustomGame) {
