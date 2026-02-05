@@ -22,13 +22,7 @@ object EpicGameLauncher {
      * Returns a list of command-line arguments to pass to the game executable
      * for Epic Games Services authentication
      *
-     * @param context Android context
-     * @param game Epic game to launch
-     * @param offline Whether to launch in offline mode (no authentication)
-     * @param userDisplayName Override for user display name (optional)
-     * @param languageCode Language code (e.g., "en-US")
-     * @return Result containing list of launch parameters
-     */
+    */
     suspend fun buildLaunchParameters(
         context: Context,
         game: EpicGame,
@@ -89,7 +83,7 @@ object EpicGameLauncher {
             params.add("-EpicPortal")
 
             // User information parameters
-            val displayName = "GameNativeUser" //! We should adjust this later and use the user's real displayName
+            val displayName = "GameNativeUser" //! We should adjust this later and use the user's real displayName later
             val accountId = gameToken?.accountId ?: "0"
 
             params.add("-epicusername=$displayName")
@@ -105,7 +99,7 @@ object EpicGameLauncher {
 
             // Additional command-line parameters from game metadata
             // This would come from game.metadata.customAttributes.AdditionalCommandLine -- We should take this into account if need be
-            // TODO: Parse and add additional parameters if available in metadata
+            // TODO: Do a follow-up to include additional parameters where required for some games
 
             Timber.tag("EPIC").d("Built ${params.size} launch parameters for ${game.appName}")
             Result.success(params)
