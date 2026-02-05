@@ -63,7 +63,7 @@ public abstract class FEXCorePresetManager {
             envVars.put("FEX_SMALLTSCSCALE", "1");
             envVars.put("FEX_VOLATILEMETADATA", "1");
         }
-        else if (id.equals(FEXCorePreset.DEVUVO)) {
+        else if (id.equals(FEXCorePreset.DENUVO)) {
             envVars.put("FEX_TSOENABLED", "0");
             envVars.put("FEX_VECTORTSOENABLED", "0");
             envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
@@ -96,7 +96,7 @@ public abstract class FEXCorePresetManager {
         presets.add(new FEXCorePreset(FEXCorePreset.INTERMEDIATE, context.getString(R.string.intermediate)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE, context.getString(R.string.performance)));
         presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, context.getString(R.string.extreme)));
-        presets.add(new FEXCorePreset(FEXCorePreset.DEVUVO, context.getString(R.string.denuvo)));
+        presets.add(new FEXCorePreset(FEXCorePreset.DENUVO, context.getString(R.string.denuvo)));
         for (String[] preset : customPresetsIterator(context)) presets.add(new FEXCorePreset(preset[0], preset[1]));
         return presets;
     }
