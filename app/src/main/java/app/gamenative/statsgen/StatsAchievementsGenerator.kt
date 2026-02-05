@@ -22,10 +22,16 @@ class StatsAchievementsGenerator {
         return sb.toString()
     }
 
-    fun generateStatsAchievements(schema: ByteArray, configDirectory: String): ProcessingResult {
+    fun generateStatsAchievements(
+        schema: ByteArray,
+        configDirectory: String,
+        expandedAchievements: List<Achievement>? = null
+    ): ProcessingResult {
         val parsedSchema = vdfParser.binaryLoads(schema)
         val achievementsOut = mutableListOf<Achievement>()
         val statsOut = mutableListOf<Stat>()
+
+        val useExpandedAchievements = !expandedAchievements.isNullOrEmpty()
 
         for ((appId, appData) in parsedSchema) {
             if (appData !is Map<*, *>) continue
@@ -37,7 +43,7 @@ class StatsAchievementsGenerator {
                 val stat = statData as Map<String, Any>
                 val statType = stat["type"]?.toString() ?: continue
 
-                if (statType == StatType.BITS) {
+                if (!useExpandedAchievements && statType == StatType.BITS) {
                     val bits = stat["bits"] as? Map<String, Any> ?: continue
                     for ((achNumKey, achData) in bits) {
                         if (achData !is Map<*, *>) continue
@@ -104,6 +110,7 @@ class StatsAchievementsGenerator {
                     }
                 } else {
                     val statBuilder = mutableMapOf<String, Any>()
+                    statBuilder["id"] = statKey
                     statBuilder["default"] = "0"
                     statBuilder["global"] = "0"
                     statBuilder["name"] = stat["name"] ?: ""
@@ -125,6 +132,7 @@ class StatsAchievementsGenerator {
                     }
 
                     val statObj = Stat(
+                        id = statBuilder["id"]?.toString() ?: "",
                         name = statBuilder["name"]?.toString() ?: "",
                         type = statBuilder["type"]?.toString() ?: "int",
                         default = statBuilder["default"]?.toString() ?: "0",
@@ -134,6 +142,10 @@ class StatsAchievementsGenerator {
                     statsOut.add(statObj)
                 }
             }
+        }
+
+        if (useExpandedAchievements && expandedAchievements != null) {
+            achievementsOut.addAll(expandedAchievements)
         }
 
         var copyDefaultUnlockedImg = false
@@ -172,12 +184,17 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
+            ach.unlocked?.let { outputAch["unlocked"] = it }
+            ach.unlockTimestamp?.let { outputAch["unlockTimestamp"] = it }
+            ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
+
             outputAchievements.add(outputAch)
         }
 
         val outputStats = mutableListOf<Map<String, Any>>()
         for (stat in statsOut) {
             val outputStat = mutableMapOf<String, Any>()
+            outputStat["id"] = stat.id
             outputStat["name"] = stat.name
             outputStat["type"] = stat.type
 
@@ -221,28 +238,32 @@ class StatsAchievementsGenerator {
             configDir.mkdirs()
         }
 
-        // Write achievements.json
-        if (outputAchievements.isNotEmpty()) {
-            val achievementsFile = File(configDir, "achievements.json")
-            if (achievementsFile.exists()) {
-                achievementsFile.delete()
-            }
-
+        // Write achievements.json (always; use [] when empty)
+        val achievementsFile = File(configDir, "achievements.json")
+        if (achievementsFile.exists()) {
+            achievementsFile.delete()
+        }
+        val achievementsJsonContent = if (outputAchievements.isNotEmpty()) {
             val jsonBuilder = StringBuilder()
             jsonBuilder.append("[\n")
+
+            val orderedKeys = listOf(
+                "hidden", "displayName", "description", "icon", "icon_gray", "name",
+                "unlocked", "unlockTimestamp", "formattedUnlockTime"
+            )
 
             for ((index, ach) in outputAchievements.withIndex()) {
                 if (index > 0) jsonBuilder.append(",\n")
                 jsonBuilder.append("  {\n")
 
-                // Define the desired order of properties
-                val orderedKeys = listOf("hidden", "displayName", "description", "icon", "icon_gray", "name")
                 val achMap = ach.toMap()
-                
-                for ((keyIndex, key) in orderedKeys.withIndex()) {
+                var firstKey = true
+
+                for (key in orderedKeys) {
                     val value = achMap[key]
                     if (value != null) {
-                        if (keyIndex > 0) jsonBuilder.append(",\n")
+                        if (!firstKey) jsonBuilder.append(",\n")
+                        firstKey = false
 
                         when (key) {
                             "displayName", "description" -> {
@@ -261,11 +282,14 @@ class StatsAchievementsGenerator {
                                     jsonBuilder.append("\"$escapedText\"")
                                 }
                             }
-                            "hidden" -> {
+                            "hidden", "unlockTimestamp" -> {
                                 jsonBuilder.append("    \"$key\": $value")
                             }
+                            "unlocked" -> {
+                                jsonBuilder.append("    \"$key\": ${value.toString().lowercase()}")
+                            }
                             else -> {
-                                jsonBuilder.append("    \"$key\": \"$value\"")
+                                jsonBuilder.append("    \"$key\": \"${escapeUnicode(value.toString())}\"")
                             }
                         }
                     }
@@ -274,8 +298,11 @@ class StatsAchievementsGenerator {
             }
 
             jsonBuilder.append("\n]")
-            achievementsFile.writeText(jsonBuilder.toString(), Charsets.UTF_8)
+            jsonBuilder.toString()
+        } else {
+            "[]"
         }
+        achievementsFile.writeText(achievementsJsonContent, Charsets.UTF_8)
 
         // Write stats.json
         if (outputStats.isNotEmpty()) {
@@ -292,7 +319,7 @@ class StatsAchievementsGenerator {
                 jsonBuilder.append("  {\n")
 
                 // Define the desired order of properties
-                val orderedKeys = listOf("default", "global", "name", "type")
+                val orderedKeys = listOf("id", "default", "global", "name", "type")
                 val statMap = stat.toMap()
                 
                 for ((keyIndex, key) in orderedKeys.withIndex()) {

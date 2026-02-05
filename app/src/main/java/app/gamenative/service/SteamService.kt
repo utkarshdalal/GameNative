@@ -151,6 +151,7 @@ import android.util.Base64
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
+import app.gamenative.statsgen.Achievement
 import app.gamenative.statsgen.StatsAchievementsGenerator
 import kotlinx.coroutines.flow.update
 import java.io.InputStream
@@ -2519,9 +2520,26 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
-            val generator = StatsAchievementsGenerator()
             val schemaArray = userStats.schema.toByteArray()
-            generator.generateStatsAchievements(schemaArray, configDirectory)
+            val expandedAchievements = runCatching {
+                userStats.getExpandedAchievements("english")?.map { block ->
+                    Achievement(
+                        name = block.name?.takeIf { it.isNotEmpty() } ?: "",
+                        displayName = mapOf("english" to (block.displayName ?: "")),
+                        description = mapOf("english" to (block.description ?: "")),
+                        hidden = if (block.hidden == true) 1 else 0,
+                        icon = block.icon,
+                        iconGray = block.iconGray,
+                        icongray = null,
+                        progress = null,
+                        unlocked = block.isUnlocked,
+                        unlockTimestamp = (block.unlockTimestamp as? Number)?.toInt(),
+                        formattedUnlockTime = block.getFormattedUnlockTime()
+                    )
+                }?.takeIf { it.isNotEmpty() }
+            }.getOrNull()
+            val generator = StatsAchievementsGenerator()
+            generator.generateStatsAchievements(schemaArray, configDirectory, expandedAchievements)
         }
     }
 

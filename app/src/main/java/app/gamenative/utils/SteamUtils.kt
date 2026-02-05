@@ -231,6 +231,7 @@ object SteamUtils {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
+        generateAchievementsFile(File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId)
 
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
             return

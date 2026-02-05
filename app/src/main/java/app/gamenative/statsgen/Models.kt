@@ -8,10 +8,14 @@ data class Achievement(
     val icon: String? = null,
     val iconGray: String? = null,
     val icongray: String? = null,
-    val progress: Map<String, Any>? = null
+    val progress: Map<String, Any>? = null,
+    val unlocked: Boolean? = null,
+    val unlockTimestamp: Int? = null,
+    val formattedUnlockTime: String? = null
 )
 
 data class Stat(
+    val id: String,
     val name: String,
     val type: String,
     val default: String = "0",
