@@ -114,6 +114,7 @@
     <string name="intermediate">平衡</string>
     <string name="performance">高性能</string>
     <string name="denuvo">Denuvo</string>
+    <string name="extreme">极致</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>

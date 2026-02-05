@@ -116,6 +116,7 @@
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>
+    <string name="extreme">Extreme</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
