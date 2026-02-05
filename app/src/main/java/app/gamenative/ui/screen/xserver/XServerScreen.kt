@@ -2049,12 +2049,19 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
+
+
+
         // Convert to relative path from install directory
         val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
 
         // Use A: drive (or the mapped drive letter) instead of Z:
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
+
+        // Set working directory to the folder containing the executable
+        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir)
 
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
