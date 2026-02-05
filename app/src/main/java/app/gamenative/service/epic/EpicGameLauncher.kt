@@ -5,6 +5,7 @@ import app.gamenative.data.EpicGame
 import app.gamenative.data.EpicGameToken
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 
 /**
  * Helper functionality for launching Epic Games with correct execution params for online verification
