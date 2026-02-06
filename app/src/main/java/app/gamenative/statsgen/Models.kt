@@ -31,8 +31,13 @@ data class ProcessingResult(
 )
 
 object StatType {
-    const val INT = "1"
-    const val FLOAT = "2"
-    const val AVGRATE = "3"
-    const val BITS = "4"
+    const val STAT_TYPE_INT = "1"
+    const val STAT_TYPE_FLOAT = "2"
+    const val STAT_TYPE_AVGRATE = "3"
+    const val STAT_TYPE_BITS = "4"
+
+    const val ACHIEVEMENTS = "ACHIEVEMENTS"
+    const val INT = "INT"
+    const val FLOAT = "FLOAT"
+    const val AVGRATE = "AVGRATE"
 }
