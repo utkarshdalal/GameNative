@@ -2068,6 +2068,11 @@ private fun getWineStartCommand(
             Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
             params
         }
+        // Set working directory to the folder containing the executable
+        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir)
+
+        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
         val launchCommand = if (runArguments.isNotEmpty()) {
             // Quote each argument to handle spaces in paths (e.g., ownership token paths)
