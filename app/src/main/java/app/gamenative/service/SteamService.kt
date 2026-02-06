@@ -2522,22 +2522,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
             val schemaArray = userStats.schema.toByteArray()
+            val generator = StatsAchievementsGenerator()
+            generator.generateStatsAchievements(schemaArray, configDirectory)
+
             val expandedRaw = runCatching { userStats.getExpandedAchievements("english") }.getOrNull()
-            val expandedAchievements = expandedRaw?.map { block ->
-                Achievement(
-                    name = block.name?.takeIf { it.isNotEmpty() } ?: "",
-                    displayName = mapOf("english" to (block.displayName ?: "")),
-                    description = mapOf("english" to (block.description ?: "")),
-                    hidden = if (block.hidden == true) 1 else 0,
-                    icon = block.icon,
-                    iconGray = block.iconGray,
-                    icongray = null,
-                    progress = null,
-                    unlocked = block.isUnlocked,
-                    unlockTimestamp = (block.unlockTimestamp as? Number)?.toInt(),
-                    formattedUnlockTime = block.getFormattedUnlockTime()
-                )
-            }?.takeIf { it.isNotEmpty() }
             if (!expandedRaw.isNullOrEmpty()) {
                 val nameToBlockBit = expandedRaw
                     .groupBy { (it.achievementId as? Number)?.toInt() ?: -1 }
@@ -2560,8 +2548,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     File(configDir, "achievement_name_to_block.json").writeText(mappingJson.toString(), Charsets.UTF_8)
                 }
             }
-            val generator = StatsAchievementsGenerator()
-            generator.generateStatsAchievements(schemaArray, configDirectory, expandedAchievements)
         }
 
         suspend fun storeAchievementUnlocks(

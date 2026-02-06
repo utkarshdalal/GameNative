@@ -17,6 +17,7 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.types.KeyValue
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -188,7 +189,6 @@ object SteamUtils {
                 Timber.i("Replaced $dllName")
                 if (is64Bit) replaced64Count++ else replaced32Count++
                 ensureSteamSettings(context, path, appId, ticketBase64)
-                generateAchievementsFile(path, appId)
             }
         }
 
@@ -220,6 +220,9 @@ object SteamUtils {
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
+
+        // Generate achievements.json
+        generateAchievementsFile(rootPath.resolve("steam_settings"), appId)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
@@ -1265,14 +1268,16 @@ object SteamUtils {
         }
     }
 
-    suspend fun generateAchievementsFile(dllPath: Path, appId: String) {
+    fun generateAchievementsFile(dllPath: Path, appId: String) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val settingsDir = dllPath.parent.resolve("steam_settings")
         if (Files.notExists(settingsDir)) {
             Files.createDirectories(settingsDir)
         }
 
-        SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
+        runBlocking {
+            SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
+        }
     }
 }
 

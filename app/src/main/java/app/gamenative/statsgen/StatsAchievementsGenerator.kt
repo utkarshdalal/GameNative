@@ -22,16 +22,10 @@ class StatsAchievementsGenerator {
         return sb.toString()
     }
 
-    fun generateStatsAchievements(
-        schema: ByteArray,
-        configDirectory: String,
-        expandedAchievements: List<Achievement>? = null
-    ): ProcessingResult {
+    fun generateStatsAchievements(schema: ByteArray, configDirectory: String): ProcessingResult {
         val parsedSchema = vdfParser.binaryLoads(schema)
         val achievementsOut = mutableListOf<Achievement>()
         val statsOut = mutableListOf<Stat>()
-
-        val useExpandedAchievements = !expandedAchievements.isNullOrEmpty()
 
         for ((appId, appData) in parsedSchema) {
             if (appData !is Map<*, *>) continue
@@ -43,7 +37,7 @@ class StatsAchievementsGenerator {
                 val stat = statData as Map<String, Any>
                 val statType = stat["type"]?.toString() ?: continue
 
-                if (!useExpandedAchievements && statType == StatType.BITS) {
+                if (statType == StatType.STAT_TYPE_BITS || statType == StatType.ACHIEVEMENTS) {
                     val bits = stat["bits"] as? Map<String, Any> ?: continue
                     for ((achNumKey, achData) in bits) {
                         if (achData !is Map<*, *>) continue
@@ -123,6 +117,9 @@ class StatsAchievementsGenerator {
                         StatType.INT -> statBuilder["type"] = "int"
                         StatType.FLOAT -> statBuilder["type"] = "float"
                         StatType.AVGRATE -> statBuilder["type"] = "avgrate"
+                        StatType.STAT_TYPE_INT -> statBuilder["type"] = "int"
+                        StatType.STAT_TYPE_FLOAT -> statBuilder["type"] = "float"
+                        StatType.STAT_TYPE_AVGRATE -> statBuilder["type"] = "avgrate"
                     }
 
                     if (stat.containsKey("Default")) {
@@ -142,10 +139,6 @@ class StatsAchievementsGenerator {
                     statsOut.add(statObj)
                 }
             }
-        }
-
-        if (useExpandedAchievements && expandedAchievements != null) {
-            achievementsOut.addAll(expandedAchievements)
         }
 
         var copyDefaultUnlockedImg = false
@@ -321,7 +314,7 @@ class StatsAchievementsGenerator {
                 // Define the desired order of properties
                 val orderedKeys = listOf("id", "default", "global", "name", "type")
                 val statMap = stat.toMap()
-                
+
                 for ((keyIndex, key) in orderedKeys.withIndex()) {
                     val value = statMap[key]
                     if (value != null) {
