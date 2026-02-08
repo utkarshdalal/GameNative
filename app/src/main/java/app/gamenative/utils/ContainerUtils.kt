@@ -472,13 +472,6 @@ object ContainerUtils {
             MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
             Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
         }
-        if (previousLanguage.lowercase() != containerData.language.lowercase()) {
-            val steamAppId = extractGameIdFromContainerId(container.id)
-            val appDirPath = SteamService.getAppDirPath(steamAppId)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
-            Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
-        }
         if (previousForceDlc != containerData.forceDlc) {
             val steamAppId = extractGameIdFromContainerId(container.id)
             val appDirPath = SteamService.getAppDirPath(steamAppId)
