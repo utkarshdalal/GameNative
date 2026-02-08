@@ -751,8 +751,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             val externalPath = Paths.get(externalAppInstallPath, appName)
             val externalOld = Paths.get(externalAppInstallPath, oldName)
             if (steamApp) {
-                if (Files.exists(externalPath)) return externalPath.pathString
-                if (oldName.isNotEmpty() && Files.exists(externalOld)) return externalOld.pathString
+            if (Files.exists(externalPath)) return externalPath.pathString
+            if (oldName.isNotEmpty() && Files.exists(externalOld)) return externalOld.pathString
             }
 
             // Nothing on disk yet – default to whatever location you want new installs to use
