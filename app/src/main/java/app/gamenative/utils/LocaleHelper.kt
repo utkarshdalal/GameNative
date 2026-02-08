@@ -26,7 +26,8 @@ object LocaleHelper {
         "zh-TW" to "正體中文",
         "zh-CN" to "简体中文",
         "fr" to "Français",
-        "de" to "Deutsch"
+        "de" to "Deutsch",
+        "pl" to "Polski"
     )
 
     /**

@@ -1781,7 +1781,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
+            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
@@ -1842,7 +1842,10 @@ private fun setupXEnvironment(
     )
     environment.addComponent(XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)))
     environment.addComponent(NetworkInfoUpdateComponent())
-    environment.addComponent(SteamClientComponent())
+
+    if (!container.isLaunchRealSteam) {
+        environment.addComponent(SteamClientComponent())
+    }
 
     // environment.addComponent(SteamClientComponent(UnixSocketConfig.createSocket(
     //     rootPath,
@@ -1959,6 +1962,7 @@ private fun setupXEnvironment(
     return environment
 }
 private fun getWineStartCommand(
+    context: Context,
     appId: String,
     container: Container,
     bootToContainer: Boolean,
@@ -2053,9 +2057,51 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
+        // Get Epic launch parameters
+        Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
+        val runArguments: List<String> = runBlocking {
+            val result = EpicService.buildLaunchParameters(context, game, false)
+            if (result.isFailure) {
+                Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
+            }
+            val params = result.getOrNull() ?: listOf()
+            Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
+            params
+        }
+        // Set working directory to the folder containing the executable
+        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir)
+
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
-        return "winhandler.exe \"$epicCommand\""
+        val launchCommand = if (runArguments.isNotEmpty()) {
+            // Quote each argument to handle spaces in paths (e.g., ownership token paths)
+            val args = runArguments.joinToString(" ") { arg ->
+                // If argument contains '=' and the value part might have spaces, quote the whole arg
+                if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
+                    val (key, value) = arg.split("=", limit = 2)
+                    "$key=\"$value\""
+                } else if (arg.contains(" ")) {
+                    // Quote standalone arguments with spaces
+                    "\"$arg\""
+                } else {
+                    arg
+                }
+            }
+            "winhandler.exe \"$epicCommand\" $args"
+        } else {
+            Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
+            "winhandler.exe \"$epicCommand\""
+        }
+
+        // Log command with sensitive auth tokens redacted
+        // Handle both quoted values (with spaces) and unquoted values
+        val redactedCommand = launchCommand
+            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
+        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
+
+        return launchCommand
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect

@@ -1,7 +1,7 @@
 # GameNative
 
 
-GameNative allows you to play games you own on Steam directly on Android devices.
+GameNative allows you to play games you own on Steam, Epic and GOG directly on Android devices, with cloud saves.
 
 [Playing Stray on Poco F6](https://github.com/user-attachments/assets/1870fd14-7de9-4054-ba92-d3a5c73686b5)
 
