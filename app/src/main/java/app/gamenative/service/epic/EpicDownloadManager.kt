@@ -681,6 +681,12 @@ class EpicDownloadManager @Inject constructor(
             val headerVersion = startBuffer.int
             val headerSize = startBuffer.int
 
+            // Epic chunks can have different header sizes (62 or 66 bytes)
+            // Minimum viable header is 62 bytes
+            if (headerSize < 62 || headerSize > 66) {
+                throw Exception("Invalid header size: $headerSize (expected 62-66 bytes)")
+            }
+
             // Read the remaining header bytes
             val remainingSize = headerSize - 12
             val remainingBytes = ByteArray(remainingSize)
@@ -698,19 +704,43 @@ class EpicDownloadManager @Inject constructor(
             // hash: 8 bytes (file offset 32-39)
             // storedAs: 1 byte (file offset 40)
             // SHA hash: 20 bytes (file offset 41-60)
-            // hash type: 1 byte (file offset 61)
-            // uncompressedSize: 4 bytes (file offset 62-65)
+            // For 66-byte headers:
+            //   hash type: 1 byte (file offset 61)
+            //   uncompressedSize: 4 bytes (file offset 62-65)
+            // For 62-byte headers (older format):
+            //   uncompressedSize: 4 bytes (file offset 58-61) - replaces hash type + padding
+
+            // Ensure we have minimum required fields (up to SHA hash)
+            if (buffer.remaining() < 50) {
+                throw Exception("Buffer underflow: only ${buffer.remaining()} bytes available, need at least 50")
+            }
 
             val compressedSize = buffer.int  // Read compressed size
             buffer.position(buffer.position() + 16)  // Skip GUID (16 bytes)
             buffer.position(buffer.position() + 8)   // Skip hash (8 bytes)
             val storedAs = buffer.get().toInt() and 0xFF  // Read storedAs flag
             val isCompressed = (storedAs and 0x1) == 0x1
-            buffer.position(buffer.position() + 20)  // Skip SHA hash (20 bytes)
-            buffer.position(buffer.position() + 1)   // Skip hash type (1 byte)
-            val uncompressedSize = buffer.int  // Read uncompressed size
 
-            Timber.tag("Epic").d("Chunk header: magic=0x${magic.toString(16)}, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
+            // Version Check to understand header spacing
+            // Header version 2: includes sha_hash (20 bytes) + hash_type (1 byte) = 62 total bytes
+            // Header version 3: adds uncompressed_size (4 bytes) = 66 total bytes
+            if (headerVersion >= 2) {
+                buffer.position(buffer.position() + 20)  // Skip SHA hash (20 bytes)
+                if (buffer.remaining() >= 1) {
+                    buffer.position(buffer.position() + 1)   // Skip hash type (1 byte)
+                }
+            }
+
+            val uncompressedSize = if (headerVersion >= 3 && buffer.remaining() >= 4) {
+                // Version 3+: uncompressedSize field is present (4 bytes)
+                buffer.int
+            } else {
+                // Version 2 or no uncompressedSize field: use expectedSize parameter
+                Timber.tag("Epic").d("Header version $headerVersion doesn't include uncompressedSize field, using expectedSize=$expectedSize")
+                expectedSize.toInt()
+            }
+
+            Timber.tag("Epic").d("Chunk header: magic=0x${magic.toString(16)}, headerVersion=$headerVersion, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
 
             outputFile.outputStream().buffered().use { output ->
                 if (isCompressed) {

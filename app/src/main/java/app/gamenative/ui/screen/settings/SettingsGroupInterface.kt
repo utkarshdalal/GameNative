@@ -61,21 +61,26 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import app.gamenative.utils.LocaleHelper
-import app.gamenative.ui.component.dialog.GOGLoginDialog
-import app.gamenative.ui.component.dialog.EpicLoginDialog
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.epic.EpicAuthManager
 import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.CoroutineScope
 import timber.log.Timber
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import app.gamenative.ui.screen.auth.EpicOAuthActivity
+import app.gamenative.ui.screen.auth.GOGOAuthActivity
 
 /**
  * Shared GOG authentication handler that manages the complete auth flow.
@@ -232,11 +237,8 @@ fun SettingsGroupInterface(
         steamRegionsList.indexOfFirst { it.first == PrefManager.cellId }.takeIf { it >= 0 } ?: 0
     ) }
 
-    // GOG login dialog state
-    var openGOGLoginDialog by rememberSaveable { mutableStateOf(false) }
+    // GOG login state
     var gogLoginLoading by rememberSaveable { mutableStateOf(false) }
-    var gogLoginError by rememberSaveable { mutableStateOf<String?>(null) }
-    var gogLoginSuccess by rememberSaveable { mutableStateOf(false) }
 
     // GOG library sync state
     var gogLibrarySyncing by rememberSaveable { mutableStateOf(false) }
@@ -244,19 +246,100 @@ fun SettingsGroupInterface(
     var gogLibrarySyncSuccess by rememberSaveable { mutableStateOf(false) }
     var gogLibraryGameCount by rememberSaveable { mutableStateOf(0) }
 
-    // Epic login dialog state
-    var openEpicLoginDialog by rememberSaveable { mutableStateOf(false) }
+    // Epic login state
     var epicLoginLoading by rememberSaveable { mutableStateOf(false) }
-    var epicLoginError by rememberSaveable { mutableStateOf<String?>(null) }
-    var epicLoginSuccess by rememberSaveable { mutableStateOf(false) }
 
     // Epic logout confirmation dialog state
     var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    // Use Activity lifecycle scope for the OAuth result callback so it stays valid after
+    // returning from GOGOAuthActivity (composition may have been left → rememberCoroutineScope cancelled).
+    val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
 
-    // Listen for GOG OAuth callback
+    // GOG in-app OAuth (WebView) launcher; result delivers auth code automatically
+    val gogOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.gog_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        val code = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_AUTH_CODE)
+        if (code == null) {
+            val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.gog_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        lifecycleScope.launch {
+            handleGogAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { gogLoginLoading = it },
+                onError = { msg ->
+                    if (msg != null) {
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccess = { count ->
+                    gogLibraryGameCount = count
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.gog_login_success_title),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onDialogClose = { }
+            )
+        }
+    }
+
+    // Epic in-app OAuth (WebView) launcher; result delivers auth code automatically (lifecycleScope like GOG)
+    val epicOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.epic_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        val code = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_AUTH_CODE)
+        if (code == null) {
+            val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.epic_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        lifecycleScope.launch {
+            handleEpicAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { epicLoginLoading = it },
+                onError = { msg ->
+                    if (msg != null) {
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccess = {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.epic_login_success_title),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onDialogClose = { }
+            )
+        }
+    }
+
+    // Listen for GOG OAuth callback (e.g. from event)
     DisposableEffect(Unit) {
         Timber.d("[SettingsGOG]: Setting up GOG auth code event listener")
         val onGOGAuthCodeReceived: (AndroidEvent.GOGAuthCodeReceived) -> Unit = { event ->
@@ -268,12 +351,20 @@ fun SettingsGroupInterface(
                     authCode = event.authCode,
                     coroutineScope = coroutineScope,
                     onLoadingChange = { gogLoginLoading = it },
-                    onError = { gogLoginError = it },
+                    onError = { msg ->
+                        if (msg != null) {
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    },
                     onSuccess = { count ->
                         gogLibraryGameCount = count
-                        gogLoginSuccess = true
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.gog_login_success_title),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     },
-                    onDialogClose = { openGOGLoginDialog = false }
+                    onDialogClose = { }
                 )
             }
         }
@@ -368,9 +459,7 @@ fun SettingsGroupInterface(
                 title = { Text(text = stringResource(R.string.gog_settings_login_title)) },
                 subtitle = { Text(text = stringResource(R.string.gog_settings_login_subtitle)) },
                 onClick = {
-                    openGOGLoginDialog = true
-                    gogLoginError = null
-                    gogLoginSuccess = false
+                    gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java))
                 }
             )
         }
@@ -397,9 +486,7 @@ fun SettingsGroupInterface(
                 title = { Text(text = stringResource(R.string.epic_settings_login_title)) },
                 subtitle = { Text(text = stringResource(R.string.epic_settings_login_subtitle)) },
                 onClick = {
-                    openEpicLoginDialog = true
-                    epicLoginError = null
-                    epicLoginSuccess = false
+                    epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java))
                 }
             )
         }
@@ -690,48 +777,14 @@ fun SettingsGroupInterface(
         message = stringResource(R.string.settings_language_changing)
     )
 
-    // GOG Login Dialog
-    GOGLoginDialog(
-        visible = openGOGLoginDialog,
-        onDismissRequest = {
-            openGOGLoginDialog = false
-            gogLoginError = null
-            gogLoginLoading = false
-        },
-        onAuthCodeClick = { authCode ->
-            coroutineScope.launch {
-                handleGogAuthentication(
-                    context = context,
-                    authCode = authCode,
-                    coroutineScope = coroutineScope,
-                    onLoadingChange = { gogLoginLoading = it },
-                    onError = { gogLoginError = it },
-                    onSuccess = { count ->
-                        gogLibraryGameCount = count
-                        gogLoginSuccess = true
-                    },
-                    onDialogClose = { openGOGLoginDialog = false }
-                )
-            }
-        },
-        isLoading = gogLoginLoading,
-        errorMessage = gogLoginError
+    // GOG login loading (after returning from OAuth activity)
+    LoadingDialog(
+        visible = gogLoginLoading,
+        progress = -1f,
+        message = stringResource(R.string.main_loading)
     )
 
-    // Success message dialog
-    if (gogLoginSuccess) {
-        MessageDialog(
-            visible = true,
-            onDismissRequest = { gogLoginSuccess = false },
-            onConfirmClick = { gogLoginSuccess = false },
-            confirmBtnText = "OK",
-            icon = Icons.Default.Login,
-            title = stringResource(R.string.gog_login_success_title),
-            message = stringResource(R.string.gog_login_success_message)
-        )
-    }
-
-        // GOG logout confirmation dialog
+    // GOG logout confirmation dialog
     MessageDialog(
         visible = showGOGLogoutDialog,
         title = stringResource(R.string.gog_logout_confirm_title),
@@ -791,43 +844,12 @@ fun SettingsGroupInterface(
         message = stringResource(R.string.gog_logout_in_progress)
     )
 
-    // Epic Login Dialog
-    EpicLoginDialog(
-        visible = openEpicLoginDialog,
-        onDismissRequest = {
-            openEpicLoginDialog = false
-            epicLoginError = null
-            epicLoginLoading = false
-        },
-        onAuthCodeClick = { authCode ->
-            coroutineScope.launch {
-                handleEpicAuthentication(
-                    context = context,
-                    authCode = authCode,
-                    coroutineScope = coroutineScope,
-                    onLoadingChange = { epicLoginLoading = it },
-                    onError = { epicLoginError = it },
-                    onSuccess = { epicLoginSuccess = true },
-                    onDialogClose = { openEpicLoginDialog = false }
-                )
-            }
-        },
-        isLoading = epicLoginLoading,
-        errorMessage = epicLoginError
+    // Epic login loading (after returning from OAuth activity)
+    LoadingDialog(
+        visible = epicLoginLoading,
+        progress = -1f,
+        message = stringResource(R.string.main_loading)
     )
-
-    // Epic success message dialog
-    if (epicLoginSuccess) {
-        MessageDialog(
-            visible = true,
-            onDismissRequest = { epicLoginSuccess = false },
-            onConfirmClick = { epicLoginSuccess = false },
-            confirmBtnText = stringResource(R.string.acknowledge),
-            icon = Icons.Default.Login,
-            title = stringResource(R.string.epic_login_success_title),
-            message = stringResource(R.string.epic_login_success_message)
-        )
-    }
 
     // Epic logout confirmation dialog
     MessageDialog(
@@ -856,7 +878,7 @@ fun SettingsGroupInterface(
                             Timber.e("[SettingsEpic]: ✗ Logout failed: ${result.exceptionOrNull()?.message}")
                             android.widget.Toast.makeText(
                                 context,
-                                context.getString(R.string.epic_logout_failed),
+                                context.getString(R.string.epic_logout_failed, result.exceptionOrNull()?.message ?: "Unknown"),
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -867,7 +889,7 @@ fun SettingsGroupInterface(
                         epicLogoutLoading = false
                         android.widget.Toast.makeText(
                             context,
-                            context.getString(R.string.epic_logout_failed),
+                            context.getString(R.string.epic_logout_failed, e.message ?: "Unknown"),
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }

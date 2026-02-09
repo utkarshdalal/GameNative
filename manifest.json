@@ -649,6 +649,14 @@
         "url": "https://downloads.gamenative.app/proton-10.0-arm64ec.wcp",
         "variant": "bionic"
       }
+    ],
+    "fexcore": [
+      {
+        "id": "2601-217d039",
+        "name": "FEX 2601-217d039",
+        "url": "https://downloads.gamenative.app/FEXCore-2601-217d039.wcp",
+        "variant": "bionic"
+      }
     ]
   }
 }

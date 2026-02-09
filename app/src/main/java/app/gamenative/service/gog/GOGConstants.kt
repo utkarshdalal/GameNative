@@ -1,9 +1,11 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import android.net.Uri
 import app.gamenative.PrefManager
 import java.io.File
 import java.nio.file.Paths
+import java.security.SecureRandom
 import timber.log.Timber
 
 /**
@@ -31,8 +33,24 @@ object GOGConstants {
     // GOG uses a standard redirect URI that we can intercept
     const val GOG_REDIRECT_URI = "https://embed.gog.com/on_login_success?origin=client"
 
-    // GOG OAuth authorization URL with redirect
-    const val GOG_AUTH_LOGIN_URL = "https://auth.gog.com/auth?client_id=$GOG_CLIENT_ID&redirect_uri=$GOG_REDIRECT_URI&response_type=code&layout=client"
+    /** Base URL for OAuth login (append &state=... for CSRF protection). */
+    val GOG_AUTH_LOGIN_URL: String
+        get() = "https://auth.gog.com/auth?" +
+            "client_id=$GOG_CLIENT_ID" +
+            "&redirect_uri=${Uri.encode(GOG_REDIRECT_URI)}" +
+            "&response_type=code" +
+            "&layout=galaxy"
+
+    /**
+     * Builds a full Galaxy OAuth login URL with a fresh state parameter for CSRF protection.
+     * @return Pair of (full auth URL, state) – store state and validate it on redirect.
+     */
+    fun LoginUrlWithState(): Pair<String, String> {
+        val state = ByteArray(32).also { SecureRandom().nextBytes(it) }
+            .joinToString("") { "%02x".format(it) }
+        val url = "$GOG_AUTH_LOGIN_URL&state=${Uri.encode(state)}"
+        return url to state
+    }
 
     /**
      * Internal GOG games installation path (similar to Steam's internal path)

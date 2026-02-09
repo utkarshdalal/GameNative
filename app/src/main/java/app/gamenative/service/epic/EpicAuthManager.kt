@@ -2,6 +2,7 @@ package app.gamenative.service.epic
 
 import android.content.Context
 import app.gamenative.data.EpicCredentials
+import app.gamenative.data.EpicGameToken
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -153,6 +154,78 @@ object EpicAuthManager {
         } catch (e: Exception) {
             Timber.e(e, "Error getting Epic credentials: ${e.message}")
             Result.failure(Exception("Error getting credentials: ${e.message}", e))
+        }
+    }
+
+    /**
+     * Get game launch token for authenticating with Epic Games Services
+     * This should be called immediately before launching a game that requires online authentication
+     *
+     */
+    suspend fun getGameLaunchToken(
+        context: Context,
+        namespace: String? = null,
+        catalogItemId: String? = null,
+        requiresOwnershipToken: Boolean = false
+    ): Result<EpicGameToken> {
+        return try {
+            // Get current valid credentials (will refresh if expired)
+            val credentialsResult = getStoredCredentials(context)
+            if (credentialsResult.isFailure) {
+                return Result.failure(credentialsResult.exceptionOrNull() ?: Exception("Not authenticated"))
+            }
+
+            val credentials = credentialsResult.getOrNull()!!
+
+            // Get game exchange token (required for all games)
+            Timber.d("Getting game exchange token for launch...")
+            val exchangeTokenResult = EpicAuthClient.getGameExchangeToken(credentials.accessToken)
+            if (exchangeTokenResult.isFailure) {
+                return Result.failure(exchangeTokenResult.exceptionOrNull() ?: Exception("Failed to get exchange token"))
+            }
+            val exchangeCode = exchangeTokenResult.getOrNull()!!
+
+            // Get ownership token if required (for DRM-protected games)
+            var ownershipTokenHex: String? = null
+            if (requiresOwnershipToken) {
+                if (namespace.isNullOrEmpty() || catalogItemId.isNullOrEmpty()) {
+                    return Result.failure(Exception("Namespace and catalogItemId required for ownership token"))
+                }
+
+                Timber.d("Getting ownership token for $namespace:$catalogItemId...")
+                val ownershipResult = EpicAuthClient.getOwnershipToken(
+                    accessToken = credentials.accessToken,
+                    accountId = credentials.accountId,
+                    namespace = namespace,
+                    catalogItemId = catalogItemId
+                )
+
+                if (ownershipResult.isFailure) {
+                    val error = ownershipResult.exceptionOrNull()?.message ?: "Unknown error"
+                    Timber.e("Failed to get required ownership token: $error")
+                    return Result.failure(
+                        Exception("Failed to get ownership token for DRM-protected game: $error")
+                    )
+                } else {
+                    // Convert binary token to hex string for easier handling
+                    // Use toInt() and 0xFF to prevent sign extension of negative bytes
+                    val tokenBytes = ownershipResult.getOrNull()!!
+                    ownershipTokenHex = tokenBytes.joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+                    Timber.d("Ownership token obtained (${tokenBytes.size} bytes)")
+                }
+            }
+
+            val gameToken = EpicGameToken(
+                authCode = exchangeCode,
+                accountId = credentials.accountId,
+                ownershipToken = ownershipTokenHex
+            )
+
+            Timber.i("Successfully obtained game launch token")
+            Result.success(gameToken)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to get game launch token")
+            Result.failure(e)
         }
     }
 

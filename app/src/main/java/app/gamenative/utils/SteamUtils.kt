@@ -3,19 +3,15 @@ package app.gamenative.utils
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
-import androidx.navigation.ActivityNavigator
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
-import app.gamenative.data.LibraryItem
-import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
-import app.gamenative.enums.PathType
+import app.gamenative.enums.SpecialGameSaveMapping
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
 import com.winlator.container.Container
-import com.winlator.container.ContainerManager
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
@@ -33,7 +29,6 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.exists
 import kotlin.io.path.name
 import timber.log.Timber
 import okhttp3.*
@@ -221,6 +216,10 @@ object SteamUtils {
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, steamAppId)
+
+        // Game-specific Handling
+        ensureSaveLocationsForGames(context, steamAppId)
+
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
 
@@ -261,6 +260,9 @@ object SteamUtils {
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
         ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64)
+
+        // Game-specific Handling
+        ensureSaveLocationsForGames(context, steamAppId)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
     }
@@ -727,6 +729,10 @@ object SteamUtils {
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, steamAppId)
+
+        // Game-specific Handling
+        ensureSaveLocationsForGames(context, steamAppId)
+
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
@@ -1208,6 +1214,60 @@ object SteamUtils {
 
     fun getSteam3AccountId(): Long? {
         return SteamService.userSteamId?.accountID?.toLong()
+    }
+
+    /**
+     * Ensures save locations for games that require special handling (e.g., symlinks)
+     * This function checks if the current game needs any save location mappings
+     * and applies them automatically.
+     *
+     * Supports placeholders in paths:
+     * - {64BitSteamID} - Replaced with the user's 64-bit Steam ID
+     * - {Steam3AccountID} - Replaced with the user's Steam3 account ID
+     */
+    fun ensureSaveLocationsForGames(context: Context, steamAppId: Int) {
+        val mapping = SpecialGameSaveMapping.registry.find { it.appId == steamAppId } ?: return
+
+        try {
+            val accountId = SteamService.userSteamId?.accountID?.toLong() ?: 0L
+            val steamId64 = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
+            val steam3AccountId = accountId.toString()
+
+            val basePath = mapping.pathType.toAbsPath(context, steamAppId, accountId)
+
+            // Substitute placeholders in paths
+            val sourceRelativePath = mapping.sourceRelativePath
+                .replace("{64BitSteamID}", steamId64)
+                .replace("{Steam3AccountID}", steam3AccountId)
+            val targetRelativePath = mapping.targetRelativePath
+                .replace("{64BitSteamID}", steamId64)
+                .replace("{Steam3AccountID}", steam3AccountId)
+
+            val sourcePath = File(basePath, sourceRelativePath)
+            val targetPath = File(basePath, targetRelativePath)
+
+            if (!sourcePath.exists()) {
+                Timber.i("[${mapping.description}] Source save folder does not exist yet: ${sourcePath.absolutePath}")
+                return
+            }
+
+            if (targetPath.exists()) {
+                if (Files.isSymbolicLink(targetPath.toPath())) {
+                    Timber.i("[${mapping.description}] Symlink already exists: ${targetPath.absolutePath}")
+                    return
+                } else {
+                    Timber.w("[${mapping.description}] Target path exists but is not a symlink: ${targetPath.absolutePath}")
+                    return
+                }
+            }
+
+            targetPath.parentFile?.mkdirs()
+
+            Files.createSymbolicLink(targetPath.toPath(), sourcePath.toPath())
+            Timber.i("[${mapping.description}] Created symlink: ${targetPath.absolutePath} -> ${sourcePath.absolutePath}")
+        } catch (e: Exception) {
+            Timber.e(e, "[${mapping.description}] Failed to create save location symlink")
+        }
     }
 }
 

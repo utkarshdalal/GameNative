@@ -117,6 +117,7 @@
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>
+    <string name="extreme">Extreme</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
 
     <!-- Winlator: Win Components -->
@@ -960,31 +961,15 @@
     <string name="wine_proton_containers_in_use">Container che usano questa versione:</string>
     <string name="wine_proton_no_containers_warning">Nessun container sta attualmente usando questa versione.</string>
     <string name="wine_proton_containers_will_break">Questi container non funzioneranno più se procedi:</string>
+    <string name="auth_webview_title">Autorizzazione</string>
 
-    <!-- GOG Settings -->
+    <!-- GOG Integration -->
     <string name="gog_integration_title">Integrazione GOG (Alpha)</string>
-    <string name="gog_settings_login_title">Login GOG</string>
+    <string name="gog_settings_login_title">Accedi</string>
     <string name="gog_settings_login_subtitle">Accedi al tuo account GOG</string>
-    <string name="gog_settings_sync_subtitle_syncing">Sincronizzazione…</string>
-    <string name="gog_settings_sync_subtitle_error">Errore: %1$s</string>
-    <string name="gog_settings_sync_subtitle_success">✓ Sincronizzati %1$d giochi</string>
-    <string name="gog_settings_sync_subtitle_default">Recupera la tua libreria giochi GOG</string>
     <string name="gog_login_success_title">Login Riuscito</string>
-    <string name="gog_login_success_message">Ora sei connesso a GOG.\nSincronizzeremo la tua libreria in background.</string>
-
-    <!-- GOG Login Dialog -->
-    <string name="gog_login_title">Accedi a GOG</string>
-    <string name="gog_login_auto_auth_info">Tocca \'Apri Login GOG\' e accedi. Una volta effettuato l\'accesso, copia l\'URL e incollalo qui sotto</string>
-    <string name="gog_login_auth_example">Esempio: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
-    <string name="gog_login_open_button">Apri Login GOG</string>
-    <string name="gog_login_auth_code_label">Codice Autorizzazione o URL successo login</string>
-    <string name="gog_login_auth_code_placeholder">Incolla codice o url qui</string>
-    <string name="gog_login_button">Login</string>
     <string name="gog_login_cancel">Annulla</string>
-    <string name="gog_login_browser_error">Impossibile aprire browser</string>
-
-    <!-- GOG Logout -->
-    <string name="gog_settings_logout_title">Logout</string>
+    <string name="gog_settings_logout_title">Esci</string>
     <string name="gog_settings_logout_subtitle">Disconnettiti dal tuo account GOG</string>
     <string name="gog_logout_confirm_title">Logout da GOG?</string>
     <string name="gog_logout_confirm_message">Questo rimuoverà le tue credenziali GOG e cancellerà la tua libreria GOG da questo dispositivo. Puoi accedere nuovamente in qualsiasi momento.</string>
@@ -995,31 +980,18 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Integrazione Epic Games</string>
-    <string name="epic_settings_login_title">Accedi a Epic Games</string>
-    <string name="epic_settings_login_subtitle">Connetti il tuo account Epic Games</string>
+    <string name="epic_settings_login_title">Accedi</string>
+    <string name="epic_settings_login_subtitle">Accedi al tuo account Epic Games</string>
     <string name="epic_login_success_title">Accesso riuscito</string>
-    <string name="epic_login_success_message">Ora sei connesso a Epic Games.</string>
-    <string name="epic_logout_success">Disconnesso da Epic con successo</string>
-
-    <!-- Epic Login Dialog -->
-    <string name="epic_login_title">Accedi a Epic Games</string>
-    <string name="epic_login_auto_auth_info">Tocca \'Apri login Epic\' e accedi. Dopo l\'accesso, copia il codice di autorizzazione dalla schermata dei risultati e incollalo sotto</string>
-    <string name="epic_login_auth_example">Esempio: authorization code: "example"</string>
-    <string name="epic_login_open_button">Apri login Epic</string>
-    <string name="epic_login_auth_code_label">Codice di autorizzazione</string>
-    <string name="epic_login_auth_code_placeholder">Incolla il codice o l\'URL qui</string>
-    <string name="epic_login_button">Accedi</string>
     <string name="epic_login_cancel">Annulla</string>
-    <string name="epic_login_browser_error">Impossibile aprire il browser</string>
-
-    <!-- Epic Games Logout -->
-    <string name="epic_settings_logout_title">Esci da Epic Games</string>
+    <string name="epic_settings_logout_title">Esci</string>
     <string name="epic_settings_logout_subtitle">Disconnetti il tuo account Epic Games</string>
     <string name="epic_logout_confirm_title">Uscire da Epic Games?</string>
-    <string name="epic_logout_confirm_message">Questo rimuoverà tutti i giochi Epic Games dalla tua libreria e disconnetterà il tuo account.</string>
+    <string name="epic_logout_confirm_message">Questo rimuoverà le tue credenziali Epic Games e cancellerà la tua libreria Epic Games da questo dispositivo. Puoi accedere nuovamente in qualsiasi momento.</string>
     <string name="epic_logout_confirm">Esci</string>
+    <string name="epic_logout_success">Disconnesso da Epic Games con successo</string>
+    <string name="epic_logout_failed">Disconnessione fallita: %s</string>
     <string name="epic_logout_in_progress">Uscita da Epic Games…</string>
-    <string name="epic_logout_failed">Impossibile uscire da Epic Games, riprova</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Disinstalla gioco</string>

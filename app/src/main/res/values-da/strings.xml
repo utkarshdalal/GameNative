@@ -52,6 +52,7 @@
     <string name="intermediate">Mellemtrin</string>
     <string name="performance">Ydelse</string>
     <string name="denuvo">Denuvo</string>
+    <string name="extreme">Extreme</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -831,30 +832,14 @@
     <string name="base_app_exported">Eksporteret</string>
     <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
     <string name="base_app_export_cancelled">Eksport annulleret</string>
+    <string name="auth_webview_title">Godkendelse</string>
 
-    <!-- GOG Settings -->
+    <!-- GOG Integration -->
     <string name="gog_integration_title">GOG Integration (Alpha)</string>
-    <string name="gog_settings_login_title">GOG Login</string>
+    <string name="gog_settings_login_title">Log ind</string>
     <string name="gog_settings_login_subtitle">Log ind på din GOG-konto</string>
-    <string name="gog_settings_sync_subtitle_syncing">Synkroniserer…</string>
-    <string name="gog_settings_sync_subtitle_error">Fejl: %1$s</string>
-    <string name="gog_settings_sync_subtitle_success">✓ Synkroniseret %1$d spil</string>
-    <string name="gog_settings_sync_subtitle_default">Hent dit GOG-spilbibliotek</string>
     <string name="gog_login_success_title">Login lykkedes</string>
-    <string name="gog_login_success_message">Du er nu logget ind på GOG.\nVi vil nu synkronisere dit bibliotek i baggrunden.</string>
-
-    <!-- GOG Login Dialog -->
-    <string name="gog_login_title">Log ind på GOG</string>
-    <string name="gog_login_auto_auth_info">Tryk på \'Åbn GOG Login\' og log ind. Når du er logget ind, skal du kopiere URL\'en og indsætte nedenfor</string>
-    <string name="gog_login_auth_example">Eksempel: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
-    <string name="gog_login_open_button">Åbn GOG Login</string>
-    <string name="gog_login_auth_code_label">Godkendelseskode eller login-succes-URL</string>
-    <string name="gog_login_auth_code_placeholder">Indsæt kode eller url her</string>
-    <string name="gog_login_button">Log ind</string>
     <string name="gog_login_cancel">Annuller</string>
-    <string name="gog_login_browser_error">Kunne ikke åbne browser</string>
-
-    <!-- GOG Logout -->
     <string name="gog_settings_logout_title">Log ud</string>
     <string name="gog_settings_logout_subtitle">Log ud fra din GOG-konto</string>
     <string name="gog_logout_confirm_title">Log ud fra GOG?</string>
@@ -866,31 +851,18 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>
-    <string name="epic_settings_login_title">Log ind på Epic Games</string>
-    <string name="epic_settings_login_subtitle">Forbind din Epic Games-konto</string>
+    <string name="epic_settings_login_title">Log ind</string>
+    <string name="epic_settings_login_subtitle">Log ind på din Epic Games-konto</string>
     <string name="epic_login_success_title">Login lykkedes</string>
-    <string name="epic_login_success_message">Du er nu logget ind på Epic Games.</string>
-    <string name="epic_logout_success">Logget ud fra Epic</string>
-
-    <!-- Epic Login Dialog -->
-    <string name="epic_login_title">Log ind på Epic Games</string>
-    <string name="epic_login_auto_auth_info">Tryk på \'Åbn Epic login\' og log ind. Efter login, kopier autorisationskoden fra resultatskærmen og indsæt nedenfor</string>
-    <string name="epic_login_auth_example">Eksempel: authorization code: "example"</string>
-    <string name="epic_login_open_button">Åbn Epic login</string>
-    <string name="epic_login_auth_code_label">Autorisationskode</string>
-    <string name="epic_login_auth_code_placeholder">Indsæt kode eller URL her</string>
-    <string name="epic_login_button">Log ind</string>
     <string name="epic_login_cancel">Annuller</string>
-    <string name="epic_login_browser_error">Kunne ikke åbne browser</string>
-
-    <!-- Epic Games Logout -->
-    <string name="epic_settings_logout_title">Log ud fra Epic Games</string>
-    <string name="epic_settings_logout_subtitle">Afbryd din Epic Games-konto</string>
+    <string name="epic_settings_logout_title">Log ud</string>
+    <string name="epic_settings_logout_subtitle">Log ud fra din Epic Games-konto</string>
     <string name="epic_logout_confirm_title">Log ud fra Epic Games?</string>
-    <string name="epic_logout_confirm_message">Dette vil fjerne alle Epic Games-spil fra dit bibliotek og afbryde din konto.</string>
+    <string name="epic_logout_confirm_message">Dette vil fjerne dine Epic Games-legitimationsoplysninger og rydde dit Epic Games-bibliotek på denne enhed. Du kan logge ind igen når som helst.</string>
     <string name="epic_logout_confirm">Log ud</string>
+    <string name="epic_logout_success">Logget ud fra Epic Games</string>
+    <string name="epic_logout_failed">Kunne ikke logge ud: %s</string>
     <string name="epic_logout_in_progress">Logger ud fra Epic Games…</string>
-    <string name="epic_logout_failed">Kunne ikke logge ud fra Epic Games, prøv igen</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Afinstallér spil</string>

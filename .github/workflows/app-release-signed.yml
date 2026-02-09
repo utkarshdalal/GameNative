@@ -63,6 +63,7 @@ jobs:
         cat <<EOF > local.properties
         POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
         POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
+        STEAMGRIDDB_API_KEY=${{ secrets.STEAMGRIDDB_API_KEY }}
         SUPABASE_URL=${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
         EOF

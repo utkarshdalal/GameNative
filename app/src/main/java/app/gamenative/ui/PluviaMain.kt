@@ -51,6 +51,8 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.ConnectingServersScreen
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -208,19 +210,27 @@ fun PluviaMain(
 
                                     // Extract game ID from appId (format: "STEAM_<id>" or "CUSTOM_GAME_<id>")
                                     val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
+                                    val gameSource = ContainerUtils.extractGameSourceFromContainerId(launchRequest.appId)
 
-                                    // First check if it's a Steam game and if it's installed
-                                    val isSteamInstalled = SteamService.isAppInstalled(gameId)
+                                    val isInstalled = when (gameSource) {
+                                        GameSource.STEAM -> {
+                                            SteamService.isAppInstalled(gameId)
+                                        }
 
-                                    // If not installed as Steam game, check if it's a custom game
-                                    val customGamePath = if (!isSteamInstalled) {
-                                        CustomGameScanner.findCustomGameById(gameId)
-                                    } else {
-                                        null
+                                        GameSource.GOG -> {
+                                            GOGService.isGameInstalled(gameId.toString())
+                                        }
+
+                                        GameSource.EPIC -> {
+                                            EpicService.isGameInstalled(gameId)
+                                        }
+
+                                        GameSource.CUSTOM_GAME -> {
+                                            CustomGameScanner.isGameInstalled(gameId)
+                                        }
                                     }
 
-                                    // If neither Steam installed nor custom game found, show error
-                                    if (!isSteamInstalled && customGamePath == null) {
+                                    if (!isInstalled) {
                                         val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
                                         Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
 
@@ -235,27 +245,13 @@ fun PluviaMain(
                                         return@let
                                     }
 
-                                    // If it's a custom game, update the appId to use CUSTOM_GAME format
-                                    val finalAppId = if (customGamePath != null && !isSteamInstalled) {
-                                        "${GameSource.CUSTOM_GAME.name}_$gameId"
-                                    } else {
-                                        launchRequest.appId
-                                    }
-
-                                    // Update launchRequest with the correct appId if it was changed
-                                    val updatedLaunchRequest = if (finalAppId != launchRequest.appId) {
-                                        launchRequest.copy(appId = finalAppId)
-                                    } else {
-                                        launchRequest
-                                    }
-
-                                    if (updatedLaunchRequest.containerConfig != null) {
+                                    if (launchRequest.containerConfig != null) {
                                         IntentLaunchManager.applyTemporaryConfigOverride(
                                             context,
-                                            updatedLaunchRequest.appId,
-                                            updatedLaunchRequest.containerConfig,
+                                            launchRequest.appId,
+                                            launchRequest.containerConfig,
                                         )
-                                        Timber.tag("IntentLaunch").i("Applied container config override for app ${updatedLaunchRequest.appId}")
+                                        Timber.tag("IntentLaunch").i("Applied container config override for app ${launchRequest.appId}")
                                     }
 
                                     if (navController.currentDestination?.route != PluviaScreen.Home.route) {
@@ -266,11 +262,11 @@ fun PluviaMain(
                                         }
                                     }
 
-                                    viewModel.setLaunchedAppId(updatedLaunchRequest.appId)
+                                    viewModel.setLaunchedAppId(launchRequest.appId)
                                     viewModel.setBootToContainer(false)
                                     preLaunchApp(
                                         context = context,
-                                        appId = updatedLaunchRequest.appId,
+                                        appId = launchRequest.appId,
                                         setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                                         setLoadingProgress = viewModel::setLoadingDialogProgress,
                                         setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -1235,6 +1231,7 @@ fun preLaunchApp(
         // For Epic Games, sync cloud saves before launch
         val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
         if (isEpicGame) {
+            // Handle Cloud Saves
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
             // Sync cloud saves (download latest saves before playing)
             Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
@@ -1249,6 +1246,11 @@ fun preLaunchApp(
             } else {
                 Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
+
+            // Delete Ownership Token if exists
+            Timber.tag("Epic").i("[Ownership Tokens] Cleaning up launch tokens for Epic games...")
+            EpicService.cleanupLaunchTokens(context)
+
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

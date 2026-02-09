@@ -116,6 +116,7 @@
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>
+    <string name="extreme">Extreme</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
@@ -969,30 +970,14 @@
 	<string name="wine_proton_containers_in_use">Containere care folosesc această versiune:</string>
 	<string name="wine_proton_no_containers_warning">Niciun container nu folosește această versiune.</string>
 	<string name="wine_proton_containers_will_break">Aceste containere nu vor mai funcționa dacă continui:</string>
+	<string name="auth_webview_title">Autorizare</string>
 
-	<!-- GOG Settings -->
+	<!-- GOG Integration -->
 	<string name="gog_integration_title">Integrare GOG (Alpha)</string>
-	<string name="gog_settings_login_title">Autentificare GOG</string>
+	<string name="gog_settings_login_title">Autentificare</string>
 	<string name="gog_settings_login_subtitle">Autentifică-te în contul tău GOG</string>
-	<string name="gog_settings_sync_subtitle_syncing">Se sincronizează…</string>
-	<string name="gog_settings_sync_subtitle_error">Eroare: %1$s</string>
-	<string name="gog_settings_sync_subtitle_success">✓ S-au sincronizat %1$d jocuri</string>
-	<string name="gog_settings_sync_subtitle_default">Preia biblioteca ta de jocuri GOG</string>
 	<string name="gog_login_success_title">Autentificare reușită</string>
-	<string name="gog_login_success_message">Ești acum autentificat în GOG.\nBiblioteca ta va fi sincronizată în fundal.</string>
-
-	<!-- GOG Login Dialog -->
-	<string name="gog_login_title">Autentificare GOG</string>
-	<string name="gog_login_auto_auth_info">Apasă „Open GOG Login” și autentifică-te. După autentificare, copiază URL-ul și lipește-l mai jos</string>
-	<string name="gog_login_auth_example">Exemplu: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
-	<string name="gog_login_open_button">Open GOG Login</string>
-	<string name="gog_login_auth_code_label">Cod de autorizare sau URL de succes</string>
-	<string name="gog_login_auth_code_placeholder">Lipește codul sau URL-ul aici</string>
-	<string name="gog_login_button">Autentificare</string>
 	<string name="gog_login_cancel">Anulează</string>
-	<string name="gog_login_browser_error">Nu s-a putut deschide browserul</string>
-
-	<!-- GOG Logout -->
 	<string name="gog_settings_logout_title">Deconectare</string>
 	<string name="gog_settings_logout_subtitle">Deconectează-te din contul tău GOG</string>
 	<string name="gog_logout_confirm_title">Te deconectezi de la GOG?</string>
@@ -1004,31 +989,18 @@
 
 	<!-- Epic Games Integration -->
 	<string name="epic_integration_title">Integrare Epic Games</string>
-	<string name="epic_settings_login_title">Autentificare Epic Games</string>
-	<string name="epic_settings_login_subtitle">Conectează contul tău Epic Games</string>
+	<string name="epic_settings_login_title">Autentificare</string>
+	<string name="epic_settings_login_subtitle">Autentifică-te în contul tău Epic Games</string>
 	<string name="epic_login_success_title">Autentificare reușită</string>
-	<string name="epic_login_success_message">Ești acum conectat la Epic Games.</string>
-	<string name="epic_logout_success">Deconectat de la Epic cu succes</string>
-
-	<!-- Epic Login Dialog -->
-	<string name="epic_login_title">Autentificare Epic Games</string>
-	<string name="epic_login_auto_auth_info">Apasă \'Deschide autentificare Epic\' și autentifică-te. După autentificare, copiază codul de autorizare din ecranul de rezultat și lipește-l mai jos</string>
-	<string name="epic_login_auth_example">Exemplu: authorization code: "example"</string>
-	<string name="epic_login_open_button">Deschide autentificare Epic</string>
-	<string name="epic_login_auth_code_label">Cod de autorizare</string>
-	<string name="epic_login_auth_code_placeholder">Lipește codul sau URL-ul aici</string>
-	<string name="epic_login_button">Autentificare</string>
 	<string name="epic_login_cancel">Anulează</string>
-	<string name="epic_login_browser_error">Nu s-a putut deschide browserul</string>
-
-	<!-- Epic Games Logout -->
-	<string name="epic_settings_logout_title">Deconectare Epic Games</string>
-	<string name="epic_settings_logout_subtitle">Deconectează contul tău Epic Games</string>
+	<string name="epic_settings_logout_title">Deconectare</string>
+	<string name="epic_settings_logout_subtitle">Deconectează-te din contul tău Epic Games</string>
 	<string name="epic_logout_confirm_title">Te deconectezi de la Epic Games?</string>
-	<string name="epic_logout_confirm_message">Aceasta va elimina toate jocurile Epic Games din biblioteca ta și va deconecta contul tău.</string>
+	<string name="epic_logout_confirm_message">Aceasta va elimina datele tale Epic Games și va șterge biblioteca Epic Games de pe acest dispozitiv. Te poți autentifica din nou oricând.</string>
 	<string name="epic_logout_confirm">Deconectare</string>
+	<string name="epic_logout_success">Deconectat de la Epic Games cu succes</string>
+	<string name="epic_logout_failed">Deconectare eșuată: %s</string>
 	<string name="epic_logout_in_progress">Se deconectează de la Epic Games…</string>
-	<string name="epic_logout_failed">Deconectare eșuată de la Epic Games, încearcă din nou</string>
 
 	<!-- Epic Install/Uninstall -->
 	<string name="epic_uninstall_game_title">Dezinstalare joc</string>

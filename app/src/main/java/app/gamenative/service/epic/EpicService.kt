@@ -9,6 +9,7 @@ import app.gamenative.data.EpicCredentials
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.EpicGameToken
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
@@ -404,6 +405,32 @@ class EpicService : Service() {
             } else {
                 Result.failure(Exception("Game not found: $appId"))
             }
+        }
+
+        // ==========================================================================
+        // Game Launcher Helpers
+        // ==========================================================================
+
+        suspend fun getGameLaunchToken(
+            context: Context,
+            namespace: String? = null,
+            catalogItemId: String? = null,
+            requiresOwnershipToken: Boolean = false
+        ): Result<EpicGameToken> {
+            return EpicAuthManager.getGameLaunchToken(context, namespace, catalogItemId, requiresOwnershipToken)
+        }
+
+        suspend fun buildLaunchParameters(
+            context: Context,
+            game: EpicGame,
+            offline: Boolean = false,
+            languageCode: String = "en-US"
+        ): Result<List<String>> {
+            return EpicGameLauncher.buildLaunchParameters(context, game, offline, languageCode)
+        }
+
+        fun cleanupLaunchTokens(context: Context) {
+            EpicGameLauncher.cleanupOwnershipTokens(context)
         }
 
         // ==========================================================================

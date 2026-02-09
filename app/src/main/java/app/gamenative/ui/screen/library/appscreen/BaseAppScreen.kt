@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -149,6 +150,10 @@ abstract class BaseAppScreen {
         return getGameDisplayInfo(context, libraryItem).name
     }
 
+    protected fun getGameSource(libraryItem: LibraryItem): GameSource {
+        return libraryItem.gameSource
+    }
+
     /**
      * Get the game ID for shortcuts depending on app type
      */
@@ -252,6 +257,7 @@ abstract class BaseAppScreen {
         context: Context,
         libraryItem: LibraryItem,
     ): AppMenuOption? {
+        val gameSource = getGameSource(libraryItem)
         val gameId = getGameId(libraryItem)
         val gameName = getGameName(context, libraryItem)
         val iconUrl = getIconUrl(context, libraryItem)
@@ -265,6 +271,7 @@ abstract class BaseAppScreen {
                             context = context,
                             gameId = gameId,
                             label = gameName,
+                            gameSource = gameSource,
                             iconUrl = iconUrl,
                         )
                         withContext(Dispatchers.Main) {
