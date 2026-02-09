@@ -1109,6 +1109,22 @@ fun preLaunchApp(
                     context = context,
                     "proton-9.0-x86_64.txz",
                 ).await()
+            }else if (container.wineVersion.contains("proton-10.0-x86_64")) {
+                val protonVersion = "proton-10.0-x86_64"
+                val imageFs = ImageFs.find(context)
+                val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
+                val binDir = File(outFile, "bin")
+
+                if (!binDir.exists() || !binDir.isDirectory) {
+                    setLoadingMessage("Extracting x86_64 Proton 10.0")
+                    setLoadingProgress(-1f)
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.XZ,
+                        context.assets,
+                        "$protonVersion.txz",
+                        outFile
+                    )
+                }
             }
             if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
                 val protonVersion = container.wineVersion
