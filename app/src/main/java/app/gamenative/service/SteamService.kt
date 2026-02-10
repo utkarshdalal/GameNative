@@ -1003,15 +1003,21 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
             return getAppInfoOf(appId)?.let { appInfo ->
                 val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
-                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language ${container.language}")
+                val containerLanguage = if (container != null) {
+                    container.language
+                } else {
+                    PrefManager.containerLanguage
+                }
 
-                val depots = getDownloadableDepots(appId = appId, preferredLanguage = container.language)
+                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage")
+
+                val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
                 downloadApp(
                     appId = appId,
                     downloadableDepots = depots,
                     userSelectedDlcAppIds = dlcAppIds,
                     branch = "public",
-                    containerLanguage = container.language,
+                    containerLanguage = containerLanguage,
                     isUpdateOrVerify = isUpdateOrVerify)
             }
         }
