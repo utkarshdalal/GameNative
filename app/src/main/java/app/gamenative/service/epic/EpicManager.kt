@@ -336,7 +336,7 @@ class EpicManager @Inject constructor(
                     }
 
                     // Skip invalid platform (such as Android versions)
-                    if(!platforms.contains("Win32") && !platforms.contains("Windows")){ 
+                    if(platforms.isNotEmpty() && !platforms.contains("Win32") && !platforms.contains("Windows")){ 
                         Timber.tag("Epic").d("Skipping due to invalid platform: $appName (namespace=$namespace, sandbox=$sandboxType)")
                         continue
                     }
