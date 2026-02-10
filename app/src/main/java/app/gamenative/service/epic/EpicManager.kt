@@ -551,6 +551,12 @@ class EpicManager @Inject constructor(
             val release = releaseInfo.getJSONObject(0)
             releaseDate = release.optString("dateAdded", "")
         }
+        val platformList = data.optJSONArray("platform")
+        val platform = if(platformList.contains("Windows") || platformList.contains("Win32")) { 
+            "Windows"
+        } else { 
+            "Other"
+        }
 
         // Parse genres/tags from categories
         val genresList = mutableListOf<String>()
@@ -587,11 +593,7 @@ class EpicManager @Inject constructor(
             false
         }
 
-        val platform = if(parsedAttributes.platform.contains("Windows") || parsedAttributes.platform.contains("Win32")) { 
-            "Windows"
-        } else { 
-            "Other"
-        }
+
 
         Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
 
