@@ -489,7 +489,7 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Użyj Legacy DRM</string>
     <string name="unpack_files">Rozpakuj pliki</string>
-    <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error\'. Może zmniejszyć FPS.</string>
+    <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
@@ -590,7 +590,7 @@
     <string name="driver_manager">Menedżer sterowników</string>
     <string name="select_a_driver">Wybierz sterownik</string>
     <string name="import_zip_from_device">Importuj ZIP z urządzenia</string>
-    
+
     <!-- Contents Manager -->
     <string name="contents_manager">Menedżer zawartości</string>
     <string name="import_wcp_from_device">Importuj .wcp z urządzenia</string>

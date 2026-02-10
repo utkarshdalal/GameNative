@@ -331,19 +331,10 @@ object SteamUtils {
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
         iniFile.parentFile?.mkdirs()
 
-        // Only include DllsToInjectFolder if unpackFiles is enabled
-        val injectionSection = if (container.isUnpackFiles) {
-            """
-                [Injection]
-                IgnoreLoaderArchDifference=1
-                DllsToInjectFolder=extra_dlls
-            """
-        } else {
-            """
+        val injectionSection = """
                 [Injection]
                 IgnoreLoaderArchDifference=1
             """
-        }
 
         iniFile.writeText(
             """
@@ -688,18 +679,10 @@ object SteamUtils {
         val imageFs = ImageFs.find(context)
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val cfgFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steam.cfg")
-        if (container.isAllowSteamUpdates){
-            Timber.i("Allowing steam updates, deleting the steam.cfg file")
-            if (cfgFile.exists()){
-                Timber.i("Allowing steam updates and file exists, deleting the steam.cfg file")
-                cfgFile.delete()
-            }
-        } else {
-            if (!cfgFile.exists()){
-                cfgFile.parentFile?.mkdirs()
-                Files.createFile(cfgFile.toPath())
-                cfgFile.writeText("BootStrapperInhibitAll=Enable\nBootStrapperForceSelfUpdate=False")
-            }
+        if (!cfgFile.exists()){
+            cfgFile.parentFile?.mkdirs()
+            Files.createFile(cfgFile.toPath())
+            cfgFile.writeText("BootStrapperInhibitAll=Enable\nBootStrapperForceSelfUpdate=False")
         }
 
         // Update or modify localconfig.vdf

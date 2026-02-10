@@ -387,6 +387,7 @@ object ContainerUtils {
             container.getExtra("language", "english")
         }
         val previousForceDlc: Boolean = container.isForceDlc
+        val previousUnpackFiles: Boolean = container.isUnpackFiles
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
@@ -449,6 +450,9 @@ object ContainerUtils {
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
+        if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
+            container.setNeedsUnpacking(true)
+        }
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
@@ -1095,6 +1099,15 @@ object ContainerUtils {
         }
 
         return executables
+    }
+
+    /**
+     * Filters a list of exe paths to exclude system/utility executables (e.g. uninstallers, setup, crash handlers).
+     * Used when unpackFiles is enabled to determine which exes to run Steamless on.
+     */
+    fun filterExesForUnpacking(exePaths: List<String>): List<String> = exePaths.filter { path ->
+        val fileName = path.substringAfterLast('/').substringAfterLast('\\').lowercase()
+        !isSystemExecutable(fileName)
     }
 
     /**

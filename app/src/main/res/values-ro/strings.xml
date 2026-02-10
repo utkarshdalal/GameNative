@@ -482,7 +482,7 @@
     <!-- Container Configuration: Steam Integration -->
 	<string name="use_legacy_drm">Folosește DRM vechi</string>
 	<string name="unpack_files">Dezarhivează fișiere</string>
-	<string name="unpack_files_description">Folosește doar dacă primești \'Application Load Error\'. Poate reduce FPS.</string>
+	<string name="unpack_files_description">Folosește doar dacă primești \'Application Load Error 3:0000065432\'.</string>
 	<string name="force_dlc">Forțează DLC</string>
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
