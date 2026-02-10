@@ -127,7 +127,7 @@ class EpicService : Service() {
                     if (instance != null) {
                         // Clear all nonInstalled Epic games from database
                         instance.epicManager.deleteAllNonInstalledGames()
-                        Timber.tag("Epic").i("All Epic games removed from database")
+                        Timber.tag("Epic").i("All Non-installed Epic games removed from database")
 
                         // Stop the service
                         stop()
