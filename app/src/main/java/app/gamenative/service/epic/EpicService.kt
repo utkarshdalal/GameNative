@@ -125,8 +125,8 @@ class EpicService : Service() {
                     // Get instance to clean up service-specific data
                     val instance = getInstance()
                     if (instance != null) {
-                        // Clear all Epic games from database
-                        instance.epicManager.deleteAllGames()
+                        // Clear all nonInstalled Epic games from database
+                        instance.epicManager.deleteAllNonInstalledGames()
                         Timber.tag("Epic").i("All Epic games removed from database")
 
                         // Stop the service
@@ -452,8 +452,6 @@ class EpicService : Service() {
                 null
             }
         }
-
-
     }
 
     private lateinit var notificationHelper: NotificationHelper

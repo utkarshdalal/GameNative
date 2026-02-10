@@ -64,8 +64,9 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE is_dlc = false AND namespace != 'ue' AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<EpicGame>>
 
-    @Query("DELETE FROM epic_games")
-    suspend fun deleteAll()
+    // Only delete non-installed games from DB - Need to preserve any currently installed games.
+    @Query("DELETE FROM epic_games WHERE is_installed = false")
+    suspend fun deleteAllNonInstalledGames()
 
     @Query("SELECT COUNT(*) FROM epic_games")
     fun getCount(): Flow<Int>

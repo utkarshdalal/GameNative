@@ -618,9 +618,9 @@ class EpicManager @Inject constructor(
         )
     }
 
-    suspend fun deleteAllGames() {
+    suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
-            epicGameDao.deleteAll()
+            epicGameDao.deleteAllNonInstalledGames()
         }
     }
 
