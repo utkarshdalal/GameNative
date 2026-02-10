@@ -49,7 +49,7 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE app_name = :appName")
     suspend fun getByAppName(appName: String): EpicGame?
 
-    @Query("SELECT * FROM epic_games WHERE is_dlc = false AND namespace != 'ue' ORDER BY title ASC")
+    @Query("SELECT * FROM epic_games WHERE is_dlc = false AND namespace != 'ue' AND platform = 'Windows' ORDER BY title ASC")
     fun getAll(): Flow<List<EpicGame>>
 
     @Query("SELECT * FROM epic_games WHERE is_installed = :isInstalled ORDER BY title ASC")
