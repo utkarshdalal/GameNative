@@ -587,6 +587,12 @@ class EpicManager @Inject constructor(
             false
         }
 
+        val platform = if(parsedAttributes.platform.contains("Windows") || parsedAttributes.platform.contains("Win32")) { 
+            "Windows"
+        } else { 
+            "Other"
+        }
+
         Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
 
         return EpicGame(
@@ -609,7 +615,7 @@ class EpicManager @Inject constructor(
             tags = tagsList,
             isInstalled = false, // Will be updated from local database
             installPath = "",
-            platform = "Windows",
+            platform = platform,
             version = "",
             executable = executable,
             installSize = 0,
