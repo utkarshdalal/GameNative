@@ -593,8 +593,6 @@ class EpicManager @Inject constructor(
             false
         }
 
-
-
         Timber.d("Game $appName - CloudSaveFolder: $saveFolder, CloudIncludeList: ${parsedAttributes.cloudIncludeList}, CanRunOffline: $canRunOffline")
 
         return EpicGame(
