@@ -320,10 +320,17 @@ class EpicManager @Inject constructor(
                     val catalogItemId = record.getString("catalogItemId")
                     val sandboxType = record.optString("sandboxType", "")
                     val country = record.optString("country", "")
+                    val platforms = record.optArray("platform", [])
 
                     // Skip UE assets, private sandboxes, and broken entries
                     if (namespace == "ue" || sandboxType == "PRIVATE" || appName == "1") {
-                        Timber.tag("Epic").d("Skipping $appName (namespace=$namespace, sandbox=$sandboxType)")
+                        Timber.tag("Epic").d("Skipping due to invalid app: $appName (namespace=$namespace, sandbox=$sandboxType)")
+                        continue
+                    }
+
+                    // Skip invalid platform (such as Android versions)
+                    if(!platforms.contains("Win32") && !platforms.contains("Windows")){ 
+                        Timber.tag("Epic").d("Skipping due to invalid platform: $appName (namespace=$namespace, sandbox=$sandboxType)")
                         continue
                     }
 
