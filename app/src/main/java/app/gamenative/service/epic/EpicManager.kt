@@ -320,7 +320,14 @@ class EpicManager @Inject constructor(
                     val catalogItemId = record.getString("catalogItemId")
                     val sandboxType = record.optString("sandboxType", "")
                     val country = record.optString("country", "")
-                    val platforms = record.optArray("platform", [])
+                    val platformsArray = record.optJSONArray("platform")
+                    val platforms = buildList {
+                        if (platformsArray != null) {
+                            for (j in 0 until platformsArray.length()) {
+                                add(platformsArray.getString(j))
+                            }
+                        }
+                    }
 
                     // Skip UE assets, private sandboxes, and broken entries
                     if (namespace == "ue" || sandboxType == "PRIVATE" || appName == "1") {
