@@ -25,9 +25,16 @@ You can support GameNative on Ko-fi at https://ko-fi.com/gamenative
 
 ## Building
 ### IF YOU JUST WANT TO USE THE APP, PLEASE SEE THE HOW TO USE SECTION ABOVE. THIS IS ONLY NEEDED IF YOU WANT TO CONTRIBUTE FOR DEVELOPMENT.
-1. I use a normal build in Android studio. Hit me up if you can't figure out how to build.
-2. You may need to download some additional files and place them in the `src/main/assets` folder.
-These files are available on request for legitimate development purposes. Please write to me on Discord and I can share them with you there.
+
+1. Open the project in Android Studio and build normally. Requires Android NDK `22.1.7171670` and Java 17+.
+
+2. **Runtime assets (optional):** The app compiles without these, but you need them to test game launching:
+   - `imagefs_gamenative.txz` - Linux root filesystem with Wine/Proton (~300-500MB)
+   - `imagefs_patches_gamenative.tzst` - Filesystem patches
+   - `imagefs_bionic.txz` - Alternative bionic-based root filesystem
+   
+   Download automatically on first app launch, or run: `./scripts/download-dev-assets.sh`
+
 3. **SteamGridDB API Key (Optional):** To enable automatic fetching of game images for Custom Games, add your SteamGridDB API key to `local.properties`:
    ```
    STEAMGRIDDB_API_KEY=your_api_key_here
