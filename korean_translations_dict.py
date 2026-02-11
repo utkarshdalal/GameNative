@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Korean translations for GameNative Android app
-Complete dictionary of 501 untranslated strings
+Complete dictionary of 501 translation entries for previously untranslated strings
 """
 
 KOREAN_TRANSLATIONS = {

@@ -106,15 +106,19 @@ def generate_complete_korean_strings():
     return len(output_lines), translated_count, untranslated_count
 
 if __name__ == '__main__':
+    # Read source file to get expected line count
+    with open('app/src/main/res/values/strings.xml', 'r', encoding='utf-8') as f:
+        expected_lines = len(f.readlines())
+    
     line_count, translated, untranslated = generate_complete_korean_strings()
     
     if untranslated > 0:
         print(f"\nERROR: {untranslated} strings still untranslated!")
         sys.exit(1)
-    elif line_count != 1020:
-        print(f"\nERROR: Expected 1020 lines, got {line_count}")
+    elif line_count != expected_lines:
+        print(f"\nERROR: Expected {expected_lines} lines, got {line_count}")
         sys.exit(1)
     else:
-        print("\nSUCCESS: All strings translated, file has correct line count!")
+        print(f"\nSUCCESS: All strings translated, file has correct line count ({expected_lines})!")
         sys.exit(0)
 
