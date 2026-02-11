@@ -124,9 +124,9 @@ class GOGManager @Inject constructor(
         }
     }
 
-    suspend fun deleteAllGames() {
+    suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
-            gogGameDao.deleteAll()
+            gogGameDao.deleteAllNonInstalledGames()
         }
     }
 
