@@ -319,62 +319,62 @@
     <string name="settings_save_logcat_title">logcat 저장</string>
 
     <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
-        Handling of flags on CALL/RET opcodes<br /><br />
-        <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
-        <b>1</b> : Most RET will need flags, most CALLS will not<br />
-        <b>2</b> : All CALL/RET will need flags (slower)
+        CALL/RET 명령어의 플래그 처리<br /><br />
+        <b>0</b> : CALL/RET을 플래그가 필요하지 않은 것처럼 처리 (빠르지만 불안정)<br />
+        <b>1</b> : 대부분의 RET은 플래그가 필요하고, 대부분의 CALL은 필요하지 않음<br />
+        <b>2</b> : 모든 CALL/RET이 플래그를 필요로 함 (느림)
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_fastnan">x86과 같은 -NAN 생성</string>
     <string name="box86_64_env_var_help__dynarec_fastround">정확한 x86 반올림 생성</string>
     <string name="box86_64_env_var_help__dynarec_x87double">x87 에뮬레이션에 Float/Double 사용</string>
     <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
-        Dynarec building BigBlock<br /><br />
-        <b>0</b> : Don\'t try to build block as big as possible<br />
-        <b>1</b> : Build Dynarec block as big as possible<br />
-        <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
-        <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
+        Dynarec BigBlock 빌드<br /><br />
+        <b>0</b> : 가능한 한 큰 블록을 빌드하려고 시도하지 않음<br />
+        <b>1</b> : 가능한 한 큰 Dynarec 블록을 빌드<br />
+        <b>2</b> : 더 큰 Dynarec 블록 빌드 (블록이 겹칠 때 계속, ELF 메모리의 블록에만 해당)<br />
+        <b>3</b> : 더 큰 Dynarec 블록 빌드 (블록이 겹칠 때 계속, 모든 유형의 메모리에 해당)
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
-        Simulation of Strong Memory model<br /><br />
-        <b>0</b> : Don\'t try anything special<br />
-        <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
-        <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
-        <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
+        강한 메모리 모델 시뮬레이션<br /><br />
+        <b>0</b> : 특별한 처리를 시도하지 않음<br />
+        <b>1</b> : 메모리에 쓸 때 일부 메모리 배리어 활성화 (일부 MOV 명령어에 대해)<br />
+        <b>2</b> : 옵션 1에 더해 MOV를 사용하여 메모리에 쓸 때마다 메모리 배리어 추가<br />
+        <b>3</b> : 옵션 2에 더해 메모리에서 읽을 때와 일부 SSE/SSE2 명령어에 메모리 배리어 추가
     ]]>    </string>
     <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
-        Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
-        <b>0</b> : Use regular safe barriers<br />
-        <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+        강한 메모리 에뮬레이션의 성능 영향을 줄이기 위해 메모리 배리어 조정<br /><br />
+        <b>0</b> : 일반적인 안전 배리어 사용<br />
+        <b>1</b> : 약한 배리어를 사용하여 약간의 성능 향상<br />
+        <b>2</b> : 약한 배리어 사용, 추가로 마지막 쓰기 배리어 비활성화]]></string>
     <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
-        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
-        <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+        정렬된 원자 연산만 생성 (현재 Arm64에서만 사용 가능)<br /><br />
+        <b>0</b> : 정렬되지 않은 원자 연산 처리 코드 생성<br />
+        <b>1</b> : 정렬된 원자 연산만 생성, 더 빠르고 코드 크기가 작지만 정렬된 데이터 주소에서 작동하는 LOCK 접두사 명령어에 대해 SIGBUS를 발생시킴]]></string>
     <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
+        지연된 플래그 사용 활성화 또는 비활성화<br /><br />
+        <b>0</b> : 지연된 플래그 사용 비활성화<br />
+        <b>1</b> : 지연된 플래그 사용 활성화]]></string>
     <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
-        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
-        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
-        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+        보호되지 않고 잠재적으로 더러워진 블록의 계속 실행 허용<br /><br />
+        <b>0</b> : 보호되지 않고 잠재적으로 더러워진 블록의 계속 실행을 허용하지 않음<br />
+        <b>1</b> : 코드와 같은 페이지에 데이터를 쓰는 다이나블록의 계속 실행 허용. 일부 게임의 로딩 시간이 빨라질 수 있지만 예기치 않은 충돌이 발생할 수도 있음<br />
+        <b>2</b> : HotPage를 감지하면 해당 페이지를 NEVERCLEAN으로 플래그 지정하여 쓰기 보호되지 않지만 해당 페이지에서 빌드된 블록은 항상 테스트됨. 이 방식이 더 빠를 수 있음 (하지만 일부 SMC 경우가 감지되지 않을 수 있음)]]></string>
     <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
+        네이티브 플래그 사용 활성화 또는 비활성화<br /><br />
+        <b>0</b> : 네이티브 플래그 사용하지 않음<br />
+        <b>1</b> : 가능한 경우 네이티브 플래그 사용]]></string>
     <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
-        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
-        <b>0</b> : Ignore x86 PAUSE instruction.<br />
-        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
-        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
-        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
+        x86 PAUSE 에뮬레이션 활성화, 스핀락의 성능 향상에 도움이 될 수 있음<br /><br />
+        <b>0</b> : x86 PAUSE 명령어 무시<br />
+        <b>1</b> : YIELD를 사용하여 x86 PAUSE 명령어 에뮬레이트<br />
+        <b>2</b> : WFI를 사용하여 x86 PAUSE 명령어 에뮬레이트<br />
+        <b>3</b> : SEVL+WFE를 사용하여 x86 PAUSE 명령어 에뮬레이트
     ]]></string>
     <string name="box86_64_env_var_help__avx"><![CDATA[
-        AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
-        <b>0</b> : Disable AVX extension<br />
-        <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
-        <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
+        AVX 및 AVX2 구현, BMI1, BMI2, ADX, FMA, F16C 및 RDANDR 확장 기능 포함<br /><br />
+        <b>0</b> : AVX 확장 기능 비활성화<br />
+        <b>1</b> : AVX, BMI1, F16C 및 VAES 확장 기능 활성화<br />
+        <b>2</b> : 옵션 1에 더해 AVX2, BMI2, FMA, ADX, VPCLMULQDQ 및 RDRAND 활성화<br />\
     ]]></string>
     <string name="box86_64_env_var_help__maxcpu">box64가 프로그램에 표시하는 최대 CPU 수</string>
     <string name="box86_64_env_var_help__unityplayer">UnityPlayer.dll을 감지하고 strongmem 설정 적용</string>
