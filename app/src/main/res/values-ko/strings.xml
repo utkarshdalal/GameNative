@@ -374,7 +374,7 @@
         AVX 및 AVX2 구현, BMI1, BMI2, ADX, FMA, F16C 및 RDANDR 확장 기능 포함<br /><br />
         <b>0</b> : AVX 확장 기능 비활성화<br />
         <b>1</b> : AVX, BMI1, F16C 및 VAES 확장 기능 활성화<br />
-        <b>2</b> : 옵션 1에 더해 AVX2, BMI2, FMA, ADX, VPCLMULQDQ 및 RDRAND 활성화<br />\
+        <b>2</b> : 옵션 1에 더해 AVX2, BMI2, FMA, ADX, VPCLMULQDQ 및 RDRAND 활성화<br />
     ]]></string>
     <string name="box86_64_env_var_help__maxcpu">box64가 프로그램에 표시하는 최대 CPU 수</string>
     <string name="box86_64_env_var_help__unityplayer">UnityPlayer.dll을 감지하고 strongmem 설정 적용</string>
