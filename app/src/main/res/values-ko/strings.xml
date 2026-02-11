@@ -490,7 +490,7 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">레거시 DRM 사용</string>
     <string name="unpack_files">파일 압축 해제</string>
-    <string name="unpack_files_description">'Application Load Error 3:0000065432'가 발생하는 경우에만 사용하세요.</string>
+    <string name="unpack_files_description">\'Application Load Error 3:0000065432\'가 발생하는 경우에만 사용하세요.</string>
     <string name="force_dlc">DLC 강제</string>
     <string name="force_dlc_description">DLC가 감지되지 않거나 DLC가 있는 저장 파일이 작동하지 않는 경우에만 활성화</string>
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
