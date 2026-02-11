@@ -46,8 +46,8 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE exclude = false AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<GOGGame>>
 
-    @Query("DELETE FROM gog_games")
-    suspend fun deleteAll()
+    @Query("DELETE FROM gog_games WHERE is_installed = false")
+    suspend fun deleteAllNonInstalledGames()
 
     @Query("SELECT COUNT(*) FROM gog_games WHERE exclude = false")
     fun getCount(): Flow<Int>
