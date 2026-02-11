@@ -55,12 +55,6 @@ interface GOGGameDao {
     @Query("SELECT id FROM gog_games")
     suspend fun getAllGameIdsIncludingExcluded(): List<String>
 
-    @Transaction
-    suspend fun replaceAll(games: List<GOGGame>) {
-        deleteAll()
-        insertAll(games)
-    }
-
     /**
      * Upsert GOG games while preserving install status and paths
      * This is useful when refreshing the library from GOG API
