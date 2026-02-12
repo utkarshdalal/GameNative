@@ -331,10 +331,19 @@ object SteamUtils {
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
         iniFile.parentFile?.mkdirs()
 
-        val injectionSection = """
+        // Only include DllsToInjectFolder if unpackFiles is enabled
+        val injectionSection = if (container.isUnpackFiles) {
+            """
+                [Injection]
+                IgnoreLoaderArchDifference=1
+                DllsToInjectFolder=extra_dlls
+            """
+        } else {
+            """
                 [Injection]
                 IgnoreLoaderArchDifference=1
             """
+        }
 
         iniFile.writeText(
             """
