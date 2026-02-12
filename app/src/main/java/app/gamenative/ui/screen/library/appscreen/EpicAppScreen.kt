@@ -27,8 +27,10 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
+import app.gamenative.utils.MarkerUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.StringUtils
@@ -304,6 +306,12 @@ class EpicAppScreen : BaseAppScreen() {
         return progress
     }
 
+    override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
+        val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return false
+        val path = EpicConstants.getGameInstallPath(context, game.appName)
+        return File(path).exists() && !MarkerUtils.hasMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
+    }
+
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
         Timber.tag(TAG).i("onDownloadInstallClick: appId=${libraryItem.appId}, name=${libraryItem.name}")
 
@@ -429,7 +437,9 @@ class EpicAppScreen : BaseAppScreen() {
             // Cancel/pause download
             Timber.tag(TAG).i("Pausing Epic download: ${libraryItem.gameId}")
             downloadInfo?.cancel()
-            EpicService.cleanupDownload(libraryItem.gameId)
+            CoroutineScope(Dispatchers.Main.immediate).launch {
+                EpicService.cleanupDownload(context, libraryItem.gameId)
+            }
         } else {
             // Resume download (restart from beginning for now)
             Timber.tag(TAG).i("Resuming Epic download: ${libraryItem.gameId}")
@@ -440,7 +450,7 @@ class EpicAppScreen : BaseAppScreen() {
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onDeleteDownloadClick: appId=${libraryItem.appId}")
 
-        if (isDownloading(context, libraryItem)) {
+        if (isDownloading(context, libraryItem) || hasPartialDownload(context, libraryItem)) {
             // Show cancel download dialog when downloading
             showInstallDialog(
                 libraryItem.appId,
@@ -787,12 +797,19 @@ class EpicAppScreen : BaseAppScreen() {
                 }
                 app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
-                        Timber.tag(TAG).i("Cancelling Epic download for: $gameId")
+                        Timber.tag(TAG).i("Cancelling/deleting Epic download for: $gameId")
                         val downloadInfo = EpicService.getDownloadInfo(gameId)
                         downloadInfo?.cancel()
-                        EpicService.cleanupDownload(gameId)
-                        BaseAppScreen.hideInstallDialog(appId)
-                        app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
+                        scope.launch {
+                            downloadInfo?.awaitCompletion()
+                            EpicService.cleanupDownload(context, gameId)
+                            EpicService.deleteGame(context, gameId)
+                            withContext(Dispatchers.Main) {
+                                BaseAppScreen.hideInstallDialog(appId)
+                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
+                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
+                            }
+                        }
                     }
                 }
 

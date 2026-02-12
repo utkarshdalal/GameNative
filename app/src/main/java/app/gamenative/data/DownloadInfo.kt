@@ -2,6 +2,7 @@ package app.gamenative.data
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
@@ -53,6 +54,10 @@ data class DownloadInfo(
 
     fun setDownloadJob(job: Job) {
         downloadJob = job
+    }
+
+    suspend fun awaitCompletion(timeoutMs: Long = 5000L) {
+        withTimeoutOrNull(timeoutMs) { downloadJob?.join() }
     }
 
     fun getProgress(): Float {

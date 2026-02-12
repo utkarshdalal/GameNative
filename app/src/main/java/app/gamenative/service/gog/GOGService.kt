@@ -9,6 +9,8 @@ import app.gamenative.data.GOGCredentials
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.events.AndroidEvent
+import app.gamenative.PluviaApp
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import dagger.hilt.android.AndroidEntryPoint
@@ -551,6 +553,8 @@ class GOGService : Service() {
     // Track active downloads by game ID
     private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
 
+    private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
+
     // GOGManager is injected by Hilt
     override fun onCreate() {
         super.onCreate()
@@ -558,6 +562,7 @@ class GOGService : Service() {
 
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
+        PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -635,6 +640,7 @@ class GOGService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         // Cancel sync operations
         backgroundSyncJob?.cancel()
