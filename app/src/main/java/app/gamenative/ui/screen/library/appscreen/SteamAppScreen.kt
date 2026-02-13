@@ -1009,7 +1009,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
     }
-    }
 
     override fun supportsContainerConfig(): Boolean = true
 
