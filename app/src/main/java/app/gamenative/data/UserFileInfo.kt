@@ -20,14 +20,24 @@ data class UserFileInfo(
     val timestamp: Long,
     val sha: ByteArray,
 ) {
+    // "." and blank path both mean "root of path type" per Steam manifest.
     val prefix: String
-        get() = Paths.get("%${root.name}%$path").pathString
-            .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-            .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+        get() {
+            val pathForPrefix = when {
+                path.isBlank() || path == "." -> ""
+                else -> path
+            }
+            return Paths.get("%${root.name}%$pathForPrefix").pathString
+                .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+        }
 
+    // Bare placeholder (%GameInstall%) expects no slash before filename; path with folder uses Paths.get.
     val prefixPath: String
-        get() = Paths.get(prefix, filename).pathString
-            .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+        get() = when {
+            path.isBlank() || path == "." -> "$prefix$filename"
+            else -> Paths.get(prefix, filename).pathString
+        }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
             .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
 
     val substitutedPath: String

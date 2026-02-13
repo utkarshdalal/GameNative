@@ -9,8 +9,11 @@ import app.gamenative.data.EpicCredentials
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.EpicGameToken
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
+import app.gamenative.events.AndroidEvent
+import app.gamenative.PluviaApp
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -188,24 +191,18 @@ class EpicService : Service() {
                     return Result.failure(Exception("Game not found: $appId"))
                 }
 
-                // Delete the installation folder if it exists
-                if (game.isInstalled && game.installPath.isNotEmpty()) {
-                    val installDir = File(game.installPath)
-                    if (installDir.exists()) {
-                        Timber.tag("Epic").i("Deleting installation folder: ${game.installPath}")
-                        val deleted = installDir.deleteRecursively()
-                        if (deleted) {
-                            Timber.tag("Epic").i("Successfully deleted installation folder")
-                        } else {
-                            Timber.tag("Epic").w("Failed to delete some files in installation folder")
-                        }
+                val path = if (game.installPath.isNotEmpty()) game.installPath else EpicConstants.getGameInstallPath(context, game.appName)
+                if (File(path).exists()) {
+                    Timber.tag("Epic").i("Deleting installation folder: $path")
+                    val deleted = File(path).deleteRecursively()
+                    if (deleted) {
+                        Timber.tag("Epic").i("Successfully deleted installation folder")
+                    } else {
+                        Timber.tag("Epic").w("Failed to delete some files in installation folder")
                     }
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
-
-                // Remove all markers
-                val appDirPath = game.installPath
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
                 // Uninstall from database (keeps the entry but marks as not installed)
                 instance.epicManager.uninstall(appId)
@@ -228,7 +225,13 @@ class EpicService : Service() {
             }
         }
 
-        fun cleanupDownload(appId: Int) {
+        suspend fun cleanupDownload(context: Context, appId: Int) {
+            withContext(Dispatchers.IO) {
+                getInstance()?.epicManager?.getGameById(appId)?.let { game ->
+                    val path = EpicConstants.getGameInstallPath(context, game.appName)
+                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                }
+            }
             getInstance()?.activeDownloads?.remove(appId)
         }
 
@@ -327,7 +330,7 @@ class EpicService : Service() {
             downloadInfo.setActive(true)
 
             // Start download in background
-            instance.scope.launch {
+            val job = instance.scope.launch {
                 try {
                     val commonRedistDir = File(installPath, "_CommonRedist")
                     Timber.tag("Epic").i("Starting download for game: ${game.title}, gameId: ${game.id}")
@@ -390,6 +393,7 @@ class EpicService : Service() {
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
+            downloadInfo.setDownloadJob(job)
 
             // Return the DownloadInfo immediately so caller can track progress
             return Result.success(downloadInfo)
@@ -404,6 +408,32 @@ class EpicService : Service() {
             } else {
                 Result.failure(Exception("Game not found: $appId"))
             }
+        }
+
+        // ==========================================================================
+        // Game Launcher Helpers
+        // ==========================================================================
+
+        suspend fun getGameLaunchToken(
+            context: Context,
+            namespace: String? = null,
+            catalogItemId: String? = null,
+            requiresOwnershipToken: Boolean = false
+        ): Result<EpicGameToken> {
+            return EpicAuthManager.getGameLaunchToken(context, namespace, catalogItemId, requiresOwnershipToken)
+        }
+
+        suspend fun buildLaunchParameters(
+            context: Context,
+            game: EpicGame,
+            offline: Boolean = false,
+            languageCode: String = "en-US"
+        ): Result<List<String>> {
+            return EpicGameLauncher.buildLaunchParameters(context, game, offline, languageCode)
+        }
+
+        fun cleanupLaunchTokens(context: Context) {
+            EpicGameLauncher.cleanupOwnershipTokens(context)
         }
 
         // ==========================================================================
@@ -442,6 +472,8 @@ class EpicService : Service() {
     // Track active downloads by GameNative Int ID
     private val activeDownloads = ConcurrentHashMap<Int, DownloadInfo>()
 
+    private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -449,6 +481,7 @@ class EpicService : Service() {
 
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
+        PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -528,6 +561,7 @@ class EpicService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Timber.tag("Epic").i("[EpicService] Service destroyed")
+        PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         // Cancel sync operations
         backgroundSyncJob?.cancel()

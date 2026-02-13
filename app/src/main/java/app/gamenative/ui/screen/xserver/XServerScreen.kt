@@ -1781,7 +1781,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
+            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
@@ -1962,6 +1962,7 @@ private fun setupXEnvironment(
     return environment
 }
 private fun getWineStartCommand(
+    context: Context,
     appId: String,
     container: Container,
     bootToContainer: Boolean,
@@ -1997,7 +1998,7 @@ private fun getWineStartCommand(
         if (controllerVdfText.isNullOrEmpty()) {
             Timber.tag("XServerScreen").i("No steam controller VDF resolved for $gameId")
         } else {
-            Timber.tag("XServerScreen").i("Resolved steam controller VDF for $gameId:\n$controllerVdfText")
+            Timber.tag("XServerScreen").i("Resolved steam controller VDF for $gameId")
         }
     }
 
@@ -2056,9 +2057,51 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
+        // Get Epic launch parameters
+        Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
+        val runArguments: List<String> = runBlocking {
+            val result = EpicService.buildLaunchParameters(context, game, false)
+            if (result.isFailure) {
+                Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
+            }
+            val params = result.getOrNull() ?: listOf()
+            Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
+            params
+        }
+        // Set working directory to the folder containing the executable
+        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir)
+
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
-        return "winhandler.exe \"$epicCommand\""
+        val launchCommand = if (runArguments.isNotEmpty()) {
+            // Quote each argument to handle spaces in paths (e.g., ownership token paths)
+            val args = runArguments.joinToString(" ") { arg ->
+                // If argument contains '=' and the value part might have spaces, quote the whole arg
+                if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
+                    val (key, value) = arg.split("=", limit = 2)
+                    "$key=\"$value\""
+                } else if (arg.contains(" ")) {
+                    // Quote standalone arguments with spaces
+                    "\"$arg\""
+                } else {
+                    arg
+                }
+            }
+            "winhandler.exe \"$epicCommand\" $args"
+        } else {
+            Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
+            "winhandler.exe \"$epicCommand\""
+        }
+
+        // Log command with sensitive auth tokens redacted
+        // Handle both quoted values (with spaces) and unquoted values
+        val redactedCommand = launchCommand
+            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
+        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
+
+        return launchCommand
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect
@@ -2489,68 +2532,73 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
 
-        if (!container.isLaunchRealSteam && !container.isUnpackFiles) {
-            val executablePath = container.executablePath
-            if (executablePath.isEmpty()) {
+        if (!container.isLaunchRealSteam) {
+            val exePaths = if (container.isUnpackFiles) {
+                val scanned = ContainerUtils.scanExecutablesInADrive(container.drives)
+                val filtered = ContainerUtils.filterExesForUnpacking(scanned)
+                if (filtered.isEmpty()) listOf(container.executablePath).filter { it.isNotEmpty() } else filtered
+            } else {
+                listOf(container.executablePath).filter { it.isNotEmpty() }
+            }
+            if (exePaths.isEmpty()) {
                 Timber.w("No executable path set, skipping Steamless")
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
-
-                var batchFile: File? = null
-                try {
-                    // Normalize path: container.executablePath uses forward slashes, convert to Windows format
-                    val normalizedPath = executablePath.replace('/', '\\')
-                    val windowsPath = "A:\\$normalizedPath"
-
-                    // Create a batch file that Wine can execute, to handle paths with spaces in them
-                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper.bat")
-                    batchFile.parentFile?.mkdirs()
-                    batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
-
-                    val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
-                    val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
-                    output.append(slOutput)
-                    Timber.i("Finished processing executable. Result: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error running Steamless on $executablePath")
-                    output.append("Error processing $executablePath: ${e.message}\n")
-                } finally {
-                    // Clean up batch file
-                    batchFile?.delete()
-                }
-
-                // Process file moving for the executable
-                try {
-                    // container.executablePath uses forward slashes (Unix format)
-                    // Use as-is for File operations (forward slashes work on Unix/Android)
-                    val unixPath = executablePath.replace('\\', '/')
-                    val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
-                    val unpackedExe = File(
-                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
-                    )
-                    val originalExe = File(
-                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
-                    )
-
-                    // For logging, show Windows format
-                    val windowsPath = "A:\\${executablePath.replace('/', '\\')}"
-
-                    Timber.i("Moving files for $windowsPath")
-                    if (exe.exists() && unpackedExe.exists()) {
-                        if (originalExe.exists()) {
-                            Timber.i("Original backup exists for $windowsPath; skipping overwrite")
-                        } else {
-                            Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
-                        }
-                        Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
-                        Timber.i("Successfully moved files for $windowsPath")
-                    } else {
-                        val errorMsg =
-                            "Either exe or unpacked exe does not exist for $windowsPath. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
-                        Timber.w(errorMsg)
+                for ((index, executablePath) in exePaths.withIndex()) {
+                    if (exePaths.size > 1) {
+                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM (${index + 1}/${exePaths.size})"))
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error moving files for $executablePath")
+                    var batchFile: File? = null
+                    try {
+                        // Normalize path: use forward slashes for Unix format, backslashes for Windows
+                        val normalizedPath = executablePath.replace('/', '\\')
+                        val windowsPath = "A:\\$normalizedPath"
+
+                        // Create a batch file that Wine can execute, to handle paths with spaces in them
+                        batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper.bat")
+                        batchFile.parentFile?.mkdirs()
+                        batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
+
+                        val slCmd = "wine z:\\tmp\\steamless_wrapper.bat"
+                        val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
+                        output.append(slOutput)
+                        Timber.i("Finished processing executable. Result: $output")
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error running Steamless on $executablePath")
+                        output.append("Error processing $executablePath: ${e.message}\n")
+                    } finally {
+                        batchFile?.delete()
+                    }
+
+                    // Process file moving for the executable
+                    try {
+                        val unixPath = executablePath.replace('\\', '/')
+                        val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
+                        val unpackedExe = File(
+                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
+                        )
+                        val originalExe = File(
+                            imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
+                        )
+
+                        val windowsPathForLog = "A:\\${executablePath.replace('/', '\\')}"
+                        Timber.i("Moving files for $windowsPathForLog")
+                        if (exe.exists() && unpackedExe.exists()) {
+                            if (originalExe.exists()) {
+                                Timber.i("Original backup exists for $windowsPathForLog; skipping overwrite")
+                            } else {
+                                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                            }
+                            Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                            Timber.i("Successfully moved files for $windowsPathForLog")
+                        } else {
+                            val errorMsg =
+                                "Either exe or unpacked exe does not exist for $windowsPathForLog. Exe: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                            Timber.w(errorMsg)
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error moving files for $executablePath")
+                    }
                 }
             }
         } else {

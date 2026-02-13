@@ -649,6 +649,22 @@
         "url": "https://downloads.gamenative.app/proton-10.0-arm64ec.wcp",
         "variant": "bionic"
       }
+    ],
+    "fexcore": [
+      {
+        "id": "2601-217d039-0",
+        "name": "FEX 2601-217d039",
+        "url": "https://downloads.gamenative.app/FEXCore-2601-217d039.wcp",
+        "variant": "bionic"
+      }
+    ],
+    "wowbox64": [
+      {
+        "id": "0.3.6-0",
+        "name": "WOWBox64 0.3.6",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/WOWBOX64/wowbox64-0.3.6.wcp",
+        "variant": "bionic"
+      }
     ]
   }
 }

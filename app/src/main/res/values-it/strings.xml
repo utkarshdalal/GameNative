@@ -481,7 +481,7 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Usa DRM Legacy</string>
     <string name="unpack_files">Estrai file</string>
-    <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error\'. Può ridurre gli FPS.</string>
+    <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Forza DLC</string>
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>

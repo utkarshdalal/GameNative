@@ -22,6 +22,7 @@ object EpicConstants {
     // Redirect URI for OAuth callback - using Epic's standard redirect endpoint
     const val EPIC_REDIRECT_URI = "https://www.epicgames.com/id/api/redirect"
 
+    const val ECOMMERCE_HOST = "ecommerceintegration-public-service-ecomprod02.ol.epicgames.com"
     const val OAUTH_HOST = "account-public-service-prod03.ol.epicgames.com"
     const val USER_AGENT = "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit"
 

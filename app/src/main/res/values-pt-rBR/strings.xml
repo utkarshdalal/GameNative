@@ -751,7 +751,7 @@
     <!-- TODO: Revisão manual - Container Configuration: Steam Integration (faltando) -->
     <string name="use_legacy_drm">Usar DRM legado</string>
     <string name="unpack_files">Descompactar arquivos</string>
-    <string name="unpack_files_description">Use apenas se receber \'Application Load Error\'. Pode reduzir FPS.</string>
+    <string name="unpack_files_description">Use apenas se receber \'Application Load Error 3:0000065432\'.</string>
 
     <!-- TODO: Revisão manual - Library Status -->
     <string name="library_status_ready">Pronto</string>

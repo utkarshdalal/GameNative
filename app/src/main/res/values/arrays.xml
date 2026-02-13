@@ -184,6 +184,7 @@
     <string-array name="wowbox64_version_entries">
         <item>0.4.0</item>
         <item>0.3.7</item>
+        <item>0.3.6</item>
         <item>0.3.4</item>
     </string-array>
     <string-array name="fexcore_version_entries">

@@ -143,7 +143,16 @@ object SteamAutoCloud {
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
 
-        val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = { file, fileList ->
+        val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
+            val gameInstallPrefix = "%${PathType.GameInstall.name}%"
+            if (file.filename.startsWith(gameInstallPrefix)) {
+                // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
+                return@getFullFilePath Paths.get(
+                    prefixToPath(PathType.GameInstall.name),
+                    file.filename.removePrefix(gameInstallPrefix)
+                )
+            }
+
             val convertedPrefixes = convertPrefixes(fileList)
 
             if (file.pathPrefixIndex < fileList.pathPrefixes.size) {

@@ -331,15 +331,6 @@ fun GeneralTabContent(
             state = config.launchRealSteam,
             onCheckedChange = { state.config.value = config.copy(launchRealSteam = it) },
         )
-        if (config.launchRealSteam) {
-            SettingsSwitch(
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.allow_steam_updates)) },
-                subtitle = { Text(text = stringResource(R.string.allow_steam_updates_description)) },
-                state = config.allowSteamUpdates,
-                onCheckedChange = { state.config.value = config.copy(allowSteamUpdates = it) },
-            )
-        }
         val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
         val currentSteamTypeIndex = when (config.steamType.lowercase()) {
             Container.STEAM_TYPE_LIGHT -> 1

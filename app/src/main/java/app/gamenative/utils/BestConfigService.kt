@@ -768,6 +768,24 @@ object BestConfigService {
                 if (filteredJson.has("useLegacyDRM") && !filteredJson.isNull("useLegacyDRM")) {
                     resultMap["useLegacyDRM"] = filteredJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
                 }
+                if (filteredJson.has("envVars") && !filteredJson.isNull("envVars")) {
+                    resultMap["envVars"] = filteredJson.optString("envVars", PrefManager.envVars)
+                }
+                if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {
+                    resultMap["cpuList"] = filteredJson.optString("cpuList", PrefManager.cpuList)
+                }
+                if (filteredJson.has("cpuListWoW64") && !filteredJson.isNull("cpuListWoW64")) {
+                    resultMap["cpuListWoW64"] = filteredJson.optString("cpuListWoW64", PrefManager.cpuListWoW64)
+                }
+                if (filteredJson.has("audioDriver") && !filteredJson.isNull("audioDriver")) {
+                    resultMap["audioDriver"] = filteredJson.optString("audioDriver", PrefManager.audioDriver)
+                }
+                if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
+                    resultMap["wincomponents"] = filteredJson.optString("wincomponents", PrefManager.winComponents)
+                }
+                if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
+                    resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)
+                }
 
                 return resultMap
             }

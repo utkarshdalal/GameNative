@@ -1231,6 +1231,7 @@ fun preLaunchApp(
         // For Epic Games, sync cloud saves before launch
         val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
         if (isEpicGame) {
+            // Handle Cloud Saves
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
             // Sync cloud saves (download latest saves before playing)
             Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
@@ -1245,6 +1246,11 @@ fun preLaunchApp(
             } else {
                 Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
+
+            // Delete Ownership Token if exists
+            Timber.tag("Epic").i("[Ownership Tokens] Cleaning up launch tokens for Epic games...")
+            EpicService.cleanupLaunchTokens(context)
+
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

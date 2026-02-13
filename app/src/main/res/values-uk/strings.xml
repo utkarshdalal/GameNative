@@ -473,7 +473,7 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Попередній метод DRM</string>
     <string name="unpack_files">Розпакувати файли</string>
-    <string name="unpack_files_description">Використовувати лише якщо з\'являється \'Application Load Error\'. Може знизити FPS.</string>
+    <string name="unpack_files_description">Використовувати лише якщо з\'являється \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>

@@ -147,7 +147,7 @@
     <string name="save_container_settings_message">此游戏运行已应用修改的配置，是否保存容器配置？</string>
     <string name="sync_error_title">同步错误</string>
     <string name="save">保存</string>
-    <string name="discard">取消</string>
+    <string name="discard">放弃更改</string>
     <string name="shortcuts">快捷方式</string>
     <string name="containers">容器</string>
     <string name="box64_rc_file">Box64 RCFile</string>

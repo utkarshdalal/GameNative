@@ -44,7 +44,7 @@ object ContainerUtils {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
-            DefaultVersion.DXVK = "2.4.1-gplasync"
+            DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = "turnip26.0.0_R8"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
@@ -362,6 +362,12 @@ object ContainerUtils {
                     ?: updatedData
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
+                "envVars" -> value?.let { updatedData.copy(envVars = it as? String ?: updatedData.envVars) } ?: updatedData
+                "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
+                "cpuListWoW64" -> value?.let { updatedData.copy(cpuListWoW64 = it as? String ?: updatedData.cpuListWoW64) } ?: updatedData
+                "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
+                "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
+                "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -381,6 +387,7 @@ object ContainerUtils {
             container.getExtra("language", "english")
         }
         val previousForceDlc: Boolean = container.isForceDlc
+        val previousUnpackFiles: Boolean = container.isUnpackFiles
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
@@ -443,6 +450,9 @@ object ContainerUtils {
         container.setForceDlc(containerData.forceDlc)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
+        if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
+            container.setNeedsUnpacking(true)
+        }
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
@@ -713,7 +723,7 @@ object ContainerUtils {
                                     context,
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
-                                    false,
+                                    true,
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
@@ -791,20 +801,9 @@ object ContainerUtils {
             )
         }
 
-        // Apply best config map to containerData if available
-        // Note: When applyKnownConfig=false (container creation), map only contains executablePath, useLegacyDRM, and unpackFiles
-        // When applyKnownConfig=true, map contains all validated fields from the best config
+        // Apply best config map to containerData if available (full validated config on first run when components exist)
         containerData = if (bestConfigMap != null && bestConfigMap.isNotEmpty()) {
-            var updatedData = containerData
-            bestConfigMap.forEach { (key, value) ->
-                updatedData = when (key) {
-                    "executablePath" -> value?.let { updatedData.copy(executablePath = it as? String ?: updatedData.executablePath) } ?: updatedData
-                    "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
-                    "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
-                    else -> updatedData
-                }
-            }
-            updatedData
+            applyBestConfigMapToContainerData(containerData, bestConfigMap)
         } else {
             containerData
         }
@@ -1100,6 +1099,15 @@ object ContainerUtils {
         }
 
         return executables
+    }
+
+    /**
+     * Filters a list of exe paths to exclude system/utility executables (e.g. uninstallers, setup, crash handlers).
+     * Used when unpackFiles is enabled to determine which exes to run Steamless on.
+     */
+    fun filterExesForUnpacking(exePaths: List<String>): List<String> = exePaths.filter { path ->
+        val fileName = path.substringAfterLast('/').substringAfterLast('\\').lowercase()
+        !isSystemExecutable(fileName)
     }
 
     /**
