@@ -689,6 +689,7 @@
     <string name="login_qr_failed">QR Code Failed</string>
     <string name="login_retry_qr">Retry QR Code</string>
     <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>
+    <string name="login_skip_steam">Skip Steam login</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continue</string>
