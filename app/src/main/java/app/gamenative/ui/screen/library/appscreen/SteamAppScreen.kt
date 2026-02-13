@@ -1004,8 +1004,11 @@ class SteamAppScreen : BaseAppScreen() {
         ContainerUtils.applyToContainer(context, libraryItem.appId, config)
 
         if (container.language != config.language) {
-            SteamService.downloadApp(libraryItem.gameId)
+            CoroutineScope(Dispatchers.IO).launch {
+                SteamService.downloadApp(libraryItem.gameId)
+            }
         }
+    }
     }
 
     override fun supportsContainerConfig(): Boolean = true
