@@ -2683,6 +2683,9 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // Always refresh components files
+    refreshComponentsFiles(context)
+
     // Normalize dxwrapper for state (dxvk includes version for extraction switch)
     if (xServerState.value.dxwrapper == "dxvk") {
         xServerState.value = xServerState.value.copy(
@@ -2789,13 +2792,17 @@ private fun applyGeneralPatches(
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
     }
     containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio.tzst", File(context.filesDir, "pulseaudio"))
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
     WinlatorPrefManager.init(context)
     WinlatorPrefManager.putString("current_box64_version", "")
 }
+
+private fun refreshComponentsFiles(context: Context) {
+    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", File(context.filesDir, "pulseaudio"))
+}
+
 private fun extractDXWrapperFiles(
     context: Context,
     firstTimeBoot: Boolean,
