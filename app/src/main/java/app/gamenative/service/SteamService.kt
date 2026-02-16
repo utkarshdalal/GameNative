@@ -200,6 +200,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     @Inject
     lateinit var downloadingAppInfoDao: DownloadingAppInfoDao
 
+    @Inject
+    lateinit var ludusaviService: LudusaviService
+
     private lateinit var notificationHelper: NotificationHelper
 
     internal var callbackManager: CallbackManager? = null
@@ -1957,6 +1960,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     preferredSave = preferredSave,
                                     parentScope = parentScope,
                                     prefixToPath = prefixToPath,
+                                    ludusaviService = instance?.ludusaviService,
                                     onProgress = onProgress,
                                 ).await()
 
@@ -2031,6 +2035,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     preferredSave = preferredSave,
                                     parentScope = parentScope,
                                     prefixToPath = prefixToPath,
+                                    ludusaviService = instance?.ludusaviService,
                                     overrideLocalChangeNumber = overrideLocalChangeNumber,
                                 ).await()
 
@@ -2072,6 +2077,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                         steamCloud = steamCloud,
                                         parentScope = this,
                                         prefixToPath = prefixToPath,
+                                        ludusaviService = instance?.ludusaviService,
                                     ).await()
 
                                     steamCloud.signalAppExitSyncDone(

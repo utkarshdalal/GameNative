@@ -43,6 +43,7 @@ fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
     aspectResolutionError: String,
+    default: Boolean = false,
 ) {
     val config = state.config.value
     val graphicsDrivers = state.graphicsDrivers.value
@@ -351,5 +352,14 @@ fun GeneralTabContent(
                 state.config.value = config.copy(steamType = type)
             },
         )
+        if (!default) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = "Prefer Ludusavi Manifest") },
+                subtitle = { Text(text = "Use community save data over Steam UFS for cloud saves") },
+                state = config.preferLudusavi,
+                onCheckedChange = { state.config.value = config.copy(preferLudusavi = it) },
+            )
+        }
     }
 }

@@ -226,6 +226,7 @@ dependencies {
         }
     }
     implementation(libs.spongycastle)
+    implementation(libs.kaml)
 
     // Split Modules
     implementation(libs.bundles.google)

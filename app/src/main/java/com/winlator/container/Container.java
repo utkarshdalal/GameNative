@@ -127,6 +127,8 @@ public class Container {
     private boolean useDRI3 = true;
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
     private String steamType = DefaultVersion.STEAM_TYPE;
+    // Prefer Ludusavi manifest over Steam UFS for save detection
+    private boolean preferLudusavi = false;
 
     private boolean gstreamerWorkaround = false;
 
@@ -993,6 +995,15 @@ public class Container {
 
     public void setExternalDisplaySwap(boolean externalDisplaySwap) {
         this.externalDisplaySwap = externalDisplaySwap;
+    }
+
+    // Prefer Ludusavi manifest over Steam UFS for save detection
+    public boolean isPreferLudusavi() {
+        return preferLudusavi;
+    }
+
+    public void setPreferLudusavi(boolean preferLudusavi) {
+        this.preferLudusavi = preferLudusavi;
     }
 
     // Use DRI3 WSI

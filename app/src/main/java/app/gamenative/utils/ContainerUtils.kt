@@ -135,6 +135,7 @@ object ContainerUtils {
             disableMouseInput = PrefManager.disableMouseInput,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
+            preferLudusavi = PrefManager.preferLudusavi,
             sharpnessEffect = PrefManager.sharpnessEffect,
             sharpnessLevel = PrefManager.sharpnessLevel,
             sharpnessDenoise = PrefManager.sharpnessDenoise,
@@ -174,6 +175,7 @@ object ContainerUtils {
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
         PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
+        PrefManager.preferLudusavi = containerData.preferLudusavi
         PrefManager.containerLanguage = containerData.language
         PrefManager.containerVariant = containerData.containerVariant
         PrefManager.wineVersion = containerData.wineVersion
@@ -798,6 +800,7 @@ object ContainerUtils {
                 unpackFiles = PrefManager.unpackFiles,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
+                preferLudusavi = PrefManager.preferLudusavi,
             )
         }
 

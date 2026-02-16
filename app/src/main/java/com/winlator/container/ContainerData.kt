@@ -78,6 +78,8 @@ data class ContainerData(
     val externalDisplayMode: String = Container.DEFAULT_EXTERNAL_DISPLAY_MODE,
     /** Swap game/input between internal and external displays **/
     val externalDisplaySwap: Boolean = false,
+    /** Prefer Ludusavi manifest over Steam UFS for save detection **/
+    val preferLudusavi: Boolean = false,
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
     val forceDlc: Boolean = false,
@@ -135,6 +137,7 @@ data class ContainerData(
                     "touchscreenMode" to state.touchscreenMode,
                     "externalDisplayMode" to state.externalDisplayMode,
                     "externalDisplaySwap" to state.externalDisplaySwap,
+                    "preferLudusavi" to state.preferLudusavi,
                     "useDRI3" to state.useDRI3,
                     "language" to state.language,
                     "forceDlc" to state.forceDlc,
@@ -191,6 +194,7 @@ data class ContainerData(
                     touchscreenMode = savedMap["touchscreenMode"] as Boolean,
                     externalDisplayMode = (savedMap["externalDisplayMode"] as? String) ?: Container.DEFAULT_EXTERNAL_DISPLAY_MODE,
                     externalDisplaySwap = (savedMap["externalDisplaySwap"] as? Boolean) ?: false,
+                    preferLudusavi = (savedMap["preferLudusavi"] as? Boolean) ?: false,
                     useDRI3 = (savedMap["useDRI3"] as? Boolean) ?: true,
                     language = (savedMap["language"] as? String) ?: "english",
                     forceDlc = (savedMap["forceDlc"] as? Boolean) ?: false,

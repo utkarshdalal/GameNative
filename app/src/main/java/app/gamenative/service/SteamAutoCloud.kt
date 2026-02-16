@@ -1,6 +1,7 @@
 package app.gamenative.service
 
 import androidx.room.withTransaction
+import app.gamenative.PrefManager
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
@@ -36,6 +37,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -79,6 +81,7 @@ object SteamAutoCloud {
         preferredSave: SaveLocation = SaveLocation.None,
         parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         prefixToPath: (String) -> String,
+        ludusaviService: LudusaviService? = null,
         overrideLocalChangeNumber: Long? = null,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.async {
@@ -213,7 +216,37 @@ object SteamAutoCloud {
             }
 
         val getLocalUserFilesAsPrefixMap: () -> Map<String, List<UserFileInfo>> = {
-            val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+            var savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+
+            // Fallback to Ludusavi if no Steam UFS patterns, game is known to be broken, or user prefers Ludusavi
+            if (savePatterns.isEmpty() || 
+                ludusaviService?.isKnownBrokenGame(appInfo.id) == true ||
+                PrefManager.preferLudusavi) {
+                val reason = when {
+                    PrefManager.preferLudusavi -> "user preference"
+                    savePatterns.isEmpty() -> "no UFS patterns"
+                    else -> "known broken game"
+                }
+                Timber.i("Attempting Ludusavi fallback for ${appInfo.name} (${appInfo.id}): $reason")
+                
+                ludusaviService?.let { service ->
+                    parentScope.async {
+                        service.getPatterns(appInfo.id)
+                    }.let { deferred ->
+                        // Block to get Ludusavi patterns synchronously within this lambda
+                        runBlocking {
+                            deferred.await()?.let { ludusaviPatterns ->
+                                Timber.i("Using ${ludusaviPatterns.size} Ludusavi patterns for ${appInfo.name}")
+                                savePatterns = ludusaviPatterns
+                            }
+                        }
+                    }
+                }
+                
+                if (savePatterns.isEmpty()) {
+                    Timber.w("No patterns found in Ludusavi for ${appInfo.name} (${appInfo.id})")
+                }
+            }
 
             if (savePatterns.isNotEmpty()) {
                 val result = mutableMapOf<String, MutableList<UserFileInfo>>()

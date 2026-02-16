@@ -296,6 +296,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result
@@ -479,6 +480,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result
@@ -607,6 +609,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result
@@ -732,6 +735,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result
@@ -851,6 +855,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result - should find files at depths 0-5 (6 files), but not depths 6-7
@@ -991,6 +996,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result
@@ -1134,6 +1140,7 @@ class SteamAutoCloudTest {
             steamCloud = mockSteamCloud,
             preferredSave = SaveLocation.None,
             prefixToPath = prefixToPath,
+            ludusaviService = null,
         ).await()
 
         // Verify result

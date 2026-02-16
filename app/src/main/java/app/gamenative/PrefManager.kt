@@ -463,6 +463,12 @@ object PrefManager {
         get() = getPref(EXTERNAL_DISPLAY_SWAP, false)
         set(value) { setPref(EXTERNAL_DISPLAY_SWAP, value) }
 
+    // Prefer Ludusavi manifest over Steam UFS for save detection
+    private val PREFER_LUDUSAVI = booleanPreferencesKey("prefer_ludusavi")
+    var preferLudusavi: Boolean
+        get() = getPref(PREFER_LUDUSAVI, false)
+        set(value) { setPref(PREFER_LUDUSAVI, value) }
+
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")
     var disableMouseInput: Boolean
