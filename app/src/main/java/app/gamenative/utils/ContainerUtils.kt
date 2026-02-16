@@ -301,6 +301,7 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+            preferLudusavi = container.isPreferLudusavi(),
         )
     }
 
@@ -499,6 +500,7 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         container.setUseDRI3(containerData.useDRI3)
+        container.setPreferLudusavi(containerData.preferLudusavi)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {

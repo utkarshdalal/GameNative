@@ -680,6 +680,9 @@ public class Container {
             // Unpack Files setting
             data.put("unpackFiles", unpackFiles);
 
+            // Prefer Ludusavi setting
+            data.put("preferLudusavi", preferLudusavi);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -844,6 +847,9 @@ public class Container {
                     break;
                 case "useDRI3" :
                     setUseDRI3(data.getBoolean(key));
+                    break;
+                case "preferLudusavi" :
+                    setPreferLudusavi(data.getBoolean(key));
                     break;
                 case "fexcoreVersion" :
                     setFEXCoreVersion(data.getString(key));
