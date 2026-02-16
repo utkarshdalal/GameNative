@@ -783,7 +783,7 @@
     <string name="main_pending_upload_title">업로드 대기 중</string>
     <string name="main_pending_upload_message">장치 %2$s(%3$s)에서 %1$s을(를) 플레이했으며 해당 저장 파일이 아직 클라우드에 없습니다. (업로드 시작 안 됨)\n이 게임을 플레이할 수 있지만 이전 게임 진행 상황이 성공적으로 업로드될 때 충돌이 발생할 수 있습니다.</string>
     <string name="main_app_session_suspended">앱 세션이 일시 중단되었습니다. 앱을 재시작하세요.</string>
-    <string name="main_pending_operation_none">작업이 'none'인 대기 중인 원격 작업을 받았습니다. 앱을 재시작하세요.</string>
+    <string name="main_pending_operation_none">작업이 \'none\'인 대기 중인 원격 작업을 받았습니다. 앱을 재시작하세요.</string>
     <string name="main_multiple_pending_operations">여러 대기 중인 원격 작업이 있습니다. 나중에 다시 시도하세요. 앱을 재시작하세요.</string>
 
     <!-- Container Config Dialog -->
