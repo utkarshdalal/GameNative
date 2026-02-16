@@ -79,6 +79,7 @@ object SteamAutoCloud {
         steamInstance: SteamService,
         steamCloud: SteamCloud,
         preferredSave: SaveLocation = SaveLocation.None,
+        preferLudusavi: Boolean = false,
         parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         prefixToPath: (String) -> String,
         ludusaviService: LudusaviService? = null,
@@ -221,9 +222,9 @@ object SteamAutoCloud {
             // Fallback to Ludusavi if no Steam UFS patterns, game is known to be broken, or user prefers Ludusavi
             if (savePatterns.isEmpty() || 
                 ludusaviService?.isKnownBrokenGame(appInfo.id) == true ||
-                PrefManager.preferLudusavi) {
+                preferLudusavi) {
                 val reason = when {
-                    PrefManager.preferLudusavi -> "user preference"
+                    preferLudusavi -> "user preference"
                     savePatterns.isEmpty() -> "no UFS patterns"
                     else -> "known broken game"
                 }

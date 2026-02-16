@@ -334,7 +334,8 @@ class MainViewModel @Inject constructor(
                 }
             } else {
                 // For Steam games, sync cloud saves
-                SteamService.closeApp(gameId, isOffline.value) { prefix ->
+                val container = ContainerUtils.getContainer(context, appId)
+                SteamService.closeApp(gameId, isOffline.value, container?.isPreferLudusavi() ?: false) { prefix ->
                     PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
                 }.await()
             }

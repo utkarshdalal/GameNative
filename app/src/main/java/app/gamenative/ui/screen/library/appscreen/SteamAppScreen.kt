@@ -901,6 +901,7 @@ class SteamAppScreen : BaseAppScreen() {
                         }
                         val syncResult = SteamService.forceSyncUserFiles(
                             appId = gameId,
+                            preferLudusavi = container.isPreferLudusavi(),
                             prefixToPath = prefixToPath
                         ).await()
 

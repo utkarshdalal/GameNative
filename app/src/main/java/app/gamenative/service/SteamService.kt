@@ -1933,6 +1933,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             ignorePendingOperations: Boolean = false,
             preferredSave: SaveLocation = SaveLocation.None,
+            preferLudusavi: Boolean = false,
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
@@ -1958,6 +1959,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     steamInstance = steamInstance,
                                     steamCloud = steamCloud,
                                     preferredSave = preferredSave,
+                                    preferLudusavi = preferLudusavi,
                                     parentScope = parentScope,
                                     prefixToPath = prefixToPath,
                                     ludusaviService = instance?.ludusaviService,
@@ -2010,6 +2012,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         suspend fun forceSyncUserFiles(
             appId: Int,
+            preferLudusavi: Boolean = false,
             prefixToPath: (String) -> String,
             preferredSave: SaveLocation = SaveLocation.None,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
@@ -2033,6 +2036,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     steamInstance = steamInstance,
                                     steamCloud = steamCloud,
                                     preferredSave = preferredSave,
+                                    preferLudusavi = preferLudusavi,
                                     parentScope = parentScope,
                                     prefixToPath = prefixToPath,
                                     ludusaviService = instance?.ludusaviService,
@@ -2054,7 +2058,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(appId: Int, isOffline: Boolean, preferLudusavi: Boolean = false, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     return@async
@@ -2075,6 +2079,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                         clientId = clientId,
                                         steamInstance = steamInstance,
                                         steamCloud = steamCloud,
+                                        preferLudusavi = preferLudusavi,
                                         parentScope = this,
                                         prefixToPath = prefixToPath,
                                         ludusaviService = instance?.ludusaviService,

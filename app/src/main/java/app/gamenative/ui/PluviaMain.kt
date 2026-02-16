@@ -1274,6 +1274,7 @@ fun preLaunchApp(
             prefixToPath = prefixToPath,
             ignorePendingOperations = ignorePendingOperations,
             preferredSave = preferredSave,
+            preferLudusavi = container.isPreferLudusavi(),
             parentScope = this,
             isOffline = isOffline,
             onProgress = { message, progress ->
