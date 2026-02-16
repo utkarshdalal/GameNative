@@ -126,6 +126,10 @@
         <item>ahb</item>
         <item>opaque</item>
     </string-array>
+    <string-array name="surface_format_entries">
+        <item>RGBA8</item>
+        <item>BGRA8</item>
+    </string-array>
     <string-array name="vulkan_version_entries">
         <item>1.1</item>
         <item>1.2</item>

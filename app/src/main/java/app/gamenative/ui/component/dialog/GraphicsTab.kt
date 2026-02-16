@@ -146,6 +146,18 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                 )
                 SettingsListDropdown(
                     colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.surface_format)) },
+                    value = state.surfaceFormatIndex.value.coerceIn(0, state.surfaceFormats.lastIndex.coerceAtLeast(0)),
+                    items = state.surfaceFormats,
+                    onItemSelected = { idx ->
+                        state.surfaceFormatIndex.value = idx
+                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                        cfg.put("surfaceFormat", state.surfaceFormats[idx])
+                        state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                    },
+                )
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
                     title = { Text(text = stringResource(R.string.bcn_emulation)) },
                     value = state.bcnEmulationIndex.value.coerceIn(0, state.bcnEmulationEntries.lastIndex.coerceAtLeast(0)),
                     items = state.bcnEmulationEntries,

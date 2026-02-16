@@ -518,6 +518,7 @@
     <string name="bcn_emulation">BCn Emulation</string>
     <string name="bcn_emulation_type">BCn Emulation Type</string>
     <string name="bcn_emulation_cache">BCn Emulation Cache</string>
+    <string name="surface_format">Surface Format</string>
     <string name="sharpness_effect">Sharpness Boost</string>
     <string name="sharpness_level">Sharpness Level</string>
     <string name="sharpness_denoise">Sharpness Denoise</string>

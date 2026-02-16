@@ -175,6 +175,7 @@ fun ContainerConfigDialog(
         val gpuCards = ContainerUtils.getGPUCards(context)
         val presentModes = stringArrayResource(R.array.present_mode_entries).toList()
         val resourceTypes = stringArrayResource(R.array.resource_type_entries).toList()
+        val surfaceFormats = stringArrayResource(R.array.surface_format_entries).toList()
         val bcnEmulationEntries = stringArrayResource(R.array.bcn_emulation_entries).toList()
         val bcnEmulationTypeEntries = stringArrayResource(R.array.bcn_emulation_type_entries).toList()
         val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
@@ -537,6 +538,8 @@ fun ContainerConfigDialog(
         var presentModeIndex by presentModeIndexRef
         val resourceTypeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var resourceTypeIndex by resourceTypeIndexRef
+        val surfaceFormatIndexRef = rememberSaveable { mutableIntStateOf(0) }
+        var surfaceFormatIndex by surfaceFormatIndexRef
         val bcnEmulationIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var bcnEmulationIndex by bcnEmulationIndexRef
         val bcnEmulationTypeIndexRef = rememberSaveable { mutableIntStateOf(0) }
@@ -572,6 +575,11 @@ fun ContainerConfigDialog(
             val defaultResourceIdx = resourceTypes.indexOfFirst { it.equals("auto", true) }.takeIf { it >= 0 } ?: 0
             resourceTypeIndex =
                 resourceTypes.indexOfFirst { it.equals(resourceType, true) }.let { if (it >= 0) it else defaultResourceIdx }
+
+            val surfaceFormat = cfg.get("surfaceFormat", "RGBA8")
+            val defaultSurfaceIdx = surfaceFormats.indexOfFirst { it.equals("RGBA8", true) }.takeIf { it >= 0 } ?: 0
+            surfaceFormatIndex =
+                surfaceFormats.indexOfFirst { it.equals(surfaceFormat, true) }.let { if (it >= 0) it else defaultSurfaceIdx }
 
             val bcnMode = cfg.get("bcnEmulation", "auto")
             val defaultBcnIdx = bcnEmulationEntries.indexOfFirst { it.equals("auto", true) }.takeIf { it >= 0 } ?: 0
@@ -941,6 +949,7 @@ fun ContainerConfigDialog(
             wrapperVersionIndex = wrapperVersionIndexRef,
             presentModeIndex = presentModeIndexRef,
             resourceTypeIndex = resourceTypeIndexRef,
+            surfaceFormatIndex = surfaceFormatIndexRef,
             bcnEmulationIndex = bcnEmulationIndexRef,
             bcnEmulationTypeIndex = bcnEmulationTypeIndexRef,
             bcnEmulationCacheEnabled = bcnEmulationCacheEnabledRef,
@@ -979,6 +988,7 @@ fun ContainerConfigDialog(
             audioDrivers = audioDrivers,
             presentModes = presentModes,
             resourceTypes = resourceTypes,
+            surfaceFormats = surfaceFormats,
             bcnEmulationEntries = bcnEmulationEntries,
             bcnEmulationTypeEntries = bcnEmulationTypeEntries,
             sharpnessEffects = sharpnessEffects,
