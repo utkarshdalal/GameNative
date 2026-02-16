@@ -32,6 +32,14 @@
     <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
     <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
+    <string name="steam_cloud_uploading_local_saves">Uploading local saves to cloud…</string>
+    <string name="steam_cloud_upload_success">Successfully uploaded local saves to cloud</string>
+    <string name="steam_cloud_upload_up_to_date">Cloud saves are already up to date</string>
+    <string name="steam_cloud_upload_failed">Failed to upload saves: %s</string>
+    <string name="steam_cloud_downloading_remote_saves">Downloading cloud saves…</string>
+    <string name="steam_cloud_download_success">Successfully downloaded cloud saves</string>
+    <string name="steam_cloud_download_up_to_date">Local saves are already up to date</string>
+    <string name="steam_cloud_download_failed">Failed to download saves: %s</string>
     <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
     <string name="steam_container_reset_success">Container reset to defaults</string>

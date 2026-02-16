@@ -967,7 +967,7 @@ class SteamAppScreen : BaseAppScreen() {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
-                                "Uploading local saves to cloud...",
+                                context.getString(R.string.steam_cloud_uploading_local_saves),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -983,21 +983,24 @@ class SteamAppScreen : BaseAppScreen() {
                                 SyncResult.Success -> {
                                     Toast.makeText(
                                         context,
-                                        "Successfully uploaded local saves to cloud",
+                                        context.getString(R.string.steam_cloud_upload_success),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
                                 SyncResult.UpToDate -> {
                                     Toast.makeText(
                                         context,
-                                        "Cloud saves are already up to date",
+                                        context.getString(R.string.steam_cloud_upload_up_to_date),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
                                 else -> {
                                     Toast.makeText(
                                         context,
-                                        "Failed to upload saves: ${syncResult.syncResult}",
+                                        context.getString(
+                                            R.string.steam_cloud_upload_failed,
+                                            syncResult.syncResult
+                                        ),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -1037,7 +1040,7 @@ class SteamAppScreen : BaseAppScreen() {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
-                                "Downloading cloud saves...",
+                                context.getString(R.string.steam_cloud_downloading_remote_saves),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -1053,21 +1056,24 @@ class SteamAppScreen : BaseAppScreen() {
                                 SyncResult.Success -> {
                                     Toast.makeText(
                                         context,
-                                        "Successfully downloaded cloud saves",
+                                        context.getString(R.string.steam_cloud_download_success),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
                                 SyncResult.UpToDate -> {
                                     Toast.makeText(
                                         context,
-                                        "Local saves are already up to date",
+                                        context.getString(R.string.steam_cloud_download_up_to_date),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
                                 else -> {
                                     Toast.makeText(
                                         context,
-                                        "Failed to download saves: ${syncResult.syncResult}",
+                                        context.getString(
+                                            R.string.steam_cloud_download_failed,
+                                            syncResult.syncResult
+                                        ),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
