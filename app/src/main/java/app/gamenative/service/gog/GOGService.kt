@@ -145,9 +145,9 @@ class GOGService : Service() {
                         Timber.w("[GOGService] Failed to clear credentials during logout")
                     }
 
-                    // Clear all GOG games from database
-                    instance.gogManager.deleteAllGames()
-                    Timber.i("[GOGService] All GOG games removed from database")
+                    // Clear all non-installed GOG games from database
+                    instance.gogManager.deleteAllNonInstalledGames()
+                    Timber.i("[GOGService] All non-installed GOG games removed from database")
 
                     // Stop the service
                     stop()

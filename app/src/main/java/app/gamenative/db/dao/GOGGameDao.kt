@@ -46,20 +46,14 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE exclude = false AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<GOGGame>>
 
-    @Query("DELETE FROM gog_games")
-    suspend fun deleteAll()
+    @Query("DELETE FROM gog_games WHERE is_installed = false")
+    suspend fun deleteAllNonInstalledGames()
 
     @Query("SELECT COUNT(*) FROM gog_games WHERE exclude = false")
     fun getCount(): Flow<Int>
 
     @Query("SELECT id FROM gog_games")
     suspend fun getAllGameIdsIncludingExcluded(): List<String>
-
-    @Transaction
-    suspend fun replaceAll(games: List<GOGGame>) {
-        deleteAll()
-        insertAll(games)
-    }
 
     /**
      * Upsert GOG games while preserving install status and paths
