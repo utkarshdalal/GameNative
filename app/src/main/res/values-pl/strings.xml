@@ -688,6 +688,7 @@
     <string name="login_qr_failed">Błąd kodu QR</string>
     <string name="login_retry_qr">Ponów kod QR</string>
     <string name="login_qr_instructions">Otwórz aplikację mobilną Steam i zeskanuj ten kod QR, aby zalogować się natychmiast</string>
+    <string name="login_skip_steam">Pomiń logowanie do Steam</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Kontynuuj</string>

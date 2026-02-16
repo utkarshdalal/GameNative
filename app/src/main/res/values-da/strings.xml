@@ -507,6 +507,7 @@
     <string name="login_qr_failed">QR-kode fejlede</string>
     <string name="login_retry_qr">Prøv QR-kode igen</string>
     <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>
+    <string name="login_skip_steam">Spring Steam-login over</string>
 
     <!-- TODO: Manual review - Generic/Reusable strings -->
     <string name="continue_action">Fortsæt</string>

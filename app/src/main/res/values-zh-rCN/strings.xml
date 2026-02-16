@@ -671,6 +671,7 @@
     <string name="login_qr_failed">QR 码扫描失败</string>
     <string name="login_retry_qr">重试 QR 码扫描</string>
     <string name="login_qr_instructions">打开 Steam 移动应用程序，扫描此 QR 码即可立即登录</string>
+    <string name="login_skip_steam">跳过 Steam 登录</string>
 
     <!-- 通用/可复用字符串 -->
     <string name="continue_action">继续</string>

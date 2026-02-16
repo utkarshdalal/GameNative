@@ -676,6 +676,7 @@
     <string name="login_qr_failed">Échec du code QR</string>
     <string name="login_retry_qr">Réessayer le code QR</string>
     <string name="login_qr_instructions">Ouvrez l\'application mobile Steam et scannez ce code QR pour vous connecter instantanément</string>
+    <string name="login_skip_steam">Ignorer la connexion Steam</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continuer</string>
