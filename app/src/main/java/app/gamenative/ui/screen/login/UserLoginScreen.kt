@@ -410,13 +410,13 @@ private fun UserLoginScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .padding(bottom = 24.dp),
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     TextButton(
                         onClick = onContinueOffline,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 0.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.login_skip_steam),
