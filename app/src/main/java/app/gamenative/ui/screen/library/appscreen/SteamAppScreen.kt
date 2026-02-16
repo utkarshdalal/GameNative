@@ -19,6 +19,7 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
@@ -927,6 +928,146 @@ class SteamAppScreen : BaseAppScreen() {
                                             R.string.steam_cloud_sync_failed,
                                             syncResult.syncResult
                                         ),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ForceUploadLocal,
+                onClick = {
+                    PostHog.capture(
+                        event = "cloud_upload_forced",
+                        properties = mapOf("game_name" to appInfo.name)
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val steamId = SteamService.userSteamId
+                        if (steamId == null) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.steam_not_logged_in),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            return@launch
+                        }
+
+                        val containerManager = ContainerManager(context)
+                        val container = ContainerUtils.getOrCreateContainer(context, appId)
+                        containerManager.activateContainer(container)
+
+                        val prefixToPath: (String) -> String = { prefix ->
+                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                        }
+                        
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "Uploading local saves to cloud...",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        
+                        val syncResult = SteamService.forceSyncUserFiles(
+                            appId = gameId,
+                            prefixToPath = prefixToPath,
+                            preferredSave = SaveLocation.Local
+                        ).await()
+
+                        withContext(Dispatchers.Main) {
+                            when (syncResult.syncResult) {
+                                SyncResult.Success -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Successfully uploaded local saves to cloud",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                SyncResult.UpToDate -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Cloud saves are already up to date",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                else -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to upload saves: ${syncResult.syncResult}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ForceDownloadRemote,
+                onClick = {
+                    PostHog.capture(
+                        event = "cloud_download_forced",
+                        properties = mapOf("game_name" to appInfo.name)
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val steamId = SteamService.userSteamId
+                        if (steamId == null) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.steam_not_logged_in),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            return@launch
+                        }
+
+                        val containerManager = ContainerManager(context)
+                        val container = ContainerUtils.getOrCreateContainer(context, appId)
+                        containerManager.activateContainer(container)
+
+                        val prefixToPath: (String) -> String = { prefix ->
+                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                        }
+                        
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "Downloading cloud saves...",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        
+                        val syncResult = SteamService.forceSyncUserFiles(
+                            appId = gameId,
+                            prefixToPath = prefixToPath,
+                            preferredSave = SaveLocation.Remote
+                        ).await()
+
+                        withContext(Dispatchers.Main) {
+                            when (syncResult.syncResult) {
+                                SyncResult.Success -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Successfully downloaded cloud saves",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                SyncResult.UpToDate -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Local saves are already up to date",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                else -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to download saves: ${syncResult.syncResult}",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
