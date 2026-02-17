@@ -1155,13 +1155,13 @@ fun XServerScreen(
                 ) {
                     androidx.compose.material3.Icon(
                         painter = androidx.compose.ui.res.painterResource(R.drawable.icon_pause),
-                        contentDescription = "Game Paused",
+                        contentDescription = stringResource(R.string.game_paused),
                         modifier = Modifier.size(128.dp),
                         tint = androidx.compose.ui.graphics.Color.White
                     )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
                     androidx.compose.material3.Text(
-                        text = "PAUSED",
+                        text = stringResource(R.string.game_paused).uppercase(),
                         style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
                         color = androidx.compose.ui.graphics.Color.White,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
