@@ -326,7 +326,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
-    var isGamePaused by remember { mutableStateOf(false) }
+    var isGamePaused by remember { mutableStateOf(PluviaApp.isManuallyPaused) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
