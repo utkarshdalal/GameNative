@@ -1,5 +1,6 @@
 package app.gamenative.ui.util
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -30,6 +32,17 @@ internal fun ListItemImage(
     image: () -> Any?,
     onFailure: () -> Unit = {},
 ) {
+    // Simple blurred image background, but adds it to all, might be inefficient
+   CoilImage(
+       modifier = modifier
+           .size(size)
+           .then(imageModifier)
+           .blur(20.dp),
+       imageModel = image,
+       imageOptions = ImageOptions(
+           contentScale = ContentScale.Crop,
+       ),
+   )
     CoilImage(
         modifier = modifier
             .size(size)

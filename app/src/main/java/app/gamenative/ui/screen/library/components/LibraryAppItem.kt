@@ -220,15 +220,13 @@ internal fun AppItem(
                                     PaneType.GRID_CAPSULE -> {
                                         // Vertical grid for capsule
                                         findSteamGridDBImage("grid_capsule")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/library_600x900.jpg"
+                                            ?: appInfo.capsuleImageUrl
                                     }
 
                                     PaneType.GRID_HERO -> {
                                         // Horizontal grid for hero view
                                         findSteamGridDBImage("grid_hero")
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/header.jpg"
+                                            ?: appInfo.headerImageUrl
                                     }
 
                                     else -> {
@@ -247,9 +245,7 @@ internal fun AppItem(
                                             }
                                             heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                         }
-                                        heroUrl
-                                            ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId +
-                                            "/header.jpg"
+                                        heroUrl ?: appInfo.headerImageUrl
                                     }
                                 }
                             }
@@ -265,9 +261,9 @@ internal fun AppItem(
                             GameSource.STEAM -> {
                                 // For Steam games, use standard Steam URLs
                                 if (paneType == PaneType.GRID_CAPSULE) {
-                                    "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                                    appInfo.capsuleImageUrl
                                 } else {
-                                    "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                    appInfo.headerImageUrl
                                 }
                             }
                         }

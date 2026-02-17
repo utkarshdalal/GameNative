@@ -29,6 +29,7 @@ import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
+import app.gamenative.ui.enums.PaneType
 import java.io.File
 import java.util.EnumSet
 import javax.inject.Inject
@@ -353,6 +354,8 @@ class LibraryViewModel @Inject constructor(
                         appId = "${GameSource.STEAM.name}_${item.id}",
                         name = item.name,
                         iconHash = item.clientIconHash,
+                        capsuleImageUrl = item.getCapsuleUrl(),
+                        headerImageUrl = item.headerUrl,
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
                     ),
                     isInstalled = isInstalled,
