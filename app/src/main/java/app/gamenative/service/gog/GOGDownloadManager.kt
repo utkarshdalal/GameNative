@@ -607,8 +607,6 @@ class GOGDownloadManager @Inject constructor(
                 val res = downloadOneFile(f, installPath)
                 if (res.isFailure) return@withContext res
                 doneFiles++
-                downloadInfo.setProgress(doneFiles.toFloat() / totalFiles)
-                downloadInfo.emitProgressChange()
             }
             if (supportDir != null) {
                 supportDir.mkdirs()
@@ -618,29 +616,10 @@ class GOGDownloadManager @Inject constructor(
                     val res = downloadOneFile(f, supportDir)
                     if (res.isFailure) return@withContext res
                     doneFiles++
-                    downloadInfo.setProgress(doneFiles.toFloat() / totalFiles)
-                    downloadInfo.emitProgressChange()
                 }
             }
 
-            downloadInfo.updateStatusMessage("Updating database...")
-            try {
-                val game = gogManager.getGameFromDbById(gameId)
-                if (game != null) {
-                    val installSize = calculateDirectorySize(installPath)
-                    gogManager.updateGame(game.copy(isInstalled = true, installPath = installPath.absolutePath, installSize = installSize))
-                }
-            } catch (e: Exception) {
-                Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
-            }
-
-            downloadInfo.updateStatusMessage("Complete")
-            downloadInfo.setProgress(1.0f)
-            downloadInfo.setActive(false)
-            downloadInfo.emitProgressChange()
-            app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
-            )
+            finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")
             Result.success(Unit)
         } catch (e: Exception) {
