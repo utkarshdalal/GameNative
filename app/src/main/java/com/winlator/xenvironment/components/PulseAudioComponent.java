@@ -16,6 +16,8 @@ import com.winlator.xenvironment.XEnvironment;
 import java.io.File;
 import java.util.ArrayList;
 
+import app.gamenative.BuildConfig;
+
 public class PulseAudioComponent extends EnvironmentComponent {
     private final UnixSocketConfig socketConfig;
     private static int pid = -1;
@@ -89,6 +91,11 @@ public class PulseAudioComponent extends EnvironmentComponent {
         command += " --daemonize=false";
         command += " --use-pid-file=false";
         command += " --exit-idle-time=-1";
+
+        if (BuildConfig.DEBUG) {
+            // Show pulseaudio debug output
+            command += " -vvv";
+        }
 
 
         return ProcessHelper.exec(command, envVars.toStringArray(), workingDir);

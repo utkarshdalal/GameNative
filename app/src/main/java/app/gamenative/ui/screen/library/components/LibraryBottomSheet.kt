@@ -3,6 +3,8 @@ package app.gamenative.ui.screen.library.components
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,7 @@ fun LibraryBottomSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 32.dp),
     ) {
         Text(text = stringResource(R.string.library_app_type), style = MaterialTheme.typography.titleLarge)
@@ -167,6 +170,10 @@ fun LibraryBottomSheet(
  * PREVIEW *
  ***********/
 
+// small screen
+@Preview(device = "spec:width=320dp,height=480dp,dpi=320")
+// landscape
+@Preview(device = "spec:width=800dp,height=360dp,dpi=320")
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Preview
 @Composable
