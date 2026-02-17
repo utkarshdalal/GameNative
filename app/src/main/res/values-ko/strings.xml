@@ -181,6 +181,8 @@
     <string name="logs">로그</string>
     <string name="exit_game">종료</string>
     <string name="exit">게임 종료</string>
+    <string name="pause_game">게임 일시정지</string>
+    <string name="resume_game">게임 재개</string>
     <string name="keyboard">키보드</string>
     <string name="extra">추가</string>
     <string name="clear_search">검색 지우기</string>

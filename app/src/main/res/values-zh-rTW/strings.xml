@@ -167,6 +167,8 @@
     <string name="logs">應用程序日誌</string>
     <string name="exit_game">退出</string>
     <string name="exit">退出遊戲</string>
+    <string name="pause_game">暫停遊戲</string>
+    <string name="resume_game">繼續遊戲</string>
     <string name="keyboard">鍵盤</string>
     <string name="extra">額外</string>
     <string name="clear_search">清除搜尋</string>

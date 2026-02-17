@@ -170,6 +170,8 @@
     <string name="logs">Loguri</string>
     <string name="exit_game">Ieșire</string>
     <string name="exit">Ieșire din joc</string>
+    <string name="pause_game">Pauză</string>
+    <string name="resume_game">Reia</string>
     <string name="keyboard">Tastatură</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Șterge căutarea</string>

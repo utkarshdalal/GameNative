@@ -164,6 +164,8 @@
     <string name="logs">Журнали</string>
     <string name="exit_game">Вийти з гри</string>
     <string name="exit">Вийти</string>
+    <string name="pause_game">Призупинити гру</string>
+    <string name="resume_game">Відновити гру</string>
     <string name="keyboard">Клавіатура</string>
     <string name="extra">Додатково</string>
     <string name="clear_search">Очистити пошук</string>

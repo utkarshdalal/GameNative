@@ -172,6 +172,8 @@
     <string name="logs">Log</string>
     <string name="exit_game">Esci</string>
     <string name="exit">Esci dal Gioco</string>
+    <string name="pause_game">Metti in pausa</string>
+    <string name="resume_game">Riprendi</string>
     <string name="keyboard">Tastiera</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Cancella Ricerca</string>

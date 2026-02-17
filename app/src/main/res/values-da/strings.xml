@@ -105,6 +105,8 @@
     <string name="logs">Logfiler</string>
     <string name="exit_game">Afslut</string>
     <string name="exit">Afslut spil</string>
+    <string name="pause_game">Pause spil</string>
+    <string name="resume_game">Genoptag spil</string>
     <string name="keyboard">Tastatur</string>
     <string name="extra">Ekstra</string>
     <string name="clear_search">Ryd søgning</string>

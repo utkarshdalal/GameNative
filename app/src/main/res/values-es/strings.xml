@@ -160,6 +160,8 @@
     <string name="logs">Registros</string>
     <string name="exit_game">Salir</string>
     <string name="exit">Salir del juego</string>
+    <string name="pause_game">Pausar juego</string>
+    <string name="resume_game">Reanudar juego</string>
     <string name="keyboard">Teclado</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Limpiar búsqueda</string>

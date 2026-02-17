@@ -180,6 +180,8 @@
     <string name="logs">Logi</string>
     <string name="exit_game">Wyjdź</string>
     <string name="exit">Wyjdź z gry</string>
+    <string name="pause_game">Wstrzymaj grę</string>
+    <string name="resume_game">Wznów grę</string>
     <string name="keyboard">Klawiatura</string>
     <string name="extra">Ekstra</string>
     <string name="clear_search">Wyczyść wyszukiwanie</string>

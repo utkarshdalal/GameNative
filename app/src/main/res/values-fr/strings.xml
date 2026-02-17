@@ -168,6 +168,8 @@
     <string name="logs">Journaux</string>
     <string name="exit_game">Quitter</string>
     <string name="exit">Quitter le jeu</string>
+    <string name="pause_game">Mettre en pause</string>
+    <string name="resume_game">Reprendre</string>
     <string name="keyboard">Clavier</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Effacer la recherche</string>
