@@ -47,7 +47,7 @@ public class NavigationDialog extends ContentDialog {
         GridLayout grid = findViewById(R.id.main_menu_grid);
         int orientation = context.getResources().getConfiguration().orientation;
         if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            grid.setColumnCount(5);
+            grid.setColumnCount(3);
         } else {
             grid.setColumnCount(2);
         }
