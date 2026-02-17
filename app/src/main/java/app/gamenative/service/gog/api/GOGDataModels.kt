@@ -157,14 +157,16 @@ data class GOGDependencyManifestMeta(
 }
 
 /**
- * Main manifest metadata
+ * Main manifest metadata (Gen 2 and Gen 1 converted)
+ * @param productTimestamp Only set for Gen 1; used to build v1 depot manifest URLs
  */
 data class GOGManifestMeta(
     val baseProductId: String,
     val installDirectory: String,
     val depots: List<Depot>,
     val dependencies: List<String>,
-    val products: List<Product>
+    val products: List<Product>,
+    val productTimestamp: String? = null
 ) {
     companion object {
         fun fromJson(json: JSONObject): GOGManifestMeta {
@@ -200,11 +202,25 @@ data class GOGManifestMeta(
                 installDirectory = json.optString("installDirectory", ""),
                 depots = depots,
                 dependencies = dependencies,
-                products = products
+                products = products,
+                productTimestamp = null
             )
         }
     }
 }
+
+/**
+ * Gen 1 (v1) depot file: direct download by URL or range, no chunks.
+ * See heroic-gogdl gogdl/dl/objects/v1.py
+ */
+data class V1DepotFile(
+    val path: String,
+    val size: Long,
+    val hash: String,
+    val url: String?,
+    val offset: Long?,
+    val isSupport: Boolean = false
+)
 
 /**
  * Depot metadata (contains files for specific language/platform)

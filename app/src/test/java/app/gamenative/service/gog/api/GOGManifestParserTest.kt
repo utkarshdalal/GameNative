@@ -110,8 +110,17 @@ class GOGManifestParserTest {
     @Test
     fun testSelectBuild_returnsNullWhenNoGen2() {
         val gen1Only = listOf(createTestBuild(generation = 1))
-        val result = parser.selectBuild(gen1Only)
+        val result = parser.selectBuild(gen1Only, preferredGeneration = 2)
         assertNull(result)
+    }
+
+    @Test
+    fun testSelectBuild_returnsGen1WhenRequested() {
+        val gen1Only = listOf(createTestBuild(buildId = "legacy", generation = 1))
+        val result = parser.selectBuild(gen1Only, preferredGeneration = 1)
+        assertNotNull(result)
+        assertEquals(1, result?.generation)
+        assertEquals("legacy", result?.buildId)
     }
 
     @Test
