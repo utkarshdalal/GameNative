@@ -47,6 +47,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
@@ -324,6 +326,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var isGamePaused by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -547,6 +550,24 @@ fun XServerScreen(
                             showPhysicalControllerDialog = true
                         }
 
+                        NavigationDialog.ACTION_PAUSE_RESUME -> {
+                            if (isGamePaused) {
+                                // Resume the game
+                                PluviaApp.xEnvironment?.onResume()
+                                isGamePaused = false
+                                PluviaApp.isManuallyPaused = false
+                                PostHog.capture(event = "game_resumed")
+                                Timber.d("Game processes resumed (manual)")
+                            } else {
+                                // Pause the game
+                                PluviaApp.xEnvironment?.onPause()
+                                isGamePaused = true
+                                PluviaApp.isManuallyPaused = true
+                                PostHog.capture(event = "game_paused")
+                                Timber.d("Game processes paused (manual)")
+                            }
+                        }
+
                         NavigationDialog.ACTION_EXIT_GAME -> {
                             if (currentAppInfo != null) {
                                 PostHog.capture(
@@ -562,7 +583,8 @@ fun XServerScreen(
                         }
                     }
                 }
-            }
+            },
+            isGamePaused
         ).show()
     }
 
@@ -1118,6 +1140,35 @@ fun XServerScreen(
             // }
         },
     )
+
+        // Pause indicator overlay
+        if (isGamePaused) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.foundation.layout.Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    androidx.compose.material3.Icon(
+                        painter = androidx.compose.ui.res.painterResource(R.drawable.icon_pause),
+                        contentDescription = "Game Paused",
+                        modifier = Modifier.size(128.dp),
+                        tint = androidx.compose.ui.graphics.Color.White
+                    )
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+                    androidx.compose.material3.Text(
+                        text = "PAUSED",
+                        style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         // Floating toolbar for edit mode (always visible in edit mode)
         if (isEditMode && areControlsVisible) {
@@ -2241,8 +2292,12 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     }
 
     winHandler?.stop()
+    // Resume any paused processes before stopping to ensure clean shutdown
+    environment?.onResume()
     environment?.stopEnvironmentComponents()
     SteamService.keepAlive = false
+    // Clear manual pause state on exit
+    PluviaApp.isManuallyPaused = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null

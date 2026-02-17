@@ -29,12 +29,13 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_EXIT_GAME = 3;
     public static final int ACTION_EDIT_CONTROLS = 4;
     public static final int ACTION_EDIT_PHYSICAL_CONTROLLER = 5;
+    public static final int ACTION_PAUSE_RESUME = 6;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
     }
 
-    public NavigationDialog(@NonNull Context context, NavigationListener listener) {
+    public NavigationDialog(@NonNull Context context, NavigationListener listener, boolean isPaused) {
         super(context, R.layout.navigation_dialog);
         if (getWindow() != null) {
             getWindow().setBackgroundDrawableResource(R.drawable.navigation_dialog_background);
@@ -61,6 +62,12 @@ public class NavigationDialog extends ContentDialog {
         addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
         if (hasPhysicalController) {
             addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
+        }
+        // Add pause/resume button - shows different icon and text based on current state
+        if (isPaused) {
+            addMenuItem(context, grid, R.drawable.icon_play, R.string.resume_game, ACTION_PAUSE_RESUME, listener, 1.0f);
+        } else {
+            addMenuItem(context, grid, R.drawable.icon_pause, R.string.pause_game, ACTION_PAUSE_RESUME, listener, 1.0f);
         }
         addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }

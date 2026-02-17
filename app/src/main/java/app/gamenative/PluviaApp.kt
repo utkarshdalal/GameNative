@@ -117,6 +117,10 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
 
+        // Track if user manually paused the game (to prevent auto-resume on Android lifecycle)
+        @JvmField
+        var isManuallyPaused: Boolean = false
+
         // Supabase client for game feedback
         lateinit var supabase: SupabaseClient
             private set
