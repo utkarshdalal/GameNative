@@ -708,6 +708,18 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
+                
+                // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
+                val imeReceiver = app.gamenative.externaldisplay.IMEInputReceiver(context, getxServer()).apply {
+                    layoutParams = android.widget.FrameLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    alpha = 0f
+                    isClickable = false
+                }
+                frameLayout.addView(imeReceiver)
+                
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(
                     getxServer(),
