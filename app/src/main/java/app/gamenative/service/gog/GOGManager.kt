@@ -583,8 +583,10 @@ class GOGManager @Inject constructor(
                 return@withContext getGameExecutable(installPath, v2GameDir)
             }
 
-            // Try V1 structure
+            // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
             val installDirFile = File(installPath)
+            val exe = getGameExecutable(installPath, installDirFile)
+            if (exe.isNotEmpty()) return@withContext exe
             val subdirs = installDirFile.listFiles()?.filter {
                 it.isDirectory && it.name != "saves"
             } ?: emptyList()
@@ -663,13 +665,12 @@ class GOGManager @Inject constructor(
                 val task = playTasks.getJSONObject(i)
                 if (task.has("isPrimary") && task.getBoolean("isPrimary")) {
                     val executablePath = task.getString("path")
-
-                    // Construct full path - executablePath may include subdirectories
                     val exeFile = File(gameDir, executablePath)
 
                     if (exeFile.exists()) {
-                        val parentDir = gameDir.parentFile ?: gameDir
-                        val relativePath = exeFile.relativeTo(parentDir).path
+                        // Path must be relative to install root (drive root), not gameDir's parent
+                        val installDir = File(installPath)
+                        val relativePath = exeFile.relativeTo(installDir).path
                         return Result.success(relativePath)
                     }
 
