@@ -89,6 +89,12 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.suspendProcess();
         BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
         if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.suspendProcess();
+
+        // Pause audio components
+        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
+        if (pulseAudioComponent != null) pulseAudioComponent.pause();
+        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
+        if (alsaServerComponent != null) alsaServerComponent.pause();
     }
 
     public void onResume() {
@@ -98,5 +104,11 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.resumeProcess();
         BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
         if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.resumeProcess();
+
+        // Resume audio components
+        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
+        if (pulseAudioComponent != null) pulseAudioComponent.resume();
+        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
+        if (alsaServerComponent != null) alsaServerComponent.resume();
     }
 }

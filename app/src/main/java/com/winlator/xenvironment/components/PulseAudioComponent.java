@@ -49,6 +49,24 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
     }
 
+    public void pause() {
+        Log.d("PulseAudioComponent", "Pausing...");
+        synchronized (lock) {
+            if (pid != -1) {
+                ProcessHelper.suspendProcess(pid);
+            }
+        }
+    }
+
+    public void resume() {
+        Log.d("PulseAudioComponent", "Resuming...");
+        synchronized (lock) {
+            if (pid != -1) {
+                ProcessHelper.resumeProcess(pid);
+            }
+        }
+    }
+
     public void setVolume(float volume) {
         this.volume = volume;
     }
