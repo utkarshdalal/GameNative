@@ -3324,6 +3324,11 @@ private fun extractGraphicsDriverFiles(
         val resourceType = graphicsDriverConfig.get("resourceType")
         envVars.put("WRAPPER_RESOURCE_TYPE", resourceType)
 
+        val surfaceFormat = graphicsDriverConfig.get("surfaceFormat")
+        if (surfaceFormat.isNotEmpty()) {
+            envVars.put("WRAPPER_SURFACE_FORMAT", surfaceFormat)
+        }
+
         val syncFrame = graphicsDriverConfig.get("syncFrame")
         if (syncFrame == "1") envVars.put("MESA_VK_WSI_DEBUG", "forcesync")
 
