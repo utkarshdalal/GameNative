@@ -577,7 +577,7 @@ class GOGDownloadManager @Inject constructor(
                                     out.write(buffer, 0, n)
                                     copiedInFile += n
                                     downloadInfo.updateBytesDownloaded(n.toLong())
-                                    if (copiedInFile >= progressInterval || copiedInFile == file.size) {
+                                    if (copiedInFile >= progressInterval || downloadInfo.getBytesDownloaded() >= totalSize) {
                                         copiedInFile = 0L
                                         downloadInfo.setProgress(
                                             (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
