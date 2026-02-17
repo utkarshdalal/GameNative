@@ -281,11 +281,15 @@ class GOGApiClient @Inject constructor(
         manifestHash: String,
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()
+            if (credentials == null) {
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
             val url = "$GOG_CDN/content-system/v1/manifests/$productId/$platform/$timestamp/$manifestHash"
             Timber.tag("GOG").d("Fetching Gen 1 depot manifest: $url")
             val request = Request.Builder()
                 .url(url)
-                .header("Authorization", "Bearer ${GOGAuthManager.getStoredCredentials(context).getOrNull()?.accessToken ?: ""}")
+                .header("Authorization", "Bearer ${credentials.accessToken}")
                 .build()
             val response = httpClient.newCall(request).execute()
             if (!response.isSuccessful) {
