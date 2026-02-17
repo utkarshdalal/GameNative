@@ -192,6 +192,7 @@
     <string name="touchpad_help">Aide du pavé tactile</string>
     <string name="hide_controls_with_controller">Masquer les contrôles à l\'écran avec manette</string>
     <string name="hide_controls_with_controller_description">Masquer automatiquement les contrôles à l\'écran lorsqu\'un contrôleur physique est connecté</string>
+    <string name="game_paused">En pause</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Sélectionner l\'affectation</string>

@@ -129,6 +129,7 @@
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
+    <string name="game_paused">Pause</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Vælg binding</string>

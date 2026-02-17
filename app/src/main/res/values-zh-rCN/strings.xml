@@ -191,6 +191,7 @@
     <string name="touchpad_help">触摸板支持</string>
     <string name="hide_controls_with_controller">使用控制器时隐藏屏幕控制器</string>
     <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏屏幕控制器</string>
+    <string name="game_paused">已暂停</string>
 
     <!-- 控制器绑定对话框 -->
     <string name="select_binding">选择绑定</string>

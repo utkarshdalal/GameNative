@@ -184,6 +184,8 @@
     <string name="touchpad_help">Touchpad-Hilfe</string>
     <string name="hide_controls_with_controller">On-Screen-Controller bei Gamepad ausblenden</string>
     <string name="hide_controls_with_controller_description">On-Screen-Steuerung automatisch ausblenden, wenn ein physischer Controller verbunden ist</string>
+    <string name="game_paused">Pausiert</string>
+
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Belegung auswählen</string>
     <string name="bind_button">Belege: %1$s</string>

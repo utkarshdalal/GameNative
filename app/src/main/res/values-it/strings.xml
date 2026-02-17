@@ -196,6 +196,7 @@
     <string name="touchpad_help">Aiuto Touchpad</string>
     <string name="hide_controls_with_controller">Nascondi controlli a schermo con controller</string>
     <string name="hide_controls_with_controller_description">Nascondi automaticamente i controlli a schermo quando è connesso un controller fisico</string>
+    <string name="game_paused">In pausa</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Seleziona Associazione</string>

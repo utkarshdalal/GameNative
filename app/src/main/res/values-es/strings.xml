@@ -184,6 +184,7 @@
     <string name="touchpad_help">Ayuda del touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles táctiles al usar mando</string>
     <string name="hide_controls_with_controller_description">Oculta automáticamente los controles en pantalla cuando se conecta un mando físico.</string>
+    <string name="game_paused">Pausado</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Seleccionar asignación</string>

@@ -188,6 +188,7 @@
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
+    <string name="game_paused">Призупинено</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Вибрати призначення</string>

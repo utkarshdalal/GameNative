@@ -194,6 +194,7 @@
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>
+    <string name="game_paused">Pausat</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Selectează acțiunea</string>

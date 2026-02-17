@@ -204,6 +204,7 @@
     <string name="touchpad_help">Pomoc touchpada</string>
     <string name="hide_controls_with_controller">Ukryj kontroler ekranowy przy podłączonym kontrolerze</string>
     <string name="hide_controls_with_controller_description">Automatycznie ukrywa kontroler ekranowy, gdy podłączony jest kontroler fizyczny</string>
+    <string name="game_paused">Wstrzymano</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Wybierz przypisanie</string>

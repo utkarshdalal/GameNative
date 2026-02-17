@@ -129,6 +129,7 @@
     <string name="touchpad_help">Ajuda Touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
     <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
+    <string name="game_paused">Pausado</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">Selecionar Binding</string>

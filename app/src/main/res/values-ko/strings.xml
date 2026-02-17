@@ -205,6 +205,7 @@
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
+    <string name="game_paused">일시정지됨</string>
 
     <!-- Controller Binding Dialog -->
     <string name="select_binding">바인딩 선택</string>
