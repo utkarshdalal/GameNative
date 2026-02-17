@@ -590,7 +590,7 @@ class GOGDownloadManager @Inject constructor(
                         val bytesWritten = outFile.length()
                         if (bytesWritten != file.size) return Result.failure(Exception("Size mismatch ${file.path}"))
                         val md5 = md.digest().joinToString("") { "%02x".format(it) }
-                        if (md5 != file.hash) return Result.failure(Exception("MD5 mismatch ${file.path}"))
+                        if (file.hash.isNotEmpty() && md5 != file.hash) return Result.failure(Exception("MD5 mismatch ${file.path}"))
                         // bytes already reported during copy; ensure final progress is exact
                         downloadInfo.setProgress(
                             (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
