@@ -558,17 +558,38 @@ class GOGDownloadManager @Inject constructor(
                         if (!response.isSuccessful) return Result.failure(Exception("HTTP ${response.code} for ${file.path}"))
                         val body = response.body ?: return Result.failure(Exception("Empty response"))
                         val md = MessageDigest.getInstance("MD5")
+                        val buffer = ByteArray(256 * 1024) // 256KB
+                        val progressInterval = 512L * 1024 // emit progress every 512KB
+                        var copiedInFile = 0L
                         DigestOutputStream(
                             BufferedOutputStream(FileOutputStream(outFile)),
                             md
                         ).use { out ->
-                            body.byteStream().use { it.copyTo(out) }
+                            body.byteStream().use { input ->
+                                var n: Int
+                                while (input.read(buffer).also { n = it } != -1) {
+                                    out.write(buffer, 0, n)
+                                    copiedInFile += n
+                                    downloadInfo.updateBytesDownloaded(n.toLong())
+                                    if (copiedInFile >= progressInterval || copiedInFile == file.size) {
+                                        copiedInFile = 0L
+                                        downloadInfo.setProgress(
+                                            (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
+                                        )
+                                        downloadInfo.emitProgressChange()
+                                    }
+                                }
+                            }
                         }
                         val bytesWritten = outFile.length()
                         if (bytesWritten != file.size) return Result.failure(Exception("Size mismatch ${file.path}"))
                         val md5 = md.digest().joinToString("") { "%02x".format(it) }
                         if (md5 != file.hash) return Result.failure(Exception("MD5 mismatch ${file.path}"))
-                        downloadInfo.updateBytesDownloaded(bytesWritten)
+                        // bytes already reported during copy; ensure final progress is exact
+                        downloadInfo.setProgress(
+                            (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
+                        )
+                        downloadInfo.emitProgressChange()
                         Result.success(Unit)
                     }
                 } catch (e: Exception) {
