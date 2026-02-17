@@ -403,39 +403,7 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
-            // Step 12: Update database with install info
-            downloadInfo.updateStatusMessage("Updating database...")
-            try {
-                val game = gogManager.getGameFromDbById(gameId)
-                if (game != null) {
-                    // Use installPath directly since it already includes the game-specific folder
-                    val installSize = calculateDirectorySize(installPath)
-                    val updatedGame = game.copy(
-                        isInstalled = true,
-                        installPath = installPath.absolutePath,
-                        installSize = installSize,
-                    )
-                    gogManager.updateGame(updatedGame)
-                    Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
-                } else {
-                    Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")
-                }
-            } catch (e: Exception) {
-                Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
-                // Don't fail the entire download for DB issues - They can try again and it will auto-detect and finish
-            }
-
-            // Step 13: Emit completion event
-            downloadInfo.updateStatusMessage("Complete")
-            downloadInfo.setProgress(1.0f)
-            downloadInfo.setActive(false)
-            downloadInfo.emitProgressChange()
-
-            // Notify UI that installation status changed
-            app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
-            )
-
+            finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -452,6 +420,36 @@ class GOGDownloadManager @Inject constructor(
 
             Result.failure(e)
         }
+    }
+
+    /**
+     * Shared finalization after a successful install: update DB, set download complete, emit events.
+     * Used by both Gen 2 and Gen 1 success paths.
+     */
+    private suspend fun finalizeInstallSuccess(gameId: String, installPath: File, downloadInfo: DownloadInfo) {
+        downloadInfo.updateStatusMessage("Updating database...")
+        try {
+            val game = gogManager.getGameFromDbById(gameId)
+            if (game != null) {
+                val installSize = calculateDirectorySize(installPath)
+                gogManager.updateGame(game.copy(isInstalled = true, installPath = installPath.absolutePath, installSize = installSize))
+                Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
+            } else {
+                Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
+        }
+        downloadInfo.updateStatusMessage("Complete")
+        downloadInfo.setProgress(1.0f)
+        downloadInfo.setActive(false)
+        downloadInfo.emitProgressChange()
+        app.gamenative.PluviaApp.events.emitJava(
+            app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
+        )
+        app.gamenative.PluviaApp.events.emitJava(
+            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
+        )
     }
 
     /**
