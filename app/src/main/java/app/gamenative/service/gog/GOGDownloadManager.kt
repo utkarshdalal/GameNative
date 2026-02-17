@@ -123,11 +123,13 @@ class GOGDownloadManager @Inject constructor(
             // Step 1: Get available builds — prefer Gen 2, fall back to Gen 1 (legacy)
             val selectedBuild = run {
                 val gen2Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 2)
-                if (gen2Result.isSuccess) {
-                    val builds = gen2Result.getOrThrow()
-                    parser.selectBuild(builds.items, preferredGeneration = 2, platform = WINDOWS_OS_VERSION)
-                        ?.let { return@run it }
+                if (gen2Result.isFailure) {
+                    return@withContext Result.failure(
+                        gen2Result.exceptionOrNull() ?: Exception("Failed to fetch Gen 2 builds"),
+                    )
                 }
+                parser.selectBuild(gen2Result.getOrThrow().items, preferredGeneration = 2, platform = WINDOWS_OS_VERSION)
+                    ?.let { return@run it }
                 val gen1Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 1)
                 if (gen1Result.isFailure) {
                     return@withContext Result.failure(
