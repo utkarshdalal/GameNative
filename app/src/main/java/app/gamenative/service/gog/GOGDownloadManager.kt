@@ -568,6 +568,10 @@ class GOGDownloadManager @Inject constructor(
                             body.byteStream().use { input ->
                                 var n: Int
                                 while (input.read(buffer).also { n = it } != -1) {
+                                    if (!downloadInfo.isActive()) {
+                                        outFile.delete()
+                                        return Result.failure(Exception("Download cancelled"))
+                                    }
                                     out.write(buffer, 0, n)
                                     copiedInFile += n
                                     downloadInfo.updateBytesDownloaded(n.toLong())
