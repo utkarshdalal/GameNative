@@ -43,4 +43,30 @@ public class ALSAServerComponent extends EnvironmentComponent {
             this.connector = null;
         }
     }
+
+    public void pause() {
+        XConnectorEpoll xConnectorEpoll = this.connector;
+        if (xConnectorEpoll != null) {
+            // Pause all connected ALSA clients
+            for (int i = 0; i < xConnectorEpoll.getConnectedClientsCount(); i++) {
+                com.winlator.xconnector.Client client = xConnectorEpoll.getConnectedClientAt(i);
+                if (client != null && client.getTag() instanceof ALSAClient) {
+                    ((ALSAClient) client.getTag()).pause();
+                }
+            }
+        }
+    }
+
+    public void resume() {
+        XConnectorEpoll xConnectorEpoll = this.connector;
+        if (xConnectorEpoll != null) {
+            // Resume all connected ALSA clients
+            for (int i = 0; i < xConnectorEpoll.getConnectedClientsCount(); i++) {
+                com.winlator.xconnector.Client client = xConnectorEpoll.getConnectedClientAt(i);
+                if (client != null && client.getTag() instanceof ALSAClient) {
+                    ((ALSAClient) client.getTag()).start();
+                }
+            }
+        }
+    }
 }
