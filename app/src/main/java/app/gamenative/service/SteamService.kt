@@ -39,6 +39,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.MarkerUtils
@@ -941,6 +942,16 @@ class SteamService : Service(), IChallengeUrlChanged {
             return (getAppInfoOf(appId)?.let { appInfo ->
                 getWindowsLaunchInfos(appId).firstOrNull()
             })?.executable ?: ""
+        }
+
+        /**
+         * Resolves the effective launch executable for a Steam game (container config or auto-detected).
+         * Returns a non-empty sentinel when [Container.isLaunchRealSteam] is true so the launch is not blocked.
+         */
+        fun getLaunchExecutable(appId: String, container: Container): String {
+            if (container.isLaunchRealSteam) return "steam"
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            return container.executablePath.ifEmpty { getInstalledExe(gameId) }
         }
 
         fun deleteApp(appId: Int): Boolean {

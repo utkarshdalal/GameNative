@@ -602,6 +602,16 @@ class GOGManager @Inject constructor(
         }
     }
 
+    /**
+     * Resolves the effective launch executable for a GOG game (container config or auto-detected).
+     * Returns empty string if no executable can be found.
+     */
+    suspend fun getLaunchExecutable(appId: String, container: Container): String = withContext(Dispatchers.IO) {
+        container.executablePath.ifEmpty {
+            getInstalledExe(LibraryItem(appId = appId, name = "", gameSource = GameSource.GOG))
+        }
+    }
+
     private fun getGameExecutable(installPath: String, gameDir: File): String {
         val result = getMainExecutableFromGOGInfo(gameDir, installPath)
         if (result.isSuccess) {

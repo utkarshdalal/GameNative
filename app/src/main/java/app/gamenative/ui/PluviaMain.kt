@@ -91,6 +91,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @Composable
@@ -944,6 +945,7 @@ fun PluviaMain(
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
                             isOffline = isOffline,
+                            bootToContainer = asContainer,
                         )
                     },
                     onTestGraphics = { appId ->
@@ -960,6 +962,7 @@ fun PluviaMain(
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
                             isOffline = isOffline,
+                            bootToContainer = true,
                         )
                     },
                     onClickExit = {
@@ -1044,6 +1047,7 @@ fun preLaunchApp(
     onSuccess: KFunction2<Context, String, Unit>,
     retryCount: Int = 0,
     isOffline: Boolean = false,
+    bootToContainer: Boolean = false,
 ) {
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
@@ -1064,9 +1068,36 @@ fun preLaunchApp(
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
 
+        // When "Open container" is used we boot to desktop/file manager only — skip executable check
+        if (!bootToContainer) {
+            // Verify we have a launch executable for all platforms before proceeding (fail fast, avoid black screen)
+            val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+            val effectiveExe = when (gameSource) {
+                GameSource.STEAM -> SteamService.getLaunchExecutable(appId, container)
+                GameSource.GOG -> GOGService.getLaunchExecutable(appId, container)
+                GameSource.EPIC -> EpicService.getLaunchExecutable(appId)
+                GameSource.CUSTOM_GAME -> CustomGameScanner.getLaunchExecutable(container)
+                else -> SteamService.getLaunchExecutable(appId, container)
+            }
+            if (effectiveExe.isBlank()) {
+                Timber.tag("preLaunchApp").w("Cannot launch $appId: no executable found (game source: $gameSource)")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.game_executable_not_found),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+                setLoadingDialogVisible(false)
+                return@launch
+            }
+        }
+
+        val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+
         // Check if this is a Custom Game and validate executable selection before installing components
         // Skip the check if booting to container (Open Container menu option)
-        val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+        val isCustomGame = gameSource == GameSource.CUSTOM_GAME
 
         // set up Ubuntu file system
         SplitCompat.install(context)
@@ -1204,8 +1235,8 @@ fun preLaunchApp(
             return@launch
         }
 
-        // For GOG Games, sync cloud saves before launch
-        val isGOGGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.GOG
+        // For GOG Games, sync cloud saves before launch (executable already verified above via GOGService.getLaunchExecutable)
+        val isGOGGame = gameSource == GameSource.GOG
         if (isGOGGame) {
             Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves before launch")
 
@@ -1228,8 +1259,8 @@ fun preLaunchApp(
             return@launch
         }
 
-        // For Epic Games, sync cloud saves before launch
-        val isEpicGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
+        // For Epic Games, sync cloud saves before launch (executable already verified above via EpicService.getLaunchExecutable)
+        val isEpicGame = gameSource == GameSource.EPIC
         if (isEpicGame) {
             // Handle Cloud Saves
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")

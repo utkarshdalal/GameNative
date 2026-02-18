@@ -261,6 +261,14 @@ class GOGService : Service() {
                 ?: ""
         }
 
+        /**
+         * Resolves the effective launch executable for a GOG game (container config or auto-detected).
+         * Returns empty string if no executable can be found.
+         */
+        suspend fun getLaunchExecutable(appId: String, container: com.winlator.container.Container): String {
+            return getInstance()?.gogManager?.getLaunchExecutable(appId, container) ?: ""
+        }
+
         fun getGogWineStartCommand(
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,

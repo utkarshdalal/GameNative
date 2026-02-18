@@ -14,6 +14,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
+import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import java.io.File
 import kotlin.math.abs
@@ -287,6 +288,17 @@ object CustomGameScanner {
      * - "Binaries/Win64/Game-Win64-Shipping.exe"
      */
     fun findUniqueExeRelativeToFolder(folderPath: String): String? = findUniqueExeRelativeToFolder(File(folderPath))
+
+    /**
+     * Resolves the effective launch executable for a Custom Game (container config or auto-detected from A: drive).
+     * Returns empty string if no executable can be found.
+     */
+    fun getLaunchExecutable(container: Container): String {
+        val exe = container.executablePath
+        if (exe.isNotEmpty()) return exe
+        val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
+        return findUniqueExeRelativeToFolder(gameFolderPath) ?: ""
+    }
 
     fun findUniqueExeRelativeToFolder(folder: File): String? {
         if (!folder.exists() || !folder.isDirectory) return null

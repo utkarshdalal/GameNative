@@ -296,6 +296,15 @@ class EpicService : Service() {
             return getInstance()?.epicManager?.getInstalledExe(appId) ?: ""
         }
 
+        /**
+         * Resolves the effective launch executable for an Epic game (container id e.g. "EPIC_123").
+         * Returns empty string if game is not installed or no executable can be found.
+         */
+        suspend fun getLaunchExecutable(containerId: String): String {
+            val gameId = app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId(containerId)
+            return getInstance()?.epicManager?.getLaunchExecutable(gameId) ?: ""
+        }
+
         suspend fun refreshLibrary(context: Context): Result<Int> {
             return getInstance()?.epicManager?.refreshLibrary(context)
                 ?: Result.failure(Exception("Service not available"))
