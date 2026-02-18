@@ -304,6 +304,12 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = "Stretch to fullscreen") },
+            state = config.stretchToFullscreen,
+            onCheckedChange = { state.config.value = config.copy(stretchToFullscreen = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
             subtitle = { Text(text = stringResource(R.string.force_dlc_description)) },
             state = config.forceDlc,

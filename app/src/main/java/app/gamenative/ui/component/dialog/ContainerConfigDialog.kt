@@ -1180,6 +1180,7 @@ private fun Preview_ContainerConfigDialog() {
             executablePath = "",
             installPath = "",
             showFPS = false,
+            stretchToFullscreen = false,
             launchRealSteam = false,
             allowSteamUpdates = false,
             steamType = "normal",

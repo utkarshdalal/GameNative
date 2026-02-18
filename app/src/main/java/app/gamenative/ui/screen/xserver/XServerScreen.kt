@@ -721,6 +721,9 @@ fun XServerScreen(
                     // TODO: make 'force fullscreen' be an option of the app being launched
                     if (container.executablePath.isNotBlank()) {
                         renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
+                        if (container.isStretchToFullscreen) {
+                            renderer.toggleFullscreen()
+                        }
                     }
                 }
                 getxServer().windowManager.addOnWindowModificationListener(

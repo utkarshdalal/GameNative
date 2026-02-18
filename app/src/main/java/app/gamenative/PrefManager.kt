@@ -283,6 +283,13 @@ object PrefManager {
             setPref(SHOW_FPS, value)
         }
 
+    private val STRETCH_TO_FULLSCREEN = booleanPreferencesKey("stretch_to_fullscreen")
+    var stretchToFullscreen: Boolean
+        get() = getPref(STRETCH_TO_FULLSCREEN, false)
+        set(value) {
+            setPref(STRETCH_TO_FULLSCREEN, value)
+        }
+
     private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
     var launchRealSteam: Boolean
         get() = getPref(LAUNCH_REAL_STEAM, false)
