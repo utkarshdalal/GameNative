@@ -292,11 +292,16 @@ object CustomGameScanner {
     /**
      * Resolves the effective launch executable for a Custom Game (container config or auto-detected from A: drive).
      * Returns empty string if no executable can be found.
+     * When container has a configured path, verifies the file exists to avoid launching stale/missing paths.
      */
     fun getLaunchExecutable(container: Container): String {
-        val exe = container.executablePath
-        if (exe.isNotEmpty()) return exe
         val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
+        val exe = container.executablePath
+        if (exe.isNotEmpty()) {
+            val fullPath = File(gameFolderPath, exe.replace('\\', File.separatorChar))
+            if (fullPath.exists() && fullPath.isFile) return exe
+            // Stale or missing path — fall through to auto-detect
+        }
         return findUniqueExeRelativeToFolder(gameFolderPath) ?: ""
     }
 
