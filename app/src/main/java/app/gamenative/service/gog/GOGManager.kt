@@ -588,11 +588,12 @@ class GOGManager @Inject constructor(
             val exe = getGameExecutable(installPath, installDirFile)
             if (exe.isNotEmpty()) return@withContext exe
             val subdirs = installDirFile.listFiles()?.filter {
-                it.isDirectory && it.name != "saves"
+                it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
             } ?: emptyList()
 
-            if (subdirs.isNotEmpty()) {
-                return@withContext getGameExecutable(installPath, subdirs.first())
+            for (subdir in subdirs) {
+                val subdirExe = getGameExecutable(installPath, subdir)
+                if (subdirExe.isNotEmpty()) return@withContext subdirExe
             }
 
             ""
