@@ -297,11 +297,16 @@ class EpicService : Service() {
         }
 
         /**
-         * Resolves the effective launch executable for an Epic game (container id e.g. "EPIC_123").
-         * Returns empty string if game is not installed or no executable can be found.
+         * Resolves the effective launch executable for an Epic game.
+         * Container id is expected to be "EPIC_&lt;numericId&gt;" (from library). Returns empty if
+         * game is not installed, no executable can be found, or containerId cannot be parsed.
          */
         suspend fun getLaunchExecutable(containerId: String): String {
-            val gameId = app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId(containerId)
+            val gameId = try {
+                app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId(containerId)
+            } catch (e: Exception) {
+                return ""
+            }
             return getInstance()?.epicManager?.getLaunchExecutable(gameId) ?: ""
         }
 
