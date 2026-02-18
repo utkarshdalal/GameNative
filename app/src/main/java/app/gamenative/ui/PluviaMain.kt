@@ -582,6 +582,16 @@ fun PluviaMain(
             }
         }
 
+        DialogType.EXECUTABLE_NOT_FOUND -> {
+            onConfirmClick = null
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+        }
+
         DialogType.SYNC_IN_PROGRESS -> {
             onConfirmClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -1081,14 +1091,16 @@ fun preLaunchApp(
             }
             if (effectiveExe.isBlank()) {
                 Timber.tag("preLaunchApp").w("Cannot launch $appId: no executable found (game source: $gameSource)")
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.game_executable_not_found),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
                 setLoadingDialogVisible(false)
+                setMessageDialogState(
+                    MessageDialogState(
+                        visible = true,
+                        type = DialogType.EXECUTABLE_NOT_FOUND,
+                        title = context.getString(R.string.game_executable_not_found_title),
+                        message = context.getString(R.string.game_executable_not_found),
+                        dismissBtnText = context.getString(R.string.ok),
+                    ),
+                )
                 return@launch
             }
         }

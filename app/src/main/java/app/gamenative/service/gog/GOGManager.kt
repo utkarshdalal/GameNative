@@ -672,22 +672,22 @@ class GOGManager @Inject constructor(
             }
 
             val playTasks = jsonObject.getJSONArray("playTasks")
+            val installDir = File(installPath)
+
             for (i in 0 until playTasks.length()) {
                 val task = playTasks.getJSONObject(i)
-                if (task.has("isPrimary") && task.getBoolean("isPrimary")) {
+                if (task.has("isPrimary") && task.getBoolean("isPrimary") && task.has("path")) {
                     val executablePath = task.getString("path")
                     val exeFile = File(gameDir, executablePath)
 
-                    if (exeFile.exists()) {
-                        // Path must be relative to install root (drive root), not gameDir's parent
-                        val installDir = File(installPath)
+                    if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
                         return Result.success(relativePath)
                     }
-
-                    return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
+                    break
                 }
             }
+
             Result.failure(Exception("No primary executable found in playTasks"))
         } catch (e: Exception) {
             Result.failure(Exception("Error parsing GOG info file in ${gameDir.absolutePath}: ${e.message}", e))
