@@ -143,7 +143,7 @@ data class SteamApp(
     val ufs: UFS = UFS(),
 ) {
     companion object {
-        const val STEAM_URL = "https://shared.steamstatic.com/store_item_assets/steam/apps"
+        private const val STEAM_URL = "https://shared.steamstatic.com/store_item_assets/steam/apps"
     }
 
     val logoUrl: String
@@ -194,7 +194,7 @@ data class SteamApp(
             ""
         }
 
-        return if (imageLink == "") "" else "$STEAM_URL/$id/$imageLink"
+        return if (imageLink.isNullOrEmpty()) "" else "$STEAM_URL/$id/$imageLink"
     }
 
     fun getHeroUrl(language: Language = Language.english, large: Boolean = false): String {
@@ -220,7 +220,7 @@ data class SteamApp(
             ""
         }
 
-        return if (imageLink == "") "" else "$STEAM_URL/$id/$imageLink"
+        return if (imageLink.isNullOrEmpty()) "" else "$STEAM_URL/$id/$imageLink"
     }
 
     fun getLogoUrl(language: Language = Language.english, large: Boolean = false): String? {

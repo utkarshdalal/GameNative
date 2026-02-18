@@ -1,5 +1,6 @@
 package app.gamenative.ui.util
 
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -33,16 +34,18 @@ internal fun ListItemImage(
     onFailure: () -> Unit = {},
 ) {
     // Simple blurred image background, but adds it to all, might be inefficient
-   CoilImage(
-       modifier = modifier
-           .size(size)
-           .then(imageModifier)
-           .blur(20.dp),
-       imageModel = image,
-       imageOptions = ImageOptions(
-           contentScale = ContentScale.Crop,
-       ),
-   )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        CoilImage(
+            modifier = modifier
+                .size(size)
+                .then(imageModifier)
+                .blur(20.dp),
+            imageModel = image,
+            imageOptions = ImageOptions(
+                contentScale = ContentScale.Crop,
+            ),
+        )
+    }
     CoilImage(
         modifier = modifier
             .size(size)
