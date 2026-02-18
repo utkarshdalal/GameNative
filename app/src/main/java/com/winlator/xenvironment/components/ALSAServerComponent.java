@@ -34,6 +34,7 @@ public class ALSAServerComponent extends EnvironmentComponent {
         this.connector = xConnectorEpoll;
         xConnectorEpoll.setMultithreadedClients(true);
         this.connector.start();
+        isPaused = false;
     }
 
     @Override // com.winlator.xenvironment.EnvironmentComponent
@@ -43,6 +44,7 @@ public class ALSAServerComponent extends EnvironmentComponent {
             xConnectorEpoll.stop();
             this.connector = null;
         }
+        isPaused = false;
     }
 
     public void pause() {

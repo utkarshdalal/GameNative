@@ -37,6 +37,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (lock) {
             stop();
             pid = execPulseAudio();
+            isPaused = false;
+            pauseCount = 0;
         }
     }
 
@@ -48,6 +50,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 Process.killProcess(pid);
                 pid = -1;
             }
+            isPaused = false;
+            pauseCount = 0;
         }
     }
 
