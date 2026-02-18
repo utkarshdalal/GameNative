@@ -24,6 +24,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private static final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
+    private volatile boolean isPaused = false;
 
     public PulseAudioComponent(UnixSocketConfig socketConfig) {
         this.socketConfig = socketConfig;
@@ -52,18 +53,20 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public void pause() {
         Log.d("PulseAudioComponent", "Pausing...");
         synchronized (lock) {
-            if (pid != -1) {
-                ProcessHelper.suspendProcess(pid);
-            }
+            if (isPaused || pid == -1) return;
+            ProcessHelper.suspendProcess(pid);
+            isPaused = true;
         }
     }
 
     public void resume() {
         Log.d("PulseAudioComponent", "Resuming...");
         synchronized (lock) {
-            if (pid != -1) {
-                ProcessHelper.resumeProcess(pid);
-            }
+            if (!isPaused || pid == -1) return;
+            ProcessHelper.resumeProcess(pid);
+            isPaused = false;
+            // Give PulseAudio time to reschedule before game processes resume
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }
     }
 

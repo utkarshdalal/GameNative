@@ -15,6 +15,7 @@ public class ALSAServerComponent extends EnvironmentComponent {
     private XConnectorEpoll connector;
     private final ALSAClient.Options options;
     private final UnixSocketConfig socketConfig;
+    private volatile boolean isPaused = false;
 
     public ALSAServerComponent(UnixSocketConfig socketConfig, ALSAClient.Options options) {
         this.socketConfig = socketConfig;
@@ -45,6 +46,7 @@ public class ALSAServerComponent extends EnvironmentComponent {
     }
 
     public void pause() {
+        if (isPaused) return;
         XConnectorEpoll xConnectorEpoll = this.connector;
         if (xConnectorEpoll != null) {
             // Pause all connected ALSA clients
@@ -55,9 +57,11 @@ public class ALSAServerComponent extends EnvironmentComponent {
                 }
             }
         }
+        isPaused = true;
     }
 
     public void resume() {
+        if (!isPaused) return;
         XConnectorEpoll xConnectorEpoll = this.connector;
         if (xConnectorEpoll != null) {
             // Resume all connected ALSA clients
@@ -68,5 +72,6 @@ public class ALSAServerComponent extends EnvironmentComponent {
                 }
             }
         }
+        isPaused = false;
     }
 }
