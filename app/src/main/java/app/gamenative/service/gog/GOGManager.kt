@@ -659,6 +659,20 @@ class GOGManager @Inject constructor(
         return null
     }
 
+    /**
+     * Resolves a relative path against a base dir using case-insensitive matching for each segment.
+     * Info file may list e.g. "checkapplication.exe" while the actual file is "CheckApplication.exe" (Linux/Android are case-sensitive).
+     */
+    private fun findFileCaseInsensitive(baseDir: File, relativePath: String): File? {
+        val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
+        var current = baseDir
+        for (segment in segments) {
+            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) } ?: return null
+            current = match
+        }
+        return current.takeIf { it.exists() }
+    }
+
     private fun getMainExecutableFromGOGInfo(gameDir: File, installPath: String): Result<String> {
         return try {
             val infoFile = findGOGInfoFile(gameDir)
@@ -676,15 +690,15 @@ class GOGManager @Inject constructor(
 
             for (i in 0 until playTasks.length()) {
                 val task = playTasks.getJSONObject(i)
-                if (task.has("isPrimary") && task.getBoolean("isPrimary") && task.has("path")) {
+                if (task.has("isPrimary") && task.getBoolean("isPrimary")) {
                     val executablePath = task.getString("path")
-                    val exeFile = File(gameDir, executablePath)
-
+                    Timber.e("executable_path: $executablePath, gameDir: ${gameDir.absolutePath}")
+                    val exeFile = findFileCaseInsensitive(gameDir, executablePath)
                     if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
                         return Result.success(relativePath)
                     }
-                    break
+                    return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
                 }
             }
 
