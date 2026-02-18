@@ -1078,10 +1078,11 @@ fun preLaunchApp(
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
 
+        val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+
         // When "Open container" is used we boot to desktop/file manager only — skip executable check
         if (!bootToContainer) {
             // Verify we have a launch executable for all platforms before proceeding (fail fast, avoid black screen)
-            val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
             val effectiveExe = when (gameSource) {
                 GameSource.STEAM -> SteamService.getLaunchExecutable(appId, container)
                 GameSource.GOG -> GOGService.getLaunchExecutable(appId, container)
@@ -1104,8 +1105,6 @@ fun preLaunchApp(
                 return@launch
             }
         }
-
-        val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
 
         // Check if this is a Custom Game and validate executable selection before installing components
         // Skip the check if booting to container (Open Container menu option)
