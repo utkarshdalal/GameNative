@@ -99,8 +99,6 @@
     <string name="custom_game_folder_picker_error">无法解析文件夹路径</string>
     <string name="container_config_drive_letter_missing">缺少驱动器字母</string>
     <string name="container_config_invalid_drive_path">驱动器路径无效</string>
-    <string name="custom_game_exe_selection_title">需要选择可执行文件</string>
-    <string name="custom_game_exe_selection_message">此游戏有多个可执行文件，请打开 自定义游戏设置 以选择要启动的游戏</string>
     <string name="custom_game_settings">自定义游戏设置</string>
     <string name="custom_game_delete_title">删除游戏</string>
     <string name="custom_game_delete_message">确定要卸载 %1$s 吗？</string>
@@ -143,6 +141,8 @@
     <string name="content_info">内容信息</string>
     <string name="game_not_installed_title">游戏未安装</string>
     <string name="game_not_installed_message">%s 未安装，请在启动前先安装游戏</string>
+    <string name="game_executable_not_found_title">无法启动</string>
+    <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>
     <string name="save_container_settings_message">此游戏运行已应用修改的配置，是否保存容器配置？</string>
     <string name="sync_error_title">同步错误</string>

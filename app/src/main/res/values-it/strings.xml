@@ -100,8 +100,6 @@
     <string name="custom_game_folder_picker_error">Impossibile risolvere il percorso della cartella</string>
     <string name="container_config_drive_letter_missing">Manca la lettera dell\'unità</string>
     <string name="container_config_invalid_drive_path">Percorso dell\'unità non valido</string>
-    <string name="custom_game_exe_selection_title">Selezione Eseguibile Richiesta</string>
-    <string name="custom_game_exe_selection_message">Questo gioco ha più eseguibili. Apri le Impostazioni Gioco Personalizzato per selezionare quale avviare.</string>
     <string name="custom_game_settings">Impostazioni Gioco Personalizzato</string>
     <string name="custom_game_delete_title">Elimina Gioco</string>
     <string name="custom_game_delete_message">Sei sicuro di voler disinstallare %1$s?</string>
@@ -148,6 +146,8 @@
     <string name="content_info">Info Contenuto</string>
     <string name="game_not_installed_title">Gioco Non Installato</string>
     <string name="game_not_installed_message">%s non è installato. Installa prima il gioco per avviarlo.</string>
+    <string name="game_executable_not_found_title">Impossibile avviare</string>
+    <string name="game_executable_not_found">L\'eseguibile non è stato selezionato automaticamente. Imposta il percorso dell\'eseguibile nelle impostazioni del Container.</string>
     <string name="save_container_settings_title">Salvare Configurazione Container?</string>
     <string name="save_container_settings_message">Sono state applicate modifiche temporanee alla configurazione del container per questo avvio. Vuoi salvarle?</string>
     <string name="sync_error_title">Errore Sincronizzazione</string>

@@ -92,8 +92,6 @@
     <string name="custom_game_folder_picker_error">Не вдалося визначити шлях до папки</string>
     <string name="container_config_drive_letter_missing">Відсутня літера диска</string>
     <string name="container_config_invalid_drive_path">Неприпустимий шлях диска</string>
-    <string name="custom_game_exe_selection_title">Потрібно вибрати виконуваний файл</string>
-    <string name="custom_game_exe_selection_message">Ця гра має кілька виконуваних файлів. Відкрийте налаштування користувацької гри, щоб вибрати, який з них запускати.</string>
     <string name="custom_game_settings">Налаштування власної гри</string>
     <string name="custom_game_delete_title">Видалити гру</string>
     <string name="custom_game_delete_message">Ви впевнені, що хочете видалити %1$s?</string>
@@ -140,6 +138,8 @@
     <string name="content_info">Інформація про вміст</string>
     <string name="game_not_installed_title">Гра не інстальована</string>
     <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
+    <string name="game_executable_not_found_title">Неможливо запустити</string>
+    <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>
     <string name="save_container_settings_message">Тимчасові налаштування були застосовані для цього запуску. Зберегти їх?</string>
     <string name="sync_error_title">Помилка синхронізації</string>

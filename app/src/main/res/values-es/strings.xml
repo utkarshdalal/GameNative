@@ -90,8 +90,6 @@
     <string name="custom_games_folders_found">%d carpetas encontradas</string>
     <string name="custom_games_scan_description">Se escanearán estas rutas en busca de archivos .exe para listarlos como juegos personalizados. Esto puede ralentizar el inicio de la aplicación.</string>
     <string name="custom_game_folder_picker_error">Error al resolver la ruta de la carpeta</string>
-    <string name="custom_game_exe_selection_title">Selección de ejecutable requerida</string>
-    <string name="custom_game_exe_selection_message">Este juego tiene múltiples ejecutables. Abre los Ajustes de Juego Personalizado para seleccionar cuál iniciar.</string>
     <string name="custom_game_settings">Ajustes de juego personalizado</string>
     <string name="custom_game_delete_title">Eliminar juego</string>
     <string name="custom_game_delete_message">¿Deseas eliminar %1$s? Se borrará su contenedor, pero los archivos del juego no se verán afectados.</string>
@@ -136,6 +134,8 @@
     <string name="content_info">Información de contenido</string>
     <string name="game_not_installed_title">Juego no instalado</string>
     <string name="game_not_installed_message">%s no está instalado. Instala el juego antes de iniciarlo.</string>
+    <string name="game_executable_not_found_title">No se puede iniciar</string>
+    <string name="game_executable_not_found">No se pudo seleccionar automáticamente el ejecutable. Establece la ruta del ejecutable en la configuración del contenedor.</string>
     <string name="save_container_settings_title">Guardar configuración del contenedor</string>
     <string name="save_container_settings_message">Se aplicaron cambios temporales a la configuración para este inicio. ¿Deseas guardarlos?</string>
     <string name="sync_error_title">Error de sincronización</string>

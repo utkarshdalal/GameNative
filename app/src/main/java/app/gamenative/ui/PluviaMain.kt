@@ -54,12 +54,14 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.ConnectingServersScreen
+import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
+import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
@@ -122,6 +124,8 @@ fun PluviaMain(
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+
+    var openContainerConfigForAppId by remember { mutableStateOf<String?>(null) }
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
@@ -590,6 +594,10 @@ fun PluviaMain(
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
             }
+            onActionClick = {
+                setMessageDialogState(MessageDialogState(false))
+                openContainerConfigForAppId = state.launchedAppId
+            }
         }
 
         DialogType.SYNC_IN_PROGRESS -> {
@@ -849,6 +857,20 @@ fun PluviaMain(
             message = msgDialogState.message,
         )
 
+        openContainerConfigForAppId?.let { appId ->
+            val container = ContainerUtils.getOrCreateContainer(context, appId)
+            ContainerConfigDialog(
+                visible = true,
+                title = context.getString(R.string.container_config_title),
+                initialConfig = ContainerUtils.toContainerData(container),
+                onDismissRequest = { openContainerConfigForAppId = null },
+                onSave = { config ->
+                    ContainerUtils.applyToContainer(context, appId, config)
+                    openContainerConfigForAppId = null
+                },
+            )
+        }
+
         GameFeedbackDialog(
             state = gameFeedbackState,
             onStateChange = { gameFeedbackState = it },
@@ -1088,7 +1110,6 @@ fun preLaunchApp(
                 GameSource.GOG -> GOGService.getLaunchExecutable(appId, container)
                 GameSource.EPIC -> EpicService.getLaunchExecutable(appId)
                 GameSource.CUSTOM_GAME -> CustomGameScanner.getLaunchExecutable(container)
-                else -> SteamService.getLaunchExecutable(appId, container)
             }
             if (effectiveExe.isBlank()) {
                 Timber.tag("preLaunchApp").w("Cannot launch $appId: no executable found (game source: $gameSource)")
@@ -1100,6 +1121,7 @@ fun preLaunchApp(
                         title = context.getString(R.string.game_executable_not_found_title),
                         message = context.getString(R.string.game_executable_not_found),
                         dismissBtnText = context.getString(R.string.ok),
+                        actionBtnText = AppOptionMenuType.EditContainer.text,
                     ),
                 )
                 return@launch
