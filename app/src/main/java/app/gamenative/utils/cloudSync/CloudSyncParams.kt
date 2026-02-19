@@ -3,7 +3,6 @@ package app.gamenative.utils.cloudSync
 import app.gamenative.enums.SaveLocation
 import kotlinx.coroutines.CoroutineScope
 
-
 /**
  * Parameters for cloud sync (Steam needs most of these).
  * [syncCloudSaves] resolves all sync outcomes and returns Proceed / ShowDialog / Retry.

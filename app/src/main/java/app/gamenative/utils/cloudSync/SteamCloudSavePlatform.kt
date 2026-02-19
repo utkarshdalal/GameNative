@@ -180,6 +180,14 @@ internal object SteamCloudSavePlatform : CloudSavePlatform {
                             message = context.getString(R.string.main_pending_operation_none),
                             dismissBtnText = context.getString(R.string.ok),
                         )
+                    else ->
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.PENDING_OPERATION_NONE,
+                            title = context.getString(R.string.sync_error_title),
+                            message = context.getString(R.string.main_pending_operation_none),
+                            dismissBtnText = context.getString(R.string.ok),
+                        )
                 }
             } else {
                 MessageDialogState(
@@ -205,6 +213,13 @@ internal object SteamCloudSavePlatform : CloudSavePlatform {
         isOffline: Boolean,
         prefixToPath: (String) -> String,
     ) {
-        SteamService.closeApp(gameId, isOffline, prefixToPath).await()
+        Timber.tag("Steam").i("[Cloud Saves] Steam Game detected for $appId — uploading cloud saves after close")
+        try {
+            SteamService.closeApp(gameId, isOffline, prefixToPath).await()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Timber.tag("Steam").e(e, "[Cloud Saves] Upload failed for $appId")
+        }
+
     }
 }

@@ -1301,11 +1301,16 @@ fun preLaunchApp(
             setLoadingMessage = setLoadingMessage,
             setLoadingProgress = setLoadingProgress,
         )
-        setLoadingDialogVisible(false)
 
         when (outcome) {
-            is CloudSyncOutcome.Proceed -> onSuccess(context, appId)
-            is CloudSyncOutcome.ShowDialog -> setMessageDialogState(outcome.state)
+            is CloudSyncOutcome.Proceed -> {
+                setLoadingDialogVisible(false)
+                onSuccess(context, appId)
+            }
+            is CloudSyncOutcome.ShowDialog -> {
+                setLoadingDialogVisible(false)
+                setMessageDialogState(outcome.state)
+            }
             is CloudSyncOutcome.Retry -> preLaunchApp(
                 context = context,
                 appId = appId,
@@ -1318,6 +1323,7 @@ fun preLaunchApp(
                 setMessageDialogState = setMessageDialogState,
                 onSuccess = onSuccess,
                 retryCount = retryCount + 1,
+                isOffline = isOffline,
             )
         }
     }
