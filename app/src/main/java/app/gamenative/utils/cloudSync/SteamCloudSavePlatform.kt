@@ -197,4 +197,14 @@ internal object SteamCloudSavePlatform : CloudSavePlatform {
         SyncResult.Success,
         -> CloudSyncOutcome.Proceed
     }
+
+    override suspend fun upload(
+        context: Context,
+        appId: String,
+        gameId: Int,
+        isOffline: Boolean,
+        prefixToPath: (String) -> String,
+    ) {
+        SteamService.closeApp(gameId, isOffline, prefixToPath).await()
+    }
 }

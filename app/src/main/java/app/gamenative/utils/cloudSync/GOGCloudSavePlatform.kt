@@ -29,4 +29,19 @@ internal object GOGCloudSavePlatform : CloudSavePlatform {
         )
         return CloudSyncOutcome.Proceed
     }
+
+    override suspend fun upload(
+        context: Context,
+        appId: String,
+        gameId: Int,
+        isOffline: Boolean,
+        prefixToPath: (String) -> String,
+    ) {
+        Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — uploading cloud saves after close")
+        app.gamenative.service.gog.GOGService.syncCloudSaves(
+            context = context,
+            appId = appId,
+            preferredAction = "upload",
+        )
+    }
 }

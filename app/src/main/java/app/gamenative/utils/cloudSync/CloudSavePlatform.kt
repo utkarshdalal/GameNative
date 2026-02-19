@@ -22,4 +22,19 @@ interface CloudSavePlatform {
         params: CloudSyncParams,
         callbacks: CloudSaveCallbacks,
     ): CloudSyncOutcome
+
+    /**
+     * Upload local cloud saves after the game has exited.
+     * Only the platform that applies to this app runs; others no-op.
+     * [prefixToPath] is used by Steam to resolve cloud save paths; other platforms ignore it.
+     */
+    suspend fun upload(
+        context: Context,
+        appId: String,
+        gameId: Int,
+        isOffline: Boolean,
+        prefixToPath: (String) -> String,
+    ) {
+        // Default: no-op (platforms that support post-exit upload override this).
+    }
 }

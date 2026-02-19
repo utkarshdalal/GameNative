@@ -16,11 +16,11 @@ import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
-import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.uploadCloudSaves
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import com.materialkolor.PaletteStyle
@@ -288,56 +288,16 @@ class MainViewModel @Inject constructor(
             Timber.tag("Exit").i("Got game id: $gameId")
             SteamService.notifyRunningProcesses()
 
-            // Check if this is a GOG or Epic game and sync cloud saves
-            val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-            if (gameSource == GameSource.GOG) {
-                Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
-                // Sync cloud saves (upload local changes to cloud)
-                // Run in background, don't block UI
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
-                        val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
-                            context = context,
-                            appId = appId,
-                            preferredAction = "upload",
-                        )
-                        if (syncSuccess) {
-                            Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
-                        } else {
-                            Timber.tag("GOG").w("[Cloud Saves] Upload sync failed for $appId")
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
-                    }
-                }
-            } else if (gameSource == GameSource.EPIC) {
-                Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
-                // Sync cloud saves (upload local changes to cloud)
-                // Run in background, don't block UI
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
-                        val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
-                            context = context,
-                            appId = gameId,
-                            preferredAction = "upload",
-                        )
-                        if (syncSuccess) {
-                            Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
-                        } else {
-                            Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
-                    }
-                }
-            } else {
-                // For Steam games, sync cloud saves
-                SteamService.closeApp(gameId, isOffline.value) { prefix ->
+            // Upload local cloud saves after exit; dispatches to GOG, Epic, or Steam.
+            uploadCloudSaves(
+                context = context,
+                appId = appId,
+                gameId = gameId,
+                isOffline = isOffline.value,
+                prefixToPath = { prefix ->
                     PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                }.await()
-            }
+                },
+            )
 
             // Prompt user to save temporary container configuration if one was applied
             if (hadTemporaryOverride) {

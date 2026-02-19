@@ -7,6 +7,7 @@ import app.gamenative.utils.cloudSync.CloudSyncParams
 import app.gamenative.utils.cloudSync.EpicCloudSavePlatform
 import app.gamenative.utils.cloudSync.GOGCloudSavePlatform
 import app.gamenative.utils.cloudSync.SteamCloudSavePlatform
+import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 
 private val ALL_CLOUD_SAVE_PLATFORMS: List<CloudSavePlatform> = listOf(
@@ -47,4 +48,21 @@ suspend fun syncCloudSaves(
         setLoadingMessage(platform.getLoadingMessage(context, container))
         platform.sync(context, container, params, callbacks)
     }
+}
+
+/**
+ * Upload local cloud saves after the game has exited.
+ * Dispatches to the platform that applies to this app (GOG, Epic, or Steam); no-op if none apply.
+ */
+suspend fun uploadCloudSaves(
+    context: Context,
+    appId: String,
+    gameId: Int,
+    isOffline: Boolean,
+    prefixToPath: (String) -> String,
+) {
+    val container = ContainerUtils.getContainer(context, appId)
+    val platforms = getCloudSyncPlatforms(container)
+    if (platforms.isEmpty()) return
+    platforms.single().upload(context, appId, gameId, isOffline, prefixToPath)
 }

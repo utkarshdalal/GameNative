@@ -32,4 +32,19 @@ internal object EpicCloudSavePlatform : CloudSavePlatform {
         EpicService.cleanupLaunchTokens(context)
         return CloudSyncOutcome.Proceed
     }
+
+    override suspend fun upload(
+        context: Context,
+        appId: String,
+        gameId: Int,
+        isOffline: Boolean,
+        prefixToPath: (String) -> String,
+    ) {
+        Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — uploading cloud saves after close")
+        app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+            context = context,
+            appId = gameId,
+            preferredAction = "upload",
+        )
+    }
 }
