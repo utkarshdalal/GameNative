@@ -66,8 +66,13 @@ object GameFeedbackUtils {
             val gameName = when(gameSource) {
                 GameSource.CUSTOM_GAME -> {
                     val folderPath = CustomGameScanner.findCustomGameById(gameId) ?: ""
-                    val game = CustomGameScanner.createLibraryItemFromFolder(folderPath)
-                    game?.name ?: ""
+                    if(folderPath.isNotEmpty()){
+                        val game = CustomGameScanner.createLibraryItemFromFolder(folderPath)
+                        game?.name ?: ""
+                    }
+                    else {
+                        ""
+                    }
                 }
                 GameSource.EPIC -> {
                     val game = EpicService.getEpicGameOf(gameId)
