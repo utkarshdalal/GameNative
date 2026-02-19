@@ -348,8 +348,6 @@ class MainViewModel @Inject constructor(
             // After app closes, check if we need to show the feedback dialog
             try {
                 // Do not show the Feedback form for non-steam games until we can support.
-                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                if (gameSource == GameSource.STEAM) {
                     val container = ContainerUtils.getContainer(context, appId)
 
                     val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
@@ -368,9 +366,6 @@ class MainViewModel @Inject constructor(
                         // Show the feedback dialog
                         _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                     }
-                } else {
-                    Timber.d("Non-Steam Game Detected, not showing feedback")
-                }
             } catch (_: Exception) {
                 // ignore container errors
             }
