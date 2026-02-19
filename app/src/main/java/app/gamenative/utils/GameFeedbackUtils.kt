@@ -65,9 +65,9 @@ object GameFeedbackUtils {
             // Get the game name from container or use a fallback
             val gameName = when(gameSource) {
                 GameSource.CUSTOM_GAME -> {
-                    val folderPath = CustomGameScanner.findCustomGameById(gameId)
-                    Timber.i("Custom Game Folder Path: $folderPath")
-                    folderPath
+                    val folderPath = CustomGameScanner.findCustomGameById(gameId) ?: ""
+                    val game = CustomGameScanner.createLibraryItemFromFolder(folderPath)
+                    game?.name
                 }
                 GameSource.EPIC -> {
                     val game = EpicService.getEpicGameOf(gameId)
@@ -81,7 +81,7 @@ object GameFeedbackUtils {
                     val appInfo = SteamService.getAppInfoOf(gameId)!!
                     appInfo.name
                 }
-            } as String
+            }
 
             Timber.d("GameFeedbackUtils: Game name: $gameName")
 
