@@ -80,6 +80,7 @@ import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
+import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFs
@@ -125,7 +126,7 @@ fun PluviaMain(
 
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
 
-    var openContainerConfigForAppId by remember { mutableStateOf<String?>(null) }
+    var openContainerConfigForAppId by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
@@ -857,18 +858,36 @@ fun PluviaMain(
             message = msgDialogState.message,
         )
 
+        val scope = rememberCoroutineScope()
+        var containerConfigForDialog by remember(openContainerConfigForAppId) { mutableStateOf<ContainerData?>(null) }
+        LaunchedEffect(openContainerConfigForAppId) {
+            val appId = openContainerConfigForAppId
+            if (appId == null) {
+                containerConfigForDialog = null
+                return@LaunchedEffect
+            }
+            containerConfigForDialog = withContext(Dispatchers.IO) {
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
+                ContainerUtils.toContainerData(container)
+            }
+        }
         openContainerConfigForAppId?.let { appId ->
-            val container = ContainerUtils.getOrCreateContainer(context, appId)
-            ContainerConfigDialog(
-                visible = true,
-                title = context.getString(R.string.container_config_title),
-                initialConfig = ContainerUtils.toContainerData(container),
-                onDismissRequest = { openContainerConfigForAppId = null },
-                onSave = { config ->
-                    ContainerUtils.applyToContainer(context, appId, config)
-                    openContainerConfigForAppId = null
-                },
-            )
+            containerConfigForDialog?.let { config ->
+                ContainerConfigDialog(
+                    visible = true,
+                    title = context.getString(R.string.container_config_title),
+                    initialConfig = config,
+                    onDismissRequest = { openContainerConfigForAppId = null },
+                    onSave = { newConfig ->
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                ContainerUtils.applyToContainer(context, appId, newConfig)
+                            }
+                            openContainerConfigForAppId = null
+                        }
+                    },
+                )
+            }
         }
 
         GameFeedbackDialog(
@@ -1238,7 +1257,7 @@ fun preLaunchApp(
         containerManager.activateContainer(container)
 
         // If another game is running on this account elsewhere, prompt user first (cross-app session)
-        val isSteamGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
+        val isSteamGame = gameSource == GameSource.STEAM
         if(isSteamGame) {
             try {
                 val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
@@ -1383,6 +1402,7 @@ fun preLaunchApp(
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = onSuccess,
                         retryCount = retryCount + 1,
+                        bootToContainer = bootToContainer,
                     )
                 } else {
                     setMessageDialogState(
