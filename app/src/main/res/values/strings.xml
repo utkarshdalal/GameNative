@@ -778,6 +778,7 @@
     <string name="main_sync_in_progress_launch_anyway_message">Cloud save sync for this game is already running. You can wait and try again, or launch anyway without syncing (may cause save conflicts).</string>
     <string name="main_launch_anyway">Launch anyway</string>
     <string name="main_wait">Wait</string>
+    <string name="main_syncing_cloud_saves">Syncing cloud saves...</string>
     <string name="main_sync_failed">Failed to sync save files: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->

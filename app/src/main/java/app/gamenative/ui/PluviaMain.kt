@@ -73,6 +73,9 @@ import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.cloudSync.CloudSyncOutcome
+import app.gamenative.utils.cloudSync.CloudSyncParams
+import app.gamenative.utils.syncCloudSaves
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.UpdateChecker
@@ -1147,10 +1150,6 @@ fun preLaunchApp(
             }
         }
 
-        // Check if this is a Custom Game and validate executable selection before installing components
-        // Skip the check if booting to container (Open Container menu option)
-        val isCustomGame = gameSource == GameSource.CUSTOM_GAME
-
         // set up Ubuntu file system
         SplitCompat.install(context)
         if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
@@ -1279,273 +1278,47 @@ fun preLaunchApp(
             } catch (_: Exception) { /* ignore persona read errors */ }
         }
 
-        // For Custom Games, bypass Steam Cloud operations entirely and proceed to launch
-        if (isCustomGame) {
-            Timber.tag("preLaunchApp").i("Custom Game detected for $appId — skipping Steam Cloud sync and launching container")
-            setLoadingDialogVisible(false)
-            onSuccess(context, appId)
-            return@launch
-        }
-
-        // For GOG Games, sync cloud saves before launch (executable already verified above via GOGService.getLaunchExecutable)
-        val isGOGGame = gameSource == GameSource.GOG
-        if (isGOGGame) {
-            Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves before launch")
-
-            // Sync cloud saves (download latest saves before playing)
-            Timber.tag("GOG").d("[Cloud Saves] Starting pre-game download sync for $appId")
-            val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
-                context = context,
-                appId = appId,
-            )
-
-            if (!syncSuccess) {
-                Timber.tag("GOG").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
-                // Don't block launch on sync failure - log warning and continue
-            } else {
-                Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
-            }
-
-            setLoadingDialogVisible(false)
-            onSuccess(context, appId)
-            return@launch
-        }
-
-        // For Epic Games, sync cloud saves before launch (executable already verified above via EpicService.getLaunchExecutable)
-        val isEpicGame = gameSource == GameSource.EPIC
-        if (isEpicGame) {
-            // Handle Cloud Saves
-            Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves before launch")
-            // Sync cloud saves (download latest saves before playing)
-            Timber.tag("Epic").d("[Cloud Saves] Starting pre-game download sync for $appId")
-            val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
-                context = context,
-                appId = gameId,
-            )
-
-            if (!syncSuccess) {
-                Timber.tag("Epic").w("[Cloud Saves] Download sync failed for $appId, proceeding with launch anyway")
-                // Don't block launch on sync failure - log warning and continue
-            } else {
-                Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
-            }
-
-            // Delete Ownership Token if exists
-            Timber.tag("Epic").i("[Ownership Tokens] Cleaning up launch tokens for Epic games...")
-            EpicService.cleanupLaunchTokens(context)
-
-            setLoadingDialogVisible(false)
-            onSuccess(context, appId)
-            return@launch
-        }
-
         if (skipCloudSync) {
-            Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch
         }
 
-        // For Steam games, sync save files and check no pending remote operations are running
-        val prefixToPath: (String) -> String = { prefix ->
-            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-        }
-        setLoadingMessage("Syncing cloud saves")
-        setLoadingProgress(-1f)
-        val postSyncInfo = SteamService.beginLaunchApp(
-            appId = gameId,
-            prefixToPath = prefixToPath,
+        val syncParams = CloudSyncParams(
+            appId = appId,
+            gameId = gameId,
             ignorePendingOperations = ignorePendingOperations,
             preferredSave = preferredSave,
-            parentScope = this,
+            useTemporaryOverride = useTemporaryOverride,
+            retryCount = retryCount,
             isOffline = isOffline,
-            onProgress = { message, progress ->
-                setLoadingMessage(message)
-                setLoadingProgress(if (progress < 0) -1f else progress)
-            },
-        ).await()
-
+            scope = this,
+        )
+        val outcome = syncCloudSaves(
+            context = context,
+            container = container,
+            params = syncParams,
+            setLoadingMessage = setLoadingMessage,
+            setLoadingProgress = setLoadingProgress,
+        )
         setLoadingDialogVisible(false)
 
-        when (postSyncInfo.syncResult) {
-            SyncResult.Conflict -> {
-                setMessageDialogState(
-                    MessageDialogState(
-                        visible = true,
-                        type = DialogType.SYNC_CONFLICT,
-                        title = context.getString(R.string.main_save_conflict_title),
-                        message = context.getString(
-                            R.string.main_save_conflict_message,
-                            Date(postSyncInfo.localTimestamp).toString(),
-                            Date(postSyncInfo.remoteTimestamp).toString(),
-                        ),
-                        dismissBtnText = context.getString(R.string.main_keep_local),
-                        confirmBtnText = context.getString(R.string.main_keep_remote),
-                    ),
-                )
-            }
-
-            SyncResult.InProgress -> {
-                if (useTemporaryOverride && retryCount < 5) {
-                    // For intent launches, retry after a short delay (max 5 retries = ~10 seconds)
-                    Timber.i("Sync in progress for intent launch, retrying in 2 seconds... (attempt ${retryCount + 1}/5)")
-                    delay(2000)
-                    preLaunchApp(
-                        context = context,
-                        appId = appId,
-                        ignorePendingOperations = ignorePendingOperations,
-                        preferredSave = preferredSave,
-                        useTemporaryOverride = useTemporaryOverride,
-                        setLoadingDialogVisible = setLoadingDialogVisible,
-                        setLoadingProgress = setLoadingProgress,
-                        setLoadingMessage = setLoadingMessage,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = onSuccess,
-                        retryCount = retryCount + 1,
-                        bootToContainer = bootToContainer,
-                    )
-                } else {
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.SYNC_IN_PROGRESS,
-                            title = context.getString(R.string.sync_error_title),
-                            message = context.getString(R.string.main_sync_in_progress_launch_anyway_message),
-                            confirmBtnText = context.getString(R.string.main_launch_anyway),
-                            dismissBtnText = context.getString(R.string.main_wait),
-                        ),
-                    )
-                }
-            }
-
-            SyncResult.UnknownFail,
-            SyncResult.DownloadFail,
-            SyncResult.UpdateFail,
-            -> {
-                setMessageDialogState(
-                    MessageDialogState(
-                        visible = true,
-                        type = DialogType.SYNC_FAIL,
-                        title = context.getString(R.string.sync_error_title),
-                        message = context.getString(R.string.main_sync_failed, postSyncInfo.syncResult.toString()),
-                        dismissBtnText = context.getString(R.string.ok),
-                    ),
-                )
-            }
-
-            SyncResult.PendingOperations -> {
-                Timber.i(
-                    "Pending remote operations:${
-                        postSyncInfo.pendingRemoteOperations.map { pro ->
-                            "\n\tmachineName: ${pro.machineName}" +
-                                "\n\ttimestamp: ${Date(pro.timeLastUpdated * 1000L)}" +
-                                "\n\toperation: ${pro.operation}"
-                        }.joinToString("\n")
-                    }",
-                )
-                if (postSyncInfo.pendingRemoteOperations.size == 1) {
-                    val pro = postSyncInfo.pendingRemoteOperations.first()
-                    val gameName = SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name ?: ""
-                    val dateStr = Date(pro.timeLastUpdated * 1000L).toString()
-                    when (pro.operation) {
-                        ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationUploadInProgress -> {
-                            // maybe this should instead wait for the upload to finish and then
-                            // launch the app
-                            setMessageDialogState(
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.PENDING_UPLOAD_IN_PROGRESS,
-                                    title = context.getString(R.string.main_upload_in_progress_title),
-                                    message = context.getString(
-                                        R.string.main_upload_in_progress_message,
-                                        gameName,
-                                        pro.machineName,
-                                        dateStr,
-                                    ),
-                                    dismissBtnText = context.getString(R.string.ok),
-                                ),
-                            )
-                        }
-
-                        ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationUploadPending -> {
-                            setMessageDialogState(
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.PENDING_UPLOAD,
-                                    title = context.getString(R.string.main_pending_upload_title),
-                                    message = context.getString(
-                                        R.string.main_pending_upload_message,
-                                        gameName,
-                                        pro.machineName,
-                                        dateStr,
-                                    ),
-                                    confirmBtnText = context.getString(R.string.main_play_anyway),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                ),
-                            )
-                        }
-
-                        ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionActive -> {
-                            setMessageDialogState(
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.APP_SESSION_ACTIVE,
-                                    title = context.getString(R.string.main_app_running_title),
-                                    message = context.getString(
-                                        R.string.main_app_running_other_device,
-                                        pro.machineName,
-                                        gameName,
-                                        dateStr,
-                                    ),
-                                    confirmBtnText = context.getString(R.string.main_play_anyway),
-                                    dismissBtnText = context.getString(R.string.cancel),
-                                ),
-                            )
-                        }
-
-                        ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionSuspended -> {
-                            // I don't know what this means, yet
-                            setMessageDialogState(
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.APP_SESSION_SUSPENDED,
-                                    title = context.getString(R.string.sync_error_title),
-                                    message = context.getString(R.string.main_app_session_suspended),
-                                    dismissBtnText = context.getString(R.string.ok),
-                                ),
-                            )
-                        }
-
-                        ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationNone -> {
-                            // why are we here
-                            setMessageDialogState(
-                                MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.PENDING_OPERATION_NONE,
-                                    title = context.getString(R.string.sync_error_title),
-                                    message = context.getString(R.string.main_pending_operation_none),
-                                    dismissBtnText = context.getString(R.string.ok),
-                                ),
-                            )
-                        }
-                    }
-                } else {
-                    // this should probably be handled differently
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.MULTIPLE_PENDING_OPERATIONS,
-                            title = context.getString(R.string.sync_error_title),
-                            message = context.getString(R.string.main_multiple_pending_operations),
-                            dismissBtnText = context.getString(R.string.ok),
-                        ),
-                    )
-                }
-            }
-
-            SyncResult.UpToDate,
-            SyncResult.Success,
-            -> onSuccess(context, appId)
+        when (outcome) {
+            is CloudSyncOutcome.Proceed -> onSuccess(context, appId)
+            is CloudSyncOutcome.ShowDialog -> setMessageDialogState(outcome.state)
+            is CloudSyncOutcome.Retry -> preLaunchApp(
+                context = context,
+                appId = appId,
+                ignorePendingOperations = ignorePendingOperations,
+                preferredSave = preferredSave,
+                useTemporaryOverride = useTemporaryOverride,
+                setLoadingDialogVisible = setLoadingDialogVisible,
+                setLoadingProgress = setLoadingProgress,
+                setLoadingMessage = setLoadingMessage,
+                setMessageDialogState = setMessageDialogState,
+                onSuccess = onSuccess,
+                retryCount = retryCount + 1,
+            )
         }
     }
 }
