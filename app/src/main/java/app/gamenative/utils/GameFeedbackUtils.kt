@@ -67,7 +67,7 @@ object GameFeedbackUtils {
                 GameSource.CUSTOM_GAME -> {
                     val folderPath = CustomGameScanner.findCustomGameById(gameId) ?: ""
                     val game = CustomGameScanner.createLibraryItemFromFolder(folderPath)
-                    game?.name
+                    game?.name ?: ""
                 }
                 GameSource.EPIC -> {
                     val game = EpicService.getEpicGameOf(gameId)
@@ -78,9 +78,14 @@ object GameFeedbackUtils {
                     game?.title ?: ""
                 }
                 GameSource.STEAM -> {
-                    val appInfo = SteamService.getAppInfoOf(gameId)!!
-                    appInfo.name
+                    val appInfo = SteamService.getAppInfoOf(gameId)
+                    appInfo?.name ?: ""
                 }
+            }
+
+            if(gameName.isEmpty()){
+                Timber.e("SubmitGameFeedback: Could not get game name for appId $appId")
+                return@withContext false
             }
 
             Timber.d("GameFeedbackUtils: Game name: $gameName")
