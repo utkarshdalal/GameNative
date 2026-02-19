@@ -71,7 +71,7 @@ object GameFeedbackUtils {
                 }
                 GameSource.EPIC -> {
                     val game = EpicService.getEpicGameOf(gameId)
-                    game?.appName ?: ""
+                    game?.title ?: ""
                 }
                 GameSource.GOG -> {
                     val game = GOGService.getGOGGameOf(gameId.toString())
