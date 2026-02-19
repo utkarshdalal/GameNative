@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.xserver
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.util.Log
@@ -10,6 +11,7 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -43,6 +45,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -319,6 +322,7 @@ fun XServerScreen(
     var isKeyboardVisible = false
     var areControlsVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
+    var gameRoot by remember { mutableStateOf<View?>(null) }
     // Snapshot of element positions before entering edit mode (for cancel behavior)
     var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
     var showElementEditor by remember { mutableStateOf(false) }
@@ -640,6 +644,7 @@ fun XServerScreen(
         }
     }
 
+    val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     // var launchedView by rememberSaveable { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -652,23 +657,40 @@ fun XServerScreen(
                     ?.dispatchTouchEvent(event) == true
                 if (overlayHandled) return@pointerInteropFilter true
 
-                // If controls are visible, let them handle it first
-                val controlsHandled = if (areControlsVisible) {
-                    PluviaApp.inputControlsView?.onTouchEvent(event) ?: false
+                if (isPortrait) {
+                    gameRoot?.dispatchTouchEvent(event)
                 } else {
-                    false
+                    val controlsHandled = if (areControlsVisible) {
+                        PluviaApp.inputControlsView?.onTouchEvent(event) ?: false
+                    } else {
+                        false
+                    }
+                    if (!controlsHandled) {
+                        PluviaApp.touchpadView?.onTouchEvent(event)
+                    }
                 }
-
-                // If controls didn't handle it or aren't visible, send to touchMouse
-                if (!controlsHandled) {
-                    PluviaApp.touchpadView?.onTouchEvent(event)
-                }
-
                 true
             },
         factory = { context ->
             Timber.i("Creating XServerView and XServer")
-            val frameLayout = FrameLayout(context)
+            val isPortrait = context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val dm = context.resources.displayMetrics
+            val controlsHeightPortrait = dm.widthPixels * 9 / 16
+            val mainRoot = if (isPortrait) {
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setBackgroundColor(Color.TRANSPARENT)
+                }
+            } else {
+                FrameLayout(context)
+            }
+            val frameLayout = if (isPortrait) {
+                val top = FrameLayout(context)
+                mainRoot.addView(top, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                top
+            } else {
+                mainRoot as FrameLayout
+            }
             val appId = appId
             val existingXServer =
                 PluviaApp.xEnvironment
@@ -971,8 +993,16 @@ fun XServerScreen(
 
 
 
-            // Add InputControlsView on top of XServerView
-            frameLayout.addView(icView)
+            // Add InputControlsView (portrait: inside fixed-height container at bottom; landscape: overlay)
+            if (isPortrait) {
+                val controlsContainer = FrameLayout(context).apply {
+                    setBackgroundColor(Color.BLACK)
+                }
+                mainRoot.addView(controlsContainer, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, controlsHeightPortrait))
+                controlsContainer.addView(icView)
+            } else {
+                frameLayout.addView(icView)
+            }
             val configuredExternalMode = ExternalDisplayInputController.fromConfig(container.externalDisplayMode)
             val swapEnabled = container.isExternalDisplaySwap
 
@@ -1032,7 +1062,7 @@ fun XServerScreen(
                 } else {
                     null
                 }
-            frameLayout.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            mainRoot.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) {}
 
                 override fun onViewDetachedFromWindow(v: View) {
@@ -1097,7 +1127,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true);
             }
 
-            frameLayout
+            mainRoot
 
             // } else {
             //     Log.d("XServerScreen", "Creating XServerView without creating XServer")
@@ -1106,16 +1136,10 @@ fun XServerScreen(
             // xServerView
         },
         update = { view ->
-            // View's been inflated or state read in this block has been updated
-            // Add logic here if necessary
-            // view.requestFocus()
+            gameRoot = view
         },
         onRelease = { view ->
-            // view.releasePointerCapture()
-            // pointerEventListener?.let {
-            //     view.removePointerEventListener(pointerEventListener)
-            //     view.onRelease()
-            // }
+            gameRoot = null
         },
     )
 
@@ -1808,6 +1832,9 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.box86Version = container.box86Version
         guestProgramLauncherComponent.box86Preset = container.box86Preset
         guestProgramLauncherComponent.box64Preset = container.box64Preset
+        if (guestProgramLauncherComponent is BionicProgramLauncherComponent) {
+            guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
+        }
         guestProgramLauncherComponent.setPreUnpack {
             unpackExecutableFile(
                 context = context,
@@ -1923,6 +1950,7 @@ private fun setupXEnvironment(
         Timber.i("Box64 Preset: ${container.box64Preset}")
         Timber.i("Box86 Version: ${container.box86Version}")
         Timber.i("Box86 Preset: ${container.box86Preset}")
+        Timber.i("FEXCore Preset: ${container.fexCorePreset}")
         Timber.i("CPU List: ${container.cpuList}")
         Timber.i("CPU List WoW64: ${container.cpuListWoW64}")
         Timber.i("Env Vars (Container Base): ${container.envVars}") // Log base container vars
@@ -2683,6 +2711,9 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // Always refresh components files
+    refreshComponentsFiles(context)
+
     // Normalize dxwrapper for state (dxvk includes version for extraction switch)
     if (xServerState.value.dxwrapper == "dxvk") {
         xServerState.value = xServerState.value.copy(
@@ -2789,13 +2820,17 @@ private fun applyGeneralPatches(
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
     }
     containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio.tzst", File(context.filesDir, "pulseaudio"))
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
     WinlatorPrefManager.init(context)
     WinlatorPrefManager.putString("current_box64_version", "")
 }
+
+private fun refreshComponentsFiles(context: Context) {
+    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", File(context.filesDir, "pulseaudio"))
+}
+
 private fun extractDXWrapperFiles(
     context: Context,
     firstTimeBoot: Boolean,

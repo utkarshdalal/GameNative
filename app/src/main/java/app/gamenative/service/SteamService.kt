@@ -151,6 +151,7 @@ import android.util.Base64
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
+import com.winlator.container.ContainerManager
 import kotlinx.coroutines.flow.update
 import java.io.InputStream
 import java.io.OutputStream
@@ -640,29 +641,36 @@ class SteamService : Service(), IChallengeUrlChanged {
             return true
         }
 
-        fun getMainAppDepots(appId: Int): Map<Int, DepotInfo> {
+        fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val preferredLanguage = PrefManager.containerLanguage
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
 
             return appInfo.depots.asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc)
                 }
                 .associate { it.toPair() }
         }
 
         /**
-         * Get downloadable depots for a given app, including all DLCs
+         * Get downloadable depots for a given app (default language), including all DLCs
          * @return Map of app ID to depot ID to depot info
          */
         fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
+            val preferredLanguage = PrefManager.containerLanguage
+            return getDownloadableDepots(appId, preferredLanguage)
+        }
+
+        /**
+         * Get downloadable depots for a given app (container language), including all DLCs
+         * @return Map of app ID to depot ID to depot info
+         */
+        fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val preferredLanguage = PrefManager.containerLanguage
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
@@ -994,8 +1002,23 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return null
             }
             return getAppInfoOf(appId)?.let { appInfo ->
-                val depots = getDownloadableDepots(appId)
-                downloadApp(appId, depots, dlcAppIds, "public", isUpdateOrVerify)
+                val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
+                val containerLanguage = if (container != null) {
+                    container.language
+                } else {
+                    PrefManager.containerLanguage
+                }
+
+                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage")
+
+                val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
+                downloadApp(
+                    appId = appId,
+                    downloadableDepots = depots,
+                    userSelectedDlcAppIds = dlcAppIds,
+                    branch = "public",
+                    containerLanguage = containerLanguage,
+                    isUpdateOrVerify = isUpdateOrVerify)
             }
         }
 
@@ -1320,6 +1343,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             downloadableDepots: Map<Int, DepotInfo>,
             userSelectedDlcAppIds: List<Int>,
             branch: String,
+            containerLanguage: String,
             isUpdateOrVerify: Boolean,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
@@ -1336,7 +1360,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
 
             // Depots from Main game
-            val mainDepots = getMainAppDepots(appId)
+            val mainDepots = getMainAppDepots(appId, containerLanguage)
             var mainAppDepots = mainDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             } + mainDepots.filter { (_, depot) ->

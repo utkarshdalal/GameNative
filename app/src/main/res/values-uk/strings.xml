@@ -672,6 +672,7 @@
     <string name="login_qr_failed">Помилка QR-коду</string>
     <string name="login_retry_qr">Спробувати ще раз</string>
     <string name="login_qr_instructions">Відкрийте мобільний застосунок Steam і відскануйте цей QR-код, щоб миттєво увійти.</string>
+    <string name="login_skip_steam">Пропустити вхід у Steam</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Продовжити</string>

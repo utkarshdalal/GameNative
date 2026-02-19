@@ -89,9 +89,22 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.suspendProcess();
         BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
         if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.suspendProcess();
+
+        // Pause audio components
+        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
+        if (pulseAudioComponent != null) pulseAudioComponent.pause();
+        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
+        if (alsaServerComponent != null) alsaServerComponent.pause();
     }
 
     public void onResume() {
+        // Resume audio FIRST so it's ready when game processes wake up
+        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
+        if (pulseAudioComponent != null) pulseAudioComponent.resume();
+        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
+        if (alsaServerComponent != null) alsaServerComponent.resume();
+
+        // Then resume game processes
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.resumeProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);

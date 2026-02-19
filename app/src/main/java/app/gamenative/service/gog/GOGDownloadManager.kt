@@ -6,10 +6,14 @@ import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestParser
+import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.utils.Net
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
 import javax.inject.Inject
@@ -116,18 +120,32 @@ class GOGDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Fetching builds...")
 
-            // Step 1: Get available builds
-            val buildsResult = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION)
-            if (buildsResult.isFailure) {
-                return@withContext Result.failure(
-                    buildsResult.exceptionOrNull() ?: Exception("Failed to fetch builds"),
-                )
+            // Step 1: Get available builds — prefer Gen 2, fall back to Gen 1 (legacy)
+            val selectedBuild = run {
+                val gen2Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 2)
+                if (gen2Result.isFailure) {
+                    return@withContext Result.failure(
+                        gen2Result.exceptionOrNull() ?: Exception("Failed to fetch Gen 2 builds"),
+                    )
+                }
+                parser.selectBuild(gen2Result.getOrThrow().items, preferredGeneration = 2, platform = WINDOWS_OS_VERSION)
+                    ?.let { return@run it }
+                val gen1Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 1)
+                if (gen1Result.isFailure) {
+                    return@withContext Result.failure(
+                        gen1Result.exceptionOrNull() ?: Exception("Failed to fetch builds"),
+                    )
+                }
+                val builds = gen1Result.getOrThrow()
+                parser.selectBuild(builds.items, preferredGeneration = 1, platform = WINDOWS_OS_VERSION)
+                    ?: run {
+                        val hint = when {
+                            builds.items.isEmpty() -> "No builds returned for Windows (game may be Linux/Mac only)."
+                            else -> "No Windows build. Available: ${builds.items.joinToString { "Gen ${it.generation}/${it.platform}" }}."
+                        }
+                        return@withContext Result.failure(Exception("No suitable build found for Windows. $hint"))
+                    }
             }
-
-            // Get the best build (Most recent, match OS and the generation must be 2)
-            val builds = buildsResult.getOrThrow()
-            val selectedBuild = parser.selectBuild(builds.items, platform = WINDOWS_OS_VERSION)
-                ?: return@withContext Result.failure(Exception("No suitable build found for Windows"))
 
             Timber.tag("GOG").i("Selected build: ${selectedBuild.buildId} (Gen ${selectedBuild.generation}, Platform: ${selectedBuild.platform})")
             Timber.tag("GOG").d("Build productId: ${selectedBuild.productId}, input gameId: $gameId")
@@ -151,6 +169,20 @@ class GOGDownloadManager @Inject constructor(
 
             gameManifest.products?.let { products ->
                 Timber.tag("GOG").d("Manifest products: ${products.joinToString { "name=${it.name}, id=${it.productId}" }}")
+            }
+
+            // Gen 1 (legacy): different manifest format and download flow (direct file URLs, no chunks)
+            if (selectedBuild.generation == 1 && gameManifest.productTimestamp != null) {
+                return@withContext downloadGameGen1(
+                    gameId = gameId,
+                    installPath = installPath,
+                    downloadInfo = downloadInfo,
+                    gameManifest = gameManifest,
+                    selectedBuild = selectedBuild,
+                    language = language,
+                    withDlcs = withDlcs,
+                    supportDir = supportDir,
+                )
             }
 
             // Grab Dependencies from the gameManifest for later.
@@ -371,39 +403,7 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
-            // Step 12: Update database with install info
-            downloadInfo.updateStatusMessage("Updating database...")
-            try {
-                val game = gogManager.getGameFromDbById(gameId)
-                if (game != null) {
-                    // Use installPath directly since it already includes the game-specific folder
-                    val installSize = calculateDirectorySize(installPath)
-                    val updatedGame = game.copy(
-                        isInstalled = true,
-                        installPath = installPath.absolutePath,
-                        installSize = installSize,
-                    )
-                    gogManager.updateGame(updatedGame)
-                    Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
-                } else {
-                    Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")
-                }
-            } catch (e: Exception) {
-                Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
-                // Don't fail the entire download for DB issues - They can try again and it will auto-detect and finish
-            }
-
-            // Step 13: Emit completion event
-            downloadInfo.updateStatusMessage("Complete")
-            downloadInfo.setProgress(1.0f)
-            downloadInfo.setActive(false)
-            downloadInfo.emitProgressChange()
-
-            // Notify UI that installation status changed
-            app.gamenative.PluviaApp.events.emitJava(
-                app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
-            )
-
+            finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -418,6 +418,219 @@ class GOGDownloadManager @Inject constructor(
                 app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
             )
 
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Shared finalization after a successful install: update DB, set download complete, emit events.
+     * Used by both Gen 2 and Gen 1 success paths.
+     */
+    private suspend fun finalizeInstallSuccess(gameId: String, installPath: File, downloadInfo: DownloadInfo) {
+        downloadInfo.updateStatusMessage("Updating database...")
+        try {
+            val game = gogManager.getGameFromDbById(gameId)
+            if (game != null) {
+                val installSize = calculateDirectorySize(installPath)
+                gogManager.updateGame(game.copy(isInstalled = true, installPath = installPath.absolutePath, installSize = installSize))
+                Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
+            } else {
+                Timber.tag("GOG").w("Game $gameId not found in database, skipping DB update")
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to update database for game $gameId")
+        }
+        downloadInfo.updateStatusMessage("Complete")
+        downloadInfo.setProgress(1.0f)
+        downloadInfo.setActive(false)
+        downloadInfo.emitProgressChange()
+        app.gamenative.PluviaApp.events.emitJava(
+            app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
+        )
+        app.gamenative.PluviaApp.events.emitJava(
+            app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId.toIntOrNull() ?: 0),
+        )
+    }
+
+    /**
+     * Gen 1 (legacy) download: one main.bin per depot; files are read via Range requests (offset/size).
+     * See heroic-gogdl: task_executor.py v1() uses endpoint["parameters"]["path"] += "/main.bin" and Range: bytes=offset-(offset+size-1).
+     */
+    private suspend fun downloadGameGen1(
+        gameId: String,
+        installPath: File,
+        downloadInfo: DownloadInfo,
+        gameManifest: app.gamenative.service.gog.api.GOGManifestMeta,
+        selectedBuild: app.gamenative.service.gog.api.GOGBuild,
+        language: String,
+        withDlcs: Boolean,
+        supportDir: File?,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val timestamp = gameManifest.productTimestamp ?: return@withContext Result.failure(Exception("Gen 1 manifest missing productTimestamp"))
+            val platform = selectedBuild.platform
+            val ownedGameIds = gogManager.getAllGameIds()
+
+            // Gen 1: do not filter by language — some games put main content in a depot tagged with another
+            // language (or no tag), so filtering to en-US can leave only a small depot and skip the main one.
+            downloadInfo.updateStatusMessage("Filtering depots...")
+            val bitnessDepots = parser.filterDepotsByBitness(gameManifest.depots, bitness = "64")
+            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            if (depots.isEmpty()) {
+                return@withContext Result.failure(Exception("No owned depots found"))
+            }
+
+            val baseProductId = gameManifest.baseProductId
+            val filesToDownload = if (withDlcs) depots else depots.filter { it.productId == baseProductId }
+            if (filesToDownload.isEmpty()) {
+                return@withContext Result.failure(Exception("No depots to download"))
+            }
+
+            val productIds = filesToDownload.map { it.productId }.toSet()
+            val securePath = "/$platform/$timestamp/"
+            val productUrlMap = mutableMapOf<String, List<String>>()
+            for (productId in productIds) {
+                val linksResult = apiClient.getSecureLink(productId = productId, path = securePath, generation = 1)
+                if (linksResult.isFailure) {
+                    return@withContext Result.failure(linksResult.exceptionOrNull() ?: Exception("Failed to get secure link for product $productId"))
+                }
+                productUrlMap[productId] = linksResult.getOrThrow().urls
+            }
+
+            data class FileWithProduct(val file: V1DepotFile, val productId: String)
+            val allV1Files = mutableListOf<FileWithProduct>()
+
+            downloadInfo.updateStatusMessage("Fetching depot manifests...")
+            for ((idx, depot) in filesToDownload.withIndex()) {
+                downloadInfo.updateStatusMessage("Fetching depot ${idx + 1}/${filesToDownload.size}...")
+                val depotJsonResult = apiClient.fetchDepotManifestV1(depot.productId, platform, timestamp, depot.manifest)
+                if (depotJsonResult.isFailure) {
+                    return@withContext Result.failure(depotJsonResult.exceptionOrNull() ?: Exception("Failed to fetch depot manifest"))
+                }
+                val v1Files = parser.parseV1DepotManifest(depotJsonResult.getOrThrow())
+                v1Files.forEach { allV1Files.add(FileWithProduct(it, depot.productId)) }
+            }
+
+            val gameFiles = allV1Files.filter { !it.file.isSupport }
+            val supportFiles = allV1Files.filter { it.file.isSupport }
+            val totalSize = gameFiles.sumOf { it.file.size } + supportFiles.sumOf { it.file.size }
+            downloadInfo.setTotalExpectedBytes(totalSize)
+            downloadInfo.updateStatusMessage("Downloading files...")
+            downloadInfo.setProgress(0f)
+            downloadInfo.setActive(true)
+            downloadInfo.emitProgressChange()
+
+            val totalFiles = gameFiles.size + supportFiles.size
+            var doneFiles = 0
+
+            // Gen 1: one main.bin URL per product; each file is fetched with Range: bytes=offset-(offset+size-1)
+            val mainBinUrlByProduct = productUrlMap.mapValues { (_, urls) ->
+                (urls.firstOrNull()?.trimEnd('/') ?: "") + "/main.bin"
+            }
+
+            fun downloadOneFile(f: FileWithProduct, baseDir: File): Result<Unit> {
+                val file = f.file
+                val outFile = File(baseDir, file.path)
+                outFile.parentFile?.mkdirs()
+
+                if (file.size == 0L) {
+                    outFile.createNewFile()
+                    return Result.success(Unit)
+                }
+
+                val mainBinUrl = mainBinUrlByProduct[f.productId]
+                    ?: return Result.failure(Exception("No main.bin URL for product ${f.productId}"))
+
+                val offset = file.offset
+                if (offset == null) {
+                    return Result.failure(Exception("Gen 1 file ${file.path} has no offset (main.bin range request required)"))
+                }
+
+                val rangeHeader = "bytes=$offset-${offset + file.size - 1}"
+                val request = Request.Builder()
+                    .url(mainBinUrl)
+                    .header("User-Agent", "GOG Galaxy")
+                    .header("Range", rangeHeader)
+                    .build()
+
+                return try {
+                    httpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return Result.failure(Exception("HTTP ${response.code} for ${file.path}"))
+                        val body = response.body ?: return Result.failure(Exception("Empty response"))
+                        val md = MessageDigest.getInstance("MD5")
+                        val buffer = ByteArray(256 * 1024) // 256KB
+                        val progressInterval = 512L * 1024 // emit progress every 512KB
+                        var copiedInFile = 0L
+                        DigestOutputStream(
+                            BufferedOutputStream(FileOutputStream(outFile)),
+                            md
+                        ).use { out ->
+                            body.byteStream().use { input ->
+                                var n: Int
+                                while (input.read(buffer).also { n = it } != -1) {
+                                    if (!downloadInfo.isActive()) {
+                                        outFile.delete()
+                                        return Result.failure(Exception("Download cancelled"))
+                                    }
+                                    out.write(buffer, 0, n)
+                                    copiedInFile += n
+                                    downloadInfo.updateBytesDownloaded(n.toLong())
+                                    if (copiedInFile >= progressInterval || downloadInfo.getBytesDownloaded() >= totalSize) {
+                                        copiedInFile = 0L
+                                        downloadInfo.setProgress(
+                                            (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
+                                        )
+                                        downloadInfo.emitProgressChange()
+                                    }
+                                }
+                            }
+                        }
+                        val bytesWritten = outFile.length()
+                        if (bytesWritten != file.size) return Result.failure(Exception("Size mismatch ${file.path}"))
+                        val md5 = md.digest().joinToString("") { "%02x".format(it) }
+                        if (file.hash.isNotEmpty() && md5 != file.hash) return Result.failure(Exception("MD5 mismatch ${file.path}"))
+                        // bytes already reported during copy; ensure final progress is exact
+                        downloadInfo.setProgress(
+                            (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
+                        )
+                        downloadInfo.emitProgressChange()
+                        Result.success(Unit)
+                    }
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+            for (f in gameFiles) {
+                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
+                downloadInfo.updateStatusMessage("Downloading ${f.file.path}")
+                val res = downloadOneFile(f, installPath)
+                if (res.isFailure) return@withContext res
+                doneFiles++
+            }
+            if (supportDir != null) {
+                supportDir.mkdirs()
+                for (f in supportFiles) {
+                    if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
+                    downloadInfo.updateStatusMessage("Downloading support ${f.file.path}")
+                    val res = downloadOneFile(f, supportDir)
+                    if (res.isFailure) return@withContext res
+                    doneFiles++
+                }
+            }
+
+            finalizeInstallSuccess(gameId, installPath, downloadInfo)
+            Timber.tag("GOG").i("Gen 1 download completed for game $gameId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Gen 1 download failed: ${e.message}")
+            downloadInfo.updateStatusMessage("Failed: ${e.message}")
+            downloadInfo.setProgress(-1.0f)
+            downloadInfo.setActive(false)
+            downloadInfo.emitProgressChange()
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
+            )
             Result.failure(e)
         }
     }

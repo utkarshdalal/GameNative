@@ -681,6 +681,7 @@
 	<string name="login_qr_failed">Cod QR eșuat</string>
 	<string name="login_retry_qr">Reîncearcă codul QR</string>
 	<string name="login_qr_instructions">Deschide aplicația Steam pe mobil și scanează acest cod QR pentru autentificare instantă</string>
+	<string name="login_skip_steam">Omite autentificarea Steam</string>
 
 	<!-- Generic/Reusable strings -->
 	<string name="continue_action">Continuă</string>

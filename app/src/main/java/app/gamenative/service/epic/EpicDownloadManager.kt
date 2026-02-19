@@ -3,6 +3,8 @@ package app.gamenative.service.epic
 import android.content.Context
 import android.util.Log
 import app.gamenative.data.DownloadInfo
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
 import java.io.ByteArrayInputStream
@@ -73,6 +75,9 @@ class EpicDownloadManager @Inject constructor(
         try {
 
             Timber.tag("Epic").i("Starting download for ${game.title} to $installPath")
+
+            File(installPath).mkdirs()
+            MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
             // Emit download started event so UI can attach progress listeners
             val gameId = game.id
@@ -333,6 +338,9 @@ class EpicDownloadManager @Inject constructor(
                 // Don't fail the entire download for DB issues
             }
 
+            MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+
             // Clean up and update UI
             downloadInfo.updateStatusMessage("Complete")
             // Ensure bytes-based progress shows 100% completion
@@ -350,6 +358,7 @@ class EpicDownloadManager @Inject constructor(
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "Download failed: ${e.message}")
+            MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             downloadInfo.updateStatusMessage("Failed: ${e.message}")
             downloadInfo.setProgress(-1.0f)
             downloadInfo.setActive(false)

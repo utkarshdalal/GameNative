@@ -110,8 +110,17 @@ class GOGManifestParserTest {
     @Test
     fun testSelectBuild_returnsNullWhenNoGen2() {
         val gen1Only = listOf(createTestBuild(generation = 1))
-        val result = parser.selectBuild(gen1Only)
+        val result = parser.selectBuild(gen1Only, preferredGeneration = 2)
         assertNull(result)
+    }
+
+    @Test
+    fun testSelectBuild_returnsGen1WhenRequested() {
+        val gen1Only = listOf(createTestBuild(buildId = "legacy", generation = 1))
+        val result = parser.selectBuild(gen1Only, preferredGeneration = 1)
+        assertNotNull(result)
+        assertEquals(1, result?.generation)
+        assertEquals("legacy", result?.buildId)
     }
 
     @Test
@@ -531,5 +540,96 @@ class GOGManifestParserTest {
         val plainText = "Hello GOG World"
         val result = parser.decompressManifest(plainText.toByteArray())
         assertEquals(plainText, result)
+    }
+
+    @Test
+    fun testParseManifestV1_handlesGen1AndLanguageNormalization() {
+        val json = JSONObject().apply {
+            put("product", JSONObject().apply {
+                put("installDirectory", "Beyond Good and Evil")
+                put("rootGameID", "1207658746")
+                put("timestamp", "27565470")
+                put("depots", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("gameIDs", JSONArray().put("1207658746"))
+                        put("languages", JSONArray().put("Neutral"))
+                        put("manifest", "b974058a-6dc2-41a3-b886-295a7b82a251")
+                        put("size", 12345L)
+                    })
+                    put(JSONObject().apply {
+                        put("gameIDs", JSONArray().put("1207658746"))
+                        put("languages", JSONArray().put("en-US"))
+                        put("manifest", "494a4547-48ea-40c0-ad21-b96ab8fa8cba")
+                        put("size", 67890L)
+                    })
+                })
+                put("gameIDs", JSONArray().put(JSONObject().apply {
+                    put("gameID", "1207658746")
+                    put("name", JSONObject().put("en", "Beyond Good and Evil"))
+                }))
+            })
+        }
+        val result = parser.parseManifestV1(json)
+        assertEquals("Beyond Good and Evil", result.installDirectory)
+        assertEquals("1207658746", result.baseProductId)
+        assertEquals("27565470", result.productTimestamp)
+        assertEquals(2, result.depots.size)
+        assertEquals(listOf("*"), result.depots[0].languages)
+        assertTrue(result.depots[1].languages.contains("en-US"))
+        assertEquals(1, result.products.size)
+        assertEquals("1207658746", result.products[0].productId)
+    }
+
+    @Test
+    fun testParseManifestV1_emptyLanguagesBecomesWildcard() {
+        val json = JSONObject().apply {
+            put("product", JSONObject().apply {
+                put("installDirectory", "Game")
+                put("rootGameID", "1")
+                put("timestamp", "1")
+                put("depots", JSONArray().put(JSONObject().apply {
+                    put("gameIDs", JSONArray().put("1"))
+                    put("manifest", "abc")
+                    put("size", 0L)
+                }))
+                put("gameIDs", JSONArray())
+            })
+        }
+        val result = parser.parseManifestV1(json)
+        assertEquals(1, result.depots.size)
+        assertEquals(listOf("*"), result.depots[0].languages)
+    }
+
+    @Test
+    fun testParseV1DepotManifest_filtersDirectories() {
+        val json = """
+            {"depot":{"files":[
+                {"path":"game.exe","hash":"abc123","size":100,"offset":0},
+                {"directory":true,"path":"data"},
+                {"path":"readme.txt","hash":"def","size":10,"offset":100}
+            ]}}
+        """.trimIndent()
+        val result = parser.parseV1DepotManifest(json)
+        assertEquals(2, result.size)
+        assertEquals("game.exe", result[0].path)
+        assertEquals("abc123", result[0].hash)
+        assertEquals(100L, result[0].size)
+        assertEquals(0L, result[0].offset)
+        assertEquals("readme.txt", result[1].path)
+    }
+
+    @Test
+    fun testParseV1DepotManifest_emptyFilesReturnsEmpty() {
+        val result = parser.parseV1DepotManifest("{}")
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun testParseV1DepotManifest_missingHashDefaultsToEmpty() {
+        val json = """{"files":[{"path":"file.bin","size":5,"offset":0}]}"""
+        val result = parser.parseV1DepotManifest(json)
+        assertEquals(1, result.size)
+        assertEquals("", result[0].hash)
+        assertEquals(5L, result[0].size)
     }
 }

@@ -657,6 +657,14 @@
         "url": "https://downloads.gamenative.app/FEXCore-2601-217d039.wcp",
         "variant": "bionic"
       }
+    ],
+    "wowbox64": [
+      {
+        "id": "0.3.6-0",
+        "name": "WOWBox64 0.3.6",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/WOWBOX64/wowbox64-0.3.6.wcp",
+        "variant": "bionic"
+      }
     ]
   }
 }

@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -56,11 +57,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import app.gamenative.ui.component.dialog.GameManagerDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
+import app.gamenative.utils.ContainerUtils.getContainer
 import com.winlator.core.GPUInformation
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
@@ -437,7 +440,7 @@ class SteamAppScreen : BaseAppScreen() {
         val lastPlayedText = remember(isInstalled, gameId) {
             if (isInstalled) {
                 val path = getAppDirPath(gameId)
-                val file = java.io.File(path)
+                val file = File(path)
                 if (file.exists()) {
                     SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
                 } else {
@@ -997,7 +1000,14 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+        val container = getContainer(context, libraryItem.appId)
         ContainerUtils.applyToContainer(context, libraryItem.appId, config)
+
+        if (container.language != config.language) {
+            CoroutineScope(Dispatchers.IO).launch {
+                SteamService.downloadApp(libraryItem.gameId)
+            }
+        }
     }
 
     override fun supportsContainerConfig(): Boolean = true
@@ -1525,7 +1535,7 @@ class SteamAppScreen : BaseAppScreen() {
                             }
                         }
                     ) {
-                        Text(stringResource(R.string.uninstall), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.uninstall), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
