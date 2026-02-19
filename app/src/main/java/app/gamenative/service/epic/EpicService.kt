@@ -303,9 +303,9 @@ class EpicService : Service() {
          */
         suspend fun getLaunchExecutable(containerId: String): String {
             val gameId = try {
-                app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId(containerId)
+                ContainerUtils.extractGameIdFromContainerId(containerId)
             } catch (e: Exception) {
-                Timber.tag("EpicService").e(e, "Failed to parse Epic containerId: $containerId")
+                Timber.tag("Epic").e(e, "Failed to parse Epic containerId: $containerId")
                 return ""
             }
             return getInstance()?.epicManager?.getLaunchExecutable(gameId) ?: ""
