@@ -75,7 +75,7 @@ sealed class EpicManifest {
     fun getChunkDir(): String {
         return when {
             version >= 15 -> "ChunksV4"
-            version >= 6 -> "ChunksV3" // TODO: Fix V3Chunking - Currently this one is problematic
+            version >= 6 -> "ChunksV3"
             version >= 3 -> "ChunksV2"
             else -> "Chunks"
         }
@@ -86,6 +86,19 @@ sealed class EpicManifest {
  * Binary format manifest parser (most common format)
  */
 class BinaryManifest : EpicManifest() {
+    /**
+     * Binary manifest parse flow (high-level):
+     *
+     * 1) Read the fixed 41-byte header in little-endian order:
+     *    - magic, header size, uncompressed size, compressed size,
+     *      SHA-1 of the uncompressed body, storage flags, manifest version.
+     * 2) Seek to `headerSize` and read the remaining bytes as the body payload.
+     * 3) If `storedAs` indicates compression, inflate with zlib to `sizeUncompressed`.
+     * 4) Validate integrity by comparing SHA-1(uncompressedBody) with header hash.
+     * 5) Keep the verified body in `data`; later `parseContents()` decodes sections
+     *    in strict order: `ManifestMeta` -> `ChunkDataList` -> `FileManifestList`
+     *    -> `CustomFields`.
+     */
     override fun read(data: ByteArray) {
         val input = ByteArrayInputStream(data)
         val buffer = ByteBuffer.allocate(data.size).order(ByteOrder.LITTLE_ENDIAN)
@@ -175,7 +188,7 @@ class BinaryManifest : EpicManifest() {
     override fun serialize(): ByteArray {
         val bodyStream = java.io.ByteArrayOutputStream()
 
-        // Determine target version — matches Legendary's logic:
+        // Determine target version
         // max(default=17, featureLevel), clamped to known range.
         // For cloud saves we always use 18 (dataVersion=0, no MD5/SHA256 in FML).
         val targetVersion = maxOf(DEFAULT_SERIALIZATION_VERSION, meta?.featureLevel ?: version)
@@ -228,7 +241,7 @@ class BinaryManifest : EpicManifest() {
 
         val uncompressedData = bodyStream.toByteArray()
 
-        // Compress body with zlib (Legendary uses zlib.compress which is deflate with header)
+        // Compress body with zlib
         val compressedData = java.io.ByteArrayOutputStream()
         java.util.zip.DeflaterOutputStream(compressedData).use { it.write(uncompressedData) }
         val compressed = compressedData.toByteArray()
@@ -236,7 +249,7 @@ class BinaryManifest : EpicManifest() {
         // SHA-1 of uncompressed body — written into the manifest header
         val sha = MessageDigest.getInstance("SHA-1").digest(uncompressedData)
 
-        // Build the 41-byte manifest header (matches Legendary's header_size = 41)
+        // Build the 41-byte manifest header
         val headerBuffer = ByteBuffer.allocate(41).order(ByteOrder.LITTLE_ENDIAN)
         headerBuffer.putInt(HEADER_MAGIC.toInt())   // magic
         headerBuffer.putInt(41)                      // header size (always 41)
@@ -878,7 +891,7 @@ data class CustomFields(
                 val version = buffer.get() // version byte — must be read to match write() layout
                 val count = buffer.int
 
-                // Legendary writes all keys, then all values (not interleaved)
+                // write all keys first, then all values (not interleaved key/value pairs)
                 val keys = Array(count) { readFString(buffer) }
                 val values = Array(count) { readFString(buffer) }
                 keys.forEachIndexed { i, key -> cf[key] = values[i] }
@@ -897,10 +910,10 @@ data class CustomFields(
     fun write(buffer: ByteBuffer) {
         val startPos = buffer.position()
         buffer.putInt(0) // placeholder for size
-        buffer.put(0) // version byte — Legendary writes this; omitting it shifts all subsequent reads by 1 byte
+        buffer.put(0) // version byte — omitting it shifts all subsequent reads by 1 byte
         buffer.putInt(fields.size)
 
-        // Legendary writes all keys first, then all values (not interleaved key/value pairs)
+        // write all keys first, then all values (not interleaved key/value pairs)
         fields.keys.forEach { key -> writeFString(buffer, key) }
         fields.values.forEach { value -> writeFString(buffer, value) }
 

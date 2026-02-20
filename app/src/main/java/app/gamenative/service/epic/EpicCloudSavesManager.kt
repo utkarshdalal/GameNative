@@ -884,7 +884,7 @@ object EpicCloudSavesManager {
         }
     }
 
-    // Package save files into chunks and manifest (similar to Legendary's SaveGameHelper)
+    // Package save files into chunks and manifest
     private fun packageSaveFiles(
         saveDir: File,
         game: EpicGame,
@@ -1113,7 +1113,7 @@ object EpicCloudSavesManager {
     }
 
     /**
-     * CRC-64-ECMA variant lookup table — matches Legendary's rolling_hash.py exactly.
+     * CRC-64-ECMA variant lookup table
      * Polynomial: 0xC96C5795D7870F42
      * Table built identically to Legendary's _init():
      *   for i in 0..255:
@@ -1186,8 +1186,7 @@ object EpicCloudSavesManager {
 
         Timber.tag("Epic").d("[Cloud Saves] Using Wine prefix: $winePrefix")
 
-        // Resolve path variables like Legendary does
-        // Reference: legendary/core.py get_save_path()
+        // Resolve path variables used by Epic Games (case-insensitive)
         val pathVars = mutableMapOf<String, String>(
             "{epicid}" to accountId,
             "{installdir}" to (game.installPath.ifEmpty { EpicConstants.getGameInstallPath(context, game.appName) }),
