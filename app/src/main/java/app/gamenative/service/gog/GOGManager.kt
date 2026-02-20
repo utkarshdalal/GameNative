@@ -659,20 +659,6 @@ class GOGManager @Inject constructor(
         return null
     }
 
-    /**
-     * Resolves a relative path against a base dir using case-insensitive matching for each segment.
-     * Info file may list e.g. "checkapplication.exe" while the actual file is "CheckApplication.exe" (Linux/Android are case-sensitive).
-     */
-    private fun findFileCaseInsensitive(baseDir: File, relativePath: String): File? {
-        val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
-        var current = baseDir
-        for (segment in segments) {
-            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) } ?: return null
-            current = match
-        }
-        return current.takeIf { it.exists() }
-    }
-
     private fun getMainExecutableFromGOGInfo(gameDir: File, installPath: String): Result<String> {
         return try {
             val infoFile = findGOGInfoFile(gameDir)
@@ -693,7 +679,7 @@ class GOGManager @Inject constructor(
                 if (task.has("isPrimary") && task.getBoolean("isPrimary")) {
                     val executablePath = task.getString("path")
                     Timber.e("executable_path: $executablePath, gameDir: ${gameDir.absolutePath}")
-                    val exeFile = findFileCaseInsensitive(gameDir, executablePath)
+                    val exeFile = FileUtils.findFileCaseInsensitive(gameDir, executablePath)
                     if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
                         return Result.success(relativePath)
