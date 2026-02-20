@@ -270,8 +270,8 @@ class MainActivity : ComponentActivity() {
         // disable auto-stop when returning to foreground
         SteamService.autoStopWhenIdle = false
 
-        // Resume game if it was running
-        if (SteamService.keepAlive) {
+        // Resume game if it was running and not currently suspended by the navigation overlay
+        if (SteamService.keepAlive && !PluviaApp.isOverlayPaused) {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }

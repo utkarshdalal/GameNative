@@ -328,6 +328,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var isOverlayPaused by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -424,7 +425,13 @@ fun XServerScreen(
         }
 
         Timber.i("BackHandler")
-        NavigationDialog(
+
+        // Suspend game and audio while the navigation overlay is visible.
+        PluviaApp.xEnvironment?.onPause()
+        isOverlayPaused = true
+        PluviaApp.isOverlayPaused = true
+
+        val navDialog = NavigationDialog(
             context,
             object : NavigationDialog.NavigationListener {
                 override fun onNavigationItemSelected(itemId: Int) {
@@ -562,12 +569,25 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
+                            // Resume processes before exiting so they can receive SIGTERM cleanly.
+                            PluviaApp.xEnvironment?.onResume()
+                            isOverlayPaused = false
+                            PluviaApp.isOverlayPaused = false
                             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
                         }
                     }
                 }
             }
-        ).show()
+        )
+        // Resume game when the overlay closes via back press, outside tap, or any non-exit item.
+        navDialog.setOnDismissListener {
+            if (PluviaApp.isOverlayPaused) {
+                PluviaApp.xEnvironment?.onResume()
+                isOverlayPaused = false
+                PluviaApp.isOverlayPaused = false
+            }
+        }
+        navDialog.show()
     }
 
     DisposableEffect(container) {
