@@ -133,12 +133,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
         command += " --use-pid-file=false";
         command += " --exit-idle-time=-1";
 
-        if (BuildConfig.DEBUG) {
-            // Show pulseaudio debug output
-            command += " -vvv";
-        }
-
-
         return ProcessHelper.exec(command, envVars.toStringArray(), workingDir);
     }
 
