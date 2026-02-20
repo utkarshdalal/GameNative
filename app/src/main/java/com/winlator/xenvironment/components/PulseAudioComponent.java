@@ -57,12 +57,12 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (lock) {
             if (!isPaused && pid != -1) {
                 executePactl(true);
-                final int capturedPid = pid;  // Capture current PID
+                isPaused = true;
+                final int capturedPid = pid;
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     synchronized (lock) {
-                        if (!isPaused && capturedPid == pid) {  // Verify PID hasn't changed
+                        if (isPaused && capturedPid == pid) {
                             ProcessHelper.suspendProcess(capturedPid);
-                            isPaused = true;
                         }
                     }
                 }, 200);
@@ -75,13 +75,13 @@ public class PulseAudioComponent extends EnvironmentComponent {
         Log.d("PulseAudioComponent", "Resuming...");
         synchronized (lock) {
             if (isPaused && pid != -1) {
-                final int capturedPid = pid;  // Capture current PID
+                final int capturedPid = pid;
                 ProcessHelper.resumeProcess(capturedPid);
+                isPaused = false;
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     synchronized (lock) {
-                        if (isPaused && capturedPid == pid) {  // Verify PID hasn't changed
+                        if (!isPaused && capturedPid == pid) {
                             executePactl(false);
-                            isPaused = false;
                         }
                     }
                 }, 200);
