@@ -140,6 +140,7 @@ class ContainerConfigDialogContainerUpdateTest {
             envVars = envVars,
             audioDriver = "alsa",
             showFPS = true,
+            stretchToFullscreen = true,
             forceDlc = true,
             useLegacyDRM = true,
             launchRealSteam = true,
@@ -197,6 +198,7 @@ class ContainerConfigDialogContainerUpdateTest {
 
         // Boolean flags
         assertEquals(mutated.showFPS, container.isShowFPS)
+        assertEquals(mutated.stretchToFullscreen, container.isStretchToFullscreen)
         assertEquals(mutated.launchRealSteam, container.isLaunchRealSteam)
         assertEquals(mutated.allowSteamUpdates, container.isAllowSteamUpdates)
         assertEquals(mutated.forceDlc, container.isForceDlc)
@@ -279,6 +281,7 @@ class ContainerConfigDialogContainerUpdateTest {
             envVars = envVars,
             audioDriver = "alsa",
             showFPS = true,
+            stretchToFullscreen = true,
             forceDlc = true,
             useLegacyDRM = true,
             launchRealSteam = true,
@@ -337,6 +340,7 @@ class ContainerConfigDialogContainerUpdateTest {
 
         // Boolean flags
         assertEquals(mutated.showFPS, container.isShowFPS)
+        assertEquals(mutated.stretchToFullscreen, container.isStretchToFullscreen)
         assertEquals(mutated.launchRealSteam, container.isLaunchRealSteam)
         assertEquals(mutated.allowSteamUpdates, container.isAllowSteamUpdates)
         assertEquals(mutated.forceDlc, container.isForceDlc)
@@ -449,6 +453,7 @@ class ContainerConfigDialogContainerUpdateTest {
     fun booleanFlags_areAppliedCorrectly() {
         val containerData = ContainerData(
             showFPS = true,
+            stretchToFullscreen = true,
             launchRealSteam = true,
             allowSteamUpdates = true,
             forceDlc = true,
@@ -464,6 +469,7 @@ class ContainerConfigDialogContainerUpdateTest {
         ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
 
         assertTrue(container.isShowFPS)
+        assertTrue(container.isStretchToFullscreen)
         assertTrue(container.isLaunchRealSteam)
         assertTrue(container.isAllowSteamUpdates)
         assertTrue(container.isForceDlc)
@@ -477,11 +483,13 @@ class ContainerConfigDialogContainerUpdateTest {
     fun booleanFlags_falseValues_areAppliedCorrectly() {
         // Start with true values
         container.isShowFPS = true
+        container.isStretchToFullscreen = true
         container.isLaunchRealSteam = true
         container.isForceDlc = true
 
         val containerData = ContainerData(
             showFPS = false,
+            stretchToFullscreen = false,
             launchRealSteam = false,
             forceDlc = false
         )
@@ -489,6 +497,7 @@ class ContainerConfigDialogContainerUpdateTest {
         ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
 
         assertFalse(container.isShowFPS)
+        assertFalse(container.isStretchToFullscreen)
         assertFalse(container.isLaunchRealSteam)
         assertFalse(container.isForceDlc)
     }
