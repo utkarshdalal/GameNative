@@ -63,10 +63,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     synchronized (lock) {
                         if (isPaused && capturedPid == pid) {
                             ProcessHelper.suspendProcess(capturedPid);
+                            Log.d("PulseAudioComponent", "Audio paused");
                         }
                     }
                 }, 200);
-                Log.d("PulseAudioComponent", "Audio paused");
             }
         }
     }
@@ -82,10 +82,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
                     synchronized (lock) {
                         if (!isPaused && capturedPid == pid) {
                             executePactl(false);
+                            Log.d("PulseAudioComponent", "Audio resumed");
                         }
                     }
                 }, 200);
-                Log.d("PulseAudioComponent", "Audio resumed");
             }
         }
     }
