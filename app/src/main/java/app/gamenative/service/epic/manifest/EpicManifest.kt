@@ -173,80 +173,82 @@ class BinaryManifest : EpicManifest() {
     }
 
     override fun serialize(): ByteArray {
-        // Estimate body size to allocate sufficient buffer
-        val estimatedSize = estimateBodySize()
-        val bodyStream = java.io.ByteArrayOutputStream(estimatedSize)
-        val bodyBuffer = ByteBuffer.allocate(maxOf(estimatedSize, 1024 * 1024)).order(ByteOrder.LITTLE_ENDIAN)
+        val bodyStream = java.io.ByteArrayOutputStream()
 
-        // Helper to flush buffer to stream and reset
-        fun flushBuffer() {
+        // Determine target version — matches Legendary's logic:
+        // max(default=17, featureLevel), clamped to known range.
+        // For cloud saves we always use 18 (dataVersion=0, no MD5/SHA256 in FML).
+        val targetVersion = maxOf(DEFAULT_SERIALIZATION_VERSION, meta?.featureLevel ?: version)
+            .coerceAtMost(21)
+
+        // Ensure metadata reflects the version we'll write into the header
+        meta?.featureLevel = targetVersion
+
+        // Write each section into the stream directly — no intermediate fixed buffer.
+        // Legendary uses a BytesIO for the same reason: sections can be arbitrarily large.
+        val bodyBuffer = ByteBuffer.allocate(estimateBodySize()).order(ByteOrder.LITTLE_ENDIAN)
+
+        fun flushAndReset() {
             if (bodyBuffer.position() > 0) {
                 bodyStream.write(bodyBuffer.array(), 0, bodyBuffer.position())
                 bodyBuffer.clear()
             }
         }
 
-        // Helper to ensure minimum space available before write
-        fun ensureCapacity(minBytes: Int) {
-            if (bodyBuffer.remaining() < minBytes) {
-                flushBuffer()
-            }
+        fun ensureSpace(needed: Int) {
+            if (bodyBuffer.remaining() < needed) flushAndReset()
         }
 
-        // Write components with capacity checks
-        meta?.let {
-            ensureCapacity(10000) // Reserve space for meta
-            it.write(bodyBuffer)
+        meta?.let { m ->
+            ensureSpace(10_000)
+            m.write(bodyBuffer)
         }
 
         chunkDataList?.let { cdl ->
-            val chunkBytes = cdl.elements.size * 57 + 1000 // ~57 bytes per chunk + overhead
-            ensureCapacity(chunkBytes)
-            cdl.write(bodyBuffer, meta?.featureLevel ?: version)
+            ensureSpace(cdl.elements.size * 57 + 1_000)
+            cdl.write(bodyBuffer, targetVersion)
         }
 
         fileManifestList?.let { fml ->
-            val fileBytes = fml.elements.sumOf { fm ->
-                fm.filename.length + fm.symlinkTarget.length + 100 + // strings + fixed fields
-                fm.installTags.sumOf { it.length + 4 } + // tags
-                fm.chunkParts.size * 28 // chunk parts
+            val needed = fml.elements.sumOf {
+                it.filename.length + it.symlinkTarget.length + 100 +
+                it.installTags.sumOf { t -> t.length + 4 } +
+                it.chunkParts.size * 28
             }
-            ensureCapacity(fileBytes)
+            ensureSpace(needed + 1_000)
             fml.write(bodyBuffer)
         }
 
         customFields?.let {
-            ensureCapacity(1000)
+            ensureSpace(2_000)
             it.write(bodyBuffer)
         }
 
-        flushBuffer() // Final flush
+        flushAndReset()
 
         val uncompressedData = bodyStream.toByteArray()
 
-        // Compress the body
+        // Compress body with zlib (Legendary uses zlib.compress which is deflate with header)
         val compressedData = java.io.ByteArrayOutputStream()
         java.util.zip.DeflaterOutputStream(compressedData).use { it.write(uncompressedData) }
         val compressed = compressedData.toByteArray()
 
-        // Calculate SHA hash of uncompressed data
+        // SHA-1 of uncompressed body — written into the manifest header
         val sha = MessageDigest.getInstance("SHA-1").digest(uncompressedData)
 
-        // Build header
+        // Build the 41-byte manifest header (matches Legendary's header_size = 41)
         val headerBuffer = ByteBuffer.allocate(41).order(ByteOrder.LITTLE_ENDIAN)
-        headerBuffer.putInt(HEADER_MAGIC.toInt())
-        headerBuffer.putInt(41) // header size
-        headerBuffer.putInt(uncompressedData.size) // uncompressed size
-        headerBuffer.putInt(compressed.size) // compressed size
-        headerBuffer.put(sha) // SHA-1 hash (20 bytes)
-        headerBuffer.put(0x01.toByte()) // storedAs (compressed)
-        headerBuffer.putInt(version) // version
+        headerBuffer.putInt(HEADER_MAGIC.toInt())   // magic
+        headerBuffer.putInt(41)                      // header size (always 41)
+        headerBuffer.putInt(uncompressedData.size)   // size_uncompressed
+        headerBuffer.putInt(compressed.size)         // size_compressed
+        headerBuffer.put(sha)                        // SHA-1 (20 bytes)
+        headerBuffer.put(0x01.toByte())              // stored_as = compressed
+        headerBuffer.putInt(targetVersion)           // manifest version
 
-        // Combine header + compressed body
         val result = ByteArray(41 + compressed.size)
         System.arraycopy(headerBuffer.array(), 0, result, 0, 41)
         System.arraycopy(compressed, 0, result, 41, compressed.size)
-
         return result
     }
 }
@@ -871,13 +873,20 @@ data class CustomFields(
             val cf = CustomFields()
 
             if (buffer.hasRemaining()) {
+                val startPos = buffer.position()
                 val size = buffer.int
+                val version = buffer.get() // version byte — must be read to match write() layout
                 val count = buffer.int
 
-                repeat(count) {
-                    val key = readFString(buffer)
-                    val value = readFString(buffer)
-                    cf[key] = value
+                // Legendary writes all keys, then all values (not interleaved)
+                val keys = Array(count) { readFString(buffer) }
+                val values = Array(count) { readFString(buffer) }
+                keys.forEachIndexed { i, key -> cf[key] = values[i] }
+
+                // Skip any unread bytes in the section
+                val bytesRead = buffer.position() - startPos
+                if (bytesRead != size) {
+                    buffer.position(startPos + size)
                 }
             }
 
@@ -888,12 +897,12 @@ data class CustomFields(
     fun write(buffer: ByteBuffer) {
         val startPos = buffer.position()
         buffer.putInt(0) // placeholder for size
+        buffer.put(0) // version byte — Legendary writes this; omitting it shifts all subsequent reads by 1 byte
         buffer.putInt(fields.size)
 
-        fields.forEach { (key, value) ->
-            writeFString(buffer, key)
-            writeFString(buffer, value)
-        }
+        // Legendary writes all keys first, then all values (not interleaved key/value pairs)
+        fields.keys.forEach { key -> writeFString(buffer, key) }
+        fields.values.forEach { value -> writeFString(buffer, value) }
 
         // Update size
         val endPos = buffer.position()
