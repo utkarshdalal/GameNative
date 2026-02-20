@@ -143,6 +143,25 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun testFilterDepotsByLanguage_enUSMatchesEn() {
+        // Games using en-US in manifest should still match when we request "en" (GOG_DOWNLOAD_LANGUAGE)
+        val enUSDepot = createTestDepot(languages = listOf("en-US"))
+        val frDepot = createTestDepot(languages = listOf("fr"))
+        val manifest = GOGManifestMeta(
+            baseProductId = "12345",
+            installDirectory = "game",
+            depots = listOf(enUSDepot, frDepot),
+            dependencies = emptyList(),
+            products = emptyList(),
+        )
+
+        val result = parser.filterDepotsByLanguage(manifest, GOGConstants.GOG_DOWNLOAD_LANGUAGE)
+
+        assertEquals(1, result.size)
+        assertTrue(result[0].languages.contains("en-US"))
+    }
+
+    @Test
     fun testFilterDepotsByBitness() {
         val depot64 = createTestDepot().copy(osBitness = listOf("64"))
         val depot32 = createTestDepot().copy(osBitness = listOf("32"))
