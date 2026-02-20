@@ -305,7 +305,7 @@ class GOGService : Service() {
 
                     val result = instance.gogDownloadManager.downloadGame(
                         gameId, File(installPath),
-                        downloadInfo, "en-US", true, commonRedistDir,
+                        downloadInfo, GOGConstants.GOG_DOWNLOAD_LANGUAGE, true, commonRedistDir,
                     )
 
                     if (result.isFailure) {

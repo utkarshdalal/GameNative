@@ -265,7 +265,7 @@ data class Depot(
     }
 
     /**
-     * Check if this depot matches the target language
+     * Check if this depot matches the target language (e.g. "en" for base + English depot).
      */
     fun matchesLanguage(targetLanguage: String): Boolean {
         return languages.contains("*") || languages.any {

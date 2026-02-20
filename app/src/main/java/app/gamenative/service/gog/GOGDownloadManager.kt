@@ -82,7 +82,7 @@ class GOGDownloadManager @Inject constructor(
      * @param gameId GOG game ID (numeric)
      * @param installPath Directory where game will be installed
      * @param downloadInfo Progress tracker
-     * @param language Target language (e.g., "en-US")
+     * @param language Target language (see [GOGConstants.GOG_DOWNLOAD_LANGUAGE])
      * @param withDlcs Whether to include DLC content
      * @param supportDir Optional directory for support files (redistributables)
      * @return Result indicating success or failure
@@ -91,7 +91,7 @@ class GOGDownloadManager @Inject constructor(
         gameId: String,
         installPath: File,
         downloadInfo: DownloadInfo,
-        language: String = "en-US",
+        language: String = GOGConstants.GOG_DOWNLOAD_LANGUAGE,
         withDlcs: Boolean = false,
         supportDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
