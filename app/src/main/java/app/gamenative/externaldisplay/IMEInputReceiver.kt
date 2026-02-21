@@ -69,6 +69,16 @@ class IMEInputReceiver(
                 }
                 return true
             }
+
+            override fun sendKeyEvent(event: KeyEvent): Boolean {
+                if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL) {
+                    xServer.injectKeyPress(com.winlator.xserver.XKeycode.KEY_BKSP, 0)
+                    xServer.injectKeyRelease(com.winlator.xserver.XKeycode.KEY_BKSP)
+                    Timber.v("IMEInputReceiver: Sent backspace from sendKeyEvent")
+                    return true
+                }
+                return super.sendKeyEvent(event)
+            }
         }
     }
 
