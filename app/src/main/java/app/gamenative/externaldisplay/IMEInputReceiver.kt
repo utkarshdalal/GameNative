@@ -89,72 +89,106 @@ class IMEInputReceiver(
         post { requestFocus() }
     }
 
+    private data class KeyDispatch(
+        val keyCode: Int,
+        val requiresShift: Boolean,
+    )
+
     private fun sendCharacterToGame(char: Char) {
-        val keyCode = charToKeyCode(char)
-        if (keyCode != null) {
-            val event = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
-            xServer.keyboard.onKeyEvent(event)
-            
-            val upEvent = KeyEvent(KeyEvent.ACTION_UP, keyCode)
+        val keyDispatch = charToKeyDispatch(char)
+        if (keyDispatch != null) {
+            val metaState = if (keyDispatch.requiresShift) KeyEvent.META_SHIFT_ON else 0
+            val downEvent = KeyEvent(
+                0L,
+                0L,
+                KeyEvent.ACTION_DOWN,
+                keyDispatch.keyCode,
+                0,
+                metaState,
+            )
+            xServer.keyboard.onKeyEvent(downEvent)
+
+            val upEvent = KeyEvent(
+                0L,
+                0L,
+                KeyEvent.ACTION_UP,
+                keyDispatch.keyCode,
+                0,
+                metaState,
+            )
             xServer.keyboard.onKeyEvent(upEvent)
-            
-            Timber.v("IMEInputReceiver: Sent char '$char' as keyCode $keyCode")
+
+            Timber.v(
+                "IMEInputReceiver: Sent char '$char' as keyCode ${keyDispatch.keyCode} (shift=${keyDispatch.requiresShift})",
+            )
         } else {
             Timber.w("IMEInputReceiver: Could not map character '$char' to keyCode")
         }
     }
 
-    private fun charToKeyCode(char: Char): Int? = when (char) {
-        'a', 'A' -> KeyEvent.KEYCODE_A
-        'b', 'B' -> KeyEvent.KEYCODE_B
-        'c', 'C' -> KeyEvent.KEYCODE_C
-        'd', 'D' -> KeyEvent.KEYCODE_D
-        'e', 'E' -> KeyEvent.KEYCODE_E
-        'f', 'F' -> KeyEvent.KEYCODE_F
-        'g', 'G' -> KeyEvent.KEYCODE_G
-        'h', 'H' -> KeyEvent.KEYCODE_H
-        'i', 'I' -> KeyEvent.KEYCODE_I
-        'j', 'J' -> KeyEvent.KEYCODE_J
-        'k', 'K' -> KeyEvent.KEYCODE_K
-        'l', 'L' -> KeyEvent.KEYCODE_L
-        'm', 'M' -> KeyEvent.KEYCODE_M
-        'n', 'N' -> KeyEvent.KEYCODE_N
-        'o', 'O' -> KeyEvent.KEYCODE_O
-        'p', 'P' -> KeyEvent.KEYCODE_P
-        'q', 'Q' -> KeyEvent.KEYCODE_Q
-        'r', 'R' -> KeyEvent.KEYCODE_R
-        's', 'S' -> KeyEvent.KEYCODE_S
-        't', 'T' -> KeyEvent.KEYCODE_T
-        'u', 'U' -> KeyEvent.KEYCODE_U
-        'v', 'V' -> KeyEvent.KEYCODE_V
-        'w', 'W' -> KeyEvent.KEYCODE_W
-        'x', 'X' -> KeyEvent.KEYCODE_X
-        'y', 'Y' -> KeyEvent.KEYCODE_Y
-        'z', 'Z' -> KeyEvent.KEYCODE_Z
-        '0' -> KeyEvent.KEYCODE_0
-        '1' -> KeyEvent.KEYCODE_1
-        '2' -> KeyEvent.KEYCODE_2
-        '3' -> KeyEvent.KEYCODE_3
-        '4' -> KeyEvent.KEYCODE_4
-        '5' -> KeyEvent.KEYCODE_5
-        '6' -> KeyEvent.KEYCODE_6
-        '7' -> KeyEvent.KEYCODE_7
-        '8' -> KeyEvent.KEYCODE_8
-        '9' -> KeyEvent.KEYCODE_9
-        ' ' -> KeyEvent.KEYCODE_SPACE
-        '\n' -> KeyEvent.KEYCODE_ENTER
-        '-' -> KeyEvent.KEYCODE_MINUS
-        '=' -> KeyEvent.KEYCODE_EQUALS
-        '[' -> KeyEvent.KEYCODE_LEFT_BRACKET
-        ']' -> KeyEvent.KEYCODE_RIGHT_BRACKET
-        '\\' -> KeyEvent.KEYCODE_BACKSLASH
-        ';' -> KeyEvent.KEYCODE_SEMICOLON
-        '\'' -> KeyEvent.KEYCODE_APOSTROPHE
-        ',' -> KeyEvent.KEYCODE_COMMA
-        '.' -> KeyEvent.KEYCODE_PERIOD
-        '/' -> KeyEvent.KEYCODE_SLASH
-        '`' -> KeyEvent.KEYCODE_GRAVE
-        else -> null
+    private fun charToKeyDispatch(char: Char): KeyDispatch? {
+        val isUppercaseLetter = char in 'A'..'Z'
+        val normalizedChar = if (isUppercaseLetter) char.lowercaseChar() else char
+
+        val keyCode = when (normalizedChar) {
+            'a' -> KeyEvent.KEYCODE_A
+            'b' -> KeyEvent.KEYCODE_B
+            'c' -> KeyEvent.KEYCODE_C
+            'd' -> KeyEvent.KEYCODE_D
+            'e' -> KeyEvent.KEYCODE_E
+            'f' -> KeyEvent.KEYCODE_F
+            'g' -> KeyEvent.KEYCODE_G
+            'h' -> KeyEvent.KEYCODE_H
+            'i' -> KeyEvent.KEYCODE_I
+            'j' -> KeyEvent.KEYCODE_J
+            'k' -> KeyEvent.KEYCODE_K
+            'l' -> KeyEvent.KEYCODE_L
+            'm' -> KeyEvent.KEYCODE_M
+            'n' -> KeyEvent.KEYCODE_N
+            'o' -> KeyEvent.KEYCODE_O
+            'p' -> KeyEvent.KEYCODE_P
+            'q' -> KeyEvent.KEYCODE_Q
+            'r' -> KeyEvent.KEYCODE_R
+            's' -> KeyEvent.KEYCODE_S
+            't' -> KeyEvent.KEYCODE_T
+            'u' -> KeyEvent.KEYCODE_U
+            'v' -> KeyEvent.KEYCODE_V
+            'w' -> KeyEvent.KEYCODE_W
+            'x' -> KeyEvent.KEYCODE_X
+            'y' -> KeyEvent.KEYCODE_Y
+            'z' -> KeyEvent.KEYCODE_Z
+            '0', ')' -> KeyEvent.KEYCODE_0
+            '1', '!' -> KeyEvent.KEYCODE_1
+            '2', '@' -> KeyEvent.KEYCODE_2
+            '3', '#' -> KeyEvent.KEYCODE_3
+            '4', '$' -> KeyEvent.KEYCODE_4
+            '5', '%' -> KeyEvent.KEYCODE_5
+            '6', '^' -> KeyEvent.KEYCODE_6
+            '7', '&' -> KeyEvent.KEYCODE_7
+            '8', '*' -> KeyEvent.KEYCODE_8
+            '9', '(' -> KeyEvent.KEYCODE_9
+            ' ' -> KeyEvent.KEYCODE_SPACE
+            '\n' -> KeyEvent.KEYCODE_ENTER
+            '-', '_' -> KeyEvent.KEYCODE_MINUS
+            '=', '+' -> KeyEvent.KEYCODE_EQUALS
+            '[', '{' -> KeyEvent.KEYCODE_LEFT_BRACKET
+            ']', '}' -> KeyEvent.KEYCODE_RIGHT_BRACKET
+            '\\', '|' -> KeyEvent.KEYCODE_BACKSLASH
+            ';', ':' -> KeyEvent.KEYCODE_SEMICOLON
+            '\'', '"' -> KeyEvent.KEYCODE_APOSTROPHE
+            ',', '<' -> KeyEvent.KEYCODE_COMMA
+            '.', '>' -> KeyEvent.KEYCODE_PERIOD
+            '/', '?' -> KeyEvent.KEYCODE_SLASH
+            '`', '~' -> KeyEvent.KEYCODE_GRAVE
+            else -> null
+        } ?: return null
+
+        val requiresShift = isUppercaseLetter || char in setOf(
+            ')', '!', '@', '#', '$', '%', '^', '&', '*', '(',
+            '_', '+', '{', '}', '|', ':', '"', '<', '>', '?', '~',
+        )
+
+        return KeyDispatch(keyCode = keyCode, requiresShift = requiresShift)
     }
 
     fun showKeyboard() {
