@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import app.gamenative.R
+import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
 import com.winlator.container.Container
@@ -9,6 +10,7 @@ import com.winlator.container.Container
 const val LOADING_PROGRESS_UNKNOWN: Float = -1f
 
 private val ALL_LAUNCH_DEPENDENCIES: List<LaunchDependency> = listOf(
+    GogScriptInterpreterDependency,
 )
 
 /**

@@ -16,6 +16,7 @@ import java.io.FileOutputStream
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -912,6 +913,40 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").e(e, "Failed to download dependencies")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Downloads GOG redistributables (e.g. ISI/scriptinterpreter.exe) to a shared directory.
+     * Used so scriptinterpreter can be run on first launch for games that need it (e.g. Fallout 3).
+     * Heroic uses the same approach: download redist to a shared path via gogdl redist command.
+     *
+     * @param redistDir Target directory (e.g. context.filesDir/GOG/redist). Files end up under redistDir/ISI/ etc.
+     * @param dependencyIds Dependency IDs to download; default ISI (scriptinterpreter).
+     * @param onProgress Progress callback 0f..1f
+     */
+    suspend fun downloadRedist(
+        redistDir: File,
+        dependencyIds: List<String> = listOf("ISI"),
+        onProgress: (Float) -> Unit,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val downloadInfo = DownloadInfo(
+            jobCount = 1,
+            gameId = 0,
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
+        downloadInfo.addProgressListener { onProgress(it) }
+        redistDir.mkdirs()
+        val result = downloadDependencies(
+            gameId = "redist",
+            dependencies = dependencyIds,
+            gameDir = redistDir,
+            supportDir = redistDir,
+            downloadInfo = downloadInfo,
+        )
+        if (result.isSuccess) {
+            onProgress(1f)
+        }
+        result
     }
 
     /**
