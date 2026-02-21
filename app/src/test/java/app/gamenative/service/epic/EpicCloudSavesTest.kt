@@ -31,7 +31,7 @@ class EpicCloudSavesTest {
     // -------------------------------------------------------------------------
 
     private fun rollingHash(data: ByteArray): ULong =
-        EpicCloudSavesManager.testCalculateRollingHash(data)
+        EpicCloudSavesManager.calculateRollingHash(data)
 
     @Test
     fun `rolling hash of empty array is zero`() {
@@ -266,7 +266,7 @@ class EpicCloudSavesTest {
         val hash = 0uL
         val shaHash = ByteArray(20)
 
-        val result = EpicCloudSavesManager.testCompressChunk(data, guid, hash, shaHash)
+        val result = EpicCloudSavesManager.compressChunk(data, guid, hash, shaHash)
         val buf = ByteBuffer.wrap(result).order(ByteOrder.LITTLE_ENDIAN)
 
         buf.int // magic
@@ -286,8 +286,8 @@ class EpicCloudSavesTest {
         val hash = rollingHash(originalData)
         val shaHash = java.security.MessageDigest.getInstance("SHA-1").digest(originalData)
 
-        val compressed = EpicCloudSavesManager.testCompressChunk(originalData, guid, hash, shaHash)
-        val decompressed = EpicCloudSavesManager.testDecompressChunk(compressed)
+        val compressed = EpicCloudSavesManager.compressChunk(originalData, guid, hash, shaHash)
+        val decompressed = EpicCloudSavesManager.decompressChunk(compressed)
 
         assertArrayEquals(originalData, decompressed)
     }
@@ -296,7 +296,7 @@ class EpicCloudSavesTest {
     fun `chunk GUID in header matches the supplied guid`() {
         val guid = intArrayOf(0xDEAD1234.toInt(), 0xBEEF5678.toInt(), 0xCAFE9ABC.toInt(), 0xFACEDEF0.toInt())
         val data = ByteArray(1024 * 1024)
-        val result = EpicCloudSavesManager.testCompressChunk(data, guid, 0uL, ByteArray(20))
+        val result = EpicCloudSavesManager.compressChunk(data, guid, 0uL, ByteArray(20))
 
         val buf = ByteBuffer.wrap(result).order(ByteOrder.LITTLE_ENDIAN)
         buf.position(16) // skip magic(4) + version(4) + headerSize(4) + compressedSize(4)

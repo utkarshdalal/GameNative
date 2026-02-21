@@ -1072,7 +1072,7 @@ object EpicCloudSavesManager {
     //   = 66 bytes
     // guid/rollingHash/shaHash must already be computed by the caller (finalizeChunk) so that
     // the values written into the header are identical to what is stored in the CDL entry.
-    private fun compressChunk(data: ByteArray, guid: IntArray, rollingHash: ULong, shaHash: ByteArray): ByteArray {
+    internal fun compressChunk(data: ByteArray, guid: IntArray, rollingHash: ULong, shaHash: ByteArray): ByteArray {
         // Compress payload
         val compressed = java.io.ByteArrayOutputStream()
         java.util.zip.DeflaterOutputStream(compressed).use { it.write(data) }
@@ -1135,7 +1135,7 @@ object EpicCloudSavesManager {
      *   h = 0
      *   for each byte i: h = ((h << 1 | h >> 63) ^ table[data[i]]) & 0xffffffffffffffff
      */
-    private fun calculateRollingHash(data: ByteArray): ULong {
+    internal fun calculateRollingHash(data: ByteArray): ULong {
         var h = 0uL
         for (byte in data) {
             val tableVal = ROLLING_HASH_TABLE[byte.toInt() and 0xFF].toULong()
@@ -1343,7 +1343,7 @@ object EpicCloudSavesManager {
      *
      * The payload starts at offset headerSize (not computed — read from the header).
      */
-    private fun decompressChunk(chunkBytes: ByteArray): ByteArray {
+    internal fun decompressChunk(chunkBytes: ByteArray): ByteArray {
         return try {
             val buffer = java.nio.ByteBuffer.wrap(chunkBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
 
@@ -1392,17 +1392,4 @@ object EpicCloudSavesManager {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Internal test helpers — exposed only for unit tests (not part of public API)
-    // -------------------------------------------------------------------------
-
-    @Suppress("unused") // called via direct reference in unit tests
-    internal fun testCalculateRollingHash(data: ByteArray): ULong = calculateRollingHash(data)
-
-    @Suppress("unused")
-    internal fun testCompressChunk(data: ByteArray, guid: IntArray, rollingHash: ULong, shaHash: ByteArray): ByteArray =
-        compressChunk(data, guid, rollingHash, shaHash)
-
-    @Suppress("unused")
-    internal fun testDecompressChunk(chunkBytes: ByteArray): ByteArray = decompressChunk(chunkBytes)
 }
