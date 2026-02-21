@@ -71,8 +71,10 @@ import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.UpdateChecker
@@ -91,6 +93,8 @@ import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1147,6 +1151,30 @@ fun preLaunchApp(
             }
         }
 
+        // download any manifest components (wine/proton, dxvk, etc.) missing from config
+        if (gameSource == GameSource.STEAM) {
+            try {
+                val configJson = Json.parseToJsonElement(container.containerJson).jsonObject
+                val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
+                    context, configJson, "exact_gpu_match",
+                )
+                for (request in missingRequests) {
+                    setLoadingMessage(context.getString(R.string.main_downloading_entry, request.entry.name))
+                    try {
+                        ManifestInstaller.installManifestEntry(
+                            context, request.entry, request.isDriver, request.contentType,
+                        ) { progress -> setLoadingProgress(progress.coerceIn(0f, 1f)) }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to install ${request.entry.name}, continuing")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to install manifest components")
+                setLoadingDialogVisible(false)
+                return@launch
+            }
+        }
+
         // Check if this is a Custom Game and validate executable selection before installing components
         // Skip the check if booting to container (Open Container menu option)
         val isCustomGame = gameSource == GameSource.CUSTOM_GAME
@@ -1239,6 +1267,7 @@ fun preLaunchApp(
                 "steam-token.tzst",
             ).await()
         }
+
         val loadingMessage = if (container.containerVariant.equals(Container.GLIBC)) {
             context.getString(R.string.main_installing_glibc)
         } else {
