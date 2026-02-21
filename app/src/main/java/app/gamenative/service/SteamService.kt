@@ -1794,27 +1794,26 @@ class SteamService : Service(), IChallengeUrlChanged {
                             instance?.downloadingAppInfoDao?.deleteApp(appId)
                         }
                     } catch (e: CancellationException) {
-                        Timber.d(e, "Download canceled for app $appId")
+                        Timber.d(e, "Download paused for app $appId")
                         // Keep downloadingAppInfo on cancellation so resume does not fall into verify mode.
+                        // In this flow, cancellation is treated as a resumable pause (not a hard failure).
+                        // TODO seperate this into better logic... 
                         di.persistProgressSnapshot()
+                        di.updateStatusMessage("Paused")
+                        di.setActive(false)
                         throw e
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
-                        runBlocking {
-                            instance?.downloadingAppInfoDao?.deleteApp(appId)
-                        }
-                        // Mark all depots as failed
-                        selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
-                            di.setWeight(idx, 0)
-                            di.setProgress(1f, idx)
-                        }
+                        // Keep downloadingAppInfo on failures so resume preserves selected DLC/depot context.
+                        di.updateStatusMessage("Failed - tap Resume to continue")
+                        di.setActive(false)
                         removeDownloadJob(appId)
                     }
                 }
                 downloadJob.invokeOnCompletion { throwable ->
                     if (throwable is kotlinx.coroutines.CancellationException) {
-                        Timber.d(throwable, "Download canceled for app $appId")
+                        Timber.d(throwable, "Download paused for app $appId")
                         removeDownloadJob(appId)
                     }
                 }
@@ -1873,6 +1872,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
                 }
+                downloadInfo.updateStatusMessage("Complete")
                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
 
                 // Clear persisted bytes file on successful completion
@@ -1909,6 +1909,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onDownloadStarted(item: DownloadItem) {
                 Timber.i("Item ${item.appId} download started")
+                downloadInfo.updateStatusMessage("Downloading")
             }
 
             override fun onDownloadCompleted(item: DownloadItem) {
@@ -1918,20 +1919,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
                 if (error is CancellationException) {
                     // Treat cancellation as pause: preserve resume metadata/state.
-                    Timber.d(error, "Item ${item.appId} download canceled")
+                    // Downloader-level cancellation maps to paused/resumable UX in the app.
+                    Timber.d(error, "Item ${item.appId} download paused")
                     downloadInfo.persistProgressSnapshot()
+                    downloadInfo.updateStatusMessage("Paused")
                     downloadInfo.setActive(false)
                     removeDownloadJob(downloadInfo.gameId)
                     return
                 }
 
                 Timber.e(error, "Item ${item.appId} failed to download")
-                downloadInfo.failedToDownload()
-
-                // Remove the downloading app info on real failures.
-                runBlocking {
-                    instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
-                }
+                // Preserve progress + downloadingAppInfo so retry can resume after transient failures/device restarts.
+                downloadInfo.persistProgressSnapshot()
+                downloadInfo.updateStatusMessage("Failed - tap Resume to continue")
+                downloadInfo.setActive(false)
 
                 removeDownloadJob(downloadInfo.gameId)
                 instance?.let { service ->
