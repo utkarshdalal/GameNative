@@ -955,11 +955,29 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun deleteApp(appId: Int): Boolean {
+            val appDirPath = getAppDirPath(appId)
+
+            // Guard against accidental root deletion if path resolution failed.
+            if (appDirPath == internalAppInstallPath || appDirPath == externalAppInstallPath) {
+                Timber.e("Refusing to delete appId=$appId because resolved path points to install root: $appDirPath")
+                return false
+            }
+
+            // If an active download exists, stop it and wait briefly before deleting files.
+            downloadJobs[appId]?.let { info ->
+                info.cancel()
+                runBlocking(Dispatchers.IO) {
+                    info.awaitCompletion(timeoutMs = 750L)
+                }
+                removeDownloadJob(appId)
+            }
+
             // Remove any download-complete marker
-            MarkerUtils.removeMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-            // Remove from DB
-            with(instance!!) {
-                scope.launch {
+            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+
+            // Remove from DB synchronously so immediate reinstall cannot race with stale metadata.
+            runBlocking(Dispatchers.IO) {
+                with(instance!!) {
                     db.withTransaction {
                         appInfoDao.deleteApp(appId)
                         changeNumbersDao.deleteByAppId(appId)
@@ -975,8 +993,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
             }
-
-            val appDirPath = getAppDirPath(appId)
 
             return File(appDirPath).deleteRecursively()
         }
@@ -1430,17 +1446,32 @@ class SteamService : Service(), IChallengeUrlChanged {
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && depot.manifests.isNotEmpty()
             }
 
-            // Remove depots that are already downloaded for regular download/resume.
-            val appInfo = getInstalledApp(appId)
-            if (appInfo != null && !includeInstalledDepots) {
+            // Remove depots that are already downloaded only when install metadata is trusted.
+            var appInfo = getInstalledApp(appId)
+            val hasCompleteMarker = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            var hasTrustedInstalledState = appInfo?.isDownloaded == true && hasCompleteMarker
+            if (!includeInstalledDepots && appInfo != null && !hasTrustedInstalledState) {
+                val hasStaleInstallMetadata = appInfo.isDownloaded ||
+                    appInfo.downloadedDepots.isNotEmpty() ||
+                    appInfo.dlcDepots.isNotEmpty()
+                if (hasStaleInstallMetadata) {
+                    Timber.w(
+                        "Clearing stale install metadata for appId=$appId " +
+                            "(isDownloaded=${appInfo.isDownloaded}, marker=$hasCompleteMarker)",
+                    )
+                    runBlocking(Dispatchers.IO) {
+                        instance?.appInfoDao?.deleteApp(appId)
+                    }
+                    appInfo = null
+                }
+                hasTrustedInstalledState = false
+            }
+            if (appInfo != null && !includeInstalledDepots && hasTrustedInstalledState) {
                 mainAppDepots = mainAppDepots.filter { it.key !in appInfo.downloadedDepots }
             }
 
             // Combine main app and DLC depots
             val selectedDepots = mainAppDepots + dlcAppDepots
-            val allDepots = originalMainAppDepots + downloadableDepots.filter { (_, depot) ->
-                userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && depot.manifests.isNotEmpty()
-            }
 
             val downloadingAppIds = CopyOnWriteArrayList<Int>()
             val calculatedDlcAppIds = CopyOnWriteArrayList<Int>()
@@ -1493,20 +1524,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
 
-                // Calculate total expected bytes including fully downloaded depots
-                var totalBytes = 0L
-                var fullyDownloadedBytes = 0L
-
-                allDepots.forEach { (depotId, depot) ->
-                    val mInfo = depot.manifests[branch] ?: depot.encryptedManifests[branch]
-                    val size = (mInfo?.size ?: 1).toLong()
-                    totalBytes += size
-
-                    if (appInfo != null && !includeInstalledDepots && depotId in appInfo.downloadedDepots) {
-                        fullyDownloadedBytes += size
-                    }
-                }
-
                 // Set weights for each depot based on manifest sizes
                 val selectedDepotSizes = selectedDepots.mapValues { (_, depot) ->
                     val mInfo = depot.manifests[branch]
@@ -1517,6 +1534,24 @@ class SteamService : Service(), IChallengeUrlChanged {
                 selectedDepots.keys.forEachIndexed { index, depotId ->
                     di.setWeight(index, selectedDepotSizes[depotId] ?: 1L)
                 }
+
+                // Keep total expected bytes aligned with the exact byte-accounting set:
+                // selected depots for live callbacks + already-downloaded depots excluded from this run.
+                val selectedTotalBytes = selectedDepotSizes.values.sum()
+                val fullyDownloadedBytes = if (appInfo != null && !includeInstalledDepots && hasTrustedInstalledState) {
+                    originalMainAppDepots
+                        .asSequence()
+                        .filter { (depotId, _) ->
+                            depotId in appInfo.downloadedDepots && depotId !in selectedDepots.keys
+                        }
+                        .sumOf { (_, depot) ->
+                            val mInfo = depot.manifests[branch] ?: depot.encryptedManifests[branch]
+                            (mInfo?.size ?: 1L).coerceAtLeast(1L)
+                        }
+                } else {
+                    0L
+                }
+                val totalBytes = (selectedTotalBytes + fullyDownloadedBytes).coerceAtLeast(1L)
 
                 // Total expected size (used for ETA based on recent download speed)
                 di.setTotalExpectedBytes(totalBytes)
@@ -1593,7 +1628,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                             // Create listeners for DLC apps
                             val depotIdToIndex = selectedDepots.keys.mapIndexed { index, depotId -> depotId to index }.toMap()
-                            val listener = AppDownloadListener(di, depotIdToIndex)
+                            val listener = AppDownloadListener(
+                                di,
+                                depotIdToIndex,
+                                selectedDepotSizes,
+                            )
                             depotDownloader.addListener(listener)
 
                             if (mainAppDepots.isNotEmpty()) {
@@ -1794,10 +1833,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                             instance?.downloadingAppInfoDao?.deleteApp(appId)
                         }
                     } catch (e: CancellationException) {
+                        if (e.message == "Failed to download") {
+                            Timber.d(e, "Download failed for app $appId via cancellation")
+                            di.persistProgressSnapshot()
+                            di.updateStatusMessage("Failed - tap Resume to continue")
+                            di.setActive(false)
+                            removeDownloadJob(appId)
+                            return@launch
+                        }
+
                         Timber.d(e, "Download paused for app $appId")
                         // Keep downloadingAppInfo on cancellation so resume does not fall into verify mode.
-                        // In this flow, cancellation is treated as a resumable pause (not a hard failure).
-                        // TODO seperate this into better logic... 
                         di.persistProgressSnapshot()
                         di.updateStatusMessage("Paused")
                         di.setActive(false)
@@ -1886,17 +1932,29 @@ class SteamService : Service(), IChallengeUrlChanged {
         private class AppDownloadListener(
             private val downloadInfo: DownloadInfo,
             private val depotIdToIndex: Map<Int, Int>,
+            private val depotMaxBytesById: Map<Int, Long>,
         ) : IDownloadListener {
             private fun updateDepotBytesAndGetDelta(depotId: Int, reportedBytes: Long): Long {
+                if (!depotIdToIndex.containsKey(depotId)) {
+                    return 0L
+                }
+
                 if (reportedBytes <= 0L) {
                     downloadInfo.depotCumulativeUncompressedBytes.putIfAbsent(depotId, 0L)
                     return 0L
                 }
 
+                val maxBytes = depotMaxBytesById[depotId]?.coerceAtLeast(1L)
+                val clampedReportedBytes = if (maxBytes != null) {
+                    reportedBytes.coerceIn(0L, maxBytes)
+                } else {
+                    reportedBytes
+                }
+
                 var deltaBytes = 0L
                 downloadInfo.depotCumulativeUncompressedBytes.compute(depotId) { _, previousBytes ->
                     val prev = previousBytes ?: 0L
-                    val next = maxOf(prev, reportedBytes)
+                    val next = maxOf(prev, clampedReportedBytes)
                     deltaBytes = (next - prev).coerceAtLeast(0L)
                     next
                 }
@@ -1929,12 +1987,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 Timber.e(error, "Item ${item.appId} failed to download")
-                // Preserve progress + downloadingAppInfo so retry can resume after transient failures/device restarts.
+                // Hard stop current session on item failure so we do not continue toward completion
+                // with missing/corrupt files. Resume metadata is preserved for retry.
                 downloadInfo.persistProgressSnapshot()
                 downloadInfo.updateStatusMessage("Failed - tap Resume to continue")
-                downloadInfo.setActive(false)
+                downloadInfo.failedToDownload()
 
-                removeDownloadJob(downloadInfo.gameId)
                 instance?.let { service ->
                     service.scope.launch(Dispatchers.Main) {
                         Toast.makeText(

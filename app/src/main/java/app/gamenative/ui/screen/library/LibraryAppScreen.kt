@@ -107,6 +107,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import app.gamenative.service.SteamService.Companion.getAppDirPath
@@ -118,6 +119,7 @@ import android.os.Environment
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import app.gamenative.PrefManager
 import app.gamenative.service.DownloadService
@@ -527,19 +529,25 @@ internal fun AppScreenContent(
 
             // Download progress section
             if (isDownloading) {
-                // Use DownloadInfo's byte-based ETA when available for more stable estimates
-                val timeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, statusMessage) {
-                    val etaMs = downloadInfo?.getEstimatedTimeRemaining()
-                    if (etaMs != null && etaMs > 0L) {
-                        val totalSeconds = etaMs / 1000
-                        val minutesLeft = totalSeconds / 60
-                        val secondsPart = totalSeconds % 60
-                        "${minutesLeft}m ${secondsPart}s left"
-                    } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-                        val statusText = statusMessage?.takeUnless { it.isBlank() }
-                        statusText ?: "Calculating..."
-                    } else {
-                        ""
+                val latestStatusMessage by rememberUpdatedState(statusMessage)
+                val latestDownloadProgress by rememberUpdatedState(downloadProgress)
+                var timeLeftText by remember(displayInfo.appId) { mutableStateOf("Calculating...") }
+                
+                LaunchedEffect(displayInfo.appId, isDownloading, downloadInfo) {
+                    while (isDownloading) {
+                        val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+                        timeLeftText = if (etaMs != null && etaMs > 0L) {
+                            val totalSeconds = etaMs / 1000
+                            val minutesLeft = totalSeconds / 60
+                            val secondsPart = totalSeconds % 60
+                            "${minutesLeft}m ${secondsPart}s left"
+                        } else if (latestDownloadProgress in 0f..1f && latestDownloadProgress < 1f) {
+                            val statusText = latestStatusMessage?.takeUnless { it.isBlank() }
+                            statusText ?: "Calculating..."
+                        } else {
+                            ""
+                        }
+                        delay(3_000L)
                     }
                 }
                 Column(
