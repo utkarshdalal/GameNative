@@ -806,10 +806,13 @@ class SteamAppScreen : BaseAppScreen() {
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
         val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
-        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 
         if (!isInstalled || isDownloadInProgress) {
             return emptyList()
+        }
+
+        val isLocalSavesOnly = remember(appId) {
+            ContainerUtils.isLocalSavesOnly(context, appId)
         }
 
         val scope = rememberCoroutineScope()

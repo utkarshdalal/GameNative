@@ -1027,7 +1027,8 @@ object ContainerUtils {
     }
 
     fun isLocalSavesOnly(context: Context, appId: String): Boolean {
-        val container = getOrCreateContainer(context, appId)
+        if (!hasContainer(context, appId)) return false
+        val container = getContainer(context, appId)
         return container.getExtra(EXTRA_LOCAL_SAVES_ONLY, "false").toBoolean()
     }
 
