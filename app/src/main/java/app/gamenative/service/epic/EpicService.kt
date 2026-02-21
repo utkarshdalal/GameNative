@@ -342,7 +342,7 @@ class EpicService : Service() {
             )
 
             instance.activeDownloads[appId] = downloadInfo
-            downloadInfo.setActive(true)
+            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
 
             // Start download in background
             val job = instance.scope.launch {
@@ -377,19 +377,30 @@ class EpicService : Service() {
                         }
                     } else {
                         val error = result.exceptionOrNull()
-                        Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setProgress(-1.0f)
-                        downloadInfo.setActive(false)
+                        val isCancelled = error is CancellationException
+                        if (isCancelled) {
+                            Timber.tag("Epic").i("[Download] Cancelled for game $gameId")
+                            downloadInfo.updateStatusMessage("Cancelled")
+                            downloadInfo.setActive(false)
+                        } else {
+                            Timber.e(error, "[Download] Failed for game $gameId")
+                            downloadInfo.setProgress(-1.0f)
+                            downloadInfo.setActive(false)
 
-                        // Show failure toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
+                            // Show failure toast
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Download failed: ${error?.message ?: "Unknown error"}",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
                         }
                     }
+                } catch (e: CancellationException) {
+                    Timber.tag("Epic").d(e, "[Download] Cancelled for game $gameId")
+                    downloadInfo.updateStatusMessage("Cancelled")
+                    downloadInfo.setActive(false)
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
                     downloadInfo.setProgress(-1.0f)
@@ -405,6 +416,7 @@ class EpicService : Service() {
                     }
                 } finally {
                     instance.activeDownloads.remove(appId)
+                    PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, false))
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }

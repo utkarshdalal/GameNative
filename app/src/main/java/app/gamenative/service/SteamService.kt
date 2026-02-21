@@ -991,22 +991,64 @@ class SteamService : Service(), IChallengeUrlChanged {
                 if (downloadingAppInfo != null) {
                     return downloadApp(appId, downloadingAppInfo.dlcAppIds.orEmpty(), isUpdateOrVerify = false)
                 } else {
-                    // Otherwise it is verifying files
-                    val dlcAppIds = getInstalledDlcDepotsOf(appId).orEmpty().toMutableList()
-
-                    getDownloadableDlcAppsOf(appId)?.forEach { dlcApp ->
-                        val installedDlcApp = getInstalledApp(dlcApp.id)
-                        if (installedDlcApp != null) {
-                            dlcAppIds.add(installedDlcApp.id)
-                        }
-                    }
-
-                    return downloadApp(appId, dlcAppIds, isUpdateOrVerify = true)
+                    // Normal download/resume path should never implicitly switch to verify mode.
+                    return downloadApp(
+                        appId,
+                        resolveInstalledDlcIdsForUpdateOrVerify(appId),
+                        isUpdateOrVerify = false,
+                    )
                 }
             }
         }
 
+        fun downloadAppForUpdate(appId: Int): DownloadInfo? {
+            return downloadApp(
+                appId,
+                resolveInstalledDlcIdsForUpdateOrVerify(appId),
+                includeInstalledDepots = true,
+                enableVerify = false,
+            )
+        }
+
+        fun downloadAppForVerify(appId: Int): DownloadInfo? {
+            return downloadApp(
+                appId,
+                resolveInstalledDlcIdsForUpdateOrVerify(appId),
+                includeInstalledDepots = true,
+                enableVerify = true,
+            )
+        }
+
+        private fun resolveInstalledDlcIdsForUpdateOrVerify(appId: Int): List<Int> {
+            val dlcAppIds = getInstalledDlcDepotsOf(appId).orEmpty().toMutableList()
+
+            getDownloadableDlcAppsOf(appId)?.forEach { dlcApp ->
+                val installedDlcApp = getInstalledApp(dlcApp.id)
+                if (installedDlcApp != null) {
+                    dlcAppIds.add(installedDlcApp.id)
+                }
+            }
+
+            return dlcAppIds.distinct()
+        }
+
         fun downloadApp(appId: Int, dlcAppIds: List<Int>, isUpdateOrVerify: Boolean): DownloadInfo? {
+            // Backward-compatible API:
+            // true => include already-downloaded depots (update scope), but do not force verify.
+            return downloadApp(
+                appId = appId,
+                dlcAppIds = dlcAppIds,
+                includeInstalledDepots = isUpdateOrVerify,
+                enableVerify = false,
+            )
+        }
+
+        private fun downloadApp(
+            appId: Int,
+            dlcAppIds: List<Int>,
+            includeInstalledDepots: Boolean,
+            enableVerify: Boolean,
+        ): DownloadInfo? {
             // Enforce Wi-Fi-only downloads
             if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
                 instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
@@ -1029,7 +1071,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     userSelectedDlcAppIds = dlcAppIds,
                     branch = "public",
                     containerLanguage = containerLanguage,
-                    isUpdateOrVerify = isUpdateOrVerify)
+                    includeInstalledDepots = includeInstalledDepots,
+                    enableVerify = enableVerify,
+                )
             }
         }
 
@@ -1355,7 +1399,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             userSelectedDlcAppIds: List<Int>,
             branch: String,
             containerLanguage: String,
-            isUpdateOrVerify: Boolean,
+            includeInstalledDepots: Boolean,
+            enableVerify: Boolean,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
 
@@ -1372,11 +1417,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             // Depots from Main game
             val mainDepots = getMainAppDepots(appId, containerLanguage)
-            var mainAppDepots = mainDepots.filter { (_, depot) ->
+            val originalMainAppDepots = mainDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             } + mainDepots.filter { (_, depot) ->
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && depot.manifests.isNotEmpty()
             }
+            var mainAppDepots = originalMainAppDepots
 
             // Depots from DLC App
             val dlcAppDepots = downloadableDepots.filter { (_, depot) ->
@@ -1384,14 +1430,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && depot.manifests.isNotEmpty()
             }
 
-            // Remove depots that are already downloaded (not for update/verify)
+            // Remove depots that are already downloaded for regular download/resume.
             val appInfo = getInstalledApp(appId)
-            if (appInfo != null && !isUpdateOrVerify) {
+            if (appInfo != null && !includeInstalledDepots) {
                 mainAppDepots = mainAppDepots.filter { it.key !in appInfo.downloadedDepots }
             }
 
             // Combine main app and DLC depots
             val selectedDepots = mainAppDepots + dlcAppDepots
+            val allDepots = originalMainAppDepots + downloadableDepots.filter { (_, depot) ->
+                userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && depot.manifests.isNotEmpty()
+            }
 
             val downloadingAppIds = CopyOnWriteArrayList<Int>()
             val calculatedDlcAppIds = CopyOnWriteArrayList<Int>()
@@ -1443,24 +1492,49 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
+
+                // Calculate total expected bytes including fully downloaded depots
+                var totalBytes = 0L
+                var fullyDownloadedBytes = 0L
+
+                allDepots.forEach { (depotId, depot) ->
+                    val mInfo = depot.manifests[branch] ?: depot.encryptedManifests[branch]
+                    val size = (mInfo?.size ?: 1).toLong()
+                    totalBytes += size
+
+                    if (appInfo != null && !includeInstalledDepots && depotId in appInfo.downloadedDepots) {
+                        fullyDownloadedBytes += size
+                    }
+                }
+
                 // Set weights for each depot based on manifest sizes
-                val sizes = selectedDepots.map { (_, depot) ->
+                val selectedDepotSizes = selectedDepots.mapValues { (_, depot) ->
                     val mInfo = depot.manifests[branch]
                         ?: depot.encryptedManifests[branch]
-                        ?: return@map 1L
-                    (mInfo.size ?: 1).toLong()
+                        ?: return@mapValues 1L
+                    (mInfo.size ?: 1).toLong().coerceAtLeast(1L)
                 }
-                sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
+                selectedDepots.keys.forEachIndexed { index, depotId ->
+                    di.setWeight(index, selectedDepotSizes[depotId] ?: 1L)
+                }
 
                 // Total expected size (used for ETA based on recent download speed)
-                val totalBytes = sizes.sum()
                 di.setTotalExpectedBytes(totalBytes)
 
                 // Load persisted bytes downloaded value on resume
-                val persistedBytes = di.loadPersistedBytesDownloaded(appDirPath)
-                if (persistedBytes > 0L) {
-                    di.initializeBytesDownloaded(persistedBytes)
-                    Timber.i("Resumed download: initialized with $persistedBytes bytes")
+                val persistedDepotBytes = di.loadPersistedDepotBytes(appDirPath)
+                var resumedBytes = fullyDownloadedBytes
+                for ((depotId, bytes) in persistedDepotBytes) {
+                    val depotSize = selectedDepotSizes[depotId] ?: continue
+                    val safeBytes = bytes.coerceIn(0L, depotSize)
+                    di.depotCumulativeUncompressedBytes[depotId] = safeBytes
+                    resumedBytes += safeBytes
+                }
+                resumedBytes = resumedBytes.coerceIn(0L, totalBytes)
+
+                if (resumedBytes > 0L) {
+                    di.initializeBytesDownloaded(resumedBytes)
+                    Timber.i("Resumed download: initialized with $resumedBytes bytes")
                 }
 
                 val downloadJob = instance!!.scope.launch {
@@ -1472,243 +1546,245 @@ class SteamService : Service(), IChallengeUrlChanged {
                             return@launch
                         }
 
-                        // Some notes here:
-                        // Write should always be 1 in mobile device, as normally it does not use a SSD for storage
-                        // And to have maximum throughput, set downloadRatio = decompressRatio = 1.0 x CPU Cores
-                        var downloadRatio = 0.0
-                        var decompressRatio = 0.0
+                            // Some notes here:
+                            // Write should always be 1 in mobile device, as normally it does not use a SSD for storage
+                            // And to have maximum throughput, set downloadRatio = decompressRatio = 1.0 x CPU Cores
+                            var downloadRatio = 0.0
+                            var decompressRatio = 0.0
 
-                        when (PrefManager.downloadSpeed) {
-                            8 -> {
-                                downloadRatio = 0.6
-                                decompressRatio = 0.2
+                            when (PrefManager.downloadSpeed) {
+                                8 -> {
+                                    downloadRatio = 0.6
+                                    decompressRatio = 0.2
+                                }
+                                16 -> {
+                                    downloadRatio = 1.2
+                                    decompressRatio = 0.4
+                                }
+                                24 -> {
+                                    downloadRatio = 1.5
+                                    decompressRatio = 0.5
+                                }
+                                32 -> {
+                                    downloadRatio = 2.4
+                                    decompressRatio = 0.8
+                                }
                             }
-                            16 -> {
-                                downloadRatio = 1.2
-                                decompressRatio = 0.4
-                            }
-                            24 -> {
-                                downloadRatio = 1.5
-                                decompressRatio = 0.5
-                            }
-                            32 -> {
-                                downloadRatio = 2.4
-                                decompressRatio = 0.8
-                            }
-                        }
 
-                        val cpuCores = Runtime.getRuntime().availableProcessors()
-                        val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
-                        val maxDecompress = (cpuCores * decompressRatio).toInt().coerceAtLeast(1)
+                            val cpuCores = Runtime.getRuntime().availableProcessors()
+                            val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)
+                            val maxDecompress = (cpuCores * decompressRatio).toInt().coerceAtLeast(1)
 
-                        Timber.i("CPU Cores: $cpuCores")
-                        Timber.i("maxDownloads: $maxDownloads")
-                        Timber.i("maxDecompress: $maxDecompress")
+                            Timber.i("CPU Cores: $cpuCores")
+                            Timber.i("maxDownloads: $maxDownloads")
+                            Timber.i("maxDecompress: $maxDecompress")
 
-                        // Create DepotDownloader instance
-                        val depotDownloader = DepotDownloader(
-                            instance!!.steamClient!!,
-                            licenses,
-                            debug = false,
-                            androidEmulation = true,
-                            maxDownloads = maxDownloads,
-                            maxDecompress = maxDecompress,
-                            parentJob = coroutineContext[Job],
-                            autoStartDownload = false,
-                        )
-
-                        // Create listeners for DLC apps
-                        val depotIdToIndex = selectedDepots.keys.mapIndexed { index, depotId -> depotId to index }.toMap()
-                        val listener = AppDownloadListener(di, depotIdToIndex)
-                        depotDownloader.addListener(listener)
-
-                        if (mainAppDepots.isNotEmpty()) {
-                            // Create mapping from depotId to index for progress tracking
-                            val mainAppDepotIds = mainAppDepots.keys.sorted()
-
-                            // Create AppItem with only mandatory appId
-                            val mainAppItem = AppItem(
-                                appId,
-                                installDirectory = getAppDirPath(appId),
-                                depot = mainAppDepotIds,
+                            // Create DepotDownloader instance
+                            val depotDownloader = DepotDownloader(
+                                instance!!.steamClient!!,
+                                licenses,
+                                debug = false,
+                                androidEmulation = true,
+                                maxDownloads = maxDownloads,
+                                maxDecompress = maxDecompress,
+                                parentJob = coroutineContext[Job],
+                                autoStartDownload = false,
                             )
 
-                            // Add item to downloader
-                            depotDownloader.add(mainAppItem)
-                        }
+                            // Create listeners for DLC apps
+                            val depotIdToIndex = selectedDepots.keys.mapIndexed { index, depotId -> depotId to index }.toMap()
+                            val listener = AppDownloadListener(di, depotIdToIndex)
+                            depotDownloader.addListener(listener)
 
-                        // Create AppItem for each DLC app
-                        calculatedDlcAppIds.forEach { dlcAppId ->
-                            val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
-                            val dlcDepotIds = dlcDepots.keys.sorted()
+                            if (mainAppDepots.isNotEmpty()) {
+                                // Create mapping from depotId to index for progress tracking
+                                val mainAppDepotIds = mainAppDepots.keys.sorted()
 
-                            val dlcAppItem = AppItem(
-                                dlcAppId,
-                                installDirectory = getAppDirPath(appId),
-                                depot = dlcDepotIds
-                            )
+                                // Create AppItem with only mandatory appId
+                                val mainAppItem = AppItem(
+                                    appId,
+                                    installDirectory = getAppDirPath(appId),
+                                    depot = mainAppDepotIds,
+                                    verify = enableVerify,
+                                )
 
-                            depotDownloader.add(dlcAppItem)
-                        }
+                                // Add item to downloader
+                                depotDownloader.add(mainAppItem)
+                            }
 
-                        val appConfig = getAppInfoOf(appId)?.config
-                        if (appConfig?.steamControllerTemplateIndex == 1) {
-                            val controllerConfig = appConfig.steamControllerConfigDetails
-                                .let { selectSteamControllerConfig(it) }
+                            // Create AppItem for each DLC app
+                            calculatedDlcAppIds.forEach { dlcAppId ->
+                                val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
+                                val dlcDepotIds = dlcDepots.keys.sorted()
 
-                            if (controllerConfig != null) {
-                                val appDirPath = getAppDirPath(appId)
-                                val publishedFileId = controllerConfig.publishedFileId
+                                val dlcAppItem = AppItem(
+                                    dlcAppId,
+                                    installDirectory = getAppDirPath(appId),
+                                    depot = dlcDepotIds,
+                                    verify = enableVerify,
+                                )
 
-                                runCatching {
-                                    // Build POST request to Steam GetPublishedFileDetails API
-                                    val requestBody = FormBody.Builder()
-                                        .add("itemcount", "1")
-                                        .add("publishedfileids[0]", publishedFileId.toString())
-                                        .build()
+                                depotDownloader.add(dlcAppItem)
+                            }
 
-                                    val request = Request.Builder()
-                                        .url(
-                                            "https://api.steampowered.com/" +
-                                                "ISteamRemoteStorage/GetPublishedFileDetails/v1"
-                                        )
-                                        .post(requestBody)
-                                        .build()
+                            val appConfig = getAppInfoOf(appId)?.config
+                            if (appConfig?.steamControllerTemplateIndex == 1) {
+                                val controllerConfig = appConfig.steamControllerConfigDetails
+                                    .let { selectSteamControllerConfig(it) }
 
-                                    Net.http.newCall(request).execute().use { response ->
-                                        if (!response.isSuccessful) {
-                                            Timber.w(
-                                                "Failed to get steam controller config details " +
-                                                    "for ${publishedFileId}: ${response.code}",
-                                            )
-                                            return@use
-                                        }
+                                if (controllerConfig != null) {
+                                    val appDirPath = getAppDirPath(appId)
+                                    val publishedFileId = controllerConfig.publishedFileId
 
-                                        val responseBody = response.body?.string()
-                                        if (responseBody.isNullOrEmpty()) {
-                                            Timber.w(
-                                                "Empty response body for steam controller config " +
-                                                    publishedFileId,
-                                            )
-                                            return@use
-                                        }
-
-                                        // Parse JSON object response
-                                        val responseJson = JSONObject(responseBody)
-                                        val responseData = responseJson.optJSONObject("response")
-                                        if (responseData == null) {
-                                            Timber.w(
-                                                "Steam controller config ${publishedFileId} " +
-                                                    "missing response data",
-                                            )
-                                            return@use
-                                        }
-
-                                        val result = responseData.optInt("result", 0)
-                                        val resultCount = responseData.optInt("resultcount", 0)
-                                        if (result != 1 || resultCount < 1) {
-                                            Timber.w(
-                                                "Steam controller config ${publishedFileId} " +
-                                                    "returned result=$result resultcount=$resultCount",
-                                            )
-                                            return@use
-                                        }
-
-                                        val fileDetails = responseData
-                                            .optJSONArray("publishedfiledetails")
-                                            ?.optJSONObject(0)
-                                        if (fileDetails == null) {
-                                            Timber.w(
-                                                "Steam controller config ${publishedFileId} " +
-                                                    "missing publishedfiledetails",
-                                            )
-                                            return@use
-                                        }
-
-                                        val fileUrl = fileDetails.optString("file_url", "").trim()
-
-                                        if (fileUrl.isEmpty()) {
-                                            Timber.w(
-                                                "Steam controller config ${publishedFileId} " +
-                                                    "missing fileUrl",
-                                            )
-                                            return@use
-                                        }
-
-                                        val configFile = File(appDirPath, STEAM_CONTROLLER_CONFIG_FILENAME)
-
-                                        // Download the file
-                                        val downloadRequest = Request.Builder()
-                                            .url(fileUrl)
-                                            .get()
+                                    runCatching {
+                                        // Build POST request to Steam GetPublishedFileDetails API
+                                        val requestBody = FormBody.Builder()
+                                            .add("itemcount", "1")
+                                            .add("publishedfileids[0]", publishedFileId.toString())
                                             .build()
 
-                                        Net.http.newCall(downloadRequest).execute().use { downloadResponse ->
-                                            if (!downloadResponse.isSuccessful) {
+                                        val request = Request.Builder()
+                                            .url(
+                                                "https://api.steampowered.com/" +
+                                                    "ISteamRemoteStorage/GetPublishedFileDetails/v1"
+                                            )
+                                            .post(requestBody)
+                                            .build()
+
+                                        Net.http.newCall(request).execute().use { response ->
+                                            if (!response.isSuccessful) {
                                                 Timber.w(
-                                                    "Failed to download steam controller config " +
-                                                        "${publishedFileId}: ${downloadResponse.code}",
+                                                    "Failed to get steam controller config details " +
+                                                        "for ${publishedFileId}: ${response.code}",
                                                 )
                                                 return@use
                                             }
 
-                                            val downloadBody = downloadResponse.body
-                                            if (downloadBody == null) {
+                                            val responseBody = response.body?.string()
+                                            if (responseBody.isNullOrEmpty()) {
                                                 Timber.w(
-                                                    "Empty body for steam controller config " +
+                                                    "Empty response body for steam controller config " +
                                                         publishedFileId,
                                                 )
                                                 return@use
                                             }
 
-                                            configFile.outputStream().use { output ->
-                                                downloadBody.byteStream().use { input ->
-                                                    input.copyTo(output)
-                                                }
+                                            // Parse JSON object response
+                                            val responseJson = JSONObject(responseBody)
+                                            val responseData = responseJson.optJSONObject("response")
+                                            if (responseData == null) {
+                                                Timber.w(
+                                                    "Steam controller config ${publishedFileId} " +
+                                                        "missing response data",
+                                                )
+                                                return@use
                                             }
 
-                                            Timber.i(
-                                                "Downloaded steam controller config " +
-                                                    "${publishedFileId} to ${configFile.path}",
-                                            )
+                                            val result = responseData.optInt("result", 0)
+                                            val resultCount = responseData.optInt("resultcount", 0)
+                                            if (result != 1 || resultCount < 1) {
+                                                Timber.w(
+                                                    "Steam controller config ${publishedFileId} " +
+                                                        "returned result=$result resultcount=$resultCount",
+                                                )
+                                                return@use
+                                            }
+
+                                            val fileDetails = responseData
+                                                .optJSONArray("publishedfiledetails")
+                                                ?.optJSONObject(0)
+                                            if (fileDetails == null) {
+                                                Timber.w(
+                                                    "Steam controller config ${publishedFileId} " +
+                                                        "missing publishedfiledetails",
+                                                )
+                                                return@use
+                                            }
+
+                                            val fileUrl = fileDetails.optString("file_url", "").trim()
+
+                                            if (fileUrl.isEmpty()) {
+                                                Timber.w(
+                                                    "Steam controller config ${publishedFileId} " +
+                                                        "missing fileUrl",
+                                                )
+                                                return@use
+                                            }
+
+                                            val configFile = File(appDirPath, STEAM_CONTROLLER_CONFIG_FILENAME)
+
+                                            // Download the file
+                                            val downloadRequest = Request.Builder()
+                                                .url(fileUrl)
+                                                .get()
+                                                .build()
+
+                                            Net.http.newCall(downloadRequest).execute().use { downloadResponse ->
+                                                if (!downloadResponse.isSuccessful) {
+                                                    Timber.w(
+                                                        "Failed to download steam controller config " +
+                                                            "${publishedFileId}: ${downloadResponse.code}",
+                                                    )
+                                                    return@use
+                                                }
+
+                                                val downloadBody = downloadResponse.body
+                                                if (downloadBody == null) {
+                                                    Timber.w(
+                                                        "Empty body for steam controller config " +
+                                                            publishedFileId,
+                                                    )
+                                                    return@use
+                                                }
+
+                                                configFile.outputStream().use { output ->
+                                                    downloadBody.byteStream().use { input ->
+                                                        input.copyTo(output)
+                                                    }
+                                                }
+
+                                                Timber.i(
+                                                    "Downloaded steam controller config " +
+                                                        "${publishedFileId} to ${configFile.path}",
+                                                )
+                                            }
                                         }
+                                    }.onFailure { error ->
+                                        Timber.w(
+                                            error,
+                                            "Steam controller config download failed for " +
+                                                publishedFileId,
+                                        )
                                     }
-                                }.onFailure { error ->
-                                    Timber.w(
-                                        error,
-                                        "Steam controller config download failed for " +
-                                            publishedFileId,
-                                    )
                                 }
                             }
-                        }
 
-                        // Signal that no more items will be added
-                        depotDownloader.finishAdding()
+                            // Signal that no more items will be added
+                            depotDownloader.finishAdding()
 
-                        // Start Download
-                        depotDownloader.startDownloading()
+                            // Start Download
+                            depotDownloader.startDownloading()
 
-                        Timber.i("Downloading game to " + defaultAppInstallPath)
+                            Timber.i("Downloading game to " + defaultAppInstallPath)
 
-                        // Wait for completion
-                        depotDownloader.getCompletion().await()
+                            // Wait for completion
+                            depotDownloader.getCompletion().await()
 
-                        // Close the downloader
-                        depotDownloader.close()
+                            // Close the downloader
+                            depotDownloader.close()
 
-                        // Complete app download
-                        if (mainAppDepots.isNotEmpty()) {
-                            val mainAppDepotIds = mainAppDepots.keys.sorted()
-                            completeAppDownload(di, appId, mainAppDepotIds, mainAppDlcIds, appDirPath)
-                        }
+                            // Complete app download
+                            if (mainAppDepots.isNotEmpty()) {
+                                val mainAppDepotIds = mainAppDepots.keys.sorted()
+                                completeAppDownload(di, appId, mainAppDepotIds, mainAppDlcIds, appDirPath)
+                            }
 
-                        // Complete dlc app download
-                        calculatedDlcAppIds.forEach { dlcAppId ->
-                            val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
-                            val dlcDepotIds = dlcDepots.keys.sorted()
-                            completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath)
-                        }
+                            // Complete dlc app download
+                            calculatedDlcAppIds.forEach { dlcAppId ->
+                                val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
+                                val dlcDepotIds = dlcDepots.keys.sorted()
+                                completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath)
+                            }
 
                         // Remove the job here
                         removeDownloadJob(appId)
@@ -1717,9 +1793,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                         runBlocking {
                             instance?.downloadingAppInfoDao?.deleteApp(appId)
                         }
+                    } catch (e: CancellationException) {
+                        Timber.d(e, "Download canceled for app $appId")
+                        // Keep downloadingAppInfo on cancellation so resume does not fall into verify mode.
+                        di.persistProgressSnapshot()
+                        throw e
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
+                        runBlocking {
+                            instance?.downloadingAppInfoDao?.deleteApp(appId)
+                        }
                         // Mark all depots as failed
                         selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
                             di.setWeight(idx, 0)
@@ -1803,9 +1887,22 @@ class SteamService : Service(), IChallengeUrlChanged {
             private val downloadInfo: DownloadInfo,
             private val depotIdToIndex: Map<Int, Int>,
         ) : IDownloadListener {
-            // Track cumulative uncompressed bytes per depot to calculate deltas
-            // (uncompressedBytes from onChunkCompleted is cumulative per depot)
-            private val depotCumulativeUncompressedBytes = mutableMapOf<Int, Long>()
+            private fun updateDepotBytesAndGetDelta(depotId: Int, reportedBytes: Long): Long {
+                if (reportedBytes <= 0L) {
+                    downloadInfo.depotCumulativeUncompressedBytes.putIfAbsent(depotId, 0L)
+                    return 0L
+                }
+
+                var deltaBytes = 0L
+                downloadInfo.depotCumulativeUncompressedBytes.compute(depotId) { _, previousBytes ->
+                    val prev = previousBytes ?: 0L
+                    val next = maxOf(prev, reportedBytes)
+                    deltaBytes = (next - prev).coerceAtLeast(0L)
+                    next
+                }
+                return deltaBytes
+            }
+
             override fun onItemAdded(item: DownloadItem) {
                 Timber.d("Item ${item.appId} added to queue")
             }
@@ -1819,10 +1916,19 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
+                if (error is CancellationException) {
+                    // Treat cancellation as pause: preserve resume metadata/state.
+                    Timber.d(error, "Item ${item.appId} download canceled")
+                    downloadInfo.persistProgressSnapshot()
+                    downloadInfo.setActive(false)
+                    removeDownloadJob(downloadInfo.gameId)
+                    return
+                }
+
                 Timber.e(error, "Item ${item.appId} failed to download")
                 downloadInfo.failedToDownload()
 
-                // Remove the downloading app info
+                // Remove the downloading app info on real failures.
                 runBlocking {
                     instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
                 }
@@ -1850,12 +1956,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 compressedBytes: Long,
                 uncompressedBytes: Long,
             ) {
-                val isFirstCallForDepot = !depotCumulativeUncompressedBytes.containsKey(depotId)
-
                 // uncompressedBytes is cumulative per depot, so calculate delta
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                val deltaBytes = updateDepotBytesAndGetDelta(depotId, uncompressedBytes)
 
                 if (deltaBytes > 0L) {
                     // Normal case: add the delta
@@ -1874,9 +1976,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.i("Depot $depotId completed (compressed: $compressedBytes, uncompressed: $uncompressedBytes)")
 
                 // Ensure we capture any remaining bytes
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                val deltaBytes = updateDepotBytesAndGetDelta(depotId, uncompressedBytes)
 
                 if (deltaBytes > 0L) {
                     downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())

@@ -708,7 +708,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         CoroutineScope(Dispatchers.IO).launch {
-            SteamService.downloadApp(libraryItem.gameId)
+            SteamService.downloadAppForUpdate(libraryItem.gameId)
         }
     }
 
@@ -1005,7 +1005,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         if (container.language != config.language) {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(libraryItem.gameId)
+                SteamService.downloadAppForUpdate(libraryItem.gameId)
             }
         }
     }
@@ -1385,7 +1385,11 @@ class SteamAppScreen : BaseAppScreen() {
                         if (operation != null) {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                                val downloadInfo = SteamService.downloadApp(gameId)
+                                val downloadInfo = when (operation) {
+                                    AppOptionMenuType.VerifyFiles -> SteamService.downloadAppForVerify(gameId)
+                                    AppOptionMenuType.Update -> SteamService.downloadAppForUpdate(gameId)
+                                    else -> SteamService.downloadAppForUpdate(gameId)
+                                }
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)

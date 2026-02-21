@@ -250,6 +250,13 @@ internal fun AppScreenContent(
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
+    val downloadStatusFlow = downloadInfo?.getStatusMessageFlow()
+    val downloadStatusState = if (downloadStatusFlow != null) {
+        downloadStatusFlow.collectAsState(initial = downloadStatusFlow.value)
+    } else {
+        null
+    }
+    val statusMessage = downloadStatusState?.value
 
     LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
@@ -520,11 +527,6 @@ internal fun AppScreenContent(
 
             // Download progress section
             if (isDownloading) {
-                // downloadInfo passed from BaseAppScreen based on game source
-                val statusMessageFlow = downloadInfo?.getStatusMessageFlow()
-                val statusMessageState = statusMessageFlow?.collectAsState(initial = statusMessageFlow.value)
-                val statusMessage = statusMessageState?.value
-
                 // Use DownloadInfo's byte-based ETA when available for more stable estimates
                 val timeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, statusMessage) {
                     val etaMs = downloadInfo?.getEstimatedTimeRemaining()

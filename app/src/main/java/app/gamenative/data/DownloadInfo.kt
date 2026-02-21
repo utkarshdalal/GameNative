@@ -5,34 +5,40 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicLong
 
-data class DownloadInfo(
+class DownloadInfo(
     val jobCount: Int = 1,
     val gameId: Int,
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
 ) {
     private var downloadJob: Job? = null
-    private val downloadProgressListeners = mutableListOf<((Float) -> Unit)>()
+    private val downloadProgressListeners = CopyOnWriteArrayList<((Float) -> Unit)>()
     private val progresses: Array<Float> = Array(jobCount) { 0f }
 
     private val weights    = FloatArray(jobCount) { 1f }     // ⇐ new
     private var weightSum  = jobCount.toFloat()
 
     // === Bytes / speed tracking for more stable ETA ===
-    private var totalExpectedBytes: Long = 0L
-    private var bytesDownloaded: Long = 0L
+    private var totalExpectedBytes = AtomicLong(0L)
+    private var bytesDownloaded = AtomicLong(0L)
     private var persistencePath: String? = null
+    private val persistenceLock = Any()
 
     private data class SpeedSample(val timeMs: Long, val bytes: Long)
 
-    private val speedSamples = CopyOnWriteArrayList<SpeedSample>()
-    private var emaSpeedBytesPerSec: Double = 0.0
-    private var hasEmaSpeed: Boolean = false
-    private var isActive: Boolean = true
+    private val speedSamples = ArrayDeque<SpeedSample>()
+    @Volatile private var emaSpeedBytesPerSec: Double = 0.0
+    @Volatile private var hasEmaSpeed: Boolean = false
+    @Volatile private var isActive: Boolean = true
     private val statusMessage = MutableStateFlow<String?>(null)
+
+    val depotCumulativeUncompressedBytes = java.util.concurrent.ConcurrentHashMap<Int, Long>()
 
     fun cancel() {
         cancel("Cancelled by user")
@@ -48,7 +54,6 @@ data class DownloadInfo(
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
         setActive(false)
-        resetSpeedTracking()
         downloadJob?.cancel(CancellationException(message))
     }
 
@@ -62,17 +67,18 @@ data class DownloadInfo(
 
     fun getProgress(): Float {
         // Always use bytes-based progress when available for accuracy
-        if (totalExpectedBytes > 0L) {
-            val bytesProgress = (bytesDownloaded.toFloat() / totalExpectedBytes.toFloat()).coerceIn(0f, 1f)
+        val total = totalExpectedBytes.get()
+        if (total > 0L) {
+            val bytesProgress = (bytesDownloaded.get().toFloat() / total.toFloat()).coerceIn(0f, 1f)
             return bytesProgress
         }
 
         // Fallback to depot-based progress only if we don't have byte tracking
-        var total = 0f
+        var totalProgress = 0f
         for (i in progresses.indices) {
-            total += progresses[i] * weights[i]   // weight each depot
+            totalProgress += progresses[i] * weights[i]   // weight each depot
         }
-        return if (weightSum == 0f) 0f else total / weightSum
+        return if (weightSum == 0f) 0f else totalProgress / weightSum
     }
 
 
@@ -89,14 +95,14 @@ data class DownloadInfo(
     // --- Bytes / speed / ETA helpers ---
 
     fun setTotalExpectedBytes(bytes: Long) {
-        totalExpectedBytes = if (bytes < 0L) 0L else bytes
+        totalExpectedBytes.set(if (bytes < 0L) 0L else bytes)
     }
 
     /**
      * Initialize bytesDownloaded with a persisted value (used on resume).
      */
     fun initializeBytesDownloaded(value: Long) {
-        bytesDownloaded = if (value < 0L) 0L else value
+        bytesDownloaded.set(if (value < 0L) 0L else value)
     }
 
     /**
@@ -108,22 +114,26 @@ data class DownloadInfo(
     }
 
     fun persistProgressSnapshot() {
-        persistencePath?.let { persistBytesDownloaded(it) }
+        val appDirPath = persistencePath ?: return
+        val snapshot = depotCumulativeUncompressedBytes.toMap()
+        persistDepotBytes(appDirPath, snapshot)
     }
 
     fun updateBytesDownloaded(deltaBytes: Long, timestampMs: Long = System.currentTimeMillis()) {
         if (!isActive) return
         if (deltaBytes <= 0L) {
             // Still record a sample to advance the time window, but do not change the count.
-            addSpeedSample(timestampMs)
+            addSpeedSample(timestampMs, bytesDownloaded.get())
             return
         }
 
-        bytesDownloaded += deltaBytes
-        if (bytesDownloaded < 0L) {
-            bytesDownloaded = 0L
+        val currentBytes = bytesDownloaded.addAndGet(deltaBytes)
+        if (currentBytes < 0L) {
+            bytesDownloaded.set(0L)
+            addSpeedSample(timestampMs, 0L)
+        } else {
+            addSpeedSample(timestampMs, currentBytes)
         }
-        addSpeedSample(timestampMs)
     }
 
     fun updateStatusMessage(message: String?) {
@@ -132,20 +142,25 @@ data class DownloadInfo(
 
     fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
 
-    private fun addSpeedSample(timestampMs: Long) {
-        speedSamples.add(SpeedSample(timestampMs, bytesDownloaded))
-        trimOldSamples(timestampMs)
+    private fun addSpeedSample(timestampMs: Long, currentBytes: Long) {
+        synchronized(speedSamples) {
+            speedSamples.add(SpeedSample(timestampMs, currentBytes))
+            trimOldSamples(timestampMs)
+        }
     }
 
     private fun trimOldSamples(nowMs: Long, windowMs: Long = 30_000L) {
         val cutoff = nowMs - windowMs
+        // Must be called within synchronized(speedSamples)
         while (speedSamples.isNotEmpty() && speedSamples.first().timeMs < cutoff) {
-            speedSamples.removeAt(0)
+            speedSamples.removeFirst()
         }
     }
 
     fun resetSpeedTracking() {
-        speedSamples.clear()
+        synchronized(speedSamples) {
+            speedSamples.clear()
+        }
         emaSpeedBytesPerSec = 0.0
         hasEmaSpeed = false
     }
@@ -162,20 +177,22 @@ data class DownloadInfo(
     /**
      * Returns the total expected bytes for the download.
      */
-    fun getTotalExpectedBytes(): Long = totalExpectedBytes
+    fun getTotalExpectedBytes(): Long = totalExpectedBytes.get()
 
     /**
      * Returns the cumulative bytes downloaded so far.
      */
-    fun getBytesDownloaded(): Long = bytesDownloaded
+    fun getBytesDownloaded(): Long = bytesDownloaded.get()
 
     /**
      * Returns a pair of (downloaded bytes, total expected bytes).
      * Returns (0, 0) if total expected bytes is 0 or not yet set.
      */
     fun getBytesProgress(): Pair<Long, Long> {
-        return if (totalExpectedBytes > 0L) {
-            bytesDownloaded.coerceAtMost(totalExpectedBytes) to totalExpectedBytes
+        val total = totalExpectedBytes.get()
+        val downloaded = bytesDownloaded.get()
+        return if (total > 0L) {
+            downloaded.coerceAtMost(total) to total
         } else {
             0L to 0L
         }
@@ -187,16 +204,25 @@ data class DownloadInfo(
      */
     fun getEstimatedTimeRemaining(windowSeconds: Int = 30): Long? {
         if (!isActive) return null
-        if (totalExpectedBytes <= 0L) return null
-        if (bytesDownloaded >= totalExpectedBytes) return null
+        val total = totalExpectedBytes.get()
+        val downloaded = bytesDownloaded.get()
+        if (total <= 0L) return null
+        if (downloaded >= total) return null
 
         val now = System.currentTimeMillis()
-        trimOldSamples(now, windowSeconds * 1000L)
 
-        if (speedSamples.size < 2) return null
+        val first: SpeedSample
+        val last: SpeedSample
+        val size: Int
 
-        val first = speedSamples.first()
-        val last = speedSamples.last()
+        synchronized(speedSamples) {
+            trimOldSamples(now, windowSeconds * 1000L)
+            size = speedSamples.size
+            if (size < 2) return null
+            first = speedSamples.first()
+            last = speedSamples.last()
+        }
+
         val elapsedMs = last.timeMs - first.timeMs
         if (elapsedMs <= 0L) return null
 
@@ -219,7 +245,7 @@ data class DownloadInfo(
 
         if (smoothedSpeed <= 0.0) return null
 
-        val remainingBytes = totalExpectedBytes - bytesDownloaded
+        val remainingBytes = total - downloaded
         if (remainingBytes <= 0L) return null
 
         val etaSeconds = remainingBytes / smoothedSpeed
@@ -246,40 +272,61 @@ data class DownloadInfo(
 
     companion object {
         private const val PERSISTENCE_DIR = ".DownloadInfo"
-        private const val PERSISTENCE_FILE = "bytes_downloaded.txt"
+        private const val PERSISTENCE_FILE = "depot_bytes.json"
+        private const val LEGACY_PERSISTENCE_FILE = "bytes_downloaded.txt"
     }
 
     /**
-     * Persist bytesDownloaded to a file in the app directory.
+     * Persist bytesDownloaded per depot to a JSON file in the app directory.
      */
-    fun persistBytesDownloaded(appDirPath: String) {
+    fun persistDepotBytes(appDirPath: String, depotBytes: Map<Int, Long>) {
         try {
             val dir = File(appDirPath, PERSISTENCE_DIR)
             if (!dir.exists()) {
                 dir.mkdirs()
             }
             val file = File(dir, PERSISTENCE_FILE)
-            file.writeText(bytesDownloaded.toString())
+            val json = JSONObject()
+            for ((depotId, bytes) in depotBytes) {
+                json.put(depotId.toString(), bytes.coerceAtLeast(0L))
+            }
+            synchronized(persistenceLock) {
+                val tempFile = File(dir, "$PERSISTENCE_FILE.tmp")
+                val jsonText = json.toString()
+                tempFile.writeText(jsonText)
+                if (!tempFile.renameTo(file)) {
+                    // Fallback for filesystems where rename may fail.
+                    file.writeText(jsonText)
+                    tempFile.delete()
+                }
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Failed to persist bytes downloaded to $appDirPath")
+            Timber.e(e, "Failed to persist depot bytes to $appDirPath")
         }
     }
 
     /**
-     * Load persisted bytesDownloaded from file, returns 0 if file doesn't exist or is unreadable.
+     * Load persisted bytesDownloaded per depot from file, returns empty map if file doesn't exist or is unreadable.
      */
-    fun loadPersistedBytesDownloaded(appDirPath: String): Long {
+    fun loadPersistedDepotBytes(appDirPath: String): Map<Int, Long> {
         return try {
             val file = File(File(appDirPath, PERSISTENCE_DIR), PERSISTENCE_FILE)
             if (file.exists() && file.canRead()) {
                 val content = file.readText().trim()
-                content.toLongOrNull() ?: 0L
+                if (content.isEmpty()) return emptyMap()
+                val json = JSONObject(content)
+                val map = mutableMapOf<Int, Long>()
+                for (key in json.keys()) {
+                    val depotId = key.toIntOrNull() ?: continue
+                    map[depotId] = json.getLong(key).coerceAtLeast(0L)
+                }
+                map
             } else {
-                0L
+                emptyMap()
             }
         } catch (e: Exception) {
-            Timber.e(e, "Failed to load persisted bytes downloaded from $appDirPath")
-            0L
+            Timber.e(e, "Failed to load persisted depot bytes from $appDirPath")
+            emptyMap()
         }
     }
 
@@ -291,6 +338,11 @@ data class DownloadInfo(
             val file = File(File(appDirPath, PERSISTENCE_DIR), PERSISTENCE_FILE)
             if (file.exists()) {
                 file.delete()
+            }
+            // Also delete the old file if it exists
+            val oldFile = File(File(appDirPath, PERSISTENCE_DIR), LEGACY_PERSISTENCE_FILE)
+            if (oldFile.exists()) {
+                oldFile.delete()
             }
         } catch (e: Exception) {
             Timber.e(e, "Failed to clear persisted bytes downloaded from $appDirPath")

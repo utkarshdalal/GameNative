@@ -460,11 +460,16 @@ internal fun GameInfoBlock(
 ) {
     // For text displayed in list view, or as override if image loading fails
 
-    // Determine download and install state for Steam games only
+    // Determine download and install state for all supported game sources
     val isSteam = appInfo.gameSource == GameSource.STEAM
-    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
+    val downloadInfo = when (appInfo.gameSource) {
+        GameSource.STEAM -> SteamService.getAppDownloadInfo(appInfo.gameId)
+        GameSource.GOG -> GOGService.getDownloadInfo(appInfo.gameId.toString())
+        GameSource.EPIC -> EpicService.getDownloadInfo(appInfo.gameId)
+        else -> null
+    }
     var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
-    val isDownloading = downloadInfo != null && downloadProgress < 1f
+    val isDownloading = downloadInfo != null && downloadInfo.isActive() && downloadProgress < 1f
     var isInstalledSteam by remember(appInfo.appId) { mutableStateOf(if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false) }
 
     // Update installation status when refresh completes
@@ -550,12 +555,12 @@ internal fun GameInfoBlock(
                         GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
                         else -> false
                     }
-                    val text = if (isInstalled) {
-                        stringResource(R.string.library_installed)
-                    } else {
-                        stringResource(R.string.library_not_installed)
+                    val text = when {
+                        isDownloading -> stringResource(R.string.library_installing)
+                        isInstalled -> stringResource(R.string.library_installed)
+                        else -> stringResource(R.string.library_not_installed)
                     }
-                    val color = if (isInstalled) {
+                    val color = if (isDownloading || isInstalled) {
                         MaterialTheme.colorScheme.tertiary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)

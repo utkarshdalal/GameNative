@@ -807,7 +807,6 @@ class EpicAppScreen : BaseAppScreen() {
                             EpicService.deleteGame(context, gameId)
                             withContext(Dispatchers.Main) {
                                 BaseAppScreen.hideInstallDialog(appId)
-                                app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false))
                                 app.gamenative.PluviaApp.events.emit(app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(gameId))
                             }
                         }
