@@ -66,9 +66,11 @@ class IMEInputReceiver(
             override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
                 Timber.d("IMEInputReceiver: deleteSurroundingText called")
                 if (beforeLength > 0) {
-                    xServer.injectKeyPress(com.winlator.xserver.XKeycode.KEY_BKSP, 0)
-                    xServer.injectKeyRelease(com.winlator.xserver.XKeycode.KEY_BKSP)
-                    Timber.v("IMEInputReceiver: Sent backspace")
+                    repeat(beforeLength) {
+                        xServer.injectKeyPress(com.winlator.xserver.XKeycode.KEY_BKSP, 0)
+                        xServer.injectKeyRelease(com.winlator.xserver.XKeycode.KEY_BKSP)
+                    }
+                    Timber.v("IMEInputReceiver: Sent backspace x$beforeLength")
                 }
                 return true
             }
