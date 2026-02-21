@@ -18,9 +18,16 @@ import timber.log.Timber
  */
 class IMEInputReceiver(
     context: Context,
-    private val displayContext: Context = context,
     private val xServer: XServer,
+    private val displayContext: Context = context,
 ) : FrameLayout(context) {
+
+    companion object {
+        private val SHIFTED_SYMBOLS = setOf(
+            ')', '!', '@', '#', '$', '%', '^', '&', '*', '(',
+            '_', '+', '{', '}', '|', ':', '"', '<', '>', '?', '~',
+        )
+    }
 
     init {
         isFocusable = true
@@ -179,10 +186,7 @@ class IMEInputReceiver(
             else -> null
         } ?: return null
 
-        val requiresShift = isUppercaseLetter || char in setOf(
-            ')', '!', '@', '#', '$', '%', '^', '&', '*', '(',
-            '_', '+', '{', '}', '|', ':', '"', '<', '>', '?', '~',
-        )
+        val requiresShift = isUppercaseLetter || char in SHIFTED_SYMBOLS
 
         return KeyDispatch(keyCode = keyCode, requiresShift = requiresShift)
     }
@@ -197,7 +201,10 @@ class IMEInputReceiver(
     }
 
     fun hideKeyboard() {
-        val imm = displayContext.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-        imm?.hideSoftInputFromWindow(windowToken, 0)
+        post {
+            val imm = displayContext.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(windowToken, 0)
+            Timber.d("IMEInputReceiver: Requested to hide keyboard")
+        }
     }
 }
