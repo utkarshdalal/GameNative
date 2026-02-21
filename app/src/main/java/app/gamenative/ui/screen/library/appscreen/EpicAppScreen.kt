@@ -562,9 +562,7 @@ class EpicAppScreen : BaseAppScreen() {
         isInstalled: Boolean,
     ): List<AppMenuOption> {
         val options = mutableListOf<AppMenuOption>()
-        val isLocalSavesOnly = remember(libraryItem.appId) {
-            ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
-        }
+        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
 
         // Add cloud sync option if game supports cloud saves
         val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
