@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -1833,6 +1834,11 @@ private fun setupXEnvironment(
             guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
         }
         guestProgramLauncherComponent.setPreUnpack {
+            try {
+                GameFixesRegistry.applyFor(context, appId)
+            } catch (e: Exception) {
+                Timber.tag("GameFixes").w(e, "Game fixes failed in preUnpack")
+            }
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
