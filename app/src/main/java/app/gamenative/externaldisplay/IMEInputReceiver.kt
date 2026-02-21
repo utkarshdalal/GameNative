@@ -2,7 +2,6 @@ package app.gamenative.externaldisplay
 
 import android.content.Context
 import android.view.KeyEvent
-import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -19,24 +18,13 @@ import timber.log.Timber
  */
 class IMEInputReceiver(
     context: Context,
+    private val displayContext: Context = context,
     private val xServer: XServer,
 ) : FrameLayout(context) {
 
     init {
         isFocusable = true
         isFocusableInTouchMode = true
-        
-        // Make this view visible to the IME system
-        setFocusable(View.FOCUSABLE)
-        setFocusableInTouchMode(true)
-        
-        post {
-            if (requestFocus()) {
-                Timber.d("IMEInputReceiver: Successfully got focus")
-            } else {
-                Timber.w("IMEInputReceiver: Failed to get focus")
-            }
-        }
     }
 
     override fun onCheckIsTextEditor(): Boolean {
@@ -88,7 +76,13 @@ class IMEInputReceiver(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         Timber.d("IMEInputReceiver: onAttachedToWindow - requesting focus")
-        post { requestFocus() }
+        post {
+            if (requestFocus()) {
+                Timber.d("IMEInputReceiver: Successfully got focus")
+            } else {
+                Timber.w("IMEInputReceiver: Failed to get focus")
+            }
+        }
     }
 
     private data class KeyDispatch(
@@ -196,14 +190,14 @@ class IMEInputReceiver(
     fun showKeyboard() {
         post {
             requestFocus()
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val imm = displayContext.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
             Timber.d("IMEInputReceiver: Requested to show keyboard")
         }
     }
 
     fun hideKeyboard() {
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        val imm = displayContext.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
         imm?.hideSoftInputFromWindow(windowToken, 0)
     }
 }
