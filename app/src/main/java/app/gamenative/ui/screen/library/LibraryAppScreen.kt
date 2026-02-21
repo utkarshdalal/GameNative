@@ -372,6 +372,7 @@ internal fun AppScreenContent(
                     optionsMenu.forEach { menuOption ->
                         DropdownMenuItem(
                             text = { Text(menuOption.optionType.text) },
+                            enabled = menuOption.enabled,
                             onClick = {
                                 menuOption.onClick()
                                 optionsMenuVisible = false

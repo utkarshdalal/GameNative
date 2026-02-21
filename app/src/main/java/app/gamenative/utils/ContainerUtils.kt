@@ -32,6 +32,8 @@ import org.json.JSONObject
 import timber.log.Timber
 
 object ContainerUtils {
+    private const val EXTRA_LOCAL_SAVES_ONLY = "localSavesOnly"
+
     data class GpuInfo(
         val deviceId: Int,
         val vendorId: Int,
@@ -280,6 +282,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
+            localSavesOnly = container.getExtra(EXTRA_LOCAL_SAVES_ONLY, "false").toBoolean(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             enableXInput = enableX,
@@ -448,6 +451,7 @@ object ContainerUtils {
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
+        container.putExtra(EXTRA_LOCAL_SAVES_ONLY, containerData.localSavesOnly.toString())
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
@@ -1020,6 +1024,11 @@ object ContainerUtils {
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }
+    }
+
+    fun isLocalSavesOnly(context: Context, appId: String): Boolean {
+        val container = getOrCreateContainer(context, appId)
+        return container.getExtra(EXTRA_LOCAL_SAVES_ONLY, "false").toBoolean()
     }
 
     /**

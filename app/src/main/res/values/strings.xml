@@ -493,6 +493,8 @@
     <string name="unpack_files_description">Only use if you get \'Application Load Error 3:0000065432\'.</string>
     <string name="force_dlc">Force DLC</string>
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
+    <string name="local_saves_only">Local saves only</string>
+    <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
     <string name="allow_steam_updates">Allow Steam updates</string>

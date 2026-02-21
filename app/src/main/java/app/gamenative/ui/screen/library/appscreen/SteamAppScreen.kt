@@ -806,6 +806,7 @@ class SteamAppScreen : BaseAppScreen() {
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
         val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
+        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 
         if (!isInstalled || isDownloadInProgress) {
             return emptyList()
@@ -877,6 +878,7 @@ class SteamAppScreen : BaseAppScreen() {
             // The button uses onDeleteDownloadClick which shows the uninstall dialog
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
+                enabled = !isLocalSavesOnly,
                 onClick = {
                     PostHog.capture(
                         event = "cloud_sync_forced",

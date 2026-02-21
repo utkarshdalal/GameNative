@@ -562,6 +562,7 @@ class EpicAppScreen : BaseAppScreen() {
         isInstalled: Boolean,
     ): List<AppMenuOption> {
         val options = mutableListOf<AppMenuOption>()
+        val isLocalSavesOnly = app.gamenative.utils.ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
 
         // Add cloud sync option if game supports cloud saves
         val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
@@ -569,6 +570,7 @@ class EpicAppScreen : BaseAppScreen() {
             options.add(
                 AppMenuOption(
                     optionType = AppOptionMenuType.ForceCloudSync,
+                    enabled = !isLocalSavesOnly,
                     onClick = {
                         val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
                         scope.launch {
