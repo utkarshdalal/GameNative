@@ -79,6 +79,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.runPreLaunchSteps
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
@@ -1879,6 +1880,7 @@ private fun setupXEnvironment(
             } catch (e: Exception) {
                 Timber.tag("GameFixes").w(e, "Game fixes failed in preUnpack")
             }
+            runPreLaunchSteps(context, appId, container, guestProgramLauncherComponent)
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
