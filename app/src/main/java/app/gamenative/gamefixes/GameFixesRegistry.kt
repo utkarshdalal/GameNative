@@ -16,6 +16,7 @@ object GameFixesRegistry {
         GameSource.GOG to "1454315831" to GOG_Fix_1454315831,
         GameSource.GOG to "1998527297" to GOG_Fix_1998527297,
         GameSource.GOG to "1454587428" to GOG_Fix_1454587428,
+        GameSource.GOG to "1458058109" to GOG_Fix_1458058109,
     )
 
     fun applyFor(context: Context, appId: String) {
