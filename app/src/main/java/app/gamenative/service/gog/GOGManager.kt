@@ -3,6 +3,7 @@ package app.gamenative.service.gog
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import app.gamenative.PluviaApp
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
@@ -30,8 +31,6 @@ import com.winlator.core.envvars.EnvVars
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.EnumSet
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -778,6 +777,92 @@ class GOGManager @Inject constructor(
 
         Timber.d("GOG Wine command: \"$windowsPath\"")
         return "\"$windowsPath\""
+    }
+
+    /**
+     * Reads and parses _gog_manifest.json from the game install directory.
+     * @return The manifest as JSONObject, or null if the file does not exist or parsing fails.
+     */
+    private fun getLocalManifest(gameInstallDir: File): JSONObject? {
+        val manifestFile = File(gameInstallDir, "_gog_manifest.json")
+        if (!manifestFile.exists()) return null
+        return try {
+            JSONObject(manifestFile.readText())
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to parse _gog_manifest.json")
+            null
+        }
+    }
+
+    /**
+     * Runs GOG scriptinterpreter.exe before launch when the game's _gog_manifest.json has scriptInterpreter true.
+     * Uses scriptinterpreter from the game dir (_CommonRedist/ISI/scriptinterpreter.exe).
+     */
+    fun runScriptInterpreterIfNeeded(
+        appId: String,
+        guestProgramLauncherComponent: GuestProgramLauncherComponent,
+    ) {
+        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+        Timber.tag("GOG").i("runScriptInterpreterIfNeeded: appId=$appId")
+        val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return
+        val computedPath = getGameInstallPath(gameId.toString(), game.title)
+        val gameInstallPath = when {
+            game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
+            else -> computedPath
+        }
+        val gameInstallDir = File(gameInstallPath)
+        val root = getLocalManifest(gameInstallDir) ?: return
+        if (!root.optBoolean("scriptInterpreter", false)) return
+        val isiRelativePath = "_CommonRedist/ISI/scriptinterpreter.exe"
+        if (!File(gameInstallPath, isiRelativePath).exists()) {
+            Timber.tag("GOG").w("scriptinterpreter.exe not found at $isiRelativePath, skipping setup")
+            return
+        }
+        val isiRelativePathWin = isiRelativePath.replace('/', '\\')
+        val gameDriveLetter = "A"
+        val buildId = root.optString("buildId", "")
+        val versionName = root.optString("versionName", "")
+        val langCode = root.optString("language", "en").let { if (it.length <= 2) "$it-US" else it }
+        val language = when {
+            langCode.startsWith("en") -> "English"
+            else -> "English"
+        }
+        val productsArray = root.optJSONArray("products") ?: return
+
+        for (i in 0 until productsArray.length()) {
+            val product = productsArray.getJSONObject(i)
+            val productId = product.optString("productId", "")
+            if (productId.isEmpty()) continue
+            val exePathWin = "$gameDriveLetter:\\$isiRelativePathWin"
+            val args = listOf(
+                "/VERYSILENT",
+                "/DIR=$gameDriveLetter:\\",
+                "/Language=$language",
+                "/LANG=$language",
+                "/ProductId=$productId",
+                "/galaxyclient",
+                "/buildId=$buildId",
+                "/versionName=$versionName",
+                "/lang-code=$langCode",
+                "/supportDir=$gameDriveLetter:\\",
+                "/nodesktopshorctut",
+                "/nodesktopshortcut",
+            ).joinToString(" ")
+            val exePathEscaped = exePathWin.replace("\\", "\\\\")
+            val argsEscaped = args.replace("\\", "\\\\")
+            val cmd = "wine $exePathEscaped $argsEscaped"
+            Timber.tag("GOG").i("Running scriptinterpreter for product $productId")
+            val previousWorkingDir = guestProgramLauncherComponent.workingDir
+            try {
+                PluviaApp.events.emit(app.gamenative.events.AndroidEvent.SetBootingSplashText("Running GOG script interpreter..."))
+                guestProgramLauncherComponent.workingDir = gameInstallDir
+                guestProgramLauncherComponent.execShellCommand(cmd, true)
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(e, "scriptinterpreter failed for product $productId")
+            } finally {
+                guestProgramLauncherComponent.workingDir = previousWorkingDir
+            }
+        }
     }
 
     // ==========================================================================

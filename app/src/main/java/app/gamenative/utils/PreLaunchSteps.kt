@@ -1,12 +1,14 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.utils.launchdependencies.GogScriptInterpreterPreLaunchStep
 import app.gamenative.utils.launchdependencies.PreLaunchStep
 import com.winlator.container.Container
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import timber.log.Timber
 
 private val ALL_PRE_LAUNCH_STEPS: List<PreLaunchStep> = listOf(
+    GogScriptInterpreterPreLaunchStep,
 )
 
 /**
