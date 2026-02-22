@@ -166,7 +166,8 @@ data class GOGManifestMeta(
     val depots: List<Depot>,
     val dependencies: List<String>,
     val products: List<Product>,
-    val productTimestamp: String? = null
+    val productTimestamp: String? = null,
+    val scriptInterpreter: Boolean = false,
 ) {
     companion object {
         fun fromJson(json: JSONObject): GOGManifestMeta {
@@ -203,7 +204,8 @@ data class GOGManifestMeta(
                 depots = depots,
                 dependencies = dependencies,
                 products = products,
-                productTimestamp = null
+                productTimestamp = null,
+                scriptInterpreter = json.optBoolean("scriptInterpreter", false),
             )
         }
     }

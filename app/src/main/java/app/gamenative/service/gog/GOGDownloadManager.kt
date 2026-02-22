@@ -5,9 +5,12 @@ import app.gamenative.data.DownloadInfo
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
+import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.utils.Net
+import org.json.JSONArray
+import org.json.JSONObject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
@@ -404,6 +407,8 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName)
+
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
             Result.success(Unit)
@@ -420,6 +425,44 @@ class GOGDownloadManager @Inject constructor(
             )
 
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Saves manifest data needed for post-install setup (scriptinterpreter or temp_executable) to
+     * installPath/gog_manifest.json. Used on first launch to create registry keys etc.
+     */
+    private fun saveManifestToGameDir(
+        installPath: File,
+        gameManifest: GOGManifestMeta,
+        buildId: String,
+        versionName: String,
+    ) {
+        try {
+            val productsArray = JSONArray()
+            gameManifest.products.forEach { p ->
+                productsArray.put(
+                    JSONObject().apply {
+                        put("productId", p.productId)
+                        put("name", p.name)
+                        put("temp_executable", p.temp_executable ?: "")
+                        put("temp_arguments", p.temp_arguments ?: "")
+                    },
+                )
+            }
+            val root = JSONObject().apply {
+                put("version", 2)
+                put("baseProductId", gameManifest.baseProductId)
+                put("scriptInterpreter", gameManifest.scriptInterpreter)
+                put("products", productsArray)
+                put("buildId", buildId)
+                put("versionName", versionName)
+            }
+            val file = File(installPath, "_gog_manifest.json")
+            file.writeText(root.toString())
+            Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to save GOG setup manifest")
         }
     }
 
@@ -619,6 +662,8 @@ class GOGDownloadManager @Inject constructor(
                     doneFiles++
                 }
             }
+
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")
