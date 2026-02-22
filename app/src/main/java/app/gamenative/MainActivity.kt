@@ -227,6 +227,7 @@ class MainActivity : ComponentActivity() {
                     Timber.d("[IntentLaunch]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
                 }
             } else {
+                wasLaunchedViaExternalIntent = false
                 Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
