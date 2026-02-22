@@ -236,7 +236,7 @@ internal fun AppItem(
                                             val folder = java.io.File(path)
                                             val heroFile = folder.listFiles()?.firstOrNull { file ->
                                                 file.name.startsWith("steamgriddb_hero") &&
-                                                    !file.name.contains("grid") &&
+                                                    !file.name.contains("grid_") &&
                                                     (
                                                         file.name.endsWith(".png", ignoreCase = true) ||
                                                             file.name.endsWith(".jpg", ignoreCase = true) ||
