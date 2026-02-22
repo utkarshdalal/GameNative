@@ -1213,26 +1213,28 @@ fun preLaunchApp(
             }
         }
 
-        try {
-            ensureLaunchDependencies(
-                context = context,
-                container = container,
-                setLoadingMessage = setLoadingMessage,
-                setLoadingProgress = setLoadingProgress,
-            )
-        } catch (e: Exception) {
-            Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
-            setLoadingDialogVisible(false)
-            setMessageDialogState(
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.SYNC_FAIL,
-                    title = context.getString(R.string.launch_dependency_failed_title),
-                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
-                    dismissBtnText = context.getString(R.string.ok),
-                ),
-            )
-            return@launch
+        if (!isOffline) {
+            try {
+                ensureLaunchDependencies(
+                    context = context,
+                    container = container,
+                    setLoadingMessage = setLoadingMessage,
+                    setLoadingProgress = setLoadingProgress,
+                )
+            } catch (e: Exception) {
+                Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
+                setLoadingDialogVisible(false)
+                setMessageDialogState(
+                    MessageDialogState(
+                        visible = true,
+                        type = DialogType.SYNC_FAIL,
+                        title = context.getString(R.string.launch_dependency_failed_title),
+                        message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
+                        dismissBtnText = context.getString(R.string.ok),
+                    ),
+                )
+                return@launch
+            }
         }
 
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
