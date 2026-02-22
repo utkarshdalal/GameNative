@@ -282,7 +282,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
-            localSavesOnly = container.isLocalSavesOnly || container.getExtra("localSavesOnly", "false").toBoolean(),
+            localSavesOnly = container.isLocalSavesOnly,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             enableXInput = enableX,
@@ -1029,7 +1029,7 @@ object ContainerUtils {
     fun isLocalSavesOnly(context: Context, appId: String): Boolean {
         if (!hasContainer(context, appId)) return false
         val container = getContainer(context, appId)
-        return container.isLocalSavesOnly || container.getExtra("localSavesOnly", "false").toBoolean()
+        return container.isLocalSavesOnly
     }
 
     /**

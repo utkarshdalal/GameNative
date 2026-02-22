@@ -869,9 +869,6 @@ public class Container {
             }
         }
 
-        if (!data.has("localSavesOnly") && extraData != null && extraData.has("localSavesOnly")) {
-            this.localSavesOnly = extraData.optBoolean("localSavesOnly", false);
-        }
     }
 
     public static void checkObsoleteOrMissingProperties(JSONObject data) {
