@@ -121,6 +121,7 @@ fun PluviaMain(
     var hasBack by rememberSaveable { mutableStateOf(navController.previousBackStackEntry?.destination?.route != null) }
 
     var isConnecting by rememberSaveable { mutableStateOf(false) }
+    var hasAttemptedInitialSteamConnect by rememberSaveable { mutableStateOf(false) }
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
@@ -398,10 +399,13 @@ fun PluviaMain(
 
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            if (!state.isSteamConnected && !isConnecting && !SteamService.keepAlive) {
-                Timber.d("[PluviaMain]: Steam not connected - attempt")
-                isConnecting = true
-                context.startForegroundService(Intent(context, SteamService::class.java))
+            if (!hasAttemptedInitialSteamConnect) {
+                hasAttemptedInitialSteamConnect = true
+                if (!state.isSteamConnected && !isConnecting && !SteamService.keepAlive) {
+                    Timber.d("[PluviaMain]: Steam not connected - initial attempt")
+                    isConnecting = true
+                    context.startForegroundService(Intent(context, SteamService::class.java))
+                }
             }
 
             // Start GOGService if user has GOG
