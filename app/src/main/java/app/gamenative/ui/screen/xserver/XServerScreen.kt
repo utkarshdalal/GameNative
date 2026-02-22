@@ -267,8 +267,19 @@ fun XServerScreen(
         isExiting.set(false)
     }
 
+    // after process death the container may no longer exist
     val container = remember(appId) {
-        ContainerUtils.getContainer(context, appId)
+        try {
+            ContainerUtils.getContainer(context, appId)
+        } catch (e: Exception) {
+            Timber.e(e, "Container unavailable for $appId, likely process death")
+            null
+        }
+    }
+
+    if (container == null) {
+        LaunchedEffect(Unit) { navigateBack() }
+        return
     }
 
     val suspendPolicy = remember(container.id) { container.suspendPolicy }

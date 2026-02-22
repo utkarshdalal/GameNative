@@ -1253,7 +1253,13 @@ fun PluviaMain(
                                         MainActivity.wasLaunchedViaExternalIntent = false
                                         (context as? android.app.Activity)?.finish()
                                     } else {
-                                        navController.popBackStack()
+                                        // pop to Home to avoid loops after process death
+                                        val popped = navController.popBackStack(PluviaScreen.Home.route, inclusive = false)
+                                        if (!popped) {
+                                            navController.navigate(PluviaScreen.Home.route) {
+                                                popUpTo(navController.graph.id) { inclusive = true }
+                                            }
+                                        }
                                     }
                                 }
                             }
