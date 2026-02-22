@@ -458,7 +458,7 @@ class GOGDownloadManager @Inject constructor(
                 put("buildId", buildId)
                 put("versionName", versionName)
             }
-            val file = File(installPath, "_gog_manifest.json")
+            val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
             file.writeText(root.toString())
             Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
         } catch (e: Exception) {

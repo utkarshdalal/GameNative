@@ -2,7 +2,7 @@ package app.gamenative.utils.launchdependencies
 
 import android.content.Context
 import app.gamenative.data.GameSource
-import app.gamenative.service.gog.GOGConstants
+import app.gamenative.service.gog.GOGManifestUtils
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
@@ -10,8 +10,12 @@ import timber.log.Timber
 import java.io.File
 
 object GogScriptInterpreterDependency : LaunchDependency {
-    override fun appliesTo(container: Container): Boolean =
-        ContainerUtils.extractGameSourceFromContainerId(container.id) == GameSource.GOG
+    override fun appliesTo(container: Container): Boolean {
+        if (ContainerUtils.extractGameSourceFromContainerId(container.id) != GameSource.GOG) return false
+        val gameId = ContainerUtils.extractGameIdFromContainerId(container.id)
+        val installPath = GOGService.getInstallPath(gameId.toString()) ?: return false
+        return GOGManifestUtils.needsScriptInterpreter(File(installPath))
+    }
 
     override fun isSatisfied(context: Context, container: Container): Boolean {
         val gameId = ContainerUtils.extractGameIdFromContainerId(container.id)

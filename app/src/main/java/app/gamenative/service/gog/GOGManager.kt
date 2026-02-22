@@ -780,21 +780,6 @@ class GOGManager @Inject constructor(
     }
 
     /**
-     * Reads and parses _gog_manifest.json from the game install directory.
-     * @return The manifest as JSONObject, or null if the file does not exist or parsing fails.
-     */
-    private fun getLocalManifest(gameInstallDir: File): JSONObject? {
-        val manifestFile = File(gameInstallDir, "_gog_manifest.json")
-        if (!manifestFile.exists()) return null
-        return try {
-            JSONObject(manifestFile.readText())
-        } catch (e: Exception) {
-            Timber.tag("GOG").w(e, "Failed to parse _gog_manifest.json")
-            null
-        }
-    }
-
-    /**
      * Runs GOG scriptinterpreter.exe before launch when the game's _gog_manifest.json has scriptInterpreter true.
      * Uses scriptinterpreter from the game dir (_CommonRedist/ISI/scriptinterpreter.exe).
      */
@@ -811,8 +796,8 @@ class GOGManager @Inject constructor(
             else -> computedPath
         }
         val gameInstallDir = File(gameInstallPath)
-        val root = getLocalManifest(gameInstallDir) ?: return
-        if (!root.optBoolean("scriptInterpreter", false)) return
+        if (!GOGManifestUtils.needsScriptInterpreter(gameInstallDir)) return
+        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return
         val isiRelativePath = "_CommonRedist/ISI/scriptinterpreter.exe"
         if (!File(gameInstallPath, isiRelativePath).exists()) {
             Timber.tag("GOG").w("scriptinterpreter.exe not found at $isiRelativePath, skipping setup")
