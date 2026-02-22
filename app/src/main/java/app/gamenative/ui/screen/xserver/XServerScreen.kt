@@ -307,6 +307,7 @@ fun XServerScreen(
     }
 
     var swapInputOverlay: SwapInputOverlayView? by remember { mutableStateOf(null) }
+    var imeInputReceiver: app.gamenative.externaldisplay.IMEInputReceiver? by remember { mutableStateOf(null) }
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
@@ -330,6 +331,7 @@ fun XServerScreen(
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
     var isOverlayPaused by remember { mutableStateOf(false) }
+    var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -414,6 +416,7 @@ fun XServerScreen(
 
         if (imeVisible) {
             PostHog.capture(event = "onscreen_keyboard_disabled")
+            imeInputReceiver?.hideKeyboard()
             view.post {
                 if (Build.VERSION.SDK_INT >= 30) {
                     view.windowInsetsController?.hide(WindowInsets.Type.ime())
@@ -431,6 +434,7 @@ fun XServerScreen(
         PluviaApp.xEnvironment?.onPause()
         isOverlayPaused = true
         PluviaApp.isOverlayPaused = true
+        keyboardRequestedFromOverlay = false
 
         val navDialog = NavigationDialog(
             context,
@@ -438,6 +442,7 @@ fun XServerScreen(
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
                         NavigationDialog.ACTION_KEYBOARD -> {
+                            keyboardRequestedFromOverlay = true
                             val anchor = view // use the same composable root view
                             val c = if (Build.VERSION.SDK_INT >= 30)
                                 anchor.windowInsetsController else null
@@ -446,7 +451,7 @@ fun XServerScreen(
                                 if (anchor.windowToken == null) return@post
                                 val show = {
                                     PostHog.capture(event = "onscreen_keyboard_enabled")
-                                    imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
                                 }
                                 if (Build.VERSION.SDK_INT > 29 && c != null) {
                                     anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
@@ -570,6 +575,7 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
+                            imeInputReceiver?.hideKeyboard()
                             // Resume processes before exiting so they can receive SIGTERM cleanly.
                             PluviaApp.xEnvironment?.onResume()
                             isOverlayPaused = false
@@ -582,6 +588,10 @@ fun XServerScreen(
         )
         // Resume game when the overlay closes via back press, outside tap, or any non-exit item.
         navDialog.setOnDismissListener {
+            if (!keyboardRequestedFromOverlay) {
+                imeInputReceiver?.hideKeyboard()
+            }
+            keyboardRequestedFromOverlay = false
             if (PluviaApp.isOverlayPaused) {
                 PluviaApp.xEnvironment?.onResume()
                 isOverlayPaused = false
@@ -595,6 +605,8 @@ fun XServerScreen(
         registerBackAction(gameBack)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
+            imeInputReceiver?.hideKeyboard()
+            imeInputReceiver = null
             registerBackAction { }
         }   // reset when screen leaves
     }
@@ -748,6 +760,7 @@ fun XServerScreen(
                     isClickable = false
                 }
                 frameLayout.addView(imeReceiver)
+                imeInputReceiver = imeReceiver
                 
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())

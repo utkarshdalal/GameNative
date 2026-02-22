@@ -29,17 +29,27 @@ class IMEInputReceiver(
         )
     }
 
+    private var imeSessionActive = false
+
     init {
-        isFocusable = true
-        isFocusableInTouchMode = true
+        isFocusable = false
+        isFocusableInTouchMode = false
     }
 
     override fun onCheckIsTextEditor(): Boolean {
-        Timber.d("IMEInputReceiver: onCheckIsTextEditor called - returning true")
-        return true
+        val isEditor = imeSessionActive && hasFocus()
+        Timber.d("IMEInputReceiver: onCheckIsTextEditor called - returning $isEditor")
+        return isEditor
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
+        if (!imeSessionActive || !hasFocus()) {
+            Timber.d(
+                "IMEInputReceiver: onCreateInputConnection ignored (active=$imeSessionActive, hasFocus=${hasFocus()})",
+            )
+            return BaseInputConnection(this, false)
+        }
+
         Timber.d("IMEInputReceiver: onCreateInputConnection called!")
         // Disable autocomplete/suggestions so each key commits immediately
         outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT or 
@@ -85,20 +95,8 @@ class IMEInputReceiver(
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
         super.onWindowFocusChanged(hasWindowFocus)
         Timber.d("IMEInputReceiver: onWindowFocusChanged: $hasWindowFocus")
-        if (hasWindowFocus) {
+        if (hasWindowFocus && imeSessionActive && !hasFocus()) {
             post { requestFocus() }
-        }
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        Timber.d("IMEInputReceiver: onAttachedToWindow - requesting focus")
-        post {
-            if (requestFocus()) {
-                Timber.d("IMEInputReceiver: Successfully got focus")
-            } else {
-                Timber.w("IMEInputReceiver: Failed to get focus")
-            }
         }
     }
 
@@ -203,6 +201,9 @@ class IMEInputReceiver(
 
     fun showKeyboard() {
         post {
+            imeSessionActive = true
+            isFocusable = true
+            isFocusableInTouchMode = true
             requestFocus()
             val imm = displayContext.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
@@ -214,6 +215,10 @@ class IMEInputReceiver(
         post {
             val imm = displayContext.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.hideSoftInputFromWindow(windowToken, 0)
+            clearFocus()
+            imeSessionActive = false
+            isFocusable = false
+            isFocusableInTouchMode = false
             Timber.d("IMEInputReceiver: Requested to hide keyboard")
         }
     }
