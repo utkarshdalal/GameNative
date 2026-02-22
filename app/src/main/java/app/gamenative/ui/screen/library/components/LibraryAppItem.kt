@@ -230,7 +230,7 @@ internal fun AppItem(
                                     }
 
                                     else -> {
-                                        // For list view, use heroes endpoint (not grid_hero)
+                                        // fallback for non-grid pane types (LIST, UNDECIDED)
                                         val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                                         val heroUrl = gameFolderPath?.let { path ->
                                             val folder = java.io.File(path)
@@ -269,7 +269,7 @@ internal fun AppItem(
                         }
                     }
 
-                    var imageUrl by remember(primaryUrl) { mutableStateOf(primaryUrl) }
+                    var imageUrl by remember(primaryUrl, imageRefreshCounter) { mutableStateOf(primaryUrl) }
 
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
                     LaunchedEffect(imageUrl) {
