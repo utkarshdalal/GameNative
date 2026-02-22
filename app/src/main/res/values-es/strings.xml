@@ -954,5 +954,6 @@
     <string name="gog_logout_success">La sesión de GOG se ha cerrado correctamente.</string>
     <string name="gog_logout_failed">Error al cerrar la sesión: %s</string>
     <string name="gog_logout_in_progress">Cerrando sesión de GOG…</string>
+    <string name="steam_client_sync_warning_title">Advertencia de sincronización del cliente de Steam</string>
+    <string name="steam_client_sync_warning_message">Solo guardados locales está activado, pero el cliente de Steam está configurado para iniciarse. El cliente de Steam aún puede sincronizar guardados en la nube a menos que desactives Steam Cloud en el cliente.</string>
 </resources>
-

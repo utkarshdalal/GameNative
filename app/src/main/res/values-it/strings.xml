@@ -1011,4 +1011,6 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+    <string name="steam_client_sync_warning_title">Avviso di sincronizzazione del client Steam</string>
+    <string name="steam_client_sync_warning_message">Solo salvataggi locali è attivo, ma il client Steam è impostato per l'avvio. Il client Steam potrebbe comunque sincronizzare i salvataggi nel cloud a meno che tu non disabiliti Steam Cloud nel client.</string>
 </resources>

@@ -1011,5 +1011,6 @@
     <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
     <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
     <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
+    <string name="steam_client_sync_warning_title">Попередження синхронізації клієнта Steam</string>
+    <string name="steam_client_sync_warning_message">Увімкнено лише локальні збереження, але клієнт Steam налаштовано на запуск. Клієнт Steam все одно може синхронізувати хмарні збереження, якщо ви не вимкнете Steam Cloud у клієнті.</string>
 </resources>
-

@@ -624,6 +624,30 @@ fun PluviaMain(
             }
         }
 
+        DialogType.STEAM_CLIENT_SYNC_WARNING -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    ignoreSteamClientLocalSavesWarning = true,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+            }
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+        }
+
         DialogType.PENDING_UPLOAD_IN_PROGRESS -> {
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -1091,6 +1115,7 @@ fun preLaunchApp(
     preferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     skipCloudSync: Boolean = false,
+    ignoreSteamClientLocalSavesWarning: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
     setLoadingProgress: (Float) -> Unit,
     setLoadingMessage: (String) -> Unit,
@@ -1120,6 +1145,7 @@ fun preLaunchApp(
         container.clearSessionMetadata()
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 
         // When "Open container" is used we boot to desktop/file manager only — skip executable check
         if (!bootToContainer) {
@@ -1145,6 +1171,29 @@ fun preLaunchApp(
                 )
                 return@launch
             }
+        }
+
+        if (!bootToContainer &&
+            !ignoreSteamClientLocalSavesWarning &&
+            gameSource == GameSource.STEAM &&
+            isLocalSavesOnly &&
+            container.isLaunchRealSteam
+        ) {
+            Timber.tag("preLaunchApp").w(
+                "Local saves only is enabled but Steam client launch is on for $appId — warning user",
+            )
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.STEAM_CLIENT_SYNC_WARNING,
+                    title = context.getString(R.string.steam_client_sync_warning_title),
+                    message = context.getString(R.string.steam_client_sync_warning_message),
+                    confirmBtnText = context.getString(R.string.main_play_anyway),
+                    dismissBtnText = context.getString(R.string.cancel),
+                ),
+            )
+            return@launch
         }
 
         // Check if this is a Custom Game and validate executable selection before installing components
@@ -1286,8 +1335,6 @@ fun preLaunchApp(
             onSuccess(context, appId)
             return@launch
         }
-
-        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 
         // For GOG Games, sync cloud saves before launch (executable already verified above via GOGService.getLaunchExecutable)
         val isGOGGame = gameSource == GameSource.GOG

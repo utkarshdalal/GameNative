@@ -1020,4 +1020,6 @@
     <string name="manifest_content_untrusted">Conținutul nu este de încredere și nu a fost instalat.</string>
     <string name="manifest_type_mismatch">Conținutul descărcat nu corespunde tipului așteptat.</string>
     <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
+    <string name="steam_client_sync_warning_title">Avertisment de sincronizare a clientului Steam</string>
+    <string name="steam_client_sync_warning_message">Doar salvările locale sunt activate, dar clientul Steam este setat să pornească. Clientul Steam poate sincroniza în continuare salvările în cloud, cu excepția cazului în care dezactivezi Steam Cloud în client.</string>
 </resources>

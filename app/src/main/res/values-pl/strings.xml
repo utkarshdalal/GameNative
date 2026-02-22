@@ -1017,4 +1017,6 @@
     <string name="manifest_content_untrusted">Zawartość nie jest zaufana i nie została zainstalowana.</string>
     <string name="manifest_type_mismatch">Pobrana zawartość nie pasuje do oczekiwanego typu.</string>
     <string name="manifest_glibc_not_supported">Wersje GLIBC nie są obsługiwane.</string>
+    <string name="steam_client_sync_warning_title">Ostrzeżenie o synchronizacji klienta Steam</string>
+    <string name="steam_client_sync_warning_message">Włączono tylko zapisy lokalne, ale klient Steam jest ustawiony na uruchamianie. Klient Steam może nadal synchronizować zapisy w chmurze, chyba że wyłączysz Steam Cloud w kliencie.</string>
 </resources>

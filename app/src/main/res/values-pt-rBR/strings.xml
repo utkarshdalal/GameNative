@@ -882,4 +882,6 @@
     <string name="manifest_content_untrusted">O conteúdo não é confiável e não foi instalado.</string>
     <string name="manifest_type_mismatch">O conteúdo baixado não corresponde ao tipo esperado.</string>
     <string name="manifest_glibc_not_supported">Compilações GLIBC não são suportadas.</string>
+    <string name="steam_client_sync_warning_title">Aviso de sincronização do cliente Steam</string>
+    <string name="steam_client_sync_warning_message">Somente salvamentos locais está ativado, mas o cliente Steam está configurado para iniciar. O cliente Steam ainda pode sincronizar salvamentos na nuvem, a menos que você desative o Steam Cloud no cliente.</string>
 </resources>

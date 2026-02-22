@@ -13,6 +13,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     SYNC_CONFLICT,
     SYNC_FAIL,
     SYNC_IN_PROGRESS,
+    STEAM_CLIENT_SYNC_WARNING,
     MULTIPLE_PENDING_OPERATIONS,
     PENDING_OPERATION_NONE,
     PENDING_UPLOAD,

@@ -882,4 +882,6 @@
     <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
     <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
+    <string name="steam_client_sync_warning_title">Advarsel om synkronisering i Steam-klienten</string>
+    <string name="steam_client_sync_warning_message">Kun lokale gemninger er slået til, men Steam-klienten er sat til at starte. Steam-klienten kan stadig synkronisere sky-gemninger, medmindre du deaktiverer Steam Cloud i klienten.</string>
 </resources>
