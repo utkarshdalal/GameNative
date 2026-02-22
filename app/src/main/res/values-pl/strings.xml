@@ -739,6 +739,8 @@
     <string name="main_later_button">Później</string>
     <string name="main_update_failed_title">Aktualizacja nie powiodła się</string>
     <string name="main_update_failed_message">Nie udało się pobrać lub zainstalować aktualizacji. Spróbuj ponownie później.</string>
+    <string name="launch_dependency_failed_title">Pobieranie zależności uruchomienia nie powiodło się</string>
+    <string name="launch_dependency_failed_message">Nie udało się pobrać wymaganego składnika. Spróbuj ponownie później.</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Ostatnia awaria</string>

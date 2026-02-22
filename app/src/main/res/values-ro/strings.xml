@@ -731,6 +731,8 @@
 	<string name="main_later_button">Mai târziu</string>
 	<string name="main_update_failed_title">Actualizare eșuată</string>
 	<string name="main_update_failed_message">Nu s-a putut descărca sau instala actualizarea. Încearcă din nou mai târziu.</string>
+	<string name="launch_dependency_failed_title">Descărcarea dependenței de lansare a eșuat</string>
+	<string name="launch_dependency_failed_message">Nu s-a putut descărca o componentă necesară. Încearcă din nou mai târziu.</string>
 
 	<!-- PluviaMain: Crash & Support -->
 	<string name="main_recent_crash_title">Crash recent</string>

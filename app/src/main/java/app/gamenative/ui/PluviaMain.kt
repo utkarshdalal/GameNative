@@ -1227,8 +1227,8 @@ fun preLaunchApp(
                 MessageDialogState(
                     visible = true,
                     type = DialogType.SYNC_FAIL,
-                    title = context.getString(R.string.main_update_failed_title),
-                    message = e.message ?: context.getString(R.string.main_update_failed_message),
+                    title = context.getString(R.string.launch_dependency_failed_title),
+                    message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
                     dismissBtnText = context.getString(R.string.ok),
                 ),
             )

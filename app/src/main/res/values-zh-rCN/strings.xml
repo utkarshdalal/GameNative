@@ -721,6 +721,8 @@
     <string name="main_later_button">稍后更新</string>
     <string name="main_update_failed_title">更新失败</string>
     <string name="main_update_failed_message">更新下载或安装失败，请稍后再试</string>
+    <string name="launch_dependency_failed_title">下载启动依赖失败</string>
+    <string name="launch_dependency_failed_message">无法下载所需组件，请稍后再试。</string>
 
     <!-- 主界面：崩溃与支持 -->
     <string name="main_recent_crash_title">最近应用程序崩溃</string>
