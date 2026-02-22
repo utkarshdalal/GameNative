@@ -1049,10 +1049,16 @@ fun PluviaMain(
                         CoroutineScope(Dispatchers.Main).launch {
                             val currentRoute = navController.currentBackStackEntry
                                 ?.destination
-                                ?.route // ← this is the screen’s route string
+                                ?.route
 
                             if (currentRoute == PluviaScreen.XServer.route) {
-                                navController.popBackStack()
+                                if (MainActivity.wasLaunchedViaExternalIntent) {
+                                    Timber.d("[IntentLaunch]: Finishing activity to return to external launcher")
+                                    MainActivity.wasLaunchedViaExternalIntent = false
+                                    (context as? android.app.Activity)?.finish()
+                                } else {
+                                    navController.popBackStack()
+                                }
                             }
                         }
                     },
