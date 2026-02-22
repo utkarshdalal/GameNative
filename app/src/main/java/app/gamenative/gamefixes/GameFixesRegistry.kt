@@ -5,6 +5,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.SteamService
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -17,6 +18,10 @@ object GameFixesRegistry {
         GameSource.GOG to "1998527297" to GOG_Fix_1998527297,
         GameSource.GOG to "1454587428" to GOG_Fix_1454587428,
         GameSource.GOG to "1458058109" to GOG_Fix_1458058109,
+        GameSource.STEAM to "22300" to STEAM_Fix_22300,
+        GameSource.STEAM to "377160" to STEAM_Fix_377160,
+        GameSource.STEAM to "22380" to STEAM_Fix_22380,
+        GameSource.STEAM to "22330" to STEAM_Fix_22330,
     )
 
     fun applyFor(context: Context, appId: String) {
@@ -33,6 +38,11 @@ object GameFixesRegistry {
                 val game = runBlocking(Dispatchers.IO) { GOGService.getGOGGameOf(gameId) } ?: return null
                 if (!game.isInstalled) return null
                 val path = game.installPath.ifEmpty { GOGConstants.getGameInstallPath(game.title) }
+                if (path.isEmpty() || !File(path).exists()) return null
+                path to "$GAME_DRIVE_LETTER:\\"
+            }
+            GameSource.STEAM -> {
+                val path = SteamService.getAppDirPath(gameId.toInt())
                 if (path.isEmpty() || !File(path).exists()) return null
                 path to "$GAME_DRIVE_LETTER:\\"
             }
