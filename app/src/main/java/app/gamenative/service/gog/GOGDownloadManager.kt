@@ -407,7 +407,8 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName)
+            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(depots, language)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
@@ -430,13 +431,15 @@ class GOGDownloadManager @Inject constructor(
 
     /**
      * Saves manifest data needed for post-install setup (scriptinterpreter or temp_executable) to
-     * installPath/gog_manifest.json. Used on first launch to create registry keys etc.
+     * installPath/_gog_manifest.json. Used on first launch to create registry keys etc.
+     * @param language Language used for the download (from the selected language depots).
      */
     private fun saveManifestToGameDir(
         installPath: File,
         gameManifest: GOGManifestMeta,
         buildId: String,
         versionName: String,
+        language: String,
     ) {
         try {
             val productsArray = JSONArray()
@@ -457,6 +460,7 @@ class GOGDownloadManager @Inject constructor(
                 put("products", productsArray)
                 put("buildId", buildId)
                 put("versionName", versionName)
+                put("language", language)
             }
             val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
             file.writeText(root.toString())
@@ -663,7 +667,8 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName)
+            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(filesToDownload, language)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")
