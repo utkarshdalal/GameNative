@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -31,6 +32,8 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.PrefManager
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.winlator.PrefManager as WinlatorPrefManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -114,13 +117,18 @@ fun SettingsGroupDebug() {
         }
     }
 
-    CrashLogDialog(
-        visible = showLogcatDialog && latestCrashFile != null,
-        fileName = latestCrashFile?.name ?: "No Filename",
-        fileText = latestCrashFile?.readText() ?: "Couldn't read crash log.",
-        onSave = { latestCrashFile?.let { file -> saveResultContract.launch(file.name) } },
-        onDismissRequest = { showLogcatDialog = false },
-    )
+    if (showLogcatDialog && latestCrashFile != null) {
+        val crashText by produceState("Loading...", latestCrashFile) {
+            value = withContext(Dispatchers.IO) { readTail(latestCrashFile) }
+        }
+        CrashLogDialog(
+            visible = true,
+            fileName = latestCrashFile?.name ?: "No Filename",
+            fileText = crashText,
+            onSave = { latestCrashFile?.let { file -> saveResultContract.launch(file.name) } },
+            onDismissRequest = { showLogcatDialog = false },
+        )
+    }
 
     /* Wine Debug Log export setup */
     var showWineLogDialog by rememberSaveable { mutableStateOf(false) }
@@ -146,10 +154,13 @@ fun SettingsGroupDebug() {
     }
 
     if (showWineLogDialog && latestWineLogFile != null) {
+        val wineText by produceState("Loading...", latestWineLogFile) {
+            value = withContext(Dispatchers.IO) { readTail(latestWineLogFile) }
+        }
         CrashLogDialog(
-            visible = showWineLogDialog && latestWineLogFile != null,
+            visible = true,
             fileName = latestWineLogFile?.name ?: "wine_debug.log",
-            fileText = latestWineLogFile?.readText() ?: "Couldn't read Wine log.",
+            fileText = wineText,
             onSave = { latestWineLogFile?.let { file -> saveWineLogContract.launch(file.name) } },
             onDismissRequest = { showWineLogDialog = false },
         )
@@ -267,5 +278,33 @@ fun SettingsGroupDebug() {
             subtitle = { Text(text = stringResource(R.string.settings_debug_clear_cache_subtitle)) },
             onClick = {},
         )
+    }
+}
+
+// readTail allocates ByteArray of this size, so must fit in Int
+private const val MAX_LOG_DISPLAY_BYTES = 256 * 1024L // 256 KB
+
+private fun readTail(file: File?): String {
+    check(MAX_LOG_DISPLAY_BYTES <= Int.MAX_VALUE) { "MAX_LOG_DISPLAY_BYTES exceeds Int.MAX_VALUE" }
+    if (file == null || !file.exists()) return "File not found: ${file?.name ?: "null"}"
+    return try {
+        val len = file.length()
+        if (len <= MAX_LOG_DISPLAY_BYTES) {
+            file.readText(Charsets.UTF_8)
+        } else {
+            val start = maxOf(0L, len - MAX_LOG_DISPLAY_BYTES)
+            java.io.RandomAccessFile(file, "r").use { raf ->
+                raf.seek(start)
+                val bytes = ByteArray((len - start).toInt())
+                raf.readFully(bytes)
+                val text = bytes.toString(Charsets.UTF_8)
+                // drop partial first line
+                val idx = text.indexOf('\n')
+                val trimmed = if (idx >= 0) text.substring(idx + 1) else text
+                "... (${(len + 1023) / 1024}KB, showing last ${MAX_LOG_DISPLAY_BYTES / 1024}KB) ...\n$trimmed"
+            }
+        }
+    } catch (e: Exception) {
+        "Failed to read file: ${e.message ?: e.javaClass.simpleName}"
     }
 }
