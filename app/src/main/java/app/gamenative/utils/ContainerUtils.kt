@@ -32,8 +32,6 @@ import org.json.JSONObject
 import timber.log.Timber
 
 object ContainerUtils {
-    private const val EXTRA_LOCAL_SAVES_ONLY = "localSavesOnly"
-
     data class GpuInfo(
         val deviceId: Int,
         val vendorId: Int,
@@ -113,6 +111,7 @@ object ContainerUtils {
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
+            localSavesOnly = PrefManager.localSavesOnly,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
             wineVersion = PrefManager.wineVersion,
@@ -193,6 +192,7 @@ object ContainerUtils {
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
+        PrefManager.localSavesOnly = containerData.localSavesOnly
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
@@ -282,7 +282,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
-            localSavesOnly = container.getExtra(EXTRA_LOCAL_SAVES_ONLY, "false").toBoolean(),
+            localSavesOnly = container.isLocalSavesOnly || container.getExtra("localSavesOnly", "false").toBoolean(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             enableXInput = enableX,
@@ -451,7 +451,7 @@ object ContainerUtils {
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
-        container.putExtra(EXTRA_LOCAL_SAVES_ONLY, containerData.localSavesOnly.toString())
+        container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
@@ -1029,7 +1029,7 @@ object ContainerUtils {
     fun isLocalSavesOnly(context: Context, appId: String): Boolean {
         if (!hasContainer(context, appId)) return false
         val container = getContainer(context, appId)
-        return container.getExtra(EXTRA_LOCAL_SAVES_ONLY, "false").toBoolean()
+        return container.isLocalSavesOnly || container.getExtra("localSavesOnly", "false").toBoolean()
     }
 
     /**

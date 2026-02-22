@@ -624,30 +624,6 @@ fun PluviaMain(
             }
         }
 
-        DialogType.STEAM_CLIENT_SYNC_WARNING -> {
-            onConfirmClick = {
-                setMessageDialogState(MessageDialogState(false))
-                preLaunchApp(
-                    context = context,
-                    appId = state.launchedAppId,
-                    ignoreSteamClientLocalSavesWarning = true,
-                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                    setLoadingProgress = viewModel::setLoadingDialogProgress,
-                    setLoadingMessage = viewModel::setLoadingDialogMessage,
-                    setMessageDialogState = setMessageDialogState,
-                    onSuccess = viewModel::launchApp,
-                    isOffline = viewModel.isOffline.value,
-                    bootToContainer = state.bootToContainer,
-                )
-            }
-            onDismissClick = {
-                setMessageDialogState(MessageDialogState(false))
-            }
-            onDismissRequest = {
-                setMessageDialogState(MessageDialogState(false))
-            }
-        }
-
         DialogType.PENDING_UPLOAD_IN_PROGRESS -> {
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -658,18 +634,23 @@ fun PluviaMain(
             onConfirmClick = null
         }
 
-        DialogType.PENDING_UPLOAD -> {
+        DialogType.PENDING_UPLOAD,
+        DialogType.STEAM_CLIENT_SYNC_WARNING -> {
             onConfirmClick = {
+                val dialogType = msgDialogState.type
                 setMessageDialogState(MessageDialogState(false))
                 preLaunchApp(
                     context = context,
                     appId = state.launchedAppId,
-                    ignorePendingOperations = true,
+                    ignorePendingOperations = dialogType == DialogType.PENDING_UPLOAD,
+                    ignoreSteamClientLocalSavesWarning = dialogType == DialogType.STEAM_CLIENT_SYNC_WARNING,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
                 )
             }
             onDismissClick = {

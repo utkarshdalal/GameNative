@@ -879,7 +879,6 @@ class SteamAppScreen : BaseAppScreen() {
             // The button uses onDeleteDownloadClick which shows the uninstall dialog
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
-                enabled = !isLocalSavesOnly,
                 onClick = {
                     PostHog.capture(
                         event = "cloud_sync_forced",

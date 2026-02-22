@@ -4,6 +4,5 @@ import app.gamenative.ui.enums.AppOptionMenuType
 
 data class AppMenuOption(
     val optionType: AppOptionMenuType,
-    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )

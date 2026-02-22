@@ -297,6 +297,13 @@ object PrefManager {
             setPref(FORCE_DLC, value)
         }
 
+    private val LOCAL_SAVES_ONLY = booleanPreferencesKey("local_saves_only")
+    var localSavesOnly: Boolean
+        get() = getPref(LOCAL_SAVES_ONLY, false)
+        set(value) {
+            setPref(LOCAL_SAVES_ONLY, value)
+        }
+
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
         get() = getPref(USE_LEGACY_DRM, false)
