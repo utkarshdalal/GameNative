@@ -1011,4 +1011,13 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+    <string name="library_download_phase_downloading">Download in corso</string>
+    <string name="library_download_phase_preparing">Preparazione</string>
+    <string name="library_download_phase_allocating">Allocazione</string>
+    <string name="library_download_phase_patching">Applicazione patch</string>
+    <string name="library_download_phase_verifying">Verifica</string>
+    <string name="library_download_phase_applying_data">Applicazione dati</string>
+    <string name="library_download_phase_finalizing">Finalizzazione</string>
+    <string name="library_download_phase_paused">In pausa</string>
+    <string name="library_download_phase_failed">Non riuscito</string>
 </resources>

@@ -1012,6 +1012,15 @@
     <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
     <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
     <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
+    <string name="library_download_phase_downloading">下載中</string>
+    <string name="library_download_phase_preparing">準備中</string>
+    <string name="library_download_phase_allocating">正在分配</string>
+    <string name="library_download_phase_patching">正在套用修補</string>
+    <string name="library_download_phase_verifying">正在驗證</string>
+    <string name="library_download_phase_applying_data">正在套用資料</string>
+    <string name="library_download_phase_finalizing">正在收尾</string>
+    <string name="library_download_phase_paused">已暫停</string>
+    <string name="library_download_phase_failed">失敗</string>
 </resources>
 
 

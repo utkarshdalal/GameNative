@@ -221,6 +221,30 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+/**
+ * Best-effort phase extraction from downloader status text.
+ * This keeps UI messaging stable when percent changes slowly during patch/verify steps.
+ */
+@Composable
+private fun deriveDownloadPhase(statusMessage: String?): String {
+    val raw = statusMessage?.trim().orEmpty()
+    if (raw.isEmpty()) return stringResource(R.string.library_download_phase_downloading)
+
+    val lower = raw.lowercase(Locale.US)
+    return when {
+        "pause" in lower -> stringResource(R.string.library_download_phase_paused)
+        "fail" in lower || "error" in lower -> stringResource(R.string.library_download_phase_failed)
+        "verify" in lower || "validat" in lower || "checksum" in lower || "hash" in lower -> stringResource(R.string.library_download_phase_verifying)
+        "patch" in lower || "delta" in lower -> stringResource(R.string.library_download_phase_patching)
+        "allocat" in lower || "prealloc" in lower || "reserve" in lower -> stringResource(R.string.library_download_phase_allocating)
+        "decompress" in lower || "extract" in lower || "unpack" in lower || "apply" in lower -> stringResource(R.string.library_download_phase_applying_data)
+        "final" in lower || "finishing" in lower || "commit" in lower || "complete" in lower -> stringResource(R.string.library_download_phase_finalizing)
+        "queue" in lower || "waiting" in lower || "prepar" in lower -> stringResource(R.string.library_download_phase_preparing)
+        "download" in lower || "retriev" in lower || "fetch" in lower -> stringResource(R.string.library_download_phase_downloading)
+        else -> raw
+    }
+}
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -464,7 +488,7 @@ internal fun AppScreenContent(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                         contentPadding = PaddingValues(16.dp)
                     ) {
-                        Text(stringResource(R.string.delete_app), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                        Text(stringResource(R.string.cancel_download_prompt_title), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     }
                 } else {
                     // Disable install when Wi-Fi only is enabled and there's no Wi-Fi
@@ -532,17 +556,22 @@ internal fun AppScreenContent(
                 val latestStatusMessage by rememberUpdatedState(statusMessage)
                 val latestDownloadProgress by rememberUpdatedState(downloadProgress)
                 var timeLeftText by remember(displayInfo.appId) { mutableStateOf("Calculating...") }
+                val phaseText = deriveDownloadPhase(statusMessage)
                 
                 LaunchedEffect(displayInfo.appId, isDownloading, downloadInfo) {
                     while (isDownloading) {
                         val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+                        val statusText = latestStatusMessage?.takeUnless { it.isBlank() }
                         timeLeftText = if (etaMs != null && etaMs > 0L) {
-                            val totalSeconds = etaMs / 1000
-                            val minutesLeft = totalSeconds / 60
-                            val secondsPart = totalSeconds % 60
-                            "${minutesLeft}m ${secondsPart}s left"
+                            if (etaMs < 3_000L && latestDownloadProgress < 1f) {
+                                statusText ?: "Finishing..."
+                            } else {
+                                val totalSeconds = (etaMs + 999L) / 1000L
+                                val minutesLeft = totalSeconds / 60
+                                val secondsPart = totalSeconds % 60
+                                "${minutesLeft}m ${secondsPart}s left"
+                            }
                         } else if (latestDownloadProgress in 0f..1f && latestDownloadProgress < 1f) {
-                            val statusText = latestStatusMessage?.takeUnless { it.isBlank() }
                             statusText ?: "Calculating..."
                         } else {
                             ""
@@ -606,12 +635,27 @@ internal fun AppScreenContent(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = timeLeftText,
+                            text = phaseText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.tertiary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    if (timeLeftText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Text(
+                                text = timeLeftText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))

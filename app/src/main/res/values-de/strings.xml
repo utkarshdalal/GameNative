@@ -953,4 +953,13 @@
     <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
     <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
     <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
+    <string name="library_download_phase_downloading">Wird heruntergeladen</string>
+    <string name="library_download_phase_preparing">Wird vorbereitet</string>
+    <string name="library_download_phase_allocating">Speicher wird zugewiesen</string>
+    <string name="library_download_phase_patching">Patchen</string>
+    <string name="library_download_phase_verifying">Überprüfen</string>
+    <string name="library_download_phase_applying_data">Daten werden angewendet</string>
+    <string name="library_download_phase_finalizing">Wird abgeschlossen</string>
+    <string name="library_download_phase_paused">Pausiert</string>
+    <string name="library_download_phase_failed">Fehlgeschlagen</string>
 </resources>

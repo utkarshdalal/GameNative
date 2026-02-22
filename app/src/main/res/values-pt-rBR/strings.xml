@@ -882,4 +882,13 @@
     <string name="manifest_content_untrusted">O conteúdo não é confiável e não foi instalado.</string>
     <string name="manifest_type_mismatch">O conteúdo baixado não corresponde ao tipo esperado.</string>
     <string name="manifest_glibc_not_supported">Compilações GLIBC não são suportadas.</string>
+    <string name="library_download_phase_downloading">Baixando</string>
+    <string name="library_download_phase_preparing">Preparando</string>
+    <string name="library_download_phase_allocating">Alocando</string>
+    <string name="library_download_phase_patching">Aplicando patch</string>
+    <string name="library_download_phase_verifying">Verificando</string>
+    <string name="library_download_phase_applying_data">Aplicando dados</string>
+    <string name="library_download_phase_finalizing">Finalizando</string>
+    <string name="library_download_phase_paused">Pausado</string>
+    <string name="library_download_phase_failed">Falha</string>
 </resources>

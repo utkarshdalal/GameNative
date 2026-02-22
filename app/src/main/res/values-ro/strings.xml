@@ -1020,4 +1020,13 @@
     <string name="manifest_content_untrusted">Conținutul nu este de încredere și nu a fost instalat.</string>
     <string name="manifest_type_mismatch">Conținutul descărcat nu corespunde tipului așteptat.</string>
     <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
+    <string name="library_download_phase_downloading">Se descarcă</string>
+    <string name="library_download_phase_preparing">Se pregătește</string>
+    <string name="library_download_phase_allocating">Se alocă</string>
+    <string name="library_download_phase_patching">Se aplică patch-ul</string>
+    <string name="library_download_phase_verifying">Se verifică</string>
+    <string name="library_download_phase_applying_data">Se aplică datele</string>
+    <string name="library_download_phase_finalizing">Se finalizează</string>
+    <string name="library_download_phase_paused">În pauză</string>
+    <string name="library_download_phase_failed">Eșuat</string>
 </resources>

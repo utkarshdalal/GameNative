@@ -65,6 +65,8 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.pathString
 
 private data class InstallSizeInfo(
@@ -328,6 +330,27 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun shouldExportConfig(gameId: Int): Boolean {
             return exportConfigRequests[gameId] == true
+        }
+
+        private val pauseResumeActionFlags = ConcurrentHashMap<Int, AtomicBoolean>()
+
+        private fun getPauseResumeActionFlag(gameId: Int): AtomicBoolean {
+            val existing = pauseResumeActionFlags[gameId]
+            if (existing != null) return existing
+
+            val created = AtomicBoolean(false)
+            val prior = pauseResumeActionFlags.putIfAbsent(gameId, created)
+            return prior ?: created
+        }
+
+        private fun tryAcquirePauseResumeAction(gameId: Int): Boolean {
+            return getPauseResumeActionFlag(gameId).compareAndSet(false, true)
+        }
+
+        private fun releasePauseResumeAction(gameId: Int) {
+            val flag = pauseResumeActionFlags[gameId] ?: return
+            flag.set(false)
+            pauseResumeActionFlags.remove(gameId, flag)
         }
 
         private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
@@ -669,14 +692,27 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         val gameId = libraryItem.gameId
-        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        if (!tryAcquirePauseResumeAction(gameId)) {
+            Timber.d("Ignoring duplicate pause/resume tap for appId=$gameId")
+            return
+        }
 
-        if (isDownloading) {
-            downloadInfo?.cancel()
-        } else {
-            CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val downloadInfo = SteamService.getAppDownloadInfo(gameId)
+                val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+
+                if (isDownloading) {
+                    downloadInfo?.cancel()
+                    // Keep race protection, but don't block pause/resume for too long.
+                    downloadInfo?.awaitCompletion(timeoutMs = 1200L)
+                } else {
+                    SteamService.downloadApp(gameId)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Pause/resume action failed for appId=$gameId")
+            } finally {
+                releasePauseResumeAction(gameId)
             }
         }
     }
@@ -1041,12 +1077,19 @@ class SteamAppScreen : BaseAppScreen() {
         var installDialogState by remember(gameId) {
             mutableStateOf(getInstallDialogState(gameId) ?: MessageDialogState(false))
         }
+        var cancelDownloadInProgress by remember(gameId) { mutableStateOf(false) }
+        var uninstallInProgress by remember(libraryItem.appId) { mutableStateOf(false) }
 
         LaunchedEffect(gameId) {
             snapshotFlow { getInstallDialogState(gameId) }
                 .collect { state ->
                     installDialogState = state ?: MessageDialogState(false)
                 }
+        }
+        LaunchedEffect(installDialogState.visible, installDialogState.type) {
+            if (!installDialogState.visible || installDialogState.type != DialogType.CANCEL_APP_DOWNLOAD) {
+                cancelDownloadInProgress = false
+            }
         }
 
         var knownConfigInstallState by remember(gameId) {
@@ -1360,18 +1403,27 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 }
                 DialogType.CANCEL_APP_DOWNLOAD -> {
-                    {
+                    cancelConfirm@{
+                        if (cancelDownloadInProgress) {
+                            hideInstallDialog(gameId)
+                            return@cancelConfirm
+                        }
+                        cancelDownloadInProgress = true
+                        hideInstallDialog(gameId)
                         PostHog.capture(
                             event = "game_install_cancelled",
                             properties = mapOf("game_name" to (appInfo?.name ?: ""))
                         )
-                        val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-                        downloadInfo?.cancel()
                         CoroutineScope(Dispatchers.IO).launch {
-                            SteamService.deleteApp(gameId)
-                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
-                            withContext(Dispatchers.Main) {
-                                hideInstallDialog(gameId)
+                            try {
+                                SteamService.deleteApp(gameId)
+                                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to cancel download for appId=$gameId")
+                            } finally {
+                                withContext(Dispatchers.Main) {
+                                    cancelDownloadInProgress = false
+                                }
                             }
                         }
                     }
@@ -1492,7 +1544,9 @@ class SteamAppScreen : BaseAppScreen() {
         if (showUninstallDialog) {
             AlertDialog(
                 onDismissRequest = {
-                    hideUninstallDialog(libraryItem.appId)
+                    if (!uninstallInProgress) {
+                        hideUninstallDialog(libraryItem.appId)
+                    }
                 },
                 title = { Text(stringResource(R.string.steam_uninstall_game_title)) },
                 text = {
@@ -1505,35 +1559,53 @@ class SteamAppScreen : BaseAppScreen() {
                 },
                 confirmButton = {
                     TextButton(
+                        enabled = !uninstallInProgress,
                         onClick = {
+                            if (uninstallInProgress) return@TextButton
+                            uninstallInProgress = true
                             hideUninstallDialog(libraryItem.appId)
 
                             CoroutineScope(Dispatchers.IO).launch {
-                                val success = SteamService.deleteApp(gameId)
-                                withContext(Dispatchers.Main) {
-                                    ContainerUtils.deleteContainer(context, libraryItem.appId)
-                                }
-                                withContext(Dispatchers.Main) {
-                                    if (success) {
-                                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
-                                        Toast.makeText(
-                                            context,
-                                            context.getString(
-                                                R.string.steam_uninstall_success,
-                                                appInfo?.name ?: libraryItem.name
-                                            ),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        PostHog.capture(
-                                            event = "game_uninstalled",
-                                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
-                                        )
-                                    } else {
+                                try {
+                                    val success = SteamService.deleteApp(gameId)
+                                    withContext(Dispatchers.Main) {
+                                        ContainerUtils.deleteContainer(context, libraryItem.appId)
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        if (success) {
+                                            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(
+                                                    R.string.steam_uninstall_success,
+                                                    appInfo?.name ?: libraryItem.name
+                                                ),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            PostHog.capture(
+                                                event = "game_uninstalled",
+                                                properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                                            )
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.steam_uninstall_failed),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Failed to uninstall appId=$gameId")
+                                    withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             context,
                                             context.getString(R.string.steam_uninstall_failed),
                                             Toast.LENGTH_SHORT
                                         ).show()
+                                    }
+                                } finally {
+                                    withContext(Dispatchers.Main) {
+                                        uninstallInProgress = false
                                     }
                                 }
                             }
@@ -1543,9 +1615,14 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = {
-                        hideUninstallDialog(libraryItem.appId)
-                    }) {
+                    TextButton(
+                        enabled = !uninstallInProgress,
+                        onClick = {
+                            if (!uninstallInProgress) {
+                                hideUninstallDialog(libraryItem.appId)
+                            }
+                        }
+                    ) {
                         Text(stringResource(R.string.cancel))
                     }
                 }

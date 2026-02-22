@@ -1008,4 +1008,13 @@
     <string name="manifest_content_untrusted">内容不可信，未安装。</string>
     <string name="manifest_type_mismatch">下载的内容与预期类型不匹配。</string>
     <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
+    <string name="library_download_phase_downloading">下载中</string>
+    <string name="library_download_phase_preparing">准备中</string>
+    <string name="library_download_phase_allocating">正在分配</string>
+    <string name="library_download_phase_patching">正在打补丁</string>
+    <string name="library_download_phase_verifying">正在验证</string>
+    <string name="library_download_phase_applying_data">正在应用数据</string>
+    <string name="library_download_phase_finalizing">正在收尾</string>
+    <string name="library_download_phase_paused">已暂停</string>
+    <string name="library_download_phase_failed">失败</string>
 </resources>

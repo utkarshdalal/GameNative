@@ -882,4 +882,13 @@
     <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
     <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
+    <string name="library_download_phase_downloading">Downloader</string>
+    <string name="library_download_phase_preparing">Forbereder</string>
+    <string name="library_download_phase_allocating">Allokerer</string>
+    <string name="library_download_phase_patching">Patcher</string>
+    <string name="library_download_phase_verifying">Verificerer</string>
+    <string name="library_download_phase_applying_data">Anvender data</string>
+    <string name="library_download_phase_finalizing">Afslutter</string>
+    <string name="library_download_phase_paused">Pauset</string>
+    <string name="library_download_phase_failed">Mislykket</string>
 </resources>
