@@ -17,11 +17,9 @@ object GameFixesRegistry {
 
     private val fixes: Map<Pair<GameSource, String>, GameFix> = mapOf(
         GameSource.GOG to "1454315831" to GOG_Fix_1454315831,
-        GameSource.GOG to "1998527297" to GOG_Fix_1998527297,
         GameSource.GOG to "1454587428" to GOG_Fix_1454587428,
         GameSource.GOG to "1458058109" to GOG_Fix_1458058109,
         GameSource.STEAM to "22300" to STEAM_Fix_22300,
-        GameSource.STEAM to "377160" to STEAM_Fix_377160,
         GameSource.STEAM to "22380" to STEAM_Fix_22380,
         GameSource.STEAM to "22330" to STEAM_Fix_22330,
         GameSource.EPIC to "b1b4e0b67a044575820cb5e63028dcae" to EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
