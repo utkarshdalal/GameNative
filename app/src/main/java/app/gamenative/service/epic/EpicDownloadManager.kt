@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit
 import java.util.zip.Inflater
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
