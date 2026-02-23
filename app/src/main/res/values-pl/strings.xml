@@ -109,8 +109,6 @@
     <string name="custom_game_folder_picker_error">Nie udało się rozwiązać ścieżki folderu</string>
     <string name="container_config_drive_letter_missing">Brak litery dysku</string>
     <string name="container_config_invalid_drive_path">Nieprawidłowa ścieżka dysku</string>
-    <string name="custom_game_exe_selection_title">Wymagany wybór pliku wykonywalnego</string>
-    <string name="custom_game_exe_selection_message">Ta gra ma wiele plików wykonywalnych. Otwórz ustawienia własnej gry, aby wybrać ten, który ma zostać uruchomiony.</string>
     <string name="custom_game_settings">Ustawienia własnej gry</string>
     <string name="custom_game_delete_title">Usuń grę</string>
     <string name="custom_game_delete_message">Czy na pewno chcesz odinstalować %1$s?</string>
@@ -156,6 +154,8 @@
     <string name="content_info">Info o zawartości</string>
     <string name="game_not_installed_title">Gra nie zainstalowana</string>
     <string name="game_not_installed_message">%s nie jest zainstalowana. Proszę zainstalować grę przed uruchomieniem.</string>
+    <string name="game_executable_not_found_title">Nie można uruchomić</string>
+    <string name="game_executable_not_found">Nie udało się automatycznie wybrać pliku wykonywalnego. Ustaw ścieżkę do pliku wykonywalnego w ustawieniach kontenera.</string>
     <string name="save_container_settings_title">Zapisać konfigurację kontenera?</string>
     <string name="save_container_settings_message">Zastosowano tymczasowe zmiany konfiguracji kontenera dla tego uruchomienia. Czy chcesz je zapisać?</string>
     <string name="sync_error_title">Błąd synchronizacji</string>
@@ -489,7 +489,7 @@
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Użyj Legacy DRM</string>
     <string name="unpack_files">Rozpakuj pliki</string>
-    <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error 3:0000065432\'.</string>
+    <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error\'. Może zmniejszyć FPS.</string>
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
@@ -590,7 +590,7 @@
     <string name="driver_manager">Menedżer sterowników</string>
     <string name="select_a_driver">Wybierz sterownik</string>
     <string name="import_zip_from_device">Importuj ZIP z urządzenia</string>
-
+    
     <!-- Contents Manager -->
     <string name="contents_manager">Menedżer zawartości</string>
     <string name="import_wcp_from_device">Importuj .wcp z urządzenia</string>

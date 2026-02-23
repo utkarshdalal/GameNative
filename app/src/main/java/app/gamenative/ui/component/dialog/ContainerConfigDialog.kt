@@ -131,7 +131,7 @@ internal fun winComponentsItemTitleRes(string: String): Int {
         "directx" -> R.string.directx
         "vcrun2010" -> R.string.vcrun2010
         "wmdecoder" -> R.string.wmdecoder
-        "opengl" -> R.string.wmdecoder
+        "opengl" -> R.string.opengl
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
 }

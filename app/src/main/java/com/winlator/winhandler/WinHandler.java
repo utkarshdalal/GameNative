@@ -576,10 +576,10 @@ public class WinHandler {
             while (running) {
                 // --- MODIFIED: Get the current profile state on EVERY loop iteration ---
                 try {
-                    final ControlsProfile profile = inputControlsView.getProfile();
-                    final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-                    // This condition now uses the fresh, up-to-date 'useVirtualGamepad' variable
-                    if (gamepadBuffer != null && (currentController != null || useVirtualGamepad)) {
+                    // Always poll for rumble if gamepad buffer exists, regardless of controller state
+                    // This ensures vibration works with built-in controllers (like Ayn Odin 2)
+                    // even when virtual gamepad mode is disabled
+                    if (gamepadBuffer != null) {
                         // Read the rumble values from the shared memory file.
                         short lowFreq = gamepadBuffer.getShort(32);
                         short highFreq = gamepadBuffer.getShort(34);

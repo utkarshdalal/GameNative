@@ -476,13 +476,6 @@ object ContainerUtils {
             MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
             Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
         }
-        if (previousLanguage.lowercase() != containerData.language.lowercase()) {
-            val steamAppId = extractGameIdFromContainerId(container.id)
-            val appDirPath = SteamService.getAppDirPath(steamAppId)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
-            Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
-        }
         if (previousForceDlc != containerData.forceDlc) {
             val steamAppId = extractGameIdFromContainerId(container.id)
             val appDirPath = SteamService.getAppDirPath(steamAppId)
@@ -708,7 +701,7 @@ object ContainerUtils {
 
         // Check for cached best config (only for Steam games, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
-        if (gameSource == GameSource.STEAM && customConfig == null) {
+        if (gameSource == GameSource.STEAM && customConfig == null && PrefManager.autoApplyKnownConfig) {
             try {
                 val gameId = extractGameIdFromContainerId(appId)
                 val appInfo = SteamService.getAppInfoOf(gameId)

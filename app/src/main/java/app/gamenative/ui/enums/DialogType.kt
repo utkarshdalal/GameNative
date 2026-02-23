@@ -33,6 +33,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     GAME_FEEDBACK,
     SAVE_CONTAINER_CONFIG,
     APP_UPDATE,
+    EXECUTABLE_NOT_FOUND,
 
     NONE,
 

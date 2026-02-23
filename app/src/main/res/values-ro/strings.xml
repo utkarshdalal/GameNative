@@ -100,8 +100,6 @@
     <string name="custom_game_folder_picker_error">Nu s-a putut rezolva calea folderului</string>
     <string name="container_config_drive_letter_missing">Lipsește litera unității</string>
     <string name="container_config_invalid_drive_path">Calea unității este invalidă</string>
-    <string name="custom_game_exe_selection_title">Selectarea executabilului necesară</string>
-    <string name="custom_game_exe_selection_message">Acest joc are mai multe executabile. Deschide Setările Jocului Personalizat pentru a alege pe care să-l lansezi.</string>
     <string name="custom_game_settings">Setări joc personalizat</string>
     <string name="custom_game_delete_title">Ștergere joc</string>
     <string name="custom_game_delete_message">Sigur vrei să dezinstalezi %1$s?</string>
@@ -146,6 +144,8 @@
     <string name="content_info">Informații conținut</string>
     <string name="game_not_installed_title">Joc neinstalat</string>
     <string name="game_not_installed_message">%s nu este instalat. Instalează jocul înainte de a-l porni.</string>
+    <string name="game_executable_not_found_title">Nu se poate porni</string>
+    <string name="game_executable_not_found">Executabilul nu a putut fi selectat automat. Setează calea executabilului în setările containerului.</string>
     <string name="save_container_settings_title">Salvezi configurația containerului?</string>
     <string name="save_container_settings_message">Modificările temporare ale configurației au fost aplicate pentru această lansare. Vrei să le salvezi?</string>
     <string name="sync_error_title">Eroare de sincronizare</string>

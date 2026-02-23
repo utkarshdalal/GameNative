@@ -588,17 +588,28 @@ class GOGManager @Inject constructor(
             val exe = getGameExecutable(installPath, installDirFile)
             if (exe.isNotEmpty()) return@withContext exe
             val subdirs = installDirFile.listFiles()?.filter {
-                it.isDirectory && it.name != "saves"
+                it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
             } ?: emptyList()
 
-            if (subdirs.isNotEmpty()) {
-                return@withContext getGameExecutable(installPath, subdirs.first())
+            for (subdir in subdirs) {
+                val subdirExe = getGameExecutable(installPath, subdir)
+                if (subdirExe.isNotEmpty()) return@withContext subdirExe
             }
 
             ""
         } catch (e: Exception) {
             Timber.e(e, "Failed to get executable for GOG game $gameId")
             ""
+        }
+    }
+
+    /**
+     * Resolves the effective launch executable for a GOG game (container config or auto-detected).
+     * Returns empty string if no executable can be found.
+     */
+    suspend fun getLaunchExecutable(appId: String, container: Container): String = withContext(Dispatchers.IO) {
+        container.executablePath.ifEmpty {
+            getInstalledExe(LibraryItem(appId = appId, name = "", gameSource = GameSource.GOG))
         }
     }
 
@@ -661,22 +672,22 @@ class GOGManager @Inject constructor(
             }
 
             val playTasks = jsonObject.getJSONArray("playTasks")
+            val installDir = File(installPath)
+
             for (i in 0 until playTasks.length()) {
                 val task = playTasks.getJSONObject(i)
                 if (task.has("isPrimary") && task.getBoolean("isPrimary")) {
                     val executablePath = task.getString("path")
-                    val exeFile = File(gameDir, executablePath)
-
-                    if (exeFile.exists()) {
-                        // Path must be relative to install root (drive root), not gameDir's parent
-                        val installDir = File(installPath)
+                    Timber.e("executable_path: $executablePath, gameDir: ${gameDir.absolutePath}")
+                    val exeFile = FileUtils.findFileCaseInsensitive(gameDir, executablePath)
+                    if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
                         return Result.success(relativePath)
                     }
-
                     return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
                 }
             }
+
             Result.failure(Exception("No primary executable found in playTasks"))
         } catch (e: Exception) {
             Result.failure(Exception("Error parsing GOG info file in ${gameDir.absolutePath}: ${e.message}", e))

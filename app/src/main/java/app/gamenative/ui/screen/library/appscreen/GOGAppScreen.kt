@@ -124,15 +124,16 @@ class GOGAppScreen : BaseAppScreen() {
         // Parse GOG's ISO 8601 release date string to Unix timestamp
         // GOG returns dates like "2022-08-18T17:50:00+0300" (without colon in timezone)
         // GameDisplayInfo expects Unix timestamp in SECONDS, not milliseconds
-        val releaseDateTimestamp = if (game?.releaseDate?.isNotEmpty() == true) {
+        val rawReleaseDate = game?.releaseDate
+        val releaseDateTimestamp = if (!rawReleaseDate.isNullOrEmpty() && rawReleaseDate != "null") {
             try {
                 val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
-                val timestampMillis = java.time.ZonedDateTime.parse(game.releaseDate, formatter).toInstant().toEpochMilli()
+                val timestampMillis = java.time.ZonedDateTime.parse(rawReleaseDate, formatter).toInstant().toEpochMilli()
                 val timestampSeconds = timestampMillis / 1000
-                Timber.tag(TAG).d("Parsed release date '${game.releaseDate}' -> $timestampSeconds seconds (${java.util.Date(timestampMillis)})")
+                Timber.tag(TAG).d("Parsed release date '$rawReleaseDate' -> $timestampSeconds seconds (${java.util.Date(timestampMillis)})")
                 timestampSeconds
             } catch (e: Exception) {
-                Timber.tag(TAG).w(e, "Failed to parse release date: ${game.releaseDate}")
+                Timber.tag(TAG).d("Release date not parseable (ignored): $rawReleaseDate")
                 0L
             }
         } else {
@@ -394,9 +395,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun getExportFileExtension(): String {
-        Timber.tag(TAG).d("getExportFileExtension: returning 'tzst'")
-        // GOG containers use the same export format as other Wine containers
-        return "tzst"
+        return ".gog"
     }
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {

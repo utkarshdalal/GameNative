@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -16,6 +17,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
+import com.alorma.compose.settings.ui.SettingsSwitch
 
 @Composable
 fun SettingsGroupEmulation() {
@@ -80,6 +82,17 @@ fun SettingsGroupEmulation() {
             title = { Text(text = stringResource(R.string.settings_emulation_default_config_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_emulation_default_config_subtitle)) },
             onClick = { showConfigDialog = true },
+        )
+        var autoApplyKnownConfig by rememberSaveable { mutableStateOf(PrefManager.autoApplyKnownConfig) }
+        SettingsSwitch(
+            colors = settingsTileColors(),
+            state = autoApplyKnownConfig,
+            title = { Text(text = stringResource(R.string.settings_emulation_auto_apply_known_config_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_auto_apply_known_config_subtitle)) },
+            onCheckedChange = {
+                autoApplyKnownConfig = it
+                PrefManager.autoApplyKnownConfig = it
+            },
         )
         SettingsMenuLink(
             colors = settingsTileColors(),

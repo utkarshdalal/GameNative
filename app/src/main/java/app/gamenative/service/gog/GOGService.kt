@@ -261,6 +261,14 @@ class GOGService : Service() {
                 ?: ""
         }
 
+        /**
+         * Resolves the effective launch executable for a GOG game (container config or auto-detected).
+         * Returns empty string if no executable can be found.
+         */
+        suspend fun getLaunchExecutable(appId: String, container: com.winlator.container.Container): String {
+            return getInstance()?.gogManager?.getLaunchExecutable(appId, container) ?: ""
+        }
+
         fun getGogWineStartCommand(
             libraryItem: LibraryItem,
             container: com.winlator.container.Container,
@@ -297,7 +305,7 @@ class GOGService : Service() {
 
                     val result = instance.gogDownloadManager.downloadGame(
                         gameId, File(installPath),
-                        downloadInfo, "en-US", true, commonRedistDir,
+                        downloadInfo, GOGConstants.GOG_DOWNLOAD_LANGUAGE, true, commonRedistDir,
                     )
 
                     if (result.isFailure) {

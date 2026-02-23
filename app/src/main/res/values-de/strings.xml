@@ -94,8 +94,6 @@
     <string name="custom_game_folder_picker_error">Ordnerpfad konnte nicht ermittelt werden</string>
     <string name="container_config_drive_letter_missing">Laufwerksbuchstabe fehlt</string>
     <string name="container_config_invalid_drive_path">Ungültiger Laufwerkspfad</string>
-    <string name="custom_game_exe_selection_title">Auswahl erforderlich</string>
-    <string name="custom_game_exe_selection_message">Für dieses Spiel gibt es mehrere ausführbare Dateien. Bitte wähle in den Einstellungen aus, welche gestartet werden soll.</string>
     <string name="custom_game_settings">Eigene Spiele-Einstellungen</string>
     <string name="custom_game_delete_title">Spiel löschen</string>
     <string name="custom_game_delete_message">Bist du sicher, dass du %1$s deinstallieren möchtest?</string>
@@ -136,6 +134,8 @@
     <string name="content_info">Inhaltsinfo</string>
     <string name="game_not_installed_title">Spiel nicht installiert</string>
     <string name="game_not_installed_message">%s ist nicht installiert. Bitte installiere das Spiel, bevor du es startest.</string>
+    <string name="game_executable_not_found_title">Start nicht möglich</string>
+    <string name="game_executable_not_found">Die ausführbare Datei konnte nicht automatisch ausgewählt werden. Bitte lege den Pfad in den Containereinstellungen fest.</string>
     <string name="save_container_settings_title">Container-Konfiguration speichern?</string>
     <string name="save_container_settings_message">Temporäre Änderungen wurden für diesen Start übernommen. Möchtest du sie speichern?</string>
     <string name="sync_error_title">Synchronisierungsfehler</string>

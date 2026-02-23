@@ -36,23 +36,6 @@ import timber.log.Timber
  */
 class CustomGameAppScreen : BaseAppScreen() {
     companion object {
-        // Shared state for exe selection dialog - list of appIds that should show the dialog
-        private val exeSelectionDialogAppIds = mutableStateListOf<String>()
-
-        fun showExeSelectionDialog(appId: String) {
-            if (!exeSelectionDialogAppIds.contains(appId)) {
-                exeSelectionDialogAppIds.add(appId)
-            }
-        }
-
-        fun hideExeSelectionDialog(appId: String) {
-            exeSelectionDialogAppIds.remove(appId)
-        }
-
-        fun shouldShowExeSelectionDialog(appId: String): Boolean {
-            return exeSelectionDialogAppIds.contains(appId)
-        }
-
         // Shared state for delete dialog - list of appIds that should show the dialog
         private val deleteDialogAppIds = mutableStateListOf<String>()
 
@@ -206,13 +189,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onClickPlay: (Boolean) -> Unit
     ) {
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        if (container.executablePath.isEmpty()) {
-            // Multiple exes found but none selected - show dialog
-            showExeSelectionDialog(libraryItem.appId)
-            return
-        }
-        // Launch the game - executable check is now done in preLaunchApp
+        // Launch the game; preLaunchApp will show EXECUTABLE_NOT_FOUND if no exe (getLaunchExecutable blank)
         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
     }
 
@@ -410,7 +387,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
     override fun supportsContainerConfig(): Boolean = true
 
-    override fun getExportFileExtension(): String = ".steam"
+    override fun getExportFileExtension(): String = ".pcgame"
 
     @Composable
     override fun AdditionalDialogs(
@@ -422,16 +399,6 @@ class CustomGameAppScreen : BaseAppScreen() {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
 
-        // Track exe selection dialog state
-        var showExeDialog by remember { mutableStateOf(shouldShowExeSelectionDialog(libraryItem.appId)) }
-
-        LaunchedEffect(libraryItem.appId) {
-            snapshotFlow { shouldShowExeSelectionDialog(libraryItem.appId) }
-                .collect { shouldShow ->
-                    showExeDialog = shouldShow
-                }
-        }
-
         // Track delete dialog state
         var showDeleteDialog by remember { mutableStateOf(shouldShowDeleteDialog(libraryItem.appId)) }
 
@@ -440,37 +407,6 @@ class CustomGameAppScreen : BaseAppScreen() {
                 .collect { shouldShow ->
                     showDeleteDialog = shouldShow
                 }
-        }
-
-        // Exe selection required dialog
-        if (showExeDialog) {
-            AlertDialog(
-                onDismissRequest = {
-                    hideExeSelectionDialog(libraryItem.appId)
-                },
-                title = { Text(stringResource(R.string.custom_game_exe_selection_title)) },
-                text = {
-                    Text(text = stringResource(R.string.custom_game_exe_selection_message))
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            hideExeSelectionDialog(libraryItem.appId)
-                            // Open container settings dialog
-                            onEditContainer()
-                        }
-                    ) {
-                        Text(stringResource(R.string.custom_game_settings))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        hideExeSelectionDialog(libraryItem.appId)
-                    }) {
-                        Text(stringResource(R.string.close))
-                    }
-                }
-            )
         }
 
         // Delete confirmation dialog

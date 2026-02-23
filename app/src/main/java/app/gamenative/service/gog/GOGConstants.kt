@@ -41,6 +41,9 @@ object GOGConstants {
             "&response_type=code" +
             "&layout=galaxy"
 
+    /** GOG download language (short code as used in manifest depots, e.g. "en"). */
+    const val GOG_DOWNLOAD_LANGUAGE = "en"
+
     /**
      * Builds a full Galaxy OAuth login URL with a fresh state parameter for CSRF protection.
      * @return Pair of (full auth URL, state) – store state and validate it on redirect.

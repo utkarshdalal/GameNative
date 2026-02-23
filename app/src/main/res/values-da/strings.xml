@@ -81,6 +81,8 @@
     <string name="content_info">Indholdsinfo</string>
     <string name="game_not_installed_title">Spillet er ikke installeret</string>
     <string name="game_not_installed_message">%s er ikke installeret. Installér spillet før du starter det.</string>
+    <string name="game_executable_not_found_title">Kan ikke starte</string>
+    <string name="game_executable_not_found">Den eksekverbare fil kunne ikke vælges automatisk. Angiv stien til den eksekverbare fil i containerindstillinger.</string>
     <string name="save_container_settings_title">Gem containerkonfiguration?</string>
     <string name="save_container_settings_message">Midlertidige containerændringer blev brugt til denne start. Vil du gemme dem?</string>
     <string name="sync_error_title">Synkroniseringsfejl</string>
@@ -805,8 +807,6 @@
     <string name="custom_game_folder_picker_error">Kunne ikke løse mappesti</string>
     <string name="container_config_drive_letter_missing">Drevbogstav mangler</string>
     <string name="container_config_invalid_drive_path">Ugyldig drevsti</string>
-    <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
-    <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn venligst tilpassede spilindstillinger for at vælge hvilken der skal startes.</string>
     <string name="custom_game_settings">Tilpassede spilindstillinger</string>
     <string name="custom_game_delete_title">Slet spil</string>
     <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>

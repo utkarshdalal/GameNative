@@ -502,8 +502,13 @@ internal fun AppScreenContent(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                             contentPadding = PaddingValues(16.dp)
                         ) {
+                            val buttonText = if (ContainerUtils.extractGameSourceFromContainerId(displayInfo.appId) == app.gamenative.data.GameSource.CUSTOM_GAME) {
+                                stringResource(R.string.remove)
+                            } else {
+                                stringResource(R.string.uninstall)
+                            }
                             Text(
-                                text = stringResource(R.string.uninstall),
+                                text = buttonText,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
                         }

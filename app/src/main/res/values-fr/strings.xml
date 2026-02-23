@@ -100,8 +100,6 @@
     <string name="custom_game_folder_picker_error">Échec de la résolution du chemin du dossier</string>
     <string name="container_config_drive_letter_missing">La lettre du lecteur est manquante</string>
     <string name="container_config_invalid_drive_path">Chemin du lecteur invalide</string>
-    <string name="custom_game_exe_selection_title">Sélection d\'exécutable requise</string>
-    <string name="custom_game_exe_selection_message">Ce jeu possède plusieurs exécutables. Veuillez ouvrir les paramètres de jeu personnalisé pour sélectionner celui à lancer.</string>
     <string name="custom_game_settings">Paramètres du jeu personnalisé</string>
     <string name="custom_game_delete_title">Supprimer le jeu</string>
     <string name="custom_game_delete_message">Êtes-vous sûr de vouloir désinstaller %1$s ?</string>
@@ -144,6 +142,8 @@
     <string name="content_info">Informations sur le contenu</string>
     <string name="game_not_installed_title">Jeu non installé</string>
     <string name="game_not_installed_message">%s n\'est pas installé. Veuillez installer le jeu avant de le lancer.</string>
+    <string name="game_executable_not_found_title">Impossible de lancer</string>
+    <string name="game_executable_not_found">L\'exécutable n\'a pas pu être sélectionné automatiquement. Veuillez définir le chemin de l\'exécutable dans les paramètres du conteneur.</string>
     <string name="save_container_settings_title">Enregistrer la configuration du conteneur ?</string>
     <string name="save_container_settings_message">Des modifications temporaires de la configuration du conteneur ont été appliquées pour ce lancement. Voulez-vous les enregistrer ?</string>
     <string name="sync_error_title">Erreur de synchronisation</string>

@@ -99,8 +99,6 @@
     <string name="custom_game_folder_picker_error">無法解析文件夾路徑</string>
     <string name="container_config_drive_letter_missing">缺少磁碟機代號</string>
     <string name="container_config_invalid_drive_path">磁碟機路徑無效</string>
-    <string name="custom_game_exe_selection_title">需要選擇可執行程序</string>
-    <string name="custom_game_exe_selection_message">此遊戲有多個可執行文件, 請打開 自定義遊戲設置 以選擇要啟動的遊戲</string>
     <string name="custom_game_settings">自定義遊戲設置</string>
     <string name="custom_game_delete_title">刪除遊戲</string>
     <string name="custom_game_delete_message">您確定要卸載 %1$s 嗎?</string>
@@ -143,6 +141,8 @@
     <string name="content_info">內容信息</string>
     <string name="game_not_installed_title">遊戲未安裝</string>
     <string name="game_not_installed_message">%s 未安裝, 請在啟動前先安裝遊戲</string>
+    <string name="game_executable_not_found_title">無法啟動</string>
+    <string name="game_executable_not_found">無法自動選擇可執行檔。請在容器配置中指定可執行檔路徑。</string>
     <string name="save_container_settings_title">保存容器配置?</string>
     <string name="save_container_settings_message">此遊戲運行已應用修改的配置, 您想保存容器配置嗎?</string>
     <string name="sync_error_title">同步錯誤</string>

@@ -359,6 +359,14 @@ class EpicManager @Inject constructor(
         }
     }
 
+    /**
+     * Resolves the effective launch executable for an Epic game.
+     * Returns empty string if game is not installed or no executable can be found.
+     */
+    suspend fun getLaunchExecutable(appId: Int): String {
+        return getInstalledExe(appId)
+    }
+
     suspend fun getInstalledExe(appId: Int): String {
         // Strip EPIC_ prefix to get the raw Epic app name
         val game = getGameById(appId)

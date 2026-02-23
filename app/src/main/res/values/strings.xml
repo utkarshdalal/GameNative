@@ -109,8 +109,6 @@
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
     <string name="container_config_drive_letter_missing">Drive letter is missing</string>
     <string name="container_config_invalid_drive_path">Invalid drive path</string>
-    <string name="custom_game_exe_selection_title">Executable Selection Required</string>
-    <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
     <string name="custom_game_delete_message">Are you sure you want to uninstall %1$s?</string>
@@ -157,6 +155,8 @@
     <string name="content_info">Content Info</string>
     <string name="game_not_installed_title">Game Not Installed</string>
     <string name="game_not_installed_message">%s is not installed. Please install the game first before launching.</string>
+    <string name="game_executable_not_found_title">Cannot Launch</string>
+    <string name="game_executable_not_found">The executable could not be auto-selected. Please set the executable path in container settings.</string>
     <string name="save_container_settings_title">Save Container Configuration?</string>
     <string name="save_container_settings_message">Temporary container configuration changes were applied for this launch. Do you want to save them?</string>
     <string name="sync_error_title">Sync Error</string>
@@ -621,6 +621,8 @@
     <string name="settings_emulation_default_config_title">Modify Default Config</string>
     <string name="settings_emulation_default_config_subtitle">The initial container settings for each game (does not affect already installed games)</string>
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
+    <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
+    <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
     <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
     <string name="settings_emulation_driver_manager_title">Driver Manager</string>

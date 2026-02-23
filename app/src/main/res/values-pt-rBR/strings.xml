@@ -81,6 +81,8 @@
     <string name="content_info">Info de Conteúdo</string>
     <string name="game_not_installed_title">Jogo Não instalado</string>
     <string name="game_not_installed_message">%s não está instalado. Por favor instale o jogo primeiro antes de iniciar.</string>
+    <string name="game_executable_not_found_title">Não é possível iniciar</string>
+    <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>
     <string name="save_container_settings_message">Foram aplicadas alterações temporárias na configuração do contêiner para esta inicialização. Deseja salvá-las??</string>
     <string name="sync_error_title">Erro de Sincronização</string>
@@ -805,8 +807,6 @@
     <string name="custom_game_folder_picker_error">Falha ao resolver o caminho da pasta</string>
     <string name="container_config_drive_letter_missing">A letra da unidade está faltando</string>
     <string name="container_config_invalid_drive_path">Caminho da unidade inválido</string>
-    <string name="custom_game_exe_selection_title">Seleção de executável necessária</string>
-    <string name="custom_game_exe_selection_message">Este jogo tem vários executáveis. Por favor, abra as Configurações de jogo personalizado para selecionar qual iniciar.</string>
     <string name="custom_game_settings">Configurações de jogo personalizado</string>
     <string name="custom_game_delete_title">Excluir jogo</string>
     <string name="custom_game_delete_message">Tem certeza de que deseja excluir este jogo? Isso removerá os arquivos do jogo e todos os dados associados.</string>

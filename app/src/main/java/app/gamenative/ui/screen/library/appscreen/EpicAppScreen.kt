@@ -513,7 +513,7 @@ class EpicAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("Update clicked for Epic game: ${libraryItem.appId}")
     }
 
-    override fun getExportFileExtension(): String = ".epicgame"
+    override fun getExportFileExtension(): String = ".epic"
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
         Timber.tag(TAG).d("getInstallPath: appId=${libraryItem.appId}")

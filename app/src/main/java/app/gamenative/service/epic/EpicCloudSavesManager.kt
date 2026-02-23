@@ -5,22 +5,13 @@ import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.utils.Net
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.security.MessageDigest
 import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
-import kotlin.collections.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -95,15 +86,13 @@ object EpicCloudSavesManager {
                 return@withContext false
             }
 
-            val appName = game.appName
-
             // Check if game supports cloud saves
             if (!game.cloudSaveEnabled) {
                 Timber.tag("Epic").w("[Cloud Saves] Game does not support cloud saves: ${game.title}")
                 return@withContext false
             }
 
-            // 1. Validate and refresh access token if needed (global credentials)
+            // Get credentials and validate.
             val credentials = EpicAuthManager.getStoredCredentials(context)
             if (credentials.isFailure) {
                 Timber.tag("Epic").e("[Cloud Saves] Not logged in to Epic: ${credentials.exceptionOrNull()?.message}")
@@ -113,12 +102,12 @@ object EpicCloudSavesManager {
             val creds = credentials.getOrNull()!!
             Timber.tag("Epic").d("[Cloud Saves] Using account: ${creds.accountId} (${creds.displayName})")
 
-            // 2. Determine sync action
+            //  Determine sync action - Upload,Download, Conflict or none
             val action = determineSyncAction(context, creds.accountId, game, preferredAction)
 
             Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
 
-            // 3. Execute sync action
+            // Execute the action
             val result = when (action) {
                 SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
 
@@ -895,7 +884,7 @@ object EpicCloudSavesManager {
         }
     }
 
-    // Package save files into chunks and manifest (similar to Legendary's SaveGameHelper)
+    // Package save files into chunks and manifest
     private fun packageSaveFiles(
         saveDir: File,
         game: EpicGame,
@@ -936,6 +925,9 @@ object EpicCloudSavesManager {
 
             var chunkNum = 0
             var currentChunkData = mutableListOf<Byte>()
+            // currentChunkGuid tracks the single GUID shared by the current in-flight chunk's
+            // ChunkParts AND the ChunkInfo/chunk-file header — all three must be identical.
+            var currentChunkGuid = generateGuid()
             val chunkSize = 1024 * 1024 // 1 MB chunks
 
             // Process each file
@@ -965,17 +957,11 @@ object EpicCloudSavesManager {
                     while (fileOffset < fileData.size) {
                         // Check if we need to finalize current chunk
                         if (currentChunkData.size >= chunkSize) {
-                            val chunk = finalizeChunk(currentChunkData.toByteArray(), chunkNum++, packagedFiles)
+                            val chunk = finalizeChunk(currentChunkData.toByteArray(), currentChunkGuid, chunkNum++, packagedFiles)
                             chunks.add(chunk)
                             currentChunkData.clear()
-                        }
-
-                        // Generate or reuse GUID for current chunk
-                        val guid = if (currentChunkData.isEmpty()) {
-                            generateGuid()
-                        } else {
-                            // Reuse GUID from last chunk part
-                            fileManifest.chunkParts.lastOrNull()?.guid ?: generateGuid()
+                            // Fresh GUID for the next chunk
+                            currentChunkGuid = generateGuid()
                         }
 
                         val offset = currentChunkData.size
@@ -987,9 +973,10 @@ object EpicCloudSavesManager {
                         // Add data to current chunk
                         currentChunkData.addAll(fileData.sliceArray(fileOffset.toInt() until (fileOffset + remainingInChunk).toInt()).toList())
 
-                        // Create chunk part with all required parameters
+                        // Create chunk part — uses the same GUID as the ChunkInfo that will be
+                        // created by finalizeChunk() for this chunk buffer.
                         val chunkPart = app.gamenative.service.epic.manifest.ChunkPart(
-                            guid = guid,
+                            guid = currentChunkGuid,
                             offset = offset,
                             size = size,
                             fileOffset = partFileOffset,
@@ -1007,7 +994,7 @@ object EpicCloudSavesManager {
 
             // Finalize last chunk if it has data
             if (currentChunkData.isNotEmpty()) {
-                val chunk = finalizeChunk(currentChunkData.toByteArray(), chunkNum++, packagedFiles)
+                val chunk = finalizeChunk(currentChunkData.toByteArray(), currentChunkGuid, chunkNum++, packagedFiles)
                 chunks.add(chunk)
             }
 
@@ -1028,8 +1015,11 @@ object EpicCloudSavesManager {
     }
 
     // Finalize a chunk (compress and store)
+    // guid must be the same IntArray already assigned to all ChunkParts that reference this chunk,
+    // so that ChunkPart.guidStr == ChunkInfo.guidStr == the GUID in the chunk file header.
     private fun finalizeChunk(
         data: ByteArray,
+        guid: IntArray,
         chunkNum: Int,
         packagedFiles: MutableMap<String, ByteArray>,
     ): app.gamenative.service.epic.manifest.ChunkInfo {
@@ -1040,63 +1030,77 @@ object EpicCloudSavesManager {
             data
         }
 
-        // Compress chunk
-        val compressedData = compressChunk(paddedData)
-
-        // Calculate hashes
+        // Calculate hashes on the unpadded/padded data
         val shaHash = java.security.MessageDigest.getInstance("SHA-1").digest(paddedData)
         val rollingHash = calculateRollingHash(paddedData)
 
-        // Create chunk info
+        // Compute groupNum exactly as Legendary does:
+        // group_num = crc32(struct.pack('<IIII', *guid)) & 0xffffffff) % 100
+        val guidBytes = ByteArray(16)
+        val guidBuf = java.nio.ByteBuffer.wrap(guidBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        guid.forEach { guidBuf.putInt(it) }
+        val crc32 = java.util.zip.CRC32()
+        crc32.update(guidBytes)
+        val groupNum = (crc32.value % 100).toInt()
+
+        // Create chunk info with the caller-supplied GUID (same as the ChunkParts)
         val chunkInfo = app.gamenative.service.epic.manifest.ChunkInfo()
-        chunkInfo.guid = generateGuid()
+        chunkInfo.guid = guid
         chunkInfo.hash = rollingHash
         chunkInfo.shaHash = shaHash
+        chunkInfo.groupNum = groupNum
         chunkInfo.windowSize = paddedData.size
+
+        // Compress chunk — pass guid so the header GUID matches the CDL entry
+        val compressedData = compressChunk(paddedData, guid, rollingHash, shaHash)
         chunkInfo.fileSize = compressedData.size.toLong()
 
-        // Store chunk data
+        // Store chunk data under its canonical path
         val chunkPath = chunkInfo.getPath()
         packagedFiles[chunkPath] = compressedData
 
-        Timber.tag("Epic").d("[Cloud Saves] Finalized chunk #$chunkNum: ${chunkInfo.guidStr} (${compressedData.size} bytes)")
+        Timber.tag("Epic").d("[Cloud Saves] Finalized chunk #$chunkNum: ${chunkInfo.guidStr} groupNum=$groupNum (${compressedData.size} bytes)")
 
         return chunkInfo
     }
 
-    // Compress chunk data with proper header
-    private fun compressChunk(data: ByteArray): ByteArray {
-        val output = java.io.ByteArrayOutputStream()
-        val buffer = java.nio.ByteBuffer.allocate(1024 * 1024 + 1024).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-
-        // Compress data
+    // Compress chunk data with the Epic binary chunk header.
+    // 66-byte header:
+    //   magic(4) + version(4) + headerSize(4) + compressedSize(4)
+    //   + guid(16) + hash(8) + storedAs(1)
+    //   + shaHash(20) + hashType(1) + uncompressedSize(4)   ← header version 2+3 fields
+    //   = 66 bytes
+    // guid/rollingHash/shaHash must already be computed by the caller (finalizeChunk) so that
+    // the values written into the header are identical to what is stored in the CDL entry.
+    internal fun compressChunk(data: ByteArray, guid: IntArray, rollingHash: ULong, shaHash: ByteArray): ByteArray {
+        // Compress payload
         val compressed = java.io.ByteArrayOutputStream()
         java.util.zip.DeflaterOutputStream(compressed).use { it.write(data) }
         val compressedData = compressed.toByteArray()
 
-        // Write header
-        buffer.putInt(0xB1FE3AA2.toInt()) // magic
-        buffer.putInt(3) // version
-        buffer.putInt(0) // header size (calculated later)
-        buffer.putInt(compressedData.size) // compressed size
+        // hardcode headersize to 66 as required
+        val headerSize = 66
+        val buffer = java.nio.ByteBuffer.allocate(headerSize + compressedData.size)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN)
 
-        val guid = generateGuid()
+        buffer.putInt(0xB1FE3AA2.toInt())   // magic
+        buffer.putInt(3)                     // header_version (we always write v3)
+        buffer.putInt(headerSize)            // header_size = 66 (hardcoded, not back-filled)
+        buffer.putInt(compressedData.size)   // compressed_size
+
+        // GUID — must match ChunkInfo.guid and every ChunkPart.guid referencing this chunk
         guid.forEach { buffer.putInt(it) }
 
-        val hash = calculateRollingHash(data)
-        buffer.putLong(hash.toLong())
+        // Rolling hash — must match ChunkInfo.hash
+        buffer.putLong(rollingHash.toLong())
 
-        buffer.put(0x1.toByte()) // stored_as (compressed)
-        buffer.put(0x3.toByte()) // hash_type (both hashes)
+        buffer.put(0x1.toByte())             // stored_as = compressed
+        // Header version 2: sha_hash + hash_type
+        buffer.put(shaHash)                  // SHA-1 of uncompressed data (20 bytes)
+        buffer.put(0x3.toByte())             // hash_type = 0x3 (both rolling + sha)
+        // Header version 3: uncompressed_size
+        buffer.putInt(data.size)             // uncompressed_size (1 MiB for full chunks)
 
-        val shaHash = java.security.MessageDigest.getInstance("SHA-1").digest(data)
-        buffer.put(shaHash)
-
-        // Update header size
-        val headerSize = buffer.position()
-        buffer.putInt(8, headerSize)
-
-        // Add compressed data
         buffer.put(compressedData)
 
         return buffer.array().copyOf(buffer.position())
@@ -1108,13 +1112,36 @@ object EpicCloudSavesManager {
         return IntArray(4) { random.nextInt() }
     }
 
-    // Calculate rolling hash (simplified version)
-    private fun calculateRollingHash(data: ByteArray): ULong {
-        var hash = 0uL
-        data.forEach { byte ->
-            hash = (hash * 31uL + byte.toUByte().toULong()) and 0xFFFFFFFFFFFFFFFFuL
+    /**
+     * CRC-64-ECMA variant lookup table
+     * Polynomial: 0xC96C5795D7870F42
+     * Table built identically to Legendary's _init():
+     *   for i in 0..255:
+     *     for _ in 0..7: if i&1 -> i = (i>>1) ^ poly  else i >>= 1
+     */
+    private val ROLLING_HASH_TABLE: LongArray = run {
+        val poly = 0xC96C5795D7870F42uL
+        LongArray(256) { seed ->
+            var v = seed.toULong()
+            repeat(8) {
+                v = if ((v and 1uL) != 0uL) (v shr 1) xor poly else v shr 1
+            }
+            v.toLong()
         }
-        return hash
+    }
+
+    /**
+     * Epic Games rolling hash — exact port of Legendary's get_hash() in rolling_hash.py:
+     *   h = 0
+     *   for each byte i: h = ((h << 1 | h >> 63) ^ table[data[i]]) & 0xffffffffffffffff
+     */
+    internal fun calculateRollingHash(data: ByteArray): ULong {
+        var h = 0uL
+        for (byte in data) {
+            val tableVal = ROLLING_HASH_TABLE[byte.toInt() and 0xFF].toULong()
+            h = ((h shl 1) or (h shr 63)) xor tableVal
+        }
+        return h
     }
 
     // Create manifest
@@ -1152,15 +1179,14 @@ object EpicCloudSavesManager {
         val cloudSaveFolder = game.saveFolder.ifEmpty { return null }
 
         // Get the container's Wine prefix path (similar to GOG)
-        val appId = "EPIC_${game.appName}"
+        val appId = "EPIC_${game.id}"
         val container = app.gamenative.utils.ContainerUtils.getOrCreateContainer(context, appId)
         val winePrefix = File(container.rootDir, ".wine").absolutePath
         val user = "xuser"
 
         Timber.tag("Epic").d("[Cloud Saves] Using Wine prefix: $winePrefix")
 
-        // Resolve path variables like Legendary does
-        // Reference: legendary/core.py get_save_path()
+        // Resolve path variables used by Epic Games (case-insensitive)
         val pathVars = mutableMapOf<String, String>(
             "{epicid}" to accountId,
             "{installdir}" to (game.installPath.ifEmpty { EpicConstants.getGameInstallPath(context, game.appName) }),
@@ -1181,11 +1207,12 @@ object EpicCloudSavesManager {
 
         val appDataPath = File(winePrefix, "drive_c/users/$user/$appDataDir/Local").absolutePath
         val appDataRoamingPath = File(winePrefix, "drive_c/users/$user/$appDataDir/Roaming").absolutePath
-        val localLowPath = File(winePrefix, "drive_c/users/$user/$appDataDir/LocalLow").absolutePath
         val documentsPath = File(winePrefix, "drive_c/users/$user/Documents").absolutePath
         val savedGamesPath = File(winePrefix, "drive_c/users/$user/Saved Games").absolutePath
 
         pathVars["{appdata}"] = appDataPath
+        pathVars["{localappdata}"] = appDataPath       // Windows %LocalAppData% — same as AppData/Local
+        pathVars["{roamingappdata}"] = appDataRoamingPath // Windows %AppData% (Roaming)
         pathVars["{userdir}"] = documentsPath
         pathVars["{usersavedgames}"] = savedGamesPath
         pathVars["{userprofile}"] = File(winePrefix, "drive_c/users/$user").absolutePath
@@ -1305,14 +1332,21 @@ object EpicCloudSavesManager {
     }
 
     /**
-     * Decompress chunk data similar to Legendary's Chunk.read_buffer
-     * Chunk format: magic (4 bytes) + header + compressed data
+     * Decompress a binary chunk file — matches Legendary's Chunk.read() + Chunk.data property.
+     *
+     * Header layout (little-endian):
+     *   magic(4) + headerVersion(4) + headerSize(4) + compressedSize(4)
+     *   + guid(16) + hash(8) + storedAs(1)
+     *   [v2+] + shaHash(20) + hashType(1)
+     *   [v3+] + uncompressedSize(4)
+     *   Total for v3 = 66 bytes
+     *
+     * The payload starts at offset headerSize (not computed — read from the header).
      */
-    private fun decompressChunk(chunkBytes: ByteArray): ByteArray {
+    internal fun decompressChunk(chunkBytes: ByteArray): ByteArray {
         return try {
             val buffer = java.nio.ByteBuffer.wrap(chunkBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
 
-            // Read chunk header
             val magic = buffer.int
             if (magic != 0xB1FE3AA2.toInt()) {
                 Timber.tag("Epic").w("[Cloud Saves] Invalid chunk magic: ${"%08X".format(magic)}, trying direct decompress")
@@ -1320,35 +1354,33 @@ object EpicCloudSavesManager {
             }
 
             val headerVersion = buffer.int
-            val headerSize = buffer.int
+            val headerSize = buffer.int       // payload starts at this offset from file start
             val compressedSize = buffer.int
 
-            // Skip GUID (16 bytes) and hash (8 bytes)
+            // guid(16) + hash(8)
             buffer.position(buffer.position() + 24)
 
-            // Read stored_as flag to determine if compressed
             val storedAs = buffer.get().toInt()
             val isCompressed = (storedAs and 0x1) != 0
 
-            // Skip hash type and SHA hash (21 bytes total for the flag + hash)
-            buffer.position(buffer.position() + 20)
+            // v2: shaHash(20) + hashType(1) = 21 bytes
+            if (headerVersion >= 2) buffer.position(buffer.position() + 21)
+            // v3: uncompressedSize(4)
+            if (headerVersion >= 3) buffer.position(buffer.position() + 4)
 
-            // Get remaining data
-            val dataStart = buffer.position()
-            val dataSize = chunkBytes.size - dataStart
-            val data = ByteArray(dataSize)
+            // Seek to headerSize regardless, in case of unknown future header fields
+            buffer.position(headerSize)
+
+            val data = ByteArray(chunkBytes.size - headerSize)
             buffer.get(data)
 
-            // Decompress if needed
             if (isCompressed) {
                 try {
                     java.io.ByteArrayInputStream(data).use { inputStream ->
-                        java.util.zip.InflaterInputStream(inputStream).use { inflater ->
-                            inflater.readBytes()
-                        }
+                        java.util.zip.InflaterInputStream(inputStream).use { it.readBytes() }
                     }
                 } catch (e: Exception) {
-                    Timber.tag("Epic").w(e, "[Cloud Saves] Failed to decompress chunk data, using raw data")
+                    Timber.tag("Epic").w(e, "[Cloud Saves] Failed to inflate chunk, returning raw payload")
                     data
                 }
             } else {
@@ -1356,7 +1388,8 @@ object EpicCloudSavesManager {
             }
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse chunk header, trying direct decompress")
-            return decompressIfNeeded(chunkBytes)
+            decompressIfNeeded(chunkBytes)
         }
     }
+
 }
