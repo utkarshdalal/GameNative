@@ -8,6 +8,8 @@ import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import org.json.JSONArray
 import org.json.JSONObject
@@ -376,6 +378,10 @@ class GOGDownloadManager @Inject constructor(
             // Step 8: Download chunks
             Timber.tag("GOG").i("Downoading Chunks for game $gameId")
 
+            // Mark download as in-progress so UI and install checks can detect partial installs
+            installPath.mkdirs()
+            MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+
             downloadInfo.updateStatusMessage("Downloading chunks...")
 
             val chunkCacheDir = File(installPath, ".gog_chunks")
@@ -391,6 +397,7 @@ class GOGDownloadManager @Inject constructor(
             )
 
             if (downloadResult.isFailure) {
+                MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext downloadResult
             }
 
@@ -402,6 +409,7 @@ class GOGDownloadManager @Inject constructor(
 
             val assembleResult = assembleFiles(gameFiles, chunkCacheDir, gameInstallDir, downloadInfo)
             if (assembleResult.isFailure) {
+                MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext assembleResult
             }
 
@@ -436,6 +444,9 @@ class GOGDownloadManager @Inject constructor(
             app.gamenative.PluviaApp.events.emitJava(
                 app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
             )
+
+            // Ensure in-progress marker is cleared on failure
+            MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
             Result.failure(e)
         }
@@ -504,6 +515,8 @@ class GOGDownloadManager @Inject constructor(
         downloadInfo.setProgress(1.0f)
         downloadInfo.setActive(false)
         downloadInfo.emitProgressChange()
+        MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+        MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
         app.gamenative.PluviaApp.events.emitJava(
             app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
         )

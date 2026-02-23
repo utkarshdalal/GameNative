@@ -466,6 +466,7 @@ class GOGManager @Inject constructor(
                 val gameId = libraryItem.gameId.toString()
                 val installPath = getGameInstallPath(gameId, libraryItem.name)
                 val installDir = File(installPath)
+                val wasInstalled = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
 
                 // Delete the manifest file
                 val manifestPath = File(context.filesDir, "manifests/$gameId")
@@ -481,25 +482,24 @@ class GOGManager @Inject constructor(
                         Timber.i("Successfully deleted game directory: $installPath")
                     } else {
                         Timber.w("Failed to delete some game files")
+                        return@withContext Result.failure(Exception("Failed to fully delete at $installPath"))
                     }
                 } else {
                     Timber.w("GOG game directory doesn't exist: $installPath")
                 }
 
-                // Remove all markers
-                val appDirPath = getAppDirPath(libraryItem.appId)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
-                // Update database - mark as not installed
-                val game = getGameFromDbById(gameId)
-                if (game != null) {
-                    val updatedGame = game.copy(isInstalled = false, installPath = "")
-                    gogGameDao.update(updatedGame)
-                    Timber.d("Updated database: game marked as not installed")
+                if (wasInstalled) {
+                    val game = getGameFromDbById(gameId)
+                    if (game != null) {
+                        val updatedGame = game.copy(isInstalled = false, installPath = "")
+                        gogGameDao.update(updatedGame)
+                        Timber.d("Updated database: game marked as not installed")
+                    }
                 }
 
-                // Delete container (must run on Main thread)
                 withContext(Dispatchers.Main) {
                     ContainerUtils.deleteContainer(context, libraryItem.appId)
                 }

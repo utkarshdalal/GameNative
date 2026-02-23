@@ -305,7 +305,7 @@ class GOGService : Service() {
             instance.activeDownloads[gameId] = downloadInfo
 
             // Launch download in service scope so it runs independently
-            instance.scope.launch {
+            val job = instance.scope.launch {
                 try {
                     Timber.d("[Download] Starting download for game $gameId")
                     val commonRedistDir = File(installPath, "_CommonRedist")
@@ -364,6 +364,7 @@ class GOGService : Service() {
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
+            downloadInfo.setDownloadJob(job)
 
             return Result.success(downloadInfo)
         }
