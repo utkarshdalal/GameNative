@@ -15,17 +15,17 @@ import timber.log.Timber
 object GameFixesRegistry {
     private const val GAME_DRIVE_LETTER = "A"
 
-    private val fixes: Map<Pair<GameSource, String>, GameFix> = mapOf(
-        GameSource.GOG to "1454315831" to GOG_Fix_1454315831,
-        GameSource.GOG to "1454587428" to GOG_Fix_1454587428,
-        GameSource.GOG to "1458058109" to GOG_Fix_1458058109,
-        GameSource.STEAM to "22300" to STEAM_Fix_22300,
-        GameSource.STEAM to "22380" to STEAM_Fix_22380,
-        GameSource.STEAM to "22330" to STEAM_Fix_22330,
-        GameSource.EPIC to "b1b4e0b67a044575820cb5e63028dcae" to EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
-        GameSource.EPIC to "dabb52e328834da7bbe99691e374cb84" to EPIC_Fix_dabb52e328834da7bbe99691e374cb84,
-        GameSource.EPIC to "59a0c86d02da42e8ba6444cb171e61bf" to EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
-    )
+    private val fixes: Map<Pair<GameSource, String>, GameFix> = listOf(
+        GOG_Fix_1454315831,
+        GOG_Fix_1454587428,
+        GOG_Fix_1458058109,
+        STEAM_Fix_22300,
+        STEAM_Fix_22380,
+        STEAM_Fix_22330,
+        EPIC_Fix_b1b4e0b67a044575820cb5e63028dcae,
+        EPIC_Fix_dabb52e328834da7bbe99691e374cb84,
+        EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
+    ).associateBy { it.gameSource to it.gameId }
 
     fun applyFor(context: Context, appId: String) {
         val source = ContainerUtils.extractGameSourceFromContainerId(appId)

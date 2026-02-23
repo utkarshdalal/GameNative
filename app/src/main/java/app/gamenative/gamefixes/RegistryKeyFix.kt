@@ -1,6 +1,7 @@
 package app.gamenative.gamefixes
 
 import android.content.Context
+import app.gamenative.data.GameSource
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import timber.log.Timber
@@ -46,3 +47,10 @@ class RegistryKeyFix(
         }
     }
 }
+
+class KeyedRegistryKeyFix(
+    override val gameSource: GameSource,
+    override val gameId: String,
+    registryKey: String,
+    defaultValues: Map<String, String>,
+) : KeyedGameFix, GameFix by RegistryKeyFix(registryKey, defaultValues)
