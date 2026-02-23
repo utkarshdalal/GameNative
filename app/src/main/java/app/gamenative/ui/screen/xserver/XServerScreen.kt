@@ -2096,7 +2096,8 @@ private fun getWineStartCommand(
             bootToContainer = bootToContainer,
             appLaunchInfo = appLaunchInfo,
             envVars = envVars,
-            guestProgramLauncherComponent = guestProgramLauncherComponent
+            guestProgramLauncherComponent = guestProgramLauncherComponent,
+            gameId = gameId,
         )
 
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
@@ -2105,7 +2106,7 @@ private fun getWineStartCommand(
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
         val game = runBlocking {
-            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+            EpicService.getInstance()?.epicManager?.getGameById(gameId)
         }
 
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {

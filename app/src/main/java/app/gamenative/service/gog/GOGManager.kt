@@ -700,9 +700,8 @@ class GOGManager @Inject constructor(
         appLaunchInfo: LaunchInfo?,
         envVars: EnvVars,
         guestProgramLauncherComponent: GuestProgramLauncherComponent,
+        gameId: Int,
     ): String {
-        val gameId = ContainerUtils.extractGameIdFromContainerId(libraryItem.appId)
-
         // Verify installation
         val (isValid, errorMessage) = verifyInstallation(gameId.toString())
         if (!isValid) {

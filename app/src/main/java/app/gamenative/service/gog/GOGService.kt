@@ -276,9 +276,10 @@ class GOGService : Service() {
             appLaunchInfo: LaunchInfo?,
             envVars: com.winlator.core.envvars.EnvVars,
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
+            gameId: Int,
         ): String {
             return getInstance()?.gogManager?.getGogWineStartCommand(
-                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
+                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent, gameId,
             ) ?: "\"explorer.exe\""
         }
 
