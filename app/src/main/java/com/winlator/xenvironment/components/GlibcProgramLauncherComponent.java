@@ -75,7 +75,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("GlibcProgramLauncherComponent", "Process " + pid + " started");
-            SteamService.setGameRunning(true);
+            SteamService.setKeepAlive(true);
         }
     }
 
@@ -91,7 +91,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
                 }
-                SteamService.setGameRunning(false);
+                SteamService.setKeepAlive(false);
             }
             execShellCommand("wineserver -k");
         }
@@ -216,7 +216,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             synchronized (lock) {
                 pid = -1;
             }
-            SteamService.setGameRunning(false);
+            SteamService.setKeepAlive(false);
             if (terminationCallback != null) terminationCallback.call(status);
         });
     }
@@ -261,6 +261,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     }
 
     public String execShellCommand(String command) {
+        return execShellCommand(command, true);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -306,14 +310,17 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
             }
-            while ((line = errorReader.readLine()) != null) {
-                output.append(line).append("\n");
+            if (includeStderr) {
+                while ((line = errorReader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
             }
             process.waitFor();
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }
 
-        return output.toString();
+        // Format output: trim trailing whitespace/newlines
+        return output.toString().trim();
     }
 }

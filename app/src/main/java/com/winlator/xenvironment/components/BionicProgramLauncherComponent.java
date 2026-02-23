@@ -98,7 +98,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
-            SteamService.setGameRunning(true);
+            SteamService.setKeepAlive(true);
         }
     }
 
@@ -112,7 +112,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
                 }
-                SteamService.setGameRunning(false);
+                SteamService.setKeepAlive(false);
             }
             execShellCommand("wineserver -k");
         }
@@ -341,7 +341,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 pid = -1;
             }
             if (!environment.isWinetricksRunning()) {
-                SteamService.setGameRunning(false);
+                SteamService.setKeepAlive(false);
                 if (terminationCallback != null)
                     terminationCallback.call(status);
             }
@@ -405,21 +405,24 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("Extraction", "fexcoreVersion in use: " + fexcoreVersion);
 
         ContentProfile wowboxprofile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
-        if (wowboxprofile != null)
+        if (wowboxprofile != null) {
             contentsManager.applyContent(wowboxprofile);
-        else
+        } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+        }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
 
         ContentProfile fexprofile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
-        if (fexprofile != null)
+        if (fexprofile != null) {
             contentsManager.applyContent(fexprofile);
-        else
+        } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+        }
         container.putExtra("fexcoreVersion", fexcoreVersion);
+
         containerDataChanged = true;
         if (containerDataChanged) container.saveData();
     }
@@ -442,6 +445,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public String execShellCommand(String command) {
+        return execShellCommand(command, true);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -497,15 +504,18 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
             }
-            while ((line = errorReader.readLine()) != null) {
-                output.append(line).append("\n");
+            if (includeStderr) {
+                while ((line = errorReader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
             }
             process.waitFor();
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }
 
-        return output.toString();
+        // Format output: trim trailing whitespace/newlines
+        return output.toString().trim();
     }
 
     public void restartWineServer() {

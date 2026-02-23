@@ -13,6 +13,7 @@
     <string name="steam_2fa_device">请输入您验证器应用中的双重验证码</string>
     <string name="steam_2fa_email">请输入发送至邮箱 %s 的验证码</string>
     <string name="steam_install_space_prompt">要安装的应用有以下空间要求：\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
+    <string name="steam_install_space">下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_install_not_enough_space">要安装的应用需要 %1$s 空间，但设备仅剩 %2$s 可用空间</string>
     <string name="steam_cancel_download_message">确定要取消下载此应用吗？</string>
     <string name="steam_delete_download_message">删除此游戏的所有已下载数据？</string>
@@ -44,6 +45,14 @@
     <string name="gog_install_game_title">下载游戏</string>
     <string name="gog_install_confirmation_message">正在安装的应用程式有以下空间需求:\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
     <string name="steam_never">从不</string>
+    <string name="epic_cancel_download_message">确定要取消下载应用程序吗？</string>
+    <string name="epic_delete_download_message">删除此游戏的所有已下载数据？</string>
+    <string name="epic_cloud_sync_starting">正在开始云存档同步…</string>
+    <string name="epic_cloud_sync_success">云存档同步成功</string>
+    <string name="epic_cloud_sync_failed">云存档同步失败</string>
+    <string name="epic_cloud_sync_error">云存档同步错误：%1$s</string>
+    <string name="epic_uninstall_failed">卸载失败：%1$s</string>
+    <string name="epic_uninstall_error">卸载错误：%1$s</string>
     <string name="steam_continue">继续</string>
     <string name="header_img_desc">应用头图</string>
     <string name="download">下载</string>
@@ -88,8 +97,8 @@
     <string name="custom_games_folders_found">找到 %d 个文件夹</string>
     <string name="custom_games_scan_description">将扫描这些路径中文件夹内的 .exe 文件并将其列为自定义游戏，可能会减慢应用启动速度</string>
     <string name="custom_game_folder_picker_error">无法解析文件夹路径</string>
-    <string name="custom_game_exe_selection_title">需要选择可执行文件</string>
-    <string name="custom_game_exe_selection_message">此游戏有多个可执行文件，请打开 自定义游戏设置 以选择要启动的游戏</string>
+    <string name="container_config_drive_letter_missing">缺少驱动器字母</string>
+    <string name="container_config_invalid_drive_path">驱动器路径无效</string>
     <string name="custom_game_settings">自定义游戏设置</string>
     <string name="custom_game_delete_title">删除游戏</string>
     <string name="custom_game_delete_message">确定要卸载 %1$s 吗？</string>
@@ -102,6 +111,8 @@
     <string name="compatibility">兼容性</string>
     <string name="intermediate">平衡</string>
     <string name="performance">高性能</string>
+    <string name="denuvo">Denuvo</string>
+    <string name="extreme">极致</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
@@ -130,11 +141,13 @@
     <string name="content_info">内容信息</string>
     <string name="game_not_installed_title">游戏未安装</string>
     <string name="game_not_installed_message">%s 未安装，请在启动前先安装游戏</string>
+    <string name="game_executable_not_found_title">无法启动</string>
+    <string name="game_executable_not_found">无法自动选择可执行文件。请在容器设置中指定可执行文件路径。</string>
     <string name="save_container_settings_title">保存容器配置？</string>
     <string name="save_container_settings_message">此游戏运行已应用修改的配置，是否保存容器配置？</string>
     <string name="sync_error_title">同步错误</string>
     <string name="save">保存</string>
-    <string name="discard">取消</string>
+    <string name="discard">放弃更改</string>
     <string name="shortcuts">快捷方式</string>
     <string name="containers">容器</string>
     <string name="box64_rc_file">Box64 RCFile</string>
@@ -458,6 +471,8 @@
 
     <!-- 容器配置：Steam 集成 -->
     <string name="use_legacy_drm">使用旧版 DRM</string>
+    <string name="unpack_files">解压文件</string>
+    <string name="unpack_files_description">仅在出现\'应用程序加载错误\'时使用。可能会降低帧率。</string>
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
@@ -507,12 +522,21 @@
 
     <!-- 容器配置：输入 -->
     <string name="use_sdl_api">使用 SDL API</string>
+    <string name="use_steam_input">使用 Steam Input</string>
     <string name="enable_xinput_api">启用 XInput API</string>
     <string name="enable_directinput_api">启用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput 映射器类型</string>
     <string name="disable_mouse_input">禁用鼠标输入</string>
     <string name="touchscreen_mode">触屏模式</string>
     <string name="touchscreen_mode_description">直接触控到光标移动（开启） vs 触摸板式相对移动（关闭）</string>
+    <string name="external_display_input">外接显示器输入</string>
+    <string name="external_display_input_subtitle">选择已连接的演示显示器的行为方式</string>
+    <string name="external_display_mode_off">不使用外接显示器</string>
+    <string name="external_display_mode_touchpad">用作触摸板表面</string>
+    <string name="external_display_mode_keyboard">用作完整键盘</string>
+    <string name="external_display_mode_hybrid">混合（触摸板 + 键盘按钮）</string>
+    <string name="external_display_swap">在外接显示器上显示游戏</string>
+    <string name="external_display_swap_subtitle">交换屏幕，使游戏在外接显示器上渲染，此设备成为控制表面</string>
     <string name="start_with_controls_hidden">开始时隐藏屏幕控制器</string>
     <string name="start_with_controls_hidden_description">游戏开始时屏幕控制器将被隐藏。可通过导航菜单切换。</string>
     <string name="emulate_keyboard_mouse">模拟键盘与鼠标</string>
@@ -531,6 +555,9 @@
     <string name="environment_variables">环境变量</string>
     <string name="no_environment_variables">没有环境变量</string>
     <string name="no_drives">未挂载任何存储设备</string>
+    <string name="add_drive">添加驱动器</string>
+    <string name="drive_letter">驱动器盘符</string>
+    <string name="no_available_drive_letters">没有可用的驱动器盘符</string>
     <string name="startup_selection">启动选项</string>
     <string name="processor_affinity_32bit">处理器关联性（32 位应用程序）</string>
     <string name="executable_path">执行路径</string>
@@ -644,6 +671,7 @@
     <string name="login_qr_failed">QR 码扫描失败</string>
     <string name="login_retry_qr">重试 QR 码扫描</string>
     <string name="login_qr_instructions">打开 Steam 移动应用程序，扫描此 QR 码即可立即登录</string>
+    <string name="login_skip_steam">跳过 Steam 登录</string>
 
     <!-- 通用/可复用字符串 -->
     <string name="continue_action">继续</string>
@@ -726,6 +754,9 @@
     <!-- 主界面：同步错误 -->
     <string name="main_sync_in_progress_retry">同步操作耗时过久，请稍后重新启动游戏</string>
     <string name="main_sync_in_progress">同步目前正在进行中，请稍后再试</string>
+    <string name="main_sync_in_progress_launch_anyway_message">该游戏的云存档同步正在进行。你可以等待后重试，或继续启动但不进行同步（可能导致存档冲突）。</string>
+    <string name="main_launch_anyway">仍然启动</string>
+    <string name="main_wait">等待</string>
     <string name="main_sync_failed">同步存档失败：%s</string>
 
     <!-- 主界面：待处理操作 -->
@@ -790,10 +821,13 @@
     <string name="best_config_compatibility_unknown">没有已知配置</string>
 
     <!-- 最佳配置提示消息 -->
-    <string name="best_config_applied_successfully">最佳配置已成功应用</string>
+    <string name="best_config_applied_successfully">配置已成功应用</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
+    <string name="best_config_missing_content">%s 缺失</string>
+    <string name="import_config">导入配置</string>
+    <string name="export_config">导出配置</string>
 
     <string name="library_app_type">应用程序类型</string>
     <string name="library_app_status">应用程序状态</string>
@@ -925,30 +959,14 @@
     <string name="wine_proton_containers_in_use">使用此版本的容器：</string>
     <string name="wine_proton_no_containers_warning">目前没有容器使用此版本</string>
     <string name="wine_proton_containers_will_break">若您继续操作，这些容器将无法继续运行：</string>
+    <string name="auth_webview_title">授权</string>
 
-    <!-- GOG Settings -->
+    <!-- GOG Integration -->
     <string name="gog_integration_title">GOG 集成 (Alpha)</string>
-    <string name="gog_settings_login_title">GOG 登录</string>
+    <string name="gog_settings_login_title">登录</string>
     <string name="gog_settings_login_subtitle">登录到您的 GOG 账户</string>
-    <string name="gog_settings_sync_subtitle_syncing">同步中…</string>
-    <string name="gog_settings_sync_subtitle_error">错误: %1$s</string>
-    <string name="gog_settings_sync_subtitle_success">✓ 已同步 %1$d 个游戏</string>
-    <string name="gog_settings_sync_subtitle_default">获取您的 GOG 游戏库</string>
     <string name="gog_login_success_title">登录成功</string>
-    <string name="gog_login_success_message">您现已登录到 GOG。\n我们将在后台同步您的游戏库。</string>
-
-    <!-- GOG Login Dialog -->
-    <string name="gog_login_title">登录到 GOG</string>
-    <string name="gog_login_auto_auth_info">点击\'打开 GOG 登录\'并登录。登录后, 请复制 URL 并粘贴到下方</string>
-    <string name="gog_login_auth_example">示例: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
-    <string name="gog_login_open_button">打开 GOG 登录</string>
-    <string name="gog_login_auth_code_label">授权码或登录成功 URL</string>
-    <string name="gog_login_auth_code_placeholder">在此粘贴代码或 url</string>
-    <string name="gog_login_button">登录</string>
     <string name="gog_login_cancel">取消</string>
-    <string name="gog_login_browser_error">无法打开浏览器</string>
-
-    <!-- GOG Logout -->
     <string name="gog_settings_logout_title">注销</string>
     <string name="gog_settings_logout_subtitle">从您的 GOG 账户登出</string>
     <string name="gog_logout_confirm_title">从 GOG 注销?</string>
@@ -957,4 +975,37 @@
     <string name="gog_logout_success">成功从 GOG 注销</string>
     <string name="gog_logout_failed">注销失败: %s</string>
     <string name="gog_logout_in_progress">正在从 GOG 注销…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games 集成</string>
+    <string name="epic_settings_login_title">登录</string>
+    <string name="epic_settings_login_subtitle">登录到您的 Epic Games 账户</string>
+    <string name="epic_login_success_title">登录成功</string>
+    <string name="epic_login_cancel">取消</string>
+    <string name="epic_settings_logout_title">注销</string>
+    <string name="epic_settings_logout_subtitle">从您的 Epic Games 账户登出</string>
+    <string name="epic_logout_confirm_title">从 Epic Games 注销？</string>
+    <string name="epic_logout_confirm_message">这将删除您的 Epic Games 凭据并清除此设备上的 Epic Games 库。您可以随时重新登录。</string>
+    <string name="epic_logout_confirm">注销</string>
+    <string name="epic_logout_success">已成功从 Epic Games 注销</string>
+    <string name="epic_logout_failed">注销失败：%s</string>
+    <string name="epic_logout_in_progress">正在从 Epic Games 注销…</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">卸载游戏</string>
+    <string name="epic_uninstall_game_message">您确定要卸载 %1$s 吗？此操作无法撤回。</string>
+    <string name="epic_install_game_title">下载游戏</string>
+    <string name="epic_install_game_message">正在安装的应用程序有以下空间需求。是否继续？\n\n\t下载大小: %1$s\n\t磁盘大小: %2$s\n\t可用空间: %3$s</string>
+    <string name="epic_game_not_found">找不到游戏</string>
+    <string name="epic_starting_download">开始下载: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">开始下载: %1$s + DLC</string>
+    <string name="epic_download_failed">无法开始下载: %1$s</string>
+    <string name="epic_download_error">下载错误: %1$s</string>
+    <string name="manifest_downloading_item">正在下载 %1$s…</string>
+    <string name="manifest_download_failed">下载失败：%1$s</string>
+    <string name="manifest_install_failed">安装 %1$s 失败</string>
+    <string name="manifest_install_success">%1$s 已安装</string>
+    <string name="manifest_content_untrusted">内容不可信，未安装。</string>
+    <string name="manifest_type_mismatch">下载的内容与预期类型不匹配。</string>
+    <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
 </resources>

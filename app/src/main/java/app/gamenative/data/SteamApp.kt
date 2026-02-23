@@ -142,7 +142,6 @@ data class SteamApp(
     @ColumnInfo("ufs")
     val ufs: UFS = UFS(),
 ) {
-
     val logoUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$logoHash.jpg"
     val logoSmallUrl: String
@@ -153,6 +152,8 @@ data class SteamApp(
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$clientIconHash.ico"
     val clientTgaUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$clientTgaHash.tga"
+    val headerUrl: String
+        get() = "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/header.jpg"
 
     // source: https://github.com/Nemirtingas/games-infos/blob/3915100198bac34553b3c862f9e295d277f5520a/steam_retriever/Program.cs#L589C43-L589C89
     fun getSmallCapsuleUrl(language: Language = Language.english): String? {
@@ -167,38 +168,54 @@ data class SteamApp(
         }
     }
 
-    fun getCapsuleUrl(language: Language = Language.english, large: Boolean = false): String? {
-        return if (large) {
-            libraryAssets.libraryCapsule.image2x[language]?.let {
-                "https://cdn.akamai.steamstatic.com/steam/apps/$id/$it"
-            }
+    private fun getFallbackUrl(images: Map<Language, String>, language: Language): String? {
+        return if (images.contains(language)) {
+            images[language]
+        } else if (!images.isEmpty()) {
+            // Fallback to another image in the images map
+            images.values.first()
+        } else if (headerImage.contains(language)) {
+            // Fallback to headerImages instead
+            headerImage[language]
+        } else if (!headerImage.isEmpty()) {
+            // Fallback to another image in the headerImage map
+            headerImage.values.first()
         } else {
-            libraryAssets.libraryCapsule.image[language]?.let {
-                "https://cdn.akamai.steamstatic.com/steam/apps/$id/$it"
-            }
+            // No valid hero image
+            ""
         }
     }
 
-    fun getHeroUrl(language: Language = Language.english, large: Boolean = false): String? {
-        return if (large) {
-            libraryAssets.libraryHero.image2x[language]?.let {
-                "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$id/$it"
-            }
+    fun getCapsuleUrl(language: Language = Language.english, large: Boolean = false): String {
+        val capsules = if (large) {
+            libraryAssets.libraryCapsule.image2x
         } else {
-            libraryAssets.libraryHero.image[language]?.let {
-                "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$id/$it"
-            }
+            libraryAssets.libraryCapsule.image
         }
+
+        val imageLink = this.getFallbackUrl(capsules, language)
+        return if (imageLink.isNullOrEmpty()) "" else "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/$imageLink"
+    }
+
+    fun getHeroUrl(language: Language = Language.english, large: Boolean = false): String {
+        val images = if (large) {
+            libraryAssets.libraryHero.image2x
+        } else {
+            libraryAssets.libraryHero.image
+        }
+
+        val imageLink = this.getFallbackUrl(images, language)
+        return if (imageLink.isNullOrEmpty()) "" else "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/$imageLink"
     }
 
     fun getLogoUrl(language: Language = Language.english, large: Boolean = false): String? {
         return if (large) {
             libraryAssets.libraryLogo.image2x[language]?.let {
-                "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$id/$it"
+                "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/$it"
             }
         } else {
             libraryAssets.libraryLogo.image[language]?.let {
-                "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$id/$it"
+                "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/$it"
             }
         }
     }

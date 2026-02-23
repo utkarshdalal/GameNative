@@ -7,6 +7,7 @@ enum class GameSource {
     STEAM,
     CUSTOM_GAME,
     GOG,
+    EPIC
     // Add other platforms here..
 }
 
@@ -25,6 +26,9 @@ data class LibraryItem(
     val appId: String = "",
     val name: String = "",
     val iconHash: String = "",
+    val capsuleImageUrl: String = "",
+    val headerImageUrl: String = "",
+    val heroImageUrl: String = "",
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
     val compatibilityStatus: GameCompatibilityStatus? = null,
@@ -54,6 +58,9 @@ data class LibraryItem(
                 } else {
                     "${GOGGame.GOG_IMAGE_BASE_URL}/$iconHash"
                 }
+            }
+            GameSource.EPIC -> {
+                iconHash
             }
         }
 

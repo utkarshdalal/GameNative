@@ -103,19 +103,6 @@ class PluviaApp : SplitCompatApplication() {
             Timber.e(e, "Failed to initialize Supabase client: ${e.message}")
             e.printStackTrace()
         }
-
-        // Initialize GOG service
-        appScope.launch {
-            try {
-                if (app.gamenative.service.gog.GOGService.initialize(applicationContext)) {
-                    Timber.d("GOGService initialized successfully")
-                } else {
-                    Timber.w("GOGService initialization returned false")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to initialize GOGService: ${e.message}")
-            }
-        }
     }
 
     companion object {
@@ -129,6 +116,9 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
+
+        @JvmField
+        var isOverlayPaused: Boolean = false
 
         // Supabase client for game feedback
         lateinit var supabase: SupabaseClient

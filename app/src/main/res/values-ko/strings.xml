@@ -1,0 +1,1020 @@
+<resources>
+    <string name="app_name">GameNative</string>
+    <string name="login_user">사용자 로그인</string>
+    <string name="login_2fa">2단계 인증</string>
+    <string name="home">홈</string>
+    <string name="settings">설정</string>
+    <string name="login_qr">QR 로그인</string>
+    <string name="app_library">라이브러리</string>
+    <string name="app_downloads">다운로드</string>
+    <string name="unknown_app">알 수 없는 앱</string>
+    <string name="steam_2fa_incorrect">이전 코드가 올바르지 않습니다. 다시 시도해주세요.</string>
+    <string name="steam_2fa_confirmation">Steam 모바일 앱을 사용하여 로그인을 확인하세요…</string>
+    <string name="steam_2fa_device">인증 앱에서 2단계 인증 코드를 입력하세요.</string>
+    <string name="steam_2fa_email">%s 이메일로 전송된 인증 코드를 입력하세요</string>
+    <string name="steam_install_space_prompt">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
+    <string name="steam_install_space">다운로드 크기: %1$s\n디스크 사용량: %2$s\n사용 가능한 공간: %3$s</string>
+    <string name="steam_install_not_enough_space">설치할 앱에 %1$s의 공간이 필요하지만 이 기기에는 %2$s만 남아있습니다</string>
+    <string name="steam_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
+    <string name="steam_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
+    <string name="steam_imagefs_download_install_title">ImageFS 다운로드 및 설치</string>
+    <string name="steam_imagefs_download_install_message">구성을 편집하려면 Ubuntu 이미지를 다운로드하고 설치해야 합니다. 이 작업은 몇 분 정도 걸릴 수 있습니다. 계속하시겠습니까?</string>
+    <string name="steam_imagefs_install_title">ImageFS 설치</string>
+    <string name="steam_imagefs_install_message">구성을 편집하려면 Ubuntu 이미지를 설치해야 합니다. 이 작업은 몇 분 정도 걸릴 수 있습니다. 계속하시겠습니까?</string>
+    <string name="steam_reset_container_title">컨테이너 초기화</string>
+    <string name="steam_reset_container_message">컨테이너를 기본 구성으로 초기화합니다.</string>
+    <string name="base_app_reset_container_title">컨테이너를 초기화하시겠습니까?</string>
+    <string name="base_app_reset_container_confirm">초기화</string>
+    <string name="steam_verify_files_title">파일 검증</string>
+    <string name="steam_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="steam_update_title">업데이트</string>
+    <string name="steam_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="steam_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
+    <string name="steam_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
+    <string name="steam_cloud_sync_failed">클라우드 동기화 실패: %s</string>
+    <string name="steam_not_logged_in">이 기능을 사용하려면 Steam에 로그인해야 합니다</string>
+    <string name="steam_storage_permission_required">저장소 권한이 필요합니다</string>
+    <string name="steam_container_reset_success">컨테이너가 기본값으로 초기화되었습니다</string>
+    <string name="steam_imagefs_installed">ImageFS가 설치되었습니다. 컨테이너 편집을 다시 시도하세요.</string>
+    <string name="steam_imagefs_install_failed">ImageFS 설치 실패: %s</string>
+    <string name="steam_uninstall_game_title">게임 제거</string>
+    <string name="steam_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
+    <string name="steam_uninstall_success">%1$s이(가) 제거되었습니다</string>
+    <string name="steam_uninstall_failed">게임 제거 실패</string>
+    <string name="gog_uninstall_game_title">게임 제거</string>
+    <string name="gog_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
+    <string name="gog_install_game_title">게임 다운로드</string>
+    <string name="gog_install_confirmation_message">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t사용 가능한 공간: %2$s</string>
+    <string name="epic_uninstall_game_title">게임 제거</string>
+    <string name="epic_uninstall_game_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
+    <string name="epic_install_game_title">게임 다운로드</string>
+    <string name="epic_install_game_message">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
+    <string name="epic_game_not_found">게임을 찾을 수 없습니다</string>
+    <string name="epic_starting_download">다운로드 시작: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">다운로드 시작: %1$s + DLC</string>
+    <string name="epic_download_failed">다운로드 시작 실패: %1$s</string>
+    <string name="epic_download_error">다운로드 오류: %1$s</string>
+    <string name="epic_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
+    <string name="epic_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
+    <string name="epic_cloud_sync_starting">클라우드 저장 파일 동기화 시작…</string>
+    <string name="epic_cloud_sync_success">클라우드 저장 파일 동기화 완료</string>
+    <string name="epic_cloud_sync_failed">클라우드 저장 파일 동기화 실패</string>
+    <string name="epic_cloud_sync_error">클라우드 저장 파일 동기화 오류: %1$s</string>
+    <string name="epic_uninstall_failed">제거 실패: %1$s</string>
+    <string name="epic_uninstall_error">제거 오류: %1$s</string>
+    <string name="steam_never">안 함</string>
+    <string name="steam_continue">계속</string>
+    <string name="header_img_desc">앱 헤더 이미지</string>
+    <string name="download">다운로드</string>
+    <string name="install">설치</string>
+    <string name="install_app">설치</string>
+    <string name="delete_app">삭제</string>
+    <string name="uninstall">제거</string>
+    <string name="run_app">플레이</string>
+    <string name="download_prompt_title">앱 설치</string>
+    <string name="calculating_space_requirements">공간 요구사항 계산 중...</string>
+    <string name="delete_prompt_title">앱 삭제</string>
+    <string name="cancel_download_prompt_title">다운로드 취소</string>
+    <string name="acknowledge">확인</string>
+    <string name="yes">예</string>
+    <string name="no">아니오</string>
+    <string name="not_enough_space">공간 부족</string>
+    <string name="proceed">진행</string>
+    <string name="cancel">취소</string>
+    <string name="untitled">제목 없음</string>
+    <string name="confirm_delete">삭제 확인</string>
+    <string name="destination_library">라이브러리</string>
+    <string name="destination_downloads">다운로드</string>
+    <string name="destination_friends">친구</string>
+
+    <!-- Custom Games -->
+    <string name="custom_games_title">사용자 지정 게임</string>
+    <string name="custom_games_no_paths">경로가 추가되지 않음</string>
+    <string name="custom_games_grant_permission">권한 부여</string>
+    <string name="custom_games_manual_subtitle">라이브러리에서 추가됨</string>
+    <string name="custom_games_no_manual_entries">수동으로 추가된 게임이 없습니다.</string>
+    <string name="custom_games_remove_path_title">경로 제거</string>
+    <string name="custom_games_remove_path_message">스캔에서 이 경로를 제거하시겠습니까? 폴더 내용은 디스크에 유지됩니다.</string>
+    <string name="custom_games_remove_path_content_desc">경로 제거</string>
+    <string name="custom_games_path_removed_toast">목록에서 경로가 제거되었습니다. 콘텐츠는 삭제되지 않았습니다.</string>
+    <string name="custom_games_remove_manual_title">수동 게임 제거</string>
+    <string name="custom_games_remove_manual_message">라이브러리에서 수동으로 추가한 이 폴더를 제거하시겠습니까? 디스크의 파일은 삭제되지 않습니다.</string>
+    <string name="custom_games_remove_manual_content_desc">수동 폴더 제거</string>
+    <string name="custom_games_manual_removed_toast">라이브러리에서 수동 폴더가 제거되었습니다.</string>
+    <string name="custom_games_cannot_access">⚠ 접근할 수 없음 (경로가 존재하는지 확인하세요)</string>
+    <string name="custom_games_permission_denied">⚠ 권한 거부됨</string>
+    <string name="custom_games_zero_folders">폴더를 찾을 수 없음</string>
+    <string name="custom_games_folders_found">%d개의 폴더를 찾았습니다</string>
+    <string name="custom_games_scan_description">이 경로의 폴더들은 .exe 파일을 검색하여 사용자 지정 게임으로 표시됩니다. 앱 시작 시간이 느려질 수 있습니다.</string>
+    <string name="custom_game_folder_picker_error">폴더 경로를 확인할 수 없습니다</string>
+    <string name="container_config_drive_letter_missing">드라이브 문자가 없습니다</string>
+    <string name="container_config_invalid_drive_path">잘못된 드라이브 경로</string>
+    <string name="custom_game_settings">사용자 지정 게임 설정</string>
+    <string name="custom_game_delete_title">게임 삭제</string>
+    <string name="custom_game_delete_message">%1$s을(를) 제거하시겠습니까?</string>
+    <string name="custom_game_unknown_developer">알 수 없음</string>
+
+    <!--Winlator-->
+    <string name="disabled">비활성화</string>
+    <string name="copy">복사</string>
+    <string name="stability">안정성</string>
+    <string name="compatibility">호환성</string>
+    <string name="intermediate">중간</string>
+    <string name="performance">성능</string>
+    <string name="denuvo">Denuvo</string>
+    <string name="extreme">극한</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="title_ubuntufs">Ubuntu FS</string>
+
+    <!-- Winlator: Win Components -->
+    <string name="direct3d">Direct3D</string>
+    <string name="directsound">DirectSound</string>
+    <string name="directmusic">DirectMusic</string>
+    <string name="directplay">DirectPlay</string>
+    <string name="directshow">DirectShow</string>
+    <string name="directx">DirectX</string>
+    <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="wmdecoder">Windows Media Decoder</string>
+    <string name="opengl">OpenGL</string>
+    <string name="dxvk_version">DXVK 버전</string>
+    <string name="run">실행</string>
+    <string name="edit">편집</string>
+    <string name="remove">제거</string>
+    <string name="add">추가</string>
+    <string name="delete">삭제</string>
+    <string name="copy_from">복사 위치</string>
+    <string name="ok">확인</string>
+    <string name="container_config_custom_resolution_title">사용자 지정 해상도 설정</string>
+    <string name="container_config_custom_resolution_separator">x</string>
+    <string name="container_config_custom_resolution_error_nonzero">너비와 높이는 0보다 커야 합니다</string>
+    <string name="container_config_custom_resolution_error_aspect">너비는 높이보다 커야 합니다</string>
+    <string name="storage_info">저장소 정보</string>
+    <string name="duplicate">복제</string>
+    <string name="reconfigure">재구성</string>
+    <string name="content_info">콘텐츠 정보</string>
+    <string name="game_not_installed_title">게임이 설치되지 않음</string>
+    <string name="game_not_installed_message">%s이(가) 설치되지 않았습니다. 실행하기 전에 먼저 게임을 설치하세요.</string>
+    <string name="game_executable_not_found_title">실행할 수 없음</string>
+    <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
+    <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
+    <string name="save_container_settings_message">이번 실행을 위해 임시 컨테이너 구성이 적용되었습니다. 저장하시겠습니까?</string>
+    <string name="sync_error_title">동기화 오류</string>
+    <string name="save">저장</string>
+    <string name="discard">버리기</string>
+    <string name="shortcuts">바로가기</string>
+    <string name="containers">컨테이너</string>
+    <string name="box64_rc_file">Box64 RCFile</string>
+    <string name="contents">내용</string>
+    <string name="about">정보</string>
+    <string name="open_file">파일 열기</string>
+    <string name="download_file">파일 다운로드</string>
+    <string name="processor_affinity">프로세서 선호도</string>
+    <string name="bring_to_front">앞으로 가져오기</string>
+    <string name="end_process">프로세스 종료</string>
+    <string name="new_file">새 파일</string>
+    <string name="add_to_home_screen">홈 화면에 추가</string>
+    <string name="toggle_fullscreen">전체 화면 전환</string>
+    <string name="toggle_orientation">방향 전환</string>
+    <string name="task_manager">작업 관리자</string>
+    <string name="magnifier">돋보기</string>
+    <string name="logs">로그</string>
+    <string name="exit_game">종료</string>
+    <string name="exit">게임 종료</string>
+    <string name="keyboard">키보드</string>
+    <string name="extra">추가</string>
+    <string name="clear_search">검색 지우기</string>
+    <string name="buttons">버튼</string>
+    <string name="face_buttons_category">페이스 버튼</string>
+    <string name="shoulder_buttons_category">숄더 버튼</string>
+    <string name="menu_buttons_category">메뉴 버튼</string>
+    <string name="thumbstick_buttons_category">썸스틱 버튼</string>
+    <string name="left_stick">왼쪽 스틱</string>
+    <string name="right_stick">오른쪽 스틱</string>
+    <string name="dpad_category">십자 버튼</string>
+    <string name="dpad_up">십자 버튼 위</string>
+    <string name="dpad_down">십자 버튼 아래</string>
+    <string name="dpad_left">십자 버튼 왼쪽</string>
+    <string name="dpad_right">십자 버튼 오른쪽</string>
+    <string name="input_controls">화면 컨트롤러</string>
+    <string name="edit_controls">화면 컨트롤러 편집</string>
+    <string name="edit_physical_controller">물리 컨트롤러 편집</string>
+    <string name="controller_disconnected">연결 끊김</string>
+    <string name="reset_onscreen_controls">화면 컨트롤 초기화</string>
+    <string name="open_navigation_menu">탐색 메뉴 열기</string>
+    <string name="touchpad_help">터치패드 도움말</string>
+    <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
+    <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
+
+    <!-- Controller Binding Dialog -->
+    <string name="select_binding">바인딩 선택</string>
+    <string name="bind_button">바인딩: %1$s</string>
+    <string name="current_binding">현재: %1$s</string>
+    <string name="search_bindings">바인딩 검색…</string>
+    <string name="search_placeholder">검색…</string>
+    <string name="search">검색</string>
+    <string name="category">카테고리</string>
+    <string name="keyboard_bindings">키보드</string>
+    <string name="mouse_bindings">마우스</string>
+    <string name="gamepad_bindings">게임패드</string>
+    <string name="mouse">마우스</string>
+    <string name="gamepad">게임패드</string>
+    <string name="binding_none">없음</string>
+    <string name="clear_binding">바인딩 지우기</string>
+    <string name="no_bindings_found">바인딩을 찾을 수 없습니다</string>
+
+    <!-- Element Editor Dialog -->
+    <string name="edit_element">%1$s 편집</string>
+    <string name="element_position_size">위치: (%1$d, %2$d) • 크기: %3$.2fx</string>
+    <string name="appearance">외관</string>
+    <string name="size_subtitle">%.2f배</string>
+    <string name="label_text">레이블 텍스트</string>
+    <string name="label_text_subtitle">이 버튼의 사용자 지정 텍스트</string>
+    <string name="element_type">요소 유형</string>
+    <string name="element_type_subtitle">이 컨트롤의 유형 변경</string>
+    <string name="shape">모양</string>
+    <string name="shape_subtitle">시각적 외관</string>
+    <string name="shape_restricted">%1$s은(는) %2$s 모양으로 제한됩니다</string>
+    <string name="bindings">바인딩</string>
+    <string name="bindings_auto_generated">바인딩 (자동 생성)</string>
+    <string name="bindings_auto_generated_subtitle">범위 버튼 바인딩은 자동으로 생성됩니다</string>
+    <string name="primary_action">기본 동작</string>
+    <string name="secondary_action">보조 동작</string>
+    <string name="direction_up">위</string>
+    <string name="direction_right">오른쪽</string>
+    <string name="direction_down">아래</string>
+    <string name="direction_left">왼쪽</string>
+    <string name="mouse_suffix"> (마우스)</string>
+    <string name="slot_number">슬롯 %1$d</string>
+    <string name="button_slots_help">버튼은 최대 2개의 바인딩을 지원합니다: 기본 (누르기) 및 보조 (길게 누르기)</string>
+    <string name="properties">속성</string>
+    <string name="position">위치</string>
+    <string name="position_value">X: %1$d, Y: %2$d</string>
+    <string name="unsaved_changes">저장되지 않은 변경사항</string>
+    <string name="unsaved_changes_message">저장되지 않은 변경사항이 있습니다. 저장하시겠습니까, 아니면 취소하시겠습니까?</string>
+    <string name="adjust_size">크기 조정</string>
+    <string name="reset">초기화</string>
+    <string name="done">완료</string>
+    <string name="copy_size_from_element">요소에서 크기 복사</string>
+    <string name="toast_no_elements_to_copy">크기를 복사할 다른 요소가 없습니다</string>
+    <string name="toast_copied_size">복사된 크기: %.2fx</string>
+    <string name="on_screen_toast_controls_reset">화면 컨트롤이 기본값으로 초기화되었습니다</string>
+    <string name="quick_presets">빠른 프리셋</string>
+    <string name="preset_wasd">WASD</string>
+    <string name="preset_arrows">화살표</string>
+    <string name="preset_mouse">마우스</string>
+    <string name="preset_dpad">십자 버튼</string>
+    <string name="preset_left_stick">왼쪽 스틱</string>
+    <string name="preset_right_stick">오른쪽 스틱</string>
+
+    <!-- Physical Controller Config -->
+    <string name="physical_controller_config">물리 컨트롤러 바인딩 편집기</string>
+    <string name="physical_controller_config_subtitle">물리 컨트롤러의 버튼 매핑 구성</string>
+    <string name="face_buttons">페이스 버튼</string>
+    <string name="button_a">A 버튼</string>
+    <string name="button_a_subtitle">아래쪽 페이스 버튼 (확인)</string>
+    <string name="button_b">B 버튼</string>
+    <string name="button_b_subtitle">오른쪽 페이스 버튼 (뒤로)</string>
+    <string name="button_x">X 버튼</string>
+    <string name="button_x_subtitle">왼쪽 페이스 버튼</string>
+    <string name="button_y">Y 버튼</string>
+    <string name="button_y_subtitle">위쪽 페이스 버튼</string>
+    <string name="shoulder_buttons">숄더 버튼</string>
+    <string name="button_l1">L1 / LB</string>
+    <string name="button_l1_subtitle">왼쪽 범퍼</string>
+    <string name="button_r1">R1 / RB</string>
+    <string name="button_r1_subtitle">오른쪽 범퍼</string>
+    <string name="button_l2">L2 / LT</string>
+    <string name="button_l2_subtitle">왼쪽 트리거</string>
+    <string name="button_r2">R2 / RT</string>
+    <string name="button_r2_subtitle">오른쪽 트리거</string>
+    <string name="menu_buttons">메뉴 버튼</string>
+    <string name="button_start">Start / Options</string>
+    <string name="button_select">Select / View / Share</string>
+    <string name="analog_sticks">아날로그 스틱</string>
+    <string name="thumbstick_buttons">썸스틱 버튼</string>
+    <string name="button_l3">L3 (왼쪽 스틱 클릭)</string>
+    <string name="button_r3">R3 (오른쪽 스틱 클릭)</string>
+    <string name="left_analog_stick">왼쪽 아날로그 스틱</string>
+    <string name="left_stick_up">왼쪽 스틱 위</string>
+    <string name="left_stick_down">왼쪽 스틱 아래</string>
+    <string name="left_stick_left">왼쪽 스틱 왼쪽</string>
+    <string name="left_stick_right">왼쪽 스틱 오른쪽</string>
+    <string name="right_analog_stick">오른쪽 아날로그 스틱</string>
+    <string name="right_stick_up">오른쪽 스틱 위</string>
+    <string name="right_stick_down">오른쪽 스틱 아래</string>
+    <string name="right_stick_left">오른쪽 스틱 왼쪽</string>
+    <string name="right_stick_right">오른쪽 스틱 오른쪽</string>
+    <string name="other">기타</string>
+    <string name="button_home">Home / Guide / PS</string>
+    <string name="reset_to_default_bindings">기본 바인딩으로 재설정</string>
+    <string name="not_set">설정 안 됨</string>
+
+    <!-- Toast -->
+    <string name="toast_controls_reset">컨트롤 재설정됨</string>
+    <string name="toast_failed_log_save">대상에 logcat 저장 실패</string>
+
+    <!-- Settings -->
+    <string name="settings_save_logcat_subtitle">이 앱의 PID에 대한 logcat 스냅샷만 저장합니다</string>
+    <string name="settings_save_logcat_title">logcat 저장</string>
+
+    <string name="box86_64_env_var_help__dynarec_safeflags"><![CDATA[
+        CALL/RET 명령어의 플래그 처리<br /><br />
+        <b>0</b> : CALL/RET을 플래그가 필요하지 않은 것처럼 처리 (빠르지만 불안정)<br />
+        <b>1</b> : 대부분의 RET은 플래그가 필요하고, 대부분의 CALL은 필요하지 않음<br />
+        <b>2</b> : 모든 CALL/RET이 플래그를 필요로 함 (느림)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_fastnan">x86과 같은 -NAN 생성</string>
+    <string name="box86_64_env_var_help__dynarec_fastround">정확한 x86 반올림 생성</string>
+    <string name="box86_64_env_var_help__dynarec_x87double">x87 에뮬레이션에 Float/Double 사용</string>
+    <string name="box86_64_env_var_help__dynarec_bigblock"><![CDATA[
+        Dynarec BigBlock 빌드<br /><br />
+        <b>0</b> : 가능한 한 큰 블록을 빌드하려고 시도하지 않음<br />
+        <b>1</b> : 가능한 한 큰 Dynarec 블록을 빌드<br />
+        <b>2</b> : 더 큰 Dynarec 블록 빌드 (블록이 겹칠 때 계속, ELF 메모리의 블록에만 해당)<br />
+        <b>3</b> : 더 큰 Dynarec 블록 빌드 (블록이 겹칠 때 계속, 모든 유형의 메모리에 해당)
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_strongmem"><![CDATA[
+        강한 메모리 모델 시뮬레이션<br /><br />
+        <b>0</b> : 특별한 처리를 시도하지 않음<br />
+        <b>1</b> : 메모리에 쓸 때 일부 메모리 배리어 활성화 (일부 MOV 명령어에 대해)<br />
+        <b>2</b> : 옵션 1에 더해 MOV를 사용하여 메모리에 쓸 때마다 메모리 배리어 추가<br />
+        <b>3</b> : 옵션 2에 더해 메모리에서 읽을 때와 일부 SSE/SSE2 명령어에 메모리 배리어 추가
+    ]]>    </string>
+    <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
+        강한 메모리 에뮬레이션의 성능 영향을 줄이기 위해 메모리 배리어 조정<br /><br />
+        <b>0</b> : 일반적인 안전 배리어 사용<br />
+        <b>1</b> : 약한 배리어를 사용하여 약간의 성능 향상<br />
+        <b>2</b> : 약한 배리어 사용, 추가로 마지막 쓰기 배리어 비활성화]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
+        정렬된 원자 연산만 생성 (현재 Arm64에서만 사용 가능)<br /><br />
+        <b>0</b> : 정렬되지 않은 원자 연산 처리 코드 생성<br />
+        <b>1</b> : 정렬된 원자 연산만 생성, 더 빠르고 코드 크기가 작지만 정렬된 데이터 주소에서 작동하는 LOCK 접두사 명령어에 대해 SIGBUS를 발생시킴]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
+        지연된 플래그 사용 활성화 또는 비활성화<br /><br />
+        <b>0</b> : 지연된 플래그 사용 비활성화<br />
+        <b>1</b> : 지연된 플래그 사용 활성화]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
+        보호되지 않고 잠재적으로 더러워진 블록의 계속 실행 허용<br /><br />
+        <b>0</b> : 보호되지 않고 잠재적으로 더러워진 블록의 계속 실행을 허용하지 않음<br />
+        <b>1</b> : 코드와 같은 페이지에 데이터를 쓰는 다이나블록의 계속 실행 허용. 일부 게임의 로딩 시간이 빨라질 수 있지만 예기치 않은 충돌이 발생할 수도 있음<br />
+        <b>2</b> : HotPage를 감지하면 해당 페이지를 NEVERCLEAN으로 플래그 지정하여 쓰기 보호되지 않지만 해당 페이지에서 빌드된 블록은 항상 테스트됨. 이 방식이 더 빠를 수 있음 (하지만 일부 SMC 경우가 감지되지 않을 수 있음)]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
+        네이티브 플래그 사용 활성화 또는 비활성화<br /><br />
+        <b>0</b> : 네이티브 플래그 사용하지 않음<br />
+        <b>1</b> : 가능한 경우 네이티브 플래그 사용]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
+        x86 PAUSE 에뮬레이션 활성화, 스핀락의 성능 향상에 도움이 될 수 있음<br /><br />
+        <b>0</b> : x86 PAUSE 명령어 무시<br />
+        <b>1</b> : YIELD를 사용하여 x86 PAUSE 명령어 에뮬레이트<br />
+        <b>2</b> : WFI를 사용하여 x86 PAUSE 명령어 에뮬레이트<br />
+        <b>3</b> : SEVL+WFE를 사용하여 x86 PAUSE 명령어 에뮬레이트
+    ]]></string>
+    <string name="box86_64_env_var_help__avx"><![CDATA[
+        AVX 및 AVX2 구현, BMI1, BMI2, ADX, FMA, F16C 및 RDRAND 확장 기능 포함<br /><br />
+        <b>0</b> : AVX 확장 기능 비활성화<br />
+        <b>1</b> : AVX, BMI1, F16C 및 VAES 확장 기능 활성화<br />
+        <b>2</b> : 옵션 1에 더해 AVX2, BMI2, FMA, ADX, VPCLMULQDQ 및 RDRAND 활성화<br />
+    ]]></string>
+    <string name="box86_64_env_var_help__maxcpu">box64가 프로그램에 표시하는 최대 CPU 수</string>
+    <string name="box86_64_env_var_help__unityplayer">UnityPlayer.dll을 감지하고 strongmem 설정 적용</string>
+    <string name="box86_64_env_var_help__mmap32">32비트 주소 공간의 모든 메모리 할당 강제</string>
+    <string name="box86_64_env_var_help__dynarec_forward">블록을 빌드할 때 허용되는 최대 전방 값 정의</string>
+    <string name="box86_64_env_var_help__dynarec_callret">CALL/RET 명령어 최적화</string>
+    <string name="box86_64_env_var_help__dynarec_wait">Dynarec이 FillBlock이 준비될 때까지 기다릴지 여부 정의</string>
+    <string name="fexcore_env_var_help__tsoenabled">TSO IR 작업을 활성화합니다(다중 스레드 앱에 필요).</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">TSO가 활성화되면 벡터 로드/저장을 원자적으로 만듭니다.</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">TSO에서 정렬되지 않은 로드/저장에 대해 하프 배리어 원자를 사용합니다.</string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled">TSO에서 REP MOVS / REP STOS를 원자적으로 만듭니다.</string>
+    <string name="fexcore_env_var_help__multiblock">멀티블록 코드 컴파일을 활성화합니다. JIT 컴파일 시간이 길어지고 끊김이 발생할 수 있습니다.</string>
+    <string name="fexcore_env_var_help__hostfeatures">CPU 기능 강제를 제어합니다.</string>
+    <string name="fexcore_env_var_help__smalltscscale">저주파수 시스템에서 TSC를 스케일링합니다.</string>
+    <string name="fexcore_env_var_help__smc_checks">자체 수정 코드 검사.</string>
+    <string name="fexcore_env_var_help__volatilemetadata">가능한 경우 TSO에 대한 PE 파일의 휘발성 메타데이터를 사용합니다.</string>
+    <string name="fexcore_env_var_help__monohacks">Mono 감지를 위한 특수 SMC + JIT 블록 해킹.</string>
+    <string name="fexcore_env_var_help__hidehypervisorbit">CPUID 하이퍼바이저 비트를 숨깁니다(이것으로 충돌하는 앱에 유용).</string>
+    <string name="fexcore_env_var_help__disablel2cache">FEXCore JIT L2 캐시 조회를 비활성화하여 메모리를 절약하지만 끊김이 발생합니다.</string>
+    <string name="fexcore_env_var_help__dynamicl1cache">FEXCore JIT L1 캐시를 동적 크기로 전환하여 메모리를 절약하지만 끊김이 발생합니다.</string>
+    <string name="fexcore_env_var_help__x87reducedprecision">64비트 정밀도를 사용하여 X87 부동 소수점을 에뮬레이트합니다. 에뮬레이션 정확도가 감소하고 렌더링 버그가 발생할 수 있습니다.</string>
+    <string name="fexcore_env_var_help__maxinst">변환 블록당 최대 명령어 예산. 값이 높을수록 성능이 향상될 수 있지만 안정성이 감소할 수 있습니다.</string>
+
+    <string name="resume_download">재개</string>
+    <string name="pause_download">일시정지</string>
+
+    <!-- Library & Game Management -->
+    <string name="create_shortcut">바로가기 만들기</string>
+    <string name="label">레이블</string>
+    <string name="icon">아이콘</string>
+    <string name="create">생성</string>
+    <string name="update_now">지금 업데이트</string>
+    <string name="moving_files">파일 이동 중</string>
+    <string name="need_internet_to_install">설치하려면 인터넷이 필요합니다</string>
+    <string name="install_wifi_only_enabled">Wi-Fi 전용 설치 활성화됨</string>
+    <string name="installation_progress">설치 진행률</string>
+    <string name="downloading">다운로드 중...</string>
+    <string name="calculating_time">계산 중...</string>
+    <string name="download_failed_try_again">다운로드 실패. 다시 시도해 주세요.</string>
+    <string name="update_available">업데이트 사용 가능</string>
+    <string name="game_information">게임 정보</string>
+    <string name="status">상태</string>
+    <string name="size">크기</string>
+    <string name="location">위치</string>
+    <string name="developer">개발자</string>
+    <string name="release_date">출시일</string>
+    <string name="installed">설치됨</string>
+    <string name="installing">설치 중</string>
+    <string name="not_installed">설치되지 않음</string>
+    <string name="open">열기</string>
+    <string name="family_shared">가족 공유</string>
+    <string name="games">게임</string>
+    <string name="playtime_last_two_weeks">최근 2주 플레이 시간: %s시간</string>
+    <string name="total_playtime">총 플레이 시간: %s시간</string>
+    <string name="add_custom_game_content_desc">커스텀 게임 추가</string>
+    <string name="add_custom_game_dialog_title">커스텀 게임 추가</string>
+    <string name="add_custom_game_dialog_message">커스텀 게임으로 추가할 게임 파일이 있는 폴더를 선택하세요.</string>
+    <string name="add_custom_game_dont_show_again">이 대화상자 다시 표시 안 함</string>
+    <string name="base_app_shortcut_created">바로가기가 생성되었습니다</string>
+    <string name="base_app_shortcut_failed">바로가기 생성 실패: %s</string>
+    <string name="base_app_images_fetched">이미지를 성공적으로 가져왔습니다</string>
+    <string name="base_app_game_folder_not_found">게임 폴더를 찾을 수 없음</string>
+    <string name="base_app_images_fetch_failed">이미지 가져오기 실패: %s</string>
+    <string name="base_app_exported">내보내기 완료</string>
+    <string name="base_app_export_failed">내보내기 실패: %s</string>
+    <string name="base_app_export_cancelled">내보내기 취소됨</string>
+
+
+    <!-- App Filter -->
+    <string name="app_filter_installed">설치됨</string>
+    <string name="app_filter_game">게임</string>
+    <string name="app_filter_application">애플리케이션</string>
+    <string name="app_filter_tool">도구</string>
+    <string name="app_filter_demo">데모</string>
+    <string name="app_filter_family">가족</string>
+
+    <!-- Login & Connection -->
+    <string name="no_connection_to_steam">Steam에 연결되지 않음</string>
+    <string name="retry_steam_connection">Steam 연결 재시도</string>
+    <string name="continue_offline">오프라인으로 계속</string>
+
+
+    <!--Game Feedback Dialog -->
+    <string name="game_feedback_game_run">게임이 어떻게 실행되었나요?</string>
+    <string name="game_feedback_issues_question">발생한 문제를 선택하세요:</string>
+
+
+    <!-- Profile & Menu -->
+    <string name="help_and_support">도움말 &amp; 지원</string>
+    <string name="hall_of_fame">명예의 전당</string>
+    <string name="go_online">온라인으로 전환</string>
+    <string name="go_offline">오프라인으로 전환</string>
+    <string name="log_out">로그아웃</string>
+    <string name="close">닫기</string>
+
+    <!-- Container Configuration: General -->
+    <string name="new_environment_variable">새 환경 변수</string>
+    <string name="name">이름</string>
+    <string name="value">값</string>
+    <string name="no_more_known_variables">알려진 변수가 더 이상 없음</string>
+    <string name="container_variant">컨테이너 변형</string>
+    <string name="wine_version">Wine 버전</string>
+    <string name="exec_arguments">실행 인수</string>
+    <string name="exec_arguments_example">예: -dx11</string>
+    <string name="language">언어</string>
+    <string name="screen_size">화면 크기</string>
+    <string name="width">너비</string>
+    <string name="height">높이</string>
+    <string name="audio_driver">오디오 드라이버</string>
+    <string name="show_fps">FPS 표시</string>
+    <string name="remove_driver_confirmation">드라이버 "%s"을(를) 제거하시겠습니까? 이 작업은 실행 취소할 수 없습니다</string>
+
+    <!-- Container Configuration: Steam Integration -->
+    <string name="use_legacy_drm">레거시 DRM 사용</string>
+    <string name="unpack_files">파일 압축 해제</string>
+    <string name="unpack_files_description">\'Application Load Error 3:0000065432\'가 발생하는 경우에만 사용하세요.</string>
+    <string name="force_dlc">DLC 강제</string>
+    <string name="force_dlc_description">DLC가 감지되지 않거나 DLC가 있는 저장 파일이 작동하지 않는 경우에만 활성화</string>
+    <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
+    <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
+    <string name="allow_steam_updates">Steam 업데이트 허용</string>
+    <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
+    <string name="steam_type">Steam 유형</string>
+
+    <!-- Container Configuration: Graphics -->
+    <string name="graphics_driver">그래픽 드라이버</string>
+    <string name="graphics_driver_version">그래픽 드라이버 버전</string>
+    <string name="exposed_vulkan_extensions">노출된 Vulkan 확장</string>
+    <string name="max_device_memory">최대 장치 메모리</string>
+    <string name="use_adrenotools_turnip">Adrenotools Turnip 사용</string>
+    <string name="vulkan_version">Vulkan 버전</string>
+    <string name="image_cache_size">이미지 캐시 크기</string>
+    <string name="dx_wrapper">DX Wrapper</string>
+    <string name="vkd3d_feature_level">VKD3D 기능 수준</string>
+    <string name="use_dri3">DRI3 사용</string>
+    <string name="use_dri3_description">비활성화하면 일부 장치에서 그래픽 결함이 수정될 수 있습니다</string>
+    <string name="sync_frame">모든 프레임 동기화</string>
+    <string name="disable_present_wait">KHR_present_wait 비활성화</string>
+    <string name="present_modes">프레젠트 모드</string>
+    <string name="resource_type">메모리 리소스 유형</string>
+    <string name="bcn_emulation">BCn 에뮬레이션</string>
+    <string name="bcn_emulation_type">BCn 에뮬레이션 유형</string>
+    <string name="bcn_emulation_cache">BCn 에뮬레이션 캐시</string>
+    <string name="sharpness_effect">선명도 향상</string>
+    <string name="sharpness_level">선명도 수준</string>
+    <string name="sharpness_denoise">선명도 노이즈 제거</string>
+
+    <!-- Container Configuration: Emulation -->
+    <string name="fexcore_version">FEXCore 버전</string>
+    <string name="fexcore_preset">FEXCore 프리셋</string>
+    <string name="tso_mode">TSO 모드</string>
+    <string name="x87_mode">x87 모드</string>
+    <string name="multiblock">멀티블록</string>
+    <string name="emulator_64bit">64비트 에뮬레이터</string>
+    <string name="emulator_32bit">32비트 에뮬레이터</string>
+    <string name="box64_version">Box64 버전</string>
+    <string name="box64_preset">Box64 프리셋</string>
+    <string name="box64_presets">Box64 프리셋</string>
+    <string name="fexcore_presets">FEXCore 프리셋</string>
+    <string name="fexcore_presets_description">FEXCore 프리셋 보기, 수정 및 생성</string>
+    <string name="preset_name">프리셋 이름</string>
+
+    <!-- Container Configuration: Input -->
+    <string name="use_sdl_api">SDL API 사용</string>
+    <string name="use_steam_input">Steam Input 사용</string>
+    <string name="enable_xinput_api">XInput API 활성화</string>
+    <string name="enable_directinput_api">DirectInput API 활성화</string>
+    <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
+    <string name="disable_mouse_input">마우스 입력 비활성화</string>
+    <string name="touchscreen_mode">터치스크린 모드</string>
+    <string name="touchscreen_mode_description">직접 터치-커서 이동(ON) vs 터치패드 스타일 상대 이동(OFF)</string>
+    <string name="external_display_input">외부 디스플레이 입력</string>
+    <string name="external_display_input_subtitle">연결된 프레젠테이션 디스플레이의 동작 방식 선택</string>
+    <string name="external_display_mode_off">외부 디스플레이 사용 안 함</string>
+    <string name="external_display_mode_touchpad">터치패드 표면으로 사용</string>
+    <string name="external_display_mode_keyboard">전체 키보드로 사용</string>
+    <string name="external_display_mode_hybrid">하이브리드(터치패드 + 키보드 버튼)</string>
+    <string name="external_display_swap">외부 디스플레이에 게임 표시</string>
+    <string name="external_display_swap_subtitle">화면을 교체하여 게임이 외부 디스플레이에 렌더링되고 이 장치가 컨트롤러 표면이 됩니다</string>
+    <string name="start_with_controls_hidden">화면 컨트롤을 숨긴 상태로 시작</string>
+    <string name="start_with_controls_hidden_description">게임이 시작될 때 화면 컨트롤이 숨겨집니다. 탐색 메뉴를 통해 전환하세요.</string>
+    <string name="emulate_keyboard_mouse">키보드와 마우스 에뮬레이트</string>
+    <string name="emulate_keyboard_mouse_description">왼쪽 스틱 = WASD, 오른쪽 스틱 = 마우스. L2 = 왼쪽 클릭, R2 = 오른쪽 클릭.</string>
+
+    <!-- Container Configuration: Rendering -->
+    <string name="renderer">렌더러</string>
+    <string name="gpu_name">GPU 이름</string>
+    <string name="offscreen_rendering_mode">오프스크린 렌더링 모드</string>
+    <string name="video_memory_size">비디오 메모리 크기</string>
+    <string name="enable_csmt">CSMT(Command Stream Multi-Thread) 활성화</string>
+    <string name="enable_strict_shader_math">Strict Shader Math 활성화</string>
+    <string name="mouse_warp_override">마우스 워프 재정의</string>
+
+    <!-- Container Configuration: Management -->
+    <string name="environment_variables">환경 변수</string>
+    <string name="no_environment_variables">환경 변수 없음</string>
+    <string name="no_drives">드라이브 없음</string>
+    <string name="add_drive">드라이브 추가</string>
+    <string name="drive_letter">드라이브 문자</string>
+    <string name="no_available_drive_letters">사용 가능한 드라이브 문자 없음</string>
+    <string name="startup_selection">시작 선택</string>
+    <string name="processor_affinity_32bit">프로세서 선호도(32비트 앱)</string>
+    <string name="executable_path">실행 파일 경로</string>
+    <string name="executable_path_placeholder">예: path\\to\\exe</string>
+
+    <!-- Dialogs -->
+    <string name="allowed_orientations">허용된 방향</string>
+    <string name="select_wine_debug_channels">Wine 디버그 채널 선택</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">무슨 일이 있었는지 설명해 주세요</string>
+    <string name="get_support_on_discord">Discord에서 지원 받기</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">드라이버 관리자</string>
+    <string name="select_a_driver">드라이버 선택</string>
+    <string name="import_zip_from_device">장치에서 ZIP 가져오기</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">콘텐츠 관리자</string>
+    <string name="import_wcp_from_device">장치에서 .wcp 가져오기</string>
+    <string name="working">작업 중...</string>
+    <string name="selected">선택됨</string>
+    <string name="selected_content">선택된 콘텐츠</string>
+    <string name="installed_contents">설치된 콘텐츠</string>
+    <string name="select_type">유형 선택</string>
+    <string name="untrusted_files_detected">신뢰할 수 없는 파일 감지됨</string>
+    <string name="install_anyway">어쨌든 설치</string>
+    <string name="remove_content">콘텐츠 제거?</string>
+    <string name="remove_content_confirmation">%1$s(%2$s)을(를) 제거하시겠습니까?</string>
+
+    <!-- Settings -->
+    <string name="settings_language">언어</string>
+    <string name="settings_select_language">언어 선택</string>
+    <string name="settings_language_restart_title">재시작 필요</string>
+    <string name="settings_language_restart_message">언어를 변경하려면 앱을 재시작해야 합니다. 계속하시겠습니까?</string>
+    <string name="settings_language_restart_confirm">재시작</string>
+    <string name="settings_language_changing">언어 변경 및 재시작 중...</string>
+
+    <!-- Settings: Emulation Group -->
+    <string name="settings_emulation_title">에뮬레이션</string>
+    <string name="settings_emulation_orientations_title">허용된 방향</string>
+    <string name="settings_emulation_orientations_subtitle">게임 중 회전할 수 있는 방향 선택</string>
+    <string name="settings_emulation_default_config_title">기본 설정 수정</string>
+    <string name="settings_emulation_default_config_subtitle">각 게임의 초기 컨테이너 설정(이미 설치된 게임에는 영향을 주지 않음)</string>
+    <string name="settings_emulation_default_config_dialog_title">기본 컨테이너 설정</string>
+    <string name="settings_emulation_box64_presets_title">Box64 프리셋</string>
+    <string name="settings_emulation_box64_presets_subtitle">Box64 프리셋 보기, 수정 및 생성</string>
+    <string name="settings_emulation_driver_manager_title">드라이버 관리자</string>
+    <string name="settings_emulation_driver_manager_subtitle">커스텀 그래픽 드라이버 패키지 설치 또는 제거</string>
+    <string name="settings_emulation_contents_manager_title">콘텐츠 관리자</string>
+    <string name="settings_emulation_contents_manager_subtitle">추가 구성 요소 설치(.wcp)</string>
+    <string name="settings_emulation_wine_proton_manager_title">Wine/Proton 관리자</string>
+    <string name="settings_emulation_wine_proton_manager_subtitle">커스텀 Wine/Proton 버전 가져오기(Bionic 전용)</string>
+
+    <!-- Settings: Debug Group -->
+    <string name="settings_debug_title">디버그</string>
+    <string name="settings_debug_wine_channels_title">Wine 디버그 채널 선택</string>
+    <string name="settings_debug_wine_logs_title">Wine 디버그 로그 활성화</string>
+    <string name="settings_debug_wine_logs_subtitle">Wine 디버그 출력을 파일에 쓰기</string>
+    <string name="settings_debug_box_logs_title">Box86/64 로그 활성화</string>
+    <string name="settings_debug_box_logs_subtitle">Box86 &amp; Box64 디버그 출력을 파일에 쓰기</string>
+    <string name="settings_debug_view_crash_title">최신 충돌 보기</string>
+    <string name="settings_debug_view_log_title">게임 디버그 로그 보기</string>
+    <string name="settings_debug_clear_prefs_title">기본 설정 지우기</string>
+    <string name="settings_debug_clear_prefs_subtitle">[앱 종료] 클라이언트를 로그아웃하고 로컬 기본 설정 데이터를 삭제합니다.</string>
+    <string name="settings_debug_clear_db_title">로컬 데이터베이스 지우기</string>
+    <string name="settings_debug_clear_db_subtitle">[앱 종료] 라이브러리 항목 또는 메시지 문제 해결에 도움이 될 수 있습니다.</string>
+    <string name="settings_debug_clear_cache_title">이미지 캐시 지우기</string>
+    <string name="settings_debug_clear_cache_subtitle">로드된 모든 이미지 제거.</string>
+
+    <!-- Settings: Info Group -->
+    <string name="settings_info_title">정보</string>
+    <string name="settings_info_send_tip_title">팁 보내기</string>
+    <string name="settings_info_send_tip_subtitle">지속적인 개발에 기여</string>
+    <string name="settings_info_ask_tip_title">시작 시 팁 요청</string>
+    <string name="settings_info_ask_tip_subtitle">시작 시 팁 메시지가 나타나지 않도록 중지</string>
+    <string name="settings_info_source_title">소스 코드</string>
+    <string name="settings_info_source_subtitle">이 프로젝트의 소스 코드 보기</string>
+    <string name="settings_info_libraries_title">사용된 라이브러리</string>
+    <string name="settings_info_libraries_subtitle">GameNative를 가능하게 하는 기술 보기</string>
+    <string name="settings_info_privacy_title">개인정보 보호정책</string>
+    <string name="settings_info_privacy_subtitle">GameNative의 개인정보 보호정책 링크 열기</string>
+
+    <!-- Settings: Interface Group -->
+    <string name="settings_interface_title">인터페이스</string>
+    <string name="settings_interface_external_links_title">웹 링크를 외부에서 열기</string>
+    <string name="settings_interface_external_links_subtitle">링크가 기본 웹 브라우저로 열립니다</string>
+    <string name="settings_interface_hide_statusbar_title">게임이 아닐 때 상태 표시줄 숨기기</string>
+    <string name="settings_interface_hide_statusbar_subtitle">게임 목록, 설정 등에서 Android 상태 표시줄을 숨깁니다. 변경 시 앱이 재시작됩니다.</string>
+    <string name="settings_interface_icon_style">아이콘 스타일</string>
+    <string name="settings_interface_wifi_only_title">Wi-Fi로만 다운로드</string>
+    <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>
+    <string name="settings_interface_external_storage_title">외부 저장소에 쓰기</string>
+    <string name="settings_interface_no_external_storage">외부 저장소가 감지되지 않음</string>
+    <string name="settings_interface_external_storage_subtitle">외부 저장소에 게임 저장</string>
+    <string name="settings_interface_storage_volume_title">저장소 볼륨</string>
+    <string name="settings_interface_download_server_title">Steam 다운로드 서버</string>
+    <string name="settings_interface_restart_required_title">재시작 필요</string>
+
+    <!-- Settings: Downloads Group -->
+    <string name="settings_downloads_title">다운로드</string>
+
+    <!-- Login Screen -->
+    <string name="login_app_name">GameNative</string>
+    <string name="login_privacy_policy">개인정보 보호정책</string>
+    <string name="login_welcome_back">환영합니다</string>
+    <string name="login_subtitle">Steam 라이브러리에 액세스하려면 로그인하세요</string>
+    <string name="login_username">사용자명</string>
+    <string name="login_password">비밀번호</string>
+    <string name="login_remember_session">세션 기억</string>
+    <string name="login_sign_in">로그인</string>
+    <string name="login_qr_failed">QR 코드 실패</string>
+    <string name="login_retry_qr">QR 코드 재시도</string>
+    <string name="login_qr_instructions">Steam 모바일 앱을 열고 이 QR 코드를 스캔하여 즉시 로그인하세요</string>
+
+    <!-- Generic/Reusable strings -->
+    <string name="continue_action">계속</string>
+    <string name="settings_text">설정</string>
+
+
+    <!-- Connecting to Servers Screen -->
+    <string name="connect_to_remote_server">원격 서버에 연결 중...</string>
+
+    <!-- LibraryAppScreen: Dialogs -->
+    <string name="library_not_enough_space_message">설치할 앱에 %1$s의 공간이 필요하지만 이 기기에는 %2$s만 남아있습니다</string>
+    <string name="library_download_prompt_message">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
+    <string name="library_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
+    <string name="library_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
+    <string name="library_delete_app_message">정말 이 앱을 삭제하시겠습니까?</string>
+    <string name="library_download_install_imagefs_title">ImageFS 다운로드 및 설치</string>
+    <string name="library_download_install_imagefs_message">구성을 편집하려면 Ubuntu 이미지를 다운로드하고 설치해야 합니다. 이 작업은 몇 분 정도 걸릴 수 있습니다. 계속하시겠습니까?</string>
+    <string name="library_install_imagefs_title">ImageFS 설치</string>
+    <string name="library_install_imagefs_message">구성을 편집하려면 Ubuntu 이미지를 설치해야 합니다. 이 작업은 몇 분 정도 걸릴 수 있습니다. 계속하시겠습니까?</string>
+    <string name="library_reset_container_title">컨테이너 초기화</string>
+    <string name="library_reset_container_message">컨테이너를 기본 구성으로 초기화합니다.</string>
+    <string name="library_verify_files_title">파일 검증</string>
+    <string name="library_verify_files_message">검증하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="library_update_title">업데이트</string>
+    <string name="library_update_message">업데이트하기 전에 저장 파일이 클라우드에 업로드되었거나 백업되었는지 확인하세요. 그렇지 않으면 덮어쓰기될 수 있습니다.</string>
+    <string name="library_config_title">%s 설정</string>
+
+    <!-- LibraryAppScreen: Toast Messages -->
+    <string name="library_storage_permission_required">저장소 권한이 필요합니다</string>
+    <string name="library_exported">내보내기 완료</string>
+    <string name="library_failed_to_export">내보내기 실패: %s</string>
+    <string name="library_export_cancelled">내보내기 취소됨</string>
+    <string name="library_shortcut_created">바로가기가 생성되었습니다</string>
+    <string name="library_failed_to_create_shortcut">바로가기 생성 실패: %s</string>
+    <string name="library_cloud_sync_success">클라우드 동기화가 완료되었습니다</string>
+    <string name="library_cloud_sync_up_to_date">저장 파일이 이미 최신 상태입니다</string>
+    <string name="library_cloud_sync_failed">클라우드 동기화 실패: %s</string>
+
+    <!-- LibraryAppScreen: UI Labels -->
+    <string name="library_need_internet">설치하려면 인터넷이 필요합니다</string>
+    <string name="library_wifi_only_enabled">Wi-Fi/LAN 전용 설치 활성화됨</string>
+    <string name="library_file_count">%2$d개 중 %1$d번째 파일</string>
+
+    <!-- PluviaMain: Update & App Info -->
+    <string name="main_update_available_title">업데이트 사용 가능</string>
+    <string name="main_update_available_message">새 버전(%1$s)을 사용할 수 있습니다!%2$s</string>
+    <string name="main_update_button">업데이트</string>
+    <string name="main_later_button">나중에</string>
+    <string name="main_update_failed_title">업데이트 실패</string>
+    <string name="main_update_failed_message">업데이트를 다운로드하거나 설치하지 못했습니다. 나중에 다시 시도하세요.</string>
+
+    <!-- PluviaMain: Crash & Support -->
+    <string name="main_recent_crash_title">최근 충돌</string>
+    <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
+    <string name="main_thank_you_title">GameNative를 사용해 주셔서 감사합니다!</string>
+    <string name="main_thank_you_message">친구들과 앱을 공유하거나 Ko-fi에서 회원이 되어 Android에서 오픈 소스 PC 게임을 지원하세요.</string>
+    <string name="main_join_kofi">Ko-fi에서 참여</string>
+    <string name="main_share">공유</string>
+    <string name="main_discord_support_title">게임이 작동했나요?</string>
+    <string name="main_discord_support_message">Discord에 참여하여 게임 수정 또는 성능 향상에 대한 지원을 받으세요.</string>
+    <string name="main_open_discord">Discord 열기</string>
+
+    <!-- PluviaMain: Game Launch -->
+    <string name="main_downloading_steam">Steam 다운로드 중...</string>
+    <string name="main_installing_glibc">glibc 구성 요소 설치 중...</string>
+    <string name="main_installing_bionic">Bionic 구성 요소 설치 중...</string>
+    <string name="main_loading">로딩 중...</string>
+
+    <!-- PluviaMain: Session Conflicts -->
+    <string name="main_app_running_title">앱 실행 중</string>
+    <string name="main_app_running_message">다른 장치에서 이미 %s을(를) 플레이 중입니다. \n이 게임을 플레이할 수 있지만 다른 세션의 Steam 연결이 끊어집니다.</string>
+    <string name="main_app_running_other_device">다른 장치(%1$s)에서 이미 %2$s(%3$s)을(를) 플레이 중이며, 해당 저장 파일이 아직 클라우드에 없습니다. \n이 게임을 플레이할 수 있지만 다른 세션의 Steam 연결이 끊어지고 해당 세션의 진행 상황이 동기화될 때 저장 충돌이 발생할 수 있습니다</string>
+    <string name="main_play_anyway">어쨌든 플레이</string>
+
+    <!-- PluviaMain: Save Conflicts -->
+    <string name="main_save_conflict_title">저장 충돌</string>
+    <string name="main_save_conflict_message">새 원격 저장 파일과 새 로컬 저장 파일이 있습니다. 어느 것을 유지하시겠습니까?\n\n로컬 저장 파일:\n\t%1$s\n원격 저장 파일:\n\t%2$s</string>
+    <string name="main_keep_local">로컬 유지</string>
+    <string name="main_keep_remote">원격 유지</string>
+
+    <!-- PluviaMain: Sync Errors -->
+    <string name="main_sync_in_progress_retry">동기화 작업이 너무 오래 걸립니다. 잠시 후 게임을 다시 실행해 보세요.</string>
+    <string name="main_sync_in_progress">동기화가 현재 진행 중입니다. 잠시 후 다시 시도하세요.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">이 게임의 클라우드 저장 동기화가 이미 실행 중입니다. 기다렸다가 다시 시도하거나 동기화 없이 실행할 수 있습니다(저장 충돌이 발생할 수 있음).</string>
+    <string name="main_launch_anyway">어쨌든 실행</string>
+    <string name="main_wait">대기</string>
+    <string name="main_sync_failed">저장 파일 동기화 실패: %s.</string>
+
+    <!-- PluviaMain: Pending Operations -->
+    <string name="main_upload_in_progress_title">업로드 진행 중</string>
+    <string name="main_upload_in_progress_message">장치 %2$s(%3$s)에서 %1$s을(를) 플레이했으며 해당 세션의 저장 파일이 아직 업로드 중입니다.\n나중에 다시 시도하세요.</string>
+    <string name="main_pending_upload_title">업로드 대기 중</string>
+    <string name="main_pending_upload_message">장치 %2$s(%3$s)에서 %1$s을(를) 플레이했으며 해당 저장 파일이 아직 클라우드에 없습니다. (업로드 시작 안 됨)\n이 게임을 플레이할 수 있지만 이전 게임 진행 상황이 성공적으로 업로드될 때 충돌이 발생할 수 있습니다.</string>
+    <string name="main_app_session_suspended">앱 세션이 일시 중단되었습니다. 앱을 재시작하세요.</string>
+    <string name="main_pending_operation_none">작업이 \'none\'인 대기 중인 원격 작업을 받았습니다. 앱을 재시작하세요.</string>
+    <string name="main_multiple_pending_operations">여러 대기 중인 원격 작업이 있습니다. 나중에 다시 시도하세요. 앱을 재시작하세요.</string>
+
+    <!-- Container Config Dialog -->
+    <string name="container_config_title">컨테이너 구성</string>
+    <string name="container_config_unsaved_changes_title">저장되지 않은 변경사항</string>
+    <string name="container_config_unsaved_changes_message">정말 변경 사항을 취소하시겠습니까?</string>
+    <string name="container_config_tab_general">일반</string>
+    <string name="container_config_tab_graphics">그래픽</string>
+    <string name="container_config_tab_emulation">에뮬레이션</string>
+    <string name="container_config_tab_controller">컨트롤러</string>
+    <string name="container_config_tab_wine">Wine</string>
+    <string name="container_config_tab_win_components">Win 구성 요소</string>
+    <string name="container_config_tab_environment">환경</string>
+    <string name="container_config_tab_drives">드라이브</string>
+    <string name="container_config_tab_advanced">고급</string>
+    <string name="container_config_vkd3d_version">VKD3D 버전</string>
+    <string name="container_config_executable_path">실행 파일 경로</string>
+    <string name="container_config_executable_path_placeholder">예: path\\to\\exe</string>
+
+    <!-- Libraries Dialog -->
+    <string name="libraries_title">사용된 라이브러리</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+
+    <!-- Supporters Dialog -->
+    <string name="supporters_art_credits">아트 크레딧</string>
+    <string name="supporters_app_icon">앱 아이콘: Hachi</string>
+    <string name="supporters_alt_icon">대체 앱 아이콘: rhapsody_mdr</string>
+    <string name="supporters_loading">후원자 로딩 중…</string>
+    <string name="supporters_members">회원</string>
+    <string name="supporters_supporters">후원자</string>
+    <string name="supporters_none">아직 후원자가 없습니다.</string>
+    <string name="supporters_anonymous">익명</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_preview_warning">채팅은 아직 초기 기능입니다.\n문제가 발생하면 프로젝트 저장소에 보고해 주세요.</string>
+    <string name="chat_no_history">채팅 기록 없음</string>
+    <string name="chat_send_message">메시지 보내기</string>
+    <string name="chat_send">보내기</string>
+    <string name="chat_emoticons">이모티콘</string>
+    <string name="chat_stickers">스티커</string>
+
+    <!-- Library Components -->
+    <string name="library_open">열기</string>
+    <string name="library_installed">설치됨</string>
+    <string name="library_installing">설치 중</string>
+    <string name="library_not_installed">설치되지 않음</string>
+    <string name="library_family_shared">가족 공유</string>
+    <string name="library_compatible">호환됨</string>
+    <string name="library_compatibility_unknown">알 수 없음</string>
+    <string name="library_not_compatible">호환되지 않음</string>
+
+    <!-- Best Config Compatibility Messages -->
+    <string name="best_config_exact_gpu_match">알려진 설정이 사용자의 GPU에서 작동합니다</string>
+    <string name="best_config_gpu_family_match">알려진 설정이 사용자의 GPU에서 작동할 것입니다</string>
+    <string name="best_config_fallback_match">알려진 설정이 사용자의 GPU에서 작동할 수 있습니다</string>
+    <string name="best_config_compatibility_unknown">알려진 설정 없음</string>
+
+    <!-- Best Config Toast Messages -->
+    <string name="best_config_applied_successfully">설정이 성공적으로 적용되었습니다</string>
+    <string name="best_config_known_config_invalid">알려진 설정이 유효하지 않음</string>
+    <string name="best_config_no_config_available">이 게임에 사용 가능한 최적 설정이 없습니다</string>
+    <string name="best_config_apply_failed">설정 적용 실패: %s</string>
+    <string name="best_config_missing_content">%s 누락됨</string>
+    <string name="import_config">설정 가져오기</string>
+    <string name="export_config">설정 내보내기</string>
+    <string name="library_app_type">앱 유형</string>
+    <string name="library_app_status">앱 상태</string>
+    <string name="library_layout">레이아웃</string>
+    <string name="library_layout_list">리스트</string>
+    <string name="library_layout_capsule">캡슐</string>
+    <string name="library_layout_hero">히어로</string>
+    <string name="library_search_placeholder">게임 검색…</string>
+    <string name="library_search_description">검색</string>
+    <string name="library_search_clear">검색 지우기</string>
+    <string name="library_no_items">선택 항목에 나열된 항목이 없습니다</string>
+    <string name="library_filters">필터</string>
+    <string name="library_game_count">%1$d개 게임 • %2$d개 설치됨</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">사용자 지정 게임</string>
+    <string name="library_layout_title">레이아웃</string>
+
+    <!-- Two Factor Auth -->
+    <string name="two_factor_login">로그인</string>
+    <string name="two_factor_verification_code">인증 코드</string>
+    <string name="two_factor_enter_code">5자리 코드 입력</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_validating">콘텐츠 검증 중…</string>
+    <string name="contents_error_badtar">파일을 인식할 수 없습니다</string>
+    <string name="contents_error_noprofile">콘텐츠에서 프로필을 찾을 수 없습니다</string>
+    <string name="contents_error_badprofile">프로필을 인식할 수 없습니다</string>
+    <string name="contents_error_exist">콘텐츠가 이미 존재합니다</string>
+    <string name="contents_error_missingfiles">콘텐츠가 불완전합니다</string>
+    <string name="contents_error_untrustprofile">콘텐츠를 신뢰할 수 없습니다</string>
+    <string name="contents_error_nospace">공간이 부족합니다</string>
+    <string name="contents_error_generic">콘텐츠를 설치할 수 없습니다</string>
+    <string name="contents_untrusted_files">이 콘텐츠에는 신뢰할 수 있는 세트 외부의 파일이 포함되어 있습니다.</string>
+    <string name="contents_install_components">추가 구성 요소 설치(.wcp: tar.xz/zst)</string>
+    <string name="contents_type">유형</string>
+    <string name="contents_version">버전</string>
+    <string name="contents_code">코드</string>
+    <string name="contents_description">설명</string>
+    <string name="contents_all_trusted">모든 파일을 신뢰할 수 있습니다. 설치할 준비가 되었습니다.</string>
+    <string name="contents_no_installed">이 유형에 대해 설치된 콘텐츠가 없습니다.</string>
+    <string name="contents_delete">삭제</string>
+    <string name="contents_review_confirm">이 콘텐츠에는 신뢰할 수 있는 세트 외부의 파일이 포함되어 있습니다. 검토하고 확인한 후 계속하세요.</string>
+    <string name="contents_removed">%1$s을(를) 제거했습니다</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_error_manifest">드라이버 매니페스트 로드 실패: %1$d</string>
+    <string name="driver_error_loading">드라이버 매니페스트 로드 오류: %1$s</string>
+    <string name="driver_timeout">연결 시간 초과. 네트워크를 확인하고 다시 시도해 주세요.</string>
+    <string name="driver_network_error">네트워크 오류: %1$s</string>
+
+    <!-- Settings Interface -->
+    <string name="settings_theme_default">기본</string>
+    <string name="settings_theme_alternate">대체</string>
+    <string name="settings_download_slow">느림</string>
+    <string name="settings_download_medium">보통</string>
+    <string name="settings_download_fast">빠름</string>
+    <string name="settings_download_blazing">매우 빠름</string>
+    <string name="settings_download_speed">다운로드 속도</string>
+    <string name="settings_download_heat_warning">더 높은 속도는 다운로드 중 장치 발열 증가를 초래할 수 있습니다</string>
+    <string name="settings_region_default">기본</string>
+    <string name="settings_saving_restarting">설정을 저장하고 재시작하는 중…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">설정</string>
+
+    <!-- Contents Install Finish -->
+    <string name="contents_install_success">콘텐츠가 성공적으로 설치되었습니다</string>
+    <string name="contents_install_failed">콘텐츠 설치 실패</string>
+    <string name="contents_install_error">설치 오류: %1$s</string>
+
+    <!-- Library Status -->
+    <string name="library_status_ready">준비됨</string>
+    <!-- Wine/Proton Manager -->
+    <string name="wine_proton_manager">Wine/Proton 관리자</string>
+    <string name="wine_proton_bionic_notice_header">Bionic 이미지 전용</string>
+    <string name="wine_proton_info_description">Bionic 컨테이너용 커스텀 Wine 또는 Proton 버전을 가져옵니다. 파일 이름은 \'wine\' 또는 \'proton\'으로 시작해야 합니다(대소문자 구분 안 함). 패키지에는 bin/, lib/ 및 prefixPack.txz가 포함되어야 합니다. 모든 가져오기는 bionic 호환 전용입니다.</string>
+    <string name="win_proton_example">예: "proton-10.0-ARM64ec.wcp"</string>
+    <string name="wine_proton_import_package">Wine/Proton 패키지 가져오기</string>
+    <string name="wine_proton_select_file_description">.wcp 파일을 선택하세요(\'wine\' 또는 \'proton\'으로 시작하는 파일 이름)</string>
+    <string name="wine_proton_import_wcp_button">.wcp 패키지 가져오기</string>
+    <string name="wine_proton_processing">처리 중...</string>
+    <string name="wine_proton_package_details">패키지 세부 정보</string>
+    <string name="wine_proton_type">유형</string>
+    <string name="wine_proton_version">버전</string>
+    <string name="wine_proton_version_code">버전 코드</string>
+    <string name="wine_proton_bin_path">Bin 경로</string>
+    <string name="wine_proton_lib_path">Lib 경로</string>
+    <string name="wine_proton_description">설명</string>
+    <string name="wine_proton_all_files_trusted">✓ 모든 파일을 신뢰할 수 있습니다. 설치할 준비가 되었습니다.</string>
+    <string name="wine_proton_install_package">패키지 설치</string>
+    <string name="wine_proton_installed_versions">설치된 Wine/Proton 버전</string>
+    <string name="wine_proton_no_versions_found">설치된 Wine 또는 Proton 버전을 찾을 수 없습니다.</string>
+    <string name="wine_proton_delete_content_desc">삭제</string>
+    <string name="wine_proton_untrusted_files_message">이 패키지에는 신뢰할 수 있는 세트 외부의 파일이 포함되어 있습니다. 검토하고 확인한 후 설치를 계속하세요.</string>
+    <string name="wine_proton_untrusted_files_label">신뢰할 수 없는 파일:</string>
+    <string name="wine_proton_remove_title">Wine/Proton 버전 제거</string>
+    <string name="wine_proton_remove_message">%1$s %2$s(%3$d)을(를) 제거하시겠습니까? 이 버전을 사용하는 컨테이너는 더 이상 작동하지 않습니다.</string>
+    <string name="wine_proton_removed_toast">%s을(를) 제거했습니다</string>
+    <string name="wine_proton_remove_failed">제거 실패: %s</string>
+    <string name="cancel_import_title">가져오기 취소?</string>
+    <string name="cancel_import_message">가져오기가 현재 진행 중입니다. 취소하면 추출된 모든 파일이 삭제되며 가져오기를 다시 시작해야 합니다.\n\n정말 취소하시겠습니까?</string>
+    <string name="cancel_import_confirm">예, 가져오기 취소</string>
+    <string name="cancel_import_keep">아니오, 가져오기 유지</string>
+
+    <!-- Wine/Proton Manager - Status Messages -->
+    <string name="wine_proton_extracting">패키지 추출 및 검증 중(큰 파일의 경우 2-3분 소요)...</string>
+    <string name="wine_proton_filename_error">파일 이름은 \'wine\' 또는 \'proton\'으로 시작해야 합니다(대소문자 구분 안 함)</string>
+    <string name="wine_proton_file_empty">파일이 비어 있거나 읽을 수 없습니다</string>
+    <string name="wine_proton_cannot_open">파일을 열 수 없습니다</string>
+    <string name="wine_proton_failed_file_picker">파일 선택기 열기 실패: %s</string>
+    <string name="wine_proton_error_badtar">파일을 유효한 아카이브로 인식할 수 없습니다</string>
+    <string name="wine_proton_error_noprofile">패키지에서 profile.json을 찾을 수 없습니다</string>
+    <string name="wine_proton_error_badprofile">profile.json이 유효하지 않습니다</string>
+    <string name="wine_proton_error_exist">이 Wine/Proton 버전이 이미 존재합니다</string>
+    <string name="wine_proton_error_missingfiles">패키지에 필수 파일이 없습니다(bin/, lib/ 또는 prefixPack.txz)</string>
+    <string name="wine_proton_error_untrustprofile">패키지를 신뢰할 수 없습니다</string>
+    <string name="wine_proton_error_nospace">저장 공간이 부족합니다</string>
+    <string name="wine_proton_error_unknown">알 수 없는 오류가 발생했습니다</string>
+    <string name="wine_proton_error_unable_install">Wine/Proton 패키지를 설치할 수 없습니다</string>
+    <string name="wine_proton_not_wine_or_proton">패키지가 Wine 또는 Proton이 아닙니다(유형: %s)</string>
+    <string name="wine_proton_type_mismatch">파일 이름은 %1$s을(를) 나타내지만 패키지에는 %2$s이(가) 포함되어 있습니다</string>
+    <string name="wine_proton_untrusted_files_detected">이 패키지에는 신뢰할 수 있는 세트 외부의 파일이 포함되어 있습니다.</string>
+    <string name="wine_proton_version_already_exists">Wine/Proton 버전이 이미 존재합니다</string>
+    <string name="wine_proton_install_failed">설치 실패: %s</string>
+    <string name="wine_proton_install_error">설치 오류: %s</string>
+    <string name="wine_proton_install_success">%1$s %2$s이(가) 성공적으로 설치되었습니다</string>
+    <string name="wine_proton_glibc_incompatible">이 Wine/Proton 빌드는 GLIBC 컨테이너가 필요하며 GameNative와 호환되지 않습니다. ARM64/bionic 빌드만 사용하세요.</string>
+    <string name="wine_proton_containers_in_use">이 버전을 사용하는 컨테이너:</string>
+    <string name="wine_proton_no_containers_warning">현재 이 버전을 사용하는 컨테이너가 없습니다.</string>
+    <string name="wine_proton_containers_will_break">계속하면 이러한 컨테이너가 더 이상 작동하지 않습니다:</string>
+    <string name="auth_webview_title">인증</string>
+
+    <!-- GOG Integration -->
+    <string name="gog_integration_title">GOG 통합(알파)</string>
+    <string name="gog_settings_login_title">로그인</string>
+    <string name="gog_settings_login_subtitle">GOG 계정에 로그인</string>
+    <string name="gog_login_success_title">로그인 성공</string>
+    <string name="gog_login_cancel">취소</string>
+    <string name="gog_settings_logout_title">로그아웃</string>
+    <string name="gog_settings_logout_subtitle">GOG 계정에서 로그아웃</string>
+    <string name="gog_logout_confirm_title">GOG에서 로그아웃하시겠습니까?</string>
+    <string name="gog_logout_confirm_message">GOG 자격 증명이 제거되고 이 장치에서 GOG 라이브러리가 지워집니다. 언제든지 다시 로그인할 수 있습니다.</string>
+    <string name="gog_logout_confirm">로그아웃</string>
+    <string name="gog_logout_success">GOG에서 성공적으로 로그아웃했습니다</string>
+    <string name="gog_logout_failed">로그아웃 실패: %s</string>
+    <string name="gog_logout_in_progress">GOG에서 로그아웃하는 중…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games 통합</string>
+    <string name="epic_settings_login_title">로그인</string>
+    <string name="epic_settings_login_subtitle">Epic Games 계정에 로그인</string>
+    <string name="epic_login_success_title">로그인 성공</string>
+    <string name="epic_login_cancel">취소</string>
+    <string name="epic_settings_logout_title">로그아웃</string>
+    <string name="epic_settings_logout_subtitle">Epic Games 계정에서 로그아웃</string>
+    <string name="epic_logout_confirm_title">Epic Games에서 로그아웃하시겠습니까?</string>
+    <string name="epic_logout_confirm_message">Epic Games 자격 증명이 제거되고 이 장치에서 Epic Games 라이브러리가 지워집니다. 언제든지 다시 로그인할 수 있습니다.</string>
+    <string name="epic_logout_confirm">로그아웃</string>
+    <string name="epic_logout_success">Epic Games에서 성공적으로 로그아웃했습니다</string>
+    <string name="epic_logout_failed">로그아웃 실패: %s</string>
+    <string name="epic_logout_in_progress">Epic Games에서 로그아웃하는 중…</string>
+
+    <string name="manifest_downloading_item">%1$s 다운로드 중...</string>
+    <string name="manifest_download_failed">다운로드 실패: %1$s</string>
+    <string name="manifest_install_failed">%1$s 설치 실패</string>
+    <string name="manifest_install_success">%1$s 설치됨</string>
+    <string name="manifest_content_untrusted">콘텐츠를 신뢰할 수 없으며 설치되지 않았습니다.</string>
+    <string name="manifest_type_mismatch">다운로드한 콘텐츠가 예상 유형과 일치하지 않습니다.</string>
+    <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
+</resources>

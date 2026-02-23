@@ -1,0 +1,670 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-26",
+  "items": {
+    "driver": [
+      {
+        "id": "a8xx-gen8-V22",
+        "name": "turnip_v26.0.0_R8_b5",
+        "url": "https://downloads.gamenative.app/drivers/a8xx-gen8-V22.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R8_b12",
+        "name": "turnip_v26.0.0_R8_b4",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R8_b12.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R8_b8",
+        "name": "turnip_v26.0.0_R8_b3",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R8_b8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R8_b3",
+        "name": "turnip_v26.0.0_R8_b2",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R8_b3.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R8_b1",
+        "name": "turnip_v26.0.0_R8_b1",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R8_b1.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-849",
+        "name": "qcom-849.0",
+        "url": "https://downloads.gamenative.app/drivers/qcom-849.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-842.19",
+        "name": "qcom-842.19",
+        "url": "https://downloads.gamenative.app/drivers/qcom-842.19.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-842.16",
+        "name": "qcom-842.16",
+        "url": "https://downloads.gamenative.app/drivers/qcom-842.16.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-842.13",
+        "name": "qcom-842.13",
+        "url": "https://downloads.gamenative.app/drivers/qcom-842.13.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8eGen5-842.8",
+        "name": "8eGen5-842.8",
+        "url": "https://downloads.gamenative.app/drivers/8eGen5-842.8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8Elite2-842.6",
+        "name": "8eGen5-842.6",
+        "url": "https://downloads.gamenative.app/drivers/8Elite2-842.6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "842.1",
+        "name": "qcom-842.1",
+        "url": "https://downloads.gamenative.app/drivers/842.1.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-800.64",
+        "name": "qcom-800.64",
+        "url": "https://downloads.gamenative.app/drivers/qcom-800.64.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8Elite-800.51",
+        "name": "8Elite-800.51",
+        "url": "https://downloads.gamenative.app/drivers/8Elite-800.51.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.46",
+        "name": "8Elite-800.46",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.46.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.40",
+        "name": "8Elite-800.40",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.40.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.36",
+        "name": "8Elite-800.36",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.36.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.35",
+        "name": "8Elite-800.35",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.35.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.34",
+        "name": "8Elite-800.34",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.34.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.33",
+        "name": "8Elite-800.33",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.33.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.30",
+        "name": "8Elite-800.30",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.30.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.26",
+        "name": "8Elite-800.26",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.26.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.22",
+        "name": "8Elite_800.22",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.22.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-800.21",
+        "name": "8Elite_800.21",
+        "url": "https://downloads.gamenative.app/drivers/8E-800.21.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-840",
+        "name": "qcom-840",
+        "url": "https://downloads.gamenative.app/drivers/qcom-840.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "qcom-837",
+        "name": "qcom-837.6",
+        "url": "https://downloads.gamenative.app/drivers/qcom-837.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Adreno_819",
+        "name": "Adreno_819",
+        "url": "https://downloads.gamenative.app/drivers/Adreno_819.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Adreno_814",
+        "name": "Adreno_814",
+        "url": "https://downloads.gamenative.app/drivers/Adreno_814.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "8E-805.0",
+        "name": "Adreno_805.0",
+        "url": "https://downloads.gamenative.app/drivers/8E-805.0.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "adreno_762.10",
+        "name": "Adreno_762.10",
+        "url": "https://downloads.gamenative.app/drivers/adreno_762.10.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R8_mem",
+        "name": "turnip_v26.0.0_R8_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R8_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R8",
+        "name": "turnip_v26.0.0_R8",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R7_mem",
+        "name": "turnip_v26.0.0_R7_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R7_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R7",
+        "name": "turnip_v26.0.0_R7",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R7.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R6_mem",
+        "name": "turnip_v26.0.0_R6_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R6_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R6",
+        "name": "turnip_v26.0.0_R6",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R5_mem",
+        "name": "turnip_v26.0.0_R5_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R5_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R5",
+        "name": "turnip_v26.0.0_R5",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R5.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R4_mem",
+        "name": "turnip_v26.0.0_R4_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R4_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R4",
+        "name": "turnip_v26.0.0_R4",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R4.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R3_mem",
+        "name": "turnip_v26.0.0_R3_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R3_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R3",
+        "name": "turnip_v26.0.0_R3",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R3.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R2_mem",
+        "name": "turnip_v26.0.0_R2_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R2_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R2",
+        "name": "turnip_v26.0.0_R2",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R2.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R1_mem",
+        "name": "turnip_v26.0.0_R1_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R1_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v26.0.0_R1",
+        "name": "turnip_v26.0.0_R1",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v26.0.0_R1.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R11",
+        "name": "turnip_v25.3.0_R11",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R11.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R10",
+        "name": "turnip_v25.3.0_R10",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R10.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R9",
+        "name": "turnip_v25.3.0_R9",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R9.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R8",
+        "name": "turnip_v25.3.0_R8",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.3.0_R7",
+        "name": "turnip_v25.3.0_R7",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.3.0_R7.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.3.0_R6_mem",
+        "name": "turnip_v25.3.0_R6_mem",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.3.0_R6_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R6",
+        "name": "turnip_v25.3.0_R6",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R5_one_ui7_fix",
+        "name": "turnip_v25.3.0_R5_one_ui7",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R5_one_ui7_fix.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R5",
+        "name": "turnip_v25.3.0_R5",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R5.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R4_mem",
+        "name": "turnip_v25.3.0_R4_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R4_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R4",
+        "name": "turnip_v25.3.0_R4",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R4.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R3_mem",
+        "name": "turnip_v25.3.0_R3_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R3_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.3.0_R3",
+        "name": "turnip_v25.3.0_R3",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.3.0_R3.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R13_mem",
+        "name": "turnip_v25.2.0_R13_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R13_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R13",
+        "name": "turnip_v25.2.0_R13",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R13.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R12_mem",
+        "name": "turnip_v25.2.0_R12_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R12_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R12",
+        "name": "turnip_v25.2.0_R12",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R12.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R11",
+        "name": "turnip_v25.2.0_R11",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R11.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R11_mem",
+        "name": "turnip_v25.2.0_R11_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R11_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R10",
+        "name": "turnip_v25.2.0_R10",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R10.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.2.0_R8",
+        "name": "turnip_v25.2.0_R8",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.2.0_R8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.2.0_R7",
+        "name": "turnip_v25.2.0_R7",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.2.0_R7.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.2.0_R7_mem",
+        "name": "turnip_v25.2.0_R7_mem",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.2.0_R7_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.2.0_R6",
+        "name": "turnip_v25.2.0_R6",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.2.0_R6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.2.0_R6_mem",
+        "name": "turnip_v25.2.0_R6_mem",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.2.0_R6_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R5",
+        "name": "turnip_v25.2.0_R5",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R5.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R5_mem",
+        "name": "turnip_v25.2.0_R5_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R5_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R4_mem",
+        "name": "turnip_v25.2.0_R4_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R4_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R4",
+        "name": "turnip_v25.2.0_R4",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R4.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R3_mem",
+        "name": "turnip_v25.2.0_R3_mem",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R3_mem.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.2.0_R1",
+        "name": "turnip_v25.2.0_R1",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.2.0_R1.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.1.0_R6",
+        "name": "turnip_v25.1.0_R6",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.1.0_R6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.1.0_R5",
+        "name": "turnip_v25.1.0_R5",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.1.0_R5.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.1.0_R1",
+        "name": "turnip_v25.1.0_R1",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.1.0_R1.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.0.0_R8",
+        "name": "turnip_v25.0.0_R8",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.0.0_R8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip_v25.0.0_R6",
+        "name": "turnip_v25.0.0_R6",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v25.0.0_R6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.0.0_R5",
+        "name": "turnip_v25.0.0_R5",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.0.0_R5.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v25.0.0_R1",
+        "name": "turnip_v25.0.0_R1",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v25.0.0_R1.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.3.0-R12",
+        "name": "turnip_v24.3.0-R12",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.3.0-R12.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.3.0_R8",
+        "name": "turnip_v24.3.0_R8",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.3.0_R8.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.3.0_R7",
+        "name": "turnip_v24.3.0_R7",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.3.0_R7.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.3.0_R6",
+        "name": "turnip_v24.3.0_R6",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.3.0_R6.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.3.0_R2",
+        "name": "turnip_v24.3.0_R2",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.3.0_R2.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.3.0_R5",
+        "name": "turnip_v24.3.0_R5",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.3.0_R5.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_v24.2.0_R22",
+        "name": "turnip_v24.2.0_R22",
+        "url": "https://downloads.gamenative.app/drivers/turnip_v24.2.0_R22.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_24.2.0_a32",
+        "name": "turnip_v24.2.0_a32",
+        "url": "https://downloads.gamenative.app/drivers/turnip_24.2.0_a32.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "turnip_24.2.0_R19",
+        "name": "turnip_v24.2.0_R19",
+        "url": "https://downloads.gamenative.app/drivers/turnip_24.2.0_R19.zip",
+        "variant": "bionic"
+      }
+    ],
+    "dxvk": [
+      {
+        "id": "2.7.1-1-gplasync-0",
+        "name": "DXVK-GPLASYNC 2.7.1-1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.7.1-1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.6.2-1-gplasync-0",
+        "name": "DXVK-GPLASYNC 2.6.2-1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.6.2-1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.5.3-1-gplasync-0",
+        "name": "DXVK-GPLASYNC 2.5.3-1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.5.3-1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1-1-gplasync-0",
+        "name": "DXVK-GPLASYNC 2.4.1-1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.4.1-1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1-1-gplasync-pre-reg-0",
+        "name": "DXVK-GPLASYNC 2.4.1-1 pre-reg",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.4.1-1-pre-reg.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.3.1-1-gplasync-0",
+        "name": "DXVK-GPLASYNC 2.3.1-1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK-GPLASYNC/dxvk-gplasync-2.3.1-1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.7.1-0",
+        "name": "DXVK 2.7.1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-2.7.1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.6.2-0",
+        "name": "DXVK 2.6.2",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-2.6.2.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.5.3-0",
+        "name": "DXVK 2.5.3",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-2.5.3.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1-0",
+        "name": "DXVK 2.4.1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-2.4.1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1-pre-reg-0",
+        "name": "DXVK 2.4.1 pre-reg",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-2.4.1-pre-reg.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.3.1-0",
+        "name": "DXVK 2.3.1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-2.3.1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "1.10.3-0",
+        "name": "DXVK 1.10.3",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-1.10.3.wcp",
+        "variant": "bionic"
+      }
+    ],
+    "proton": [
+      {
+        "id": "proton-10.0-arm64ec-2",
+        "name": "Proton 10.0 ARM64ec",
+        "url": "https://downloads.gamenative.app/proton-10.0-arm64ec.wcp",
+        "variant": "bionic"
+      }
+    ],
+    "fexcore": [
+      {
+        "id": "2601-217d039-0",
+        "name": "FEX 2601-217d039",
+        "url": "https://downloads.gamenative.app/FEXCore-2601-217d039.wcp",
+        "variant": "bionic"
+      }
+    ],
+    "wowbox64": [
+      {
+        "id": "0.3.6-0",
+        "name": "WOWBox64 0.3.6",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/WOWBOX64/wowbox64-0.3.6.wcp",
+        "variant": "bionic"
+      }
+    ]
+  }
+}

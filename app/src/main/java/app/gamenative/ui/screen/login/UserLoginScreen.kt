@@ -401,6 +401,33 @@ private fun UserLoginScreenContent(
                     }
                 }
             }
+            
+            // Skip Steam login option
+            if (
+                userLoginState.isLoggingIn.not() &&
+                userLoginState.loginResult != LoginResult.Success
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    TextButton(
+                        onClick = onContinueOffline,
+                        modifier = Modifier.padding(top = 0.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.login_skip_steam),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
     }
 }

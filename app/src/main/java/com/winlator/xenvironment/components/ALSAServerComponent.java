@@ -15,6 +15,7 @@ public class ALSAServerComponent extends EnvironmentComponent {
     private XConnectorEpoll connector;
     private final ALSAClient.Options options;
     private final UnixSocketConfig socketConfig;
+    private volatile boolean isPaused = false;
 
     public ALSAServerComponent(UnixSocketConfig socketConfig, ALSAClient.Options options) {
         this.socketConfig = socketConfig;
@@ -33,6 +34,7 @@ public class ALSAServerComponent extends EnvironmentComponent {
         this.connector = xConnectorEpoll;
         xConnectorEpoll.setMultithreadedClients(true);
         this.connector.start();
+        isPaused = false;
     }
 
     @Override // com.winlator.xenvironment.EnvironmentComponent
@@ -42,5 +44,36 @@ public class ALSAServerComponent extends EnvironmentComponent {
             xConnectorEpoll.stop();
             this.connector = null;
         }
+        isPaused = false;
+    }
+
+    public void pause() {
+        if (isPaused) return;
+        XConnectorEpoll xConnectorEpoll = this.connector;
+        if (xConnectorEpoll != null) {
+            // Pause all connected ALSA clients
+            for (int i = 0; i < xConnectorEpoll.getConnectedClientsCount(); i++) {
+                com.winlator.xconnector.Client client = xConnectorEpoll.getConnectedClientAt(i);
+                if (client != null && client.getTag() instanceof ALSAClient) {
+                    ((ALSAClient) client.getTag()).pause();
+                }
+            }
+        }
+        isPaused = true;
+    }
+
+    public void resume() {
+        if (!isPaused) return;
+        XConnectorEpoll xConnectorEpoll = this.connector;
+        if (xConnectorEpoll != null) {
+            // Resume all connected ALSA clients
+            for (int i = 0; i < xConnectorEpoll.getConnectedClientsCount(); i++) {
+                com.winlator.xconnector.Client client = xConnectorEpoll.getConnectedClientAt(i);
+                if (client != null && client.getTag() instanceof ALSAClient) {
+                    ((ALSAClient) client.getTag()).start();
+                }
+            }
+        }
+        isPaused = false;
     }
 }

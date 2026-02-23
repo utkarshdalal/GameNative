@@ -1,0 +1,47 @@
+{
+	"responseMetadata": {
+		"nextCursor": null,
+		"stateToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+	},
+	"records": [
+		{
+			"appName": "Darksiders2",
+			"namespace": "091d95ea332843498122beee1a786d71",
+			"catalogItemId": "8c04901974534bd0818f747952b0a19b",
+			"sandboxType": "PUBLIC",
+			"country": "US",
+			"platform": ["Windows"],
+			"productId": "prod-1",
+			"sandboxName": "darksiders2-live",
+			"recordType": "GAME",
+			"acquisitionDate": "2024-01-15T10:30:00.000Z",
+			"dependencies": []
+		},
+		{
+			"appName": "WatchDogs",
+			"namespace": "ecebf45065bc4993abfe0e84c40ff18e",
+			"catalogItemId": "6dc445f656de4e029834b2d32b6a2f77",
+			"sandboxType": "PUBLIC",
+			"country": "US",
+			"platform": ["Windows"],
+			"productId": "prod-2",
+			"sandboxName": "watchdogs-live",
+			"recordType": "GAME",
+			"acquisitionDate": "2024-02-20T14:00:00.000Z",
+			"dependencies": []
+		},
+		{
+			"appName": "DragonAgeInquisition",
+			"namespace": "afe2527e29b94db48b2eef984e34d81a",
+			"catalogItemId": "1860f41341d1499fa4a06ae064340bbe",
+			"sandboxType": "PUBLIC",
+			"country": "US",
+			"platform": ["Windows"],
+			"productId": "prod-3",
+			"sandboxName": "dragonage-live",
+			"recordType": "GAME",
+			"acquisitionDate": "2024-03-10T09:15:00.000Z",
+			"dependencies": []
+		}
+	]
+}

@@ -6,6 +6,7 @@ import app.gamenative.db.DATABASE_NAME
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.CachedLicenseDao
+import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
 import app.gamenative.db.migration.ROOM_MIGRATION_V7_to_V8
 import dagger.Module
@@ -61,4 +62,12 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideGOGGameDao(db: PluviaDatabase) = db.gogGameDao()
+
+    @Provides
+    @Singleton
+    fun provideEpicGameDao(db: PluviaDatabase) = db.epicGameDao()
+
+    @Provides
+    @Singleton
+    fun provideDownloadingAppInfoDao(db: PluviaDatabase): DownloadingAppInfoDao = db.downloadingAppInfoDao()
 }

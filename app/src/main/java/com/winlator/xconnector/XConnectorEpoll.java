@@ -211,6 +211,17 @@ public class XConnectorEpoll implements Runnable {
         this.canReceiveAncillaryMessages = canReceiveAncillaryMessages;
     }
 
+    public int getConnectedClientsCount() {
+        return this.connectedClients.size();
+    }
+
+    public Client getConnectedClientAt(int index) {
+        if (index >= 0 && index < this.connectedClients.size()) {
+            return this.connectedClients.valueAt(index);
+        }
+        return null;
+    }
+
     private void requestShutdown() {
         try {
             ByteBuffer data = ByteBuffer.allocateDirect(8);

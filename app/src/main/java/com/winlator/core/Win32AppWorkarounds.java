@@ -12,8 +12,8 @@ import timber.log.Timber;
 /* loaded from: classes.dex */
 public class Win32AppWorkarounds {
     private final XServer xServer;
-    private final short taskAffinityMask;
-    private final short taskAffinityMaskWoW64;
+    private volatile short taskAffinityMask;
+    private volatile short taskAffinityMaskWoW64;
 
     private interface DXWrapperConfigWorkaround extends Workaround {
         void setValue(String str, KeyValueSet keyValueSet);
@@ -59,8 +59,11 @@ public class Win32AppWorkarounds {
         }
     }
 
-    public Win32AppWorkarounds(XServer xServer, int taskAffinityMask, int taskAffinityMaskWoW64) {
+    public Win32AppWorkarounds(XServer xServer) {
         this.xServer = xServer;
+    }
+
+    public void setTaskAffinityMasks(int taskAffinityMask, int taskAffinityMaskWoW64) {
         this.taskAffinityMask = (short) taskAffinityMask;
         this.taskAffinityMaskWoW64 = (short) taskAffinityMaskWoW64;
     }

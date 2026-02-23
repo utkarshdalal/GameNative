@@ -17,6 +17,33 @@ import timber.log.Timber
 
 object FileUtils {
 
+    /**
+     * Calculate the total size of a directory recursively
+     *
+     * @param directory The directory to calculate size for
+     * @return Total size in bytes
+     */
+    fun calculateDirectorySize(directory: File): Long {
+        var size = 0L
+        try {
+            if (!directory.exists() || !directory.isDirectory) {
+                return 0L
+            }
+
+            val files = directory.listFiles() ?: return 0L
+            for (file in files) {
+                size += if (file.isDirectory) {
+                    calculateDirectorySize(file)
+                } else {
+                    file.length()
+                }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Error calculating directory size for ${directory.name}")
+        }
+        return size
+    }
+
     fun makeDir(dirName: String) {
         val homeItemsDir = File(dirName)
         homeItemsDir.mkdirs()
@@ -176,5 +203,19 @@ object FileUtils {
             // Timber.e(e)
             false
         }
+    }
+
+    /**
+     * Resolves a relative path against a base dir using case-insensitive matching for each segment.
+     * Info file may list e.g. "checkapplication.exe" while the actual file is "CheckApplication.exe" (Linux/Android are case-sensitive).
+     */
+    fun findFileCaseInsensitive(baseDir: File, relativePath: String): File? {
+        val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
+        var current = baseDir
+        for (segment in segments) {
+            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) } ?: return null
+            current = match
+        }
+        return current.takeIf { it.exists() }
     }
 }

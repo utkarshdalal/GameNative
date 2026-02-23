@@ -1,0 +1,267 @@
+﻿"controller_mappings"
+{
+	"version" "2"
+	"game" "Gamepad with Mouse"
+	"title" "#Title"
+	"description" "#Description"
+
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"bindings"
+		{
+			"button_a"		"xinput_button A"
+			"button_b"		"xinput_button B"
+			"button_x"		"xinput_button X"
+			"button_y"		"xinput_button Y"
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"dpad"
+		"bindings"
+		{
+			"dpad_north"		"xinput_button dpad_up"
+			"dpad_south"		"xinput_button dpad_down"
+			"dpad_east"		"xinput_button dpad_right"
+			"dpad_west"		"xinput_button dpad_left"
+		}
+		"settings"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"joystick_camera"
+		"bindings"
+		{
+			"click"		"xinput_button JOYSTICK_RIGHT"
+		}
+		"settings"
+		{
+			"output_joystick"		"1"
+		}
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"joystick_move"
+		"bindings"
+		{
+			"click"		"xinput_button JOYSTICK_LEFT"
+		}
+		"settings"
+		{
+			"adaptive_centering"		"0"
+		}
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"bindings"
+		{
+			"click"		"xinput_button TRIGGER_LEFT"
+		}
+		"settings"
+		{
+			"output_trigger"		"1"
+		}
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"trigger"
+		"bindings"
+		{
+			"click"		"xinput_button TRIGGER_RIGHT"
+		}
+		"settings"
+		{
+			"output_trigger"		"2"
+		}
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"absolute_mouse"
+		"bindings"
+		{
+			"click"		"xinput_button JOYSTICK_RIGHT"
+		}
+		"settings"
+		{
+			"sensitivity"		"99"
+			"rotation"		"15"
+			"doubetap_max_duration"		"324"
+		}
+	}
+	"group"
+	{
+		"id"		"7"
+		"mode"		"joystick_move"
+		"bindings"
+		{
+			"click"		"xinput_button JOYSTICK_RIGHT"
+		}
+		"settings"
+		{
+			"output_joystick"		"1"
+		}
+	}
+	"group_source_bindings"
+	{
+		"0"		"button_diamond active"
+		"1"		"left_trackpad active"
+		"2"		"right_trackpad inactive"
+		"6"		"right_trackpad active"
+		"3"		"joystick active"
+		"4"		"left_trigger active"
+		"5"		"right_trigger active"
+		"7"		"right_trackpad inactive"
+	}
+	"switch_bindings"
+	{
+		"bindings"
+		{
+			"button_escape"		"xinput_button start"
+			"button_menu"		"xinput_button select"
+			"right_bumper"		"xinput_button shoulder_right"
+			"left_bumper"		"xinput_button shoulder_left"
+			"button_back_left"		"xinput_button a"
+			"button_back_right"		"xinput_button x"
+		}
+	}
+	"settings"
+	{
+		"left_trackpad_mode"		"0"
+		"right_trackpad_mode"		"0"
+	}
+	"Localization"
+	{
+		"english"
+		{
+			"Title" "Gamepad with High Precision Camera/Aim"
+			"Description" "The template works best for games that are designed with a gamepad in mind, but also support a desktop mouse for camera control or aim. This will do the best job of specifically taking advantage of the right side pad on your controller for precise aiming and camera control."
+		}
+		"czech"
+		{
+			"Title" "Gamepad s přesným ovládáním zaměřováním/kamery"
+			"Description" "Tato šablona je pro hry vytvořené pro ovládání gamepadem, ale podporující také myš pro ovládání kamery nebo míření. V této šabloně je využito pravého trackpadu ovladače pro přesné ovládání zmíněné kamery nebo míření."
+		}
+		"danish"
+		{
+			"Title" "Gamepad med højpræcisionskamera/-sigte"
+			"Description" "Denne skabelon virker bedst med spil, der er designet med en gamepad i tankerne, som også understøtter en mus til kamerastyring eller sigte. Denne skabelon gør bedst brug af fladen på højre side af din controller til præcis sigte og kamerastyring."
+		}
+		"dutch"
+		{
+			"Title" "Gamepad met zeer precieze camera/vizier"
+			"Description" "Het sjabloon werkt het beste met spellen die zijn ontworpen met ondersteuning voor een gamepad, maar die ook een desktopmuis ondersteunen voor camerabesturing of om te richten. Hiermee profiteer je het meeste van de rechterpad van je controller voor nauwkeurig richten en camerabesturing."
+		}
+		"finnish"
+		{
+			"Title" "Ohjain korkeatarkkuuksisella kameralla/tähtäimellä"
+			"Description" "Tämä malli sopii parhaiten peleille, jotka on suunniteltu ohjaimille, mutta jotka hyötyvät hiiren tarkkuudesta. Tämä malli ottaa suurimman hyödyn irti ohjainlevyistä."
+		}
+		"french"
+		{
+			"Title" "Manette avec une caméra/visée de haute précision"
+			"Description" "Ce modèle fonctionne particulièrement bien pour les jeux conçus pour un certain type de manette mais qui sont également compatibles avec une souris pour le contrôle de la caméra et la visée. Grâce au modèle, vous pourrez profiter du côté droit du pad de votre contrôleur pour une visée précise et le contrôle de la caméra."
+		}
+		"german"
+		{
+			"Title" "Gamepad mit hochpräziser Kamera/Zielgenauigkeit"
+			"Description" "Diese Vorlage funktioniert am besten mit Spielen, die für die Steuerung mit einem Gamepad ausgelegt sind, jedoch ebenfalls Unterstützung für eine Maus zur Kamerabewegung oder zum Zielen besitzen. Somit können Sie das rechte Pad Ihres Controllers zum genauen Zielen und Steuern der Kamera nutzen."
+		}
+		"hungarian"
+		{
+			"Title" "Gamepad nagy pontosságú kamerával/célzással"
+			"Description" "Ez a sablon gamepadhez tervezett játékokkal működik a legjobban, de támogat egeret is a kamerairányításhoz vagy célzáshoz. Ez használja ki a legjobban játékvezérlőd jobb oldali felületét pontos célzáshoz és kamerairányításhoz."
+		}
+		"italian"
+		{
+			"Title" "Controller con telecamera/mirino ad alta precisione"
+			"Description" "Il template si applica idealmente ai giochi progettati per l'utilizzo del controller, ma supporta anche un mouse da desktop per le funzioni di mirino e controllo della telecamera. Grazie a questo template potrete sfruttare il lato destro del trackpad per prendere la mira con precisione e controllare la telecamera."
+		}
+		"japanese"
+		{
+			"Title" "高精度のカメラ/エイム機能を持つゲームパッド"
+			"Description" "ゲームパッドでの操作を中心にデザインされていて、カメラ操作もしくはエイムをデスクトップマウスでも行えるゲームに最適なテンプレートです。正確なエイミングとカメラ操作をコントローラの右側のパッドを使用して行えます。"
+		}
+		"koreana"
+		{
+			"Title" "정밀 카메라/조준 기능이 있는 게임 패드"
+			"Description" "이 설정은 게임 패드의 사용을 염두에 두고 만들어진 게임을 플레이할 때 가장 적합하지만 카메라 조정이나 조준을 돕기 위해 마우스도 지원합니다. 컨트롤러의 우측 패드로 정밀 조준과 카메라 조정을 할 때 이 설정을 쓰는 것이 좋습니다."
+		}
+		"polish"
+		{
+			"Title" "Kontroler, wysoka precyzja poruszania kamerą / celowania"
+			"Description" "Ten szablon będzie działać najlepiej dla gier, które zostały zaprojektowane z myślą o kontrolerze, ale wspierają także myszkę do poruszania kamerą lub celowania. Wykorzysta to w najlepszy sposób prawy panel dotykowy twojego kontrolera do precyzyjnego celowania i sterowania kamerą."
+		}
+		"portuguese"
+		{
+			"Title" "Comando com câmara/mira precisa"
+			"Description" "Este modelo é indicado para jogos concebidos com o uso do comando em mente, mas que também permitem o uso de um rato para apontar ou controlar a câmara. Logo, este modelo tirará um melhor proveito do pad direito do teu comando para controlos de câmara e mira precisos."
+		}
+		"romanian"
+		{
+			"Title" "Gamepad cu cameră/țintă de precizie înaltă"
+			"Description" "Șablonul funcționează cel mai bine pentru jocuri care sunt proiectate pentru gamepad, dar care suportă și mouse pentru desktop, cu scopul de a controla camera sau a fixa ținta. Acesta va face cea mai bună treabă, profitând anume de partea dreaptă a pad-ului pentru a ținti cu precizie și a controla camera."
+		}
+		"russian"
+		{
+			"Title" "Геймпад с высокоточными осями"
+			"Description" "Этот шаблон подходит для игр, разработанных под контроллер и поддерживающих управление камерой и прицеливание с помощью компьютерной мыши. Для достижения максимальной точности будет использоваться правый трекпад."
+		}
+		"spanish"
+		{
+			"Title" "Mando con cámara/apuntado de alta precisión"
+			"Description" "La plantilla funciona mejor con juegos que han sido diseñados con un mando en mente, pero también es compatible con un ratón de escritorio para controlar la cámara y apuntar. En concreto, sacará el mejor partido aprovechando el pad derecho del mando para apuntar con precisión y controlar la cámara."
+		}
+		"swedish"
+		{
+			"Title" "Gamepad med högprecisionskamera/sikte"
+			"Description" "Mallen fungerar bäst för spel som designats med en gamepad i åtanke, men även stödjer mus för kamerakontroll eller sikte. Denna är bäst på att dra fördel av den högra plattan på din handkontroll för noggrant siktande och kamerakontroll."
+		}
+		"schinese"
+		{
+			"Title" "高精度视角/瞄准手柄"
+			"Description" "此模板在那些为手柄设计，但也支持鼠标控制视角和瞄准的游戏上最为合适。此模板将最大化限度利用您控制器上的右侧十字键，将其用于精确瞄准以及视角控制。"
+		}
+		"thai"
+		{
+			"Title" "เกมแพดพร้อมมุมกล้องหรือการเล็งแบบความแม่นยำสูง"
+			"Description" "แม่แบบนี้ทำงานได้ดีที่สุดสำหรับเกมที่ออกแบบมาสำหรับเกมแพดเป็นหลัก แต่ยังคงรองรับเมาส์ของเดสก์ทอปสำหรับการควมคุมกล้องหรือการเล็งยิงด้วย นี่จะทำงานได้ดีที่สุดจากการใช้ประโยชน์จากแพดขวาบนคอนโทรลเลอร์ของคุณโดยเฉพาะ สำหรับการเล็งยิงและการควบคุมกล้องอย่างแม่นยำ"
+		}
+		"brazilian"
+		{
+			"Title" "Controle com câmera/mira precisa"
+			"Description" "Este modelo funciona melhor em jogos projetados para controles, mas que permitem o uso de um mouse para controlar a câmera ou a mira, tirando assim proveito do trackpad direito do seu controle para mira e controle de câmera precisos."
+		}
+		"bulgarian"
+		{
+			"Title" "Геймпад с висока точност за камера/прицелване"
+			"Description" "Този шаблон върши най-добра работа при игри, които са проектирани, вземайки предвид геймпада, но също така поддържат мишка за управление на камерата или прицелване. Това ще е най-удачно при специфичното възползване от десния пад на контролера Ви за точно прицелване и управление на камерата."
+		}
+		"greek"
+		{
+			"Title" "Χειριστήριο με υψηλής ακρίβειας κάμερα/στόχο"
+			"Description" "Το πρότυπο αυτό λειτουργεί καλά για παιχνίδια σχεδιασμένα για την χρήση χειριστηρίου αλλά επίσης υποστηρίζει ποντίκι για τον έλεγχο κάμερας ή την στόχευση. Αυτό θα δουλέψει καλύτερα χρησιμοποιώντας το pad στην δεξιά πλευρά του χειριστηρίου για ακρίβεια στόχευσης και έλεγχο κάμερας."
+		}
+		"turkish"
+		{
+			"Title" "Yüksek Hassasiyetli Kamera/Nişanlı Oyun Kumandası"
+			"Description" "Şablon kontrolcü desteği ile tasarlanmış ama aynı zamanda da hedef alma ve kamera kontrolü için masaüstü faresini destekleyen oyunlar için çok iyidir. Bu şablon, özellikle pad'inizin sağ tarafını hassas nişan alma ve kamera kontrolü için en iyi şekilde kullanır."
+		}
+		"ukrainian"
+		{
+			"Title" "Ґеймпад з високоточною камерою"
+			"Description" "Шаблон працює найкраше з іграми, що були розроблені з урахуванням підтримки ґеймпадів, але також підтримують комп'ютерну мишу для керування камерою та прицілюванням. Особливо, відмінних результатів можна досягти при використанні правої сенсорної панелі вашого ґеймпада для точного прицілювання та керування камерою."
+		}
+	}
+}
+

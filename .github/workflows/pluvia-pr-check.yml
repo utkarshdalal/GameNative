@@ -23,12 +23,22 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Inject credentials
+        if: github.event.pull_request.head.repo.full_name == github.repository
         run: |
           cat <<EOF > local.properties
           POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+          EOF
+      - name: Inject dummy credentials
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          cat <<EOF > local.properties
+          POSTHOG_API_KEY=dummy
+          POSTHOG_HOST=https://us.i.posthog.com
+          SUPABASE_URL=https://dummy.supabase.co
+          SUPABASE_KEY=dummy
           EOF
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4

@@ -1,15 +1,31 @@
 # Privacy Policy for GameNative
-<sub>Last Updated: Dec. 25, 2024</sub>
+<sub>Last Updated: Feb. 1, 2026</sub>
 
 GameNative is an unofficial Steam client application for Android devices that enables users to access their Steam library and play their owned games.
 
 ## Data Collection and Usage
 
 **Local Storage Only**
-All user data, including Steam login credentials and session information, is stored locally on your device. We do not collect, transmit, or store any personal information on external servers.
+All sensitive user data, including Steam login credentials and session information, is stored locally on your device. We do not collect, transmit, or store any personal information on external servers.
 
 **Steam Integration**
 When you use GameNative, your device communicates directly with Steam's servers to authenticate your account and access your game library. Any data collection, storage, or processing by Steam is governed by Steam's own privacy policy and terms of service.
+
+**Anonymous Usage Metadata**
+GameNative collects limited, non-personal technical metadata to improve compatibility and performance. This may include:
+
+- Game launch and close events
+- Selected configuration settings
+- Hardware category information such as GPU family or driver type
+- Performance indicators such as FPS ranges or crash flags
+
+This data:
+
+- Does not include your name, email, Steam credentials, IP address, or any direct identifiers
+- Cannot be used to identify you personally
+- Is used only to improve game compatibility, recommend working settings, and prioritize development fixes
+
+GameNative does not build user profiles, track browsing activity, or sell data to third parties.
 
 ## Third-Party Services
 

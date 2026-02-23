@@ -198,7 +198,7 @@ data class EnvVarInfo(
                 possibleValues = listOf(
                     "startup", "nir", "nobin", "sysmem", "gmem", "forcebin", "layout", "noubwc", "nomultipos",
                     "nolrz", "nolrzfc", "perf", "perfc", "flushall", "syncdraw", "push_consts_per_stage", "rast_order",
-                    "unaligned_store", "log_skip_gmem_ops", "dynamic", "bos", "3d_load", "fdm", "noconform", "rd",
+                    "unaligned_store", "log_skip_gmem_ops", "dynamic", "bos", "3d_load", "fdm", "noconform", "rd", "deck_emu"
                 ),
             ),
             "DXVK_HUD" to EnvVarInfo(
@@ -237,6 +237,11 @@ data class EnvVarInfo(
                 identifier = "WINE_NEW_MEDIASOURCE",
                 selectionType = EnvVarSelectionType.TOGGLE,
                 possibleValues = listOf("0", "1"),
+            ),
+            "GALLIUM_HUD" to EnvVarInfo(
+                identifier = "GALLIUM_HUD",
+                selectionType = EnvVarSelectionType.MULTI_SELECT,
+                possibleValues = listOf("simple", "fps", "frametime"),
             ),
         )
     }

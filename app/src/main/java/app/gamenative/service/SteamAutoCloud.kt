@@ -2,6 +2,7 @@ package app.gamenative.service
 
 import androidx.room.withTransaction
 import app.gamenative.data.PostSyncInfo
+import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
@@ -41,6 +42,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.io.OutputStream
 import java.net.SocketTimeoutException
 
 /**
@@ -53,6 +55,22 @@ object SteamAutoCloud {
     private fun findPlaceholderWithin(aString: String): Sequence<MatchResult> =
         Regex("%\\w+%").findAll(aString)
 
+    private inline fun InputStream.copyTo(
+        out: OutputStream,
+        bufferSize: Int = 8 * 1024,
+        progress: (Long) -> Unit,
+    ) {
+        val buf = ByteArray(bufferSize)
+        var bytesRead: Int
+        var total = 0L
+        while (read(buf).also { bytesRead = it } >= 0) {
+            if (bytesRead == 0) continue
+            out.write(buf, 0, bytesRead)
+            total += bytesRead
+            progress(total)
+        }
+    }
+
     fun syncUserFiles(
         appInfo: SteamApp,
         clientId: Long,
@@ -62,6 +80,7 @@ object SteamAutoCloud {
         parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
+        onProgress: ((message: String, progress: Float) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.async {
         val postSyncInfo: PostSyncInfo?
 
@@ -124,7 +143,16 @@ object SteamAutoCloud {
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
 
-        val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = { file, fileList ->
+        val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
+            val gameInstallPrefix = "%${PathType.GameInstall.name}%"
+            if (file.filename.startsWith(gameInstallPrefix)) {
+                // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
+                return@getFullFilePath Paths.get(
+                    prefixToPath(PathType.GameInstall.name),
+                    file.filename.removePrefix(gameInstallPrefix)
+                )
+            }
+
             val convertedPrefixes = convertPrefixes(fileList)
 
             if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
@@ -188,7 +216,9 @@ object SteamAutoCloud {
             val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
 
             if (savePatterns.isNotEmpty()) {
-                savePatterns.associate { userFile ->
+                val result = mutableMapOf<String, MutableList<UserFileInfo>>()
+
+                savePatterns.forEach { userFile ->
                     val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
@@ -209,8 +239,11 @@ object SteamAutoCloud {
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
 
-                    Paths.get(userFile.prefix).pathString to files
+                    val prefixKey = Paths.get(userFile.prefix).pathString
+                    result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
                 }
+
+                result
             } else {
                 // Fallback: no UFS patterns; scan SteamUserData root recursively (depth 5)
                 val rootType = PathType.SteamUserData
@@ -270,8 +303,9 @@ object SteamAutoCloud {
             parentScope.async {
                 var filesDownloaded = 0
                 var bytesDownloaded = 0L
+                val totalFiles = fileList.files.size
 
-                fileList.files.forEach { file ->
+                fileList.files.forEachIndexed { index, file ->
                     val prefixedPath = getFilePrefixPath(file, fileList)
                     val actualFilePath = getFullFilePath(file, fileList)
 
@@ -280,6 +314,7 @@ object SteamAutoCloud {
                     val fileDownloadInfo = steamCloud.clientFileDownload(appInfo.id, prefixedPath).await()
 
                     if (fileDownloadInfo.urlHost.isNotEmpty()) {
+                        onProgress?.invoke("Downloading ${file.filename}", -1f)
                         val httpUrl = with(fileDownloadInfo) {
                             buildUrl(useHttps, urlHost, urlPath)
                         }
@@ -307,17 +342,31 @@ object SteamAutoCloud {
                         if (!response.isSuccessful) {
                             Timber.w("File download of $prefixedPath was unsuccessful")
                             response.close()
-                            return@forEach
+                            return@forEachIndexed
                         }
 
                         try {
+                            val totalFileSize = fileDownloadInfo.rawFileSize.toLong()
+                            var totalBytesRead = 0L
+                            var lastReportedProgress = -1f
+                            val progressThreshold = 0.01f // Update every 1%
+
                             val copyToFile: (InputStream) -> Unit = { input ->
                                 Files.createDirectories(actualFilePath.parent)
 
                                 FileOutputStream(actualFilePath.toString()).use { fs ->
-                                    val bytesRead = input.copyTo(fs)
+                                    input.copyTo(fs, 8 * 1024) { bytesRead ->
+                                        totalBytesRead = bytesRead
+                                        if (totalFileSize > 0) {
+                                            val currentProgress = (totalBytesRead.toFloat() / totalFileSize).coerceIn(0f, 1f)
+                                            if (currentProgress - lastReportedProgress >= progressThreshold || currentProgress >= 1f) {
+                                                onProgress?.invoke("Downloading ${file.filename}", currentProgress)
+                                                lastReportedProgress = currentProgress
+                                            }
+                                        }
+                                    }
 
-                                    if (bytesRead != fileDownloadInfo.rawFileSize.toLong()) {
+                                    if (totalBytesRead != totalFileSize) {
                                         Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
                                     }
                                 }
@@ -363,6 +412,10 @@ object SteamAutoCloud {
                     }
                 }
 
+                if (totalFiles > 0) {
+                    onProgress?.invoke("Download complete", 1.0f)
+                }
+
                 UserFilesDownloadResult(filesDownloaded, bytesDownloaded)
             }
         }
@@ -379,6 +432,8 @@ object SteamAutoCloud {
                     .map { it.prefixPath to it }
                     // Filter out entries whose files no longer exist at upload time
                     .filter { Files.exists(it.second.getAbsPath(prefixToPath)) }
+
+                val totalFiles = filesToUpload.size
 
                 Timber.i(
                     "Beginning app upload batch with ${filesToDelete.size} file(s) to delete " +
@@ -397,7 +452,7 @@ object SteamAutoCloud {
 
                 var uploadBatchSuccess = true
 
-                filesToUpload.map { it.second }.forEach { file ->
+                filesToUpload.map { it.second }.forEachIndexed { index, file ->
                     val absFilePath = file.getAbsPath(prefixToPath)
 
                     val fileSize = try {
@@ -405,10 +460,13 @@ object SteamAutoCloud {
                     } catch (e: Exception) {
                         Timber.w("Skipping upload of ${file.prefixPath}: ${e.javaClass.simpleName}: ${e.message}")
                         uploadBatchSuccess = false
-                        return@forEach
+                        return@forEachIndexed
                     }
 
                     Timber.i("Beginning upload of ${file.prefixPath} whose timestamp is ${file.timestamp}")
+
+                    // Report start of upload
+                    onProgress?.invoke("Uploading ${file.filename}", 0f)
 
                     val uploadInfo = steamCloud.beginFileUpload(
                         appId = appInfo.id,
@@ -426,6 +484,9 @@ object SteamAutoCloud {
                     ).await()
 
                     var uploadFileSuccess = true
+                    var bytesUploadedForFile = 0L
+                    var lastReportedProgress = -1f
+                    val progressThreshold = 0.01f // Update every 1% change
 
                     RandomAccessFile(absFilePath.pathString, "r").use { fs ->
                         uploadInfo.blockRequests.forEach { blockRequest ->
@@ -503,6 +564,17 @@ object SteamAutoCloud {
 
                                     uploadFileSuccess = false
                                     uploadBatchSuccess = false
+                                } else {
+                                    // Update progress after successful block upload
+                                    bytesUploadedForFile += blockRequest.blockLength
+                                    if (fileSize > 0) {
+                                        val currentProgress = (bytesUploadedForFile.toFloat() / fileSize).coerceIn(0f, 1f)
+                                        // Only update if progress changed by at least 1% or we're at 100%
+                                        if (currentProgress - lastReportedProgress >= progressThreshold || currentProgress >= 1f) {
+                                            onProgress?.invoke("Uploading ${file.filename}", currentProgress)
+                                            lastReportedProgress = currentProgress
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -532,6 +604,10 @@ object SteamAutoCloud {
                     batchId = uploadBatchResponse.batchID,
                     batchEResult = if (uploadBatchSuccess) EResult.OK else EResult.Fail,
                 ).await()
+
+                if (totalFiles > 0) {
+                    onProgress?.invoke("Upload complete", 1.0f)
+                }
 
                 UserFilesUploadResult(uploadBatchSuccess, uploadBatchResponse.appChangeNumber, filesUploaded, bytesUploaded)
             }

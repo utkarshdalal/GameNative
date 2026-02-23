@@ -70,7 +70,8 @@ fun BootingSplash(
             "Tip: If the game is crashing after loading, increase the video memory.",
             "Tip: If you are seeing visual glitches, disable DRI3.",
             "Tip: You can enable touchscreen mode.",
-
+            "Tip: If you have a Mali GPU, please use System Drivers.",
+            "Tip: Getting a blank screen? Try using the Test Graphics option in the menu to check if your drivers are working correctly.",
         )
     }
 

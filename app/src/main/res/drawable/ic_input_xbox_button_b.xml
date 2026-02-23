@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  Kenney Input Prompts (https://kenney.nl/assets/input-prompts)
+  License: CC0 (Public Domain)
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M56 32 Q56 42 48.95 48.95 42 56 32 56 22.05 56 15 48.95 8 42 8 32 8 22.05 15 15 22.05 8 32 8 42 8 48.95 15 56 22.05 56 32 M37 28 Q37 28.85 36.45 29.4 L36.4 29.4 Q35.8 30 35 30 L29 30 29 26 35 26 Q35.8 26 36.35 26.55 L36.45 26.65 Q37 27.2 37 28 M41 36 Q41 33.7 39.5 32 41 30.3 41 28 41 25.55 39.25 23.8 L39.2 23.75 Q37.45 22 35 22 L25 22 25 42 35 42 Q37.45 42 39.2 40.25 L39.25 40.2 Q41 38.45 41 36 M37 36 Q37 36.8 36.45 37.35 L36.35 37.45 Q35.8 38 35 38 L29 38 29 34 35 34 Q35.8 34 36.4 34.6 L36.45 34.6 Q37 35.15 37 36" />
+</vector>

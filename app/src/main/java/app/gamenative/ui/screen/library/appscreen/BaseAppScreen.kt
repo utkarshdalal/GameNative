@@ -4,35 +4,36 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
-import app.gamenative.utils.SteamGridDB
-import app.gamenative.utils.GameMetadataManager
+import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
-import app.gamenative.PluviaApp
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.GameMetadataManager
+import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.createPinnedShortcut
 import com.winlator.container.ContainerData
 import java.io.File
@@ -47,22 +48,23 @@ import kotlinx.coroutines.withContext
  * This defines the contract that all game source-specific screens must implement.
  */
 abstract class BaseAppScreen {
-        // Shared state for install dialog - map of appId (String) to MessageDialogState
-        companion object {
-            private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
+    // Shared state for install dialog - map of appId (String) to MessageDialogState
+    companion object {
+        private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
 
-            fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
-                installDialogStates[appId] = state
-            }
-
-            fun hideInstallDialog(appId: String) {
-                installDialogStates.remove(appId)
-            }
-
-            fun getInstallDialogState(appId: String): app.gamenative.ui.component.dialog.state.MessageDialogState? {
-                return installDialogStates[appId]
-            }
+        fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
+            installDialogStates[appId] = state
         }
+
+        fun hideInstallDialog(appId: String) {
+            installDialogStates.remove(appId)
+        }
+
+        fun getInstallDialogState(appId: String): app.gamenative.ui.component.dialog.state.MessageDialogState? {
+            return installDialogStates[appId]
+        }
+    }
+
     /**
      * Get the game display information for rendering the UI.
      * This is called to get all the data needed for the common UI layout.
@@ -70,7 +72,7 @@ abstract class BaseAppScreen {
     @Composable
     abstract fun getGameDisplayInfo(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): GameDisplayInfo
 
     /**
@@ -148,6 +150,10 @@ abstract class BaseAppScreen {
         return getGameDisplayInfo(context, libraryItem).name
     }
 
+    protected fun getGameSource(libraryItem: LibraryItem): GameSource {
+        return libraryItem.gameSource
+    }
+
     /**
      * Get the game ID for shortcuts depending on app type
      */
@@ -183,11 +189,11 @@ abstract class BaseAppScreen {
     protected open fun getEditContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-        onEditContainer: () -> Unit
+        onEditContainer: () -> Unit,
     ): AppMenuOption {
         return AppMenuOption(
             optionType = AppOptionMenuType.EditContainer,
-            onClick = onEditContainer
+            onClick = onEditContainer,
         )
     }
 
@@ -195,13 +201,13 @@ abstract class BaseAppScreen {
     protected open fun getRunContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
     ): AppMenuOption? {
         return AppMenuOption(
             AppOptionMenuType.RunContainer,
             onClick = {
                 onRunContainerClick(context, libraryItem, onClickPlay)
-            }
+            },
         )
     }
 
@@ -209,28 +215,27 @@ abstract class BaseAppScreen {
     protected open fun getTestGraphicsOption(
         context: Context,
         libraryItem: LibraryItem,
-        onTestGraphics: () -> Unit
+        onTestGraphics: () -> Unit,
     ): AppMenuOption? {
         return AppMenuOption(
             AppOptionMenuType.TestGraphics,
             onClick = {
                 onTestGraphicsClick(context, libraryItem, onTestGraphics)
-            }
+            },
         )
     }
 
     @Composable
     protected abstract fun getResetContainerOption(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): AppMenuOption?
-
 
     @Composable
     protected open fun getExportContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-        exportFrontendLauncher: ActivityResultLauncher<String>
+        exportFrontendLauncher: ActivityResultLauncher<String>,
     ): AppMenuOption? {
         val gameId = getGameId(libraryItem)
         val gameName = getGameName(context, libraryItem)
@@ -238,9 +243,9 @@ abstract class BaseAppScreen {
         return AppMenuOption(
             optionType = AppOptionMenuType.ExportFrontend,
             onClick = {
-                val suggested = "${gameName}${extension}"
+                val suggested = "${gameName}$extension"
                 exportFrontendLauncher.launch(suggested)
-            }
+            },
         )
     }
 
@@ -250,8 +255,9 @@ abstract class BaseAppScreen {
     @Composable
     protected open fun getCreateShortcutOption(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): AppMenuOption? {
+        val gameSource = getGameSource(libraryItem)
         val gameId = getGameId(libraryItem)
         val gameName = getGameName(context, libraryItem)
         val iconUrl = getIconUrl(context, libraryItem)
@@ -265,13 +271,14 @@ abstract class BaseAppScreen {
                             context = context,
                             gameId = gameId,
                             label = gameName,
-                            iconUrl = iconUrl
+                            gameSource = gameSource,
+                            iconUrl = iconUrl,
                         )
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.base_app_shortcut_created),
-                                Toast.LENGTH_SHORT
+                                Toast.LENGTH_SHORT,
                             ).show()
                         }
                     } catch (e: Exception) {
@@ -280,14 +287,14 @@ abstract class BaseAppScreen {
                                 context,
                                 context.getString(
                                     R.string.base_app_shortcut_failed,
-                                    e.message ?: ""
+                                    e.message ?: "",
                                 ),
-                                Toast.LENGTH_SHORT
+                                Toast.LENGTH_SHORT,
                             ).show()
                         }
                     }
                 }
-            }
+            },
         )
     }
 
@@ -301,7 +308,7 @@ abstract class BaseAppScreen {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
-        isInstalled: Boolean
+        isInstalled: Boolean,
     ): List<AppMenuOption> {
         return emptyList()
     }
@@ -312,7 +319,7 @@ abstract class BaseAppScreen {
             optionType = AppOptionMenuType.SubmitFeedback,
             onClick = {
                 PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(libraryItem.appId))
-            }
+            },
         )
     }
 
@@ -332,7 +339,7 @@ abstract class BaseAppScreen {
                             GameMetadataManager.update(
                                 folder = folder,
                                 appId = appId,
-                                steamgriddbFetched = false
+                                steamgriddbFetched = false,
                             )
 
                             SteamGridDB.fetchGameImages(gameName, gameFolderPath)
@@ -343,7 +350,7 @@ abstract class BaseAppScreen {
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.base_app_images_fetched),
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_SHORT,
                                 ).show()
                             }
                         } else {
@@ -351,7 +358,7 @@ abstract class BaseAppScreen {
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.base_app_game_folder_not_found),
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_SHORT,
                                 ).show()
                             }
                         }
@@ -361,14 +368,14 @@ abstract class BaseAppScreen {
                                 context,
                                 context.getString(
                                     R.string.base_app_images_fetch_failed,
-                                    e.message ?: ""
+                                    e.message ?: "",
                                 ),
-                                Toast.LENGTH_SHORT
+                                Toast.LENGTH_SHORT,
                             ).show()
                         }
                     }
                 }
-            }
+            },
         )
     }
 
@@ -379,17 +386,17 @@ abstract class BaseAppScreen {
             onClick = {
                 val browserIntent = Intent(
                     Intent.ACTION_VIEW,
-                    ("https://discord.gg/2hKv4VfZfE").toUri()
+                    ("https://discord.gg/2hKv4VfZfE").toUri(),
                 )
                 context.startActivity(browserIntent)
-            }
+            },
         )
     }
 
     protected open fun onRunContainerClick(
         context: Context,
         libraryItem: LibraryItem,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
     ) {
         onClickPlay(true)
     }
@@ -397,7 +404,7 @@ abstract class BaseAppScreen {
     protected open fun onTestGraphicsClick(
         context: Context,
         libraryItem: LibraryItem,
-        onTestGraphics: () -> Unit
+        onTestGraphics: () -> Unit,
     ) {
         onTestGraphics()
     }
@@ -452,7 +459,7 @@ abstract class BaseAppScreen {
                 TextButton(onClick = onConfirm) {
                     Text(
                         text = context.getString(R.string.base_app_reset_container_confirm),
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             },
@@ -460,7 +467,7 @@ abstract class BaseAppScreen {
                 TextButton(onClick = onDismiss) {
                     Text(context.getString(R.string.cancel))
                 }
-            }
+            },
         )
     }
 
@@ -475,7 +482,7 @@ abstract class BaseAppScreen {
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
         onTestGraphics: () -> Unit,
-        exportFrontendLauncher: ActivityResultLauncher<String>
+        exportFrontendLauncher: ActivityResultLauncher<String>,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
@@ -599,23 +606,23 @@ abstract class BaseAppScreen {
                         Toast.makeText(
                             context,
                             context.getString(R.string.base_app_exported),
-                            Toast.LENGTH_SHORT
+                            Toast.LENGTH_SHORT,
                         ).show()
                     } catch (e: Exception) {
                         Toast.makeText(
                             context,
                             context.getString(
                                 R.string.base_app_export_failed,
-                                e.message ?: ""
+                                e.message ?: "",
                             ),
-                            Toast.LENGTH_LONG
+                            Toast.LENGTH_LONG,
                         ).show()
                     }
                 } else {
                     Toast.makeText(
                         context,
                         context.getString(R.string.base_app_export_cancelled),
-                        Toast.LENGTH_SHORT
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
             },
@@ -626,6 +633,7 @@ abstract class BaseAppScreen {
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
             app.gamenative.data.GameSource.STEAM -> app.gamenative.service.SteamService.getAppDownloadInfo(displayInfo.gameId)
+            app.gamenative.data.GameSource.EPIC -> app.gamenative.service.epic.EpicService.getDownloadInfo(displayInfo.gameId)
             app.gamenative.data.GameSource.GOG -> app.gamenative.service.gog.GOGService.getDownloadInfo(displayInfo.gameId.toString())
             app.gamenative.data.GameSource.CUSTOM_GAME -> null // Custom games don't support downloads yet
         }
@@ -642,7 +650,7 @@ abstract class BaseAppScreen {
                 },
                 onHasPartialDownloadChanged = { hasPartial ->
                     hasPartialDownloadState = hasPartial
-                }
+                },
             )
             onDispose {
                 dispose?.invoke()
@@ -717,7 +725,7 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onStateChanged: () -> Unit,
         onProgressChanged: (Float) -> Unit,
-        onHasPartialDownloadChanged: ((Boolean) -> Unit)? = null
+        onHasPartialDownloadChanged: ((Boolean) -> Unit)? = null,
     ): (() -> Unit)? {
         return null
     }
@@ -731,9 +739,8 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
-        onBack: () -> Unit
+        onBack: () -> Unit,
     ) {
         // Default: no additional dialogs
     }
 }
-
