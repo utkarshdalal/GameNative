@@ -209,6 +209,14 @@ data class EnvVarInfo(
                     "memory", "gpuload", "version", "api", "cs", "compiler", "samplers",
                 ),
             ),
+            "D7VK_HUD" to EnvVarInfo(
+                identifier = "D7VK_HUD",
+                selectionType = EnvVarSelectionType.MULTI_SELECT,
+                possibleValues = listOf(
+                    "devinfo", "fps", "frametimes", "submissions", "drawcalls", "pipelines", "descriptors",
+                    "memory", "gpuload", "version", "api", "compiler", "samplers",
+                ),
+            ),
             "MESA_EXTENSION_MAX_YEAR" to EnvVarInfo(
                 identifier = "MESA_EXTENSION_MAX_YEAR",
             ),

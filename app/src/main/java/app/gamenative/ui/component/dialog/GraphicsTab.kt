@@ -344,7 +344,8 @@ private fun DxWrapperSection(state: ContainerConfigState) {
     run {
         val context = state.currentDxvkContext()
         val isVKD3D = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "vkd3d"
-        if (!isVKD3D) {
+        val isD7VK = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "d7vk"
+        if (!isVKD3D && !isD7VK) {
             val items = context.labels
             val itemIds = context.ids
             val itemMuted = context.muted

@@ -1754,6 +1754,7 @@ private fun setupXEnvironment(
     envVars.put("WINEPREFIX", imageFs.wineprefix)
     if (container.isShowFPS){
         envVars.put("DXVK_HUD", "fps,frametimes")
+        envVars.put("D7VK_HUD", "fps,frametimes")
         envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_MESA_overlay")
         envVars.put("MESA_OVERLAY_SHOW_FPS", 1)
     }
