@@ -452,4 +452,27 @@ private fun DxWrapperSection(state: ContainerConfigState) {
             )
         }
     }
+    // D7VK Version UI (visible only when D7VK selected)
+    run {
+        val isD7VK = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "d7vk"
+        if (isD7VK) {
+            val label = "D7VK Version"
+            val availableVersions = state.d7vkVersionsAll.value
+            val selectedVersion = KeyValueSet(config.dxwrapperConfig).get("version").ifEmpty { DefaultVersion.D7VK }
+            val selectedIndex = availableVersions.indexOf(selectedVersion).coerceAtLeast(0)
+
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = label) },
+                value = selectedIndex,
+                items = availableVersions,
+                onItemSelected = { idx ->
+                    val selectedId = availableVersions.getOrNull(idx).orEmpty()
+                    val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                    currentConfig.put("version", selectedId.ifEmpty { DefaultVersion.D7VK })
+                    state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+                },
+            )
+        }
+    }
 }

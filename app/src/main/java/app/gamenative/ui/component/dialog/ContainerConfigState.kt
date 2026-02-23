@@ -21,6 +21,7 @@ class ContainerConfigState(
     val glibcWineEntries: MutableState<List<String>>,
     val wrapperVersions: MutableState<List<String>>,
     val dxvkVersionsAll: MutableState<List<String>>,
+    val d7vkVersionsAll: MutableState<List<String>>,
     val componentAvailability: MutableState<ManifestComponentHelper.ComponentAvailability?>,
     val showCustomResolutionDialog: MutableState<Boolean>,
     val customResolutionValidationError: MutableState<String?>,
