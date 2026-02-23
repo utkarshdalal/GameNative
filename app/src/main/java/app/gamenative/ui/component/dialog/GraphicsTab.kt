@@ -388,13 +388,16 @@ private fun DxWrapperSection(state: ContainerConfigState) {
                 },
             )
         } else {
-            // Ensure default version for vortek-like when hidden
-            val driverType = StringUtils.parseIdentifier(state.graphicsDrivers.value.getOrNull(state.graphicsDriverIndex.value).orEmpty())
-            val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
-            val version = if (isVortekLike) "1.10.3" else "2.4.1"
-            val currentConfig = KeyValueSet(config.dxwrapperConfig)
-            currentConfig.put("version", version)
-            state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+            // Only set DXVK version if the selected wrapper is a DXVK variant
+            val selectedWrapper = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty())
+            if (selectedWrapper.startsWith("dxvk")) {
+                val driverType = StringUtils.parseIdentifier(state.graphicsDrivers.value.getOrNull(state.graphicsDriverIndex.value).orEmpty())
+                val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
+                val version = if (isVortekLike) "1.10.3" else "2.4.1"
+                val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                currentConfig.put("version", version)
+                state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+            }
         }
     }
     // VKD3D Version UI (visible only when VKD3D selected)
