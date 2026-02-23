@@ -43,7 +43,7 @@ class LaunchDependencies {
             }
         } finally {
             setLoadingMessage(context.getString(R.string.main_loading))
-            setLoadingProgress(LOADING_PROGRESS_UNKNOWN)
+            setLoadingProgress(1f)
         }
     }
 }
