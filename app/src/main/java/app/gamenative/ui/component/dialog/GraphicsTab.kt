@@ -17,6 +17,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
+import com.winlator.core.DefaultVersion
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars

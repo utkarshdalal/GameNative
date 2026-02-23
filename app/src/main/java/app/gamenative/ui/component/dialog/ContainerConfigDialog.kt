@@ -675,7 +675,7 @@ fun ContainerConfigDialog(
         var dxvkVersionIndex by dxvkVersionIndexRef
 
         var d7vkVersionIndexRef by rememberSaveable { mutableIntStateOf(0) }
-        var d7vkVersionIndex by d7vkVersionIndexRef
+        var d7vkVersionIndex = d7vkVersionIndexRef
 
         // VKD3D version control (forced depending on driver)
         fun vkd3dForcedVersion(): String {
