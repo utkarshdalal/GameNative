@@ -78,7 +78,7 @@ import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
-import app.gamenative.utils.ensureLaunchDependencies
+import app.gamenative.utils.LaunchDependencies
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -1215,7 +1215,7 @@ fun preLaunchApp(
 
         if (!isOffline) {
             try {
-                ensureLaunchDependencies(
+                LaunchDependencies().ensureLaunchDependencies(
                     context = context,
                     container = container,
                     setLoadingMessage = setLoadingMessage,
@@ -1235,6 +1235,8 @@ fun preLaunchApp(
                 )
                 return@launch
             }
+        } else {
+            Timber.tag("preLaunchApp").e("Offline mode, skipping launch dependencies")
         }
 
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
