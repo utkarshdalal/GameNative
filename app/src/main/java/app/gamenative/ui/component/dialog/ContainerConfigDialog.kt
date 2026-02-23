@@ -750,6 +750,7 @@ fun ContainerConfigDialog(
             } else selectedVersion
             val envSet = EnvVars(config.envVars)
             // Update dxwrapperConfig version only when DXVK wrapper selected
+            val wrapperIsDxvk = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "dxvk"
             val kvs = KeyValueSet(config.dxwrapperConfig)
             val currentVersion = kvs.get("version")
             // Only update if the version actually changed (don't overwrite on initial load if it matches)
