@@ -265,6 +265,8 @@ class GOGAppScreen : BaseAppScreen() {
             try {
                 // Get install path
                 val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                val containerData = loadContainerData(context, libraryItem)
+
                 Timber.d("Downloading GOG game to: $installPath")
 
                 // Show starting download toast
@@ -277,7 +279,7 @@ class GOGAppScreen : BaseAppScreen() {
                 }
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
-                val result = GOGService.downloadGame(context, gameId, installPath)
+                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language)
 
                 if (result.isSuccess) {
                     Timber.i("GOG download started successfully for: $gameId")

@@ -86,7 +86,7 @@ class GOGDownloadManager @Inject constructor(
      * @param gameId GOG game ID (numeric)
      * @param installPath Directory where game will be installed
      * @param downloadInfo Progress tracker
-     * @param language Target language (see [GOGConstants.GOG_DOWNLOAD_LANGUAGE])
+     * @param language Container language name (e.g. "english", "german"). Used to resolve GOG manifest language codes when filtering depots. See [GOGConstants.containerLanguageToGogCodes].
      * @param withDlcs Whether to include DLC content
      * @param supportDir Optional directory for support files (redistributables)
      * @return Result indicating success or failure
@@ -95,7 +95,7 @@ class GOGDownloadManager @Inject constructor(
         gameId: String,
         installPath: File,
         downloadInfo: DownloadInfo,
-        language: String = GOGConstants.GOG_DOWNLOAD_LANGUAGE,
+        language: String = GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE,
         withDlcs: Boolean = false,
         supportDir: File? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
@@ -194,26 +194,28 @@ class GOGDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Filtering depots...")
 
-            // Step 3: Filter depots by language and bitness (32-bit or 64-bit)
-            val languageDepots = parser.filterDepotsByLanguage(gameManifest, language)
+            // Step 3: Filter depots by container language (parser resolves to GOG codes and tries English fallback)
+            val (languageDepots, effectiveLang) = parser.filterDepotsByLanguage(gameManifest, language)
             if (languageDepots.isEmpty()) {
-                return@withContext Result.failure(Exception("No depots found for language: $language"))
+                return@withContext Result.failure(
+                    Exception("No depots found for any requested or fallback (English) languages"),
+                )
             }
 
-            // TODO: Verify if we need this anymore.
+            // Step 4: Filter depots by OS bitness
             val bitnessDepots = parser.filterDepotsByBitness(languageDepots, bitness = "64")
             if (bitnessDepots.isEmpty()) {
-                return@withContext Result.failure(Exception("No 64-bit depots found for language: $language"))
+                return@withContext Result.failure(Exception("No 64-bit depots found for language: $effectiveLang"))
             }
 
             // Filter by ownership to exclude unowned DLC depots
             val ownedGameIds = gogManager.getAllGameIds()
             val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
             if (depots.isEmpty()) {
-                return@withContext Result.failure(Exception("No owned depots found for language: $language"))
+                return@withContext Result.failure(Exception("No owned depots found for language: $effectiveLang"))
             }
 
-            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $language (64-bit)")
+            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang (64-bit)")
             depots.forEachIndexed { index, depot ->
                 Timber.tag("GOG").d("  Depot $index: productId=${depot.productId}, manifest=${depot.manifest}, size=${depot.size}, compressedSize=${depot.compressedSize}")
             }
@@ -407,8 +409,7 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
-            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(depots, language)
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
@@ -667,8 +668,8 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(filesToDownload, language)
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
+            val (_, effectiveLang) = parser.filterDepotsByLanguage(gameManifest, language)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")

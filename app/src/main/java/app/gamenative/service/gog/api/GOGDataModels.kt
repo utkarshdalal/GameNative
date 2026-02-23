@@ -277,17 +277,11 @@ data class Depot(
     }
 
     /**
-     * Check if this depot matches the target language (e.g. "en" or "en-US").
-     * Uses exact match plus deprecated/short codes so "en" matches depots with "en" or "en-US".
+     * True if this depot lists the target language (case-insensitive exact match).
+     * Fallback and deprecated code handling (e.g. en vs en-US) is done by the caller.
      */
-    fun matchesLanguage(targetLanguage: String): Boolean {
-        if (languages.contains("*")) return true
-        return languages.any { depotLang ->
-            depotLang.equals(targetLanguage, ignoreCase = true) ||
-                GOG_LANGUAGE_DEPRECATED[depotLang]?.any { it.equals(targetLanguage, ignoreCase = true) } == true ||
-                GOG_LANGUAGE_DEPRECATED[targetLanguage]?.any { it.equals(depotLang, ignoreCase = true) } == true
-        }
-    }
+    fun matchesLanguage(targetLanguage: String): Boolean =
+        languages.any { it.equals(targetLanguage, ignoreCase = true) }
 }
 
 /**
