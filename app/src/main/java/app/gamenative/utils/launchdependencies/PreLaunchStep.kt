@@ -1,6 +1,7 @@
 package app.gamenative.utils.launchdependencies
 
 import android.content.Context
+import app.gamenative.data.GameSource
 import com.winlator.container.Container
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 
@@ -10,7 +11,7 @@ import com.winlator.xenvironment.components.GuestProgramLauncherComponent
  */
 interface PreLaunchStep {
     /** Whether this step applies to the given container/app. */
-    fun appliesTo(container: Container, appId: String): Boolean
+    fun appliesTo(container: Container, appId: String, gameSource: GameSource): Boolean
 
     /**
      * Run this step. Called only when [appliesTo] is true.
@@ -21,5 +22,6 @@ interface PreLaunchStep {
         appId: String,
         container: Container,
         guestProgramLauncherComponent: GuestProgramLauncherComponent,
+        gameSource: GameSource,
     )
 }

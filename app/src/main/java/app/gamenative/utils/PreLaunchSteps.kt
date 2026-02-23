@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.data.GameSource
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterPreLaunchStep
 import app.gamenative.utils.launchdependencies.PreLaunchStep
 import com.winlator.container.Container
@@ -23,11 +24,12 @@ class PreLaunchSteps {
         appId: String,
         container: Container,
         guestProgramLauncherComponent: GuestProgramLauncherComponent,
+        gameSource: GameSource,
     ) {
         for (step in preLaunchSteps) {
-            if (!step.appliesTo(container, appId)) continue
+            if (!step.appliesTo(container, appId, gameSource)) continue
             try {
-                step.run(context, appId, container, guestProgramLauncherComponent)
+                step.run(context, appId, container, guestProgramLauncherComponent, gameSource)
             } catch (e: Exception) {
                 Timber.tag("PreLaunchSteps").e(e, "Pre-launch step failed: ${step::class.simpleName}")
             }
