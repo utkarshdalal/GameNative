@@ -935,7 +935,7 @@ fun ContainerConfigDialog(
             glibcWineEntries = glibcWineEntriesRef,
             wrapperVersions = wrapperVersionsRef,
             dxvkVersionsAll = dxvkVersionsAllRef,
-            d7vkVersionsAll =
+            d7vkVersionsAll = d7vkVersionsAllRef,
             componentAvailability = componentAvailabilityRef,
             showCustomResolutionDialog = showCustomResolutionDialogRef,
             customResolutionValidationError = customResolutionValidationErrorRef,
