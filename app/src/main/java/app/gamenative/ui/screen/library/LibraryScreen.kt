@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyListState
@@ -98,6 +99,7 @@ private fun LibraryScreenContent(
 
     Box(
         Modifier.background(MaterialTheme.colorScheme.background)
+        .navigationBarsPadding()
         .then(safePaddingModifier)) {
         if (selectedAppId == null) {
             LibraryListPane(
