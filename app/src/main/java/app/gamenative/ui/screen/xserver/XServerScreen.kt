@@ -729,7 +729,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
-                
+
                 // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
                 val imeDisplayContext = context.display?.let { display ->
                     context.createDisplayContext(display)
@@ -748,7 +748,7 @@ fun XServerScreen(
                     isClickable = false
                 }
                 frameLayout.addView(imeReceiver)
-                
+
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
@@ -2767,7 +2767,7 @@ private fun setupWineSystemFiles(
     if (xServerState.value.dxwrapper == "d7vk") {
         // Set version for d7vk or use default if not found.
         var version = xServerState.value.dxwrapperConfig?.get("version")
-        if (version == null || version != DefaultVersion.D7VK) {
+        if (version == null || (version is String && version.isBlank())) {
             version = DefaultVersion.D7VK
             xServerState.value.dxwrapperConfig?.put("version", version)
         }
