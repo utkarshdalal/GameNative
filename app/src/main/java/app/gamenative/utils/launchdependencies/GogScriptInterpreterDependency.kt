@@ -4,33 +4,30 @@ import android.content.Context
 import app.gamenative.data.GameSource
 import app.gamenative.service.gog.GOGManifestUtils
 import app.gamenative.service.gog.GOGService
-import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import timber.log.Timber
 import java.io.File
 
 object GogScriptInterpreterDependency : LaunchDependency {
-    override fun appliesTo(container: Container): Boolean {
-        if (ContainerUtils.extractGameSourceFromContainerId(container.id) != GameSource.GOG) return false
-        val gameId = ContainerUtils.extractGameIdFromContainerId(container.id)
+    override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean {
+        if (gameSource != GameSource.GOG) return false
         val installPath = GOGService.getInstallPath(gameId.toString()) ?: return false
         return GOGManifestUtils.needsScriptInterpreter(File(installPath))
     }
 
-    override fun isSatisfied(context: Context, container: Container): Boolean {
-        val gameId = ContainerUtils.extractGameIdFromContainerId(container.id)
-        return isRedistInstalled(gameId.toString())
-    }
+    override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
+        isRedistInstalled(gameId.toString())
 
-    override fun getLoadingMessage(context: Context, container: Container): String =
+    override fun getLoadingMessage(context: Context, container: Container, gameSource: GameSource, gameId: Int): String =
         "Downloading GOG script interpreter"
 
     override suspend fun install(
         context: Context,
         container: Container,
         callbacks: LaunchDependencyCallbacks,
+        gameSource: GameSource,
+        gameId: Int,
     ) {
-        val gameId = ContainerUtils.extractGameIdFromContainerId(container.id)
         if (isRedistInstalled(gameId.toString())) return
         val downloadManager = GOGService.getInstance()?.gogDownloadManager
             ?: run {

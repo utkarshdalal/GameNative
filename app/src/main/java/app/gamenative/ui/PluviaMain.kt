@@ -1218,6 +1218,8 @@ fun preLaunchApp(
                 LaunchDependencies().ensureLaunchDependencies(
                     context = context,
                     container = container,
+                    gameSource = gameSource,
+                    gameId = gameId,
                     setLoadingMessage = setLoadingMessage,
                     setLoadingProgress = setLoadingProgress,
                 )
