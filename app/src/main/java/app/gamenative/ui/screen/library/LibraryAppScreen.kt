@@ -614,12 +614,27 @@ internal fun AppScreenContent(
                     etaAnchorMs,
                     etaAnchorAtMs,
                 ) {
+                    val statusText = statusMessage?.takeUnless { it.isBlank() } ?: ""
+
+                    // Near completion, byte ETA is often misleading (e.g., can stick at 1s while finalizing).
+                    // Prefer showing real status text and suppress ETA in this phase.
+                    if (downloadProgress >= 0.99f) {
+                        val normalized = statusText.lowercase()
+                        return@remember if (
+                            statusText.isNotBlank() &&
+                            !normalized.contains("downloading")
+                        ) {
+                            statusText
+                        } else {
+                            ""
+                        }
+                    }
+
                     val etaMs = if (etaAnchorMs != null && etaAnchorAtMs != null && etaTick > 0L) {
                         (etaAnchorMs!! - (etaTick - etaAnchorAtMs!!)).coerceAtLeast(0L)
                     } else {
                         rawEtaMs
                     }
-                    val statusText = statusMessage?.takeUnless { it.isBlank() } ?: ""
 
                     val fallbackEtaMs = if ((etaMs == null || etaMs <= 0L) && downloadProgress < 1f) {
                         val speedBytes = downloadInfo?.getCurrentDownloadSpeed()
