@@ -1017,7 +1017,6 @@
     <string name="manifest_glibc_not_supported">Les builds GLIBC ne sont pas pris en charge.</string>
     <string name="library_download_phase_downloading">Téléchargement</string>
     <string name="library_download_phase_preparing">Préparation</string>
-    <string name="library_download_phase_allocating">Allocation</string>
     <string name="library_download_phase_patching">Application du patch</string>
     <string name="library_download_phase_verifying">Vérification</string>
     <string name="library_download_phase_applying_data">Application des données</string>

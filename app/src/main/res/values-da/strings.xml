@@ -884,7 +884,6 @@
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
     <string name="library_download_phase_downloading">Downloader</string>
     <string name="library_download_phase_preparing">Forbereder</string>
-    <string name="library_download_phase_allocating">Allokerer</string>
     <string name="library_download_phase_patching">Patcher</string>
     <string name="library_download_phase_verifying">Verificerer</string>
     <string name="library_download_phase_applying_data">Anvender data</string>

@@ -1019,7 +1019,6 @@
     <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
     <string name="library_download_phase_downloading">다운로드 중</string>
     <string name="library_download_phase_preparing">준비 중</string>
-    <string name="library_download_phase_allocating">할당 중</string>
     <string name="library_download_phase_patching">패치 중</string>
     <string name="library_download_phase_verifying">검증 중</string>
     <string name="library_download_phase_applying_data">데이터 적용 중</string>

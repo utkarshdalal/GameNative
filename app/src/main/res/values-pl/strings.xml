@@ -1019,7 +1019,6 @@
     <string name="manifest_glibc_not_supported">Wersje GLIBC nie są obsługiwane.</string>
     <string name="library_download_phase_downloading">Pobieranie</string>
     <string name="library_download_phase_preparing">Przygotowywanie</string>
-    <string name="library_download_phase_allocating">Przydzielanie miejsca</string>
     <string name="library_download_phase_patching">Łatanie</string>
     <string name="library_download_phase_verifying">Weryfikowanie</string>
     <string name="library_download_phase_applying_data">Zastosowywanie danych</string>

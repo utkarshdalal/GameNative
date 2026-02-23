@@ -18,7 +18,6 @@ import java.security.MessageDigest
 import java.util.zip.Inflater
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -113,6 +112,11 @@ class GOGDownloadManager @Inject constructor(
             }
 
             Timber.tag("GOG").d("Database game ID: ${dbGame.id}, title: ${dbGame.title}")
+
+            // Emit download started event so UI can attach progress listeners
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, true),
+            )
 
             downloadInfo.updateStatusMessage("Fetching builds...")
 
@@ -391,17 +395,9 @@ class GOGDownloadManager @Inject constructor(
 
                 val dependencyResult = downloadDependencies(gameId, dependencies, installPath, supportDir, downloadInfo)
                 if (dependencyResult.isFailure){
-                    val dependencyError = dependencyResult.exceptionOrNull()
-                    if (dependencyError is CancellationException) {
-                        return@withContext Result.failure(dependencyError)
-                    }
-                    Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyError?.message}")
+                    Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
 
-            }
-
-            if (!downloadInfo.isActive()) {
-                return@withContext Result.failure(CancellationException("Download cancelled"))
             }
 
             // Step 11: Cleanup
@@ -416,6 +412,11 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.setProgress(-1.0f)
             downloadInfo.setActive(false)
             downloadInfo.emitProgressChange()
+
+            // Emit download stopped event on failure
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
+            )
 
             Result.failure(e)
         }
@@ -669,7 +670,7 @@ class GOGDownloadManager @Inject constructor(
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
                     Timber.tag("GOG").w("Download cancelled by user")
-                    return@withContext Result.failure(CancellationException("Download cancelled"))
+                    return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
                 // Download batch in parallel with retry logic
@@ -828,9 +829,6 @@ class GOGDownloadManager @Inject constructor(
 
             // Download each dependency
             for ((index, depot) in filteredDepots.withIndex()) {
-                if (!downloadInfo.isActive()) {
-                    return@withContext Result.failure(CancellationException("Download cancelled"))
-                }
                 downloadInfo.updateStatusMessage("Downloading dependency ${index + 1}/${filteredDepots.size}: ${depot.readableName}")
 
                 Timber.tag("GOG").i("Downloading dependency: ${depot.readableName} (${depot.dependencyId})")
@@ -848,11 +846,7 @@ class GOGDownloadManager @Inject constructor(
                 // Fetch depot manifest to get file list using open link URLs
                 val depotManifestResult = apiClient.fetchDependencyDepotManifest(depot.manifest, dependencyBaseUrls)
                 if (depotManifestResult.isFailure) {
-                    val depotManifestError = depotManifestResult.exceptionOrNull()
-                    if (depotManifestError is CancellationException) {
-                        return@withContext Result.failure(depotManifestError)
-                    }
-                    Timber.tag("GOG").w("Failed to fetch depot manifest for ${depot.readableName}: ${depotManifestError?.message}")
+                    Timber.tag("GOG").w("Failed to fetch depot manifest for ${depot.readableName}: ${depotManifestResult.exceptionOrNull()?.message}")
                     continue
                 }
 
@@ -877,11 +871,7 @@ class GOGDownloadManager @Inject constructor(
                 // Download chunks
                 val downloadResult = downloadChunksSimple(chunkUrlMap, depotCacheDir, downloadInfo)
                 if (downloadResult.isFailure) {
-                    val downloadError = downloadResult.exceptionOrNull()
-                    if (downloadError is CancellationException) {
-                        return@withContext Result.failure(downloadError)
-                    }
-                    Timber.tag("GOG").w("Failed to download chunks for ${depot.readableName}: ${downloadError?.message}")
+                    Timber.tag("GOG").w("Failed to download chunks for ${depot.readableName}: ${downloadResult.exceptionOrNull()?.message}")
                     continue
                 }
 
@@ -906,11 +896,7 @@ class GOGDownloadManager @Inject constructor(
 
                 val assembleResult = assembleFiles(filesToAssemble, depotCacheDir, depotInstallDir, downloadInfo)
                 if (assembleResult.isFailure) {
-                    val assembleError = assembleResult.exceptionOrNull()
-                    if (assembleError is CancellationException) {
-                        return@withContext Result.failure(assembleError)
-                    }
-                    Timber.tag("GOG").w("Failed to assemble files for ${depot.readableName}: ${assembleError?.message}")
+                    Timber.tag("GOG").w("Failed to assemble files for ${depot.readableName}: ${assembleResult.exceptionOrNull()?.message}")
                     continue
                 }
 
@@ -1152,7 +1138,7 @@ class GOGDownloadManager @Inject constructor(
 
             for ((index, file) in files.withIndex()) {
                 if (!downloadInfo.isActive()) {
-                    return@withContext Result.failure(CancellationException("Download cancelled"))
+                    return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
                 downloadInfo.updateStatusMessage("Assembling ${index + 1}/$totalFiles: ${file.path}")

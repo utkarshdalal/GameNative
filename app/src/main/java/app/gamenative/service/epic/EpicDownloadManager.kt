@@ -80,7 +80,11 @@ class EpicDownloadManager @Inject constructor(
             File(installPath).mkdirs()
             MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
+            // Emit download started event so UI can attach progress listeners
             val gameId = game.id
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, true),
+            )
 
             // Check for DLCs early to calculate total download size
             val dlcsToDownload = if (dlcIds.size > 0) {
@@ -214,7 +218,7 @@ class EpicDownloadManager @Inject constructor(
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
                     Timber.tag("Epic").w("Download cancelled by user")
-                    return@withContext Result.failure(CancellationException("Download cancelled"))
+                    return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
                 // Download batch in parallel
@@ -303,19 +307,12 @@ class EpicDownloadManager @Inject constructor(
                             )
 
                             if (dlcResult.isFailure) {
-                                val dlcError = dlcResult.exceptionOrNull()
-                                if (dlcError is CancellationException) {
-                                    return@withContext Result.failure(dlcError)
-                                }
-                                Timber.tag("Epic").w("Failed to download DLC ${dlc.title}: ${dlcError?.message}")
+                                Timber.tag("Epic").w("Failed to download DLC ${dlc.title}: ${dlcResult.exceptionOrNull()?.message}")
                                 // Continue with other DLCs even if one fails
                             } else {
                                 Timber.tag("Epic").i("Successfully downloaded DLC: ${dlc.title}")
                             }
                         } catch (e: Exception) {
-                            if (e is CancellationException) {
-                                return@withContext Result.failure(e)
-                            }
                             Timber.tag("Epic").e(e, "Error downloading DLC ${dlc.title}")
                             // Continue with other DLCs
                         }
@@ -324,15 +321,9 @@ class EpicDownloadManager @Inject constructor(
                     downloadInfo.updateStatusMessage("DLC downloads complete")
                     Timber.tag("Epic").i("Finished downloading DLCs for ${game.title}")
                 } catch (e: Exception) {
-                    if (e is CancellationException) {
-                        return@withContext Result.failure(e)
-                    }
                     Timber.tag("Epic").e(e, "Error downloading DLCs")
                     // Don't fail the base game download if DLC fails
                 }
-            }
-            if (!downloadInfo.isActive()) {
-                return@withContext Result.failure(CancellationException("Download cancelled"))
             }
             // Update database with install info
             try {
@@ -373,6 +364,12 @@ class EpicDownloadManager @Inject constructor(
             downloadInfo.setProgress(-1.0f)
             downloadInfo.setActive(false)
             Result.failure(e)
+        } finally {
+            // Always emit download stopped event
+            val gameId = game.id ?: 0
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId, false),
+            )
         }
     }
 
@@ -412,7 +409,7 @@ class EpicDownloadManager @Inject constructor(
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
                 if (!downloadInfo.isActive()) {
                     Timber.tag("Epic").w("Download cancelled by user")
-                    return@withContext Result.failure(CancellationException("Download cancelled"))
+                    return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
                 val results = chunkBatch.map { chunk ->
@@ -446,10 +443,6 @@ class EpicDownloadManager @Inject constructor(
                         failedResult.exceptionOrNull() ?: Exception("Failed to assemble file"),
                     )
                 }
-            }
-
-            if (!downloadInfo.isActive()) {
-                return@withContext Result.failure(CancellationException("Download cancelled"))
             }
 
             // Cleanup

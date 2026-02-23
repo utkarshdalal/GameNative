@@ -956,7 +956,6 @@
     <string name="gog_logout_in_progress">Cerrando sesión de GOG…</string>
     <string name="library_download_phase_downloading">Descargando</string>
     <string name="library_download_phase_preparing">Preparando</string>
-    <string name="library_download_phase_allocating">Asignando espacio</string>
     <string name="library_download_phase_patching">Aplicando parche</string>
     <string name="library_download_phase_verifying">Verificando</string>
     <string name="library_download_phase_applying_data">Aplicando datos</string>

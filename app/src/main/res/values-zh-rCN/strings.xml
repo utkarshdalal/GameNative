@@ -1010,7 +1010,6 @@
     <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
     <string name="library_download_phase_downloading">下载中</string>
     <string name="library_download_phase_preparing">准备中</string>
-    <string name="library_download_phase_allocating">正在分配</string>
     <string name="library_download_phase_patching">正在打补丁</string>
     <string name="library_download_phase_verifying">正在验证</string>
     <string name="library_download_phase_applying_data">正在应用数据</string>

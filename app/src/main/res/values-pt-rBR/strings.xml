@@ -884,7 +884,6 @@
     <string name="manifest_glibc_not_supported">Compilações GLIBC não são suportadas.</string>
     <string name="library_download_phase_downloading">Baixando</string>
     <string name="library_download_phase_preparing">Preparando</string>
-    <string name="library_download_phase_allocating">Alocando</string>
     <string name="library_download_phase_patching">Aplicando patch</string>
     <string name="library_download_phase_verifying">Verificando</string>
     <string name="library_download_phase_applying_data">Aplicando dados</string>
