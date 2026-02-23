@@ -15,7 +15,7 @@ public abstract class DefaultVersion {
     public static final String VIRGL = "23.1.9";
     public static String DXVK = "2.6.1-gplasync";
     public static final String D8VK = "1.0";
-    public static final String D7VK = "1.1";
+    public static final String D7VK = "1.3";
     public static String VKD3D = "2.14.1";
     public static final String CNC_DDRAW = "6.6";
     public static final String VORTEK = "2.1-22.2.5";

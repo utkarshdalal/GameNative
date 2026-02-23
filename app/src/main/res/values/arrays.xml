@@ -81,7 +81,7 @@
         <item>CNC DDraw</item>
     </string-array>
     <string-array name="d7vk_version_entries">
-        <item>1.1</item>
+        <item>1.3</item>
     </string-array>
     <string-array name="dxvk_version_entries">
         <item>async-1.10.3</item>
