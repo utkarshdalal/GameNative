@@ -2120,7 +2120,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.d(e, "Download failed for app $appId via cancellation")
                         di.persistProgressSnapshot(force = true)
                         clearFailedResumeState(appId)
-                        di.updateStatusMessage("Failed - tap Resume to continue")
+                        di.updateStatusMessage("Download Failed - Please Retry")
                         di.setActive(false)
                         removeDownloadJob(appId)
                         return@launch
@@ -2367,7 +2367,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Hard stop current session on item failure so we do not continue toward completion
                 // with missing/corrupt files. Resume metadata is preserved for retry.
                 downloadInfo.persistProgressSnapshot(force = true)
-                downloadInfo.updateStatusMessage("Failed - tap Resume to continue")
+                downloadInfo.updateStatusMessage("Download Failed - Please Retry")
                 downloadInfo.failedToDownload()
 
                 instance?.let { service ->
