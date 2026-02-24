@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.utils.launchdependencies.DrmExtrasDependency
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.ImageFsBaseDependency
 import app.gamenative.utils.launchdependencies.ImageFsInstallDependency
@@ -28,6 +29,7 @@ class LaunchDependencies {
             ImageFsPatchesDependency,
             ProtonPackageDependency("proton-9.0-arm64ec.txz", "arm64ec"),
             ProtonPackageDependency("proton-9.0-x86_64.txz", "x86_64"),
+            DrmExtrasDependency,
             SteamClientDependency,
             SteamTokenDependency,
             ImageFsInstallDependency,
