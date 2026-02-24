@@ -811,8 +811,6 @@ class SteamAppScreen : BaseAppScreen() {
             return emptyList()
         }
 
-        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
-
         val scope = rememberCoroutineScope()
 
         // Steam-specific options (only when installed)
@@ -1592,4 +1590,3 @@ class SteamAppScreen : BaseAppScreen() {
         }
     }
 }
-

@@ -326,12 +326,13 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun handleExitCloudSync(context: Context, appId: String, gameId: Int) {
-        if (ContainerUtils.isLocalSavesOnly(context, appId)) {
-            Timber.tag("Exit").i("Local saves only enabled for $appId — skipping cloud sync on exit")
+        val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+        if (ContainerUtils.isLocalSavesOnly(context, appId) || isOffline.value) {
+            Timber.tag("Exit").i("Local saves only or offline mode enabled for $appId — skipping cloud sync on exit")
             return
         }
 
-        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.GOG) {
+        if (gameSource == GameSource.GOG) {
             Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
             viewModelScope.launch(Dispatchers.IO) {
                 try {
@@ -353,7 +354,7 @@ class MainViewModel @Inject constructor(
             return
         }
 
-        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC) {
+        if (gameSource == GameSource.EPIC) {
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
             viewModelScope.launch(Dispatchers.IO) {
                 try {
@@ -375,9 +376,11 @@ class MainViewModel @Inject constructor(
             return
         }
 
-        SteamService.closeApp(gameId, isOffline.value) { prefix ->
-            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-        }.await()
+        if (gameSource == GameSource.STEAM) {
+            SteamService.closeApp(gameId, isOffline.value) { prefix ->
+                PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+            }.await()
+        }
     }
 
     fun onWindowMapped(context: Context, window: Window, appId: String) {
