@@ -97,22 +97,6 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Filter depots based on OS bitness
-     *
-     * @param depots List of depots to filter
-     * @param bitness Target bitness (e.g., "64", "32")
-     * @return Filtered list of depots matching bitness
-     */
-    fun filterDepotsByBitness(depots: List<Depot>, bitness: String = "64"): List<Depot> {
-        val filtered = depots.filter { depot ->
-            depot.osBitness == null || depot.osBitness.contains(bitness)
-        }
-
-        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for bitness: $bitness")
-        return filtered
-    }
-
-    /**
      * Filter depots based on ownership
      *
      * @param depots List of depots to filter

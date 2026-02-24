@@ -202,20 +202,14 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
 
-            // Step 4: Filter depots by OS bitness
-            val bitnessDepots = parser.filterDepotsByBitness(languageDepots, bitness = "64")
-            if (bitnessDepots.isEmpty()) {
-                return@withContext Result.failure(Exception("No 64-bit depots found for language: $effectiveLang"))
-            }
-
             // Filter by ownership to exclude unowned DLC depots
             val ownedGameIds = gogManager.getAllGameIds()
-            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            val depots = parser.filterDepotsByOwnership(languageDepots, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found for language: $effectiveLang"))
             }
 
-            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang (64-bit)")
+            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang")
             depots.forEachIndexed { index, depot ->
                 Timber.tag("GOG").d("  Depot $index: productId=${depot.productId}, manifest=${depot.manifest}, size=${depot.size}, compressedSize=${depot.compressedSize}")
             }
@@ -534,8 +528,7 @@ class GOGDownloadManager @Inject constructor(
             // Gen 1: do not filter by language — some games put main content in a depot tagged with another
             // language (or no tag), so filtering to en-US can leave only a small depot and skip the main one.
             downloadInfo.updateStatusMessage("Filtering depots...")
-            val bitnessDepots = parser.filterDepotsByBitness(gameManifest.depots, bitness = "64")
-            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            val depots = parser.filterDepotsByOwnership(gameManifest.depots, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found"))
             }
