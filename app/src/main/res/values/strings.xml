@@ -775,7 +775,12 @@
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_entry">Downloading %s</string>
     <string name="main_downloading_steam">Downloading Steam...</string>
-
+    <string name="main_downloading_first_time_files">Downloading first-time files...</string>
+    <string name="main_downloading_wine">Downloading Wine...</string>
+    <string name="main_downloading_extras">Downloading extras...</string>
+    <string name="main_downloading_steam_token">Downloading Steam token...</string>
+    <string name="main_downloading_proton">Downloading %1$s Proton...</string>
+    <string name="main_extracting_proton">Extracting %1$s...</string>
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
     <string name="main_loading">Loading...</string>

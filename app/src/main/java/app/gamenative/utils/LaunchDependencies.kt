@@ -6,6 +6,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
+import app.gamenative.utils.launchdependencies.ProtonPackageDependency
 import com.winlator.container.Container
 
 const val LOADING_PROGRESS_UNKNOWN: Float = -1f
@@ -18,6 +19,8 @@ const val LOADING_PROGRESS_UNKNOWN: Float = -1f
 class LaunchDependencies {
     companion object {
         private val launchDependencies: List<LaunchDependency> = listOf(
+            ProtonPackageDependency("proton-9.0-arm64ec.txz", "arm64ec"),
+            ProtonPackageDependency("proton-9.0-x86_64.txz", "x86_64"),
             GogScriptInterpreterDependency,
         )
     }
