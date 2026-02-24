@@ -4,6 +4,9 @@ import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
+import app.gamenative.utils.launchdependencies.ImageFsBaseDependency
+import app.gamenative.utils.launchdependencies.ImageFsInstallDependency
+import app.gamenative.utils.launchdependencies.ImageFsPatchesDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
 import app.gamenative.utils.launchdependencies.ProtonPackageDependency
@@ -21,10 +24,13 @@ const val LOADING_PROGRESS_UNKNOWN: Float = -1f
 class LaunchDependencies {
     companion object {
         private val launchDependencies: List<LaunchDependency> = listOf(
+            ImageFsBaseDependency,
+            ImageFsPatchesDependency,
             ProtonPackageDependency("proton-9.0-arm64ec.txz", "arm64ec"),
             ProtonPackageDependency("proton-9.0-x86_64.txz", "x86_64"),
             SteamClientDependency,
             SteamTokenDependency,
+            ImageFsInstallDependency,
             GogScriptInterpreterDependency,
         )
     }

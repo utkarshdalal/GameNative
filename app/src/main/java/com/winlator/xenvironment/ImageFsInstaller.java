@@ -194,14 +194,28 @@ public abstract class ImageFsInstaller {
 
     private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
 
+    /**
+     * Returns true if the ImageFs install (glibc/bionic) needs to be run for this container.
+     * Lightweight check only; does not perform work.
+     * If container is null, returns true (install required).
+     */
+    public static boolean needsInstall(Context context, Container container) {
+        if (container == null) {
+            return true;
+        }
+        ImageFs imageFs = ImageFs.find(context);
+        return !imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant());
+    }
+
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
         return installIfNeededFuture(context, assetManager, null, null);
     }
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
-        if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
+        if (needsInstall(context, container)) {
             Log.d("ImageFsInstaller", "Installing image from assets");
-            return installFromAssetsFuture(context, assetManager, container.getContainerVariant(), onProgress);
+            String variant = container != null ? container.getContainerVariant() : imageFs.getVariant();
+            return installFromAssetsFuture(context, assetManager, variant, onProgress);
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
             return Executors.newSingleThreadExecutor().submit(() -> true);
