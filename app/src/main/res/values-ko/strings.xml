@@ -739,6 +739,8 @@
     <string name="main_later_button">나중에</string>
     <string name="main_update_failed_title">업데이트 실패</string>
     <string name="main_update_failed_message">업데이트를 다운로드하거나 설치하지 못했습니다. 나중에 다시 시도하세요.</string>
+    <string name="launch_dependency_failed_title">실행 종속성 다운로드 실패</string>
+    <string name="launch_dependency_failed_message">필수 구성 요소를 다운로드하지 못했습니다. 나중에 다시 시도하세요.</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">최근 충돌</string>

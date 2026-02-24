@@ -562,6 +562,8 @@
     <string name="main_later_button">Mais tarde</string>
     <string name="main_update_failed_title">Atualização falhou</string>
     <string name="main_update_failed_message">Falha ao baixar ou instalar a atualização. Por favor, tente novamente mais tarde.</string>
+    <string name="launch_dependency_failed_title">Falha ao baixar dependência de lançamento</string>
+    <string name="launch_dependency_failed_message">Falha ao baixar um componente necessário. Por favor, tente novamente mais tarde.</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Falha e suporte -->
     <string name="main_recent_crash_title">Falha recente</string>

@@ -78,6 +78,7 @@ import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
+import app.gamenative.utils.LaunchDependencies
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -1049,10 +1050,16 @@ fun PluviaMain(
                         CoroutineScope(Dispatchers.Main).launch {
                             val currentRoute = navController.currentBackStackEntry
                                 ?.destination
-                                ?.route // ← this is the screen’s route string
+                                ?.route
 
                             if (currentRoute == PluviaScreen.XServer.route) {
-                                navController.popBackStack()
+                                if (MainActivity.wasLaunchedViaExternalIntent) {
+                                    Timber.d("[IntentLaunch]: Finishing activity to return to external launcher")
+                                    MainActivity.wasLaunchedViaExternalIntent = false
+                                    (context as? android.app.Activity)?.finish()
+                                } else {
+                                    navController.popBackStack()
+                                }
                             }
                         }
                     },
@@ -1211,6 +1218,35 @@ fun preLaunchApp(
                 }
             }
         }
+
+        if (!isOffline) {
+            try {
+                LaunchDependencies().ensureLaunchDependencies(
+                    context = context,
+                    container = container,
+                    gameSource = gameSource,
+                    gameId = gameId,
+                    setLoadingMessage = setLoadingMessage,
+                    setLoadingProgress = setLoadingProgress,
+                )
+            } catch (e: Exception) {
+                Timber.tag("preLaunchApp").e(e, "ensureLaunchDependencies failed")
+                setLoadingDialogVisible(false)
+                setMessageDialogState(
+                    MessageDialogState(
+                        visible = true,
+                        type = DialogType.SYNC_FAIL,
+                        title = context.getString(R.string.launch_dependency_failed_title),
+                        message = e.message ?: context.getString(R.string.launch_dependency_failed_message),
+                        dismissBtnText = context.getString(R.string.ok),
+                    ),
+                )
+                return@launch
+            }
+        } else {
+            Timber.tag("preLaunchApp").e("Offline mode, skipping launch dependencies")
+        }
+
         if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
             !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
         ) {

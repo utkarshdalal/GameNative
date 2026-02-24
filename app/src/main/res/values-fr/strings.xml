@@ -727,6 +727,8 @@
     <string name="main_later_button">Plus tard</string>
     <string name="main_update_failed_title">Échec de la mise à jour</string>
     <string name="main_update_failed_message">Échec du téléchargement ou de l\'installation de la mise à jour. Veuillez réessayer plus tard.</string>
+    <string name="launch_dependency_failed_title">Échec du téléchargement de la dépendance de lancement</string>
+    <string name="launch_dependency_failed_message">Échec du téléchargement d\'un composant requis. Veuillez réessayer plus tard.</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Plantage récent</string>

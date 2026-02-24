@@ -356,6 +356,7 @@ class LibraryViewModel @Inject constructor(
                         iconHash = item.clientIconHash,
                         capsuleImageUrl = item.getCapsuleUrl(),
                         headerImageUrl = item.headerUrl,
+                        heroImageUrl = item.getHeroUrl(),
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
                     ),
                     isInstalled = isInstalled,

@@ -723,6 +723,8 @@
     <string name="main_later_button">Пізніше</string>
     <string name="main_update_failed_title">Помилка оновлення</string>
     <string name="main_update_failed_message">Помилка завантаження або інсталяції оновлення. Будь ласка, спробуйте знову.</string>
+    <string name="launch_dependency_failed_title">Помилка завантаження залежності запуску</string>
+    <string name="launch_dependency_failed_message">Помилка завантаження необхідного компонента. Будь ласка, спробуйте знову пізніше.</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Нещодавній збій</string>

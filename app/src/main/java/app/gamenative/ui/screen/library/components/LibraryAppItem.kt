@@ -212,31 +212,31 @@ internal fun AppItem(
                         return null
                     }
 
-                    val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
-                        val url = when (appInfo.gameSource) {
+                    val (primaryUrl, fallbackUrl) = remember(appInfo.appId, paneType, imageRefreshCounter, appInfo.heroImageUrl) {
+                        when (appInfo.gameSource) {
                             GameSource.CUSTOM_GAME -> {
                                 // For Custom Games, use SteamGridDB images
                                 when (paneType) {
                                     PaneType.GRID_CAPSULE -> {
                                         // Vertical grid for capsule
-                                        findSteamGridDBImage("grid_capsule")
-                                            ?: appInfo.capsuleImageUrl
+                                        (findSteamGridDBImage("grid_capsule")
+                                            ?: appInfo.capsuleImageUrl) to ""
                                     }
 
                                     PaneType.GRID_HERO -> {
                                         // Horizontal grid for hero view
-                                        findSteamGridDBImage("grid_hero")
-                                            ?: appInfo.headerImageUrl
+                                        (findSteamGridDBImage("grid_hero")
+                                            ?: appInfo.headerImageUrl) to ""
                                     }
 
                                     else -> {
-                                        // For list view, use heroes endpoint (not grid_hero)
+                                        // fallback for non-grid pane types (LIST, UNDECIDED)
                                         val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                                         val heroUrl = gameFolderPath?.let { path ->
                                             val folder = java.io.File(path)
                                             val heroFile = folder.listFiles()?.firstOrNull { file ->
                                                 file.name.startsWith("steamgriddb_hero") &&
-                                                    !file.name.contains("grid") &&
+                                                    !file.name.contains("grid_") &&
                                                     (
                                                         file.name.endsWith(".png", ignoreCase = true) ||
                                                             file.name.endsWith(".jpg", ignoreCase = true) ||
@@ -245,30 +245,31 @@ internal fun AppItem(
                                             }
                                             heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                         }
-                                        heroUrl ?: appInfo.headerImageUrl
+                                        (heroUrl ?: appInfo.headerImageUrl) to ""
                                     }
                                 }
                             }
 
                             GameSource.GOG -> {
-                                appInfo.iconHash
+                                appInfo.iconHash to ""
                             }
 
                             GameSource.EPIC -> {
-                                appInfo.iconHash
+                                appInfo.iconHash to ""
                             }
 
                             GameSource.STEAM -> {
-                                // For Steam games, use standard Steam URLs
                                 if (paneType == PaneType.GRID_CAPSULE) {
-                                    appInfo.capsuleImageUrl
+                                    appInfo.capsuleImageUrl to ""
                                 } else {
-                                    appInfo.headerImageUrl
+                                    // try header first, fall back to hero image from library assets
+                                    appInfo.headerImageUrl to appInfo.heroImageUrl
                                 }
                             }
                         }
-                        url
                     }
+
+                    var imageUrl by remember(primaryUrl, imageRefreshCounter) { mutableStateOf(primaryUrl) }
 
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
                     LaunchedEffect(imageUrl) {
@@ -286,8 +287,12 @@ internal fun AppItem(
                                 .alpha(alpha),
                             image = { imageUrl },
                             onFailure = {
-                                hideText = false
-                                alpha = 0.1f
+                                if (fallbackUrl.isNotEmpty() && imageUrl != fallbackUrl) {
+                                    imageUrl = fallbackUrl
+                                } else {
+                                    hideText = false
+                                    alpha = 0.1f
+                                }
                             },
                         )
 

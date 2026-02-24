@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -78,6 +79,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.PreLaunchSteps
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
@@ -328,6 +330,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var isOverlayPaused by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -424,7 +427,13 @@ fun XServerScreen(
         }
 
         Timber.i("BackHandler")
-        NavigationDialog(
+
+        // Suspend game and audio while the navigation overlay is visible.
+        PluviaApp.xEnvironment?.onPause()
+        isOverlayPaused = true
+        PluviaApp.isOverlayPaused = true
+
+        val navDialog = NavigationDialog(
             context,
             object : NavigationDialog.NavigationListener {
                 override fun onNavigationItemSelected(itemId: Int) {
@@ -562,12 +571,25 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
+                            // Resume processes before exiting so they can receive SIGTERM cleanly.
+                            PluviaApp.xEnvironment?.onResume()
+                            isOverlayPaused = false
+                            PluviaApp.isOverlayPaused = false
                             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
                         }
                     }
                 }
             }
-        ).show()
+        )
+        // Resume game when the overlay closes via back press, outside tap, or any non-exit item.
+        navDialog.setOnDismissListener {
+            if (PluviaApp.isOverlayPaused) {
+                PluviaApp.xEnvironment?.onResume()
+                isOverlayPaused = false
+                PluviaApp.isOverlayPaused = false
+            }
+        }
+        navDialog.show()
     }
 
     DisposableEffect(container) {
@@ -708,6 +730,26 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
+                
+                // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
+                val imeDisplayContext = context.display?.let { display ->
+                    context.createDisplayContext(display)
+                } ?: context
+
+                val imeReceiver = app.gamenative.externaldisplay.IMEInputReceiver(
+                    context = context,
+                    displayContext = imeDisplayContext,
+                    xServer = getxServer(),
+                ).apply {
+                    layoutParams = android.widget.FrameLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    alpha = 0f
+                    isClickable = false
+                }
+                frameLayout.addView(imeReceiver)
+                
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
@@ -1697,6 +1739,7 @@ private fun setupXEnvironment(
     onGameLaunchError: ((String) -> Unit)? = null,
     navigateBack: () -> Unit,
 ): XEnvironment {
+    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val lc_all = container!!.lC_ALL
     val imageFs = ImageFs.find(context)
     Timber.i("ImageFs paths:")
@@ -1802,7 +1845,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
+            getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
@@ -1833,6 +1876,12 @@ private fun setupXEnvironment(
             guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
         }
         guestProgramLauncherComponent.setPreUnpack {
+            try {
+                GameFixesRegistry.applyFor(context, appId)
+            } catch (e: Exception) {
+                Timber.tag("GameFixes").w(e, "Game fixes failed in preUnpack")
+            }
+            PreLaunchSteps().run(context, appId, container, guestProgramLauncherComponent, gameSource)
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
@@ -1957,7 +2006,7 @@ private fun setupXEnvironment(
     }
 
     // Request encrypted app ticket for Steam games at launch time
-    val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+    val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val gameIdForTicket = ContainerUtils.extractGameIdFromContainerId(appId)
     if (!bootToContainer && !isCustomGame && gameIdForTicket != null && !container.isLaunchRealSteam) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -1995,14 +2044,13 @@ private fun getWineStartCommand(
     appLaunchInfo: LaunchInfo?,
     envVars: EnvVars,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
+    gameSource: GameSource,
 ): String {
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
 
     Timber.tag("XServerScreen").d("appLaunchInfo is $appLaunchInfo")
 
-    // Check game source
-    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val isGOGGame = gameSource == GameSource.GOG
     val isEpicGame = gameSource == GameSource.EPIC
@@ -2048,7 +2096,8 @@ private fun getWineStartCommand(
             bootToContainer = bootToContainer,
             appLaunchInfo = appLaunchInfo,
             envVars = envVars,
-            guestProgramLauncherComponent = guestProgramLauncherComponent
+            guestProgramLauncherComponent = guestProgramLauncherComponent,
+            gameId = gameId,
         )
 
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
@@ -2057,7 +2106,7 @@ private fun getWineStartCommand(
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
         val game = runBlocking {
-            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+            EpicService.getInstance()?.epicManager?.getGameById(gameId)
         }
 
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {

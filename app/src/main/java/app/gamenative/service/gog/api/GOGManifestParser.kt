@@ -70,6 +70,17 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
+     * Derives the effective language from the depots actually used for download.
+     * Prefers the requested language if any depot matches it; otherwise uses the first concrete
+     * language from the depots (e.g. after fallback to "*" or other languages).
+     */
+    fun getEffectiveLanguageFromDepots(depots: List<Depot>, requestedLanguage: String): String {
+        if (depots.any { it.matchesLanguage(requestedLanguage) }) return requestedLanguage
+        val fromDepots = depots.flatMap { it.languages }.firstOrNull { it != "*" }
+        return fromDepots ?: requestedLanguage
+    }
+
+    /**
      * Filter depots based on OS bitness
      *
      * @param depots List of depots to filter
