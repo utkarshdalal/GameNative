@@ -396,7 +396,7 @@ class EpicManager @Inject constructor(
         val mainExe = exeFiles.firstOrNull()
         if (mainExe != null) {
             Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
-            return mainExe.absolutePath
+            return mainExe.relativeTo(installDir).path
         }
 
         Timber.tag("Epic").w("No executable found in ${game.installPath}")

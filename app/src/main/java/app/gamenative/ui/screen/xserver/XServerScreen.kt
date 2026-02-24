@@ -2136,9 +2136,18 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
-        // Get the executable path
-        val exePath = runBlocking {
-            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        // Use container's configured executable path if available, otherwise auto-detect and persist
+        val exePath = if (container.executablePath.isNotEmpty()) {
+            container.executablePath
+        } else {
+            val detectedPath = runBlocking {
+                EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+            }
+            if (detectedPath.isNotEmpty()) {
+                container.executablePath = detectedPath
+                container.saveData()
+            }
+            detectedPath
         }
 
         if (exePath.isEmpty()) {
@@ -2254,28 +2263,34 @@ private fun getWineStartCommand(
             }
         }
 
-        // If fuel.json didn't provide a valid command, use the heuristic
-        val resolvedRelativePath = if (fuelCommand != null) {
-            fuelCommand.replace("\\", "/")
-        } else {
-            val exeFile = ExecutableSelectionUtils.choosePrimaryExeFromDisk(
-                installDir = File(installPath),
-                gameName = File(installPath).name,
-            )
+        var resolvedRelativePath = container.executablePath
+        if (resolvedRelativePath.isEmpty()) {
+            // Steam-style caching: resolve only once, then persist on the container.
+            resolvedRelativePath = if (fuelCommand != null) {
+                fuelCommand.replace("\\", "/")
+            } else {
+                val exeFile = ExecutableSelectionUtils.choosePrimaryExeFromDisk(
+                    installDir = File(installPath),
+                    gameName = File(installPath).name,
+                )
 
-            if (exeFile == null) {
-                Timber.tag("XServerScreen").e("Cannot find executable for Amazon game")
-                return "\"explorer.exe\""
+                if (exeFile == null) {
+                    Timber.tag("XServerScreen").e("Cannot find executable for Amazon game")
+                    return "\"explorer.exe\""
+                }
+                Timber.tag("XServerScreen").d("Heuristic selected exe: ${exeFile.path}")
+                exeFile.relativeTo(File(installPath)).path
             }
-            Timber.tag("XServerScreen").d("Heuristic selected exe: ${exeFile.path}")
-            exeFile.relativeTo(File(installPath)).path
+            container.executablePath = resolvedRelativePath
+            container.saveData()
+        } else {
+            Timber.tag("XServerScreen").i("Using cached Amazon executablePath: $resolvedRelativePath")
         }
 
         val winPath = resolvedRelativePath.replace("/", "\\")
         val amazonCommand = "A:\\$winPath"
 
-        // Set working directory: fuel.json override, or directory containing the executable
-        val workDir = if (fuelWorkingDir != null) {
+        val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
             installPath + "/" + fuelWorkingDir.replace("\\", "/")
         } else {
             val exeDir = resolvedRelativePath.substringBeforeLast("/", "")

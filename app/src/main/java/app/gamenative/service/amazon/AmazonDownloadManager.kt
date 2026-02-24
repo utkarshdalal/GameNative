@@ -245,7 +245,8 @@ class AmazonDownloadManager @Inject constructor(
         try {
             // Skip already-complete files (resume-friendly)
             if (destFile.exists() && destFile.length() == file.size) {
-                downloadInfo.updateBytesDownloaded(file.size)
+                // Count recovered bytes for progress without skewing transfer speed ETA.
+                downloadInfo.updateBytesDownloaded(file.size, trackSpeed = false)
                 return@withContext Result.success(Unit)
             }
 
