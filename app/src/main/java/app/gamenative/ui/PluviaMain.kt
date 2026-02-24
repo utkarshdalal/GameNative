@@ -86,11 +86,7 @@ import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
-import com.winlator.core.TarCompressorUtils
-import com.winlator.xenvironment.ImageFs
-import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
-import java.io.File
 import java.util.Date
 import java.util.EnumSet
 import kotlin.reflect.KFunction2
@@ -1197,70 +1193,12 @@ fun preLaunchApp(
         }
 
         // Check if this is a Custom Game and validate executable selection before installing components
-        // Skip the check if booting to container (Open Container menu option)
         val isCustomGame = gameSource == GameSource.CUSTOM_GAME
 
         // set up Ubuntu file system
         SplitCompat.install(context)
-        if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
-            setLoadingMessage("Downloading first-time files")
-            SteamService.downloadImageFs(
-                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                this,
-                variant = container.containerVariant,
-                context = context,
-            ).await()
-        }
-        if (container.containerVariant.equals(Container.GLIBC) &&
-            !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")
-        ) {
-            setLoadingMessage("Downloading Wine")
-            SteamService.downloadImageFsPatches(
-                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                this,
-                context = context,
-            ).await()
-        } else {
-            if (container.wineVersion.contains("proton-9.0-arm64ec") &&
-                !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
-            ) {
-                setLoadingMessage("Downloading arm64ec Proton")
-                SteamService.downloadFile(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    context = context,
-                    "proton-9.0-arm64ec.txz",
-                ).await()
-            } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
-                !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
-            ) {
-                setLoadingMessage("Downloading x86_64 Proton")
-                SteamService.downloadFile(
-                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                    this,
-                    context = context,
-                    "proton-9.0-x86_64.txz",
-                ).await()
-            }
-            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
-                val protonVersion = container.wineVersion
-                val imageFs = ImageFs.find(context)
-                val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
-                val binDir = File(outFile, "bin")
-                if (!binDir.exists() || !binDir.isDirectory) {
-                    Timber.i("Extracting $protonVersion to /opt/")
-                    setLoadingMessage("Extracting $protonVersion")
-                    setLoadingProgress(-1f)
-                    val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                    TarCompressorUtils.extract(
-                        TarCompressorUtils.Type.XZ,
-                        downloaded,
-                        outFile,
-                    )
-                }
-            }
-        }
 
+        // Ensure launch dependencies (imagefs, Wine/Proton, DRM, Steam client, install)
         if (!isOffline) {
             try {
                 LaunchDependencies().ensureLaunchDependencies(
@@ -1285,52 +1223,7 @@ fun preLaunchApp(
                 )
                 return@launch
             }
-        } else {
-            Timber.tag("preLaunchApp").e("Offline mode, skipping launch dependencies")
         }
-
-        if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
-            !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
-        ) {
-            setLoadingMessage("Downloading extras")
-            SteamService.downloadFile(
-                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                this,
-                context = context,
-                "experimental-drm-20260116.tzst",
-            ).await()
-        }
-        if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
-            setLoadingMessage(context.getString(R.string.main_downloading_steam))
-            SteamService.downloadSteam(
-                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                this,
-                context = context,
-            ).await()
-        }
-        if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam-token.tzst")) {
-            setLoadingMessage("Downloading steam-token")
-            SteamService.downloadFile(
-                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                this,
-                context = context,
-                "steam-token.tzst",
-            ).await()
-        }
-
-        val loadingMessage = if (container.containerVariant.equals(Container.GLIBC)) {
-            context.getString(R.string.main_installing_glibc)
-        } else {
-            context.getString(R.string.main_installing_bionic)
-        }
-        setLoadingMessage(loadingMessage)
-        val imageFsInstallSuccess =
-            ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
-                // Log.d("XServerScreen", "$progress")
-                setLoadingProgress(progress / 100f)
-            }.get()
-        setLoadingMessage(context.getString(R.string.main_loading))
-        setLoadingProgress(-1f)
 
         // must activate container before downloading save files
         containerManager.activateContainer(container)
