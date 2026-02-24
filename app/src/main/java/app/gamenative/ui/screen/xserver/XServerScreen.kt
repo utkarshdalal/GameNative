@@ -750,7 +750,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
-                
+
                 // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
                 val imeDisplayContext = context.display?.let { display ->
                     context.createDisplayContext(display)
@@ -770,7 +770,7 @@ fun XServerScreen(
                 }
                 frameLayout.addView(imeReceiver)
                 imeInputReceiver = imeReceiver
-                
+
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
@@ -1868,6 +1868,11 @@ private fun setupXEnvironment(
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
+
+        // Copy D7VK ddraw.dll to game directory if D7VK is enabled
+        if (!bootToContainer && !testGraphics && container.executablePath.isNotEmpty()) {
+            copyD7vkToGameDirectory(container, imageFs, container.executablePath)
+        }
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
         // Set steam type for selecting appropriate box64rc
@@ -2126,6 +2131,13 @@ private fun getWineStartCommand(
     } else if (isEpicGame) {
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
+        Timber.tag("XServerScreen").i("bootToContainer: $bootToContainer")
+
+        // Setup Basilisk browser for Epic authentication
+        Timber.tag("XServerScreen").i("About to call setupBasiliskBrowserForEpic...")
+        setupBasiliskBrowserForEpic(context, container)
+        Timber.tag("XServerScreen").i("Finished calling setupBasiliskBrowserForEpic")
+
         val game = runBlocking {
             EpicService.getInstance()?.epicManager?.getGameById(gameId)
         }
@@ -2310,6 +2322,68 @@ private fun getSteamlessTarget(
         'D'
     }
     return "$drive:\\${executablePath}"
+}
+
+/**
+ * Removes D7VK ddraw.dll from the game directory during cleanup.
+ * This restores the game directory to its original state.
+ *
+ * @param container The container configuration
+ * @param imageFs ImageFs instance for accessing file paths
+ */
+private fun cleanupD7vkFromGameDirectory(
+    container: Container,
+    imageFs: ImageFs,
+) {
+    try {
+        // Check if d7vk was enabled
+        val dxwrapper = container.getExtra("dxwrapper", "")
+        if (!dxwrapper.startsWith("d7vk")) {
+            return
+        }
+
+        val executablePath = container.executablePath
+        if (executablePath.isEmpty()) {
+            Timber.d("No executable path set, skipping D7VK cleanup")
+            return
+        }
+
+        Timber.i("Cleaning up D7VK ddraw.dll from game directory: $executablePath")
+
+        val rootDir = imageFs.getRootDir()
+
+        // Convert Windows path to Unix path if necessary
+        var unixPath = executablePath
+        if (executablePath.contains(":\\")) {
+            unixPath = executablePath.replace("\\", "/")
+                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
+                .let { path ->
+                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
+                }
+        }
+
+        // Get the directory containing the executable
+        val gameDir = File(unixPath).parentFile
+        if (gameDir == null || !gameDir.exists()) {
+            Timber.w("Game directory not found for cleanup: $gameDir")
+            return
+        }
+
+        // Remove ddraw.dll from game directory
+        val ddrawDll = File(gameDir, "ddraw.dll")
+        if (ddrawDll.exists()) {
+            val deleted = ddrawDll.delete()
+            if (deleted) {
+                Timber.i("Removed D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+            } else {
+                Timber.w("Failed to remove D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+            }
+        } else {
+            Timber.d("D7VK ddraw.dll not found in game directory, nothing to clean")
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to cleanup D7VK ddraw.dll from game directory")
+    }
 }
 
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
@@ -2969,6 +3043,38 @@ private fun extractDXWrapperFiles(
                 )
             }
         }
+        "d7vk" -> {
+            // D7VK: ddraw.dll should be placed next to game executable, not in Windows system directories
+            Timber.i("Preparing D7VK for dxwrapper: $dxwrapper")
+
+            // Restore original ddraw.dll in Windows directories
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, "ddraw.dll")
+
+            // Extract d7vk files to staging directory for later copying to game directory
+            val d7vkStagingDir = File(rootDir, ImageFs.CACHE_PATH + "/d7vk")
+            d7vkStagingDir.mkdirs()
+
+            val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
+            if (profile != null) {
+                Timber.d("Applying user-defined D7VK content profile: " + dxwrapper)
+                contentsManager.applyContent(profile);
+            } else {
+                // Extract to staging directory (will be copied to game dir at launch time)
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/$dxwrapper.tzst", d7vkStagingDir, onExtractFileListener,
+                )
+            }
+
+            // Also extract d8vk for other DirectX versions
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD,
+                context.assets,
+                "dxwrapper/d8vk-${DefaultVersion.D8VK}.tzst",
+                windowsDir,
+                onExtractFileListener,
+            )
+        }
         else -> {
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             // This block handles dxvk-VERSION strings
@@ -3073,6 +3179,219 @@ private fun restoreOriginalDllFiles(
         }
     }
 }
+
+/**
+ * Copies D7VK ddraw.dll to the game's executable directory.
+ * D7VK requires ddraw.dll to be placed next to the game executable, not in Windows system directories.
+ *
+ * @param container The container configuration
+ * @param imageFs ImageFs instance for accessing file paths
+ * @param gameExecutablePath Path to the game executable (Windows path or Unix path)
+ */
+private fun copyD7vkToGameDirectory(
+    container: Container,
+    imageFs: ImageFs,
+    gameExecutablePath: String,
+) {
+    try {
+        // Check if d7vk is enabled
+        val dxwrapper = container.getExtra("dxwrapper", "")
+        if (!dxwrapper.startsWith("d7vk")) {
+            Timber.d("D7VK not enabled, skipping ddraw.dll copy")
+            return
+        }
+
+        Timber.i("Copying D7VK ddraw.dll to game directory for executable: $gameExecutablePath")
+
+        val rootDir = imageFs.getRootDir()
+        val d7vkStagingDir = File(rootDir, ImageFs.CACHE_PATH + "/d7vk")
+
+        // Check if staging directory exists
+        if (!d7vkStagingDir.exists()) {
+            Timber.w("D7VK staging directory not found, skipping copy")
+            return
+        }
+
+        // Convert Windows path to Unix path if necessary
+        var unixPath = gameExecutablePath
+        if (gameExecutablePath.contains(":\\")) {
+            // Convert Windows path (e.g., "C:\Program Files\Game\game.exe") to Unix path
+            unixPath = gameExecutablePath.replace("\\", "/")
+                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
+                .let { path ->
+                    // Map drive letter to actual path
+                    // Most games are on C: drive which maps to drive_c
+                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
+                }
+        }
+
+        // Get the directory containing the executable
+        val gameDir = File(unixPath).parentFile
+        if (gameDir == null || !gameDir.exists()) {
+            Timber.w("Game directory not found: $gameDir")
+            return
+        }
+
+        Timber.i("Game directory: ${gameDir.absolutePath}")
+
+        // D7VK is 32-bit only, so we copy from syswow64
+        val d7vkDll = File(d7vkStagingDir, "syswow64/ddraw.dll")
+        if (!d7vkDll.exists()) {
+            // Try system32 as fallback
+            val d7vkDll32 = File(d7vkStagingDir, "system32/ddraw.dll")
+            if (d7vkDll32.exists()) {
+                val targetDll = File(gameDir, "ddraw.dll")
+                FileUtils.copy(d7vkDll32, targetDll)
+                Timber.i("Copied D7VK ddraw.dll from system32 to: ${targetDll.absolutePath}")
+            } else {
+                Timber.w("D7VK ddraw.dll not found in staging directory")
+            }
+        } else {
+            val targetDll = File(gameDir, "ddraw.dll")
+            FileUtils.copy(d7vkDll, targetDll)
+            Timber.i("Copied D7VK ddraw.dll to: ${targetDll.absolutePath}")
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to copy D7VK ddraw.dll to game directory")
+    }
+}
+
+/**
+ * Extracts Basilisk browser and sets it as the default browser for Epic Games authentication.
+ * Epic Games requires browser authentication that Wine's Internet Explorer cannot handle properly.
+ *
+ * @param context Android context
+ * @param container The container configuration
+ */
+private fun setupBasiliskBrowserForEpic(
+    context: Context,
+    container: Container,
+) {
+    val TAG = "XServerScreen"
+    try {
+        Timber.tag(TAG).i("========== Setting up Basilisk browser for Epic Games authentication ==========")
+
+        val rootDir = container.getRootDir()
+        // Use container-level .wine directory, not ImageFs.WINEPREFIX (which is /home/xuser/.wine)
+        // Epic games use the container root wine prefix at /.wine/
+        val driveC = File(rootDir, ".wine/drive_c")
+
+        Timber.tag(TAG).i("Container root dir: ${rootDir}")
+        Timber.tag(TAG).i("Drive C path: ${driveC.absolutePath}")
+        Timber.tag(TAG).i("Drive C exists: ${driveC.exists()}")
+
+        // Check if Basilisk is already extracted
+        // The archive contains a basilisk/ folder at its root, so it will be extracted to drive_c/basilisk/
+        val basiliskDir = File(driveC, "basilisk")
+        val basiliskExe = File(basiliskDir, "basilisk.exe")
+
+        Timber.tag(TAG).i("Checking for Basilisk at: ${basiliskExe.absolutePath}")
+        Timber.tag(TAG).i("Basilisk directory exists: ${basiliskDir.exists()}")
+        Timber.tag(TAG).i("Basilisk exe exists: ${basiliskExe.exists()}")
+
+        if (!basiliskExe.exists()) {
+            Timber.tag(TAG).i("Basilisk not found, starting extraction...")
+            Timber.tag(TAG).i("Extracting to: ${driveC.absolutePath}")
+            driveC.mkdirs()
+
+            // List contents before extraction
+            if (driveC.exists() && driveC.isDirectory) {
+                val beforeContents = driveC.list()?.take(10)?.joinToString(", ") ?: "empty"
+                Timber.tag(TAG).i("Drive C contents before extraction (first 10): $beforeContents")
+            }
+
+            // Check if asset exists
+            try {
+                val assetList = context.assets.list("browser")
+                Timber.tag(TAG).i("Assets in browser/: ${assetList?.joinToString(", ")}")
+            } catch (e: Exception) {
+                Timber.tag(TAG).w("Could not list browser assets: ${e.message}")
+            }
+
+            // Extract basilisk.tzst to drive_c (archive contains basilisk/ folder)
+            Timber.tag(TAG).i("Calling TarCompressorUtils.extract...")
+            val extractSuccess = TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD,
+                context.assets,
+                "browser/basilisk.tzst",
+                driveC,
+                null
+            )
+            Timber.tag(TAG).i("Extraction completed, result: $extractSuccess")
+
+            // List contents after extraction
+            if (driveC.exists() && driveC.isDirectory) {
+                val afterContents = driveC.list()?.take(10)?.joinToString(", ") ?: "empty"
+                Timber.tag(TAG).i("Drive C contents after extraction (first 10): $afterContents")
+            }
+
+            // Check basilisk directory specifically
+            if (basiliskDir.exists()) {
+                val basiliskContents = basiliskDir.list()?.take(10)?.joinToString(", ") ?: "empty"
+                Timber.tag(TAG).i("Basilisk directory contents (first 10): $basiliskContents")
+            } else {
+                Timber.tag(TAG).w("Basilisk directory still does not exist after extraction!")
+            }
+
+            if (!basiliskExe.exists()) {
+                Timber.tag(TAG).e("Basilisk extraction completed but basilisk.exe not found at: ${basiliskExe.absolutePath}")
+                Timber.tag(TAG).e("This means either the extraction failed or the archive structure is different than expected")
+                return
+            }
+
+            Timber.tag(TAG).i("✓ Basilisk browser extracted successfully to: ${basiliskExe.absolutePath}")
+        } else {
+            Timber.tag(TAG).i("✓ Basilisk browser already exists at: ${basiliskExe.absolutePath}")
+        }
+
+        // Set Basilisk as the default browser in Wine registry
+        // Wine checks both HKEY_CURRENT_USER and HKEY_LOCAL_MACHINE for protocol handlers
+        // Use container-level .wine directory (not ImageFs.WINEPREFIX)
+        val userRegFile = File(rootDir, ".wine/user.reg")
+        val systemRegFile = File(rootDir, ".wine/system.reg")
+
+        try {
+            // Set in user.reg (HKEY_CURRENT_USER)
+            WineRegistryEditor(userRegFile).use { registryEditor ->
+                val basiliskPath = "C:\\\\basilisk\\\\basilisk.exe"
+                val htmlCommand = "\"$basiliskPath\" \"%1\""
+
+                // Set http protocol - URL Protocol property and command
+                registryEditor.setStringValue("Software\\Classes\\http", "URL Protocol", "")
+                registryEditor.setStringValue("Software\\Classes\\http\\shell\\open\\command", null, htmlCommand)
+
+                // Set https protocol - URL Protocol property and command
+                registryEditor.setStringValue("Software\\Classes\\https", "URL Protocol", "")
+                registryEditor.setStringValue("Software\\Classes\\https\\shell\\open\\command", null, htmlCommand)
+
+                Timber.tag(TAG).i("✓ Basilisk set as default browser in user.reg (HKEY_CURRENT_USER)")
+            }
+
+            // Also set in system.reg (HKEY_LOCAL_MACHINE) as Wine may check there first
+            WineRegistryEditor(systemRegFile).use { registryEditor ->
+                val basiliskPath = "C:\\\\basilisk\\\\basilisk.exe"
+                val htmlCommand = "\"$basiliskPath\" \"%1\""
+
+                // Set http protocol in HKEY_LOCAL_MACHINE
+                registryEditor.setStringValue("Software\\Classes\\http", "URL Protocol", "")
+                registryEditor.setStringValue("Software\\Classes\\http\\shell\\open\\command", null, htmlCommand)
+
+                // Set https protocol in HKEY_LOCAL_MACHINE
+                registryEditor.setStringValue("Software\\Classes\\https", "URL Protocol", "")
+                registryEditor.setStringValue("Software\\Classes\\https\\shell\\open\\command", null, htmlCommand)
+
+                Timber.tag(TAG).i("✓ Basilisk set as default browser in system.reg (HKEY_LOCAL_MACHINE)")
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to set Basilisk as default browser in registry")
+        }
+
+        Timber.tag(TAG).i("========== Basilisk browser setup completed successfully ==========")
+    } catch (e: Exception) {
+        Timber.tag(TAG).e(e, "========== FAILED to setup Basilisk browser for Epic Games ==========")
+    }
+}
+
 private fun extractWinComponentFiles(
     context: Context,
     firstTimeBoot: Boolean,
