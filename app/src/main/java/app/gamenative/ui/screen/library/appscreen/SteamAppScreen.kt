@@ -350,7 +350,6 @@ class SteamAppScreen : BaseAppScreen() {
         private fun releasePauseResumeAction(gameId: Int) {
             val flag = pauseResumeActionFlags[gameId] ?: return
             flag.set(false)
-            pauseResumeActionFlags.remove(gameId, flag)
         }
 
         private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
@@ -1442,6 +1441,10 @@ class SteamAppScreen : BaseAppScreen() {
                                     AppOptionMenuType.Update -> SteamService.downloadAppForUpdate(gameId)
                                     else -> SteamService.downloadAppForUpdate(gameId)
                                 }
+                                if (downloadInfo == null) {
+                                    Timber.w("Failed to start $operation for appId=$gameId")
+                                    return@launch
+                                }
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
@@ -1569,10 +1572,8 @@ class SteamAppScreen : BaseAppScreen() {
                                 try {
                                     val success = SteamService.deleteApp(gameId)
                                     withContext(Dispatchers.Main) {
-                                        ContainerUtils.deleteContainer(context, libraryItem.appId)
-                                    }
-                                    withContext(Dispatchers.Main) {
                                         if (success) {
+                                            ContainerUtils.deleteContainer(context, libraryItem.appId)
                                             PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                                             Toast.makeText(
                                                 context,

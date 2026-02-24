@@ -264,8 +264,9 @@ private fun deriveDownloadPhase(status: DownloadPhase, statusMessage: String?): 
 
     val raw = statusMessage?.trim().orEmpty()
     if (raw.isEmpty()) return stringResource(R.string.library_download_phase_downloading)
-    return DownloadPhase.fromMessage(raw)?.let { stringResource(phaseStringResId(it)) } ?: raw
-}
+    return DownloadPhase.fromMessage(raw)?.let { stringResource(phaseStringResId(it)) }
+        ?: stringResource(R.string.library_download_phase_downloading)
+} 
 
 @Composable
 internal fun AppScreenContent(
@@ -645,25 +646,16 @@ internal fun AppScreenContent(
                     displayInfo.appId,
                     downloadInfo,
                     downloadProgress,
-                    statusMessage,
+                    downloadStatus,
+                    phaseText,
                     etaTick,
                     rawEtaMs,
                     etaAnchorMs,
                     etaAnchorAtMs,
                 ) {
-                    val statusText = statusMessage?.takeUnless { it.isBlank() } ?: ""
-
                     // Near completion, byte ETA is often misleading (e.g., can stick at 1s while finalizing).
                     if (isFinalizingThresholdReached || downloadStatus == DownloadPhase.FINALIZING || downloadStatus == DownloadPhase.COMPLETE) {
-                        val normalized = statusText.lowercase()
-                        return@remember if (
-                            statusText.isNotBlank() &&
-                            !normalized.contains("downloading")
-                        ) {
-                            statusText
-                        } else {
-                            ""
-                        }
+                        return@remember phaseText
                     }
 
                     val etaMs = if (etaAnchorMs != null && etaAnchorAtMs != null && etaTick > 0L) {
@@ -687,7 +679,7 @@ internal fun AppScreenContent(
                     if (displayEtaMs != null) {
                         formatStableEtaText(displayEtaMs)
                     } else {
-                        statusText
+                        phaseText
                     }
                 }
 

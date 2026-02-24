@@ -1094,6 +1094,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Guard against accidental root deletion if path resolution failed.
             if (isUnsafeDeleteTarget) {
                 Timber.e("Refusing to delete appId=$appId because resolved path points to install root: $appDirPath")
+                return@withContext false
             }
 
             // If an active download exists, stop it and wait briefly before deleting files.
@@ -1126,8 +1127,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
             }
-
-            if (isUnsafeDeleteTarget) return@withContext false
 
             return@withContext deleteRecursivelyWithRetries(File(appDirPath))
         }
@@ -2096,7 +2095,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     } catch (e: DownloadFailedException) {
                         Timber.d(e, "Download failed for app $appId via cancellation")
-                        di.persistProgressSnapshot(force = true)
                         clearFailedResumeState(appId)
                         di.updateStatus(DownloadPhase.FAILED)
                         di.setActive(false)
@@ -2116,7 +2114,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                         throw e
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
-                        di.persistProgressSnapshot(force = true)
                         clearFailedResumeState(appId)
                         di.updateStatus(DownloadPhase.FAILED)
                         di.setActive(false)
