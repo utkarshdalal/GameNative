@@ -746,6 +746,8 @@
     <string name="main_later_button">Later</string>
     <string name="main_update_failed_title">Update Failed</string>
     <string name="main_update_failed_message">Failed to download or install the update. Please try again later.</string>
+    <string name="launch_dependency_failed_title">Downloading launch dependency failed</string>
+    <string name="launch_dependency_failed_message">Failed to download a required component. Please try again later.</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Recent Crash</string>
@@ -759,7 +761,9 @@
     <string name="main_open_discord">Open Discord</string>
 
     <!-- PluviaMain: Game Launch -->
+    <string name="main_downloading_entry">Downloading %s</string>
     <string name="main_downloading_steam">Downloading Steam...</string>
+
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
     <string name="main_loading">Loading...</string>

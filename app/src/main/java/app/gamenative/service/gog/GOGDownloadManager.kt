@@ -5,9 +5,12 @@ import app.gamenative.data.DownloadInfo
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
+import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.utils.Net
+import org.json.JSONArray
+import org.json.JSONObject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
@@ -16,6 +19,7 @@ import java.io.FileOutputStream
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -403,6 +407,9 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
 
+            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(depots, language)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
+
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
             Result.success(Unit)
@@ -419,6 +426,47 @@ class GOGDownloadManager @Inject constructor(
             )
 
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Saves manifest data needed for post-install setup (scriptinterpreter or temp_executable) to
+     * installPath/_gog_manifest.json. Used on first launch to create registry keys etc.
+     * @param language Language used for the download (from the selected language depots).
+     */
+    private fun saveManifestToGameDir(
+        installPath: File,
+        gameManifest: GOGManifestMeta,
+        buildId: String,
+        versionName: String,
+        language: String,
+    ) {
+        try {
+            val productsArray = JSONArray()
+            gameManifest.products.forEach { p ->
+                productsArray.put(
+                    JSONObject().apply {
+                        put("productId", p.productId)
+                        put("name", p.name)
+                        put("temp_executable", p.temp_executable ?: "")
+                        put("temp_arguments", p.temp_arguments ?: "")
+                    },
+                )
+            }
+            val root = JSONObject().apply {
+                put("version", 2)
+                put("baseProductId", gameManifest.baseProductId)
+                put("scriptInterpreter", gameManifest.scriptInterpreter)
+                put("products", productsArray)
+                put("buildId", buildId)
+                put("versionName", versionName)
+                put("language", language)
+            }
+            val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
+            file.writeText(root.toString())
+            Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to save GOG setup manifest")
         }
     }
 
@@ -618,6 +666,9 @@ class GOGDownloadManager @Inject constructor(
                     doneFiles++
                 }
             }
+
+            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(filesToDownload, language)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")
@@ -912,6 +963,40 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").e(e, "Failed to download dependencies")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Downloads GOG redistributables (e.g. ISI/scriptinterpreter.exe) to a shared directory.
+     * Used so scriptinterpreter can be run on first launch for games that need it (e.g. Fallout 3).
+     * Heroic uses the same approach: download redist to a shared path via gogdl redist command.
+     *
+     * @param redistDir Target directory (e.g. context.filesDir/GOG/redist). Files end up under redistDir/ISI/ etc.
+     * @param dependencyIds Dependency IDs to download; default ISI (scriptinterpreter).
+     * @param onProgress Progress callback 0f..1f
+     */
+    suspend fun downloadRedist(
+        redistDir: File,
+        dependencyIds: List<String> = listOf("ISI"),
+        onProgress: (Float) -> Unit,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val downloadInfo = DownloadInfo(
+            jobCount = 1,
+            gameId = 0,
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
+        downloadInfo.addProgressListener { onProgress(it) }
+        redistDir.mkdirs()
+        val result = downloadDependencies(
+            gameId = "redist",
+            dependencies = dependencyIds,
+            gameDir = redistDir,
+            supportDir = redistDir,
+            downloadInfo = downloadInfo,
+        )
+        if (result.isSuccess) {
+            onProgress(1f)
+        }
+        result
     }
 
     /**

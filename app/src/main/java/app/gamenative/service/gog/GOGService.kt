@@ -276,15 +276,23 @@ class GOGService : Service() {
             appLaunchInfo: LaunchInfo?,
             envVars: com.winlator.core.envvars.EnvVars,
             guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
+            gameId: Int,
         ): String {
             return getInstance()?.gogManager?.getGogWineStartCommand(
-                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent,
+                libraryItem, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent, gameId,
             ) ?: "\"explorer.exe\""
         }
 
         suspend fun refreshLibrary(context: Context): Result<Int> {
             return getInstance()?.gogManager?.refreshLibrary(context)
                 ?: Result.failure(Exception("Service not available"))
+        }
+
+        fun runScriptInterpreterIfNeeded(
+            appId: String,
+            guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
+        ) {
+            getInstance()?.gogManager?.runScriptInterpreterIfNeeded(appId, guestProgramLauncherComponent)
         }
 
         fun downloadGame(context: Context, gameId: String, installPath: String): Result<DownloadInfo?> {

@@ -723,6 +723,8 @@
     <string name="main_later_button">Più tardi</string>
     <string name="main_update_failed_title">Aggiornamento Fallito</string>
     <string name="main_update_failed_message">Impossibile scaricare o installare l\'aggiornamento. Riprova più tardi.</string>
+    <string name="launch_dependency_failed_title">Download dipendenza di avvio non riuscito</string>
+    <string name="launch_dependency_failed_message">Impossibile scaricare un componente richiesto. Riprova più tardi.</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Crash Recente</string>

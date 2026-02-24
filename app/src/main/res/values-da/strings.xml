@@ -562,6 +562,8 @@
     <string name="main_later_button">Senere</string>
     <string name="main_update_failed_title">Opdatering fejlede</string>
     <string name="main_update_failed_message">Kunne ikke downloade eller installere opdateringen. Prøv venligst igen senere.</string>
+    <string name="launch_dependency_failed_title">Download af opstartsafhængighed fejlede</string>
+    <string name="launch_dependency_failed_message">Kunne ikke downloade en påkrævet komponent. Prøv venligst igen senere.</string>
 
     <!-- TODO: Manual review - PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Nylig crash</string>

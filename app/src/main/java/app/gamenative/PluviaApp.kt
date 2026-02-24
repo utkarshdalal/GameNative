@@ -117,6 +117,9 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
 
+        @JvmField
+        var isOverlayPaused: Boolean = false
+
         // Supabase client for game feedback
         lateinit var supabase: SupabaseClient
             private set

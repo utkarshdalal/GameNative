@@ -725,6 +725,8 @@
     <string name="main_later_button">稍後更新</string>
     <string name="main_update_failed_title">更新失敗</string>
     <string name="main_update_failed_message">更新下載或安裝失敗, 請稍後再試</string>
+    <string name="launch_dependency_failed_title">下載啟動依賴失敗</string>
+    <string name="launch_dependency_failed_message">無法下載所需元件，請稍後再試。</string>
 
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近應用程式當機</string>

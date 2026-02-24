@@ -255,13 +255,16 @@ class MainViewModel @Inject constructor(
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
-                if (container.isLaunchRealSteam()) {
-                    SteamUtils.restoreSteamApi(context, appId)
-                } else {
-                    if (container.isUseLegacyDRM) {
-                        SteamUtils.replaceSteamApi(context, appId)
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                if (gameSource == GameSource.STEAM) {
+                    if (container.isLaunchRealSteam()) {
+                        SteamUtils.restoreSteamApi(context, appId)
                     } else {
-                        SteamUtils.replaceSteamclientDll(context, appId)
+                        if (container.isUseLegacyDRM) {
+                            SteamUtils.replaceSteamApi(context, appId)
+                        } else {
+                            SteamUtils.replaceSteamclientDll(context, appId)
+                        }
                     }
                 }
             }

@@ -87,6 +87,9 @@ class MainActivity : ComponentActivity() {
         fun hasPendingLaunchRequest(): Boolean {
             return pendingLaunchRequest != null
         }
+        
+        @Volatile
+        var wasLaunchedViaExternalIntent: Boolean = false
     }
 
     private val onSetSystemUi: (AndroidEvent.SetSystemUIVisibility) -> Unit = {
@@ -204,6 +207,7 @@ class MainActivity : ComponentActivity() {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
+                wasLaunchedViaExternalIntent = true
 
                 // If already logged in, emit event immediately
                 // Otherwise store for processing after login
@@ -223,6 +227,7 @@ class MainActivity : ComponentActivity() {
                     Timber.d("[IntentLaunch]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
                 }
             } else {
+                wasLaunchedViaExternalIntent = false
                 Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
@@ -270,8 +275,8 @@ class MainActivity : ComponentActivity() {
         // disable auto-stop when returning to foreground
         SteamService.autoStopWhenIdle = false
 
-        // Resume game if it was running
-        if (SteamService.keepAlive) {
+        // Resume game if it was running and not currently suspended by the navigation overlay
+        if (SteamService.keepAlive && !PluviaApp.isOverlayPaused) {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
