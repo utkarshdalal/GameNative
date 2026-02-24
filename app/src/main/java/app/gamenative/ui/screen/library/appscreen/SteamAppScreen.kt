@@ -537,7 +537,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId)
-        return downloadInfo?.let { it.isActive() && it.getProgress() < 1f } == true
+        return downloadInfo?.isActive() == true
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -649,7 +649,7 @@ class SteamAppScreen : BaseAppScreen() {
     ) {
         val gameId = libraryItem.gameId
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo?.let { it.isActive() && it.getProgress() < 1f } == true
+        val isDownloading = downloadInfo?.isActive() == true
         val isInstalled = SteamService.isAppInstalled(gameId)
 
         if (isDownloading) {
@@ -700,7 +700,7 @@ class SteamAppScreen : BaseAppScreen() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-                val isDownloading = downloadInfo?.let { it.isActive() && it.getProgress() < 1f } == true
+                val isDownloading = downloadInfo?.isActive() == true
 
                 if (isDownloading) {
                     downloadInfo?.cancel()
@@ -721,7 +721,7 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val isInstalled = SteamService.isAppInstalled(gameId)
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo?.let { it.isActive() && it.getProgress() < 1f } == true
+        val isDownloading = downloadInfo?.isActive() == true
 
         if (isDownloading || SteamService.hasPartialDownload(gameId)) {
             // Show cancel download dialog when downloading

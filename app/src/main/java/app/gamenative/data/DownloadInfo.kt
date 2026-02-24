@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 import java.util.ArrayDeque
+import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -16,6 +17,40 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 
 class DownloadFailedException(message: String) : CancellationException(message)
+
+enum class DownloadPhase {
+    UNKNOWN,
+    PREPARING,
+    DOWNLOADING,
+    PAUSED,
+    FAILED,
+    VERIFYING,
+    PATCHING,
+    APPLYING_DATA,
+    FINALIZING,
+    COMPLETE,
+    ;
+
+    companion object {
+        private val parseRules: List<Pair<DownloadPhase, List<String>>> = listOf(
+            FAILED to listOf("fail", "error", "abort", "cancelled"),
+            PAUSED to listOf("pause", "paused"),
+            VERIFYING to listOf("verify", "validat", "checksum", "hash", "integrity", "scan"),
+            PATCHING to listOf("patch", "delta", "differential"),
+            FINALIZING to listOf("final", "finishing", "commit", "cleanup", "clean up", "register", "ready"),
+            APPLYING_DATA to listOf("decompress", "extract", "unpack", "decrypt", "assemble", "apply", "install", "writing", "moving", "processing"),
+            PREPARING to listOf("queue", "queued", "waiting", "prepar", "initial", "manifest", "resolve", "starting", "setup", "init"),
+            DOWNLOADING to listOf("download", "retriev", "fetch", "allocat", "prealloc", "reserve", "chunk", "transfer", "cdn"),
+        )
+
+        fun fromMessage(message: String): DownloadPhase? {
+            val lower = message.lowercase(Locale.US)
+            return parseRules.firstOrNull { (_, keywords) ->
+                keywords.any(lower::contains)
+            }?.first
+        }
+    }
+}
 
 class DownloadInfo(
     val jobCount: Int = 1,
@@ -40,11 +75,11 @@ class DownloadInfo(
     private val snapshotWriteGeneration = AtomicLong(0L)
 
     private data class SpeedSample(val timeMs: Long, val bytes: Long)
-
     private val speedSamples = ArrayDeque<SpeedSample>()
     @Volatile private var etaEmaSpeedBytesPerSec: Double = 0.0
     @Volatile private var hasEtaEmaSpeed: Boolean = false
     @Volatile private var isActive: Boolean = true
+    private val status = MutableStateFlow(DownloadPhase.UNKNOWN)
     private val statusMessage = MutableStateFlow<String?>(null)
 
     private val emitLock = Any()
@@ -62,6 +97,7 @@ class DownloadInfo(
         persistProgressSnapshot(force = true)
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
+        status.value = DownloadPhase.FAILED
         setActive(false)
         downloadJob?.cancel(DownloadFailedException("Failed to download"))
     }
@@ -213,6 +249,27 @@ class DownloadInfo(
         statusMessage.value = message
     }
 
+    fun updateStatus(status: DownloadPhase, message: String? = null) {
+        val previousStatus = this.status.value
+        this.status.value = status
+
+        // When returning to active downloading after a different phase, drop old speed history
+        if (status == DownloadPhase.DOWNLOADING &&
+            previousStatus != DownloadPhase.DOWNLOADING &&
+            previousStatus != DownloadPhase.UNKNOWN
+        ) {
+            resetSpeedTracking()
+        }
+
+        if (message != null) {
+            statusMessage.value = message
+        } else if (previousStatus != status) {
+            statusMessage.value = null
+        }
+    }
+
+    fun getStatusFlow(): StateFlow<DownloadPhase> = status
+
     fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
 
     private fun addSpeedSample(timestampMs: Long, currentBytes: Long) {
@@ -289,7 +346,6 @@ class DownloadInfo(
             if (speedSamples.size < 2) return null
             last = speedSamples.last()
 
-            // Find the oldest sample that is within our window
             var foundFirst = last
             val iterator = speedSamples.descendingIterator()
             while (iterator.hasNext()) {
@@ -311,23 +367,23 @@ class DownloadInfo(
         return bytesDelta.toDouble() / (elapsedMs.toDouble() / 1000.0)
     }
 
-    /**
-     * Returns the current download speed in bytes per second, or null if not enough data.
-     * Uses a short 5-second window for a responsive UI with reduced jitter.
-     */
+    // Returns the current download speed in bytes per second, or null if not enough data.
+
     fun getCurrentDownloadSpeed(): Long? {
         if (!isActive) return null
         val speed = getSpeedOverWindow(CURRENT_SPEED_WINDOW_MS) ?: return null
         return speed.toLong()
     }
 
-    /**
-     * Returns an ETA in milliseconds based on recent download speed, or null if
-     * there is not enough information yet (e.g. just started) or download is inactive.
-     * Uses a wider speed window so ETA remains available between sparse chunk callbacks.
-     */
+    // Returns an ETA in milliseconds based on recent download speed, or null if
+    // there is not enough information yet (e.g. just started) or download is inactive.
+
     fun getEstimatedTimeRemaining(): Long? {
         if (!isActive) return null
+        val currentStatus = status.value
+        if (currentStatus != DownloadPhase.UNKNOWN && currentStatus != DownloadPhase.DOWNLOADING) {
+            return null
+        }
         val total = totalExpectedBytes.get()
         val downloaded = bytesDownloaded.get()
         if (total <= 0L) return null
@@ -351,11 +407,9 @@ class DownloadInfo(
                 }
             }
             rawSpeedBytesPerSec == 0.0 -> {
-                // Explicit zero means no byte movement across the window: treat as stalled.
                 return null
             }
             hasEtaEmaSpeed && etaEmaSpeedBytesPerSec > 0.0 -> {
-                // Keep ETA alive between sparse callbacks, but not with stale samples.
                 val lastSampleAgeMs = getLastSampleAgeMs(nowMs) ?: return null
                 if (lastSampleAgeMs > ETA_SAMPLE_STALE_TIMEOUT_MS) return null
                 etaEmaSpeedBytesPerSec
@@ -387,7 +441,6 @@ class DownloadInfo(
         
         var shouldEmit = false
         synchronized(emitLock) {
-            // Always emit if progress is 1.0 (100%) or 0.0 (0%), or if 100ms has passed AND progress changed by at least 0.001 (0.1%)
             if (currentProgress >= 1f || currentProgress <= 0f || 
                 (now - lastProgressEmitTimeMs >= 100L && abs(currentProgress - lastEmittedProgress) >= 0.001f)) {
                 
@@ -404,7 +457,6 @@ class DownloadInfo(
         }
     }
 
-    // --- Persistence helpers ---
 
     companion object {
         private const val SPEED_SAMPLE_RETENTION_MS = 120_000L
@@ -413,7 +465,6 @@ class DownloadInfo(
         private const val ETA_SAMPLE_STALE_TIMEOUT_MS = 120_000L
         private const val PERSISTENCE_DIR = ".DownloadInfo"
         private const val PERSISTENCE_FILE = "depot_bytes.json"
-        private const val LEGACY_PERSISTENCE_FILE = "bytes_downloaded.txt"
         private const val PROGRESS_SNAPSHOT_MIN_INTERVAL_MS = 1_000L
         private val PERSISTENCE_IO_LOCK = Any()
         private val SNAPSHOT_PERSIST_EXECUTOR: ExecutorService =
@@ -423,7 +474,7 @@ class DownloadInfo(
                 }
             }
 
-        //Load persisted bytesDownloaded per depot from file, returns empty map if file doesn't exist or is unreadable.
+        // Load persisted bytesDownloaded per depot from file, returns empty map if file doesn't exist or is unreadable.
          
         fun loadPersistedDepotBytes(appDirPath: String): Map<Int, Long> {
             return try {
@@ -446,7 +497,6 @@ class DownloadInfo(
                 emptyMap()
             }
         }
-
         
         // Delete the persisted bytes file (called on download completion).
         
@@ -456,11 +506,6 @@ class DownloadInfo(
                     val file = File(File(appDirPath, PERSISTENCE_DIR), PERSISTENCE_FILE)
                     if (file.exists()) {
                         file.delete()
-                    }
-                    // Also delete the old file if it exists
-                    val oldFile = File(File(appDirPath, PERSISTENCE_DIR), LEGACY_PERSISTENCE_FILE)
-                    if (oldFile.exists()) {
-                        oldFile.delete()
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to clear persisted bytes downloaded from $appDirPath")

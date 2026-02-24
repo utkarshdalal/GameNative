@@ -77,6 +77,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.R
+import app.gamenative.data.DownloadPhase
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
@@ -216,6 +217,21 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+// Formats network speed in bits per second using decimal units
+
+private fun formatNetworkSpeed(bytesPerSecond: Long): String {
+    val bitsPerSecond = (bytesPerSecond.coerceAtLeast(0L).toDouble() * 8.0)
+    val kb = 1000.0
+    val mb = kb * 1000.0
+    val gb = mb * 1000.0
+    return when {
+        bitsPerSecond >= gb -> String.format(Locale.US, "%.1f Gb/s", bitsPerSecond / gb)
+        bitsPerSecond >= mb -> String.format(Locale.US, "%.1f Mb/s", bitsPerSecond / mb)
+        bitsPerSecond >= kb -> String.format(Locale.US, "%.1f Kb/s", bitsPerSecond / kb)
+        else -> "${bitsPerSecond.toLong()} b/s"
+    }
+}
+
 private fun formatStableEtaText(etaMs: Long): String {
     val totalSeconds = ((etaMs + 999L) / 1000L).coerceAtLeast(0L)
     val minutesLeft = totalSeconds / 60L
@@ -223,28 +239,32 @@ private fun formatStableEtaText(etaMs: Long): String {
     return "${minutesLeft}m ${secondsPart}s left"
 }
 
+private fun phaseStringResId(phase: DownloadPhase): Int {
+    return when (phase) {
+        DownloadPhase.UNKNOWN -> R.string.library_download_phase_downloading
+        DownloadPhase.PREPARING -> R.string.library_download_phase_preparing
+        DownloadPhase.DOWNLOADING -> R.string.library_download_phase_downloading
+        DownloadPhase.PAUSED -> R.string.library_download_phase_paused
+        DownloadPhase.FAILED -> R.string.library_download_phase_failed
+        DownloadPhase.VERIFYING -> R.string.library_download_phase_verifying
+        DownloadPhase.PATCHING -> R.string.library_download_phase_patching
+        DownloadPhase.APPLYING_DATA -> R.string.library_download_phase_applying_data
+        DownloadPhase.FINALIZING, DownloadPhase.COMPLETE -> R.string.library_download_phase_finalizing
+    }
+}
+
 /**
- * Best-effort phase extraction from downloader status text.
- * This keeps UI messaging stable when percent changes slowly during patch/verify steps.
+ * Prefer typed download status; fall back to status text for non-enum producers.
  */
 @Composable
-private fun deriveDownloadPhase(statusMessage: String?): String {
+private fun deriveDownloadPhase(status: DownloadPhase, statusMessage: String?): String {
+    if (status != DownloadPhase.UNKNOWN) {
+        return stringResource(phaseStringResId(status))
+    }
+
     val raw = statusMessage?.trim().orEmpty()
     if (raw.isEmpty()) return stringResource(R.string.library_download_phase_downloading)
-
-    val lower = raw.lowercase(Locale.US)
-    return when {
-        "pause" in lower -> stringResource(R.string.library_download_phase_paused)
-        "fail" in lower || "error" in lower -> stringResource(R.string.library_download_phase_failed)
-        "verify" in lower || "validat" in lower || "checksum" in lower || "hash" in lower -> stringResource(R.string.library_download_phase_verifying)
-        "patch" in lower || "delta" in lower -> stringResource(R.string.library_download_phase_patching)
-        "allocat" in lower || "prealloc" in lower || "reserve" in lower -> stringResource(R.string.library_download_phase_downloading)
-        "decompress" in lower || "extract" in lower || "unpack" in lower || "apply" in lower -> stringResource(R.string.library_download_phase_applying_data)
-        "final" in lower || "finishing" in lower || "commit" in lower || "complete" in lower -> stringResource(R.string.library_download_phase_finalizing)
-        "queue" in lower || "waiting" in lower || "prepar" in lower -> stringResource(R.string.library_download_phase_preparing)
-        "download" in lower || "retriev" in lower || "fetch" in lower -> stringResource(R.string.library_download_phase_downloading)
-        else -> raw
-    }
+    return DownloadPhase.fromMessage(raw)?.let { stringResource(phaseStringResId(it)) } ?: raw
 }
 
 @Composable
@@ -278,13 +298,20 @@ internal fun AppScreenContent(
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
-    val downloadStatusFlow = downloadInfo?.getStatusMessageFlow()
-    val downloadStatusState = if (downloadStatusFlow != null) {
-        downloadStatusFlow.collectAsState(initial = downloadStatusFlow.value)
+    val downloadStateFlow = downloadInfo?.getStatusFlow()
+    val downloadState = if (downloadStateFlow != null) {
+        downloadStateFlow.collectAsState(initial = downloadStateFlow.value)
     } else {
         null
     }
-    val statusMessage = downloadStatusState?.value
+    val downloadStatus = downloadState?.value ?: DownloadPhase.UNKNOWN
+    val downloadStatusMessageFlow = downloadInfo?.getStatusMessageFlow()
+    val downloadStatusMessageState = if (downloadStatusMessageFlow != null) {
+        downloadStatusMessageFlow.collectAsState(initial = downloadStatusMessageFlow.value)
+    } else {
+        null
+    }
+    val statusMessage = downloadStatusMessageState?.value
 
     LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
@@ -587,21 +614,31 @@ internal fun AppScreenContent(
                         null
                     }
 
-                    if (predictedNow == null || kotlin.math.abs(freshEtaMs - predictedNow) > 3_000L) {
+                    if (predictedNow == null) {
                         etaAnchorMs = freshEtaMs
                         etaAnchorAtMs = now
                     } else {
-                        // Small correction toward the latest source ETA without visible jumps.
-                        val blended = ((predictedNow * 0.7) + (freshEtaMs * 0.3)).toLong().coerceAtLeast(0L)
-                        etaAnchorMs = blended
-                        etaAnchorAtMs = now
+                        val deltaMs = freshEtaMs - predictedNow
+                        if (kotlin.math.abs(deltaMs) > 12_000L) {
+                            etaAnchorMs = freshEtaMs
+                            etaAnchorAtMs = now
+                        } else {
+                            // Keep second-by-second display, but limit abrupt ETA swings.
+                            val correctionMs = (deltaMs * 0.15).toLong().coerceIn(-2_000L, 2_000L)
+                            val smoothed = (predictedNow + correctionMs).coerceAtLeast(0L)
+                            etaAnchorMs = smoothed
+                            etaAnchorAtMs = now
+                        }
                     }
                 }
 
-                val phaseText = if (downloadProgress >= 0.99f) {
+                val progressPercent = (downloadProgress * 100f).toInt().coerceIn(0, 100)
+                val isFinalizingThresholdReached = progressPercent >= 99
+
+                val phaseText = if (isFinalizingThresholdReached) {
                     stringResource(R.string.library_download_phase_finalizing)
                 } else {
-                    deriveDownloadPhase(statusMessage)
+                    deriveDownloadPhase(downloadStatus, statusMessage)
                 }
                 
                 val timeLeftText = remember(
@@ -617,8 +654,7 @@ internal fun AppScreenContent(
                     val statusText = statusMessage?.takeUnless { it.isBlank() } ?: ""
 
                     // Near completion, byte ETA is often misleading (e.g., can stick at 1s while finalizing).
-                    // Prefer showing real status text and suppress ETA in this phase.
-                    if (downloadProgress >= 0.99f) {
+                    if (isFinalizingThresholdReached || downloadStatus == DownloadPhase.FINALIZING || downloadStatus == DownloadPhase.COMPLETE) {
                         val normalized = statusText.lowercase()
                         return@remember if (
                             statusText.isNotBlank() &&
@@ -636,32 +672,22 @@ internal fun AppScreenContent(
                         rawEtaMs
                     }
 
-                    val fallbackEtaMs = if ((etaMs == null || etaMs <= 0L) && downloadProgress < 1f) {
-                        val speedBytes = downloadInfo?.getCurrentDownloadSpeed()
+                    val displayEtaMs = if (etaMs != null && etaMs > 0L) {
+                        etaMs
+                    } else {
+                        val speedBytes = downloadInfo?.getCurrentDownloadSpeed() ?: 0L
                         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
-                        if (speedBytes != null && speedBytes > 0L && bytesTotal > bytesDone) {
-                            (((bytesTotal - bytesDone).toDouble() / speedBytes.toDouble()) * 1000.0)
-                                .toLong()
-                                .coerceAtLeast(0L)
+                        if (speedBytes > 0L && bytesTotal > bytesDone) {
+                            (((bytesTotal - bytesDone).toDouble() / speedBytes) * 1000.0).toLong()
                         } else {
                             null
                         }
-                    } else {
-                        null
                     }
 
-                    val displayEtaMs = when {
-                        etaMs != null && etaMs > 0L -> etaMs
-                        fallbackEtaMs != null && fallbackEtaMs > 0L -> fallbackEtaMs
-                        else -> null
-                    }
-
-                    if (displayEtaMs != null && downloadProgress < 1f) {
+                    if (displayEtaMs != null) {
                         formatStableEtaText(displayEtaMs)
-                    } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-                        statusText
                     } else {
-                        ""
+                        statusText
                     }
                 }
 
@@ -678,7 +704,7 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "${(downloadProgress * 100f).toInt()}%",
+                            text = "${progressPercent}%",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -731,7 +757,7 @@ internal fun AppScreenContent(
                     val speedText = remember(displayInfo.gameId, downloadProgress, downloadInfo, etaTick) {
                         val speedBytes = downloadInfo?.getCurrentDownloadSpeed()
                         if (speedBytes != null && speedBytes > 0L) {
-                            "${formatBytes(speedBytes)}/s"
+                            formatNetworkSpeed(speedBytes)
                         } else {
                             ""
                         }

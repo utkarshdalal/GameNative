@@ -16,6 +16,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.DownloadFailedException
+import app.gamenative.data.DownloadPhase
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.LaunchInfo
@@ -1804,38 +1805,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                     di.setWeight(index, selectedDepotSizes[depotId] ?: 1L)
                 }
 
-                // Keep total expected bytes aligned with the exact byte-accounting set:
-                // selected depots for live callbacks + already-downloaded depots excluded from this run.
+                // Track progress only for depots in this active run so excluded/complete depots
+                // (including DLC already marked complete) cannot pre-fill progress at startup.
                 val selectedTotalBytes = selectedDepotSizes.values.sum()
-                var fullyDownloadedBytes = if (appInfo != null && !includeInstalledDepots && hasTrustedInstalledState) {
-                    originalMainAppDepots
-                        .asSequence()
-                        .filter { (depotId, _) ->
-                            depotId in appInfo.downloadedDepots && depotId !in selectedDepots.keys && depotId !in fullyDownloadedDepotsFromSnapshot
-                        }
-                        .sumOf { (depotId, _) ->
-                            depotSizeById[depotId] ?: 1L
-                        }
-                } else {
-                    0L
-                }
-                
-                // Add bytes from depots that were fully downloaded according to the snapshot
-                if (fullyDownloadedDepotsFromSnapshot.isNotEmpty()) {
-                    fullyDownloadedBytes += allDepots
-                        .asSequence()
-                        .filter { (depotId, _) -> depotId in fullyDownloadedDepotsFromSnapshot }
-                        .sumOf { (depotId, _) ->
-                            depotSizeById[depotId] ?: 1L
-                        }
-                }
-                
-                val totalBytes = (selectedTotalBytes + fullyDownloadedBytes).coerceAtLeast(1L)
+                val totalBytes = selectedTotalBytes.coerceAtLeast(1L)
 
                 // Total expected size (used for ETA based on recent download speed)
                 di.setTotalExpectedBytes(totalBytes)
 
-                var resumedBytes = fullyDownloadedBytes
+                var resumedBytes = 0L
 
                 if (allowPersistedProgress) {
                     for ((depotId, bytes) in persistedDepotBytes) {
@@ -1844,7 +1822,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val depotSize = depotSizeById[depotId] ?: continue
                         val safeBytes = bytes.coerceIn(0L, depotSize)
                         di.depotCumulativeUncompressedBytes[depotId] = java.util.concurrent.atomic.AtomicLong(safeBytes)
-                        // Only add to resumedBytes if it's in selectedDepots, because fullyDownloadedBytes already includes the excluded ones
+                        // Count resumed bytes only for depots actively downloading in this run.
                         if (depotId in selectedDepots) {
                             resumedBytes += safeBytes
                         }
@@ -2120,7 +2098,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.d(e, "Download failed for app $appId via cancellation")
                         di.persistProgressSnapshot(force = true)
                         clearFailedResumeState(appId)
-                        di.updateStatusMessage("Download Failed - Please Retry")
+                        di.updateStatus(DownloadPhase.FAILED)
                         di.setActive(false)
                         removeDownloadJob(appId)
                         return@launch
@@ -2133,14 +2111,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.d(e, "Download paused for app $appId")
                         // Keep downloadingAppInfo on cancellation so resume does not fall into verify mode.
                         di.persistProgressSnapshot(force = true)
-                        di.updateStatusMessage("Paused")
+                        di.updateStatus(DownloadPhase.PAUSED)
                         di.setActive(false)
                         throw e
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot(force = true)
                         clearFailedResumeState(appId)
-                        di.updateStatusMessage("Download Failed - Please Retry")
+                        di.updateStatus(DownloadPhase.FAILED)
                         di.setActive(false)
                         removeDownloadJob(appId)
                     } finally {
@@ -2163,6 +2141,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             downloadJobs[appId] = info
+            info.updateStatus(DownloadPhase.PREPARING)
             notifyDownloadStarted(appId)
             return info
         }
@@ -2279,7 +2258,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
                 }
-                downloadInfo.updateStatusMessage("Complete")
+                downloadInfo.updateStatus(DownloadPhase.COMPLETE)
                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
 
                 // Clear persisted bytes file on successful completion
@@ -2295,6 +2274,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             private val depotIdToIndex: Map<Int, Int>,
             private val depotMaxBytesById: Map<Int, Long>,
         ) : IDownloadListener {
+            private var lastByteProgressAtMs: Long = 0L
             private fun updateDepotBytesAndGetDelta(depotId: Int, reportedBytes: Long): Long {
                 if (!depotIdToIndex.containsKey(depotId)) {
                     return 0L
@@ -2341,7 +2321,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onDownloadStarted(item: DownloadItem) {
                 Timber.i("Item ${item.appId} download started")
-                downloadInfo.updateStatusMessage("Downloading")
+                downloadInfo.updateStatus(DownloadPhase.DOWNLOADING)
             }
 
             override fun onDownloadCompleted(item: DownloadItem) {
@@ -2358,7 +2338,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // Downloader-level cancellation maps to paused/resumable UX in the app.
                     Timber.d(error, "Item ${item.appId} download paused")
                     downloadInfo.persistProgressSnapshot(force = true)
-                    downloadInfo.updateStatusMessage("Paused")
+                    downloadInfo.updateStatus(DownloadPhase.PAUSED)
                     downloadInfo.setActive(false)
                     return
                 }
@@ -2367,7 +2347,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Hard stop current session on item failure so we do not continue toward completion
                 // with missing/corrupt files. Resume metadata is preserved for retry.
                 downloadInfo.persistProgressSnapshot(force = true)
-                downloadInfo.updateStatusMessage("Download Failed - Please Retry")
+                downloadInfo.updateStatus(DownloadPhase.FAILED)
                 downloadInfo.failedToDownload()
 
                 instance?.let { service ->
@@ -2383,7 +2363,23 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onStatusUpdate(message: String) {
                 Timber.d("Download status: $message")
-                downloadInfo.updateStatusMessage(message)
+                val mappedStatus = DownloadPhase.fromMessage(message)
+                if (mappedStatus != null) {
+                    if (
+                        mappedStatus == DownloadPhase.PREPARING ||
+                        mappedStatus == DownloadPhase.VERIFYING ||
+                        mappedStatus == DownloadPhase.PATCHING
+                    ) {
+                        val nowMs = System.currentTimeMillis()
+                        val recentlyMovedBytes = nowMs - lastByteProgressAtMs <= 5_000L
+                        if (recentlyMovedBytes && downloadInfo.getStatusFlow().value == DownloadPhase.DOWNLOADING) {
+                            return
+                        }
+                    }
+                    downloadInfo.updateStatus(mappedStatus, message)
+                } else {
+                    downloadInfo.updateStatusMessage(message)
+                }
             }
 
             override fun onChunkCompleted(
@@ -2396,14 +2392,21 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val deltaBytes = updateDepotBytesAndGetDelta(depotId, uncompressedBytes)
 
                 if (deltaBytes > 0L) {
+                    lastByteProgressAtMs = System.currentTimeMillis()
                     // Normal case: add the delta
-                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
+                    downloadInfo.updateBytesDownloaded(deltaBytes, lastByteProgressAtMs)
                     downloadInfo.markProgressSnapshotDirty()
-                    
-                    // If we were stuck on a validation message but are now downloading chunks, switch back to downloading
-                    val currentMsg = downloadInfo.getStatusMessageFlow().value
-                    if (currentMsg != null && (currentMsg.contains("validat", ignoreCase = true) || currentMsg.contains("verify", ignoreCase = true))) {
-                        downloadInfo.updateStatusMessage("Downloading")
+
+                    // If resume verification/prepare phases already ran and bytes are now moving again,
+                    // report active downloading.
+                    val currentPhase = downloadInfo.getStatusFlow().value
+                    if (
+                        currentPhase == DownloadPhase.UNKNOWN ||
+                        currentPhase == DownloadPhase.PREPARING ||
+                        currentPhase == DownloadPhase.VERIFYING ||
+                        currentPhase == DownloadPhase.PATCHING
+                    ) {
+                        downloadInfo.updateStatus(DownloadPhase.DOWNLOADING)
                     }
                 }
 
@@ -2422,12 +2425,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val deltaBytes = updateDepotBytesAndGetDelta(depotId, uncompressedBytes)
 
                 if (deltaBytes > 0L) {
-                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
+                    lastByteProgressAtMs = System.currentTimeMillis()
+                    downloadInfo.updateBytesDownloaded(deltaBytes, lastByteProgressAtMs)
                     downloadInfo.markProgressSnapshotDirty()
-                    
-                    val currentMsg = downloadInfo.getStatusMessageFlow().value
-                    if (currentMsg != null && (currentMsg.contains("validat", ignoreCase = true) || currentMsg.contains("verify", ignoreCase = true))) {
-                        downloadInfo.updateStatusMessage("Downloading")
+
+                    val currentPhase = downloadInfo.getStatusFlow().value
+                    if (
+                        currentPhase == DownloadPhase.UNKNOWN ||
+                        currentPhase == DownloadPhase.PREPARING ||
+                        currentPhase == DownloadPhase.VERIFYING ||
+                        currentPhase == DownloadPhase.PATCHING
+                    ) {
+                        downloadInfo.updateStatus(DownloadPhase.DOWNLOADING)
                     }
                 }
 
@@ -2439,7 +2448,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 downloadInfo.persistProgressSnapshot()
             }
         }
-
 
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
             return getAppInfoOf(appId)?.let { appInfo ->
