@@ -249,7 +249,17 @@ class GOGDownloadManager @Inject constructor(
             // Step 5: Separate base game, DLC, and support files
             val (baseFiles, dlcFiles) = parser.separateBaseDLC(allFiles, gameManifest.baseProductId)
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
-            val (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
+            var (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
+
+            // Filter out files that already exist with correct size (incremental download)
+            val gameInstallDir = installPath
+            val beforeCount = gameFiles.size
+            gameFiles = gameFiles.filter { file ->
+                val outputFile = File(gameInstallDir, file.path)
+                val expectedSize = file.chunks.sumOf { it.size }
+                !fileExistsWithCorrectSize(outputFile, expectedSize)
+            }
+            Timber.tag("GOG").d("Skipping ${beforeCount - gameFiles.size} existing file(s), downloading ${gameFiles.size}")
 
             // Calculate sizes separately for transparency
             val (baseGameFiles, _) = parser.separateSupportFiles(baseFiles)
@@ -298,8 +308,10 @@ class GOGDownloadManager @Inject constructor(
 
             Timber.tag("GOG").d("Mapping chunks to products. gameId parameter: $gameId, realGameId: $realGameId, manifest baseProductId: ${gameManifest.baseProductId}")
 
+            val filesToDownloadPaths = gameFiles.map { it.path }.toSet()
             // Map each chunk to its product ID using depot info
             allFilesWithDepots.forEach { (file, depotProductId) ->
+                if (file.path !in filesToDownloadPaths) return@forEach
                 // Use depot's productId as fallback when file has null/placeholder productId
 
                 // TODO: Remove this logic and always use the depotProductId.
@@ -386,7 +398,6 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo.updateStatusMessage("Assembling files...")
 
             // Use installPath directly since it already includes the game-specific folder
-            val gameInstallDir = installPath
             gameInstallDir.mkdirs()
 
             val assembleResult = assembleFiles(gameFiles, chunkCacheDir, gameInstallDir, downloadInfo)
@@ -560,8 +571,18 @@ class GOGDownloadManager @Inject constructor(
                 v1Files.forEach { allV1Files.add(FileWithProduct(it, depot.productId)) }
             }
 
-            val gameFiles = allV1Files.filter { !it.file.isSupport }
-            val supportFiles = allV1Files.filter { it.file.isSupport }
+            var gameFiles = allV1Files.filter { !it.file.isSupport }
+            var supportFiles = allV1Files.filter { it.file.isSupport }
+            gameFiles = gameFiles.filter { f ->
+                val outFile = File(installPath, f.file.path)
+                !fileExistsWithCorrectSize(outFile, f.file.size)
+            }
+            if (supportDir != null) {
+                supportFiles = supportFiles.filter { f ->
+                    val outFile = File(supportDir, f.file.path)
+                    !fileExistsWithCorrectSize(outFile, f.file.size)
+                }
+            }
             val totalSize = gameFiles.sumOf { it.file.size } + supportFiles.sumOf { it.file.size }
             downloadInfo.setTotalExpectedBytes(totalSize)
             downloadInfo.updateStatusMessage("Downloading files...")
@@ -1386,6 +1407,14 @@ class GOGDownloadManager @Inject constructor(
         val digest = MessageDigest.getInstance("MD5")
         digest.update(data)
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Check if file exists and has the expected size (fast stat-only check, no hash).
+     */
+    private fun fileExistsWithCorrectSize(outputFile: File, expectedSize: Long): Boolean {
+        if (!outputFile.exists()) return false
+        return outputFile.length() == expectedSize
     }
 
     /**

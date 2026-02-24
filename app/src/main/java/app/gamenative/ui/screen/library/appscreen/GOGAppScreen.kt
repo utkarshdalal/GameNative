@@ -22,6 +22,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.utils.ContainerUtils.getContainer
 import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -424,9 +425,17 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
-        // Save GOG-specific container configuration using ContainerUtils
+        val container = getContainer(context, libraryItem.appId)
+        val previousLanguage = container.language
         app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+
+        if (previousLanguage != config.language) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                GOGService.downloadGame(context, libraryItem.gameId.toString(), installPath, config.language)
+            }
+        }
     }
 
     override fun supportsContainerConfig(): Boolean {
