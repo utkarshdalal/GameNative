@@ -772,7 +772,7 @@ class AmazonService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = notificationHelper.createForegroundNotification(getString(R.string.amazon_service_running))
+        val notification = notificationHelper.createForegroundNotification("Connected")
         startForeground(1, notification)
 
         val shouldSync = when (intent?.action) {

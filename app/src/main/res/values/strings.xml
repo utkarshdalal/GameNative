@@ -1045,8 +1045,6 @@
     <string name="amazon_logout_success">Logged out from Amazon Games successfully</string>
     <string name="amazon_logout_failed">Failed to logout: %s</string>
     <string name="amazon_logout_in_progress">Logging out from Amazon Games…</string>
-    <string name="amazon_service_running">Amazon Games Running</string>
-
     <string name="manifest_downloading_item">Downloading %1$s...</string>
     <string name="manifest_download_failed">Download failed: %1$s</string>
     <string name="manifest_install_failed">Failed to install %1$s</string>
