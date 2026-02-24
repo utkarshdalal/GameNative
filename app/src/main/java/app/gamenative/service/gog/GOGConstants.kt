@@ -88,6 +88,13 @@ object GOGConstants {
     fun containerLanguageToGogCodes(containerLanguage: String): List<String> =
         CONTAINER_LANGUAGE_TO_GOG_CODES[containerLanguage.lowercase()] ?: CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOG_FALLBACK_DOWNLOAD_LANGUAGE)
 
+    /** Path under _CommonRedist to a file that indicates this dependency is installed. */
+    val GOG_DEPENDENCY_INSTALLED_PATH: Map<String, String> = mapOf(
+        "ISI" to "ISI/scriptinterpreter.exe",
+        "MSVC2017" to "MSVC2017/VC_redist.x86.exe",
+        "MSVC2017_x64" to "MSVC2017_x64/VC_redist.x64.exe",
+    )
+
     /**
      * Builds a full Galaxy OAuth login URL with a fresh state parameter for CSRF protection.
      * @return Pair of (full auth URL, state) – store state and validate it on redirect.

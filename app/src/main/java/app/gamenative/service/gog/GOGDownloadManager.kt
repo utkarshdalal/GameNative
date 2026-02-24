@@ -988,36 +988,29 @@ class GOGDownloadManager @Inject constructor(
         }
     }
 
-    /**
-     * Downloads GOG redistributables (e.g. ISI/scriptinterpreter.exe) to a shared directory.
-     * Used so scriptinterpreter can be run on first launch for games that need it (e.g. Fallout 3).
-     * Heroic uses the same approach: download redist to a shared path via gogdl redist command.
-     *
-     * @param redistDir Target directory (e.g. context.filesDir/GOG/redist). Files end up under redistDir/ISI/ etc.
-     * @param dependencyIds Dependency IDs to download; default ISI (scriptinterpreter).
-     * @param onProgress Progress callback 0f..1f
-     */
-    suspend fun downloadRedist(
-        redistDir: File,
-        dependencyIds: List<String> = listOf("ISI"),
-        onProgress: (Float) -> Unit,
+    suspend fun downloadDependenciesWithProgress(
+        gameId: String,
+        dependencies: List<String>,
+        gameDir: File,
+        supportDir: File,
+        onProgress: ((Float) -> Unit)? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (dependencies.isEmpty()) return@withContext Result.success(Unit)
         val downloadInfo = DownloadInfo(
             jobCount = 1,
             gameId = 0,
             downloadingAppIds = CopyOnWriteArrayList(),
         )
-        downloadInfo.addProgressListener { onProgress(it) }
-        redistDir.mkdirs()
+        onProgress?.let { downloadInfo.addProgressListener(it) }
         val result = downloadDependencies(
-            gameId = "redist",
-            dependencies = dependencyIds,
-            gameDir = redistDir,
-            supportDir = redistDir,
+            gameId = gameId,
+            dependencies = dependencies,
+            gameDir = gameDir,
+            supportDir = supportDir,
             downloadInfo = downloadInfo,
         )
         if (result.isSuccess) {
-            onProgress(1f)
+            onProgress?.invoke(1f)
         }
         result
     }
@@ -1055,6 +1048,12 @@ class GOGDownloadManager @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val chunks = chunkUrlMap.entries.toList()
+            val totalChunks = chunks.size
+            var downloadedChunks = 0
+
+            downloadInfo.setProgress(0f)
+            downloadInfo.setActive(true)
+            downloadInfo.emitProgressChange()
 
             // Download in batches
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
@@ -1070,6 +1069,10 @@ class GOGDownloadManager @Inject constructor(
                         failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
                     )
                 }
+
+                downloadedChunks += chunkBatch.size
+                downloadInfo.setProgress(downloadedChunks.toFloat() / totalChunks)
+                downloadInfo.emitProgressChange()
             }
 
             Result.success(Unit)
