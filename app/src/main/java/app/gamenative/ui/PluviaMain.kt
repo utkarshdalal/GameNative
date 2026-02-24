@@ -121,7 +121,7 @@ fun PluviaMain(
     var hasBack by rememberSaveable { mutableStateOf(navController.previousBackStackEntry?.destination?.route != null) }
 
     var isConnecting by rememberSaveable { mutableStateOf(false) }
-    var hasAttemptedInitialSteamConnect by rememberSaveable { mutableStateOf(false) }
+    var hasAttemptedInitialSteamConnect by remember { mutableStateOf(false) }
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
