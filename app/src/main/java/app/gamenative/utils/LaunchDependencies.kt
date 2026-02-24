@@ -12,6 +12,7 @@ import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
 import app.gamenative.utils.launchdependencies.ProtonPackageDependency
 import app.gamenative.utils.launchdependencies.SteamClientDependency
+import app.gamenative.utils.launchdependencies.SteamManifestDependency
 import app.gamenative.utils.launchdependencies.SteamTokenDependency
 import com.winlator.container.Container
 
@@ -27,6 +28,7 @@ class LaunchDependencies {
         private val launchDependencies: List<LaunchDependency> = listOf(
             ImageFsBaseDependency,
             ImageFsPatchesDependency,
+            SteamManifestDependency,
             ProtonPackageDependency("proton-9.0-arm64ec.txz", "arm64ec"),
             ProtonPackageDependency("proton-9.0-x86_64.txz", "x86_64"),
             DrmExtrasDependency,
