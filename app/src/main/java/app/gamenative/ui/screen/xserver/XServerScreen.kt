@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.util.Log
+import android.view.Display
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -451,7 +452,14 @@ fun XServerScreen(
                                 if (anchor.windowToken == null) return@post
                                 val show = {
                                     PostHog.capture(event = "onscreen_keyboard_enabled")
-                                    imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    val isExternalDisplaySession =
+                                        (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
+
+                                    if (isExternalDisplaySession) {
+                                        imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    } else {
+                                        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    }
                                 }
                                 if (Build.VERSION.SDK_INT > 29 && c != null) {
                                     anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
