@@ -261,7 +261,7 @@ fun PluviaMain(
                                         Timber.tag("IntentLaunch").i("Applied container config override for app ${launchRequest.appId}")
                                     }
 
-                                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
+                                    if (navController.currentDestination?.route == PluviaScreen.LoginUser.route) {
                                         navController.navigate(PluviaScreen.Home.route) {
                                             popUpTo(navController.graph.startDestinationId) {
                                                 saveState = false
@@ -281,7 +281,10 @@ fun PluviaMain(
                                         onSuccess = viewModel::launchApp,
                                     )
                                 }
-                            } else if (PluviaApp.xEnvironment == null) {
+                            } else if (
+                                PluviaApp.xEnvironment == null &&
+                                navController.currentDestination?.route == PluviaScreen.LoginUser.route
+                            ) {
                                 Timber.i("Navigating to library")
                                 navController.navigate(PluviaScreen.Home.route)
 
@@ -426,9 +429,6 @@ fun PluviaMain(
                 app.gamenative.service.epic.EpicService.start(context)
             }
 
-            if (SteamService.isLoggedIn && !SteamService.keepAlive && navController.currentDestination?.route == PluviaScreen.LoginUser.route) {
-                navController.navigate(PluviaScreen.Home.route)
-            }
         }
     }
 
