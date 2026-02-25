@@ -52,7 +52,6 @@ import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
@@ -62,7 +61,6 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils.getContainer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 
@@ -295,20 +293,6 @@ class SteamAppScreen : BaseAppScreen() {
 
         fun shouldImportConfig(gameId: Int): Boolean {
             return importConfigRequests[gameId] == true
-        }
-
-        private val exportConfigRequests = mutableStateMapOf<Int, Boolean>()
-
-        fun requestExportConfig(gameId: Int) {
-            exportConfigRequests[gameId] = true
-        }
-
-        fun clearExportConfigRequest(gameId: Int) {
-            exportConfigRequests.remove(gameId)
-        }
-
-        fun shouldExportConfig(gameId: Int): Boolean {
-            return exportConfigRequests[gameId] == true
         }
 
         private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
@@ -775,6 +759,24 @@ class SteamAppScreen : BaseAppScreen() {
      * Add Steam-specific menu options (Reset DRM, Verify Files, Update)
      */
     @Composable
+    override fun getConfigMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): List<AppMenuOption> {
+        val exportOption = getExportConfigOption(context, libraryItem)
+        val gameId = libraryItem.gameId
+        return buildList {
+            exportOption?.let { add(it) }
+            add(
+                AppMenuOption(
+                    AppOptionMenuType.ImportConfig,
+                    onClick = { requestImportConfig(gameId) },
+                )
+            )
+        }
+    }
+
+    @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
         libraryItem: LibraryItem,
@@ -934,18 +936,6 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 }
             ),
-            AppMenuOption(
-                AppOptionMenuType.ImportConfig,
-                onClick = {
-                    requestImportConfig(gameId)
-                }
-            ),
-            AppMenuOption(
-                AppOptionMenuType.ExportConfig,
-                onClick = {
-                    requestExportConfig(gameId)
-                }
-            )
         )
     }
 
@@ -1023,17 +1013,6 @@ class SteamAppScreen : BaseAppScreen() {
             snapshotFlow { shouldImportConfig(gameId) }
                 .collect { shouldRequest ->
                     importConfigRequested = shouldRequest
-                }
-        }
-
-        var exportConfigRequested by remember(gameId) {
-            mutableStateOf(shouldExportConfig(gameId))
-        }
-
-        LaunchedEffect(gameId) {
-            snapshotFlow { shouldExportConfig(gameId) }
-                .collect { shouldRequest ->
-                    exportConfigRequested = shouldRequest
                 }
         }
 
@@ -1155,42 +1134,6 @@ class SteamAppScreen : BaseAppScreen() {
                 importConfigLauncher.launch(
                     arrayOf("application/json", "text/json", "text/plain")
                 )
-            }
-        }
-
-        val exportConfigLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.CreateDocument("application/json"),
-        ) { uri: Uri? ->
-            if (uri == null) {
-                clearExportConfigRequest(gameId)
-                return@rememberLauncherForActivityResult
-            }
-
-            CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
-                try {
-                    val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                    val jsonText = JSONObject(container.containerJson).toString(2)
-                    withContext(Dispatchers.IO) {
-                        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                            outputStream.write(jsonText.toByteArray(Charsets.UTF_8))
-                            outputStream.flush()
-                        }
-                    }
-                    SnackbarManager.show(context.getString(R.string.base_app_exported))
-                } catch (e: Exception) {
-                    Timber.w(e, "Failed to export config: ${e.message}")
-                    SnackbarManager.show(context.getString(R.string.base_app_export_failed, e.message ?: "Unknown error"))
-                } finally {
-                    clearExportConfigRequest(gameId)
-                }
-            }
-        }
-
-        LaunchedEffect(exportConfigRequested) {
-            if (exportConfigRequested) {
-                val gameName = appInfo?.name ?: "game"
-                val suggestedFileName = "${gameName}_config.json"
-                exportConfigLauncher.launch(suggestedFileName)
             }
         }
 

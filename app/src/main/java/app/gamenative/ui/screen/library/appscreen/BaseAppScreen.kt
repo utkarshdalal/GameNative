@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.library.appscreen
 import android.content.Context
 import android.content.Intent
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.ContainerConfigTransfer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
@@ -37,10 +39,12 @@ import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.createPinnedShortcut
 import com.winlator.container.ContainerData
 import java.io.File
+import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Abstract base class for AppScreen implementations.
@@ -50,6 +54,7 @@ abstract class BaseAppScreen {
     // Shared state for install dialog - map of appId (String) to MessageDialogState
     companion object {
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
+        private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
             installDialogStates[appId] = state
@@ -61,6 +66,18 @@ abstract class BaseAppScreen {
 
         fun getInstallDialogState(appId: String): app.gamenative.ui.component.dialog.state.MessageDialogState? {
             return installDialogStates[appId]
+        }
+
+        fun requestExportConfig(appId: String) {
+            exportConfigRequests[appId] = true
+        }
+
+        fun clearExportConfigRequest(appId: String) {
+            exportConfigRequests.remove(appId)
+        }
+
+        fun shouldExportConfig(appId: String): Boolean {
+            return exportConfigRequests[appId] == true
         }
     }
 
@@ -246,6 +263,40 @@ abstract class BaseAppScreen {
                 exportFrontendLauncher.launch(suggested)
             },
         )
+    }
+
+    /**
+     * Get export-config menu option. Subclasses can override to customize behavior
+     * or disable export-config entirely by returning null.
+     */
+    @Composable
+    protected open fun getExportConfigOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ExportConfig,
+            onClick = {
+                requestExportConfig(libraryItem.appId)
+            },
+        )
+    }
+
+    /**
+     * Get config-related menu options (e.g. Export config, Import config).
+     * By default returns only Export config when supported; sources can override
+     * to add Import config or other options so they appear grouped together.
+     */
+    @Composable
+    protected open fun getConfigMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): List<AppMenuOption> {
+        return if (supportsContainerConfig()) {
+            listOfNotNull(getExportConfigOption(context, libraryItem))
+        } else {
+            emptyList()
+        }
     }
 
     /**
@@ -460,6 +511,7 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
+            menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
         }
 
         // Always available options
@@ -496,6 +548,7 @@ abstract class BaseAppScreen {
     ) {
         val context = LocalContext.current
         val displayInfo = getGameDisplayInfo(context, libraryItem)
+        val appId = libraryItem.appId
 
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
@@ -575,6 +628,47 @@ abstract class BaseAppScreen {
                 }
             },
         )
+
+        var exportConfigRequested by remember(appId) {
+            mutableStateOf(shouldExportConfig(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldExportConfig(appId) }
+                .collect { shouldRequest ->
+                    exportConfigRequested = shouldRequest
+                }
+        }
+
+        val exportConfigLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/json"),
+            ) { uri ->
+                if (uri == null) {
+                    clearExportConfigRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        ContainerConfigTransfer.exportConfig(
+                            context = context,
+                            appId = appId,
+                            uri = uri,
+                        )
+                    } finally {
+                        clearExportConfigRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(exportConfigRequested) {
+            if (exportConfigRequested) {
+                val gameName = displayInfo.name.ifBlank { "game" }
+                val suggestedFileName = "${gameName}_config.json"
+                exportConfigLauncher.launch(suggestedFileName)
+            }
+        }
 
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
 
