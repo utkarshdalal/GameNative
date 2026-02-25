@@ -40,6 +40,17 @@
     <string name="steam_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
     <string name="steam_uninstall_success">%1$s 已卸载</string>
     <string name="steam_uninstall_failed">卸载游戏失败</string>
+    <string name="amazon_uninstall_game_title">卸载游戏</string>
+    <string name="amazon_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
+    <string name="amazon_install_game_title">下载游戏</string>
+    <string name="amazon_install_confirmation_message">正在安装的应用程序有以下空间需求。是否继续？\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
+    <string name="amazon_verify_files_title">验证文件</string>
+    <string name="amazon_verify_files_message">这将检查所有已安装的文件与下载清单进行比对，以检测缺失或损坏的文件。\n\n对于大型游戏，这可能需要一段时间。</string>
+    <string name="amazon_verify_confirm">验证</string>
+    <string name="amazon_verify_in_progress">正在验证文件… 这可能需要一段时间。</string>
+    <string name="amazon_verify_success">所有文件验证成功。\n\n%1$d / %2$d 个文件 OK。</string>
+    <string name="amazon_verify_failed_detail">验证发现问题。\n\n%1$d / %2$d 个文件 OK\n%3$d 个缺失\n%4$d 个大小不匹配\n%5$d 个哈希不匹配\n\n重新安装游戏以修复损坏的文件。</string>
+    <string name="amazon_verify_error">验证失败：%1$s</string>
     <string name="gog_uninstall_game_title">卸载游戏</string>
     <string name="gog_uninstall_confirmation_message">您确定要卸载 %1$s 吗? 此操作无法撤回</string>
     <string name="gog_install_game_title">下载游戏</string>
@@ -414,6 +425,8 @@
     <string name="games">游戏</string>
     <string name="playtime_last_two_weeks">过去2周的游戏时间：%s 小时</string>
     <string name="total_playtime">总游戏时间：%s 小时</string>
+    <string name="last_played">上次游玩</string>
+    <string name="playtime">游戏时间</string>
     <string name="add_custom_game_content_desc">添加自定义游戏</string>
     <string name="add_custom_game_dialog_title">添加自定义游戏</string>
     <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的文件夹</string>
@@ -476,6 +489,8 @@
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
+    <string name="steam_offline_mode">Steam 离线模式</string>
+    <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
     <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
@@ -992,6 +1007,21 @@
     <string name="epic_logout_success">已成功从 Epic Games 注销</string>
     <string name="epic_logout_failed">注销失败：%s</string>
     <string name="epic_logout_in_progress">正在从 Epic Games 注销…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games 集成 (Alpha)</string>
+    <string name="amazon_settings_login_title">登录</string>
+    <string name="amazon_settings_login_subtitle">登录您的 Amazon Games 账户</string>
+    <string name="amazon_login_success_title">登录成功</string>
+    <string name="amazon_login_cancel">取消</string>
+    <string name="amazon_settings_logout_title">注销</string>
+    <string name="amazon_settings_logout_subtitle">从您的 Amazon Games 账户注销</string>
+    <string name="amazon_logout_confirm_title">从 Amazon Games 注销？</string>
+    <string name="amazon_logout_confirm_message">这将删除您的 Amazon Games 凭据并清除此设备上的 Amazon 库。您可以随时重新登录。</string>
+    <string name="amazon_logout_confirm">注销</string>
+    <string name="amazon_logout_success">已成功从 Amazon Games 注销</string>
+    <string name="amazon_logout_failed">注销失败：%s</string>
+    <string name="amazon_logout_in_progress">正在从 Amazon Games 注销…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">卸载游戏</string>

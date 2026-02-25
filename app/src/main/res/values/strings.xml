@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="steam_uninstall_success">%1$s has been uninstalled</string>
     <string name="steam_uninstall_failed">Failed to uninstall game</string>
+    <string name="amazon_uninstall_game_title">Uninstall Game</string>
+    <string name="amazon_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="amazon_install_game_title">Download Game</string>
+    <string name="amazon_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="amazon_verify_files_title">Verify Files</string>
+    <string name="amazon_verify_files_message">This will check all installed files against the download manifest to detect missing or corrupted files.\n\nThis may take a while for large games.</string>
+    <string name="amazon_verify_confirm">Verify</string>
+    <string name="amazon_verify_in_progress">Verifying files… This may take a while.</string>
+    <string name="amazon_verify_success">All files verified successfully.\n\n%1$d / %2$d files OK.</string>
+    <string name="amazon_verify_failed_detail">Verification found issues.\n\n%1$d / %2$d files OK\n%3$d missing\n%4$d size mismatch\n%5$d hash mismatch\n\nReinstall the game to fix corrupted files.</string>
+    <string name="amazon_verify_error">Verification failed: %1$s</string>
     <string name="gog_uninstall_game_title">Uninstall Game</string>
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="gog_install_game_title">Download Game</string>
@@ -429,6 +440,8 @@
     <string name="games">Games</string>
     <string name="playtime_last_two_weeks">Playtime last 2 weeks: %s hrs</string>
     <string name="total_playtime">Total Playtime: %s hrs</string>
+    <string name="last_played">Last Played</string>
+    <string name="playtime">Playtime</string>
     <string name="add_custom_game_content_desc">Add custom game</string>
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
@@ -495,6 +508,8 @@
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
+    <string name="steam_offline_mode">Steam Offline Mode</string>
+    <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
@@ -504,6 +519,7 @@
     <string name="graphics_driver_version">Graphics Driver Version</string>
     <string name="exposed_vulkan_extensions">Exposed Vulkan Extensions</string>
     <string name="max_device_memory">Max Device Memory</string>
+    <string name="frame_synchronization">Frame Synchronization</string>
     <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
@@ -1017,6 +1033,20 @@
     <string name="epic_logout_failed">Failed to logout: %s</string>
     <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
 
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_settings_login_title">Sign in</string>
+    <string name="amazon_settings_login_subtitle">Sign in to your Amazon Games account</string>
+    <string name="amazon_login_success_title">Login Successful</string>
+    <string name="amazon_login_cancel">Cancel</string>
+    <string name="amazon_settings_logout_title">Logout</string>
+    <string name="amazon_settings_logout_subtitle">Sign out from your Amazon Games account</string>
+    <string name="amazon_logout_confirm_title">Logout from Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">This will remove your Amazon Games credentials and clear your Amazon library from this device. You can sign in again at any time.</string>
+    <string name="amazon_logout_confirm">Logout</string>
+    <string name="amazon_logout_success">Logged out from Amazon Games successfully</string>
+    <string name="amazon_logout_failed">Failed to logout: %s</string>
+    <string name="amazon_logout_in_progress">Logging out from Amazon Games…</string>
     <string name="manifest_downloading_item">Downloading %1$s...</string>
     <string name="manifest_download_failed">Download failed: %1$s</string>
     <string name="manifest_install_failed">Failed to install %1$s</string>

@@ -5,6 +5,7 @@ import androidx.room.Room
 import app.gamenative.db.DATABASE_NAME
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.CachedLicenseDao
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
@@ -66,6 +67,10 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideEpicGameDao(db: PluviaDatabase) = db.epicGameDao()
+
+    @Provides
+    @Singleton
+    fun provideAmazonGameDao(db: PluviaDatabase) = db.amazonGameDao()
 
     @Provides
     @Singleton

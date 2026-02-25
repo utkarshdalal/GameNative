@@ -132,6 +132,8 @@ public class Container {
 
     private boolean forceDlc = false;
 
+    private boolean steamOfflineMode = false;
+
     private boolean useLegacyDRM = false;
 
     private boolean unpackFiles = false;
@@ -672,6 +674,9 @@ public class Container {
             // Force DLC setting
             data.put("forceDlc", forceDlc);
 
+            // Steam offline mode setting
+            data.put("steamOfflineMode", steamOfflineMode);
+
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
@@ -852,6 +857,9 @@ public class Container {
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
                     break;
+                case "steamOfflineMode":
+                    this.steamOfflineMode = data.getBoolean(key);
+                    break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
@@ -919,6 +927,14 @@ public class Container {
 
     public void setForceDlc(boolean forceDlc) {
         this.forceDlc = forceDlc;
+    }
+
+    public boolean isSteamOfflineMode() {
+        return steamOfflineMode;
+    }
+
+    public void setSteamOfflineMode(boolean steamOfflineMode) {
+        this.steamOfflineMode = steamOfflineMode;
     }
 
     public boolean isUseLegacyDRM() {

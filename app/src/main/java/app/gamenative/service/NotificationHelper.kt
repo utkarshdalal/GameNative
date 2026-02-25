@@ -12,8 +12,10 @@ import androidx.core.net.toUri
 import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.R
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
-class NotificationHelper(private val context: Context) {
+class NotificationHelper @Inject constructor(@ApplicationContext private val context: Context) {
 
     companion object {
         private const val CHANNEL_ID = "pluvia_foreground_service"

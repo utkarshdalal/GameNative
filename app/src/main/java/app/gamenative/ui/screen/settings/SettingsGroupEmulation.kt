@@ -14,6 +14,7 @@ import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -85,7 +86,7 @@ fun SettingsGroupEmulation() {
         )
         var autoApplyKnownConfig by rememberSaveable { mutableStateOf(PrefManager.autoApplyKnownConfig) }
         SettingsSwitch(
-            colors = settingsTileColors(),
+            colors = settingsTileColorsAlt(),
             state = autoApplyKnownConfig,
             title = { Text(text = stringResource(R.string.settings_emulation_auto_apply_known_config_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_emulation_auto_apply_known_config_subtitle)) },

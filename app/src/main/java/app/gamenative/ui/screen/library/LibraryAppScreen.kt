@@ -101,6 +101,7 @@ import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
 import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
+import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
 import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -191,6 +192,7 @@ fun AppScreen(
             app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
             app.gamenative.data.GameSource.GOG -> GOGAppScreen()
             app.gamenative.data.GameSource.EPIC -> EpicAppScreen()
+            app.gamenative.data.GameSource.AMAZON -> AmazonAppScreen()
         }
     }
 
@@ -945,4 +947,3 @@ private fun Preview_AppScreen() {
         }
     }
 }
-

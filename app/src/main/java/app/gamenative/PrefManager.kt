@@ -297,6 +297,13 @@ object PrefManager {
             setPref(FORCE_DLC, value)
         }
 
+    private val STEAM_OFFLINE_MODE = booleanPreferencesKey("steam_offline_mode")
+    var steamOfflineMode: Boolean
+        get() = getPref(STEAM_OFFLINE_MODE, false)
+        set(value) {
+            setPref(STEAM_OFFLINE_MODE, value)
+        }
+
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
         get() = getPref(USE_LEGACY_DRM, false)
@@ -759,6 +766,13 @@ object PrefManager {
             setPref(SHOW_EPIC_IN_LIBRARY, value)
         }
 
+    private val SHOW_AMAZON_IN_LIBRARY = booleanPreferencesKey("show_amazon_in_library")
+    var showAmazonInLibrary: Boolean
+        get() = getPref(SHOW_AMAZON_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_AMAZON_IN_LIBRARY, value)
+        }
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int
@@ -800,6 +814,13 @@ object PrefManager {
         get() = getPref(EPIC_INSTALLED_GAMES_COUNT, 0)
         set(value) {
             setPref(EPIC_INSTALLED_GAMES_COUNT, value)
+        }
+
+    private val AMAZON_INSTALLED_GAMES_COUNT = intPreferencesKey("amazon_installed_games_count")
+    var amazonInstalledGamesCount: Int
+        get() = getPref(AMAZON_INSTALLED_GAMES_COUNT, 0)
+        set(value) {
+            setPref(AMAZON_INSTALLED_GAMES_COUNT, value)
         }
 
     // Show dialog when adding custom game folder

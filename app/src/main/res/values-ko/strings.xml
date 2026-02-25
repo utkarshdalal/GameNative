@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="steam_uninstall_success">%1$s이(가) 제거되었습니다</string>
     <string name="steam_uninstall_failed">게임 제거 실패</string>
+    <string name="amazon_uninstall_game_title">게임 제거</string>
+    <string name="amazon_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
+    <string name="amazon_install_game_title">게임 다운로드</string>
+    <string name="amazon_install_confirmation_message">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t사용 가능한 공간: %2$s</string>
+    <string name="amazon_verify_files_title">파일 검증</string>
+    <string name="amazon_verify_files_message">다운로드 매니페스트와 비교하여 설치된 모든 파일을 검사하여 누락되거나 손상된 파일을 감지합니다.\n\n대용량 게임의 경우 시간이 걸릴 수 있습니다.</string>
+    <string name="amazon_verify_confirm">검증</string>
+    <string name="amazon_verify_in_progress">파일 검증 중… 시간이 걸릴 수 있습니다.</string>
+    <string name="amazon_verify_success">모든 파일이 성공적으로 검증되었습니다.\n\n%1$d / %2$d 파일 OK.</string>
+    <string name="amazon_verify_failed_detail">검증에서 문제가 발견되었습니다.\n\n%1$d / %2$d 파일 OK\n%3$d 누락\n%4$d 크기 불일치\n%5$d 해시 불일치\n\n손상된 파일을 수정하려면 게임을 재설치하세요.</string>
+    <string name="amazon_verify_error">검증 실패: %1$s</string>
     <string name="gog_uninstall_game_title">게임 제거</string>
     <string name="gog_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="gog_install_game_title">게임 다운로드</string>
@@ -429,6 +440,8 @@
     <string name="games">게임</string>
     <string name="playtime_last_two_weeks">최근 2주 플레이 시간: %s시간</string>
     <string name="total_playtime">총 플레이 시간: %s시간</string>
+    <string name="last_played">마지막 플레이</string>
+    <string name="playtime">플레이 시간</string>
     <string name="add_custom_game_content_desc">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_title">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_message">커스텀 게임으로 추가할 게임 파일이 있는 폴더를 선택하세요.</string>
@@ -494,6 +507,8 @@
     <string name="force_dlc">DLC 강제</string>
     <string name="force_dlc_description">DLC가 감지되지 않거나 DLC가 있는 저장 파일이 작동하지 않는 경우에만 활성화</string>
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
+    <string name="steam_offline_mode">Steam 오프라인 모드</string>
+    <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
     <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
@@ -504,6 +519,7 @@
     <string name="graphics_driver_version">그래픽 드라이버 버전</string>
     <string name="exposed_vulkan_extensions">노출된 Vulkan 확장</string>
     <string name="max_device_memory">최대 장치 메모리</string>
+    <string name="frame_synchronization">프레임 동기화</string>
     <string name="use_adrenotools_turnip">Adrenotools Turnip 사용</string>
     <string name="vulkan_version">Vulkan 버전</string>
     <string name="image_cache_size">이미지 캐시 크기</string>
@@ -1011,6 +1027,21 @@
     <string name="epic_logout_success">Epic Games에서 성공적으로 로그아웃했습니다</string>
     <string name="epic_logout_failed">로그아웃 실패: %s</string>
     <string name="epic_logout_in_progress">Epic Games에서 로그아웃하는 중…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games 통합 (Alpha)</string>
+    <string name="amazon_settings_login_title">로그인</string>
+    <string name="amazon_settings_login_subtitle">Amazon Games 계정으로 로그인</string>
+    <string name="amazon_login_success_title">로그인 성공</string>
+    <string name="amazon_login_cancel">취소</string>
+    <string name="amazon_settings_logout_title">로그아웃</string>
+    <string name="amazon_settings_logout_subtitle">Amazon Games 계정에서 로그아웃</string>
+    <string name="amazon_logout_confirm_title">Amazon Games에서 로그아웃하시겠습니까?</string>
+    <string name="amazon_logout_confirm_message">Amazon Games 자격 증명이 제거되고 이 기기에서 Amazon 라이브러리가 삭제됩니다. 언제든지 다시 로그인할 수 있습니다.</string>
+    <string name="amazon_logout_confirm">로그아웃</string>
+    <string name="amazon_logout_success">Amazon Games에서 성공적으로 로그아웃했습니다</string>
+    <string name="amazon_logout_failed">로그아웃 실패: %s</string>
+    <string name="amazon_logout_in_progress">Amazon Games에서 로그아웃하는 중…</string>
 
     <string name="manifest_downloading_item">%1$s 다운로드 중...</string>
     <string name="manifest_download_failed">다운로드 실패: %1$s</string>

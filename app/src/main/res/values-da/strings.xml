@@ -293,6 +293,8 @@
     <string name="games">Spil</string>
     <string name="playtime_last_two_weeks">Spilletid de sidste 2 uger: %s timer</string>
     <string name="total_playtime">Total spilletid: %s timer</string>
+    <string name="last_played">Sidst spillet</string>
+    <string name="playtime">Spilletid</string>
 
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">Ingen forbindelse til Steam</string>
@@ -328,6 +330,8 @@
     <string name="force_dlc">Gennemtving DLC</string>
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
+    <string name="steam_offline_mode">Steam Offline-tilstand</string>
+    <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
@@ -786,6 +790,17 @@
     <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
     <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Afinstallér spil</string>
+    <string name="amazon_uninstall_game_title">Afinstallér spil</string>
+    <string name="amazon_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="amazon_install_game_title">Download spil</string>
+    <string name="amazon_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownloadstørrelse: %1$s\n\tTilgængelig plads: %2$s</string>
+    <string name="amazon_verify_files_title">Bekræft filer</string>
+    <string name="amazon_verify_files_message">Dette vil kontrollere alle installerede filer mod downloadmanifestet for at opdage manglende eller beskadigede filer.\n\nDette kan tage et stykke tid for store spil.</string>
+    <string name="amazon_verify_confirm">Bekræft</string>
+    <string name="amazon_verify_in_progress">Bekræfter filer… Dette kan tage et stykke tid.</string>
+    <string name="amazon_verify_success">Alle filer bekræftet.\n\n%1$d / %2$d filer OK.</string>
+    <string name="amazon_verify_failed_detail">Bekræftelse fandt problemer.\n\n%1$d / %2$d filer OK\n%3$d mangler\n%4$d størrelsesmismatch\n%5$d hash-mismatch\n\nGeninstaller spillet for at rette beskadigede filer.</string>
+    <string name="amazon_verify_error">Bekræftelse mislykkedes: %1$s</string>
 
     <!-- Custom Games -->
     <string name="custom_games_title">Tilpassede spil</string>
@@ -866,6 +881,21 @@
     <string name="epic_logout_success">Logget ud fra Epic Games</string>
     <string name="epic_logout_failed">Kunne ikke logge ud: %s</string>
     <string name="epic_logout_in_progress">Logger ud fra Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_settings_login_title">Log ind</string>
+    <string name="amazon_settings_login_subtitle">Log ind på din Amazon Games-konto</string>
+    <string name="amazon_login_success_title">Login lykkedes</string>
+    <string name="amazon_login_cancel">Annuller</string>
+    <string name="amazon_settings_logout_title">Log ud</string>
+    <string name="amazon_settings_logout_subtitle">Log ud fra din Amazon Games-konto</string>
+    <string name="amazon_logout_confirm_title">Log ud fra Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Dette vil fjerne dine Amazon Games-legitimationsoplysninger og rydde dit Amazon-bibliotek fra denne enhed. Du kan logge ind igen når som helst.</string>
+    <string name="amazon_logout_confirm">Log ud</string>
+    <string name="amazon_logout_success">Logget ud fra Amazon Games</string>
+    <string name="amazon_logout_failed">Kunne ikke logge ud: %s</string>
+    <string name="amazon_logout_in_progress">Logger ud fra Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Afinstallér spil</string>

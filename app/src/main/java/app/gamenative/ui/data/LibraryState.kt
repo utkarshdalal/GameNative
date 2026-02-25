@@ -21,11 +21,12 @@ data class LibraryState(
     val isSearching: Boolean = false,
     val searchQuery: String = "",
 
-    // App Source filters (Steam / Custom Games / GOG / Epic)
+    // App Source filters (Steam / Custom Games / GOG / Epic / Amazon)
     val showSteamInLibrary: Boolean = PrefManager.showSteamInLibrary,
     val showCustomGamesInLibrary: Boolean = PrefManager.showCustomGamesInLibrary,
     val showGOGInLibrary: Boolean = PrefManager.showGOGInLibrary,
     val showEpicInLibrary: Boolean = PrefManager.showEpicInLibrary,
+    val showAmazonInLibrary: Boolean = PrefManager.showAmazonInLibrary,
 
     // Loading state for skeleton loaders
     val isLoading: Boolean = false,

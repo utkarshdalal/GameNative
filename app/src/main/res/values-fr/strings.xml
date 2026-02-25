@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="steam_uninstall_success">%1$s a été désinstallé</string>
     <string name="steam_uninstall_failed">Échec de la désinstallation du jeu</string>
+    <string name="amazon_uninstall_game_title">Désinstaller le jeu</string>
+    <string name="amazon_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
+    <string name="amazon_install_game_title">Télécharger le jeu</string>
+    <string name="amazon_install_confirmation_message">L\'application en cours d\'installation nécessite l\'espace suivant. Voulez-vous continuer ?\n\n\tTaille du téléchargement : %1$s\n\tEspace disponible : %2$s</string>
+    <string name="amazon_verify_files_title">Vérifier les fichiers</string>
+    <string name="amazon_verify_files_message">Cela vérifiera tous les fichiers installés par rapport au manifeste de téléchargement pour détecter les fichiers manquants ou corrompus.\n\nCela peut prendre un certain temps pour les jeux volumineux.</string>
+    <string name="amazon_verify_confirm">Vérifier</string>
+    <string name="amazon_verify_in_progress">Vérification des fichiers… Cela peut prendre un certain temps.</string>
+    <string name="amazon_verify_success">Tous les fichiers ont été vérifiés avec succès.\n\n%1$d / %2$d fichiers OK.</string>
+    <string name="amazon_verify_failed_detail">La vérification a trouvé des problèmes.\n\n%1$d / %2$d fichiers OK\n%3$d manquants\n%4$d taille incorrecte\n%5$d hash incorrect\n\nRéinstallez le jeu pour réparer les fichiers corrompus.</string>
+    <string name="amazon_verify_error">La vérification a échoué : %1$s</string>
     <string name="gog_uninstall_game_title">Désinstaller le jeu</string>
     <string name="gog_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
     <string name="gog_install_game_title">Télécharger le jeu</string>
@@ -416,6 +427,8 @@
     <string name="games">Jeux</string>
     <string name="playtime_last_two_weeks">Temps de jeu ces 2 dernières semaines : %s h</string>
     <string name="total_playtime">Temps de jeu total : %s h</string>
+    <string name="last_played">Dernière partie</string>
+    <string name="playtime">Temps de jeu</string>
     <string name="add_custom_game_content_desc">Ajouter un jeu personnalisé</string>
     <string name="add_custom_game_dialog_title">Ajouter un jeu personnalisé</string>
     <string name="add_custom_game_dialog_message">Veuillez sélectionner le dossier contenant les fichiers du jeu que vous souhaitez ajouter comme jeu personnalisé.</string>
@@ -481,6 +494,8 @@
     <string name="force_dlc">Forcer les DLC</string>
     <string name="force_dlc_description">N\'activer que si les DLC ne sont pas détectés ou si les sauvegardes avec DLC ne fonctionnent pas</string>
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
+    <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
+    <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
     <string name="launch_steam_client_description">Réduit les performances et ralentit le lancement\nPermet le jeu en ligne et corrige les problèmes de DRM et de contrôleur\nTous les jeux ne fonctionnent pas</string>
     <string name="allow_steam_updates">Autoriser les mises à jour Steam</string>
     <string name="allow_steam_updates_description">Met à jour Steam vers la dernière version. Réduit considérablement les performances.</string>
@@ -491,6 +506,7 @@
     <string name="graphics_driver_version">Version du pilote graphique</string>
     <string name="exposed_vulkan_extensions">Extensions Vulkan exposées</string>
     <string name="max_device_memory">Mémoire maximale de l\'appareil</string>
+    <string name="frame_synchronization">Synchronisation d\'image</string>
     <string name="use_adrenotools_turnip">Utiliser Adrenotools Turnip</string>
     <string name="vulkan_version">Version Vulkan</string>
     <string name="image_cache_size">Taille du cache d\'images</string>
@@ -999,6 +1015,21 @@
     <string name="epic_logout_success">Déconnecté d\'Epic Games avec succès</string>
     <string name="epic_logout_failed">Échec de la déconnexion : %s</string>
     <string name="epic_logout_in_progress">Déconnexion d\'Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Intégration Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Se connecter</string>
+    <string name="amazon_settings_login_subtitle">Connectez-vous à votre compte Amazon Games</string>
+    <string name="amazon_login_success_title">Connexion réussie</string>
+    <string name="amazon_login_cancel">Annuler</string>
+    <string name="amazon_settings_logout_title">Déconnexion</string>
+    <string name="amazon_settings_logout_subtitle">Se déconnecter de votre compte Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Se déconnecter d\'Amazon Games ?</string>
+    <string name="amazon_logout_confirm_message">Cela supprimera vos identifiants Amazon Games et effacera votre bibliothèque Amazon de cet appareil. Vous pouvez vous reconnecter à tout moment.</string>
+    <string name="amazon_logout_confirm">Déconnexion</string>
+    <string name="amazon_logout_success">Déconnecté d\'Amazon Games avec succès</string>
+    <string name="amazon_logout_failed">Échec de la déconnexion : %s</string>
+    <string name="amazon_logout_in_progress">Déconnexion d\'Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Désinstaller le jeu</string>

@@ -142,7 +142,7 @@ object SteamUtils {
      * Replaces any existing `steam_api.dll` or `steam_api64.dll` in the app directory
      * with our pipe dll stored in assets
      */
-    suspend fun replaceSteamApi(context: Context, appId: String) {
+    suspend fun replaceSteamApi(context: Context, appId: String, isOffline: Boolean = false) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
@@ -187,7 +187,7 @@ object SteamUtils {
                 }
                 Timber.i("Replaced $dllName")
                 if (is64Bit) replaced64Count++ else replaced32Count++
-                ensureSteamSettings(context, path, appId, ticketBase64)
+                ensureSteamSettings(context, path, appId, ticketBase64, isOffline)
             }
         }
 
@@ -226,7 +226,7 @@ object SteamUtils {
     /**
      * Replaces any existing `steamclient.dll` or `steamclient64.dll` in the Steam directory
      */
-    suspend fun replaceSteamclientDll(context: Context, appId: String) {
+    suspend fun replaceSteamclientDll(context: Context, appId: String, isOffline: Boolean = false) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
@@ -259,7 +259,7 @@ object SteamUtils {
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
-        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64)
+        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64, isOffline)
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
@@ -804,7 +804,7 @@ object SteamUtils {
     /**
      * Sibling folder "steam_settings" + empty "offline.txt" file, no-ops if they already exist.
      */
-    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null) {
+    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null, isOffline: Boolean = false) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val steamDir = dllPath.parent
         Files.createDirectories(steamDir)
@@ -916,9 +916,14 @@ object SteamUtils {
 
         val mainIni = settingsDir.resolve("configs.main.ini")
 
+        val steamOfflineMode = container.isSteamOfflineMode()
+        val useOfflineConfig = steamOfflineMode || isOffline
         val mainIniContent = buildString {
             appendLine("[main::connectivity]")
-            appendLine("disable_lan_only=1")
+            appendLine("disable_lan_only=${if (useOfflineConfig) 0 else 1}")
+            if (useOfflineConfig) {
+                appendLine("offline=1")
+            }
         }
 
         if (Files.notExists(mainIni)) Files.createFile(mainIni)

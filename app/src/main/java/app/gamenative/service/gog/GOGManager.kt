@@ -730,6 +730,10 @@ class GOGManager @Inject constructor(
         } else {
             val detectedPath = runBlocking { getInstalledExe(libraryItem) }
             Timber.d("Auto-detected executable path: $detectedPath")
+            if (detectedPath.isNotEmpty()) {
+                container.executablePath = detectedPath
+                container.saveData()
+            }
             detectedPath
         }
 

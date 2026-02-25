@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="steam_uninstall_success">%1$s a fost dezinstalat</string>
     <string name="steam_uninstall_failed">Dezinstalarea jocului a eșuat</string>
+    <string name="amazon_uninstall_game_title">Dezinstalare joc</string>
+    <string name="amazon_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
+    <string name="amazon_install_game_title">Descărcare joc</string>
+    <string name="amazon_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
+    <string name="amazon_verify_files_title">Verificare fișiere</string>
+    <string name="amazon_verify_files_message">Se vor verifica toate fișierele instalate în raport cu manifestul de descărcare pentru a detecta fișiere lipsă sau corupte.\n\nAcest lucru poate dura ceva timp pentru jocuri mari.</string>
+    <string name="amazon_verify_confirm">Verificare</string>
+    <string name="amazon_verify_in_progress">Se verifică fișierele… Poate dura ceva timp.</string>
+    <string name="amazon_verify_success">Toate fișierele au fost verificate cu succes.\n\n%1$d / %2$d fișiere OK.</string>
+    <string name="amazon_verify_failed_detail">Verificarea a găsit probleme.\n\n%1$d / %2$d fișiere OK\n%3$d lipsă\n%4$d dimensiune incorectă\n%5$d hash incorect\n\nReinstalează jocul pentru a repara fișierele corupte.</string>
+    <string name="amazon_verify_error">Verificarea a eșuat: %1$s</string>
     <string name="gog_uninstall_game_title">Dezinstalare joc</string>
     <string name="gog_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="gog_install_game_title">Descărcare joc</string>
@@ -421,6 +432,8 @@
     <string name="games">Jocuri</string>
     <string name="playtime_last_two_weeks">Timp jucat în ultimele 2 săptămâni: %s ore</string>
     <string name="total_playtime">Timp total jucat: %s ore</string>
+    <string name="last_played">Ultima dată jucat</string>
+    <string name="playtime">Timp de joc</string>
     <string name="add_custom_game_content_desc">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_title">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_message">Selectează folderul care conține fișierele jocului pe care vrei să-l adaugi ca joc personalizat.</string>
@@ -486,6 +499,8 @@
 	<string name="force_dlc">Forțează DLC</string>
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
+	<string name="steam_offline_mode">Mod Offline Steam</string>
+	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>
@@ -496,6 +511,7 @@
 	<string name="graphics_driver_version">Versiune driver grafic</string>
 	<string name="exposed_vulkan_extensions">Extensii Vulkan expuse</string>
 	<string name="max_device_memory">Memorie maximă dispozitiv</string>
+	<string name="frame_synchronization">Sincronizare cadre</string>
 	<string name="use_adrenotools_turnip">Folosește Adrenotools Turnip</string>
 	<string name="vulkan_version">Versiune Vulkan</string>
 	<string name="image_cache_size">Dimensiune cache imagini</string>
@@ -1004,6 +1020,21 @@
 	<string name="epic_logout_success">Deconectat de la Epic Games cu succes</string>
 	<string name="epic_logout_failed">Deconectare eșuată: %s</string>
 	<string name="epic_logout_in_progress">Se deconectează de la Epic Games…</string>
+
+	<!-- Amazon Games Integration -->
+	<string name="amazon_integration_title">Integrare Amazon Games (Alpha)</string>
+	<string name="amazon_settings_login_title">Autentificare</string>
+	<string name="amazon_settings_login_subtitle">Autentifică-te în contul tău Amazon Games</string>
+	<string name="amazon_login_success_title">Autentificare reușită</string>
+	<string name="amazon_login_cancel">Anulare</string>
+	<string name="amazon_settings_logout_title">Deconectare</string>
+	<string name="amazon_settings_logout_subtitle">Deconectează-te din contul tău Amazon Games</string>
+	<string name="amazon_logout_confirm_title">Deconectare de la Amazon Games?</string>
+	<string name="amazon_logout_confirm_message">Acest lucru va șterge datele de autentificare Amazon Games și va curăța biblioteca Amazon de pe acest dispozitiv. Te poți autentifica din nou oricând.</string>
+	<string name="amazon_logout_confirm">Deconectare</string>
+	<string name="amazon_logout_success">Deconectat de la Amazon Games cu succes</string>
+	<string name="amazon_logout_failed">Deconectare eșuată: %s</string>
+	<string name="amazon_logout_in_progress">Se deconectează de la Amazon Games…</string>
 
 	<!-- Epic Install/Uninstall -->
 	<string name="epic_uninstall_game_title">Dezinstalare joc</string>

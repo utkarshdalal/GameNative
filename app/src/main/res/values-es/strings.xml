@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="steam_uninstall_success">%1$s ha sido desinstalado.</string>
     <string name="steam_uninstall_failed">Error al desinstalar el juego.</string>
+    <string name="amazon_uninstall_game_title">Desinstalar juego</string>
+    <string name="amazon_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
+    <string name="amazon_install_game_title">Descargar juego</string>
+    <string name="amazon_install_confirmation_message">La aplicación a instalar requiere el siguiente espacio. ¿Deseas continuar?\n\n\tTamaño de descarga: %1$s\n\tEspacio disponible: %2$s</string>
+    <string name="amazon_verify_files_title">Verificar archivos</string>
+    <string name="amazon_verify_files_message">Esto verificará todos los archivos instalados contra el manifiesto de descarga para detectar archivos faltantes o dañados.\n\nEsto puede tardar un rato en juegos grandes.</string>
+    <string name="amazon_verify_confirm">Verificar</string>
+    <string name="amazon_verify_in_progress">Verificando archivos… Esto puede tardar un rato.</string>
+    <string name="amazon_verify_success">Todos los archivos verificados correctamente.\n\n%1$d / %2$d archivos OK.</string>
+    <string name="amazon_verify_failed_detail">La verificación encontró problemas.\n\n%1$d / %2$d archivos OK\n%3$d faltantes\n%4$d tamaño incorrecto\n%5$d hash incorrecto\n\nReinstala el juego para reparar los archivos dañados.</string>
+    <string name="amazon_verify_error">La verificación falló: %1$s</string>
     <string name="gog_uninstall_game_title">Desinstalar juego</string>
     <string name="gog_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="gog_install_game_title">Instalar juego</string>
@@ -408,6 +419,8 @@
     <string name="games">Juegos</string>
     <string name="playtime_last_two_weeks">Tiempo jugado en las últimas 2 semanas: %s h</string>
     <string name="total_playtime">Tiempo total jugado: %s h</string>
+    <string name="last_played">Última partida</string>
+    <string name="playtime">Tiempo de juego</string>
     <string name="add_custom_game_content_desc">Añadir juego personalizado</string>
     <string name="add_custom_game_dialog_title">Añadir juego personalizado</string>
     <string name="add_custom_game_dialog_message">Selecciona la carpeta que contiene los archivos del juego que quieres añadir como juego personalizado.</string>
@@ -471,6 +484,8 @@
     <string name="force_dlc">Forzar DLC</string>
     <string name="force_dlc_description">Actívalo solo si los DLC no se detectan o los archivos de guardados con DLC no funcionan.</string>
     <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
+    <string name="steam_offline_mode">Modo Offline de Steam</string>
+    <string name="steam_offline_mode_description">Iniciar juegos de Steam en modo offline</string>
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="allow_steam_updates">Permitir actualizaciones de Steam</string>
     <string name="allow_steam_updates_description">Actualiza Steam a la última versión. Reduce significativamente el rendimiento.</string>
@@ -481,6 +496,7 @@
     <string name="graphics_driver_version">Versión del controlador gráfico</string>
     <string name="exposed_vulkan_extensions">Extensiones Vulkan expuestas</string>
     <string name="max_device_memory">Memoria máxima del dispositivo</string>
+    <string name="frame_synchronization">Sincronización de fotogramas</string>
     <string name="use_adrenotools_turnip">Usar Adrenotools Turnip</string>
     <string name="vulkan_version">Versión de Vulkan</string>
     <string name="image_cache_size">Tamaño de la caché de imágenes</string>
@@ -956,5 +972,20 @@
     <string name="gog_logout_success">La sesión de GOG se ha cerrado correctamente.</string>
     <string name="gog_logout_failed">Error al cerrar la sesión: %s</string>
     <string name="gog_logout_in_progress">Cerrando sesión de GOG…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Integración de Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Iniciar sesión</string>
+    <string name="amazon_settings_login_subtitle">Inicia sesión en tu cuenta de Amazon Games</string>
+    <string name="amazon_login_success_title">Inicio de sesión exitoso</string>
+    <string name="amazon_login_cancel">Cancelar</string>
+    <string name="amazon_settings_logout_title">Cerrar sesión</string>
+    <string name="amazon_settings_logout_subtitle">Cierra la sesión de tu cuenta de Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Cerrar sesión de Amazon Games</string>
+    <string name="amazon_logout_confirm_message">Esto eliminará tus credenciales de Amazon Games y borrará tu biblioteca de Amazon de este dispositivo. Podrás volver a iniciar sesión en cualquier momento.</string>
+    <string name="amazon_logout_confirm">Cerrar sesión</string>
+    <string name="amazon_logout_success">La sesión de Amazon Games se ha cerrado correctamente.</string>
+    <string name="amazon_logout_failed">Error al cerrar la sesión: %s</string>
+    <string name="amazon_logout_in_progress">Cerrando sesión de Amazon Games…</string>
 </resources>
 

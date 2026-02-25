@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="steam_uninstall_success">%1$s odinstalowano</string>
     <string name="steam_uninstall_failed">Nie udało się odinstalować gry</string>
+    <string name="amazon_uninstall_game_title">Odinstaluj grę</string>
+    <string name="amazon_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
+    <string name="amazon_install_game_title">Pobierz grę</string>
+    <string name="amazon_install_confirmation_message">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tDostępne miejsce: %2$s</string>
+    <string name="amazon_verify_files_title">Zweryfikuj pliki</string>
+    <string name="amazon_verify_files_message">Spowoduje to sprawdzenie wszystkich zainstalowanych plików z manifestem pobierania w celu wykrycia brakujących lub uszkodzonych plików.\n\nMoże to chwilę potrwać w przypadku dużych gier.</string>
+    <string name="amazon_verify_confirm">Zweryfikuj</string>
+    <string name="amazon_verify_in_progress">Weryfikowanie plików… Może to chwilę potrwać.</string>
+    <string name="amazon_verify_success">Wszystkie pliki zweryfikowane pomyślnie.\n\n%1$d / %2$d plików OK.</string>
+    <string name="amazon_verify_failed_detail">Weryfikacja wykryła problemy.\n\n%1$d / %2$d plików OK\n%3$d brakujących\n%4$d niezgodność rozmiaru\n%5$d niezgodność hash\n\nPrzeinstaluj grę, aby naprawić uszkodzone pliki.</string>
+    <string name="amazon_verify_error">Weryfikacja nie powiodła się: %1$s</string>
     <string name="gog_uninstall_game_title">Odinstaluj grę</string>
     <string name="gog_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="gog_install_game_title">Pobierz grę</string>
@@ -428,6 +439,8 @@
     <string name="games">Gry</string>
     <string name="playtime_last_two_weeks">Czas gry w ostatnich 2 tygodniach: %s godz.</string>
     <string name="total_playtime">Całkowity czas gry: %s godz.</string>
+    <string name="last_played">Ostatnio grane</string>
+    <string name="playtime">Czas gry</string>
     <string name="add_custom_game_content_desc">Dodaj własną grę</string>
     <string name="add_custom_game_dialog_title">Dodaj własną grę</string>
     <string name="add_custom_game_dialog_message">Wybierz folder zawierający pliki gry, którą chcesz dodać jako własną grę.</string>
@@ -493,6 +506,8 @@
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
+    <string name="steam_offline_mode">Tryb Offline Steam</string>
+    <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
     <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>
@@ -503,6 +518,7 @@
     <string name="graphics_driver_version">Wersja sterownika graficznego</string>
     <string name="exposed_vulkan_extensions">Dostępne rozszerzenia Vulkan</string>
     <string name="max_device_memory">Maksymalna pamięć urządzenia</string>
+    <string name="frame_synchronization">Synchronizacja klatek</string>
     <string name="use_adrenotools_turnip">Użyj Adrenotools Turnip</string>
     <string name="vulkan_version">Wersja Vulkan</string>
     <string name="image_cache_size">Rozmiar pamięci podręcznej obrazu</string>
@@ -1011,6 +1027,21 @@
     <string name="epic_logout_success">Pomyślnie wylogowano z Epic Games</string>
     <string name="epic_logout_failed">Nie udało się wylogować: %s</string>
     <string name="epic_logout_in_progress">Wylogowywanie z Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Integracja Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Zaloguj się</string>
+    <string name="amazon_settings_login_subtitle">Zaloguj się na swoje konto Amazon Games</string>
+    <string name="amazon_login_success_title">Logowanie pomyślne</string>
+    <string name="amazon_login_cancel">Anuluj</string>
+    <string name="amazon_settings_logout_title">Wyloguj</string>
+    <string name="amazon_settings_logout_subtitle">Wyloguj się ze swojego konta Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Wylogować się z Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Spowoduje to usunięcie danych logowania Amazon Games i wyczyszczenie biblioteki Amazon z tego urządzenia. Możesz zalogować się ponownie w dowolnym momencie.</string>
+    <string name="amazon_logout_confirm">Wyloguj</string>
+    <string name="amazon_logout_success">Pomyślnie wylogowano z Amazon Games</string>
+    <string name="amazon_logout_failed">Nie udało się wylogować: %s</string>
+    <string name="amazon_logout_in_progress">Wylogowywanie z Amazon Games…</string>
 
     <string name="manifest_downloading_item">Pobieranie %1$s...</string>
     <string name="manifest_download_failed">Pobieranie nie powiodło się: %1$s</string>

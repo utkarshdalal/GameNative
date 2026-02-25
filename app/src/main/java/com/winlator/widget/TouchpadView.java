@@ -58,9 +58,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private Runnable delayedPress;
 
     private boolean pressExecuted;
+    private final boolean capturePointerOnExternalMouse;
+    private boolean pointerCaptureRequested;
 
     public TouchpadView(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
         super(context);
+        this.capturePointerOnExternalMouse = capturePointerOnExternalMouse;
         this.fingers = new Finger[4];
         this.numFingers = (byte) 0;
         this.sensitivity = 1.0f;
@@ -79,20 +82,21 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         setBackground(createTransparentBackground());
         setClickable(true);
         setFocusable(true);
-        setFocusableInTouchMode(false);
         int screenWidth = AppUtils.getScreenWidth();
         int screenHeight = AppUtils.getScreenHeight();
         ScreenInfo screenInfo = xServer.screenInfo;
         updateXform(screenWidth, screenHeight, screenInfo.width, screenInfo.height);
         if (capturePointerOnExternalMouse) {
+            setFocusableInTouchMode(true);
             setOnCapturedPointerListener(this);
-            setOnClickListener(new View.OnClickListener() { // from class: com.winlator.widget.TouchpadView$$ExternalSyntheticLambda0
-                @Override // android.view.View.OnClickListener
-                public final void onClick(View view) {
-                    requestPointerCapture();
-                }
-            });
         }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // allow re-capture after app returns from background
+        if (hasFocus) pointerCaptureRequested = false;
     }
 
     private static StateListDrawable createTransparentBackground() {
@@ -598,6 +602,15 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {
+        // one-shot: capture external mouse on first event, don't re-capture after user release
+        if (capturePointerOnExternalMouse && !pointerCaptureRequested) {
+            pointerCaptureRequested = true;
+            if (!hasFocus() && !requestFocus()) {
+                Log.w("TouchpadView", "requestFocus() failed, skipping pointer capture");
+            } else {
+                requestPointerCapture();
+            }
+        }
         boolean handled = false;
         if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
             int actionButton = event.getActionButton();
@@ -617,7 +630,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                         if (xServer.isRelativeMouseMovement())
                             xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEDOWN, 0, 0, 0);
                         else
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE); // Add this line for middle mouse button press
+                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE);
                     }
                     handled = true;
                     break;
@@ -636,7 +649,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                         if (xServer.isRelativeMouseMovement())
                             xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEUP, 0, 0, 0);
                         else
-                            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE); // Add this line for middle mouse button release
+                            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE);
                     }
                     handled = true;
                     break;

@@ -51,6 +51,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.ConnectingServersScreen
@@ -234,6 +235,10 @@ fun PluviaMain(
 
                                         GameSource.EPIC -> {
                                             EpicService.isGameInstalled(gameId)
+                                        }
+
+                                        GameSource.AMAZON -> {
+                                            AmazonService.isGameInstalledByAppId(gameId)
                                         }
 
                                         GameSource.CUSTOM_GAME -> {
@@ -425,6 +430,14 @@ fun PluviaMain(
             ) {
                 Timber.d("[PluviaMain]: Starting EpicService for logged-in user")
                 app.gamenative.service.epic.EpicService.start(context)
+            }
+
+            // Start AmazonService if user has Amazon credentials
+            if (AmazonService.hasStoredCredentials(context) &&
+                !AmazonService.isRunning
+            ) {
+                Timber.d("[PluviaMain]: Starting AmazonService for logged-in user")
+                AmazonService.start(context)
             }
 
             if (SteamService.isLoggedIn && !SteamService.keepAlive && navController.currentDestination?.route == PluviaScreen.LoginUser.route) {
@@ -1140,6 +1153,7 @@ fun preLaunchApp(
                 GameSource.GOG -> GOGService.getLaunchExecutable(appId, container)
                 GameSource.EPIC -> EpicService.getLaunchExecutable(appId)
                 GameSource.CUSTOM_GAME -> CustomGameScanner.getLaunchExecutable(container)
+                GameSource.AMAZON -> AmazonService.getLaunchExecutable(appId)
             }
             if (effectiveExe.isBlank()) {
                 Timber.tag("preLaunchApp").w("Cannot launch $appId: no executable found (game source: $gameSource)")
@@ -1371,6 +1385,15 @@ fun preLaunchApp(
                 Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
 
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
+        // For Amazon Games, skip cloud sync entirely (Amazon doesn't support cloud saves)
+        val isAmazonGame = gameSource == GameSource.AMAZON
+        if (isAmazonGame) {
+            Timber.tag("preLaunchApp").i("Amazon Game detected for $appId — skipping cloud sync and launching container")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

@@ -136,15 +136,16 @@ class GOGManifestParserTest {
             products = emptyList(),
         )
 
-        val result = parser.filterDepotsByLanguage(manifest, GOGConstants.GOG_DOWNLOAD_LANGUAGE)
+        val (depots, effectiveLang) = parser.filterDepotsByLanguage(manifest, "english")
 
-        assertEquals(1, result.size)
-        assertTrue(result[0].languages.contains("en"))
+        assertEquals(1, depots.size)
+        assertTrue(depots[0].languages.contains("en"))
+        assertTrue(effectiveLang in GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE))
     }
 
     @Test
     fun testFilterDepotsByLanguage_enUSMatchesEn() {
-        // Games using en-US in manifest should still match when we request "en" (GOG_DOWNLOAD_LANGUAGE)
+        // Container language "english" resolves to en-US, en; games using en-US in manifest should match
         val enUSDepot = createTestDepot(languages = listOf("en-US"))
         val frDepot = createTestDepot(languages = listOf("fr"))
         val manifest = GOGManifestMeta(
@@ -155,10 +156,29 @@ class GOGManifestParserTest {
             products = emptyList(),
         )
 
-        val result = parser.filterDepotsByLanguage(manifest, GOGConstants.GOG_DOWNLOAD_LANGUAGE)
+        val (depots, effectiveLang) = parser.filterDepotsByLanguage(manifest, "english")
 
-        assertEquals(1, result.size)
-        assertTrue(result[0].languages.contains("en-US"))
+        assertEquals(1, depots.size)
+        assertTrue(depots[0].languages.contains("en-US"))
+        assertTrue(effectiveLang in GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE))
+    }
+
+    @Test
+    fun testFilterDepotsByLanguage_fallbackToEnglishWhenRequestedLanguageHasNoDepots() {
+        val enUSDepot = createTestDepot(languages = listOf("en-US"))
+        val manifest = GOGManifestMeta(
+            baseProductId = "12345",
+            installDirectory = "game",
+            depots = listOf(enUSDepot),
+            dependencies = emptyList(),
+            products = emptyList(),
+        )
+
+        val (depots, effectiveLang) = parser.filterDepotsByLanguage(manifest, "greek")
+
+        assertEquals(1, depots.size)
+        assertTrue(depots[0].languages.contains("en-US"))
+        assertTrue(effectiveLang in GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE))
     }
 
     @Test

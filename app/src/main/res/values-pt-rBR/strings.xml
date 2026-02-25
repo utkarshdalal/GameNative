@@ -293,6 +293,8 @@
     <string name="games">Jogos</string>
     <string name="playtime_last_two_weeks">Tempo de jogo nas últimas 2 semanas: %s h</string>
     <string name="total_playtime">Tempo total de jogo: %s h</string>
+    <string name="last_played">Última vez jogado</string>
+    <string name="playtime">Tempo de jogo</string>
 
     <!-- Login & Connection -->
     <string name="no_connection_to_steam">Sem conexão com o Steam</string>
@@ -328,6 +330,8 @@
     <string name="force_dlc">Forçar DLC</string>
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
+    <string name="steam_offline_mode">Modo Offline do Steam</string>
+    <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
     <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>
@@ -786,6 +790,17 @@
     <string name="steam_imagefs_installed">ImageFS instalado. Por favor, tente editar o contêiner novamente.</string>
     <string name="steam_imagefs_install_failed">Falha ao instalar ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Desinstalar jogo</string>
+    <string name="amazon_uninstall_game_title">Desinstalar jogo</string>
+    <string name="amazon_uninstall_confirmation_message">Tem certeza de que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
+    <string name="amazon_install_game_title">Baixar jogo</string>
+    <string name="amazon_install_confirmation_message">O aplicativo que está sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tEspaço disponível: %2$s</string>
+    <string name="amazon_verify_files_title">Verificar arquivos</string>
+    <string name="amazon_verify_files_message">Isso verificará todos os arquivos instalados em relação ao manifesto de download para detectar arquivos ausentes ou corrompidos.\n\nIsso pode demorar para jogos grandes.</string>
+    <string name="amazon_verify_confirm">Verificar</string>
+    <string name="amazon_verify_in_progress">Verificando arquivos… Isso pode demorar.</string>
+    <string name="amazon_verify_success">Todos os arquivos verificados com sucesso.\n\n%1$d / %2$d arquivos OK.</string>
+    <string name="amazon_verify_failed_detail">A verificação encontrou problemas.\n\n%1$d / %2$d arquivos OK\n%3$d ausentes\n%4$d tamanho diferente\n%5$d hash diferente\n\nReinstale o jogo para corrigir arquivos corrompidos.</string>
+    <string name="amazon_verify_error">Verificação falhou: %1$s</string>
 
     <!-- Jogos personalizados -->
     <string name="custom_games_title">Jogos personalizados</string>
@@ -866,6 +881,21 @@
     <string name="epic_logout_success">Desconectado do Epic Games com sucesso</string>
     <string name="epic_logout_failed">Falha ao sair: %s</string>
     <string name="epic_logout_in_progress">Saindo do Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Integração Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Entrar</string>
+    <string name="amazon_settings_login_subtitle">Entre na sua conta Amazon Games</string>
+    <string name="amazon_login_success_title">Login realizado com sucesso</string>
+    <string name="amazon_login_cancel">Cancelar</string>
+    <string name="amazon_settings_logout_title">Sair</string>
+    <string name="amazon_settings_logout_subtitle">Sair da sua conta Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Sair do Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Isso removerá suas credenciais Amazon Games e limpará sua biblioteca Amazon deste dispositivo. Você pode entrar novamente a qualquer momento.</string>
+    <string name="amazon_logout_confirm">Sair</string>
+    <string name="amazon_logout_success">Desconectado do Amazon Games com sucesso</string>
+    <string name="amazon_logout_failed">Falha ao sair: %s</string>
+    <string name="amazon_logout_in_progress">Saindo do Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Desinstalar jogo</string>

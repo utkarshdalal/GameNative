@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material3.Icon
@@ -31,6 +32,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.ui.component.FlowFilterChip
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.icons.Amazon
 import app.gamenative.ui.icons.CustomGame
 import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.theme.PluviaTheme
@@ -47,6 +49,7 @@ fun LibraryBottomSheet(
     showCustomGames: Boolean,
     showGOG: Boolean,
     showEpic: Boolean,
+    showAmazon: Boolean,
     onSourceToggle: (app.gamenative.data.GameSource) -> Unit,
 ) {
     Column(
@@ -133,6 +136,18 @@ fun LibraryBottomSheet(
                     )
                 },
             )
+            FlowFilterChip(
+                onClick = { onSourceToggle(GameSource.AMAZON) },
+                label = { Text(text = "Amazon") },
+                selected = showAmazon,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Amazon,
+                        contentDescription = "Amazon",
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -189,6 +204,7 @@ private fun Preview_LibraryBottomSheet() {
                 showCustomGames = true,
                 showGOG = true,
                 showEpic = true,
+                showAmazon = true,
                 onSourceToggle = { },
             )
         }

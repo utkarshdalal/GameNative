@@ -117,7 +117,14 @@ private fun calculateInstalledCount(state: LibraryState): Int {
         0
     }
 
-    return steamCount + customGameCount + gogCount + epicCount
+    // Count Amazon games that are installed (from PrefManager)
+    val amazonCount = if (state.showAmazonInLibrary) {
+        PrefManager.amazonInstalledGamesCount
+    } else {
+        0
+    }
+
+    return steamCount + customGameCount + gogCount + epicCount + amazonCount
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,6 +156,7 @@ internal fun LibraryListPane(
         state.showCustomGamesInLibrary,
         state.showGOGInLibrary,
         state.showEpicInLibrary,
+        state.showAmazonInLibrary,
         state.totalAppsInFilter,
     ) {
         calculateInstalledCount(state)
@@ -334,13 +342,14 @@ internal fun LibraryListPane(
                     }
                 }
 
-                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary) {
+                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary, state.showAmazonInLibrary) {
                     val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
                     val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
                     val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0
                     val epicInstalledCount = if (state.showEpicInLibrary) PrefManager.epicInstalledGamesCount else 0
-                    val total = customCount + steamCount + gogInstalledCount + epicInstalledCount
-                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Epic installed: $epicInstalledCount, Total: $total")
+                    val amazonInstalledCount = if (state.showAmazonInLibrary) PrefManager.amazonInstalledGamesCount else 0
+                    val total = customCount + steamCount + gogInstalledCount + epicInstalledCount + amazonInstalledCount
+                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount, Total: $total")
                     // Show at least a few skeletons, but not more than a reasonable amount
                     if (total == 0) 6 else minOf(total, 20)
                 }
@@ -457,6 +466,7 @@ internal fun LibraryListPane(
                                 showCustomGames = state.showCustomGamesInLibrary,
                                 showGOG = state.showGOGInLibrary,
                                 showEpic = state.showEpicInLibrary,
+                                showAmazon = state.showAmazonInLibrary,
                                 onSourceToggle = onSourceToggle,
                             )
                         },

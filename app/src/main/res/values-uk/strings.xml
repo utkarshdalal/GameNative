@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="steam_uninstall_success">%1$s деінстальовано</string>
     <string name="steam_uninstall_failed">Помилка деінсталяції гри</string>
+    <string name="amazon_uninstall_game_title">Деінсталювати гру</string>
+    <string name="amazon_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
+    <string name="amazon_install_game_title">Завантажити гру</string>
+    <string name="amazon_install_confirmation_message">Гра має наступні вимоги до простору. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tДоступний простір: %2$s</string>
+    <string name="amazon_verify_files_title">Перевірити файли</string>
+    <string name="amazon_verify_files_message">Буде перевірено всі встановлені файли за маніфестом завантаження для виявлення відсутніх або пошкоджених файлів.\n\nЦе може зайняти деякий час для великих ігор.</string>
+    <string name="amazon_verify_confirm">Перевірити</string>
+    <string name="amazon_verify_in_progress">Перевірка файлів… Це може зайняти деякий час.</string>
+    <string name="amazon_verify_success">Всі файли успішно перевірено.\n\n%1$d / %2$d файлів OK.</string>
+    <string name="amazon_verify_failed_detail">Перевірка виявила проблеми.\n\n%1$d / %2$d файлів OK\n%3$d відсутніх\n%4$d невідповідність розміру\n%5$d невідповідність хешу\n\nПеревстановіть гру, щоб виправити пошкоджені файли.</string>
+    <string name="amazon_verify_error">Перевірка не вдалася: %1$s</string>
     <string name="steam_never">Ніколи</string>
     <string name="steam_continue">Продовжити</string>
     <string name="header_img_desc">Зображення заголовка застосунку</string>
@@ -412,6 +423,8 @@
     <string name="games">Ігри</string>
     <string name="playtime_last_two_weeks">Награно за останні два тижні: %s годин</string>
     <string name="total_playtime">Всього награно: %s годин</string>
+    <string name="last_played">Остання гра</string>
+    <string name="playtime">Час гри</string>
     <string name="add_custom_game_content_desc">Додати власну гру</string>
     <string name="add_custom_game_dialog_title">Додати власну гру</string>
     <string name="add_custom_game_dialog_message">Будь ласка, виберіть папку з файлами гри, яку ви хочете додати як власну гру.</string>
@@ -477,6 +490,8 @@
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
+    <string name="steam_offline_mode">Режим Офлайн Steam</string>
+    <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -487,6 +502,7 @@
     <string name="graphics_driver_version">Версія графічного драйвера</string>
     <string name="exposed_vulkan_extensions">Відкриті розширення Vulkan</string>
     <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
+    <string name="frame_synchronization">Синхронізація кадрів</string>
     <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
     <string name="vulkan_version">Версія Vulkan</string>
     <string name="image_cache_size">Розмір кешу</string>
@@ -995,6 +1011,21 @@
     <string name="epic_logout_success">Успішно вийшли з Epic Games</string>
     <string name="epic_logout_failed">Не вдалося вийти: %s</string>
     <string name="epic_logout_in_progress">Вихід з Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Інтеграція Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Увійти</string>
+    <string name="amazon_settings_login_subtitle">Увійдіть у свій обліковий запис Amazon Games</string>
+    <string name="amazon_login_success_title">Вхід успішний</string>
+    <string name="amazon_login_cancel">Скасувати</string>
+    <string name="amazon_settings_logout_title">Вийти</string>
+    <string name="amazon_settings_logout_subtitle">Вийти з облікового запису Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Вийти з Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Це видалить ваші облікові дані Amazon Games та очистить вашу бібліотеку Amazon на цьому пристрої. Ви можете увійти знову будь-коли.</string>
+    <string name="amazon_logout_confirm">Вийти</string>
+    <string name="amazon_logout_success">Успішно вийшли з Amazon Games</string>
+    <string name="amazon_logout_failed">Не вдалося вийти: %s</string>
+    <string name="amazon_logout_in_progress">Вихід з Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Деінсталювати гру</string>

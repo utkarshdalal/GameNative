@@ -40,6 +40,17 @@
     <string name="steam_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Das kann nicht rückgängig gemacht werden.</string>
     <string name="steam_uninstall_success">%1$s wurde deinstalliert</string>
     <string name="steam_uninstall_failed">Spiel konnte nicht deinstalliert werden</string>
+    <string name="amazon_uninstall_game_title">Spiel deinstallieren</string>
+    <string name="amazon_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Das kann nicht rückgängig gemacht werden.</string>
+    <string name="amazon_install_game_title">Spiel herunterladen</string>
+    <string name="amazon_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
+    <string name="amazon_verify_files_title">Dateien überprüfen</string>
+    <string name="amazon_verify_files_message">Alle installierten Dateien werden mit dem Download-Manifest verglichen, um fehlende oder beschädigte Dateien zu erkennen.\n\nDies kann bei großen Spielen eine Weile dauern.</string>
+    <string name="amazon_verify_confirm">Überprüfen</string>
+    <string name="amazon_verify_in_progress">Überprüfe Dateien… Dies kann eine Weile dauern.</string>
+    <string name="amazon_verify_success">Alle Dateien erfolgreich überprüft.\n\n%1$d / %2$d Dateien OK.</string>
+    <string name="amazon_verify_failed_detail">Überprüfung hat Probleme gefunden.\n\n%1$d / %2$d Dateien OK\n%3$d fehlend\n%4$d Größenabweichung\n%5$d Hash-Abweichung\n\nInstalliere das Spiel neu, um beschädigte Dateien zu reparieren.</string>
+    <string name="amazon_verify_error">Überprüfung fehlgeschlagen: %1$s</string>
     <string name="steam_never">Nie</string>
     <string name="epic_cancel_download_message">Möchten Sie den Download der App wirklich abbrechen?</string>
     <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
@@ -400,6 +411,8 @@
     <string name="games">Spiele</string>
     <string name="playtime_last_two_weeks">Spielzeit der letzten 2 Wochen: %s Std</string>
     <string name="total_playtime">Gesamtspielzeit: %s Std</string>
+    <string name="last_played">Zuletzt gespielt</string>
+    <string name="playtime">Spielzeit</string>
     <string name="add_custom_game_content_desc">Eigenes Spiel hinzufügen</string>
     <string name="add_custom_game_dialog_title">Eigenes Spiel hinzufügen</string>
     <string name="add_custom_game_dialog_message">Bitte wähle den Ordner aus, der die Spieldateien enthält, die du als eigenes Spiel hinzufügen möchtest.</string>
@@ -456,6 +469,8 @@
     <string name="force_dlc">DLC erzwingen</string>
     <string name="force_dlc_description">Nur aktivieren, falls DLCs nicht erkannt werden oder Spielstände mit DLC nicht funktionieren</string>
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
+    <string name="steam_offline_mode">Steam Offline-Modus</string>
+    <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
     <string name="launch_steam_client_description">Reduziert Performance und verlängert den Start\nErmöglicht Online-Spiel und behebt DRM- und Controller-Probleme\nNicht alle Spiele funktionieren</string>
     <string name="allow_steam_updates">Steam-Updates erlauben</string>
     <string name="allow_steam_updates_description">Aktualisiert Steam auf die neueste Version. Reduziert die Leistung spürbar.</string>
@@ -465,6 +480,7 @@
     <string name="graphics_driver_version">Grafiktreiber-Version</string>
     <string name="exposed_vulkan_extensions">Sichtbare Vulkan-Erweiterungen</string>
     <string name="max_device_memory">Max. Gerätespeicher</string>
+    <string name="frame_synchronization">Bildsynchronisation</string>
     <string name="use_adrenotools_turnip">Adrenotools Turnip verwenden</string>
     <string name="vulkan_version">Vulkan-Version</string>
     <string name="image_cache_size">Bildcache-Größe</string>
@@ -937,6 +953,21 @@
     <string name="epic_logout_success">Erfolgreich von Epic Games abgemeldet</string>
     <string name="epic_logout_failed">Abmeldung fehlgeschlagen: %s</string>
     <string name="epic_logout_in_progress">Melde von Epic Games ab…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_settings_login_title">Anmelden</string>
+    <string name="amazon_settings_login_subtitle">Bei deinem Amazon Games-Konto anmelden</string>
+    <string name="amazon_login_success_title">Anmeldung erfolgreich</string>
+    <string name="amazon_login_cancel">Abbrechen</string>
+    <string name="amazon_settings_logout_title">Abmelden</string>
+    <string name="amazon_settings_logout_subtitle">Von deinem Amazon Games-Konto abmelden</string>
+    <string name="amazon_logout_confirm_title">Von Amazon Games abmelden?</string>
+    <string name="amazon_logout_confirm_message">Dies entfernt deine Amazon Games-Anmeldedaten und löscht deine Amazon-Bibliothek von diesem Gerät. Du kannst dich jederzeit wieder anmelden.</string>
+    <string name="amazon_logout_confirm">Abmelden</string>
+    <string name="amazon_logout_success">Erfolgreich von Amazon Games abgemeldet</string>
+    <string name="amazon_logout_failed">Abmeldung fehlgeschlagen: %s</string>
+    <string name="amazon_logout_in_progress">Melde von Amazon Games ab…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Spiel deinstallieren</string>
