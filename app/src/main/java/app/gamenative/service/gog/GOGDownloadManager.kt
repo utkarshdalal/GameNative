@@ -583,14 +583,15 @@ class GOGDownloadManager @Inject constructor(
                     !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
                 }
             }
-            val totalSize = gameFiles.sumOf { it.file.size } + supportFiles.sumOf { it.file.size }
+            val totalSize = gameFiles.sumOf { it.file.size } +
+                if (supportDir != null) supportFiles.sumOf { it.file.size } else 0L
             downloadInfo.setTotalExpectedBytes(totalSize)
             downloadInfo.updateStatusMessage("Downloading files...")
             downloadInfo.setProgress(0f)
             downloadInfo.setActive(true)
             downloadInfo.emitProgressChange()
 
-            val totalFiles = gameFiles.size + supportFiles.size
+            val totalFiles = gameFiles.size + if (supportDir != null) supportFiles.size else 0
             var doneFiles = 0
 
             // Gen 1: one main.bin URL per product; each file is fetched with Range: bytes=offset-(offset+size-1)
