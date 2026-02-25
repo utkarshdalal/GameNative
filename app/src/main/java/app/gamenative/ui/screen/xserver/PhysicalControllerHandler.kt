@@ -71,7 +71,7 @@ class PhysicalControllerHandler(
                         return true
                     }
                     val offset = if (event.action == KeyEvent.ACTION_DOWN &&
-                        (event.keyCode == KeyEvent.KEYCODE_BUTTON_L2 || event.keyCode == KeyEvent.KEYCODE_BUTTON_R2)
+                        (controllerBinding.binding == Binding.GAMEPAD_BUTTON_L2 || controllerBinding.binding == Binding.GAMEPAD_BUTTON_R2)
                     ) 1f else 0f
                     handleInputEvent(controllerBinding.binding, event.action == KeyEvent.ACTION_DOWN, offset)
                     return true
