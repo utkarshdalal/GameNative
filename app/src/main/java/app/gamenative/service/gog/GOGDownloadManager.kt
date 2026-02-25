@@ -257,7 +257,7 @@ class GOGDownloadManager @Inject constructor(
             gameFiles = gameFiles.filter { file ->
                 val outputFile = File(gameInstallDir, file.path)
                 val expectedSize = file.chunks.sumOf { it.size }
-                !fileExistsWithCorrectSize(outputFile, expectedSize)
+                !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
             }
             Timber.tag("GOG").d("Skipping ${beforeCount - gameFiles.size} existing file(s), downloading ${gameFiles.size}")
 
@@ -575,12 +575,12 @@ class GOGDownloadManager @Inject constructor(
             var supportFiles = allV1Files.filter { it.file.isSupport }
             gameFiles = gameFiles.filter { f ->
                 val outFile = File(installPath, f.file.path)
-                !fileExistsWithCorrectSize(outFile, f.file.size)
+                !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
             }
             if (supportDir != null) {
                 supportFiles = supportFiles.filter { f ->
                     val outFile = File(supportDir, f.file.path)
-                    !fileExistsWithCorrectSize(outFile, f.file.size)
+                    !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
                 }
             }
             val totalSize = gameFiles.sumOf { it.file.size } + supportFiles.sumOf { it.file.size }
@@ -1410,13 +1410,18 @@ class GOGDownloadManager @Inject constructor(
     }
 
     /**
-     * Check if file exists and has the expected size (fast stat-only check, no hash).
+     * Check if file exists and has the expected size. When [expectedMd5] is non-null/non-blank,
+     * also verifies content MD5 to reject corrupted files; short-circuits on size mismatch before hashing.
      */
-    private fun fileExistsWithCorrectSize(outputFile: File, expectedSize: Long): Boolean {
+    private fun fileExistsWithCorrectSize(
+        outputFile: File,
+        expectedSize: Long,
+        expectedMd5: String? = null,
+    ): Boolean {
         if (!outputFile.exists()) return false
-        return outputFile.length() == expectedSize
+        if (outputFile.length() != expectedSize) return false
+        return expectedMd5.isNullOrBlank() || calculateMd5File(outputFile).equals(expectedMd5, ignoreCase = true)
     }
-
     /**
      * Calculate MD5 hash of file
      */
