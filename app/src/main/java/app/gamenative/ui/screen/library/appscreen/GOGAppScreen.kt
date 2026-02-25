@@ -432,8 +432,14 @@ class GOGAppScreen : BaseAppScreen() {
 
         if (previousLanguage != config.language) {
             CoroutineScope(Dispatchers.IO).launch {
-                val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
-                GOGService.downloadGame(context, libraryItem.gameId.toString(), installPath, config.language)
+                val gameId = libraryItem.gameId.toString()
+                if (!GOGService.isGameInstalled(gameId)) return@launch
+                if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
+
+                val installPath = GOGService.getInstallPath(gameId)
+                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
+
+                GOGService.downloadGame(context, gameId, installPath, config.language)
             }
         }
     }
