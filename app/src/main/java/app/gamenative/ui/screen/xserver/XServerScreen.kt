@@ -3386,9 +3386,179 @@ private fun setupBasiliskBrowserForEpic(
             Timber.tag(TAG).e(e, "Failed to set Basilisk as default browser in registry")
         }
 
+        // Inject Epic authentication cookies into Basilisk to avoid manual login
+        injectEpicCookiesIntoBasilisk(context, rootDir, basiliskDir)
+
         Timber.tag(TAG).i("========== Basilisk browser setup completed successfully ==========")
     } catch (e: Exception) {
         Timber.tag(TAG).e(e, "========== FAILED to setup Basilisk browser for Epic Games ==========")
+    }
+}
+
+/**
+ * Injects Epic Games authentication cookies into Basilisk browser to avoid manual login.
+ * Creates cookiesinto Basilisk's profile directory with the access token from stored credentials.
+ *
+ * @param context Android context
+ * @param containerRoot Container root directory
+ * @param basiliskDir Basilisk installation directory
+ */
+private fun injectEpicCookiesIntoBasilisk(
+    context: Context,
+    containerRoot: File,
+    basiliskDir: File
+) {
+    val TAG = "XServerScreen"
+    try {
+        Timber.tag(TAG).i("---------- Injecting Epic authentication cookies into Basilisk ----------")
+
+        // Get Epic credentials
+        val credentialsResult = runBlocking {
+            app.gamenative.service.epic.EpicService.getStoredCredentials(context)
+        }
+
+        if (credentialsResult.isFailure) {
+            Timber.tag(TAG).w("Cannot inject Epic cookies: No valid Epic credentials found")
+            return
+        }
+
+        val credentials = credentialsResult.getOrNull()
+        if (credentials == null) {
+            Timber.tag(TAG).w("Cannot inject Epic cookies: Credentials are null")
+            return
+        }
+
+        Timber.tag(TAG).i("Found Epic credentials for account: ${credentials.accountId}")
+
+        // Find or create Basilisk profile directory
+        // Basilisk creates a default profile at %APPDATA%\Basilisk\Profiles\<random>.default
+        val appDataRoaming = File(containerRoot, ".wine/drive_c/users/xuser/AppData/Roaming")
+        val basiliskProfilesDir = File(appDataRoaming, "Basilisk/Profiles")
+
+        // Find existing default profile or create one
+        var profileDir: File? = null
+        if (basiliskProfilesDir.exists()) {
+            val profiles = basiliskProfilesDir.listFiles { file ->
+                file.isDirectory && file.name.endsWith(".default")
+            }
+            profileDir = profiles?.firstOrNull()
+        }
+
+        // If no profile exists, create a default one
+        if (profileDir == null || !profileDir.exists()) {
+            // Use a simple profile name
+            profileDir = File(basiliskProfilesDir, "default.default")
+            profileDir.mkdirs()
+            Timber.tag(TAG).i("Created Basilisk profile directory: ${profileDir.absolutePath}")
+        } else {
+            Timber.tag(TAG).i("Using existing Basilisk profile: ${profileDir.absolutePath}")
+        }
+
+        // Create cookies.sqlite database
+        val cookiesDb = File(profileDir, "cookies.sqlite")
+
+        // Use SQLite to create and populate cookies
+        val dbPath = cookiesDb.absolutePath
+        Timber.tag(TAG).i("Cookies database path: $dbPath")
+
+        try {
+            // Open or create cookies database
+            val db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(dbPath, null)
+
+            try {
+                // Create cookies table with Mozilla Firefox/Basilisk schema
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS moz_cookies (
+                        id INTEGER PRIMARY KEY,
+                        baseDomain TEXT,
+                        originAttributes TEXT NOT NULL DEFAULT '',
+                        name TEXT,
+                        value TEXT,
+                        host TEXT,
+                        path TEXT,
+                        expiry INTEGER,
+                        lastAccessed INTEGER,
+                        creationTime INTEGER,
+                        isSecure INTEGER,
+                        isHttpOnly INTEGER,
+                        inBrowserElement INTEGER DEFAULT 0,
+                        sameSite INTEGER DEFAULT 0,
+                        CONSTRAINT moz_uniqueid UNIQUE (name, host, path, originAttributes)
+                    )
+                """.trimIndent())
+
+                Timber.tag(TAG).i("Created/verified moz_cookies table")
+
+                // Calculate expiry time (aligns with Epic access token expiry)
+                val currentTimeSeconds = System.currentTimeMillis() / 1000
+                val expirySeconds = credentials.expiresAt / 1000
+
+                // Epic Games domains that need cookies
+                val domains = listOf(
+                    ".epicgames.com",       // Main domain
+                    ".store.epicgames.com", // Store domain
+                    "www.epicgames.com",    // WWW subdomain
+                )
+
+                // Cookie names Epic uses for authentication
+                val cookieNames = listOf(
+                    "EPIC_BEARER_TOKEN" to credentials.accessToken,     // Primary auth token
+                    "EPIC_SSO_RM" to credentials.accessToken,           // SSO remember me token
+                    "EPIC_SESSION_AP" to credentials.accountId,         // Account ID
+                )
+
+                var cookiesInserted = 0
+
+                for (domain in domains) {
+                    for ((cookieName, cookieValue) in cookieNames) {
+                        try {
+                            // Delete existing cookie if present
+                            db.delete(
+                                "moz_cookies",
+                                "name = ? AND host = ?",
+                                arrayOf(cookieName, domain)
+                            )
+
+                            // Insert new cookie
+                            val values = android.content.ContentValues().apply {
+                                put("baseDomain", domain.trimStart('.'))
+                                put("originAttributes", "")
+                                put("name", cookieName)
+                                put("value", cookieValue)
+                                put("host", domain)
+                                put("path", "/")
+                                put("expiry", expirySeconds)
+                                put("lastAccessed", currentTimeSeconds * 1000000) // Microseconds
+                                put("creationTime", currentTimeSeconds * 1000000) // Microseconds
+                                put("isSecure", 1) // HTTPS only
+                                put("isHttpOnly", 1) // Not accessible via JavaScript
+                                put("inBrowserElement", 0)
+                                put("sameSite", 0) // No SameSite restriction
+                            }
+
+                            val rowId = db.insert("moz_cookies", null, values)
+                            if (rowId != -1L) {
+                                cookiesInserted++
+                                Timber.tag(TAG).d("Inserted cookie: $cookieName for domain: $domain")
+                            } else {
+                                Timber.tag(TAG).w("Failed to insert cookie: $cookieName for domain: $domain")
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag(TAG).e(e, "Error inserting cookie $cookieName for $domain")
+                        }
+                    }
+                }
+
+                Timber.tag(TAG).i("✓ Successfully injected $cookiesInserted Epic authentication cookies into Basilisk")
+            } finally {
+                db.close()
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to create/update cookies database")
+        }
+
+    } catch (e: Exception) {
+        Timber.tag(TAG).e(e, "Failed to inject Epic cookies into Basilisk")
     }
 }
 
