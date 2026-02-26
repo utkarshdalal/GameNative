@@ -222,13 +222,13 @@ internal fun AppItem(
                                     PaneType.GRID_CAPSULE -> {
                                         // Vertical grid for capsule
                                         (findSteamGridDBImage("grid_capsule")
-                                            ?: appInfo.capsuleImageUrl) to ""
+                                            ?: appInfo.capsuleImageUrl) to appInfo.clientIconUrl
                                     }
 
                                     PaneType.GRID_HERO -> {
                                         // Horizontal grid for hero view
                                         (findSteamGridDBImage("grid_hero")
-                                            ?: appInfo.headerImageUrl) to ""
+                                            ?: appInfo.headerImageUrl) to appInfo.clientIconUrl
                                     }
 
                                     else -> {
@@ -243,40 +243,39 @@ internal fun AppItem(
                                                         file.name.endsWith(".png", ignoreCase = true) ||
                                                             file.name.endsWith(".jpg", ignoreCase = true) ||
                                                             file.name.endsWith(".webp", ignoreCase = true)
-                                                        )
+                                                    )
                                             }
                                             heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                         }
-                                        (heroUrl ?: appInfo.headerImageUrl) to ""
+                                        (heroUrl ?: appInfo.headerImageUrl) to appInfo.clientIconUrl
                                     }
                                 }
                             }
 
                             GameSource.GOG -> {
-                                appInfo.iconHash to ""
+                                appInfo.iconHash to appInfo.clientIconUrl
                             }
 
                             GameSource.EPIC -> {
-                                appInfo.iconHash to ""
+                                appInfo.iconHash to appInfo.clientIconUrl
                             }
 
                             GameSource.AMAZON -> {
-                                appInfo.iconHash to ""
+                                appInfo.iconHash to appInfo.clientIconUrl
                             }
 
                             GameSource.STEAM -> {
                                 if (paneType == PaneType.GRID_CAPSULE) {
-                                    appInfo.capsuleImageUrl to ""
+                                    appInfo.capsuleImageUrl to appInfo.clientIconUrl
                                 } else {
                                     // try header first, fall back to hero image from library assets
-                                    appInfo.headerImageUrl to appInfo.heroImageUrl
+                                    val fallback = if (appInfo.heroImageUrl.isNotEmpty()) appInfo.heroImageUrl else appInfo.clientIconUrl
+                                    appInfo.headerImageUrl to fallback
                                 }
                             }
                         }
                     }
-
-                    var imageUrl by remember(primaryUrl, imageRefreshCounter) { mutableStateOf(primaryUrl) }
-
+var imageUrl by remember(primaryUrl, imageRefreshCounter) { mutableStateOf(primaryUrl) }
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
                     LaunchedEffect(imageUrl) {
                         if (paneType != PaneType.LIST) {
