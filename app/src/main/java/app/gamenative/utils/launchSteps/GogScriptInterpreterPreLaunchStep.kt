@@ -4,10 +4,9 @@ import android.content.Context
 import app.gamenative.data.GameSource
 import app.gamenative.service.gog.GOGService
 import com.winlator.container.Container
-import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 
 /** Pre-launch step that runs GOG scriptinterpreter.exe when required by the game manifest. */
-object GogScriptInterpreterPreLaunchStep : PreLaunchStep {
+object GogScriptInterpreterPreLaunchStep : LaunchStep {
     override fun appliesTo(container: Container, appId: String, gameSource: GameSource): Boolean =
         gameSource == GameSource.GOG
 
@@ -15,9 +14,13 @@ object GogScriptInterpreterPreLaunchStep : PreLaunchStep {
         context: Context,
         appId: String,
         container: Container,
-        guestProgramLauncherComponent: GuestProgramLauncherComponent,
+        stepRunner: StepRunner,
         gameSource: GameSource,
-    ) {
-        GOGService.runScriptInterpreterIfNeeded(appId, guestProgramLauncherComponent)
+    ): Boolean {
+        val parts = GOGService.getInstance()?.gogManager?.getScriptInterpreterPartsForLaunch(appId) ?: return false
+        val content = if (parts.isEmpty()) null else parts.joinToString(" & ")
+        if (content.isNullOrBlank()) return false
+        stepRunner.runStepContent(content)
+        return true
     }
 }
