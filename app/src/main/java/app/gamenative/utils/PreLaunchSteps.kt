@@ -4,35 +4,40 @@ import android.content.Context
 import app.gamenative.data.GameSource
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterPreLaunchStep
 import app.gamenative.utils.launchdependencies.PreLaunchStep
+import app.gamenative.utils.launchdependencies.VcRedistPreLaunchStep
 import com.winlator.container.Container
-import com.winlator.xenvironment.components.GuestProgramLauncherComponent
-import timber.log.Timber
 
 /**
- * Runs all pre-launch steps that apply to a container/app.
- * Each step is run in order; exceptions are caught and logged per step so one failure does not block others.
+ * Registry for all pre-launch steps.
+ * Each applicable step contributes fragments to a single `cmd /c` chain run in the main Wine session.
+ * A short delay is inserted between each fragment so installer children (e.g. msiexec) can finish.
  */
 class PreLaunchSteps {
     companion object {
         private val preLaunchSteps: List<PreLaunchStep> = listOf(
+            VcRedistPreLaunchStep,
             GogScriptInterpreterPreLaunchStep,
         )
     }
 
-    fun run(
+    /**
+     * Builds the pre-launch chain string by collecting [PreLaunchStep.getChainFragments] from each
+     * applicable step and joining with " & " between each fragment. Returns empty if none.
+     */
+    fun buildChain(
         context: Context,
         appId: String,
         container: Container,
-        guestProgramLauncherComponent: GuestProgramLauncherComponent,
         gameSource: GameSource,
-    ) {
+    ): String {
+        val parts = mutableListOf<String>()
         for (step in preLaunchSteps) {
             if (!step.appliesTo(container, appId, gameSource)) continue
-            try {
-                step.run(context, appId, container, guestProgramLauncherComponent, gameSource)
-            } catch (e: Exception) {
-                Timber.tag("PreLaunchSteps").e(e, "Pre-launch step failed: ${step::class.simpleName}")
+            for (fragment in step.getChainFragments(context, appId, container, gameSource)) {
+                val trimmed = fragment.trim()
+                if (trimmed.isNotEmpty()) parts.add(trimmed)
             }
         }
+        return if (parts.isEmpty()) "" else parts.joinToString(" & ") + " & "
     }
 }

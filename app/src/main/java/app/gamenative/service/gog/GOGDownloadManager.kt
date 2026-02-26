@@ -9,6 +9,7 @@ import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.utils.Net
+import com.winlator.core.FileUtils
 import org.json.JSONArray
 import org.json.JSONObject
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -1017,7 +1018,27 @@ class GOGDownloadManager @Inject constructor(
             downloadInfo = downloadInfo,
         )
         if (result.isSuccess) {
+            // Mark progress complete
             onProgress(1f)
+
+            // HACK: create a symlink that scriptinterpreter.exe can use as a "full path with drive letter".
+            // For per-game installs we download into <installPath>/_CommonRedist. When that is the case and
+            // ISI is among the requested dependencies, create:
+            //   _CommonRedist/ISI/rootdir -> <installPath>
+            // so that /DIR=A:\_CommonRedist\ISI\rootdir points to the actual game root.
+            if (redistDir.name == "_CommonRedist" && dependencyIds.contains("ISI")) {
+                val installDir = redistDir.parentFile
+                if (installDir != null && installDir.isDirectory) {
+                    val isiDir = File(redistDir, "ISI")
+                    if (isiDir.isDirectory) {
+                        val rootDirLink = File(isiDir, "rootdir")
+                        FileUtils.symlink(installDir, rootDirLink)
+                        Timber.tag("GOG").d(
+                            "Created scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${installDir.absolutePath}",
+                        )
+                    }
+                }
+            }
         }
         result
     }

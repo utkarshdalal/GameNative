@@ -3,25 +3,24 @@ package app.gamenative.utils.launchdependencies
 import android.content.Context
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
-import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 
 /**
- * A single pre-launch step (e.g. GOG scriptinterpreter, game-specific setup).
- * Steps are run in preUnpack when the environment is ready, before the game executable runs.
+ * A single pre-launch step (e.g. VC Redist, GOG scriptinterpreter).
+ * Each step contributes fragments to a single `cmd /c` chain run in the main Wine session.
  */
 interface PreLaunchStep {
     /** Whether this step applies to the given container/app. */
     fun appliesTo(container: Container, appId: String, gameSource: GameSource): Boolean
 
     /**
-     * Run this step. Called only when [appliesTo] is true.
-     * Exceptions should be caught by the registry so one failing step does not block others.
+     * Fragments to append to the pre-launch `cmd /c` chain (e.g. one command per element).
+     * Only called when [appliesTo] is true. Return empty list if nothing to run.
+     * [PreLaunchSteps] joins all fragments from all steps with " & ".
      */
-    fun run(
+    fun getChainFragments(
         context: Context,
         appId: String,
         container: Container,
-        guestProgramLauncherComponent: GuestProgramLauncherComponent,
         gameSource: GameSource,
-    )
+    ): List<String>
 }
