@@ -55,7 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
-import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
@@ -73,6 +72,7 @@ fun ProfileDialog(
     onLogout: () -> Unit,
     onDismiss: () -> Unit,
     onGoOnline: () -> Unit,
+    onGoOffline: () -> Unit,
     isOffline: Boolean = false,
 ) {
     if (!openDialog) {
@@ -175,10 +175,7 @@ fun ProfileDialog(
                                         Text(text = stringResource(R.string.go_online))
                                     }
                                 } else {
-                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                                        SteamService.stop()
-                                        onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
-                                    }) {
+                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOffline) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.go_offline))
@@ -255,6 +252,7 @@ private fun Preview_ProfileDialog() {
             onLogout = {},
             onDismiss = {},
             onGoOnline = {},
+            onGoOffline = {},
         )
     }
 }

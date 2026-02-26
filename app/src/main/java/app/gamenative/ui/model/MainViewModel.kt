@@ -91,11 +91,7 @@ class MainViewModel @Inject constructor(
         _state.update {
             it.copy(
                 isSteamConnected = true,
-                connectionState = if (it.connectionState == ConnectionState.CONNECTING) {
-                    ConnectionState.CONNECTING // Still connecting until login completes
-                } else {
-                    it.connectionState
-                },
+                connectionState = ConnectionState.CONNECTED,
             )
         }
     }

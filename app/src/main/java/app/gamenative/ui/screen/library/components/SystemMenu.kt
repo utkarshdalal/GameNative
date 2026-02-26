@@ -245,6 +245,7 @@ fun SystemMenu(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onGoOffline: () -> Unit,
     isOffline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -596,8 +597,7 @@ fun SystemMenu(
                                 text = stringResource(R.string.go_offline),
                                 icon = Icons.AutoMirrored.Filled.AirplaneTicket,
                                 onClick = {
-                                    SteamService.stop()
-                                    onNavigateRoute(PluviaScreen.Home.route + "?offline=true") // TODO: test this
+                                    onGoOffline()
                                     onDismiss()
                                 },
                             )
@@ -679,6 +679,7 @@ private fun Preview_SystemMenu() {
                     onNavigateRoute = { },
                     onLogout = { },
                     onGoOnline = { },
+                    onGoOffline = { },
                     isOffline = false,
                 )
             }

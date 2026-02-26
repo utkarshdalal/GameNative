@@ -25,6 +25,7 @@ fun HomeScreen(
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
+    onGoOffline: () -> Unit,
     isOffline: Boolean = false
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
@@ -41,6 +42,7 @@ fun HomeScreen(
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
+        onGoOffline = onGoOffline,
         isOffline = isOffline,
     )
 }
@@ -64,6 +66,7 @@ private fun Preview_HomeScreenContent() {
             onNavigateRoute = {},
             onClickExit = {},
             onGoOnline = {},
+            onGoOffline = {},
         )
     }
 }

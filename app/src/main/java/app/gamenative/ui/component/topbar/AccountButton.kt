@@ -31,6 +31,7 @@ fun AccountButton(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onGoOffline: () -> Unit,
     isOffline: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
@@ -76,6 +77,10 @@ fun AccountButton(
             onGoOnline()
             showDialog = false
         },
+        onGoOffline = {
+            onGoOffline()
+            showDialog = false
+        },
         onDismiss = {
             showDialog = false
         },
@@ -105,6 +110,7 @@ private fun Preview_AccountButton() {
                     onNavigateRoute = {},
                     onLogout = {},
                     onGoOnline = {},
+                    onGoOffline = {},
                 )
             },
         )

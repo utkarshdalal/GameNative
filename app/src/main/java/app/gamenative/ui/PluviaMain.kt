@@ -299,12 +299,6 @@ fun PluviaMain(
                 MainViewModel.MainUiEvent.OnLoggedOut -> {
                     // Clear persisted route so next login starts fresh from Home
                     viewModel.clearPersistedRoute()
-                    // Pop stack and go back to login
-                    navController.popBackStack(
-                        route = PluviaScreen.LoginUser.route,
-                        inclusive = false,
-                        saveState = false,
-                    )
                 }
 
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
@@ -483,16 +477,18 @@ fun PluviaMain(
 
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            // Only attempt reconnection if not already connected/connecting and not in offline mode
+            // Only attempt reconnection if not already connected/connecting
             val shouldAttemptReconnect = !state.isSteamConnected &&
                 !isConnecting &&
-                !SteamService.keepAlive &&
-                state.connectionState != ConnectionState.OFFLINE_MODE
+                !SteamService.keepAlive
 
             if (shouldAttemptReconnect) {
                 Timber.d("[PluviaMain]: Steam not connected - attempting reconnection")
                 isConnecting = true
-                viewModel.startConnecting() // Update ViewModel state for UI
+                // Only show connection UI when not in offline mode - user chose to continue offline
+                if (state.connectionState != ConnectionState.OFFLINE_MODE) {
+                    viewModel.startConnecting()
+                }
                 context.startForegroundService(Intent(context, SteamService::class.java))
             }
 
@@ -1054,8 +1050,12 @@ fun PluviaMain(
             composable(route = PluviaScreen.LoginUser.route) {
                 UserLoginScreen(
                     connectionState = state.connectionState,
-                    onRetryConnection = viewModel::retryConnection,
+                    onRetryConnection = {
+                        viewModel.retryConnection()
+                        context.startForegroundService(Intent(context, SteamService::class.java))
+                    },
                     onContinueOffline = {
+                        viewModel.continueOffline()
                         navController.navigate(PluviaScreen.Home.route + "?offline=true")
                     },
                 )
@@ -1118,9 +1118,17 @@ fun PluviaMain(
                     },
                     onLogout = {
                         SteamService.logOut()
+                        viewModel.continueOffline()
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
                     },
                     onGoOnline = {
+                        viewModel.retryConnection()
+                        context.startForegroundService(Intent(context, SteamService::class.java))
                         navController.navigate(PluviaScreen.LoginUser.route)
+                    },
+                    onGoOffline = {
+                        viewModel.continueOffline()
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
                     },
                     isOffline = isOffline,
                 )

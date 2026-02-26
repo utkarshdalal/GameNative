@@ -96,11 +96,11 @@ class UserLoginViewModel : ViewModel() {
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
         Timber.i("Received is connected")
-        // Only handle auto-login state, connection state is managed by MainViewModel
-        if (it.isAutoLoggingIn) {
-            _loginState.update { currentState ->
-                currentState.copy(isLoggingIn = true, isSteamConnected = true,)
-            }
+        _loginState.update { currentState ->
+            currentState.copy(
+                isSteamConnected = true,
+                isLoggingIn = if (it.isAutoLoggingIn) true else currentState.isLoggingIn,
+            )
         }
     }
 
