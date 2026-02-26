@@ -256,7 +256,7 @@ internal fun LibraryListPane(
                         ) {
                             items(
                                 count = state.appInfoList.size,
-                                key = { listIndex -> state.appInfoList[listIndex].index },
+                                key = { listIndex -> state.appInfoList[listIndex].appId },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
                                 var isVisible by remember(item.index) { mutableStateOf(false) }

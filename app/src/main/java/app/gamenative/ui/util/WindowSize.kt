@@ -37,7 +37,7 @@ fun rememberScreenWidthDp(): Int {
 // TODO: Also consider if a gamepad is actually connected
 @Composable
 fun shouldShowGamepadUI(): Boolean {
-    return rememberWindowWidthClass() == WindowWidthClass.EXPANDED
+    return rememberWindowWidthClass() != WindowWidthClass.COMPACT
 }
 
 @Composable

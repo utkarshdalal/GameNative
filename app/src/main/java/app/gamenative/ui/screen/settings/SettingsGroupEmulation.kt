@@ -28,7 +28,6 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 @Composable
 fun SettingsGroupEmulation() {
     SettingsGroup(
-        title = { Text(text = stringResource(R.string.settings_emulation_title)) },
     ) {
         var showConfigDialog by rememberSaveable { mutableStateOf(false) }
         var showOrientationDialog by rememberSaveable { mutableStateOf(false) }

@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -142,9 +143,9 @@ internal fun GridViewCard(
             },
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Game image
-                val imageUrl by produceState(
-                    initialValue = "",
+                // Game image (primary + optional fallback for Steam header/hero)
+                val imageUrls by produceState(
+                    initialValue = GridImageUrls("", ""),
                     key1 = appInfo.appId,
                     key2 = paneType,
                     key3 = imageRefreshCounter,
@@ -154,14 +155,48 @@ internal fun GridViewCard(
                     }
                 }
 
+                var currentImageUrl by remember(
+                    imageUrls.primary,
+                    imageUrls.fallback,
+                    appInfo.appId,
+                    imageRefreshCounter,
+                ) {
+                    mutableStateOf(imageUrls.primary)
+                }
+
                 ListItemImage(
                     modifier = Modifier.fillMaxSize(),
                     imageModifier = Modifier
                         .fillMaxSize()
                         .alpha(imageAlpha),
-                    image = { imageUrl },
-                    onFailure = { onImageLoadFailed() },
+                    image = { currentImageUrl },
+                    onFailure = {
+                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                            currentImageUrl = imageUrls.fallback
+                        } else {
+                            onImageLoadFailed()
+                        }
+                    },
                 )
+
+                // Fallback text when image fails to load (drawn before overlays so badges/icons stay visible)
+                if (!hideText) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = appInfo.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
 
                 // Gradient overlay at bottom for title
                 Box(
@@ -206,36 +241,25 @@ internal fun GridViewCard(
                     GridStatusIcons(appInfo = appInfo)
                 }
 
-                // Compatibility badge
+                // Compatibility badge (top left, including UNKNOWN)
                 compatibilityStatus?.let { status ->
-                    if (status != GameCompatibilityStatus.UNKNOWN) {
-                        CompatibilityBadge(
-                            status = status,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp),
-                        )
-                    }
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = true,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp),
+                    )
                 }
 
-                // Fallback text when image fails to load
-                if (!hideText) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = appInfo.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                }
+                // Game source icon (top right)
+                GameSourceIcon(
+                    gameSource = appInfo.gameSource,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp),
+                    iconSize = 12,
+                )
             }
         }
     }
@@ -288,14 +312,19 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
 }
 
 /**
- * Gets the appropriate image URL for a game in grid view.
- * TODO: this probably needs to be abstracted
+ * Primary and optional fallback image URL for grid view (e.g. Steam header -> hero).
+ */
+internal data class GridImageUrls(val primary: String, val fallback: String = "")
+
+/**
+ * Gets the appropriate image URL(s) for a game in grid view.
+ * Matches master: source-specific URLs, Steam uses headerImageUrl with heroImageUrl fallback.
  */
 internal fun getGridImageUrl(
     context: Context,
     appInfo: LibraryItem,
     paneType: PaneType,
-): String {
+): GridImageUrls {
     fun findSteamGridDBImage(imageType: String): String? {
         if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
             val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
@@ -315,42 +344,45 @@ internal fun getGridImageUrl(
         return null
     }
 
-    return if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-        when (paneType) {
-            PaneType.GRID_CAPSULE -> {
-                findSteamGridDBImage("grid_capsule")
-                    ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/${appInfo.gameId}/library_600x900.jpg"
-            }
-
-            PaneType.GRID_HERO -> {
-                findSteamGridDBImage("grid_hero")
-                    ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/${appInfo.gameId}/header.jpg"
-            }
-
-            else -> {
-                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
-                val heroUrl = gameFolderPath?.let { path ->
-                    val folder = File(path)
-                    val heroFile = folder.listFiles()?.firstOrNull { file ->
-                        file.name.startsWith("steamgriddb_hero") &&
-                            !file.name.contains("grid") &&
-                            (
-                                file.name.endsWith(".png", ignoreCase = true) ||
-                                    file.name.endsWith(".jpg", ignoreCase = true) ||
-                                    file.name.endsWith(".webp", ignoreCase = true)
-                                )
+    return when (appInfo.gameSource) {
+        GameSource.CUSTOM_GAME -> {
+            val primary = when (paneType) {
+                PaneType.GRID_CAPSULE ->
+                    findSteamGridDBImage("grid_capsule") ?: appInfo.capsuleImageUrl
+                PaneType.GRID_HERO ->
+                    findSteamGridDBImage("grid_hero") ?: appInfo.headerImageUrl
+                else -> {
+                    val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                    val heroUrl = gameFolderPath?.let { path ->
+                        val folder = File(path)
+                        val heroFile = folder.listFiles()?.firstOrNull { file ->
+                            file.name.startsWith("steamgriddb_hero") &&
+                                !file.name.contains("grid") &&
+                                (
+                                    file.name.endsWith(".png", ignoreCase = true) ||
+                                        file.name.endsWith(".jpg", ignoreCase = true) ||
+                                        file.name.endsWith(".webp", ignoreCase = true)
+                                    )
+                        }
+                        heroFile?.let { android.net.Uri.fromFile(it).toString() }
                     }
-                    heroFile?.let { android.net.Uri.fromFile(it).toString() }
+                    heroUrl ?: appInfo.headerImageUrl
                 }
-                heroUrl
-                    ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/${appInfo.gameId}/header.jpg"
             }
+            GridImageUrls(primary = primary)
         }
-    } else {
-        if (paneType == PaneType.GRID_CAPSULE) {
-            "https://shared.steamstatic.com/store_item_assets/steam/apps/${appInfo.gameId}/library_600x900.jpg"
-        } else {
-            "https://shared.steamstatic.com/store_item_assets/steam/apps/${appInfo.gameId}/header.jpg"
+
+        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON ->
+            GridImageUrls(primary = appInfo.iconHash)
+
+        GameSource.STEAM -> when (paneType) {
+            PaneType.GRID_CAPSULE ->
+                GridImageUrls(primary = appInfo.capsuleImageUrl)
+            else ->
+                GridImageUrls(
+                    primary = appInfo.headerImageUrl,
+                    fallback = appInfo.heroImageUrl,
+                )
         }
     }
 }

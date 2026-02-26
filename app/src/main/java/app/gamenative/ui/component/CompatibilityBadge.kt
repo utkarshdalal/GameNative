@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.QuestionMark
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Icon
@@ -93,10 +92,10 @@ private fun getBadgeStyle(status: GameCompatibilityStatus): BadgeStyle {
         )
 
         GameCompatibilityStatus.GPU_COMPATIBLE -> BadgeStyle(
-            icon = Icons.Rounded.Memory,
-            backgroundColor = colors.compatibilityPartialBackground.copy(alpha = 0.9f),
-            iconTint = colors.compatibilityPartial,
-            labelResId = R.string.library_gpu_compatible,
+            icon = Icons.Rounded.Verified,
+            backgroundColor = colors.compatibilityGoodBackground.copy(alpha = 0.9f),
+            iconTint = colors.compatibilityGood,
+            labelResId = R.string.library_compatible,
         )
 
         GameCompatibilityStatus.UNKNOWN -> BadgeStyle(

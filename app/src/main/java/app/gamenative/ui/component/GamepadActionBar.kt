@@ -144,7 +144,7 @@ fun GamepadActionBar(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .navigationBarsPadding(),
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
                 tonalElevation = 4.dp,
             ) {
                 Row(

@@ -1034,6 +1034,7 @@ internal fun AppScreenContent(
                     onClick = onBack,
                 ),
             ),
+            modifier = Modifier.align(Alignment.BottomCenter),
             visible = !optionsMenuVisible,
         )
 

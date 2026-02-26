@@ -240,15 +240,6 @@ private fun LibraryScreenContent(
         }
     }
 
-    // Catch-all: when on root library view with nothing open, back/B opens system menu
-    // instead of exiting the app. Declared first = lowest priority.
-    BackHandler(
-        enabled = selectedAppId == null && selectedLibraryItem == null &&
-            !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching,
-    ) {
-        isSystemMenuOpen = true
-    }
-
     BackHandler(enabled = isSystemMenuOpen) {
         isSystemMenuOpen = false
     }

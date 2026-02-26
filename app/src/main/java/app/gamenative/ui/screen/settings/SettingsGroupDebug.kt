@@ -177,7 +177,7 @@ fun SettingsGroupDebug() {
         )
     }
 
-    SettingsGroup(title = { Text(text = stringResource(R.string.settings_debug_title)) }) {
+    SettingsGroup() {
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_save_logcat_title)) },

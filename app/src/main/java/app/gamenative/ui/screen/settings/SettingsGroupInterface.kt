@@ -478,7 +478,7 @@ fun SettingsGroupInterface(
         }
     }
 
-    SettingsGroup(modifier = Modifier.background(Color.Transparent), title = { Text(text = stringResource(R.string.settings_interface_title)) }) {
+    SettingsGroup(modifier = Modifier.background(Color.Transparent)) {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_external_links_title)) },
