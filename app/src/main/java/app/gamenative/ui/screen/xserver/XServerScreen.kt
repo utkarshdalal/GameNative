@@ -2134,10 +2134,7 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
         Timber.tag("XServerScreen").i("bootToContainer: $bootToContainer")
 
-        // Setup Basilisk browser for Epic authentication
-        Timber.tag("XServerScreen").i("About to call setupBasiliskBrowserForEpic...")
-        setupBasiliskBrowserForEpic(context, container)
-        Timber.tag("XServerScreen").i("Finished calling setupBasiliskBrowserForEpic")
+        setupBrowserForEpicGames(context, container)
 
         val game = runBlocking {
             EpicService.getInstance()?.epicManager?.getGameById(gameId)
@@ -2230,7 +2227,6 @@ private fun getWineStartCommand(
         val installPath = if (appIdInt != null) {
             app.gamenative.service.amazon.AmazonService.getInstallPathByAppId(appIdInt)
         } else null
-        
         if (installPath.isNullOrEmpty()) {
             Timber.tag("XServerScreen").e("Cannot launch: Amazon game not installed")
             return "\"explorer.exe\""
@@ -2496,68 +2492,6 @@ private fun getSteamlessTarget(
         'D'
     }
     return "$drive:\\${executablePath}"
-}
-
-/**
- * Removes D7VK ddraw.dll from the game directory during cleanup.
- * This restores the game directory to its original state.
- *
- * @param container The container configuration
- * @param imageFs ImageFs instance for accessing file paths
- */
-private fun cleanupD7vkFromGameDirectory(
-    container: Container,
-    imageFs: ImageFs,
-) {
-    try {
-        // Check if d7vk was enabled
-        val dxwrapper = container.getExtra("dxwrapper", "")
-        if (!dxwrapper.startsWith("d7vk")) {
-            return
-        }
-
-        val executablePath = container.executablePath
-        if (executablePath.isEmpty()) {
-            Timber.d("No executable path set, skipping D7VK cleanup")
-            return
-        }
-
-        Timber.i("Cleaning up D7VK ddraw.dll from game directory: $executablePath")
-
-        val rootDir = imageFs.getRootDir()
-
-        // Convert Windows path to Unix path if necessary
-        var unixPath = executablePath
-        if (executablePath.contains(":\\")) {
-            unixPath = executablePath.replace("\\", "/")
-                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
-                .let { path ->
-                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
-                }
-        }
-
-        // Get the directory containing the executable
-        val gameDir = File(unixPath).parentFile
-        if (gameDir == null || !gameDir.exists()) {
-            Timber.w("Game directory not found for cleanup: $gameDir")
-            return
-        }
-
-        // Remove ddraw.dll from game directory
-        val ddrawDll = File(gameDir, "ddraw.dll")
-        if (ddrawDll.exists()) {
-            val deleted = ddrawDll.delete()
-            if (deleted) {
-                Timber.i("Removed D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
-            } else {
-                Timber.w("Failed to remove D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
-            }
-        } else {
-            Timber.d("D7VK ddraw.dll not found in game directory, nothing to clean")
-        }
-    } catch (e: Exception) {
-        Timber.e(e, "Failed to cleanup D7VK ddraw.dll from game directory")
-    }
 }
 
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
@@ -3217,38 +3151,6 @@ private fun extractDXWrapperFiles(
                 )
             }
         }
-        "d7vk" -> {
-            // D7VK: ddraw.dll should be placed next to game executable, not in Windows system directories
-            Timber.i("Preparing D7VK for dxwrapper: $dxwrapper")
-
-            // Restore original ddraw.dll in Windows directories
-            restoreOriginalDllFiles(context, container, containerManager, imageFs, "ddraw.dll")
-
-            // Extract d7vk files to staging directory for later copying to game directory
-            val d7vkStagingDir = File(rootDir, ImageFs.CACHE_PATH + "/d7vk")
-            d7vkStagingDir.mkdirs()
-
-            val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
-            if (profile != null) {
-                Timber.d("Applying user-defined D7VK content profile: " + dxwrapper)
-                contentsManager.applyContent(profile);
-            } else {
-                // Extract to staging directory (will be copied to game dir at launch time)
-                TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD, context.assets,
-                    "dxwrapper/$dxwrapper.tzst", d7vkStagingDir, onExtractFileListener,
-                )
-            }
-
-            // Also extract d8vk for other DirectX versions
-            TarCompressorUtils.extract(
-                TarCompressorUtils.Type.ZSTD,
-                context.assets,
-                "dxwrapper/d8vk-${DefaultVersion.D8VK}.tzst",
-                windowsDir,
-                onExtractFileListener,
-            )
-        }
         else -> {
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             // This block handles dxvk-VERSION strings
@@ -3431,37 +3333,36 @@ private fun copyD7vkToGameDirectory(
 }
 
 /**
- * Extracts Basilisk browser and sets it as the default browser for Epic Games authentication.
+ * Downloads and Extracts Basilisk browser and sets it as the default browser for Epic Games authentication.
  * Epic Games requires browser authentication that Wine's Internet Explorer cannot handle properly.
  *
  * @param context Android context
  * @param container The container configuration
  */
-private fun setupBasiliskBrowserForEpic(
+private fun setupBrowserForEpicGames(
     context: Context,
     container: Container,
 ) {
     val TAG = "XServerScreen"
     try {
-        Timber.tag(TAG).i("========== Setting up Basilisk browser for Epic Games authentication ==========")
-
+        Timber.tag(TAG).i("Setting up Browser for Epic...")
         val rootDir = container.getRootDir()
         // Use container-level .wine directory, not ImageFs.WINEPREFIX (which is /home/xuser/.wine)
         // Epic games use the container root wine prefix at /.wine/
         val driveC = File(rootDir, ".wine/drive_c")
 
-        Timber.tag(TAG).i("Container root dir: ${rootDir}")
-        Timber.tag(TAG).i("Drive C path: ${driveC.absolutePath}")
-        Timber.tag(TAG).i("Drive C exists: ${driveC.exists()}")
+        Timber.tag(TAG).d("Container root dir: ${rootDir}")
+        Timber.tag(TAG).d("Drive C path: ${driveC.absolutePath}")
+        Timber.tag(TAG).d("Drive C exists: ${driveC.exists()}")
 
         // Check if Basilisk is already extracted
         // The archive contains a basilisk/ folder at its root, so it will be extracted to drive_c/basilisk/
         val basiliskDir = File(driveC, "basilisk")
         val basiliskExe = File(basiliskDir, "basilisk.exe")
 
-        Timber.tag(TAG).i("Checking for Basilisk at: ${basiliskExe.absolutePath}")
-        Timber.tag(TAG).i("Basilisk directory exists: ${basiliskDir.exists()}")
-        Timber.tag(TAG).i("Basilisk exe exists: ${basiliskExe.exists()}")
+        Timber.tag(TAG).d("Checking for Basilisk at: ${basiliskExe.absolutePath}")
+        Timber.tag(TAG).d("Basilisk directory exists: ${basiliskDir.exists()}")
+        Timber.tag(TAG).d("Basilisk exe exists: ${basiliskExe.exists()}")
 
         if (!basiliskExe.exists()) {
             Timber.tag(TAG).i("Basilisk not found, starting extraction...")
@@ -3559,180 +3460,9 @@ private fun setupBasiliskBrowserForEpic(
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to set Basilisk as default browser in registry")
         }
-
-        // Inject Epic authentication cookies into Basilisk to avoid manual login
-        injectEpicCookiesIntoBasilisk(context, rootDir, basiliskDir)
-
-        Timber.tag(TAG).i("========== Basilisk browser setup completed successfully ==========")
+        Timber.tag(TAG).i("Basilisk browser setup completed successfully")
     } catch (e: Exception) {
-        Timber.tag(TAG).e(e, "========== FAILED to setup Basilisk browser for Epic Games ==========")
-    }
-}
-
-/**
- * Injects Epic Games authentication cookies into Basilisk browser to avoid manual login.
- * Creates cookiesinto Basilisk's profile directory with the access token from stored credentials.
- *
- * @param context Android context
- * @param containerRoot Container root directory
- * @param basiliskDir Basilisk installation directory
- */
-private fun injectEpicCookiesIntoBasilisk(
-    context: Context,
-    containerRoot: File,
-    basiliskDir: File
-) {
-    val TAG = "XServerScreen"
-    try {
-        Timber.tag(TAG).i("---------- Injecting Epic authentication cookies into Basilisk ----------")
-
-        // Get Epic credentials
-        val credentialsResult = runBlocking {
-            app.gamenative.service.epic.EpicService.getStoredCredentials(context)
-        }
-
-        if (credentialsResult.isFailure) {
-            Timber.tag(TAG).w("Cannot inject Epic cookies: No valid Epic credentials found")
-            return
-        }
-
-        val credentials = credentialsResult.getOrNull()
-        if (credentials == null) {
-            Timber.tag(TAG).w("Cannot inject Epic cookies: Credentials are null")
-            return
-        }
-
-        Timber.tag(TAG).i("Found Epic credentials for account: ${credentials.accountId}")
-
-        // Find or create Basilisk profile directory
-        // Basilisk creates a default profile at %APPDATA%\Basilisk\Profiles\<random>.default
-        val appDataRoaming = File(containerRoot, ".wine/drive_c/users/xuser/AppData/Roaming")
-        val basiliskProfilesDir = File(appDataRoaming, "Basilisk/Profiles")
-
-        // Find existing default profile or create one
-        var profileDir: File? = null
-        if (basiliskProfilesDir.exists()) {
-            val profiles = basiliskProfilesDir.listFiles { file ->
-                file.isDirectory && file.name.endsWith(".default")
-            }
-            profileDir = profiles?.firstOrNull()
-        }
-
-        // If no profile exists, create a default one
-        if (profileDir == null || !profileDir.exists()) {
-            // Use a simple profile name
-            profileDir = File(basiliskProfilesDir, "default.default")
-            profileDir.mkdirs()
-            Timber.tag(TAG).i("Created Basilisk profile directory: ${profileDir.absolutePath}")
-        } else {
-            Timber.tag(TAG).i("Using existing Basilisk profile: ${profileDir.absolutePath}")
-        }
-
-        // Create cookies.sqlite database
-        val cookiesDb = File(profileDir, "cookies.sqlite")
-
-        // Use SQLite to create and populate cookies
-        val dbPath = cookiesDb.absolutePath
-        Timber.tag(TAG).i("Cookies database path: $dbPath")
-
-        try {
-            // Open or create cookies database
-            val db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(dbPath, null)
-
-            try {
-                // Create cookies table with Mozilla Firefox/Basilisk schema
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS moz_cookies (
-                        id INTEGER PRIMARY KEY,
-                        baseDomain TEXT,
-                        originAttributes TEXT NOT NULL DEFAULT '',
-                        name TEXT,
-                        value TEXT,
-                        host TEXT,
-                        path TEXT,
-                        expiry INTEGER,
-                        lastAccessed INTEGER,
-                        creationTime INTEGER,
-                        isSecure INTEGER,
-                        isHttpOnly INTEGER,
-                        inBrowserElement INTEGER DEFAULT 0,
-                        sameSite INTEGER DEFAULT 0,
-                        CONSTRAINT moz_uniqueid UNIQUE (name, host, path, originAttributes)
-                    )
-                """.trimIndent())
-
-                Timber.tag(TAG).i("Created/verified moz_cookies table")
-
-                // Calculate expiry time (aligns with Epic access token expiry)
-                val currentTimeSeconds = System.currentTimeMillis() / 1000
-                val expirySeconds = credentials.expiresAt / 1000
-
-                // Epic Games domains that need cookies
-                val domains = listOf(
-                    ".epicgames.com",       // Main domain
-                    ".store.epicgames.com", // Store domain
-                    "www.epicgames.com",    // WWW subdomain
-                )
-
-                // Cookie names Epic uses for authentication
-                val cookieNames = listOf(
-                    "EPIC_BEARER_TOKEN" to credentials.accessToken,     // Primary auth token
-                    "EPIC_SSO_RM" to credentials.accessToken,           // SSO remember me token
-                    "EPIC_SESSION_AP" to credentials.accountId,         // Account ID
-                )
-
-                var cookiesInserted = 0
-
-                for (domain in domains) {
-                    for ((cookieName, cookieValue) in cookieNames) {
-                        try {
-                            // Delete existing cookie if present
-                            db.delete(
-                                "moz_cookies",
-                                "name = ? AND host = ?",
-                                arrayOf(cookieName, domain)
-                            )
-
-                            // Insert new cookie
-                            val values = android.content.ContentValues().apply {
-                                put("baseDomain", domain.trimStart('.'))
-                                put("originAttributes", "")
-                                put("name", cookieName)
-                                put("value", cookieValue)
-                                put("host", domain)
-                                put("path", "/")
-                                put("expiry", expirySeconds)
-                                put("lastAccessed", currentTimeSeconds * 1000000) // Microseconds
-                                put("creationTime", currentTimeSeconds * 1000000) // Microseconds
-                                put("isSecure", 1) // HTTPS only
-                                put("isHttpOnly", 1) // Not accessible via JavaScript
-                                put("inBrowserElement", 0)
-                                put("sameSite", 0) // No SameSite restriction
-                            }
-
-                            val rowId = db.insert("moz_cookies", null, values)
-                            if (rowId != -1L) {
-                                cookiesInserted++
-                                Timber.tag(TAG).d("Inserted cookie: $cookieName for domain: $domain")
-                            } else {
-                                Timber.tag(TAG).w("Failed to insert cookie: $cookieName for domain: $domain")
-                            }
-                        } catch (e: Exception) {
-                            Timber.tag(TAG).e(e, "Error inserting cookie $cookieName for $domain")
-                        }
-                    }
-                }
-
-                Timber.tag(TAG).i("✓ Successfully injected $cookiesInserted Epic authentication cookies into Basilisk")
-            } finally {
-                db.close()
-            }
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to create/update cookies database")
-        }
-
-    } catch (e: Exception) {
-        Timber.tag(TAG).e(e, "Failed to inject Epic cookies into Basilisk")
+        Timber.tag(TAG).e(e, "FAILED to setup Basilisk browser for Epic Games")
     }
 }
 
