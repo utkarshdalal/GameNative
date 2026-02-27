@@ -820,6 +820,7 @@ private fun LibraryScreenContent(
                             LibraryTab.STEAM to state.steamCount,
                             LibraryTab.GOG to state.gogCount,
                             LibraryTab.EPIC to state.epicCount,
+                            LibraryTab.AMAZON to state.amazonCount,
                             LibraryTab.LOCAL to state.localCount,
                         ),
                         onTabSelected = onTabChanged,

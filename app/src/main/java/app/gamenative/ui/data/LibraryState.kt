@@ -54,5 +54,6 @@ data class LibraryState(
     val steamCount: Int = 0,
     val gogCount: Int = 0,
     val epicCount: Int = 0,
+    val amazonCount: Int = 0,
     val localCount: Int = 0,
 )

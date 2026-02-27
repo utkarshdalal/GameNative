@@ -662,6 +662,7 @@ class LibraryViewModel @Inject constructor(
                     steamCount = steamEntries.size,
                     gogCount = gogEntries.size,
                     epicCount = epicEntries.size,
+                    amazonCount = amazonEntries.size,
                     localCount = customEntries.size,
                 )
             }
