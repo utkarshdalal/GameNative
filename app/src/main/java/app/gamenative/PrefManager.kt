@@ -927,6 +927,13 @@ object PrefManager {
         get() = getPref(APP_LANGUAGE, "")
         set(value) = setPref(APP_LANGUAGE, value)
 
+    // Tracks which device profile has been applied (tier + SoC).
+    // Prevents overwriting user-customized settings on subsequent app launches.
+    private val DEVICE_PROFILE_KEY = stringPreferencesKey("device_profile_key")
+    var deviceProfileKey: String
+        get() = getPref(DEVICE_PROFILE_KEY, "")
+        set(value) = setPref(DEVICE_PROFILE_KEY, value)
+
     // auto-apply known config from BestConfigService on first container creation
     private val AUTO_APPLY_KNOWN_CONFIG = booleanPreferencesKey("auto_apply_known_config")
     var autoApplyKnownConfig: Boolean
