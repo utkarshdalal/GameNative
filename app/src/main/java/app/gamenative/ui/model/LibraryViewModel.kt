@@ -524,7 +524,9 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .filter { game ->
-                    if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
+                    val installedOnly = currentState.currentTab.installedOnly ||
+                        currentState.appInfoSortType.contains(AppFilter.INSTALLED)
+                    if (installedOnly) {
                         game.isInstalled
                     } else {
                         true
@@ -656,7 +658,7 @@ class LibraryViewModel @Inject constructor(
                     totalAppsInFilter = totalFound,
                     isLoading = false, // Loading complete
                     // Per-source counts for tab badges (pre-source-filter totals)
-                    allCount = steamEntries.size + customEntries.size + gogEntries.size + epicEntries.size,
+                    allCount = steamEntries.size + customEntries.size + gogEntries.size + epicEntries.size + amazonEntries.size,
                     steamCount = steamEntries.size,
                     gogCount = gogEntries.size,
                     epicCount = epicEntries.size,
