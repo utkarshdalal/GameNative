@@ -113,37 +113,39 @@ object GameCompatibilityService {
 
                 val response = httpClient.newCall(request).execute()
 
-                if (!response.isSuccessful) {
+                response.use {
+                    if (!it.isSuccessful) {
+                        Timber.tag("GameCompatibilityService")
+                            .w("API request failed - HTTP ${it.code}")
+                        return@withTimeout null
+                    }
+
+                    val responseBody = it.body?.string() ?: return@withTimeout null
+                    val jsonResponse = JSONObject(responseBody)
+
+                    val result = mutableMapOf<String, GameCompatibilityResponse>()
+                    val keys = jsonResponse.keys()
+
+                    while (keys.hasNext()) {
+                        val gameName = keys.next()
+                        val gameData = jsonResponse.getJSONObject(gameName)
+
+                        val compatibilityResponse = GameCompatibilityResponse(
+                            gameName = gameName,
+                            totalPlayableCount = gameData.optInt("totalPlayableCount", 0),
+                            gpuPlayableCount = gameData.optInt("gpuPlayableCount", 0),
+                            avgRating = gameData.optDouble("avgRating", 0.0).toFloat(),
+                            hasBeenTried = gameData.optBoolean("hasBeenTried", false),
+                            isNotWorking = gameData.optBoolean("isNotWorking", false)
+                        )
+
+                        result[gameName] = compatibilityResponse
+                    }
+
                     Timber.tag("GameCompatibilityService")
-                        .w("API request failed - HTTP ${response.code}")
-                    return@withTimeout null
+                        .d("Fetched compatibility for ${result.size} games")
+                    result
                 }
-
-                val responseBody = response.body?.string() ?: return@withTimeout null
-                val jsonResponse = JSONObject(responseBody)
-
-                val result = mutableMapOf<String, GameCompatibilityResponse>()
-                val keys = jsonResponse.keys()
-
-                while (keys.hasNext()) {
-                    val gameName = keys.next()
-                    val gameData = jsonResponse.getJSONObject(gameName)
-
-                    val compatibilityResponse = GameCompatibilityResponse(
-                        gameName = gameName,
-                        totalPlayableCount = gameData.optInt("totalPlayableCount", 0),
-                        gpuPlayableCount = gameData.optInt("gpuPlayableCount", 0),
-                        avgRating = gameData.optDouble("avgRating", 0.0).toFloat(),
-                        hasBeenTried = gameData.optBoolean("hasBeenTried", false),
-                        isNotWorking = gameData.optBoolean("isNotWorking", false)
-                    )
-
-                    result[gameName] = compatibilityResponse
-                }
-
-                Timber.tag("GameCompatibilityService")
-                    .d("Fetched compatibility for ${result.size} games")
-                result
             }
         } catch (e: java.util.concurrent.TimeoutException) {
             Timber.tag("GameCompatibilityService")

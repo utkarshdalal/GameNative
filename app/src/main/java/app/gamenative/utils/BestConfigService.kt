@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap
 object BestConfigService {
     private const val API_BASE_URL = "https://gamenative-best-config-worker.gamenative.workers.dev/api/best-config"
     private const val TIMEOUT_SECONDS = 10L
+    private const val MAX_CACHE_SIZE = 100
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -120,32 +121,40 @@ object BestConfigService {
 
                 val response = httpClient.newCall(request).execute()
 
-                if (!response.isSuccessful) {
+                response.use {
+                    if (!it.isSuccessful) {
+                        Timber.tag("BestConfigService")
+                            .w("API request failed - HTTP ${it.code}")
+                        return@withTimeout null
+                    }
+
+                    val responseBody = it.body?.string() ?: return@withTimeout null
+                    val jsonResponse = JSONObject(responseBody)
+
+                    val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
+                    val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
+
+                    val bestConfigResponse = BestConfigResponse(
+                        bestConfig = bestConfig,
+                        matchType = jsonResponse.getString("matchType"),
+                        matchedGpu = jsonResponse.getString("matchedGpu"),
+                        matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
+                    )
+
+                    // Evict oldest entries if cache is full
+                    if (cache.size >= MAX_CACHE_SIZE) {
+                        val keysToRemove = cache.keys().toList().take(cache.size - MAX_CACHE_SIZE + 1)
+                        keysToRemove.forEach { cache.remove(it) }
+                    }
+
+                    // Cache the response
+                    cache[cacheKey] = bestConfigResponse
+
                     Timber.tag("BestConfigService")
-                        .w("API request failed - HTTP ${response.code}")
-                    return@withTimeout null
+                        .d("Fetched best config for $gameName on $gpuName (matchType: ${bestConfigResponse.matchType})")
+
+                    bestConfigResponse
                 }
-
-                val responseBody = response.body?.string() ?: return@withTimeout null
-                val jsonResponse = JSONObject(responseBody)
-
-                val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
-                val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
-
-                val bestConfigResponse = BestConfigResponse(
-                    bestConfig = bestConfig,
-                    matchType = jsonResponse.getString("matchType"),
-                    matchedGpu = jsonResponse.getString("matchedGpu"),
-                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
-                )
-
-                // Cache the response
-                cache[cacheKey] = bestConfigResponse
-
-                Timber.tag("BestConfigService")
-                    .d("Fetched best config for $gameName on $gpuName (matchType: ${bestConfigResponse.matchType})")
-
-                bestConfigResponse
             }
         } catch (e: java.util.concurrent.TimeoutException) {
             Timber.tag("BestConfigService")
@@ -325,7 +334,6 @@ object BestConfigService {
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableDxvk)) {
                 Timber.tag("BestConfigService").w("DXVK version $version not found, updating to PrefManager default")
                 return "DXVK $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
@@ -336,7 +344,6 @@ object BestConfigService {
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableVkd3d)) {
                 Timber.tag("BestConfigService").w("VKD3D version $version not found, updating to PrefManager default")
                 return "VKD3D $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
@@ -353,7 +360,6 @@ object BestConfigService {
             if (!ManifestComponentHelper.versionExists(box64Version, box64VersionsToCheck)) {
                 Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries, updating to PrefManager default")
                 return "Box64 $box64Version"
-                filteredJson.put("box64Version", PrefManager.box64Version)
             }
         }
 
@@ -369,7 +375,6 @@ object BestConfigService {
         if (fexcoreVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(fexcoreVersion, availableFexcore)) {
             Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found, updating to PrefManager default")
             return "FEXCore $fexcoreVersion"
-            filteredJson.put("fexcoreVersion", PrefManager.fexcoreVersion)
         }
 
         // Validate Wine/Proton version (check separately based on container variant)
@@ -385,7 +390,6 @@ object BestConfigService {
             if (!ManifestComponentHelper.versionExists(wineVersion, wineVersionsToCheck)) {
                 Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries, updating to PrefManager default")
                 return "Wine $wineVersion"
-                filteredJson.put("wineVersion", PrefManager.wineVersion)
             }
         }
 
@@ -411,7 +415,6 @@ object BestConfigService {
             if (preset == null) {
                 Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found, updating to PrefManager default")
                 return "Box64 preset $box64Preset"
-                filteredJson.put("box64Preset", PrefManager.box64Preset)
             }
         }
 
@@ -422,7 +425,6 @@ object BestConfigService {
             if (preset == null) {
                 Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found, updating to PrefManager default")
                 return "FEXCore preset $fexcorePreset"
-                filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
             }
         }
 

@@ -27,11 +27,25 @@ public abstract class GPUInformation {
         System.loadLibrary("extras");
     }
 
+    // Cache parsed GPU cards JSON to avoid re-parsing on every call
+    private static JSONArray cachedGpuCards = null;
+
+    private static synchronized JSONArray getGpuCards(Context context) {
+        if (cachedGpuCards == null) {
+            try {
+                String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+                cachedGpuCards = new JSONArray(gpuNameList);
+            } catch (JSONException e) {
+                cachedGpuCards = new JSONArray();
+            }
+        }
+        return cachedGpuCards;
+    }
+
     public static String getDeviceIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
         String deviceId = "";
         try {
-            JSONArray jsonArray = new JSONArray(gpuNameList);
+            JSONArray jsonArray = getGpuCards(context);
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jobj = jsonArray.getJSONObject(i);
                 if (jobj.getString("name").contains(gpuName)) {
@@ -45,10 +59,9 @@ public abstract class GPUInformation {
     }
 
     public static String getVendorIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
         String vendorId = "";
         try {
-            JSONArray jsonArray = new JSONArray(gpuNameList);
+            JSONArray jsonArray = getGpuCards(context);
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jobj = jsonArray.getJSONObject(i);
                 if (jobj.getString("name").contains(gpuName)) {
