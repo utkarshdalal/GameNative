@@ -298,14 +298,21 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnLoggedOut -> {
-                    // Clear persisted route so next login starts fresh from Home
-                    viewModel.clearPersistedRoute()
-                    // Pop stack and go back to login
-                    navController.popBackStack(
-                        route = PluviaScreen.LoginUser.route,
-                        inclusive = false,
-                        saveState = false,
-                    )
+                    val hasActiveGameSession = SteamService.keepAlive || PluviaApp.xEnvironment != null
+                    if (hasActiveGameSession) {
+                        Timber.tag("PluviaMain").w(
+                            "Received logout while game session is active; deferring navigation to login",
+                        )
+                    } else {
+                        // Clear persisted route so next login starts fresh from Home
+                        viewModel.clearPersistedRoute()
+                        // Pop stack and go back to login
+                        navController.popBackStack(
+                            route = PluviaScreen.LoginUser.route,
+                            inclusive = false,
+                            saveState = false,
+                        )
+                    }
                 }
 
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
@@ -487,7 +494,10 @@ fun PluviaMain(
 
             // Handle navigation when already logged in (e.g., app resumed with active session)
             // Only navigate if currently on LoginUser screen to avoid disrupting user's current view
-            if (PlatformAuthUtils.isSignedInToAnyPlatform(context) && !SteamService.keepAlive) {
+            if (PlatformAuthUtils.isSignedInToAnyPlatform(context) &&
+                !SteamService.keepAlive &&
+                PluviaApp.xEnvironment == null
+            ) {
                 val baseRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route
                 val targetRoute = if (SteamService.isLoggedIn) {
                     baseRoute
@@ -1020,7 +1030,11 @@ fun PluviaMain(
             }
         }
 
+        val hasRestorableGameSession =
+            (SteamService.keepAlive || PluviaApp.xEnvironment != null) && state.launchedAppId.isNotBlank()
+
         val startDestination = when {
+            hasRestorableGameSession -> PluviaScreen.XServer.route
             SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
             GOGService.hasStoredCredentials(context) ||
                 EpicService.hasStoredCredentials(context) ||

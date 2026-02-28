@@ -431,6 +431,9 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: String) {
+        // Keep SteamService alive while a game session is active.
+        SteamService.keepAlive = true
+
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
@@ -625,6 +628,9 @@ class MainViewModel @Inject constructor(
     }
 
     fun onGameLaunchError(error: String) {
+        // Launch failed, so this is not an active game session.
+        SteamService.keepAlive = false
+
         viewModelScope.launch {
             // Hide the splash screen if it's still showing
             bootingSplashTimeoutJob?.cancel()
