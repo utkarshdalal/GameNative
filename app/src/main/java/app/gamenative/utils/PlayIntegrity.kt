@@ -16,12 +16,18 @@ object PlayIntegrity {
     private var tokenProvider: StandardIntegrityTokenProvider? = null
 
     fun warmUp(application: Application) {
+        val cloudProjectNumber = BuildConfig.CLOUD_PROJECT_NUMBER.toLongOrNull()
+        if (cloudProjectNumber == null || cloudProjectNumber == 0L) {
+            Timber.tag("PlayIntegrity").e("Invalid CLOUD_PROJECT_NUMBER: '${BuildConfig.CLOUD_PROJECT_NUMBER}'")
+            return
+        }
+
         val manager: StandardIntegrityManager =
             IntegrityManagerFactory.createStandard(application)
 
         manager.prepareIntegrityToken(
             StandardIntegrityManager.PrepareIntegrityTokenRequest.builder()
-                .setCloudProjectNumber(BuildConfig.CLOUD_PROJECT_NUMBER.toLong())
+                .setCloudProjectNumber(cloudProjectNumber)
                 .build(),
         ).addOnSuccessListener { provider ->
             tokenProvider = provider
