@@ -102,7 +102,7 @@ public class WineRequestComponent extends EnvironmentComponent {
         }
 
         if (openWithAndroidBrowser) {
-            Log.d("WineRequestComponent", "Received request code OPEN_URL with url " + url.substring(0, 20));
+            Log.d("WineRequestComponent", "Received request code OPEN_URL with url " + url.substring(0, Math.min(url.length(), 20)));
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
