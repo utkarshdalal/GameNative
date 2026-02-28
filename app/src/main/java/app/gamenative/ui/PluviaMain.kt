@@ -298,6 +298,10 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnLoggedOut -> {
+                    if (SteamService.keepAlive) {
+                        return@collect
+                    }
+
                     // Clear persisted route so next login starts fresh from Home
                     viewModel.clearPersistedRoute()
                     // Pop stack and go back to login
@@ -1020,13 +1024,15 @@ fun PluviaMain(
             }
         }
 
-        val startDestination = when {
-            SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
-            GOGService.hasStoredCredentials(context) ||
-                EpicService.hasStoredCredentials(context) ||
-                AmazonService.hasStoredCredentials(context) ->
-                PluviaScreen.Home.route + "?offline=true"
-            else -> PluviaScreen.LoginUser.route
+        val startDestination = remember {
+            when {
+                SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
+                GOGService.hasStoredCredentials(context) ||
+                    EpicService.hasStoredCredentials(context) ||
+                    AmazonService.hasStoredCredentials(context) ->
+                    PluviaScreen.Home.route + "?offline=true"
+                else -> PluviaScreen.LoginUser.route
+            }
         }
 
         NavHost(
