@@ -16,18 +16,11 @@ import android.widget.LinearLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,10 +67,7 @@ import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
-import android.widget.Toast
-import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
-import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -109,7 +99,6 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineStartMenuCreator
 import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
-import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControllerManager
@@ -138,6 +127,7 @@ import com.winlator.xenvironment.components.SteamClientComponent
 import com.winlator.xenvironment.components.SysVSharedMemoryComponent
 import com.winlator.xenvironment.components.VirGLRendererComponent
 import com.winlator.xenvironment.components.VortekRendererComponent
+import com.winlator.xenvironment.components.WineRequestComponent
 import com.winlator.xenvironment.components.XServerComponent
 import com.winlator.xserver.Keyboard
 import com.winlator.xserver.Property
@@ -751,7 +741,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
-                
+
                 // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
                 val imeDisplayContext = context.display?.let { display ->
                     context.createDisplayContext(display)
@@ -771,7 +761,7 @@ fun XServerScreen(
                 }
                 frameLayout.addView(imeReceiver)
                 imeInputReceiver = imeReceiver
-                
+
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
@@ -1989,6 +1979,8 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
+    environment.addComponent(WineRequestComponent())
+
     FEXCoreManager.ensureAppConfigOverrides(context)
 
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
@@ -2218,7 +2210,7 @@ private fun getWineStartCommand(
         val installPath = if (appIdInt != null) {
             app.gamenative.service.amazon.AmazonService.getInstallPathByAppId(appIdInt)
         } else null
-        
+
         if (installPath.isNullOrEmpty()) {
             Timber.tag("XServerScreen").e("Cannot launch: Amazon game not installed")
             return "\"explorer.exe\""
