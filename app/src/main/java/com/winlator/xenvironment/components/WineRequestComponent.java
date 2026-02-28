@@ -13,6 +13,7 @@ import com.winlator.xenvironment.EnvironmentComponent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +30,7 @@ public class WineRequestComponent extends EnvironmentComponent {
     }
 
     private ServerSocket serverSocket;
+    private volatile boolean isRunning = false;
 
     private boolean openWithAndroidBrowser = false;
 
@@ -38,16 +40,18 @@ public class WineRequestComponent extends EnvironmentComponent {
     }
 
     public void start() {
+        isRunning = true;
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
             try {
-                serverSocket = new ServerSocket(20000);
-                while (true) {
+                serverSocket = new ServerSocket(20000, 50, InetAddress.getLocalHost());
+                while (isRunning) {
                     Socket socket = serverSocket.accept();
                     DataInputStream inputStream = new DataInputStream(socket.getInputStream());
                     DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
                     int requestCode = inputStream.readInt();
                     handleRequest(inputStream, outputStream, requestCode);
+                    socket.close();
                 }
             } catch (IOException e) {
             }
@@ -55,6 +59,7 @@ public class WineRequestComponent extends EnvironmentComponent {
     }
 
     public void stop() {
+        isRunning = false;
         if (serverSocket != null) {
             try {
                 serverSocket.close();
@@ -91,6 +96,7 @@ public class WineRequestComponent extends EnvironmentComponent {
             Intent intent = new Intent();
             intent.setClass(context, EpicOAuthActivity.class);
             intent.putExtra(EpicOAuthActivity.EXTRA_GAME_AUTH_URL, url);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
             return;
         }
@@ -98,6 +104,7 @@ public class WineRequestComponent extends EnvironmentComponent {
         if (openWithAndroidBrowser) {
             Log.d("WineRequestComponent", "Received request code OPEN_URL with url " + url);
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
         }
     }
