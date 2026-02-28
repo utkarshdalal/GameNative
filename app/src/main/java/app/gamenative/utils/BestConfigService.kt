@@ -98,13 +98,19 @@ object BestConfigService {
                 }
 
                 val mediaType = "application/json".toMediaType()
-                val body = requestBody.toString().toRequestBody(mediaType)
+                val bodyString = requestBody.toString()
+                val body = bodyString.toRequestBody(mediaType)
 
-                val request = Request.Builder()
+                val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
+
+                val requestBuilder = Request.Builder()
                     .url(API_BASE_URL)
                     .post(body)
                     .header("Content-Type", "application/json")
-                    .build()
+                if (integrityToken != null) {
+                    requestBuilder.header("X-Integrity-Token", integrityToken)
+                }
+                val request = requestBuilder.build()
 
                 val response = httpClient.newCall(request).execute()
 

@@ -8,6 +8,7 @@ import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.PlayIntegrity
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
 
@@ -94,6 +95,8 @@ class PluviaApp : SplitCompatApplication() {
             personProfiles = PersonProfiles.ALWAYS
         }
         PostHogAndroid.setup(this, postHogConfig)
+
+        PlayIntegrity.warmUp(this)
 
         // Initialize Supabase client
         try {
