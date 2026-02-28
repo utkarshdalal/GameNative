@@ -13,6 +13,7 @@ import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.NotificationHelper
+import app.gamenative.service.ServiceSyncPolicy
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.MarkerUtils
@@ -109,24 +110,24 @@ class AmazonService : Service() {
             }
 
             val intent = Intent(context, AmazonService::class.java)
+            val shouldSync = ServiceSyncPolicy.shouldSyncOnColdStart(
+                hasPerformedInitialSync = hasPerformedInitialSync,
+                lastSyncTimestamp = lastSyncTimestamp,
+                syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+            )
 
-            // First-time start: always sync without throttle
-            if (!hasPerformedInitialSync) {
-                Timber.i("[Amazon] First-time start — starting service with initial sync")
+            if (shouldSync) {
                 intent.action = ACTION_SYNC_LIBRARY
-                context.startForegroundService(intent)
-                return
-            }
-
-            // Subsequent starts: check throttle for sync
-            val now = System.currentTimeMillis()
-            val timeSinceLastSync = now - lastSyncTimestamp
-
-            if (timeSinceLastSync >= SYNC_THROTTLE_MILLIS) {
-                Timber.i("[Amazon] Starting service with automatic sync (throttle passed)")
-                intent.action = ACTION_SYNC_LIBRARY
+                if (!hasPerformedInitialSync) {
+                    Timber.i("[Amazon] First-time start — starting service with initial sync")
+                } else {
+                    Timber.i("[Amazon] Starting service with automatic sync (throttle passed)")
+                }
             } else {
-                val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
+                val remainingMinutes = ServiceSyncPolicy.remainingThrottleMinutes(
+                    lastSyncTimestamp = lastSyncTimestamp,
+                    syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+                )
                 Timber.i("[Amazon] Starting service without sync — throttled (${remainingMinutes}min remaining)")
             }
             context.startForegroundService(intent)
@@ -775,30 +776,29 @@ class AmazonService : Service() {
         val notification = notificationHelper.createForegroundNotification("Connected")
         startForeground(1, notification)
 
-        val shouldSync = when (intent?.action) {
-            ACTION_MANUAL_SYNC -> {
-                Timber.i("[Amazon] Manual sync requested — bypassing throttle")
-                true
-            }
-            ACTION_SYNC_LIBRARY -> {
-                Timber.i("[Amazon] Automatic sync requested")
-                true
-            }
+        val now = System.currentTimeMillis()
+        val shouldSync = ServiceSyncPolicy.shouldSyncForAction(
+            action = intent?.action,
+            manualSyncAction = ACTION_MANUAL_SYNC,
+            autoSyncAction = ACTION_SYNC_LIBRARY,
+            hasPerformedInitialSync = hasPerformedInitialSync,
+            lastSyncTimestamp = lastSyncTimestamp,
+            syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+            now = now,
+        )
+
+        when (intent?.action) {
+            ACTION_MANUAL_SYNC -> Timber.i("[Amazon] Manual sync requested — bypassing throttle")
+            ACTION_SYNC_LIBRARY -> Timber.i("[Amazon] Automatic sync requested")
             null -> {
-                // Service restarted by Android (START_STICKY)
-                val timeSinceLastSync = System.currentTimeMillis() - lastSyncTimestamp
-                val shouldResync = !hasPerformedInitialSync || timeSinceLastSync >= SYNC_THROTTLE_MILLIS
-                if (shouldResync) {
+                val timeSinceLastSync = now - lastSyncTimestamp
+                if (shouldSync) {
                     Timber.i("[Amazon] Service restarted by Android — performing sync (initial=$hasPerformedInitialSync, elapsed=${timeSinceLastSync}ms)")
                 } else {
                     Timber.d("[Amazon] Service restarted by Android — skipping sync (throttled)")
                 }
-                shouldResync
             }
-            else -> {
-                Timber.d("[Amazon] Service started without sync action")
-                false
-            }
+            else -> Timber.d("[Amazon] Service started without sync action")
         }
 
         if (shouldSync) {

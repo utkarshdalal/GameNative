@@ -16,6 +16,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
+import app.gamenative.service.ServiceSyncPolicy
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -49,33 +50,31 @@ class EpicService : Service() {
         fun start(context: Context) {
 
             Timber.tag("EPIC").d("Starting service...")
-            // If already running, do nothing
             if (isRunning) {
                 Timber.tag("EPIC").d("[EpicService] Service already running, skipping start")
                 return
             }
 
-            // First-time start: always sync without throttle
-            if (!hasPerformedInitialSync) {
-                Timber.tag("EPIC").i("[EpicService] First-time start - starting service with initial sync")
-                val intent = Intent(context, EpicService::class.java)
-                intent.action = ACTION_SYNC_LIBRARY
-                context.startForegroundService(intent)
-                return
-            }
-
-            // Subsequent starts: always start service, but check throttle for sync
-            val now = System.currentTimeMillis()
-            val timeSinceLastSync = now - lastSyncTimestamp
-
             val intent = Intent(context, EpicService::class.java)
-            if (timeSinceLastSync >= SYNC_THROTTLE_MILLIS) {
-                Timber.tag("EPIC").i("[EpicService] Starting service with automatic sync (throttle passed)")
+            val shouldSync = ServiceSyncPolicy.shouldSyncOnColdStart(
+                hasPerformedInitialSync = hasPerformedInitialSync,
+                lastSyncTimestamp = lastSyncTimestamp,
+                syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+            )
+
+            if (shouldSync) {
                 intent.action = ACTION_SYNC_LIBRARY
+                if (!hasPerformedInitialSync) {
+                    Timber.tag("EPIC").i("[EpicService] First-time start - starting service with initial sync")
+                } else {
+                    Timber.tag("EPIC").i("[EpicService] Starting service with automatic sync (throttle passed)")
+                }
             } else {
-                val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
+                val remainingMinutes = ServiceSyncPolicy.remainingThrottleMinutes(
+                    lastSyncTimestamp = lastSyncTimestamp,
+                    syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+                )
                 Timber.tag("EPIC").i("Starting service without sync - throttled (${remainingMinutes}min remaining)")
-                // Start service without sync action
             }
             context.startForegroundService(intent)
         }
@@ -505,38 +504,29 @@ class EpicService : Service() {
         val notification = notificationHelper.createForegroundNotification("Connected")
         startForeground(1, notification)
 
-        // Determine if we should sync based on the action
-        val shouldSync = when (intent?.action) {
-            ACTION_MANUAL_SYNC -> {
-                Timber.tag("EPIC").i("Manual sync requested - bypassing throttle")
-                true
-            }
+        val now = System.currentTimeMillis()
+        val shouldSync = ServiceSyncPolicy.shouldSyncForAction(
+            action = intent?.action,
+            manualSyncAction = ACTION_MANUAL_SYNC,
+            autoSyncAction = ACTION_SYNC_LIBRARY,
+            hasPerformedInitialSync = hasPerformedInitialSync,
+            lastSyncTimestamp = lastSyncTimestamp,
+            syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+            now = now,
+        )
 
-            ACTION_SYNC_LIBRARY -> {
-                Timber.tag("EPIC").i("Automatic sync requested")
-                true
-            }
-
+        when (intent?.action) {
+            ACTION_MANUAL_SYNC -> Timber.tag("EPIC").i("Manual sync requested - bypassing throttle")
+            ACTION_SYNC_LIBRARY -> Timber.tag("EPIC").i("Automatic sync requested")
             null -> {
-                // Service restarted by Android with null intent (START_STICKY behavior)
-                // Only sync if we haven't done initial sync yet, or if it's been a while
-                val timeSinceLastSync = System.currentTimeMillis() - lastSyncTimestamp
-                val shouldResync = !hasPerformedInitialSync || timeSinceLastSync >= SYNC_THROTTLE_MILLIS
-
-                if (shouldResync) {
+                val timeSinceLastSync = now - lastSyncTimestamp
+                if (shouldSync) {
                     Timber.tag("EPIC").i("Service restarted by Android - performing sync (hasPerformedInitialSync=$hasPerformedInitialSync, timeSinceLastSync=${timeSinceLastSync}ms)")
-                    true
                 } else {
                     Timber.tag("EPIC").d("Service restarted by Android - skipping sync (throttled)")
-                    false
                 }
             }
-
-            else -> {
-                // Service started without sync action (e.g., just to keep it alive)
-                Timber.tag("EPIC").d(" Service started without sync action")
-                false
-            }
+            else -> Timber.tag("EPIC").d(" Service started without sync action")
         }
 
         // Start background library sync if requested

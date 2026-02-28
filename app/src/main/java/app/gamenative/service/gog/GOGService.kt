@@ -12,6 +12,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.service.NotificationHelper
+import app.gamenative.service.ServiceSyncPolicy
 import app.gamenative.utils.ContainerUtils
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -56,33 +57,31 @@ class GOGService : Service() {
             get() = instance != null
 
         fun start(context: Context) {
-            // If already running, do nothing
             if (isRunning) {
                 Timber.d("[GOGService] Service already running, skipping start")
                 return
             }
 
-            // First-time start: always sync without throttle
-            if (!hasPerformedInitialSync) {
-                Timber.i("[GOGService] First-time start - starting service with initial sync")
-                val intent = Intent(context, GOGService::class.java)
-                intent.action = ACTION_SYNC_LIBRARY
-                context.startForegroundService(intent)
-                return
-            }
-
-            // Subsequent starts: always start service, but check throttle for sync
-            val now = System.currentTimeMillis()
-            val timeSinceLastSync = now - lastSyncTimestamp
-
             val intent = Intent(context, GOGService::class.java)
-            if (timeSinceLastSync >= SYNC_THROTTLE_MILLIS) {
-                Timber.i("[GOGService] Starting service with automatic sync (throttle passed)")
+            val shouldSync = ServiceSyncPolicy.shouldSyncOnColdStart(
+                hasPerformedInitialSync = hasPerformedInitialSync,
+                lastSyncTimestamp = lastSyncTimestamp,
+                syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+            )
+
+            if (shouldSync) {
                 intent.action = ACTION_SYNC_LIBRARY
+                if (!hasPerformedInitialSync) {
+                    Timber.i("[GOGService] First-time start - starting service with initial sync")
+                } else {
+                    Timber.i("[GOGService] Starting service with automatic sync (throttle passed)")
+                }
             } else {
-                val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
+                val remainingMinutes = ServiceSyncPolicy.remainingThrottleMinutes(
+                    lastSyncTimestamp = lastSyncTimestamp,
+                    syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+                )
                 Timber.d("[GOGService] Starting service without sync - throttled (${remainingMinutes}min remaining)")
-                // Start service without sync action
             }
             context.startForegroundService(intent)
         }
@@ -588,38 +587,29 @@ class GOGService : Service() {
         val notification = notificationHelper.createForegroundNotification("Connected")
         startForeground(1, notification)
 
-        // Determine if we should sync based on the action
-        val shouldSync = when (intent?.action) {
-            ACTION_MANUAL_SYNC -> {
-                Timber.i("[GOGService] Manual sync requested - bypassing throttle")
-                true
-            }
+        val now = System.currentTimeMillis()
+        val shouldSync = ServiceSyncPolicy.shouldSyncForAction(
+            action = intent?.action,
+            manualSyncAction = ACTION_MANUAL_SYNC,
+            autoSyncAction = ACTION_SYNC_LIBRARY,
+            hasPerformedInitialSync = hasPerformedInitialSync,
+            lastSyncTimestamp = lastSyncTimestamp,
+            syncThrottleMillis = SYNC_THROTTLE_MILLIS,
+            now = now,
+        )
 
-            ACTION_SYNC_LIBRARY -> {
-                Timber.i("[GOGService] Automatic sync requested")
-                true
-            }
-
+        when (intent?.action) {
+            ACTION_MANUAL_SYNC -> Timber.i("[GOGService] Manual sync requested - bypassing throttle")
+            ACTION_SYNC_LIBRARY -> Timber.i("[GOGService] Automatic sync requested")
             null -> {
-                // Service restarted by Android with null intent (START_STICKY behavior)
-                // Only sync if we haven't done initial sync yet, or if it's been a while
-                val timeSinceLastSync = System.currentTimeMillis() - lastSyncTimestamp
-                val shouldResync = !hasPerformedInitialSync || timeSinceLastSync >= SYNC_THROTTLE_MILLIS
-
-                if (shouldResync) {
+                val timeSinceLastSync = now - lastSyncTimestamp
+                if (shouldSync) {
                     Timber.i("[GOGService] Service restarted by Android - performing sync (hasPerformedInitialSync=$hasPerformedInitialSync, timeSinceLastSync=${timeSinceLastSync}ms)")
-                    true
                 } else {
                     Timber.d("[GOGService] Service restarted by Android - skipping sync (throttled)")
-                    false
                 }
             }
-
-            else -> {
-                // Service started without sync action (e.g., just to keep it alive)
-                Timber.d("[GOGService] Service started without sync action")
-                false
-            }
+            else -> Timber.d("[GOGService] Service started without sync action")
         }
 
         // Start background library sync if requested
