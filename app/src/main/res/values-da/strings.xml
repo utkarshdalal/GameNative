@@ -44,6 +44,18 @@
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Venner</string>
 
+    <!-- Library Tabs -->
+    <string name="tab_all">Alle</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">Installeret</string>
+    <string name="tab_local">Tilpasset</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">Luk søgning</string>
+    <string name="default_user_name">Bruger</string>
+
     <!-- Winlator -->
     <string name="disabled">Deaktiveret</string>
     <string name="copy">Kopiér</string>
@@ -128,6 +140,8 @@
     <string name="controller_disconnected">Afbrudt</string>
     <string name="reset_onscreen_controls">Nulstil on-screen-kontroller</string>
     <string name="open_navigation_menu">Åbn navigationsmenu</string>
+    <string name="quick_menu_title">Hurtig menu</string>
+    <string name="quick_menu_back">Tilbage</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
@@ -281,6 +295,10 @@
     <string name="update_available">Opdatering tilgængelig</string>
     <string name="game_information">Spilinformation</string>
     <string name="status">Status</string>
+    <string name="status_online">Online</string>
+    <string name="status_away">Fraværende</string>
+    <string name="status_invisible">Usynlig</string>
+    <string name="system_menu_title">System</string>
     <string name="size">Størrelse</string>
     <string name="location">Placering</string>
     <string name="developer">Udvikler</string>
@@ -293,11 +311,22 @@
     <string name="games">Spil</string>
     <string name="playtime_last_two_weeks">Spilletid de sidste 2 uger: %s timer</string>
     <string name="total_playtime">Total spilletid: %s timer</string>
+    <string name="last_played">Sidst spillet</string>
+    <string name="playtime">Spilletid</string>
 
     <!-- Login & Connection -->
+    <string name="connecting_to_steam">Forbinder til Steam…</string>
     <string name="no_connection_to_steam">Ingen forbindelse til Steam</string>
     <string name="retry_steam_connection">Prøv at forbinde igen</string>
     <string name="continue_offline">Fortsæt offline</string>
+    <string name="connection_reconnecting">Genopretter forbindelse til Steam…</string>
+    <string name="connection_disconnected">Afbrudt fra Steam</string>
+    <string name="connection_disconnected_servers">Afbrudt fra Steam-servere</string>
+    <string name="connection_logging_in">Logger ind…</string>
+    <string name="connection_login_failed">Login mislykkedes</string>
+    <string name="connection_session_ended">Session afsluttet</string>
+    <string name="connection_offline_mode">Offline-tilstand</string>
+    <string name="connection_retry">Prøv igen</string>
 
     <!-- Profile & Menu -->
     <string name="help_and_support">Hjælp &amp; support</string>
@@ -306,6 +335,12 @@
     <string name="go_offline">Gå offline</string>
     <string name="log_out">Log ud</string>
     <string name="close">Luk</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Log ind på Steam</string>
+    <string name="steam_go_online">Gå online (Steam)</string>
+    <string name="steam_go_offline">Gå offline (Steam)</string>
+    <string name="steam_sign_out">Log ud af Steam</string>
 
     <!-- Container Configuration: General -->
     <string name="new_environment_variable">Ny miljøvariabel</string>
@@ -328,6 +363,8 @@
     <string name="force_dlc">Gennemtving DLC</string>
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
+    <string name="steam_offline_mode">Steam Offline-tilstand</string>
+    <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
@@ -367,7 +404,76 @@
     <string name="directinput_mapper_type">DirectInput-mappertype</string>
     <string name="disable_mouse_input">Deaktivér musinput</string>
     <string name="touchscreen_mode">Touchskærmstilstand</string>
-    <string name="touchscreen_mode_description">Direkte touch-til-cursor-bevægelse (TIL) vs touchpad-stil relativ bevægelse (FRA)</string>
+    <string name="touchscreen_mode_description">Til visuelle romaner og RTS-spil</string>
+    <string name="shooter_mode_toggle">Shooter-tilstand</string>
+    <string name="shooter_mode_toggle_description">Erstat stick-elementer med dynamiske joysticks</string>
+    <string name="shooter_mode_on">Aktiver mus</string>
+    <string name="shooter_mode_off">Aktiver sticks</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">Gestusindstillinger</string>
+    <string name="gesture_settings_title">Touch-gestusindstillinger</string>
+    <string name="gesture_tap">Tryk</string>
+    <string name="gesture_tap_subtitle">Venstreklik</string>
+    <string name="gesture_drag">Træk finger</string>
+    <string name="gesture_drag_subtitle">Træk venstreklik (rektangelvalg)</string>
+    <string name="gesture_long_press">Langt tryk</string>
+    <string name="gesture_long_press_delay">Forsinkelse langt tryk (ms)</string>
+    <string name="gesture_double_tap">Dobbelt tryk</string>
+    <string name="gesture_double_tap_subtitle">Dobbelt venstreklik</string>
+    <string name="gesture_double_tap_delay">Forsinkelse dobbelt tryk (ms)</string>
+    <string name="gesture_two_finger_drag">Træk med to fingre</string>
+    <string name="gesture_pinch">Knib</string>
+    <string name="gesture_two_finger_tap">Tryk med to fingre</string>
+    <string name="gesture_action_left_click">Venstreklik</string>
+    <string name="gesture_action_right_click">Højreklik</string>
+    <string name="gesture_action_middle_click">Mellemklik</string>
+    <string name="gesture_pan_middle_mouse">Pan med midterknap</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">Piletaster</string>
+    <string name="gesture_zoom_scroll_wheel">Rullehjul</string>
+    <string name="gesture_zoom_plus_minus">+/- taster</string>
+    <string name="gesture_zoom_page_up_down">Side op/ned</string>
+    <string name="gesture_action_label">Handling</string>
+    <string name="gesture_delay_label">Forsinkelse</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">Indstillinger for dynamiske joysticks</string>
+    <string name="movement_type">Bevægelsestype</string>
+    <string name="movement_type_subtitle">Joystick-output til venstre bevægelse</string>
+    <string name="look_sensitivity">Kig-følsomhed</string>
+    <string name="look_sensitivity_subtitle">Mus-kig-følsomhedsmultiplikator</string>
+    <string name="joystick_size">Joystick-størrelse</string>
+    <string name="joystick_size_subtitle">Dynamisk joystick-størrelsesmultiplikator</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">Piletaster</string>
+    <string name="movement_gamepad_left_stick">Gamepad venstre stick</string>
+    <string name="look_type">Kig-type</string>
+    <string name="look_type_subtitle">Højre side adfærd i shooter-tilstand</string>
+    <string name="look_type_mouse">Mus</string>
+    <string name="look_type_gamepad_right_stick">Gamepad højre stick</string>
+
+    <string name="range_button_settings">Indstillinger for intervalknap</string>
+    <string name="range_type">Tastinterval</string>
+    <string name="range_type_subtitle">Hvilket sæt taster der gennemgås</string>
+    <string name="range_orientation">Orientering</string>
+    <string name="range_orientation_subtitle">Layout-retning for intervalknap</string>
+    <string name="range_orientation_horizontal">Vandret</string>
+    <string name="range_orientation_vertical">Lodret</string>
+    <string name="range_visible_segments">Synlige segmenter</string>
+    <string name="range_visible_segments_subtitle">Antal tastsegmenter vist ad gangen: %1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">Lås rulning</string>
+    <string name="range_lock_scrolling_subtitle">Forhindre rulning gennem intervallet</string>
+    <string name="button_settings">Knapindstillinger</string>
+    <string name="button_toggleable">Tilskiftelig</string>
+    <string name="button_toggleable_subtitle">Tryk for at aktivere, tryk igen for at deaktivere</string>
+
+    <string name="custom_game_exe_selection_title">Valg af eksekverbar fil påkrævet</string>
+    <string name="custom_game_exe_selection_message">Dette spil har flere eksekverbare filer. Åbn brugerdefinerede spilindstillinger for at vælge, hvilken der skal startes.</string>
+
     <string name="external_display_input">Ekstern skærm-input</string>
     <string name="external_display_input_subtitle">Vælg hvordan en tilsluttet præsentationsskærm skal opføre sig</string>
     <string name="external_display_mode_off">Brug ikke ekstern skærm</string>
@@ -457,7 +563,12 @@
     <string name="settings_debug_box_logs_title">Aktivér Box86/64-logs</string>
     <string name="settings_debug_box_logs_subtitle">Skriv Box86 &amp; Box64 debug-output til fil</string>
     <string name="settings_debug_view_crash_title">Vis seneste crash</string>
+    <string name="settings_debug_view_crash_subtitle">Viser den seneste crash-rapport</string>
+    <string name="settings_debug_no_crash_logs">Ingen nylige crash-rapporter fundet</string>
     <string name="settings_debug_view_log_title">Vis spil-debug-log</string>
+    <string name="settings_debug_view_log_subtitle">Viser den seneste Wine/Box64 debug-log</string>
+    <string name="settings_debug_no_wine_logs">Ingen Wine debug-logs fundet</string>
+    <string name="settings_debug_no_channels_selected">Ingen kanaler valgt</string>
     <string name="settings_debug_clear_prefs_title">Ryd præferencer</string>
     <string name="settings_debug_clear_prefs_subtitle">[Lukker app] Logger klienten ud og sletter lokale præferencedata.</string>
     <string name="settings_debug_clear_db_title">Ryd lokal database</string>
@@ -502,14 +613,22 @@
     <string name="login_privacy_policy">Privatlivspolitik</string>
     <string name="login_welcome_back">Velkommen tilbage</string>
     <string name="login_subtitle">Log ind for at få adgang til dit Steam-bibliotek</string>
+    <string name="login_tab_credentials">Legitimationsoplysninger</string>
+    <string name="login_tab_qr_code">QR-kode</string>
     <string name="login_username">Brugernavn</string>
+    <string name="login_username_hint">Indtast dit Steam-brugernavn</string>
     <string name="login_password">Adgangskode</string>
+    <string name="login_password_hint">Indtast din adgangskode</string>
+    <string name="login_password_show">Vis adgangskode</string>
+    <string name="login_password_hide">Skjul adgangskode</string>
     <string name="login_remember_session">Husk session</string>
     <string name="login_sign_in">Log ind</string>
     <string name="login_qr_failed">QR-kode fejlede</string>
     <string name="login_retry_qr">Prøv QR-kode igen</string>
     <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>
     <string name="login_skip_steam">Spring Steam-login over</string>
+    <string name="login_or_sign_in_with">Eller log ind med:</string>
+    <string name="login_skip_login">Spring login over</string>
 
     <!-- TODO: Manual review - Generic/Reusable strings -->
     <string name="continue_action">Fortsæt</string>
@@ -572,6 +691,7 @@
     <string name="main_thank_you_message">Støt open-source PC-gaming på Android ved at dele appen med dine venner eller ved at blive medlem på Ko-fi.</string>
     <string name="main_join_kofi">Tilmeld dig på Ko-fi</string>
     <string name="main_share">Del</string>
+    <string name="main_share_text">Prøv GameNative - spil dine PC Steam-spil på Android med fuld understøttelse af cloud-gemmer!\nhttps://gamenative.app\nTilmeld dig fællesskabet: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Virkede spillet?</string>
     <string name="main_discord_support_message">Tilmeld dig Discord for at få support til at rette dit spil eller forbedre ydelsen.</string>
     <string name="main_open_discord">Åbn Discord</string>
@@ -637,6 +757,7 @@
     <string name="supporters_app_icon">App-ikon: Hachi</string>
     <string name="supporters_alt_icon">Alternativt app-ikon: rhapsody_mdr</string>
     <string name="supporters_loading">Indlæser støtter...</string>
+    <string name="supporters_error">Kunne ikke indlæse støtter</string>
     <string name="supporters_members">Medlemmer</string>
     <string name="supporters_supporters">Støtter</string>
     <string name="supporters_none">Ingen støtter endnu.</string>
@@ -656,7 +777,9 @@
     <string name="library_installing">Installerer</string>
     <string name="library_not_installed">Ikke installeret</string>
     <string name="library_family_shared">Familiedelt</string>
+    <string name="library_shared_short">Delt</string>
     <string name="library_compatible">Kompatibel</string>
+    <string name="library_gpu_compatible">GPU-kompatibel</string>
     <string name="library_compatibility_unknown">Kompatibilitet ukendt</string>
     <string name="library_not_compatible">Ikke kompatibel</string>
 
@@ -681,12 +804,56 @@
     <string name="library_layout_list">Liste</string>
     <string name="library_layout_capsule">Kapsel</string>
     <string name="library_layout_hero">Helt</string>
+    <string name="library_layout_carousel">Karrusel</string>
     <string name="library_search_placeholder">Søg i dine spil...</string>
     <string name="library_search_description">Søg</string>
     <string name="library_search_clear">Ryd søgning</string>
     <string name="library_no_items">Ingen elementer vist med markeringen</string>
     <string name="library_filters">Filtre</string>
     <string name="library_game_count">%1$d spil • %2$d installerede</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">Tilpassede spil</string>
+    <string name="library_source_title">Kilde</string>
+    <string name="library_layout_title">Layout</string>
+    <string name="library_options">Optioner</string>
+    <string name="back">Tilbage</string>
+    <string name="cloud">Sky</string>
+    <string name="options">Optioner</string>
+    <string name="play_time">Spilletid</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">Optioner</string>
+    <string name="options_panel_close">Luk optioner</string>
+    <string name="options_sort_by">Sorter efter</string>
+    <string name="sort_installed_first">Installeret først</string>
+    <string name="sort_name_asc">Navn (A-Å)</string>
+    <string name="sort_name_desc">Navn (Å-A)</string>
+    <string name="sort_recently_played">Sidst spillet</string>
+    <string name="sort_size_smallest">Størrelse (mindst)</string>
+    <string name="sort_size_largest">Størrelse (størst)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">Optioner</string>
+    <string name="game_options_quick_actions">Hurtige handlinger</string>
+    <string name="game_options_game_management">Spilstyring</string>
+    <string name="game_options_container">Container</string>
+    <string name="game_options_cloud_saves">Cloud-gemmer</string>
+    <string name="game_options_help_info">Hjælp &amp; info</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">Tryk B for at lukke</string>
+    <string name="menu">Menu</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">Vælg</string>
+    <string name="action_refresh">Opdater</string>
+    <string name="action_details">Detaljer</string>
+    <string name="action_add_game">Tilføj spil</string>
+    <string name="action_system">System</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d resultat</string>
+    <string name="search_results_many">%d resultater</string>
 
     <!-- TODO: Manual review - Two Factor Auth -->
     <string name="two_factor_login">Login</string>
@@ -735,6 +902,7 @@
 
     <!-- TODO: Manual review - Settings Screen -->
     <string name="settings_title">Indstillinger</string>
+    <string name="settings_subtitle">Tilpas din oplevelse</string>
 
     <!-- TODO: Manual review - Contents Install Finish -->
     <string name="contents_install_success">Indhold installeret</string>
@@ -786,6 +954,17 @@
     <string name="steam_imagefs_installed">ImageFS installeret. Prøv at redigere container igen.</string>
     <string name="steam_imagefs_install_failed">Kunne ikke installere ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Afinstallér spil</string>
+    <string name="amazon_uninstall_game_title">Afinstallér spil</string>
+    <string name="amazon_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
+    <string name="amazon_install_game_title">Download spil</string>
+    <string name="amazon_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownloadstørrelse: %1$s\n\tTilgængelig plads: %2$s</string>
+    <string name="amazon_verify_files_title">Bekræft filer</string>
+    <string name="amazon_verify_files_message">Dette vil kontrollere alle installerede filer mod downloadmanifestet for at opdage manglende eller beskadigede filer.\n\nDette kan tage et stykke tid for store spil.</string>
+    <string name="amazon_verify_confirm">Bekræft</string>
+    <string name="amazon_verify_in_progress">Bekræfter filer… Dette kan tage et stykke tid.</string>
+    <string name="amazon_verify_success">Alle filer bekræftet.\n\n%1$d / %2$d filer OK.</string>
+    <string name="amazon_verify_failed_detail">Bekræftelse fandt problemer.\n\n%1$d / %2$d filer OK\n%3$d mangler\n%4$d størrelsesmismatch\n%5$d hash-mismatch\n\nGeninstaller spillet for at rette beskadigede filer.</string>
+    <string name="amazon_verify_error">Bekræftelse mislykkedes: %1$s</string>
 
     <!-- Custom Games -->
     <string name="custom_games_title">Tilpassede spil</string>
@@ -839,11 +1018,11 @@
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">GOG Integration (Alpha)</string>
-    <string name="gog_settings_login_title">Log ind</string>
+    <string name="gog_settings_login_title">Log ind på GOG</string>
     <string name="gog_settings_login_subtitle">Log ind på din GOG-konto</string>
     <string name="gog_login_success_title">Login lykkedes</string>
     <string name="gog_login_cancel">Annuller</string>
-    <string name="gog_settings_logout_title">Log ud</string>
+    <string name="gog_settings_logout_title">Log ud af GOG</string>
     <string name="gog_settings_logout_subtitle">Log ud fra din GOG-konto</string>
     <string name="gog_logout_confirm_title">Log ud fra GOG?</string>
     <string name="gog_logout_confirm_message">Dette vil fjerne dine GOG-legitimationsoplysninger og rydde dit GOG-bibliotek fra denne enhed. Du kan logge ind igen når som helst.</string>
@@ -854,7 +1033,7 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>
-    <string name="epic_settings_login_title">Log ind</string>
+    <string name="epic_settings_login_title">Log ind på Epic</string>
     <string name="epic_settings_login_subtitle">Log ind på din Epic Games-konto</string>
     <string name="epic_login_success_title">Login lykkedes</string>
     <string name="epic_login_cancel">Annuller</string>
@@ -866,6 +1045,21 @@
     <string name="epic_logout_success">Logget ud fra Epic Games</string>
     <string name="epic_logout_failed">Kunne ikke logge ud: %s</string>
     <string name="epic_logout_in_progress">Logger ud fra Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_settings_login_title">Log ind på Amazon Games</string>
+    <string name="amazon_settings_login_subtitle">Log ind på din Amazon Games-konto</string>
+    <string name="amazon_login_success_title">Login lykkedes</string>
+    <string name="amazon_login_cancel">Annuller</string>
+    <string name="amazon_settings_logout_title">Log ud af Amazon Games</string>
+    <string name="amazon_settings_logout_subtitle">Log ud fra din Amazon Games-konto</string>
+    <string name="amazon_logout_confirm_title">Log ud fra Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Dette vil fjerne dine Amazon Games-legitimationsoplysninger og rydde dit Amazon-bibliotek fra denne enhed. Du kan logge ind igen når som helst.</string>
+    <string name="amazon_logout_confirm">Log ud</string>
+    <string name="amazon_logout_success">Logget ud fra Amazon Games</string>
+    <string name="amazon_logout_failed">Kunne ikke logge ud: %s</string>
+    <string name="amazon_logout_in_progress">Logger ud fra Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Afinstallér spil</string>

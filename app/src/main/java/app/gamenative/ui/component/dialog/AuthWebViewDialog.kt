@@ -43,6 +43,7 @@ fun AuthWebViewDialog(
     onDismissRequest: () -> Unit,
     onUrlChange: ((String) -> Unit)? = null,
     onPageFinished: ((url: String, webView: WebView) -> Unit)? = null,
+    customWebViewClient: WebViewClient? = null,
 ) {
     if (isVisible) {
         val defaultTitle = stringResource(R.string.auth_webview_title)
@@ -113,7 +114,8 @@ fun AuthWebViewDialog(
                                     mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                                 }
 
-                                webViewClient = object : WebViewClient() {
+                                // Use custom WebViewClient if provided, otherwise use default
+                                webViewClient = customWebViewClient ?: object : WebViewClient() {
                                     private fun handleUrl(url: String?) {
                                         Timber.d("Auth WebView navigating to: ${redactUrlForLogging(url)}")
                                         url?.let { currentUrl -> onUrlChange?.invoke(currentUrl) }

@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.util.Log
+import android.view.Display
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -15,18 +16,11 @@ import android.widget.LinearLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -73,12 +67,10 @@ import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
-import android.widget.Toast
-import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
-import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.PreLaunchSteps
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
@@ -107,7 +99,6 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineStartMenuCreator
 import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
-import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControllerManager
@@ -136,6 +127,7 @@ import com.winlator.xenvironment.components.SteamClientComponent
 import com.winlator.xenvironment.components.SysVSharedMemoryComponent
 import com.winlator.xenvironment.components.VirGLRendererComponent
 import com.winlator.xenvironment.components.VortekRendererComponent
+import com.winlator.xenvironment.components.WineRequestComponent
 import com.winlator.xenvironment.components.XServerComponent
 import com.winlator.xserver.Keyboard
 import com.winlator.xserver.Property
@@ -308,6 +300,7 @@ fun XServerScreen(
     }
 
     var swapInputOverlay: SwapInputOverlayView? by remember { mutableStateOf(null) }
+    var imeInputReceiver: app.gamenative.externaldisplay.IMEInputReceiver? by remember { mutableStateOf(null) }
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
@@ -331,6 +324,7 @@ fun XServerScreen(
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
     var isOverlayPaused by remember { mutableStateOf(false) }
+    var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -415,6 +409,7 @@ fun XServerScreen(
 
         if (imeVisible) {
             PostHog.capture(event = "onscreen_keyboard_disabled")
+            imeInputReceiver?.hideKeyboard()
             view.post {
                 if (Build.VERSION.SDK_INT >= 30) {
                     view.windowInsetsController?.hide(WindowInsets.Type.ime())
@@ -432,6 +427,7 @@ fun XServerScreen(
         PluviaApp.xEnvironment?.onPause()
         isOverlayPaused = true
         PluviaApp.isOverlayPaused = true
+        keyboardRequestedFromOverlay = false
 
         val navDialog = NavigationDialog(
             context,
@@ -439,6 +435,7 @@ fun XServerScreen(
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
                         NavigationDialog.ACTION_KEYBOARD -> {
+                            keyboardRequestedFromOverlay = true
                             val anchor = view // use the same composable root view
                             val c = if (Build.VERSION.SDK_INT >= 30)
                                 anchor.windowInsetsController else null
@@ -447,7 +444,14 @@ fun XServerScreen(
                                 if (anchor.windowToken == null) return@post
                                 val show = {
                                     PostHog.capture(event = "onscreen_keyboard_enabled")
-                                    imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    val isExternalDisplaySession =
+                                        (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
+
+                                    if (isExternalDisplaySession) {
+                                        imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    } else {
+                                        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    }
                                 }
                                 if (Build.VERSION.SDK_INT > 29 && c != null) {
                                     anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
@@ -571,6 +575,7 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
+                            imeInputReceiver?.hideKeyboard()
                             // Resume processes before exiting so they can receive SIGTERM cleanly.
                             PluviaApp.xEnvironment?.onResume()
                             isOverlayPaused = false
@@ -583,6 +588,10 @@ fun XServerScreen(
         )
         // Resume game when the overlay closes via back press, outside tap, or any non-exit item.
         navDialog.setOnDismissListener {
+            if (!keyboardRequestedFromOverlay) {
+                imeInputReceiver?.hideKeyboard()
+            }
+            keyboardRequestedFromOverlay = false
             if (PluviaApp.isOverlayPaused) {
                 PluviaApp.xEnvironment?.onResume()
                 isOverlayPaused = false
@@ -596,6 +605,8 @@ fun XServerScreen(
         registerBackAction(gameBack)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
+            imeInputReceiver?.hideKeyboard()
+            imeInputReceiver = null
             registerBackAction { }
         }   // reset when screen leaves
     }
@@ -730,7 +741,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
                 frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
-                
+
                 // Add invisible IME receiver to capture system keyboard input when keyboard is on external display
                 val imeDisplayContext = context.display?.let { display ->
                     context.createDisplayContext(display)
@@ -749,7 +760,8 @@ fun XServerScreen(
                     isClickable = false
                 }
                 frameLayout.addView(imeReceiver)
-                
+                imeInputReceiver = imeReceiver
+
                 getxServer().winHandler = WinHandler(getxServer(), this)
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
@@ -849,6 +861,9 @@ fun XServerScreen(
                                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true)
                             } else if (container.isTouchscreenMode()) {
                                 PluviaApp.touchpadView?.setTouchscreenMode(true)
+                                // Apply per-game gesture configuration
+                                val gestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.getGestureConfig())
+                                PluviaApp.touchpadView?.setGestureConfig(gestureConfig)
                             }
                             Timber.d("WinHandler configured: preferredInputApi=%s, dinputMapperType=0x%02x", PreferredInputApi.values()[container.inputType], container.dinputMapperType)
                             // Timber.d("1 Container drives: ${container.drives}")
@@ -1025,6 +1040,9 @@ fun XServerScreen(
                 // Set overlay opacity from preferences if needed
                 val opacity = PrefManager.getFloat("controls_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY)
                 setOverlayOpacity(opacity)
+
+                // Set container-level shooter mode
+                setContainerShooterMode(container.isShooterMode)
             }
             PluviaApp.inputControlsView = icView
 
@@ -1259,8 +1277,24 @@ fun XServerScreen(
                                     newElement.setText(element.text)
                                     newElement.setIconId(element.iconId.toInt())
                                     newElement.setToggleSwitch(element.isToggleSwitch)
-                                    for (i in 0 until 4) {
+                                    // Copy range button properties — must set binding count
+                                    // BEFORE copying bindings, because setBindingCount resets
+                                    // the bindings array to NONE.
+                                    if (element.type == com.winlator.inputcontrols.ControlElement.Type.RANGE_BUTTON) {
+                                        newElement.setRange(element.range)
+                                        newElement.setOrientation(element.orientation)
+                                        newElement.setBindingCount(element.bindingCount)
+                                        newElement.isScrollLocked = element.isScrollLocked
+                                    }
+                                    for (i in 0 until element.bindingCount) {
                                         newElement.setBindingAt(i, element.getBindingAt(i))
+                                    }
+                                    // Copy shooter mode properties
+                                    if (element.type == com.winlator.inputcontrols.ControlElement.Type.SHOOTER_MODE) {
+                                        newElement.shooterMovementType = element.shooterMovementType
+                                        newElement.shooterLookType = element.shooterLookType
+                                        newElement.shooterLookSensitivity = element.shooterLookSensitivity
+                                        newElement.shooterJoystickSize = element.shooterJoystickSize
                                     }
                                     currentProfile.addElement(newElement)
                                 }
@@ -1967,6 +2001,8 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
+    environment.addComponent(WineRequestComponent())
+
     FEXCoreManager.ensureAppConfigOverrides(context)
 
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
@@ -2114,9 +2150,18 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
-        // Get the executable path
-        val exePath = runBlocking {
-            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        // Use container's configured executable path if available, otherwise auto-detect and persist
+        val exePath = if (container.executablePath.isNotEmpty()) {
+            container.executablePath
+        } else {
+            val detectedPath = runBlocking {
+                EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+            }
+            if (detectedPath.isNotEmpty()) {
+                container.executablePath = detectedPath
+                container.saveData()
+            }
+            detectedPath
         }
 
         if (exePath.isEmpty()) {
@@ -2174,6 +2219,170 @@ private fun getWineStartCommand(
             .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
             .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
         Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
+
+        return launchCommand
+    } else if (gameSource == GameSource.AMAZON) {
+        // For Amazon games, convert appId (integer) to productId (Amazon UUID string)
+        val appIdInt = runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }.getOrNull()
+        val productId = if (appIdInt != null) {
+            app.gamenative.service.amazon.AmazonService.getProductIdByAppId(appIdInt)
+        } else null
+        Timber.tag("XServerScreen").i("Launching Amazon game: appId=$appIdInt, productId=$productId")
+
+        val installPath = if (appIdInt != null) {
+            app.gamenative.service.amazon.AmazonService.getInstallPathByAppId(appIdInt)
+        } else null
+
+        if (installPath.isNullOrEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: Amazon game not installed")
+            return "\"explorer.exe\""
+        }
+
+        // ── Try fuel.json first (Amazon's launch manifest) ──────────────
+        val fuelFile = File(installPath, "fuel.json")
+        var fuelCommand: String? = null
+        var fuelArgs: List<String> = emptyList()
+        var fuelWorkingDir: String? = null
+
+        if (fuelFile.exists()) {
+            try {
+                val json = org.json.JSONObject(fuelFile.readText())
+                val main = json.optJSONObject("Main")
+                if (main != null) {
+                    fuelCommand = main.optString("Command", "").takeIf { it.isNotEmpty() }
+                    fuelWorkingDir = main.optString("WorkingSubdirOverride", "").takeIf { it.isNotEmpty() }
+                    val argsArray = main.optJSONArray("Args")
+                    if (argsArray != null) {
+                        fuelArgs = (0 until argsArray.length()).mapNotNull { argsArray.optString(it) }
+                    }
+                }
+                Timber.tag("XServerScreen").i(
+                    "fuel.json parsed: command=$fuelCommand, args=$fuelArgs, workingDir=$fuelWorkingDir"
+                )
+            } catch (e: Exception) {
+                Timber.tag("XServerScreen").w(e, "Failed to parse fuel.json, falling back to heuristic")
+            }
+        } else {
+            Timber.tag("XServerScreen").d("No fuel.json found at ${fuelFile.path}, using heuristic")
+        }
+
+        // Resolve executable path (fuel.json command, or fallback to largest .exe heuristic)
+        if (fuelCommand != null) {
+            val exeFile = File(installPath, fuelCommand.replace("\\", "/"))
+            if (!exeFile.exists()) {
+                Timber.tag("XServerScreen").w(
+                    "fuel.json executable not found: ${exeFile.path}, falling back to heuristic"
+                )
+                fuelCommand = null
+            }
+        }
+
+        var resolvedRelativePath = container.executablePath
+        if (resolvedRelativePath.isEmpty()) {
+            // Steam-style caching: resolve only once, then persist on the container.
+            resolvedRelativePath = if (fuelCommand != null) {
+                fuelCommand.replace("\\", "/")
+            } else {
+                val exeFile = ExecutableSelectionUtils.choosePrimaryExeFromDisk(
+                    installDir = File(installPath),
+                    gameName = File(installPath).name,
+                )
+
+                if (exeFile == null) {
+                    Timber.tag("XServerScreen").e("Cannot find executable for Amazon game")
+                    return "\"explorer.exe\""
+                }
+                Timber.tag("XServerScreen").d("Heuristic selected exe: ${exeFile.path}")
+                exeFile.relativeTo(File(installPath)).path
+            }
+            container.executablePath = resolvedRelativePath
+            container.saveData()
+        } else {
+            Timber.tag("XServerScreen").i("Using cached Amazon executablePath: $resolvedRelativePath")
+        }
+
+        val winPath = resolvedRelativePath.replace("/", "\\")
+        val amazonCommand = "A:\\$winPath"
+
+        val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
+            installPath + "/" + fuelWorkingDir.replace("\\", "/")
+        } else {
+            val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
+            if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+        }
+        guestProgramLauncherComponent.workingDir = File(workDir)
+
+        // ── Set FuelPump environment variables (P3-2) ────────────────
+        // Nile reference: nile/utils/launch.py — sets these for Amazon Games SDK / FuelPump DRM.
+        // The CONFIG_PATH maps to C:\ProgramData inside the Wine prefix.
+        val configPath = "C:\\ProgramData"
+        envVars.put("FUEL_DIR", "$configPath\\Amazon Games Services\\Legacy")
+        envVars.put("AMAZON_GAMES_SDK_PATH", "$configPath\\Amazon Games Services\\AmazonGamesSDK")
+
+        // Fetch game metadata for per-game env vars
+        val amazonGame = if (productId != null) {
+            kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                app.gamenative.service.amazon.AmazonService.getAmazonGameOf(productId)
+            }
+        } else null
+        if (amazonGame != null) {
+            envVars.put("AMAZON_GAMES_FUEL_ENTITLEMENT_ID", amazonGame.entitlementId)
+            if (amazonGame.productSku.isNotEmpty()) {
+                envVars.put("AMAZON_GAMES_FUEL_PRODUCT_SKU", amazonGame.productSku)
+            }
+            Timber.tag("XServerScreen").i(
+                "FuelPump env: entitlementId=${amazonGame.entitlementId}, sku=${amazonGame.productSku}"
+            )
+        } else {
+            Timber.tag("XServerScreen").w("Could not load AmazonGame for appId=$appIdInt — FuelPump env vars incomplete")
+        }
+        // Display name — Amazon doesn't expose the user's name in our auth flow;
+        // use "Player" as a safe fallback (same as Nile when user info is unavailable).
+        envVars.put("AMAZON_GAMES_FUEL_DISPLAY_NAME", "Player")
+
+        // ── Deploy Amazon Games SDK files to Wine prefix (P3-1) ─────────
+        // Downloads the FuelSDK + AmazonGamesSDK DLLs from Amazon's launcher
+        // channel (once, cached on disk), then copies them into the Wine
+        // prefix at C:\ProgramData\Amazon Games Services\{Legacy,AmazonGamesSDK}.
+        val prefixProgramData = File(container.getRootDir(), ".wine/drive_c/ProgramData")
+        try {
+            File(prefixProgramData, "Amazon Games Services/Legacy").mkdirs()
+            File(prefixProgramData, "Amazon Games Services/AmazonGamesSDK").mkdirs()
+
+            // Ensure SDK files are downloaded (first launch downloads, subsequent are no-op)
+            val sdkToken = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                app.gamenative.service.amazon.AmazonService.getInstance()
+                    ?.amazonManager?.getBearerToken()
+            }
+            if (sdkToken != null) {
+                val cached = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                    app.gamenative.service.amazon.AmazonSdkManager.ensureSdkFiles(context, sdkToken)
+                }
+                if (cached) {
+                    val deployed = app.gamenative.service.amazon.AmazonSdkManager
+                        .deploySdkToPrefix(context, prefixProgramData)
+                    Timber.tag("XServerScreen").i("SDK deployed: $deployed file(s) to Wine prefix")
+                } else {
+                    Timber.tag("XServerScreen").w("SDK download failed — game may not authenticate (non-fatal)")
+                }
+            } else {
+                Timber.tag("XServerScreen").w("No Amazon bearer token — SDK files not deployed (non-fatal)")
+            }
+        } catch (e: Exception) {
+            Timber.tag("XServerScreen").w(e, "Failed to deploy SDK files (non-fatal)")
+        }
+
+        // Build launch command with optional args
+        val launchCommand = if (fuelArgs.isNotEmpty()) {
+            val argsStr = fuelArgs.joinToString(" ") { arg ->
+                if (arg.contains(" ")) "\"$arg\"" else arg
+            }
+            Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\" $argsStr")
+            "winhandler.exe \"$amazonCommand\" $argsStr"
+        } else {
+            Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\"")
+            "winhandler.exe \"$amazonCommand\""
+        }
 
         return launchCommand
     } else if (isCustomGame) {

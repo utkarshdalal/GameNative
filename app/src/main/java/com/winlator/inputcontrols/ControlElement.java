@@ -29,7 +29,7 @@ public class ControlElement {
     public static final byte TRACKPAD_ACCELERATION_THRESHOLD = 4;
     public static final short BUTTON_MIN_TIME_TO_KEEP_PRESSED = 300;
     public enum Type {
-        BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD;
+        BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, SHOOTER_MODE;
 
         public static String[] names() {
             Type[] types = values();
@@ -72,6 +72,7 @@ public class ControlElement {
     private short y;
     private boolean selected = false;
     private boolean toggleSwitch = false;
+    private boolean scrollLocked = false;
     private int currentPointerId = -1;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
@@ -84,6 +85,10 @@ public class ControlElement {
     private RangeScroller scroller;
     private CubicBezierInterpolator interpolator;
     private Object touchTime;
+    private String shooterMovementType = "wasd";
+    private String shooterLookType = "mouse";
+    private float shooterLookSensitivity = 1.0f;
+    private float shooterJoystickSize = 1.0f;
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
@@ -114,9 +119,17 @@ public class ControlElement {
         else if (type == Type.RANGE_BUTTON) {
             scroller = new RangeScroller(inputControlsView, this);
         }
+        else if (type == Type.SHOOTER_MODE) {
+            shape = Shape.CIRCLE;
+            iconId = 7;
+            shooterMovementType = "wasd";
+            shooterLookType = "mouse";
+            shooterLookSensitivity = 1.0f;
+            shooterJoystickSize = 1.0f;
+        }
 
         text = "";
-        iconId = 0;
+        if (type != Type.SHOOTER_MODE) iconId = 0;
         range = null;
         boundingBoxNeedsUpdate = true;
     }
@@ -132,6 +145,9 @@ public class ControlElement {
 
     public void setTypeWithoutReset(Type type) {
         this.type = type;
+        if (type == Type.RANGE_BUTTON && scroller == null) {
+            scroller = new RangeScroller(inputControlsView, this);
+        }
         boundingBoxNeedsUpdate = true;
     }
 
@@ -180,6 +196,14 @@ public class ControlElement {
         this.toggleSwitch = toggleSwitch;
     }
 
+    public boolean isScrollLocked() {
+        return scrollLocked;
+    }
+
+    public void setScrollLocked(boolean scrollLocked) {
+        this.scrollLocked = scrollLocked;
+    }
+
     public Binding getBindingAt(int index) {
         return index < bindings.length ? bindings[index] : Binding.NONE;
     }
@@ -188,7 +212,7 @@ public class ControlElement {
         if (index >= bindings.length) {
             int oldLength = bindings.length;
             bindings = Arrays.copyOf(bindings, index+1);
-            Arrays.fill(bindings, oldLength-1, bindings.length, Binding.NONE);
+            Arrays.fill(bindings, oldLength, bindings.length, Binding.NONE);
             states = new boolean[bindings.length];
             boundingBoxNeedsUpdate = true;
         }
@@ -197,6 +221,38 @@ public class ControlElement {
 
     public void setBinding(Binding binding) {
         Arrays.fill(bindings, binding);
+    }
+
+    public String getShooterMovementType() {
+        return shooterMovementType;
+    }
+
+    public void setShooterMovementType(String shooterMovementType) {
+        this.shooterMovementType = shooterMovementType != null ? shooterMovementType : "wasd";
+    }
+
+    public String getShooterLookType() {
+        return shooterLookType;
+    }
+
+    public void setShooterLookType(String shooterLookType) {
+        this.shooterLookType = shooterLookType != null ? shooterLookType : "mouse";
+    }
+
+    public float getShooterLookSensitivity() {
+        return shooterLookSensitivity;
+    }
+
+    public void setShooterLookSensitivity(float shooterLookSensitivity) {
+        this.shooterLookSensitivity = shooterLookSensitivity;
+    }
+
+    public float getShooterJoystickSize() {
+        return shooterJoystickSize;
+    }
+
+    public void setShooterJoystickSize(float shooterJoystickSize) {
+        this.shooterJoystickSize = shooterJoystickSize;
     }
 
     public float getScale() {
@@ -298,6 +354,11 @@ public class ControlElement {
                     halfWidth = halfHeight;
                     halfHeight = tmp;
                 }
+                break;
+            }
+            case SHOOTER_MODE: {
+                halfWidth = snappingSize * 3;
+                halfHeight = snappingSize * 3;
                 break;
             }
         }
@@ -547,6 +608,37 @@ public class ControlElement {
                 canvas.drawRoundRect(boundingBox.left + offset, boundingBox.top + offset, boundingBox.right - offset, boundingBox.bottom - offset, radius, radius, paint);
                 break;
             }
+            case SHOOTER_MODE: {
+                float cx = boundingBox.centerX();
+                float cy = boundingBox.centerY();
+                float halfW = boundingBox.width() * 0.5f;
+
+                if (selected) {
+                    // Fill with semi-transparent blue when active
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), 80));
+                    canvas.drawCircle(cx, cy, halfW, paint);
+                }
+
+                // Draw outline
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                canvas.drawCircle(cx, cy, halfW, paint);
+
+                // Draw icon or fallback text
+                if (iconId > 0) {
+                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
+                } else {
+                    String displayText = (text != null && !text.isEmpty()) ? text : "DJ";
+                    paint.setTextSize(Math.min(getTextSizeForWidth(paint, displayText, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
+                    paint.setTextAlign(Paint.Align.CENTER);
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(primaryColor);
+                    canvas.drawText(displayText, cx, (cy - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
+                }
+                break;
+            }
         }
     }
 
@@ -583,7 +675,16 @@ public class ControlElement {
             if (type == Type.RANGE_BUTTON && range != null) {
                 elementJSONObject.put("range", range.name());
                 if (orientation != 0) elementJSONObject.put("orientation", orientation);
+                if (scrollLocked) elementJSONObject.put("scrollLocked", true);
             }
+
+            if (type == Type.SHOOTER_MODE) {
+                elementJSONObject.put("shooterMovementType", shooterMovementType);
+                elementJSONObject.put("shooterLookType", shooterLookType);
+                elementJSONObject.put("shooterLookSensitivity", (double) shooterLookSensitivity);
+                elementJSONObject.put("shooterJoystickSize", (double) shooterJoystickSize);
+            }
+
             return elementJSONObject;
         }
         catch (JSONException e) {
@@ -609,6 +710,10 @@ public class ControlElement {
                     inputControlsView.handleInputEvent(getBindingAt(0), true);
                     inputControlsView.handleInputEvent(getBindingAt(1), true);
                 }
+                return true;
+            }
+            else if (type == Type.SHOOTER_MODE) {
+                // Toggle handled on touch up
                 return true;
             }
             else if (type == Type.RANGE_BUTTON) {
@@ -770,6 +875,11 @@ public class ControlElement {
                 }
 
                 if (currentPosition != null) currentPosition = null;
+            }
+            else if (type == Type.SHOOTER_MODE) {
+                selected = !selected;
+                inputControlsView.setShooterModeActive(selected);
+                inputControlsView.invalidate();
             }
             currentPointerId = -1;
             return true;

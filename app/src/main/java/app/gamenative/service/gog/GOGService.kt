@@ -295,7 +295,7 @@ class GOGService : Service() {
             getInstance()?.gogManager?.runScriptInterpreterIfNeeded(appId, guestProgramLauncherComponent)
         }
 
-        fun downloadGame(context: Context, gameId: String, installPath: String): Result<DownloadInfo?> {
+        fun downloadGame(context: Context, gameId: String, installPath: String, containerLanguage: String): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             // Create DownloadInfo for progress tracking
@@ -313,7 +313,7 @@ class GOGService : Service() {
 
                     val result = instance.gogDownloadManager.downloadGame(
                         gameId, File(installPath),
-                        downloadInfo, GOGConstants.GOG_DOWNLOAD_LANGUAGE, true, commonRedistDir,
+                        downloadInfo, containerLanguage, true, commonRedistDir,
                     )
 
                     if (result.isFailure) {

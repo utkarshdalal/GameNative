@@ -24,6 +24,8 @@ class EpicOAuthActivity : ComponentActivity() {
     companion object {
         const val EXTRA_AUTH_CODE = "auth_code"
         const val EXTRA_ERROR = "error"
+        const val EXTRA_GAME_AUTH_URL = "game_auth_url"
+        const val EPIC_AUTH_URL_PREFIX = "https://epicgames.com"
         private const val SAVED_OAUTH_STATE = "oauth_state"
         private const val SAVED_AUTH_URL = "auth_url"
     }
@@ -40,6 +42,9 @@ class EpicOAuthActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Check if URL was passed from intent (e.g., from WineRequestComponent)
+        val gameAuthUrl = intent.getStringExtra(EXTRA_GAME_AUTH_URL)
+
         val (authUrl, state) = if (savedInstanceState != null) {
             val savedState = savedInstanceState.getString(SAVED_OAUTH_STATE)
             val savedUrl = savedInstanceState.getString(SAVED_AUTH_URL)
@@ -48,6 +53,9 @@ class EpicOAuthActivity : ComponentActivity() {
             } else {
                 EpicConstants.LoginUrlWithState()
             }
+        } else if (gameAuthUrl != null) {
+            // Use the URL passed from intent (e.g., from WineRequestComponent)
+            gameAuthUrl to ""
         } else {
             EpicConstants.LoginUrlWithState()
         }

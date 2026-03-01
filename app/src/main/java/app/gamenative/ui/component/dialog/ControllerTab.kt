@@ -1,19 +1,34 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
+import app.gamenative.data.TouchGestureConfig
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.winlator.container.Container
 
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
     val config = state.config.value
+    var showGestureDialog by remember { mutableStateOf(false) }
+
     SettingsGroup() {
         if (!default) {
             SettingsSwitch(
@@ -56,12 +71,32 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
             state = config.disableMouseInput,
             onCheckedChange = { state.config.value = config.copy(disableMouseInput = it) },
         )
-        SettingsSwitch(
+        SettingsMenuLink(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.touchscreen_mode)) },
             subtitle = { Text(text = stringResource(R.string.touchscreen_mode_description)) },
-            state = config.touchscreenMode,
-            onCheckedChange = { state.config.value = config.copy(touchscreenMode = it) },
+            onClick = { state.config.value = config.copy(touchscreenMode = !config.touchscreenMode) },
+            action = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { showGestureDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.gesture_settings),
+                        )
+                    }
+                    Switch(
+                        checked = config.touchscreenMode,
+                        onCheckedChange = { state.config.value = config.copy(touchscreenMode = it) },
+                    )
+                }
+            },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
+            subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
+            state = config.shooterMode,
+            onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),
@@ -87,6 +122,23 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
             subtitle = { Text(text = stringResource(R.string.external_display_swap_subtitle)) },
             state = config.externalDisplaySwap,
             onCheckedChange = { state.config.value = config.copy(externalDisplaySwap = it) },
+        )
+    }
+
+    // Gesture settings full-screen dialog
+    if (showGestureDialog) {
+        val gestureConfig = remember(config.gestureConfig) {
+            TouchGestureConfig.fromJson(config.gestureConfig)
+        }
+        TouchGestureSettingsDialog(
+            gestureConfig = gestureConfig,
+            onDismiss = { showGestureDialog = false },
+            onSave = { updatedGesture ->
+                // Read the latest config to avoid overwriting concurrent changes
+                val latest = state.config.value
+                state.config.value = latest.copy(gestureConfig = updatedGesture.toJson())
+                showGestureDialog = false
+            },
         )
     }
 }

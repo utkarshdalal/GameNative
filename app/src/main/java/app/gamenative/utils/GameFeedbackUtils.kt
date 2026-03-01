@@ -5,8 +5,10 @@ import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
@@ -43,9 +45,7 @@ object GameFeedbackUtils {
     )
 
 
-    /**
-     * Submits game feedback to Supabase
-     */
+    /** Submit game feedback to Supabase. */
     suspend fun submitGameFeedback(
         context: Context,
         supabase: SupabaseClient,
@@ -74,6 +74,14 @@ object GameFeedbackUtils {
                         ""
                     }
                 }
+                GameSource.AMAZON -> {
+                    val productId = AmazonService.getProductIdByAppId(gameId)
+                    if (!productId.isNullOrBlank()) {
+                        AmazonService.getAmazonGameOf(productId)?.title ?: ""
+                    } else {
+                        ""
+                    }
+                }
                 GameSource.EPIC -> {
                     val game = EpicService.getEpicGameOf(gameId)
                     game?.title ?: ""
@@ -92,7 +100,6 @@ object GameFeedbackUtils {
                 Timber.e("SubmitGameFeedback: Could not get game name for appId $appId")
                 return@withContext false
             }
-
             Timber.d("GameFeedbackUtils: Game name: $gameName")
 
             // Get device model
@@ -186,9 +193,7 @@ object GameFeedbackUtils {
 
     @Serializable private data class IdRow(val id: Long)
 
-    /**
-     * Helper extension to submit game run data to Supabase
-     */
+    /** Helper extension that writes a game run record to Supabase. */
     suspend fun SupabaseClient.logRun(
         gameName: String,
         deviceModel: String,

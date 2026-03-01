@@ -22,6 +22,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.utils.ContainerUtils.getContainer
 import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -265,6 +266,8 @@ class GOGAppScreen : BaseAppScreen() {
             try {
                 // Get install path
                 val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                val containerData = loadContainerData(context, libraryItem)
+
                 Timber.d("Downloading GOG game to: $installPath")
 
                 // Show starting download toast
@@ -277,7 +280,7 @@ class GOGAppScreen : BaseAppScreen() {
                 }
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
-                val result = GOGService.downloadGame(context, gameId, installPath)
+                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language)
 
                 if (result.isSuccess) {
                     Timber.i("GOG download started successfully for: $gameId")
@@ -422,9 +425,23 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
-        // Save GOG-specific container configuration using ContainerUtils
+        val container = getContainer(context, libraryItem.appId)
+        val previousLanguage = container.language
         app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+
+        if (previousLanguage != config.language) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val gameId = libraryItem.gameId.toString()
+                if (!GOGService.isGameInstalled(gameId)) return@launch
+                if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
+
+                val installPath = GOGService.getInstallPath(gameId)
+                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
+
+                GOGService.downloadGame(context, gameId, installPath, config.language)
+            }
+        }
     }
 
     override fun supportsContainerConfig(): Boolean {

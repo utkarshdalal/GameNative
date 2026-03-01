@@ -10,7 +10,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.UserLoginState
-import app.gamenative.ui.screen.PluviaScreen
+import com.posthog.PostHog
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.channels.Channel
@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import com.posthog.PostHog
 
 class UserLoginViewModel : ViewModel() {
     private val _loginState = MutableStateFlow(UserLoginState())
@@ -41,7 +40,7 @@ class UserLoginViewModel : ViewModel() {
                     loginResult = LoginResult.DeviceConfirm,
                     loginScreen = LoginScreen.TWO_FACTOR,
                     isLoggingIn = false,
-                    lastTwoFactorMethod = "steam_guard"
+                    lastTwoFactorMethod = "steam_guard",
                 )
             }
 
@@ -57,7 +56,7 @@ class UserLoginViewModel : ViewModel() {
                     loginScreen = LoginScreen.TWO_FACTOR,
                     isLoggingIn = false,
                     previousCodeIncorrect = previousCodeWasIncorrect,
-                    lastTwoFactorMethod = "authenticator_code"
+                    lastTwoFactorMethod = "authenticator_code",
                 )
             }
 
@@ -82,7 +81,7 @@ class UserLoginViewModel : ViewModel() {
                     isLoggingIn = false,
                     email = email,
                     previousCodeIncorrect = previousCodeWasIncorrect,
-                    lastTwoFactorMethod = "email_code"
+                    lastTwoFactorMethod = "email_code",
                 )
             }
 
@@ -96,13 +95,12 @@ class UserLoginViewModel : ViewModel() {
     }
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
-        Timber.tag("UserLoginViewModel").i("Received is connected")
-
-        _loginState.update { currentState ->
-            currentState.copy(
-                isLoggingIn = it.isAutoLoggingIn,
-                isSteamConnected = true,
-            )
+        Timber.i("Received is connected")
+        // Only handle auto-login state, connection state is managed by MainViewModel
+        if (it.isAutoLoggingIn) {
+            _loginState.update { currentState ->
+                currentState.copy(isLoggingIn = true, isSteamConnected = true,)
+            }
         }
     }
 
@@ -137,38 +135,44 @@ class UserLoginViewModel : ViewModel() {
         // PostHog logging
         val method = when (prevState.loginScreen) {
             LoginScreen.QR -> "qr"
-            else -> "credentials"
+            LoginScreen.TWO_FACTOR -> prevState.lastTwoFactorMethod ?: "unknown_2fa"
+            LoginScreen.CREDENTIAL -> "password"
         }
-
-        val twoFactorMethod = prevState.lastTwoFactorMethod
-        val eventProps = mutableMapOf("method" to method)
-        twoFactorMethod?.let { eventProps["2fa_method"] = it }
 
         if (it.loginResult == LoginResult.Success) {
-            PostHog.capture(event = "login_success", properties = eventProps)
+            PostHog.capture(
+                event = "login_success",
+                properties = mapOf("method" to method),
+            )
         } else if (it.loginResult == LoginResult.Failed) {
-            PostHog.capture(event = "login_failed", properties = eventProps)
+            PostHog.capture(
+                event = "login_failed",
+                properties = mapOf(
+                    "method" to method,
+                    "reason" to (it.message ?: "unknown"),
+                ),
+            )
+            it.message?.let(::showSnack)
         }
-
-        it.message?.let(::showSnack)
-
-        // Why is this here? - Lossy Jan 17 2025
-        // if (it.loginResult != LoginResult.Success) {
-        //     SteamService.startLoginWithQr()
-        // }
     }
 
     private val onBackPressed: (AndroidEvent.BackPressed) -> Unit = {
-        if (!_loginState.value.isLoggingIn) {
+        val currentLoginScreen = _loginState.value.loginScreen
+        if (currentLoginScreen == LoginScreen.TWO_FACTOR) {
             _loginState.update { currentState ->
-                currentState.copy(loginResult = LoginResult.Failed)
+                currentState.copy(loginScreen = LoginScreen.CREDENTIAL)
+            }
+        } else if (currentLoginScreen == LoginScreen.QR) {
+            _loginState.update { currentState ->
+                currentState.copy(loginScreen = LoginScreen.CREDENTIAL)
             }
         }
+        // From credential screen, back press is handled by the system (exits app)
     }
 
-    private val onQrChallengeReceived: (SteamEvent.QrChallengeReceived) -> Unit = {
+    private val onQrChallengeReceived: (SteamEvent.QrChallengeReceived) -> Unit = { event ->
         _loginState.update { currentState ->
-            currentState.copy(isQrFailed = false, qrCode = it.challengeUrl)
+            currentState.copy(qrCode = event.challengeUrl, isQrFailed = false)
         }
     }
 
@@ -197,25 +201,21 @@ class UserLoginViewModel : ViewModel() {
         Timber.tag("UserLoginViewModel").d("init")
 
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
-        PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLogonStarted)
         PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.on<SteamEvent.QrChallengeReceived, Unit>(onQrChallengeReceived)
         PluviaApp.events.on<SteamEvent.QrAuthEnded, Unit>(onQrAuthEnded)
         PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
-        PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemoteDisconnected)
 
         val isLoggedIn = SteamService.isLoggedIn
+        Timber.d("Logged in? $isLoggedIn")
+
         val isSteamConnected = SteamService.isConnected
         Timber.tag("UserLoginViewModel").d("Logged in? $isLoggedIn")
         if (isLoggedIn) {
             _loginState.update {
-                it.copy(isSteamConnected = isSteamConnected, isLoggingIn = true, isQrFailed = false, loginResult = LoginResult.Success)
-            }
-        } else {
-            _loginState.update {
-                it.copy(isSteamConnected = isSteamConnected, isLoggingIn = false, isQrFailed = false, loginResult = LoginResult.Failed)
+                it.copy(isLoggingIn = true, isQrFailed = false, loginResult = LoginResult.Success)
             }
         }
     }
@@ -224,7 +224,6 @@ class UserLoginViewModel : ViewModel() {
         Timber.tag("UserLoginViewModel").d("onCleared")
 
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
-        PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.LogonStarted, Unit>(onLogonStarted)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)
@@ -248,7 +247,7 @@ class UserLoginViewModel : ViewModel() {
             }
 
             viewModelScope.launch {
-                app.gamenative.service.SteamService.startLoginWithCredentials(
+                SteamService.startLoginWithCredentials(
                     username = username,
                     password = password,
                     rememberSession = rememberSession,
@@ -268,19 +267,30 @@ class UserLoginViewModel : ViewModel() {
         }
     }
 
-    fun onQrRetry() {
-        viewModelScope.launch { SteamService.startLoginWithQr() }
-    }
-
     fun onShowLoginScreen(loginScreen: LoginScreen) {
-        when (loginScreen) {
-            LoginScreen.CREDENTIAL -> SteamService.stopLoginWithQr()
-            LoginScreen.QR -> viewModelScope.launch { SteamService.startLoginWithQr() }
-            else -> Timber.tag("UserLoginViewModel").w("onShowLoginScreen ended up in an unknown state: ${loginScreen.name}")
+        _loginState.update { currentState ->
+            currentState.copy(
+                loginScreen = loginScreen,
+                isQrFailed = false,
+                qrCode = null,
+            )
         }
 
+        if (loginScreen == LoginScreen.QR) {
+            viewModelScope.launch {
+                SteamService.startLoginWithQr()
+            }
+        } else {
+            SteamService.stopLoginWithQr()
+        }
+    }
+
+    fun onQrRetry() {
         _loginState.update { currentState ->
-            currentState.copy(loginScreen = loginScreen)
+            currentState.copy(isQrFailed = false, qrCode = null)
+        }
+        viewModelScope.launch {
+            SteamService.startLoginWithQr()
         }
     }
 

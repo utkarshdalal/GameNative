@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.settings
 import android.content.res.Configuration
 import android.os.Environment
 import android.os.storage.StorageManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +15,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
@@ -27,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.PrefManager
@@ -40,12 +44,11 @@ import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
+import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.component.settings.SettingsListDropdown
-import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
@@ -68,8 +71,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import app.gamenative.utils.LocaleHelper
-import app.gamenative.service.gog.GOGService
-import app.gamenative.service.epic.EpicService
 import app.gamenative.service.epic.EpicAuthManager
 import android.content.Context
 import android.content.Intent
@@ -81,109 +82,10 @@ import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
-
-/**
- * Shared GOG authentication handler that manages the complete auth flow.
- *
- * @param context Android context for service operations
- * @param authCode The OAuth authorization code
- * @param coroutineScope Coroutine scope for async operations
- * @param onLoadingChange Callback when loading state changes
- * @param onError Callback when an error occurs (receives error message)
- * @param onSuccess Callback when authentication succeeds (receives game count)
- * @param onDialogClose Callback to close the login dialog
- */
-private suspend fun handleGogAuthentication(
-    context: Context,
-    authCode: String,
-    coroutineScope: CoroutineScope,
-    onLoadingChange: (Boolean) -> Unit,
-    onError: (String?) -> Unit,
-    onSuccess: (Int) -> Unit,
-    onDialogClose: () -> Unit
-) {
-    onLoadingChange(true)
-    onError(null)
-
-    try {
-        Timber.d("[SettingsGOG]: Starting authentication...")
-        val result = GOGService.authenticateWithCode(context, authCode)
-
-        if (result.isSuccess) {
-            Timber.i("[SettingsGOG]: ✓ Authentication successful!")
-
-            // Start GOGService and trigger immediate library sync (bypasses throttle)
-            Timber.i("[SettingsGOG]: Starting GOGService and triggering immediate library sync")
-            GOGService.start(context)
-            GOGService.triggerLibrarySync(context)
-
-            // Authentication succeeded - manual sync triggered
-            onSuccess(0)
-            onLoadingChange(false)
-            onDialogClose()
-        } else {
-            val error = result.exceptionOrNull()?.message ?: "Authentication failed"
-            Timber.e("[SettingsGOG]: Authentication failed: $error")
-            onLoadingChange(false)
-            onError(error)
-        }
-    } catch (e: Exception) {
-        Timber.e(e, "[SettingsGOG]: Authentication exception: ${e.message}")
-        onLoadingChange(false)
-        onError(e.message ?: "Authentication failed")
-    }
-}
-
-/**
- * Shared Epic authentication handler that manages the complete auth flow.
- *
- * @param context Android context for service operations
- * @param authCode The OAuth authorization code
- * @param coroutineScope Coroutine scope for async operations
- * @param onLoadingChange Callback when loading state changes
- * @param onError Callback when an error occurs (receives error message)
- * @param onSuccess Callback when authentication succeeds
- * @param onDialogClose Callback to close the login dialog
- */
-private suspend fun handleEpicAuthentication(
-    context: Context,
-    authCode: String,
-    coroutineScope: CoroutineScope,
-    onLoadingChange: (Boolean) -> Unit,
-    onError: (String?) -> Unit,
-    onSuccess: () -> Unit,
-    onDialogClose: () -> Unit
-) {
-    onLoadingChange(true)
-    onError(null)
-
-    try {
-        Timber.d("[SettingsEpic]: Starting authentication...")
-        val result = EpicService.authenticateWithCode(context, authCode)
-
-        if (result.isSuccess) {
-            Timber.i("[SettingsEpic]: ✓ Authentication successful!")
-
-            // Start EpicService and trigger immediate library sync (bypasses throttle)
-            Timber.i("[SettingsEpic]: Starting EpicService and triggering immediate library sync")
-            EpicService.start(context)
-            EpicService.triggerLibrarySync(context)
-
-            onSuccess()
-            onLoadingChange(false)
-            onDialogClose()
-        } else {
-            val error = result.exceptionOrNull()?.message ?: "Authentication failed"
-            Timber.e("[SettingsEpic]: Authentication failed: $error")
-            onLoadingChange(false)
-            onError(error)
-        }
-    } catch (e: Exception) {
-        Timber.e(e, "[SettingsEpic]: Authentication exception: ${e.message}")
-        onLoadingChange(false)
-        onError(e.message ?: "Authentication failed")
-    }
-}
+import app.gamenative.ui.screen.auth.AmazonOAuthActivity
+import app.gamenative.service.amazon.AmazonAuthManager
+import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.ui.util.PlatformAuthUiHelpers
 
 @Composable
 fun SettingsGroupInterface(
@@ -217,7 +119,7 @@ fun SettingsGroupInterface(
     val languageNames = remember { LocaleHelper.getSupportedLanguageNames() }
     var selectedLanguageIndex by rememberSaveable {
         mutableStateOf(
-            languageCodes.indexOf(PrefManager.appLanguage).takeIf { it >= 0 } ?: 0
+            languageCodes.indexOf(PrefManager.appLanguage).takeIf { it >= 0 } ?: 0,
         )
     }
 
@@ -249,6 +151,9 @@ fun SettingsGroupInterface(
     // Epic login state
     var epicLoginLoading by rememberSaveable { mutableStateOf(false) }
 
+    // Amazon login state
+    var amazonLoginLoading by rememberSaveable { mutableStateOf(false) }
+
     // Epic logout confirmation dialog state
     var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
@@ -258,95 +163,18 @@ fun SettingsGroupInterface(
     // returning from GOGOAuthActivity (composition may have been left → rememberCoroutineScope cancelled).
     val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
 
-    // GOG in-app OAuth (WebView) launcher; result delivers auth code automatically
-    val gogOAuthLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode != android.app.Activity.RESULT_OK) {
-            val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
-                ?: context.getString(R.string.gog_login_cancel)
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
-            return@rememberLauncherForActivityResult
-        }
-        val code = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_AUTH_CODE)
-        if (code == null) {
-            val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
-                ?: context.getString(R.string.gog_login_cancel)
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
-            return@rememberLauncherForActivityResult
-        }
-        lifecycleScope.launch {
-            handleGogAuthentication(
-                context = context,
-                authCode = code,
-                coroutineScope = lifecycleScope,
-                onLoadingChange = { gogLoginLoading = it },
-                onError = { msg ->
-                    if (msg != null) {
-                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
-                    }
-                },
-                onSuccess = { count ->
-                    gogLibraryGameCount = count
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(R.string.gog_login_success_title),
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                },
-                onDialogClose = { }
-            )
-        }
-    }
-
-    // Epic in-app OAuth (WebView) launcher; result delivers auth code automatically (lifecycleScope like GOG)
-    val epicOAuthLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode != android.app.Activity.RESULT_OK) {
-            val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
-                ?: context.getString(R.string.epic_login_cancel)
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
-            return@rememberLauncherForActivityResult
-        }
-        val code = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_AUTH_CODE)
-        if (code == null) {
-            val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
-                ?: context.getString(R.string.epic_login_cancel)
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
-            return@rememberLauncherForActivityResult
-        }
-        lifecycleScope.launch {
-            handleEpicAuthentication(
-                context = context,
-                authCode = code,
-                coroutineScope = lifecycleScope,
-                onLoadingChange = { epicLoginLoading = it },
-                onError = { msg ->
-                    if (msg != null) {
-                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
-                    }
-                },
-                onSuccess = {
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(R.string.epic_login_success_title),
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                },
-                onDialogClose = { }
-            )
-        }
-    }
+    // OAuth launchers are now provided by a parent composable so they can be
+    // reused from both Settings and the System Menu. Settings continues to
+    // derive its own loading state and toasts via callbacks in that parent.
 
     // Listen for GOG OAuth callback (e.g. from event)
     DisposableEffect(Unit) {
         Timber.d("[SettingsGOG]: Setting up GOG auth code event listener")
         val onGOGAuthCodeReceived: (AndroidEvent.GOGAuthCodeReceived) -> Unit = { event ->
-            Timber.i("[SettingsGOG]: ✓ Received GOG auth code event! Code: ${event.authCode.take(20)}...")
+            Timber.i("[SettingsGOG]: ✓ Received GOG auth code event")
 
             coroutineScope.launch {
-                handleGogAuthentication(
+                PlatformOAuthHandlers.handleGogAuthentication(
                     context = context,
                     authCode = event.authCode,
                     coroutineScope = coroutineScope,
@@ -378,7 +206,7 @@ fun SettingsGroupInterface(
         }
     }
 
-    SettingsGroup(title = { Text(text = stringResource(R.string.settings_interface_title)) }) {
+    SettingsGroup(modifier = Modifier.background(Color.Transparent)) {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_external_links_title)) },
@@ -409,13 +237,16 @@ fun SettingsGroupInterface(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_language)) },
             subtitle = { Text(text = LocaleHelper.getLanguageDisplayName(PrefManager.appLanguage)) },
-            onClick = { openLanguageDialog = true }
+            onClick = { openLanguageDialog = true },
         )
 
         // Unified visual icon picker (affects app and notification icons)
         var selectedVariant by rememberSaveable { mutableStateOf(if (PrefManager.useAltLauncherIcon || PrefManager.useAltNotificationIcon) 1 else 0) }
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(text = stringResource(R.string.settings_interface_icon_style))
+            Text(
+                text = stringResource(R.string.settings_interface_icon_style),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             Spacer(modifier = Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 IconVariantCard(
@@ -446,68 +277,15 @@ fun SettingsGroupInterface(
         }
     }
 
-    // GOG logout confirmation dialog state
-    var showGOGLogoutDialog by rememberSaveable { mutableStateOf(false) }
-    var gogLogoutLoading by rememberSaveable { mutableStateOf(false) }
-
-    // GOG Integration
-    SettingsGroup(title = { Text(text = stringResource(R.string.gog_integration_title)) }) {
-        if (!app.gamenative.service.gog.GOGAuthManager.hasStoredCredentials(context)) {
-            SettingsMenuLink(
-                icon = { androidx.compose.material3.Icon(Icons.Default.Login, contentDescription = null) },
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.gog_settings_login_title)) },
-                subtitle = { Text(text = stringResource(R.string.gog_settings_login_subtitle)) },
-                onClick = {
-                    gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java))
-                }
-            )
-        }
-        // Logout button - only show if credentials exist
-        if (app.gamenative.service.gog.GOGAuthManager.hasStoredCredentials(context)) {
-            SettingsMenuLink(
-                icon = { androidx.compose.material3.Icon(Icons.Default.Logout, contentDescription = null) },
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.gog_settings_logout_title)) },
-                subtitle = { Text(text = stringResource(R.string.gog_settings_logout_subtitle)) },
-                onClick = {
-                    showGOGLogoutDialog = true
-                }
-            )
-        }
-    }
-
-    // Epic Games Integration
-    SettingsGroup(title = { Text(text = stringResource(R.string.epic_integration_title)) }) {
-        if(!EpicAuthManager.hasStoredCredentials(context)) {
-            SettingsMenuLink(
-                icon = { androidx.compose.material3.Icon(Icons.Default.Login, contentDescription = null) },
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.epic_settings_login_title)) },
-                subtitle = { Text(text = stringResource(R.string.epic_settings_login_subtitle)) },
-                onClick = {
-                    epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java))
-                }
-            )
-        }
-            // Epic Logout Button
-        if (EpicAuthManager.hasStoredCredentials(context)) {
-            SettingsMenuLink(
-                icon = { androidx.compose.material3.Icon(Icons.Default.Logout, contentDescription = null) },
-                title = { Text(text = stringResource(R.string.epic_settings_logout_title)) },
-                subtitle = { Text(text = stringResource(R.string.epic_settings_logout_subtitle)) },
-                onClick = {
-                    showEpicLogoutDialog = true
-                },
-                colors = settingsTileColorsAlt()
-            )
-        }
-    }
-
-
+    // Platform integrations now live in the System Menu. The detailed
+    // integration tiles and logout flows have been removed from Settings
+    // to avoid duplication.
 
     // Downloads settings
-    SettingsGroup(title = { Text(text = stringResource(R.string.settings_downloads_title)) }) {
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_downloads_title)) },
+    ) {
         var wifiOnlyDownload by rememberSaveable { mutableStateOf(PrefManager.downloadOnWifiOnly) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -525,7 +303,7 @@ fun SettingsGroupInterface(
             stringResource(R.string.settings_download_slow),
             stringResource(R.string.settings_download_medium),
             stringResource(R.string.settings_download_fast),
-            stringResource(R.string.settings_download_blazing)
+            stringResource(R.string.settings_download_blazing),
         )
         val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
         var downloadSpeedValue by rememberSaveable {
@@ -534,17 +312,18 @@ fun SettingsGroupInterface(
             )
         }
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Text(
                 text = stringResource(R.string.settings_download_speed),
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.size(4.dp))
             Text(
                 text = stringResource(R.string.settings_download_heat_warning),
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.size(8.dp))
             Slider(
@@ -565,8 +344,8 @@ fun SettingsGroupInterface(
                 downloadSpeedLabels.forEach { label ->
                     Text(
                         text = label,
-                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.width(60.dp)
                     )
@@ -594,7 +373,7 @@ fun SettingsGroupInterface(
         var useExternalStorage by rememberSaveable { mutableStateOf(PrefManager.useExternalStorage) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            enabled  = dirs.isNotEmpty(),
+            enabled = dirs.isNotEmpty(),
             title = { Text(text = stringResource(R.string.settings_interface_external_storage_title)) },
             subtitle = {
                 if (dirs.isEmpty())
@@ -616,7 +395,7 @@ fun SettingsGroupInterface(
             var selectedIndex by rememberSaveable {
                 mutableStateOf(
                     dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
-                        .takeIf { it >= 0 } ?: 0
+                        .takeIf { it >= 0 } ?: 0,
                 )
             }
             SettingsListDropdown(
@@ -627,15 +406,17 @@ fun SettingsGroupInterface(
                     selectedIndex = idx
                     PrefManager.externalStoragePath = dirs[idx].absolutePath
                 },
-                colors = settingsTileColorsAlt()
+                colors = settingsTileColorsAlt(),
             )
         }
         // Steam download server selection
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_download_server_title)) },
-            subtitle = { Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default)) },
-            onClick = { openRegionDialog = true }
+            subtitle = {
+                Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default))
+            },
+            onClick = { openRegionDialog = true },
         )
     }
 
@@ -653,7 +434,7 @@ fun SettingsGroupInterface(
             PrefManager.cellId = selectedId
             PrefManager.cellIdManuallySet = selectedId != 0
         },
-        onDismiss = { openRegionDialog = false }
+        onDismiss = { openRegionDialog = false },
     )
 
     // Status bar restart confirmation dialog
@@ -682,7 +463,7 @@ fun SettingsGroupInterface(
             // Revert toggle to original value
             hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
             pendingStatusBarValue = null
-        }
+        },
     )
 
     // Loading dialog while saving and restarting
@@ -703,7 +484,7 @@ fun SettingsGroupInterface(
     LoadingDialog(
         visible = showStatusBarLoadingDialog,
         progress = -1f, // Indeterminate progress
-        message = context.getString(R.string.settings_saving_restarting)
+        message = context.getString(R.string.settings_saving_restarting),
     )
 
     // Language selection dialog
@@ -724,7 +505,7 @@ fun SettingsGroupInterface(
             }
             openLanguageDialog = false
         },
-        onDismiss = { openLanguageDialog = false }
+        onDismiss = { openLanguageDialog = false },
     )
 
     // Language change restart confirmation dialog
@@ -753,7 +534,7 @@ fun SettingsGroupInterface(
             // Revert selection to original value
             selectedLanguageIndex = languageCodes.indexOf(PrefManager.appLanguage).takeIf { it >= 0 } ?: 0
             pendingLanguageCode = null
-        }
+        },
     )
 
     // Loading dialog while saving and restarting for language change
@@ -774,138 +555,11 @@ fun SettingsGroupInterface(
     LoadingDialog(
         visible = showLanguageLoadingDialog,
         progress = -1f, // Indeterminate progress
-        message = stringResource(R.string.settings_language_changing)
+        message = stringResource(R.string.settings_language_changing),
     )
 
-    // GOG login loading (after returning from OAuth activity)
-    LoadingDialog(
-        visible = gogLoginLoading,
-        progress = -1f,
-        message = stringResource(R.string.main_loading)
-    )
-
-    // GOG logout confirmation dialog
-    MessageDialog(
-        visible = showGOGLogoutDialog,
-        title = stringResource(R.string.gog_logout_confirm_title),
-        message = stringResource(R.string.gog_logout_confirm_message),
-        confirmBtnText = stringResource(R.string.gog_logout_confirm),
-        dismissBtnText = stringResource(R.string.cancel),
-        onConfirmClick = {
-            showGOGLogoutDialog = false
-            gogLogoutLoading = true
-            coroutineScope.launch {
-                try {
-                    Timber.d("[SettingsGOG] Starting logout...")
-                    val result = GOGService.logout(context)
-
-                    if (result.isSuccess) {
-                        Timber.i("[SettingsGOG] Logout successful")
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.gog_logout_success),
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } else {
-                        val error = result.exceptionOrNull()
-                        Timber.e(error, "[SettingsGOG] Logout failed")
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.gog_logout_failed, error?.message ?: "Unknown error"),
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "[SettingsGOG] Exception during logout")
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(R.string.gog_logout_failed, e.message ?: "Unknown error"),
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } finally {
-                    gogLogoutLoading = false
-                }
-            }
-        },
-        onDismissRequest = { showGOGLogoutDialog = false },
-        onDismissClick = { showGOGLogoutDialog = false }
-    )
-
-    // GOG logout loading dialog
-    LoadingDialog(
-        visible = gogLogoutLoading,
-        progress = -1f,
-        message = stringResource(R.string.gog_logout_in_progress)
-    )
-
-    // Epic login loading (after returning from OAuth activity)
-    LoadingDialog(
-        visible = epicLoginLoading,
-        progress = -1f,
-        message = stringResource(R.string.main_loading)
-    )
-
-    // Epic logout confirmation dialog
-    MessageDialog(
-        visible = showEpicLogoutDialog,
-        title = stringResource(R.string.epic_logout_confirm_title),
-        message = stringResource(R.string.epic_logout_confirm_message),
-        confirmBtnText = stringResource(R.string.epic_logout_confirm),
-        dismissBtnText = stringResource(R.string.cancel),
-        onConfirmClick = {
-            showEpicLogoutDialog = false
-            epicLogoutLoading = true
-            coroutineScope.launch {
-                try {
-                    Timber.d("[SettingsEpic]: Starting logout...")
-                    val result = EpicService.logout(context)
-                    withContext(Dispatchers.Main) {
-                        epicLogoutLoading = false
-                        if (result.isSuccess) {
-                            Timber.i("[SettingsEpic]: ✓ Logout successful!")
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.epic_logout_success),
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            Timber.e("[SettingsEpic]: ✗ Logout failed: ${result.exceptionOrNull()?.message}")
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.epic_logout_failed, result.exceptionOrNull()?.message ?: "Unknown"),
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "[SettingsEpic]: Logout exception: ${e.message}")
-                    withContext(Dispatchers.Main) {
-                        epicLogoutLoading = false
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(R.string.epic_logout_failed, e.message ?: "Unknown"),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            }
-        },
-        onDismissRequest = { showEpicLogoutDialog = false },
-        onDismissClick = { showEpicLogoutDialog = false }
-    )
-
-    // Epic logout loading dialog
-    LoadingDialog(
-        visible = epicLogoutLoading,
-        progress = -1f,
-        message = stringResource(R.string.epic_logout_in_progress)
-    )
+    // GOG/Epic/Amazon login and logout flows (including loading dialogs and
+    // confirmations) are now owned by the System Menu and shared helpers.
 
 }
 
@@ -918,7 +572,10 @@ private fun IconVariantCard(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val border = if (selected) BorderStroke(2.dp, Color(0xFF4F46E5)) else BorderStroke(1.dp, Color(0x33404040))
+    val border = if (selected) BorderStroke(2.dp, PluviaTheme.colors.accentPurple) else BorderStroke(
+        1.dp,
+        PluviaTheme.colors.borderDefault.copy(alpha = 0.5f),
+    )
     Card(
         modifier = Modifier
             .clickable { onClick() },
@@ -952,10 +609,13 @@ private fun IconVariantCard(
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Composable
 private fun Preview_SettingsScreen() {
-    val context = LocalContext.current
-    PrefManager.init(context)
+    val isPreview = LocalInspectionMode.current
+    if (!isPreview) {
+        val context = LocalContext.current
+        PrefManager.init(context)
+    }
     PluviaTheme {
-        SettingsGroupInterface (
+        SettingsGroupInterface(
             appTheme = AppTheme.DAY,
             paletteStyle = PaletteStyle.TonalSpot,
             onAppTheme = { },
@@ -963,5 +623,4 @@ private fun Preview_SettingsScreen() {
         )
     }
 }
-
 

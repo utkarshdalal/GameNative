@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
     <string name="steam_uninstall_success">%1$s деінстальовано</string>
     <string name="steam_uninstall_failed">Помилка деінсталяції гри</string>
+    <string name="amazon_uninstall_game_title">Деінсталювати гру</string>
+    <string name="amazon_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
+    <string name="amazon_install_game_title">Завантажити гру</string>
+    <string name="amazon_install_confirmation_message">Гра має наступні вимоги до простору. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tДоступний простір: %2$s</string>
+    <string name="amazon_verify_files_title">Перевірити файли</string>
+    <string name="amazon_verify_files_message">Буде перевірено всі встановлені файли за маніфестом завантаження для виявлення відсутніх або пошкоджених файлів.\n\nЦе може зайняти деякий час для великих ігор.</string>
+    <string name="amazon_verify_confirm">Перевірити</string>
+    <string name="amazon_verify_in_progress">Перевірка файлів… Це може зайняти деякий час.</string>
+    <string name="amazon_verify_success">Всі файли успішно перевірено.\n\n%1$d / %2$d файлів OK.</string>
+    <string name="amazon_verify_failed_detail">Перевірка виявила проблеми.\n\n%1$d / %2$d файлів OK\n%3$d відсутніх\n%4$d невідповідність розміру\n%5$d невідповідність хешу\n\nПеревстановіть гру, щоб виправити пошкоджені файли.</string>
+    <string name="amazon_verify_error">Перевірка не вдалася: %1$s</string>
     <string name="steam_never">Ніколи</string>
     <string name="steam_continue">Продовжити</string>
     <string name="header_img_desc">Зображення заголовка застосунку</string>
@@ -69,6 +80,18 @@
     <string name="destination_library">Бібліотека</string>
     <string name="destination_downloads">Завантаження</string>
     <string name="destination_friends">Друзі</string>
+
+    <!-- Library Tabs -->
+    <string name="tab_all">Усі</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">Встановлено</string>
+    <string name="tab_local">Власні</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">Закрити пошук</string>
+    <string name="default_user_name">Користувач</string>
 
     <!-- Custom Games -->
     <string name="custom_games_title">Власні ігри</string>
@@ -185,6 +208,8 @@
     <string name="controller_disconnected">Від\'єднано</string>
     <string name="reset_onscreen_controls">Скинути екранні елементи керування</string>
     <string name="open_navigation_menu">Відкрити меню навігації</string>
+    <string name="quick_menu_title">Швидке меню</string>
+    <string name="quick_menu_back">Назад</string>
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
@@ -400,6 +425,10 @@
     <string name="update_available">Доступне оновлення</string>
     <string name="game_information">Інформація про гру</string>
     <string name="status">Статус</string>
+    <string name="status_online">Онлайн</string>
+    <string name="status_away">Відійшов</string>
+    <string name="status_invisible">Невидимий</string>
+    <string name="system_menu_title">Система</string>
     <string name="size">Розмір</string>
     <string name="location">Розташування</string>
     <string name="developer">Видавець</string>
@@ -412,6 +441,8 @@
     <string name="games">Ігри</string>
     <string name="playtime_last_two_weeks">Награно за останні два тижні: %s годин</string>
     <string name="total_playtime">Всього награно: %s годин</string>
+    <string name="last_played">Остання гра</string>
+    <string name="playtime">Час гри</string>
     <string name="add_custom_game_content_desc">Додати власну гру</string>
     <string name="add_custom_game_dialog_title">Додати власну гру</string>
     <string name="add_custom_game_dialog_message">Будь ласка, виберіть папку з файлами гри, яку ви хочете додати як власну гру.</string>
@@ -435,10 +466,18 @@
     <string name="app_filter_family">Сімейна бібліотека</string>
 
     <!-- Login & Connection -->
+    <string name="connecting_to_steam">Підключення до Steam…</string>
     <string name="no_connection_to_steam">Немає з\'єднання зі Steam</string>
     <string name="retry_steam_connection">Спробувати знову</string>
     <string name="continue_offline">Продовжити офлайн</string>
-
+    <string name="connection_reconnecting">Повторне підключення до Steam…</string>
+    <string name="connection_disconnected">Відключено від Steam</string>
+    <string name="connection_disconnected_servers">Відключено від серверів Steam</string>
+    <string name="connection_logging_in">Вхід…</string>
+    <string name="connection_login_failed">Вхід не вдався</string>
+    <string name="connection_session_ended">Сеанс завершено</string>
+    <string name="connection_offline_mode">Офлайн-режим</string>
+    <string name="connection_retry">Повторити</string>
 
     <!--Game Feedback Dialog -->
     <string name="game_feedback_game_run">Як працювала гра?</string>
@@ -452,6 +491,12 @@
     <string name="go_offline">Вийти з мережі</string>
     <string name="log_out">Вийти з акаунта</string>
     <string name="close">Закрити</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Увійти в Steam</string>
+    <string name="steam_go_online">Перейти в мережу (Steam)</string>
+    <string name="steam_go_offline">Перейти в офлайн (Steam)</string>
+    <string name="steam_sign_out">Вийти з Steam</string>
 
     <!-- Container Configuration: General -->
     <string name="new_environment_variable">Нова змінна середовища</string>
@@ -477,6 +522,8 @@
     <string name="force_dlc">Примусити DLC</string>
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
+    <string name="steam_offline_mode">Режим Офлайн Steam</string>
+    <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -487,6 +534,7 @@
     <string name="graphics_driver_version">Версія графічного драйвера</string>
     <string name="exposed_vulkan_extensions">Відкриті розширення Vulkan</string>
     <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
+    <string name="frame_synchronization">Синхронізація кадрів</string>
     <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
     <string name="vulkan_version">Версія Vulkan</string>
     <string name="image_cache_size">Розмір кешу</string>
@@ -528,7 +576,76 @@
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>
     <string name="disable_mouse_input">Вимкнути введення мишею</string>
     <string name="touchscreen_mode">Режим сенсорного екрану</string>
-    <string name="touchscreen_mode_description">Пряме переміщення курсора (УВІМК) або відносне переміщення, як на тачпаді (ВИМК)</string>
+    <string name="touchscreen_mode_description">Для візуальних романів та ігор RTS</string>
+    <string name="shooter_mode_toggle">Режим шутера</string>
+    <string name="shooter_mode_toggle_description">Замінити джойстики на динамічні</string>
+    <string name="shooter_mode_on">Увімкнути мишу</string>
+    <string name="shooter_mode_off">Увімкнути джойстики</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">Налаштування жестів</string>
+    <string name="gesture_settings_title">Налаштування сенсорних жестів</string>
+    <string name="gesture_tap">Натискання</string>
+    <string name="gesture_tap_subtitle">Лівий клік</string>
+    <string name="gesture_drag">Перетягування</string>
+    <string name="gesture_drag_subtitle">Перетягування лівим кліком (виділення)</string>
+    <string name="gesture_long_press">Довге натискання</string>
+    <string name="gesture_long_press_delay">Затримка довгого натискання (мс)</string>
+    <string name="gesture_double_tap">Подвійне натискання</string>
+    <string name="gesture_double_tap_subtitle">Подвійний лівий клік</string>
+    <string name="gesture_double_tap_delay">Затримка подвійного натискання (мс)</string>
+    <string name="gesture_two_finger_drag">Перетягування двома пальцями</string>
+    <string name="gesture_pinch">Щипок</string>
+    <string name="gesture_two_finger_tap">Натискання двома пальцями</string>
+    <string name="gesture_action_left_click">Лівий клік</string>
+    <string name="gesture_action_right_click">Правий клік</string>
+    <string name="gesture_action_middle_click">Середній клік</string>
+    <string name="gesture_pan_middle_mouse">Панорамування середньою кнопкою</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">Стрілки</string>
+    <string name="gesture_zoom_scroll_wheel">Коліщатко прокрутки</string>
+    <string name="gesture_zoom_plus_minus">Клавіші +/-</string>
+    <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
+    <string name="gesture_action_label">Дія</string>
+    <string name="gesture_delay_label">Затримка</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">Налаштування динамічних джойстиків</string>
+    <string name="movement_type">Тип руху</string>
+    <string name="movement_type_subtitle">Вихід джойстика для руху зліва</string>
+    <string name="look_sensitivity">Чутливість огляду</string>
+    <string name="look_sensitivity_subtitle">Множник чутливості миші</string>
+    <string name="joystick_size">Розмір джойстика</string>
+    <string name="joystick_size_subtitle">Множник розміру динамічного джойстика</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">Стрілки</string>
+    <string name="movement_gamepad_left_stick">Лівий джойстик геймпада</string>
+    <string name="look_type">Тип огляду</string>
+    <string name="look_type_subtitle">Поведінка правої сторони в режимі шутера</string>
+    <string name="look_type_mouse">Миша</string>
+    <string name="look_type_gamepad_right_stick">Правий джойстик геймпада</string>
+
+    <string name="range_button_settings">Налаштування кнопки діапазону</string>
+    <string name="range_type">Діапазон клавіш</string>
+    <string name="range_type_subtitle">Який набір клавіш перегортати</string>
+    <string name="range_orientation">Орієнтація</string>
+    <string name="range_orientation_subtitle">Напрямок кнопки діапазону</string>
+    <string name="range_orientation_horizontal">Горизонтальна</string>
+    <string name="range_orientation_vertical">Вертикальна</string>
+    <string name="range_visible_segments">Видимі сегменти</string>
+    <string name="range_visible_segments_subtitle">Кількість відображуваних сегментів: %1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">Заблокувати прокрутку</string>
+    <string name="range_lock_scrolling_subtitle">Заборонити прокрутку діапазону</string>
+    <string name="button_settings">Налаштування кнопки</string>
+    <string name="button_toggleable">Перемикається</string>
+    <string name="button_toggleable_subtitle">Натисніть для вмикання, натисніть знову для вимкнення</string>
+
+    <string name="custom_game_exe_selection_title">Потрібен вибір виконуваного файлу</string>
+    <string name="custom_game_exe_selection_message">У цієї гри є кілька виконуваних файлів. Відкрийте налаштування гри, щоб вибрати, який запустити.</string>
+
     <string name="start_with_controls_hidden">Запускати з прихованими елементами керування</string>
     <string name="start_with_controls_hidden_description">Екранні елементи будуть приховані під час запуску гри. Перемикайте через меню навігації.</string>
     <string name="external_display_input">Ввід зовнішнього дисплея</string>
@@ -620,7 +737,12 @@
     <string name="settings_debug_box_logs_title">Увімкнути журнали Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Записувати виведення налагодження Box86 та Box64 у файл</string>
     <string name="settings_debug_view_crash_title">Переглянути останній збій</string>
+    <string name="settings_debug_view_crash_subtitle">Показує останній звіт про збій</string>
+    <string name="settings_debug_no_crash_logs">Не знайдено нещодавніх звітів про збій</string>
     <string name="settings_debug_view_log_title">Переглянути журнал налагодження гри</string>
+    <string name="settings_debug_view_log_subtitle">Показує останній журнал налагодження Wine/Box64</string>
+    <string name="settings_debug_no_wine_logs">Не знайдено журналів налагодження Wine</string>
+    <string name="settings_debug_no_channels_selected">Жодного каналу не обрано</string>
     <string name="settings_debug_clear_prefs_title">Очистити налаштування</string>
     <string name="settings_debug_clear_prefs_subtitle">[Закриває застосунок] Вихід із клієнта та видалення локальних налаштувань.</string>
     <string name="settings_debug_clear_db_title">Очистити локальну базу даних</string>
@@ -665,14 +787,22 @@
     <string name="login_privacy_policy">Політика конфіденційності</string>
     <string name="login_welcome_back">З поверненням</string>
     <string name="login_subtitle">Увійдіть, щоб отримати доступ до бібліотеки Steam</string>
+    <string name="login_tab_credentials">Облікові дані</string>
+    <string name="login_tab_qr_code">QR-код</string>
     <string name="login_username">Ім\'я користувача</string>
+    <string name="login_username_hint">Введіть ім\'я користувача Steam</string>
     <string name="login_password">Пароль</string>
+    <string name="login_password_hint">Введіть пароль</string>
+    <string name="login_password_show">Показати пароль</string>
+    <string name="login_password_hide">Приховати пароль</string>
     <string name="login_remember_session">Запам\'ятати мене</string>
     <string name="login_sign_in">Увійти</string>
     <string name="login_qr_failed">Помилка QR-коду</string>
     <string name="login_retry_qr">Спробувати ще раз</string>
     <string name="login_qr_instructions">Відкрийте мобільний застосунок Steam і відскануйте цей QR-код, щоб миттєво увійти.</string>
     <string name="login_skip_steam">Пропустити вхід у Steam</string>
+    <string name="login_or_sign_in_with">Або увійдіть через:</string>
+    <string name="login_skip_login">Пропустити вхід</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Продовжити</string>
@@ -733,6 +863,7 @@
     <string name="main_thank_you_message">Підтримайте open-source ПК-ігри на Android, поділившись застосунком із друзями або ставши учасником на Ko-fi.</string>
     <string name="main_join_kofi">Стати учасником на Ko-fi</string>
     <string name="main_share">Поділитися</string>
+    <string name="main_share_text">Спробуй GameNative — грай у свої Steam-ігри з ПК на Android з повною підтримкою хмарних збережень!\nhttps://gamenative.app\nПриєднуйся до спільноти: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Чи працювала гра?</string>
     <string name="main_discord_support_message">Долучайтесь до нашого Discord, щоб отримати підтримку у виправленні чи покращенні роботи ігор.</string>
     <string name="main_open_discord">Відкрити Discord</string>
@@ -798,6 +929,7 @@
     <string name="supporters_app_icon">Іконка застосунку: Hachi</string>
     <string name="supporters_alt_icon">Альтернативна іконка застосунку: rhapsody_mdr</string>
     <string name="supporters_loading">Завантаження прихильників…</string>
+    <string name="supporters_error">Не вдалося завантажити прихильників</string>
     <string name="supporters_members">Учасники</string>
     <string name="supporters_supporters">Прихильники</string>
     <string name="supporters_none">Прихильників поки немає.</string>
@@ -817,7 +949,9 @@
     <string name="library_installing">Інсталяція</string>
     <string name="library_not_installed">Не інстальовано</string>
     <string name="library_family_shared">Сімейна бібліотека</string>
+    <string name="library_shared_short">Спільний доступ</string>
     <string name="library_compatible">Сумісно</string>
+    <string name="library_gpu_compatible">Сумісно з GPU</string>
     <string name="library_compatibility_unknown">Сумісність невідома</string>
     <string name="library_not_compatible">Несумісно</string>
 
@@ -841,6 +975,7 @@
     <string name="library_layout_list">Список</string>
     <string name="library_layout_capsule">Капсула</string>
     <string name="library_layout_hero">Герой</string>
+    <string name="library_layout_carousel">Карусель</string>
     <string name="library_search_placeholder">Шукати серед ваших ігор…</string>
     <string name="library_search_description">Пошук</string>
     <string name="library_search_clear">Очистити пошук</string>
@@ -849,7 +984,47 @@
     <string name="library_game_count">%1$d ігор • %2$d інстальовано</string>
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">Власні ігри</string>
+    <string name="library_source_title">Джерело</string>
     <string name="library_layout_title">Макет</string>
+    <string name="library_options">Параметри</string>
+    <string name="back">Назад</string>
+    <string name="cloud">Хмара</string>
+    <string name="options">Параметри</string>
+    <string name="play_time">Час гри</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">Параметри</string>
+    <string name="options_panel_close">Закрити параметри</string>
+    <string name="options_sort_by">Сортувати за</string>
+    <string name="sort_installed_first">Спочатку встановлені</string>
+    <string name="sort_name_asc">Назва (А–Я)</string>
+    <string name="sort_name_desc">Назва (Я–А)</string>
+    <string name="sort_recently_played">Нещодавно зіграні</string>
+    <string name="sort_size_smallest">Розмір (найменший)</string>
+    <string name="sort_size_largest">Розмір (найбільший)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">Параметри</string>
+    <string name="game_options_quick_actions">Швидкі дії</string>
+    <string name="game_options_game_management">Керування грою</string>
+    <string name="game_options_container">Контейнер</string>
+    <string name="game_options_cloud_saves">Хмарні збереження</string>
+    <string name="game_options_help_info">Довідка та інформація</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">Натисніть B, щоб закрити</string>
+    <string name="menu">Меню</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">Вибрати</string>
+    <string name="action_refresh">Оновити</string>
+    <string name="action_details">Деталі</string>
+    <string name="action_add_game">Додати гру</string>
+    <string name="action_system">Система</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d результат</string>
+    <string name="search_results_many">%d результатів</string>
 
     <!-- Two Factor Auth -->
     <string name="two_factor_login">Вхід</string>
@@ -898,6 +1073,7 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">Налаштування</string>
+    <string name="settings_subtitle">Налаштуйте свій досвід</string>
 
     <!-- Contents Install Finish -->
     <string name="contents_install_success">Вміст успішно інстальовано</string>
@@ -968,11 +1144,11 @@
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">Інтеграція GOG (Альфа)</string>
-    <string name="gog_settings_login_title">Увійти</string>
+    <string name="gog_settings_login_title">Увійти в GOG</string>
     <string name="gog_settings_login_subtitle">Увійдіть у свій обліковий запис GOG</string>
     <string name="gog_login_success_title">Вхід успішний</string>
     <string name="gog_login_cancel">Скасувати</string>
-    <string name="gog_settings_logout_title">Вийти</string>
+    <string name="gog_settings_logout_title">Вийти з GOG</string>
     <string name="gog_settings_logout_subtitle">Вийти з облікового запису GOG</string>
     <string name="gog_logout_confirm_title">Вийти з GOG?</string>
     <string name="gog_logout_confirm_message">Це видалить ваші облікові дані GOG та очистить бібліотеку GOG на цьому пристрої. Ви можете увійти знову в будь-який час.</string>
@@ -983,11 +1159,11 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Інтеграція Epic Games</string>
-    <string name="epic_settings_login_title">Увійти</string>
+    <string name="epic_settings_login_title">Увійти в Epic</string>
     <string name="epic_settings_login_subtitle">Увійдіть у свій обліковий запис Epic Games</string>
     <string name="epic_login_success_title">Вхід успішний</string>
     <string name="epic_login_cancel">Скасувати</string>
-    <string name="epic_settings_logout_title">Вийти</string>
+    <string name="epic_settings_logout_title">Вийти з Epic</string>
     <string name="epic_settings_logout_subtitle">Відключіть свій обліковий запис Epic Games</string>
     <string name="epic_logout_confirm_title">Вийти з Epic Games?</string>
     <string name="epic_logout_confirm_message">Це видалить ваші облікові дані Epic Games та очистить бібліотеку Epic Games на цьому пристрої. Ви можете увійти знову в будь-який час.</string>
@@ -995,6 +1171,21 @@
     <string name="epic_logout_success">Успішно вийшли з Epic Games</string>
     <string name="epic_logout_failed">Не вдалося вийти: %s</string>
     <string name="epic_logout_in_progress">Вихід з Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Інтеграція Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Увійти в Amazon Games</string>
+    <string name="amazon_settings_login_subtitle">Увійдіть у свій обліковий запис Amazon Games</string>
+    <string name="amazon_login_success_title">Вхід успішний</string>
+    <string name="amazon_login_cancel">Скасувати</string>
+    <string name="amazon_settings_logout_title">Вийти з Amazon Games</string>
+    <string name="amazon_settings_logout_subtitle">Вийти з облікового запису Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Вийти з Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Це видалить ваші облікові дані Amazon Games та очистить вашу бібліотеку Amazon на цьому пристрої. Ви можете увійти знову будь-коли.</string>
+    <string name="amazon_logout_confirm">Вийти</string>
+    <string name="amazon_logout_success">Успішно вийшли з Amazon Games</string>
+    <string name="amazon_logout_failed">Не вдалося вийти: %s</string>
+    <string name="amazon_logout_in_progress">Вихід з Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Деінсталювати гру</string>

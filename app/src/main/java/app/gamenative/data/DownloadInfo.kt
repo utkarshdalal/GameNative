@@ -111,11 +111,17 @@ data class DownloadInfo(
         persistencePath?.let { persistBytesDownloaded(it) }
     }
 
-    fun updateBytesDownloaded(deltaBytes: Long, timestampMs: Long = System.currentTimeMillis()) {
+    fun updateBytesDownloaded(
+        deltaBytes: Long,
+        timestampMs: Long = System.currentTimeMillis(),
+        trackSpeed: Boolean = true,
+    ) {
         if (!isActive) return
         if (deltaBytes <= 0L) {
             // Still record a sample to advance the time window, but do not change the count.
-            addSpeedSample(timestampMs)
+            if (trackSpeed) {
+                addSpeedSample(timestampMs)
+            }
             return
         }
 
@@ -123,7 +129,9 @@ data class DownloadInfo(
         if (bytesDownloaded < 0L) {
             bytesDownloaded = 0L
         }
-        addSpeedSample(timestampMs)
+        if (trackSpeed) {
+            addSpeedSample(timestampMs)
+        }
     }
 
     fun updateStatusMessage(message: String?) {

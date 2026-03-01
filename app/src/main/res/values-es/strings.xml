@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="steam_uninstall_success">%1$s ha sido desinstalado.</string>
     <string name="steam_uninstall_failed">Error al desinstalar el juego.</string>
+    <string name="amazon_uninstall_game_title">Desinstalar juego</string>
+    <string name="amazon_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
+    <string name="amazon_install_game_title">Descargar juego</string>
+    <string name="amazon_install_confirmation_message">La aplicación a instalar requiere el siguiente espacio. ¿Deseas continuar?\n\n\tTamaño de descarga: %1$s\n\tEspacio disponible: %2$s</string>
+    <string name="amazon_verify_files_title">Verificar archivos</string>
+    <string name="amazon_verify_files_message">Esto verificará todos los archivos instalados contra el manifiesto de descarga para detectar archivos faltantes o dañados.\n\nEsto puede tardar un rato en juegos grandes.</string>
+    <string name="amazon_verify_confirm">Verificar</string>
+    <string name="amazon_verify_in_progress">Verificando archivos… Esto puede tardar un rato.</string>
+    <string name="amazon_verify_success">Todos los archivos verificados correctamente.\n\n%1$d / %2$d archivos OK.</string>
+    <string name="amazon_verify_failed_detail">La verificación encontró problemas.\n\n%1$d / %2$d archivos OK\n%3$d faltantes\n%4$d tamaño incorrecto\n%5$d hash incorrecto\n\nReinstala el juego para reparar los archivos dañados.</string>
+    <string name="amazon_verify_error">La verificación falló: %1$s</string>
     <string name="gog_uninstall_game_title">Desinstalar juego</string>
     <string name="gog_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="gog_install_game_title">Instalar juego</string>
@@ -69,6 +80,18 @@
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Descargas</string>
     <string name="destination_friends">Amigos</string>
+
+    <!-- Library Tabs -->
+    <string name="tab_all">Todo</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">Instalado</string>
+    <string name="tab_local">Personalizado</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">Cerrar búsqueda</string>
+    <string name="default_user_name">Usuario</string>
 
     <!-- Custom Games -->
     <string name="custom_games_title">Juegos personalizados</string>
@@ -181,6 +204,8 @@
     <string name="controller_disconnected">Desconectado</string>
     <string name="reset_onscreen_controls">Restablecer controles en pantalla</string>
     <string name="open_navigation_menu">Abrir menú de navegación</string>
+    <string name="quick_menu_title">Menú rápido</string>
+    <string name="quick_menu_back">Atrás</string>
     <string name="touchpad_help">Ayuda del touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles táctiles al usar mando</string>
     <string name="hide_controls_with_controller_description">Oculta automáticamente los controles en pantalla cuando se conecta un mando físico.</string>
@@ -396,6 +421,10 @@
     <string name="update_available">Actualización disponible</string>
     <string name="game_information">Información del juego</string>
     <string name="status">Estado</string>
+    <string name="status_online">En línea</string>
+    <string name="status_away">Ausente</string>
+    <string name="status_invisible">Invisible</string>
+    <string name="system_menu_title">Sistema</string>
     <string name="size">Tamaño</string>
     <string name="location">Ubicación</string>
     <string name="developer">Desarrollador</string>
@@ -408,6 +437,8 @@
     <string name="games">Juegos</string>
     <string name="playtime_last_two_weeks">Tiempo jugado en las últimas 2 semanas: %s h</string>
     <string name="total_playtime">Tiempo total jugado: %s h</string>
+    <string name="last_played">Última partida</string>
+    <string name="playtime">Tiempo de juego</string>
     <string name="add_custom_game_content_desc">Añadir juego personalizado</string>
     <string name="add_custom_game_dialog_title">Añadir juego personalizado</string>
     <string name="add_custom_game_dialog_message">Selecciona la carpeta que contiene los archivos del juego que quieres añadir como juego personalizado.</string>
@@ -431,10 +462,18 @@
     <string name="app_filter_family">Préstamo familiar</string>
 
     <!-- Login & Connection -->
+    <string name="connecting_to_steam">Conectando con Steam…</string>
     <string name="no_connection_to_steam">Sin conexión a Steam</string>
     <string name="retry_steam_connection">Reintentar conexión con Steam</string>
     <string name="continue_offline">Continuar sin conexión</string>
-
+    <string name="connection_reconnecting">Reconectando con Steam…</string>
+    <string name="connection_disconnected">Desconectado de Steam</string>
+    <string name="connection_disconnected_servers">Desconectado de los servidores Steam</string>
+    <string name="connection_logging_in">Iniciando sesión…</string>
+    <string name="connection_login_failed">Error al iniciar sesión</string>
+    <string name="connection_session_ended">Sesión finalizada</string>
+    <string name="connection_offline_mode">Modo sin conexión</string>
+    <string name="connection_retry">Reintentar</string>
 
     <!--Game Feedback Dialog -->
     <string name="game_feedback_game_run">¿Qué tal ha funcionado el juego?</string>
@@ -448,6 +487,12 @@
     <string name="go_offline">Desconectarse</string>
     <string name="log_out">Cerrar sesión</string>
     <string name="close">Cerrar</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Iniciar sesión en Steam</string>
+    <string name="steam_go_online">Conectarse (Steam)</string>
+    <string name="steam_go_offline">Desconectarse (Steam)</string>
+    <string name="steam_sign_out">Cerrar sesión de Steam</string>
 
     <!-- Container Configuration: General -->
     <string name="new_environment_variable">Nueva variable de entorno</string>
@@ -471,6 +516,8 @@
     <string name="force_dlc">Forzar DLC</string>
     <string name="force_dlc_description">Actívalo solo si los DLC no se detectan o los archivos de guardados con DLC no funcionan.</string>
     <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
+    <string name="steam_offline_mode">Modo Offline de Steam</string>
+    <string name="steam_offline_mode_description">Iniciar juegos de Steam en modo offline</string>
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="allow_steam_updates">Permitir actualizaciones de Steam</string>
     <string name="allow_steam_updates_description">Actualiza Steam a la última versión. Reduce significativamente el rendimiento.</string>
@@ -481,6 +528,7 @@
     <string name="graphics_driver_version">Versión del controlador gráfico</string>
     <string name="exposed_vulkan_extensions">Extensiones Vulkan expuestas</string>
     <string name="max_device_memory">Memoria máxima del dispositivo</string>
+    <string name="frame_synchronization">Sincronización de fotogramas</string>
     <string name="use_adrenotools_turnip">Usar Adrenotools Turnip</string>
     <string name="vulkan_version">Versión de Vulkan</string>
     <string name="image_cache_size">Tamaño de la caché de imágenes</string>
@@ -521,7 +569,76 @@
     <string name="directinput_mapper_type">Tipo de mapeador de DirectInput</string>
     <string name="disable_mouse_input">Desactivar entrada de ratón</string>
     <string name="touchscreen_mode">Modo de pantalla táctil</string>
-    <string name="touchscreen_mode_description">Movimiento absoluto (activado) vs movimiento relativo tipo touchpad (desactivado).</string>
+    <string name="touchscreen_mode_description">Para novelas visuales y juegos de estrategia en tiempo real</string>
+    <string name="shooter_mode_toggle">Modo tirador</string>
+    <string name="shooter_mode_toggle_description">Reemplazar sticks por joysticks dinámicos</string>
+    <string name="shooter_mode_on">Activar ratón</string>
+    <string name="shooter_mode_off">Activar sticks</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">Configuración de gestos</string>
+    <string name="gesture_settings_title">Configuración de gestos táctiles</string>
+    <string name="gesture_tap">Toque</string>
+    <string name="gesture_tap_subtitle">Clic izquierdo</string>
+    <string name="gesture_drag">Arrastrar dedo</string>
+    <string name="gesture_drag_subtitle">Arrastrar clic izquierdo (selección rectangular)</string>
+    <string name="gesture_long_press">Pulsación larga</string>
+    <string name="gesture_long_press_delay">Retardo pulsación larga (ms)</string>
+    <string name="gesture_double_tap">Doble toque</string>
+    <string name="gesture_double_tap_subtitle">Doble clic izquierdo</string>
+    <string name="gesture_double_tap_delay">Retardo doble toque (ms)</string>
+    <string name="gesture_two_finger_drag">Arrastrar dos dedos</string>
+    <string name="gesture_pinch">Pinch</string>
+    <string name="gesture_two_finger_tap">Toque dos dedos</string>
+    <string name="gesture_action_left_click">Clic izquierdo</string>
+    <string name="gesture_action_right_click">Clic derecho</string>
+    <string name="gesture_action_middle_click">Clic central</string>
+    <string name="gesture_pan_middle_mouse">Pan ratón central</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">Teclas de flecha</string>
+    <string name="gesture_zoom_scroll_wheel">Rueda de desplazamiento</string>
+    <string name="gesture_zoom_plus_minus">Teclas +/-</string>
+    <string name="gesture_zoom_page_up_down">Re Pág / Av Pág</string>
+    <string name="gesture_action_label">Acción</string>
+    <string name="gesture_delay_label">Retardo</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">Configuración de joysticks dinámicos</string>
+    <string name="movement_type">Tipo de movimiento</string>
+    <string name="movement_type_subtitle">Salida del joystick para movimiento lateral izquierdo</string>
+    <string name="look_sensitivity">Sensibilidad de mirada</string>
+    <string name="look_sensitivity_subtitle">Multiplicador de sensibilidad de mirada con ratón</string>
+    <string name="joystick_size">Tamaño del joystick</string>
+    <string name="joystick_size_subtitle">Multiplicador de tamaño del joystick dinámico</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">Teclas de flecha</string>
+    <string name="movement_gamepad_left_stick">Stick izquierdo mando</string>
+    <string name="look_type">Tipo de mirada</string>
+    <string name="look_type_subtitle">Comportamiento del lado derecho en modo tirador</string>
+    <string name="look_type_mouse">Ratón</string>
+    <string name="look_type_gamepad_right_stick">Stick derecho mando</string>
+
+    <string name="range_button_settings">Configuración del botón de rango</string>
+    <string name="range_type">Rango de teclas</string>
+    <string name="range_type_subtitle">Qué conjunto de teclas recorrer</string>
+    <string name="range_orientation">Orientación</string>
+    <string name="range_orientation_subtitle">Dirección del botón de rango</string>
+    <string name="range_orientation_horizontal">Horizontal</string>
+    <string name="range_orientation_vertical">Vertical</string>
+    <string name="range_visible_segments">Segmentos visibles</string>
+    <string name="range_visible_segments_subtitle">Número de segmentos de teclas mostrados: %1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">Bloquear desplazamiento</string>
+    <string name="range_lock_scrolling_subtitle">Impedir desplazamiento por el rango</string>
+    <string name="button_settings">Configuración del botón</string>
+    <string name="button_toggleable">Conmutable</string>
+    <string name="button_toggleable_subtitle">Tocar para activar, tocar de nuevo para desactivar</string>
+
+    <string name="custom_game_exe_selection_title">Selección de ejecutable requerida</string>
+    <string name="custom_game_exe_selection_message">Este juego tiene varios ejecutables. Abre la configuración personalizada del juego para seleccionar cuál ejecutar.</string>
+
     <string name="start_with_controls_hidden">Iniciar con los controles táctiles ocultos</string>
     <string name="start_with_controls_hidden_description">Los controles en pantalla se ocultarán al iniciar el juego. Se pueden activar desde el menú de navegación.</string>
     <string name="emulate_keyboard_mouse">Emular teclado y ratón</string>
@@ -602,7 +719,12 @@
     <string name="settings_debug_box_logs_title">Activar registros de Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Escribir la salida de depuración de Box86 y Box64 en un archivo.</string>
     <string name="settings_debug_view_crash_title">Ver último fallo</string>
+    <string name="settings_debug_view_crash_subtitle">Muestra el registro de fallos más reciente</string>
+    <string name="settings_debug_no_crash_logs">No se encontraron registros de fallos recientes</string>
     <string name="settings_debug_view_log_title">Ver registro de depuración del juego</string>
+    <string name="settings_debug_view_log_subtitle">Muestra el último registro de depuración Wine/Box64</string>
+    <string name="settings_debug_no_wine_logs">No se encontraron registros de depuración Wine</string>
+    <string name="settings_debug_no_channels_selected">No hay canales seleccionados</string>
     <string name="settings_debug_clear_prefs_title">Borrar preferencias</string>
     <string name="settings_debug_clear_prefs_subtitle">[Cierra la app] Cierra la sesión del cliente y borra los datos de preferencias locales.</string>
     <string name="settings_debug_clear_db_title">Borrar base de datos local</string>
@@ -647,14 +769,22 @@
     <string name="login_privacy_policy">Política de privacidad</string>
     <string name="login_welcome_back">¡Bienvenido de nuevo!</string>
     <string name="login_subtitle">Inicia sesión para acceder a tu biblioteca de Steam.</string>
+    <string name="login_tab_credentials">Credenciales</string>
+    <string name="login_tab_qr_code">Código QR</string>
     <string name="login_username">Nombre de usuario</string>
+    <string name="login_username_hint">Introduce tu nombre de usuario de Steam</string>
     <string name="login_password">Contraseña</string>
+    <string name="login_password_hint">Introduce tu contraseña</string>
+    <string name="login_password_show">Mostrar contraseña</string>
+    <string name="login_password_hide">Ocultar contraseña</string>
     <string name="login_remember_session">Recordar sesión</string>
     <string name="login_sign_in">Iniciar sesión</string>
     <string name="login_qr_failed">El código QR ya no es válido.</string>
     <string name="login_retry_qr">Generar un nuevo código QR</string>
     <string name="login_qr_instructions">Abre la aplicación móvil de Steam y escanea este código QR para iniciar sesión al instante.</string>
     <string name="login_skip_steam">Omitir inicio de sesión en Steam</string>
+    <string name="login_or_sign_in_with">O iniciar sesión con:</string>
+    <string name="login_skip_login">Omitir inicio de sesión</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continuar</string>
@@ -715,6 +845,7 @@
     <string name="main_thank_you_message">Apoya el proyecto de código abierto para juegos de PC en Android compartiendo la aplicación con tus amigos o haciéndote miembro en Ko-fi.</string>
     <string name="main_join_kofi">Apoyar en Ko-fi</string>
     <string name="main_share">Compartir</string>
+    <string name="main_share_text">Descubre GameNative: juega a tus juegos Steam de PC en Android, con soporte completo de guardados en la nube.\nhttps://gamenative.app\nÚnete a la comunidad: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">¿Ha funcionado el juego?</string>
     <string name="main_discord_support_message">Únete a nuestro Discord para obtener ayuda, solucionar problemas con tu juego o mejorar el rendimiento.</string>
     <string name="main_open_discord">Abrir Discord</string>
@@ -777,6 +908,7 @@
     <string name="supporters_app_icon">Icono de la aplicación: Hachi</string>
     <string name="supporters_alt_icon">Icono alternativo: rhapsody_mdr</string>
     <string name="supporters_loading">Cargando patrocinadores…</string>
+    <string name="supporters_error">No se pudieron cargar los patrocinadores</string>
     <string name="supporters_members">Miembros</string>
     <string name="supporters_supporters">Patrocinadores</string>
     <string name="supporters_none">Aún no hay patrocinadores.</string>
@@ -796,7 +928,9 @@
     <string name="library_installing">Instalando</string>
     <string name="library_not_installed">No instalado</string>
     <string name="library_family_shared">Préstamo familiar</string>
+    <string name="library_shared_short">Compartido</string>
     <string name="library_compatible">Compatible</string>
+    <string name="library_gpu_compatible">Compatible con GPU</string>
     <string name="library_compatibility_unknown">Compatibilidad desconocida</string>
     <string name="library_not_compatible">No compatible</string>
 
@@ -817,6 +951,7 @@
     <string name="library_layout_list">Lista</string>
     <string name="library_layout_capsule">Portada</string>
     <string name="library_layout_hero">Banner</string>
+    <string name="library_layout_carousel">Carrusel</string>
     <string name="library_search_placeholder">Busca en tus juegos…</string>
     <string name="library_search_description">Buscar</string>
     <string name="library_search_clear">Limpiar búsqueda</string>
@@ -825,7 +960,47 @@
     <string name="library_game_count">%1$d juegos • %2$d instalados</string>
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">Juegos personalizados</string>
+    <string name="library_source_title">Fuente</string>
     <string name="library_layout_title">Vista</string>
+    <string name="library_options">Opciones</string>
+    <string name="back">Atrás</string>
+    <string name="cloud">Nube</string>
+    <string name="options">Opciones</string>
+    <string name="play_time">Tiempo de juego</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">Opciones</string>
+    <string name="options_panel_close">Cerrar opciones</string>
+    <string name="options_sort_by">Ordenar por</string>
+    <string name="sort_installed_first">Instalados primero</string>
+    <string name="sort_name_asc">Nombre (A-Z)</string>
+    <string name="sort_name_desc">Nombre (Z-A)</string>
+    <string name="sort_recently_played">Jugados recientemente</string>
+    <string name="sort_size_smallest">Tamaño (más pequeño)</string>
+    <string name="sort_size_largest">Tamaño (más grande)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">Opciones</string>
+    <string name="game_options_quick_actions">Acciones rápidas</string>
+    <string name="game_options_game_management">Gestión del juego</string>
+    <string name="game_options_container">Contenedor</string>
+    <string name="game_options_cloud_saves">Guardados en la nube</string>
+    <string name="game_options_help_info">Ayuda e información</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">Pulsa B para cerrar</string>
+    <string name="menu">Menú</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">Seleccionar</string>
+    <string name="action_refresh">Actualizar</string>
+    <string name="action_details">Detalles</string>
+    <string name="action_add_game">Añadir juego</string>
+    <string name="action_system">Sistema</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d resultado</string>
+    <string name="search_results_many">%d resultados</string>
 
     <!-- Two Factor Auth -->
     <string name="two_factor_login">Iniciar sesión</string>
@@ -874,6 +1049,7 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">Ajustes</string>
+    <string name="settings_subtitle">Personaliza tu experiencia</string>
 
     <!-- Contents Install Finish -->
     <string name="contents_install_success">Contenido instalado correctamente.</string>
@@ -944,11 +1120,11 @@
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">Integración de GOG (Alpha)</string>
-    <string name="gog_settings_login_title">Iniciar sesión</string>
+    <string name="gog_settings_login_title">Iniciar sesión en GOG</string>
     <string name="gog_settings_login_subtitle">Inicia sesión en tu cuenta de GOG.</string>
     <string name="gog_login_success_title">Inicio de sesión correcto</string>
     <string name="gog_login_cancel">Cancelar</string>
-    <string name="gog_settings_logout_title">Cerrar sesión</string>
+    <string name="gog_settings_logout_title">Cerrar sesión de GOG</string>
     <string name="gog_settings_logout_subtitle">Cierra la sesión de tu cuenta de GOG.</string>
     <string name="gog_logout_confirm_title">Cerrar sesión de GOG</string>
     <string name="gog_logout_confirm_message">Esto eliminará tus credenciales de GOG y borrará tu biblioteca de GOG de este dispositivo. Podrás volver a iniciar sesión en cualquier momento. ¿Deseas continuar?</string>
@@ -958,4 +1134,19 @@
     <string name="gog_logout_in_progress">Cerrando sesión de GOG…</string>
     <string name="steam_client_sync_warning_title">Advertencia de sincronización del cliente de Steam</string>
     <string name="steam_client_sync_warning_message">Solo guardados locales está activado, pero el cliente de Steam está configurado para iniciarse. El cliente de Steam aún puede sincronizar guardados en la nube a menos que desactives Steam Cloud en el cliente.</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Integración de Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Iniciar sesión en Amazon Games</string>
+    <string name="amazon_settings_login_subtitle">Inicia sesión en tu cuenta de Amazon Games</string>
+    <string name="amazon_login_success_title">Inicio de sesión exitoso</string>
+    <string name="amazon_login_cancel">Cancelar</string>
+    <string name="amazon_settings_logout_title">Cerrar sesión de Amazon Games</string>
+    <string name="amazon_settings_logout_subtitle">Cierra la sesión de tu cuenta de Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Cerrar sesión de Amazon Games</string>
+    <string name="amazon_logout_confirm_message">Esto eliminará tus credenciales de Amazon Games y borrará tu biblioteca de Amazon de este dispositivo. Podrás volver a iniciar sesión en cualquier momento.</string>
+    <string name="amazon_logout_confirm">Cerrar sesión</string>
+    <string name="amazon_logout_success">La sesión de Amazon Games se ha cerrado correctamente.</string>
+    <string name="amazon_logout_failed">Error al cerrar la sesión: %s</string>
+    <string name="amazon_logout_in_progress">Cerrando sesión de Amazon Games…</string>
 </resources>

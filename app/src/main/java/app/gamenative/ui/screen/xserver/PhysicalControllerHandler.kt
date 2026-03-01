@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.xserver
 
 import android.graphics.PointF
 import android.util.Log
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import com.winlator.inputcontrols.Binding
@@ -60,16 +61,41 @@ class PhysicalControllerHandler(
             if (controller != null) {
                 val controllerBinding = controller.getControllerBinding(event.keyCode)
                 if (controllerBinding != null) {
-                    if (event.action == KeyEvent.ACTION_DOWN) {
-                        handleInputEvent(controllerBinding.binding, true)
-                    } else if (event.action == KeyEvent.ACTION_UP) {
-                        handleInputEvent(controllerBinding.binding, false)
+                    // Some controllers emit BOTH a digital KeyEvent for L2/R2 and an analog axis value in MotionEvent.
+                    // If this physical key is mapped to a virtual trigger AND the device exposes trigger axes,
+                    // ignore the KeyEvent to avoid an initial "full press" spike. MotionEvent will provide the analog value.
+                    if ((event.keyCode == KeyEvent.KEYCODE_BUTTON_L2 || event.keyCode == KeyEvent.KEYCODE_BUTTON_R2) &&
+                        (controllerBinding.binding == Binding.GAMEPAD_BUTTON_L2 || controllerBinding.binding == Binding.GAMEPAD_BUTTON_R2) &&
+                        deviceHasTriggerAxis(event.device, event.keyCode)
+                    ) {
+                        return true
                     }
+                    val offset = if (event.action == KeyEvent.ACTION_DOWN &&
+                        (controllerBinding.binding == Binding.GAMEPAD_BUTTON_L2 || controllerBinding.binding == Binding.GAMEPAD_BUTTON_R2)
+                    ) 1f else 0f
+                    handleInputEvent(controllerBinding.binding, event.action == KeyEvent.ACTION_DOWN, offset)
                     return true
                 }
             }
         }
         return false
+    }
+
+    private fun deviceHasTriggerAxis(device: InputDevice?, keyCode: Int): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_BUTTON_L2 ->
+                hasMotionRange(device, MotionEvent.AXIS_LTRIGGER) || hasMotionRange(device, MotionEvent.AXIS_BRAKE)
+            KeyEvent.KEYCODE_BUTTON_R2 ->
+                hasMotionRange(device, MotionEvent.AXIS_RTRIGGER) || hasMotionRange(device, MotionEvent.AXIS_GAS)
+            else -> false
+        }
+    }
+
+    private fun hasMotionRange(device: InputDevice?, axis: Int): Boolean {
+        if (device == null) return false
+        return device.getMotionRange(axis, InputDevice.SOURCE_JOYSTICK) != null ||
+            device.getMotionRange(axis, InputDevice.SOURCE_GAMEPAD) != null ||
+            device.getMotionRange(axis) != null
     }
 
     /**
@@ -85,7 +111,8 @@ class PhysicalControllerHandler(
                 if (controllerBinding != null) {
                     handleInputEvent(
                         controllerBinding.binding,
-                        controller.state.isPressed(ExternalController.IDX_BUTTON_L2.toInt())
+                        controller.state.triggerL > 0f,
+                        controller.state.triggerL
                     )
                 }
 
@@ -93,7 +120,8 @@ class PhysicalControllerHandler(
                 if (controllerBinding != null) {
                     handleInputEvent(
                         controllerBinding.binding,
-                        controller.state.isPressed(ExternalController.IDX_BUTTON_R2.toInt())
+                        controller.state.triggerR > 0f,
+                        controller.state.triggerR
                     )
                 }
 
@@ -192,12 +220,12 @@ class PhysicalControllerHandler(
                 if (buttonIdx <= ExternalController.IDX_BUTTON_R2.toInt()) {
                     when (buttonIdx) {
                         ExternalController.IDX_BUTTON_L2.toInt() -> {
-                            state.triggerL = if (isActionDown) 1.0f else 0f
-                            state.setPressed(ExternalController.IDX_BUTTON_L2.toInt(), isActionDown)
+                            state.triggerL = offset
+                            state.setPressed(ExternalController.IDX_BUTTON_L2.toInt(), offset > 0f)
                         }
                         ExternalController.IDX_BUTTON_R2.toInt() -> {
-                            state.triggerR = if (isActionDown) 1.0f else 0f
-                            state.setPressed(ExternalController.IDX_BUTTON_R2.toInt(), isActionDown)
+                            state.triggerR = offset
+                            state.setPressed(ExternalController.IDX_BUTTON_R2.toInt(), offset > 0f)
                         }
                         else -> state.setPressed(buttonIdx, isActionDown)
                     }

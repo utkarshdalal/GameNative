@@ -1,19 +1,25 @@
 package app.gamenative.ui.screen.settings
 
+import android.content.res.Configuration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -21,7 +27,8 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 
 @Composable
 fun SettingsGroupEmulation() {
-    SettingsGroup(title = { Text(text = stringResource(R.string.settings_emulation_title)) }) {
+    SettingsGroup(
+    ) {
         var showConfigDialog by rememberSaveable { mutableStateOf(false) }
         var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
         var showBox64PresetsDialog by rememberSaveable { mutableStateOf(false) }
@@ -58,17 +65,17 @@ fun SettingsGroupEmulation() {
         var showDriverManager by rememberSaveable { mutableStateOf(false) }
         if (showDriverManager) {
             // Lazy-load dialog composable to avoid cyclic imports
-            app.gamenative.ui.screen.settings.DriverManagerDialog(open = showDriverManager, onDismiss = { showDriverManager = false })
+            DriverManagerDialog(open = showDriverManager, onDismiss = { showDriverManager = false })
         }
 
         var showContentsManager by rememberSaveable { mutableStateOf(false) }
         if (showContentsManager) {
-            app.gamenative.ui.screen.settings.ContentsManagerDialog(open = showContentsManager, onDismiss = { showContentsManager = false })
+            ContentsManagerDialog(open = showContentsManager, onDismiss = { showContentsManager = false })
         }
 
         var showWineProtonManager by rememberSaveable { mutableStateOf(false) }
         if (showWineProtonManager) {
-            app.gamenative.ui.screen.settings.WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
+            WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
         }
 
         SettingsMenuLink(
@@ -85,7 +92,7 @@ fun SettingsGroupEmulation() {
         )
         var autoApplyKnownConfig by rememberSaveable { mutableStateOf(PrefManager.autoApplyKnownConfig) }
         SettingsSwitch(
-            colors = settingsTileColors(),
+            colors = settingsTileColorsAlt(),
             state = autoApplyKnownConfig,
             title = { Text(text = stringResource(R.string.settings_emulation_auto_apply_known_config_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_emulation_auto_apply_known_config_subtitle)) },
@@ -124,5 +131,18 @@ fun SettingsGroupEmulation() {
             subtitle = { Text(text = stringResource(R.string.settings_emulation_wine_proton_manager_subtitle)) },
             onClick = { showWineProtonManager = true },
         )
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_SettingsGroupEmulation() {
+    val isPreview = LocalInspectionMode.current
+    if (!isPreview) {
+        val context = LocalContext.current
+        PrefManager.init(context)
+    }
+    PluviaTheme {
+        SettingsGroupEmulation()
     }
 }

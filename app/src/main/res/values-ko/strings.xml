@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="steam_uninstall_success">%1$s이(가) 제거되었습니다</string>
     <string name="steam_uninstall_failed">게임 제거 실패</string>
+    <string name="amazon_uninstall_game_title">게임 제거</string>
+    <string name="amazon_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
+    <string name="amazon_install_game_title">게임 다운로드</string>
+    <string name="amazon_install_confirmation_message">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t사용 가능한 공간: %2$s</string>
+    <string name="amazon_verify_files_title">파일 검증</string>
+    <string name="amazon_verify_files_message">다운로드 매니페스트와 비교하여 설치된 모든 파일을 검사하여 누락되거나 손상된 파일을 감지합니다.\n\n대용량 게임의 경우 시간이 걸릴 수 있습니다.</string>
+    <string name="amazon_verify_confirm">검증</string>
+    <string name="amazon_verify_in_progress">파일 검증 중… 시간이 걸릴 수 있습니다.</string>
+    <string name="amazon_verify_success">모든 파일이 성공적으로 검증되었습니다.\n\n%1$d / %2$d 파일 OK.</string>
+    <string name="amazon_verify_failed_detail">검증에서 문제가 발견되었습니다.\n\n%1$d / %2$d 파일 OK\n%3$d 누락\n%4$d 크기 불일치\n%5$d 해시 불일치\n\n손상된 파일을 수정하려면 게임을 재설치하세요.</string>
+    <string name="amazon_verify_error">검증 실패: %1$s</string>
     <string name="gog_uninstall_game_title">게임 제거</string>
     <string name="gog_uninstall_confirmation_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="gog_install_game_title">게임 다운로드</string>
@@ -86,6 +97,18 @@
     <string name="destination_library">라이브러리</string>
     <string name="destination_downloads">다운로드</string>
     <string name="destination_friends">친구</string>
+
+    <!-- Library Tabs -->
+    <string name="tab_all">전체</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">설치됨</string>
+    <string name="tab_local">사용자 지정</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">검색 닫기</string>
+    <string name="default_user_name">사용자</string>
 
     <!-- Custom Games -->
     <string name="custom_games_title">사용자 지정 게임</string>
@@ -202,6 +225,8 @@
     <string name="controller_disconnected">연결 끊김</string>
     <string name="reset_onscreen_controls">화면 컨트롤 초기화</string>
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
+    <string name="quick_menu_title">빠른 메뉴</string>
+    <string name="quick_menu_back">뒤로</string>
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
@@ -417,6 +442,10 @@
     <string name="update_available">업데이트 사용 가능</string>
     <string name="game_information">게임 정보</string>
     <string name="status">상태</string>
+    <string name="status_online">온라인</string>
+    <string name="status_away">자리 비움</string>
+    <string name="status_invisible">오프라인</string>
+    <string name="system_menu_title">시스템</string>
     <string name="size">크기</string>
     <string name="location">위치</string>
     <string name="developer">개발자</string>
@@ -429,6 +458,8 @@
     <string name="games">게임</string>
     <string name="playtime_last_two_weeks">최근 2주 플레이 시간: %s시간</string>
     <string name="total_playtime">총 플레이 시간: %s시간</string>
+    <string name="last_played">마지막 플레이</string>
+    <string name="playtime">플레이 시간</string>
     <string name="add_custom_game_content_desc">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_title">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_message">커스텀 게임으로 추가할 게임 파일이 있는 폴더를 선택하세요.</string>
@@ -452,9 +483,18 @@
     <string name="app_filter_family">가족</string>
 
     <!-- Login & Connection -->
+    <string name="connecting_to_steam">Steam에 연결 중…</string>
     <string name="no_connection_to_steam">Steam에 연결되지 않음</string>
     <string name="retry_steam_connection">Steam 연결 재시도</string>
     <string name="continue_offline">오프라인으로 계속</string>
+    <string name="connection_reconnecting">Steam에 재연결 중…</string>
+    <string name="connection_disconnected">Steam 연결 끊김</string>
+    <string name="connection_disconnected_servers">Steam 서버 연결 끊김</string>
+    <string name="connection_logging_in">로그인 중…</string>
+    <string name="connection_login_failed">로그인 실패</string>
+    <string name="connection_session_ended">세션 종료됨</string>
+    <string name="connection_offline_mode">오프라인 모드</string>
+    <string name="connection_retry">다시 시도</string>
 
 
     <!--Game Feedback Dialog -->
@@ -469,6 +509,12 @@
     <string name="go_offline">오프라인으로 전환</string>
     <string name="log_out">로그아웃</string>
     <string name="close">닫기</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Steam 로그인</string>
+    <string name="steam_go_online">온라인 전환 (Steam)</string>
+    <string name="steam_go_offline">오프라인 전환 (Steam)</string>
+    <string name="steam_sign_out">Steam 로그아웃</string>
 
     <!-- Container Configuration: General -->
     <string name="new_environment_variable">새 환경 변수</string>
@@ -494,6 +540,8 @@
     <string name="force_dlc">DLC 강제</string>
     <string name="force_dlc_description">DLC가 감지되지 않거나 DLC가 있는 저장 파일이 작동하지 않는 경우에만 활성화</string>
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
+    <string name="steam_offline_mode">Steam 오프라인 모드</string>
+    <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
     <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
@@ -504,6 +552,7 @@
     <string name="graphics_driver_version">그래픽 드라이버 버전</string>
     <string name="exposed_vulkan_extensions">노출된 Vulkan 확장</string>
     <string name="max_device_memory">최대 장치 메모리</string>
+    <string name="frame_synchronization">프레임 동기화</string>
     <string name="use_adrenotools_turnip">Adrenotools Turnip 사용</string>
     <string name="vulkan_version">Vulkan 버전</string>
     <string name="image_cache_size">이미지 캐시 크기</string>
@@ -545,7 +594,76 @@
     <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
     <string name="disable_mouse_input">마우스 입력 비활성화</string>
     <string name="touchscreen_mode">터치스크린 모드</string>
-    <string name="touchscreen_mode_description">직접 터치-커서 이동(ON) vs 터치패드 스타일 상대 이동(OFF)</string>
+    <string name="touchscreen_mode_description">비주얼 노벨 및 RTS 게임용</string>
+    <string name="shooter_mode_toggle">슈터 모드</string>
+    <string name="shooter_mode_toggle_description">스틱 요소를 동적 조이스틱으로 교체</string>
+    <string name="shooter_mode_on">마우스 활성화</string>
+    <string name="shooter_mode_off">스틱 활성화</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">제스처 설정</string>
+    <string name="gesture_settings_title">터치 제스처 설정</string>
+    <string name="gesture_tap">탭</string>
+    <string name="gesture_tap_subtitle">왼쪽 클릭</string>
+    <string name="gesture_drag">드래그</string>
+    <string name="gesture_drag_subtitle">왼쪽 클릭 드래그 (영역 선택)</string>
+    <string name="gesture_long_press">길게 누르기</string>
+    <string name="gesture_long_press_delay">길게 누르기 지연 (ms)</string>
+    <string name="gesture_double_tap">더블 탭</string>
+    <string name="gesture_double_tap_subtitle">더블 왼쪽 클릭</string>
+    <string name="gesture_double_tap_delay">더블 탭 지연 (ms)</string>
+    <string name="gesture_two_finger_drag">두 손가락 드래그</string>
+    <string name="gesture_pinch">핀치</string>
+    <string name="gesture_two_finger_tap">두 손가락 탭</string>
+    <string name="gesture_action_left_click">왼쪽 클릭</string>
+    <string name="gesture_action_right_click">오른쪽 클릭</string>
+    <string name="gesture_action_middle_click">가운데 클릭</string>
+    <string name="gesture_pan_middle_mouse">가운데 버튼 패닝</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">화살표 키</string>
+    <string name="gesture_zoom_scroll_wheel">스크롤 휠</string>
+    <string name="gesture_zoom_plus_minus">+/- 키</string>
+    <string name="gesture_zoom_page_up_down">페이지 위/아래</string>
+    <string name="gesture_action_label">동작</string>
+    <string name="gesture_delay_label">지연</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">동적 조이스틱 설정</string>
+    <string name="movement_type">이동 유형</string>
+    <string name="movement_type_subtitle">왼쪽 이동용 조이스틱 출력</string>
+    <string name="look_sensitivity">시선 감도</string>
+    <string name="look_sensitivity_subtitle">마우스 시선 감도 배율</string>
+    <string name="joystick_size">조이스틱 크기</string>
+    <string name="joystick_size_subtitle">동적 조이스틱 크기 배율</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">화살표 키</string>
+    <string name="movement_gamepad_left_stick">게임패드 왼쪽 스틱</string>
+    <string name="look_type">시선 유형</string>
+    <string name="look_type_subtitle">슈터 모드에서 오른쪽 동작</string>
+    <string name="look_type_mouse">마우스</string>
+    <string name="look_type_gamepad_right_stick">게임패드 오른쪽 스틱</string>
+
+    <string name="range_button_settings">범위 버튼 설정</string>
+    <string name="range_type">키 범위</string>
+    <string name="range_type_subtitle">순환할 키 세트</string>
+    <string name="range_orientation">방향</string>
+    <string name="range_orientation_subtitle">범위 버튼 레이아웃 방향</string>
+    <string name="range_orientation_horizontal">가로</string>
+    <string name="range_orientation_vertical">세로</string>
+    <string name="range_visible_segments">표시 세그먼트</string>
+    <string name="range_visible_segments_subtitle">한 번에 표시되는 키 세그먼트 수: %1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">스크롤 잠금</string>
+    <string name="range_lock_scrolling_subtitle">범위 스크롤 방지</string>
+    <string name="button_settings">버튼 설정</string>
+    <string name="button_toggleable">토글</string>
+    <string name="button_toggleable_subtitle">탭하여 활성화, 다시 탭하여 비활성화</string>
+
+    <string name="custom_game_exe_selection_title">실행 파일 선택 필요</string>
+    <string name="custom_game_exe_selection_message">이 게임에는 여러 실행 파일이 있습니다. 실행할 파일을 선택하려면 사용자 지정 게임 설정을 열어주세요.</string>
+
     <string name="external_display_input">외부 디스플레이 입력</string>
     <string name="external_display_input_subtitle">연결된 프레젠테이션 디스플레이의 동작 방식 선택</string>
     <string name="external_display_mode_off">외부 디스플레이 사용 안 함</string>
@@ -637,7 +755,12 @@
     <string name="settings_debug_box_logs_title">Box86/64 로그 활성화</string>
     <string name="settings_debug_box_logs_subtitle">Box86 &amp; Box64 디버그 출력을 파일에 쓰기</string>
     <string name="settings_debug_view_crash_title">최신 충돌 보기</string>
+    <string name="settings_debug_view_crash_subtitle">가장 최근 충돌 로그 표시</string>
+    <string name="settings_debug_no_crash_logs">최근 충돌 로그를 찾을 수 없음</string>
     <string name="settings_debug_view_log_title">게임 디버그 로그 보기</string>
+    <string name="settings_debug_view_log_subtitle">최신 Wine/Box64 디버그 로그 표시</string>
+    <string name="settings_debug_no_wine_logs">Wine 디버그 로그를 찾을 수 없음</string>
+    <string name="settings_debug_no_channels_selected">선택된 채널 없음</string>
     <string name="settings_debug_clear_prefs_title">기본 설정 지우기</string>
     <string name="settings_debug_clear_prefs_subtitle">[앱 종료] 클라이언트를 로그아웃하고 로컬 기본 설정 데이터를 삭제합니다.</string>
     <string name="settings_debug_clear_db_title">로컬 데이터베이스 지우기</string>
@@ -682,13 +805,22 @@
     <string name="login_privacy_policy">개인정보 보호정책</string>
     <string name="login_welcome_back">환영합니다</string>
     <string name="login_subtitle">Steam 라이브러리에 액세스하려면 로그인하세요</string>
+    <string name="login_tab_credentials">자격 증명</string>
+    <string name="login_tab_qr_code">QR 코드</string>
     <string name="login_username">사용자명</string>
+    <string name="login_username_hint">Steam 사용자명 입력</string>
     <string name="login_password">비밀번호</string>
+    <string name="login_password_hint">비밀번호 입력</string>
+    <string name="login_password_show">비밀번호 표시</string>
+    <string name="login_password_hide">비밀번호 숨기기</string>
     <string name="login_remember_session">세션 기억</string>
     <string name="login_sign_in">로그인</string>
     <string name="login_qr_failed">QR 코드 실패</string>
     <string name="login_retry_qr">QR 코드 재시도</string>
     <string name="login_qr_instructions">Steam 모바일 앱을 열고 이 QR 코드를 스캔하여 즉시 로그인하세요</string>
+    <string name="login_skip_steam">Steam 로그인 건너뛰기</string>
+    <string name="login_or_sign_in_with">또는 로그인:</string>
+    <string name="login_skip_login">로그인 건너뛰기</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">계속</string>
@@ -749,6 +881,7 @@
     <string name="main_thank_you_message">친구들과 앱을 공유하거나 Ko-fi에서 회원이 되어 Android에서 오픈 소스 PC 게임을 지원하세요.</string>
     <string name="main_join_kofi">Ko-fi에서 참여</string>
     <string name="main_share">공유</string>
+    <string name="main_share_text">GameNative를 확인하세요 - 클라우드 저장을 완전히 지원하며 Android에서 PC Steam 게임을 플레이하세요!\nhttps://gamenative.app\n커뮤니티 참여: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">게임이 작동했나요?</string>
     <string name="main_discord_support_message">Discord에 참여하여 게임 수정 또는 성능 향상에 대한 지원을 받으세요.</string>
     <string name="main_open_discord">Discord 열기</string>
@@ -814,6 +947,7 @@
     <string name="supporters_app_icon">앱 아이콘: Hachi</string>
     <string name="supporters_alt_icon">대체 앱 아이콘: rhapsody_mdr</string>
     <string name="supporters_loading">후원자 로딩 중…</string>
+    <string name="supporters_error">후원자를 불러올 수 없음</string>
     <string name="supporters_members">회원</string>
     <string name="supporters_supporters">후원자</string>
     <string name="supporters_none">아직 후원자가 없습니다.</string>
@@ -833,7 +967,9 @@
     <string name="library_installing">설치 중</string>
     <string name="library_not_installed">설치되지 않음</string>
     <string name="library_family_shared">가족 공유</string>
+    <string name="library_shared_short">공유</string>
     <string name="library_compatible">호환됨</string>
+    <string name="library_gpu_compatible">GPU 호환</string>
     <string name="library_compatibility_unknown">알 수 없음</string>
     <string name="library_not_compatible">호환되지 않음</string>
 
@@ -857,6 +993,7 @@
     <string name="library_layout_list">리스트</string>
     <string name="library_layout_capsule">캡슐</string>
     <string name="library_layout_hero">히어로</string>
+    <string name="library_layout_carousel">캐러셀</string>
     <string name="library_search_placeholder">게임 검색…</string>
     <string name="library_search_description">검색</string>
     <string name="library_search_clear">검색 지우기</string>
@@ -865,7 +1002,47 @@
     <string name="library_game_count">%1$d개 게임 • %2$d개 설치됨</string>
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">사용자 지정 게임</string>
+    <string name="library_source_title">소스</string>
     <string name="library_layout_title">레이아웃</string>
+    <string name="library_options">옵션</string>
+    <string name="back">뒤로</string>
+    <string name="cloud">클라우드</string>
+    <string name="options">옵션</string>
+    <string name="play_time">플레이 시간</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">옵션</string>
+    <string name="options_panel_close">옵션 닫기</string>
+    <string name="options_sort_by">정렬 기준</string>
+    <string name="sort_installed_first">설치된 항목 먼저</string>
+    <string name="sort_name_asc">이름 (가나다순)</string>
+    <string name="sort_name_desc">이름 (가나다 역순)</string>
+    <string name="sort_recently_played">최근 플레이</string>
+    <string name="sort_size_smallest">크기 (작은 것부터)</string>
+    <string name="sort_size_largest">크기 (큰 것부터)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">옵션</string>
+    <string name="game_options_quick_actions">빠른 작업</string>
+    <string name="game_options_game_management">게임 관리</string>
+    <string name="game_options_container">컨테이너</string>
+    <string name="game_options_cloud_saves">클라우드 저장</string>
+    <string name="game_options_help_info">도움말 및 정보</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">B를 눌러 닫기</string>
+    <string name="menu">메뉴</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">선택</string>
+    <string name="action_refresh">새로고침</string>
+    <string name="action_details">세부정보</string>
+    <string name="action_add_game">게임 추가</string>
+    <string name="action_system">시스템</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d개 결과</string>
+    <string name="search_results_many">%d개 결과</string>
 
     <!-- Two Factor Auth -->
     <string name="two_factor_login">로그인</string>
@@ -914,6 +1091,7 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">설정</string>
+    <string name="settings_subtitle">경험 맞춤 설정</string>
 
     <!-- Contents Install Finish -->
     <string name="contents_install_success">콘텐츠가 성공적으로 설치되었습니다</string>
@@ -984,11 +1162,11 @@
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">GOG 통합(알파)</string>
-    <string name="gog_settings_login_title">로그인</string>
+    <string name="gog_settings_login_title">GOG 로그인</string>
     <string name="gog_settings_login_subtitle">GOG 계정에 로그인</string>
     <string name="gog_login_success_title">로그인 성공</string>
     <string name="gog_login_cancel">취소</string>
-    <string name="gog_settings_logout_title">로그아웃</string>
+    <string name="gog_settings_logout_title">GOG 로그아웃</string>
     <string name="gog_settings_logout_subtitle">GOG 계정에서 로그아웃</string>
     <string name="gog_logout_confirm_title">GOG에서 로그아웃하시겠습니까?</string>
     <string name="gog_logout_confirm_message">GOG 자격 증명이 제거되고 이 장치에서 GOG 라이브러리가 지워집니다. 언제든지 다시 로그인할 수 있습니다.</string>
@@ -999,11 +1177,11 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games 통합</string>
-    <string name="epic_settings_login_title">로그인</string>
+    <string name="epic_settings_login_title">Epic 로그인</string>
     <string name="epic_settings_login_subtitle">Epic Games 계정에 로그인</string>
     <string name="epic_login_success_title">로그인 성공</string>
     <string name="epic_login_cancel">취소</string>
-    <string name="epic_settings_logout_title">로그아웃</string>
+    <string name="epic_settings_logout_title">Epic 로그아웃</string>
     <string name="epic_settings_logout_subtitle">Epic Games 계정에서 로그아웃</string>
     <string name="epic_logout_confirm_title">Epic Games에서 로그아웃하시겠습니까?</string>
     <string name="epic_logout_confirm_message">Epic Games 자격 증명이 제거되고 이 장치에서 Epic Games 라이브러리가 지워집니다. 언제든지 다시 로그인할 수 있습니다.</string>
@@ -1011,6 +1189,21 @@
     <string name="epic_logout_success">Epic Games에서 성공적으로 로그아웃했습니다</string>
     <string name="epic_logout_failed">로그아웃 실패: %s</string>
     <string name="epic_logout_in_progress">Epic Games에서 로그아웃하는 중…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games 통합 (Alpha)</string>
+    <string name="amazon_settings_login_title">Amazon Games 로그인</string>
+    <string name="amazon_settings_login_subtitle">Amazon Games 계정으로 로그인</string>
+    <string name="amazon_login_success_title">로그인 성공</string>
+    <string name="amazon_login_cancel">취소</string>
+    <string name="amazon_settings_logout_title">Amazon Games 로그아웃</string>
+    <string name="amazon_settings_logout_subtitle">Amazon Games 계정에서 로그아웃</string>
+    <string name="amazon_logout_confirm_title">Amazon Games에서 로그아웃하시겠습니까?</string>
+    <string name="amazon_logout_confirm_message">Amazon Games 자격 증명이 제거되고 이 기기에서 Amazon 라이브러리가 삭제됩니다. 언제든지 다시 로그인할 수 있습니다.</string>
+    <string name="amazon_logout_confirm">로그아웃</string>
+    <string name="amazon_logout_success">Amazon Games에서 성공적으로 로그아웃했습니다</string>
+    <string name="amazon_logout_failed">로그아웃 실패: %s</string>
+    <string name="amazon_logout_in_progress">Amazon Games에서 로그아웃하는 중…</string>
 
     <string name="manifest_downloading_item">%1$s 다운로드 중...</string>
     <string name="manifest_download_failed">다운로드 실패: %1$s</string>

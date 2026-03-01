@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="steam_uninstall_success">%1$s has been uninstalled</string>
     <string name="steam_uninstall_failed">Failed to uninstall game</string>
+    <string name="amazon_uninstall_game_title">Uninstall Game</string>
+    <string name="amazon_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="amazon_install_game_title">Download Game</string>
+    <string name="amazon_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="amazon_verify_files_title">Verify Files</string>
+    <string name="amazon_verify_files_message">This will check all installed files against the download manifest to detect missing or corrupted files.\n\nThis may take a while for large games.</string>
+    <string name="amazon_verify_confirm">Verify</string>
+    <string name="amazon_verify_in_progress">Verifying files… This may take a while.</string>
+    <string name="amazon_verify_success">All files verified successfully.\n\n%1$d / %2$d files OK.</string>
+    <string name="amazon_verify_failed_detail">Verification found issues.\n\n%1$d / %2$d files OK\n%3$d missing\n%4$d size mismatch\n%5$d hash mismatch\n\nReinstall the game to fix corrupted files.</string>
+    <string name="amazon_verify_error">Verification failed: %1$s</string>
     <string name="gog_uninstall_game_title">Uninstall Game</string>
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="gog_install_game_title">Download Game</string>
@@ -87,6 +98,18 @@
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Friends</string>
 
+    <!-- Library Tabs -->
+    <string name="tab_all">All</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">Installed</string>
+    <string name="tab_local">Custom</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">Close search</string>
+    <string name="default_user_name">User</string>
+
     <!-- Custom Games -->
     <string name="custom_games_title">Custom Games</string>
     <string name="custom_games_no_paths">No paths added</string>
@@ -109,6 +132,8 @@
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
     <string name="container_config_drive_letter_missing">Drive letter is missing</string>
     <string name="container_config_invalid_drive_path">Invalid drive path</string>
+    <string name="custom_game_exe_selection_title">Executable Selection Required</string>
+    <string name="custom_game_exe_selection_message">This game has multiple executables. Please open Custom Game Settings to select which one to launch.</string>
     <string name="custom_game_settings">Custom Game Settings</string>
     <string name="custom_game_delete_title">Delete Game</string>
     <string name="custom_game_delete_message">Are you sure you want to uninstall %1$s?</string>
@@ -202,6 +227,8 @@
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
     <string name="open_navigation_menu">Open Navigation Menu</string>
+    <string name="quick_menu_title">Quick Menu</string>
+    <string name="quick_menu_back">Back</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -238,6 +265,23 @@
     <string name="bindings">Bindings</string>
     <string name="bindings_auto_generated">Bindings (Auto-generated)</string>
     <string name="bindings_auto_generated_subtitle">Range button bindings are automatically generated</string>
+    <string name="range_button_settings">Range Button Settings</string>
+    <string name="range_type">Key Range</string>
+    <string name="range_type_subtitle">Which set of keys to cycle through</string>
+    <string name="range_orientation">Orientation</string>
+    <string name="range_orientation_subtitle">Layout direction of the range button</string>
+    <string name="range_orientation_horizontal">Horizontal</string>
+    <string name="range_orientation_vertical">Vertical</string>
+    <string name="range_visible_segments">Visible Segments</string>
+    <string name="range_visible_segments_subtitle">Number of key segments shown at once: %1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">Lock Scrolling</string>
+    <string name="range_lock_scrolling_subtitle">Prevent scrolling through the range</string>
+    <string name="button_settings">Button Settings</string>
+    <string name="button_toggleable">Toggleable</string>
+    <string name="button_toggleable_subtitle">Tap to activate, tap again to deactivate</string>
     <string name="primary_action">Primary Action</string>
     <string name="secondary_action">Secondary Action</string>
     <string name="direction_up">Up</string>
@@ -266,6 +310,22 @@
     <string name="preset_dpad">D-Pad</string>
     <string name="preset_left_stick">Left Stick</string>
     <string name="preset_right_stick">Right Stick</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">Dynamic Joysticks Settings</string>
+    <string name="movement_type">Movement Type</string>
+    <string name="movement_type_subtitle">Joystick output for left side movement</string>
+    <string name="look_sensitivity">Look Sensitivity</string>
+    <string name="look_sensitivity_subtitle">Mouse look sensitivity multiplier</string>
+    <string name="joystick_size">Joystick Size</string>
+    <string name="joystick_size_subtitle">Dynamic joystick size multiplier</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">Arrow Keys</string>
+    <string name="movement_gamepad_left_stick">Gamepad Left Stick</string>
+    <string name="look_type">Look Type</string>
+    <string name="look_type_subtitle">Right side behavior in shooter mode</string>
+    <string name="look_type_mouse">Mouse</string>
+    <string name="look_type_gamepad_right_stick">Gamepad Right Stick</string>
 
     <!-- Physical Controller Config -->
     <string name="physical_controller_config">Physical Controller Bindings Editor</string>
@@ -417,6 +477,10 @@
     <string name="update_available">Update Available</string>
     <string name="game_information">Game Information</string>
     <string name="status">Status</string>
+    <string name="status_online">Online</string>
+    <string name="status_away">Away</string>
+    <string name="status_invisible">Invisible</string>
+    <string name="system_menu_title">System</string>
     <string name="size">Size</string>
     <string name="location">Location</string>
     <string name="developer">Developer</string>
@@ -429,6 +493,8 @@
     <string name="games">Games</string>
     <string name="playtime_last_two_weeks">Playtime last 2 weeks: %s hrs</string>
     <string name="total_playtime">Total Playtime: %s hrs</string>
+    <string name="last_played">Last Played</string>
+    <string name="playtime">Playtime</string>
     <string name="add_custom_game_content_desc">Add custom game</string>
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
@@ -452,9 +518,18 @@
     <string name="app_filter_family">Family</string>
 
     <!-- Login & Connection -->
+    <string name="connecting_to_steam">Connecting to Steam…</string>
     <string name="no_connection_to_steam">No connection to Steam</string>
     <string name="retry_steam_connection">Retry Steam Connection</string>
     <string name="continue_offline">Continue Offline</string>
+    <string name="connection_reconnecting">Reconnecting to Steam…</string>
+    <string name="connection_disconnected">Disconnected from Steam</string>
+    <string name="connection_disconnected_servers">Disconnected from Steam servers</string>
+    <string name="connection_logging_in">Logging in…</string>
+    <string name="connection_login_failed">Login failed</string>
+    <string name="connection_session_ended">Session ended</string>
+    <string name="connection_offline_mode">Offline mode</string>
+    <string name="connection_retry">Retry</string>
 
 
     <!--Game Feedback Dialog -->
@@ -469,6 +544,12 @@
     <string name="go_offline">Go Offline</string>
     <string name="log_out">Log Out</string>
     <string name="close">Close</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Sign in to Steam</string>
+    <string name="steam_go_online">Go online (Steam)</string>
+    <string name="steam_go_offline">Go offline (Steam)</string>
+    <string name="steam_sign_out">Sign out of Steam</string>
 
     <!-- Container Configuration: General -->
     <string name="new_environment_variable">New Environment Variable</string>
@@ -499,6 +580,8 @@
     <string name="steam_client_sync_warning_message">Local saves only is enabled, but the Steam client is set to launch. The Steam client may still sync cloud saves unless you disable Steam Cloud in the client.</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
+    <string name="steam_offline_mode">Steam Offline Mode</string>
+    <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
@@ -508,6 +591,7 @@
     <string name="graphics_driver_version">Graphics Driver Version</string>
     <string name="exposed_vulkan_extensions">Exposed Vulkan Extensions</string>
     <string name="max_device_memory">Max Device Memory</string>
+    <string name="frame_synchronization">Frame Synchronization</string>
     <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
@@ -549,7 +633,39 @@
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="touchscreen_mode">Touchscreen Mode</string>
-    <string name="touchscreen_mode_description">Direct touch-to-cursor movement (ON) vs touchpad-style relative movement (OFF)</string>
+    <string name="touchscreen_mode_description">For visual novels and RTS games</string>
+    <string name="shooter_mode_toggle">Shooter Mode</string>
+    <string name="shooter_mode_toggle_description">Auto-replace stick elements with dynamic joysticks</string>
+    <string name="shooter_mode_on">Enable Mouse</string>
+    <string name="shooter_mode_off">Enable Sticks</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">Gesture Settings</string>
+    <string name="gesture_settings_title">Touch Gesture Settings</string>
+    <string name="gesture_tap">Tap</string>
+    <string name="gesture_tap_subtitle">Left Click</string>
+    <string name="gesture_drag">Drag Finger</string>
+    <string name="gesture_drag_subtitle">Drag Left Click (Box Selection)</string>
+    <string name="gesture_long_press">Long Press</string>
+    <string name="gesture_long_press_delay">Long Press Delay (ms)</string>
+    <string name="gesture_double_tap">Double-Tap</string>
+    <string name="gesture_double_tap_subtitle">Double Left Click</string>
+    <string name="gesture_double_tap_delay">Double-Tap Delay (ms)</string>
+    <string name="gesture_two_finger_drag">Two-Finger Drag</string>
+    <string name="gesture_pinch">Pinch In/Out</string>
+    <string name="gesture_two_finger_tap">Two-Finger Tap</string>
+    <string name="gesture_action_left_click">Left Click</string>
+    <string name="gesture_action_right_click">Right Click</string>
+    <string name="gesture_action_middle_click">Middle Click</string>
+    <string name="gesture_pan_middle_mouse">Middle Mouse Pan</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">Arrow Keys</string>
+    <string name="gesture_zoom_scroll_wheel">Scroll Wheel</string>
+    <string name="gesture_zoom_plus_minus">+/- Keys</string>
+    <string name="gesture_zoom_page_up_down">Page Up/Down</string>
+    <string name="gesture_action_label">Action</string>
+    <string name="gesture_delay_label">Delay</string>
+
     <string name="external_display_input">External Display Input</string>
     <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>
     <string name="external_display_mode_off">Do not use external display</string>
@@ -643,7 +759,12 @@
     <string name="settings_debug_box_logs_title">Enable Box86/64 Logs</string>
     <string name="settings_debug_box_logs_subtitle">Write Box86 &amp; Box64 debug output to file</string>
     <string name="settings_debug_view_crash_title">View latest crash</string>
+    <string name="settings_debug_view_crash_subtitle">Shows the most recent crash log</string>
+    <string name="settings_debug_no_crash_logs">No recent crash logs found</string>
     <string name="settings_debug_view_log_title">View game debug log</string>
+    <string name="settings_debug_view_log_subtitle">Shows the latest Wine/Box64 debug log</string>
+    <string name="settings_debug_no_wine_logs">No Wine debug logs found</string>
+    <string name="settings_debug_no_channels_selected">No channels selected</string>
     <string name="settings_debug_clear_prefs_title">Clear Preferences</string>
     <string name="settings_debug_clear_prefs_subtitle">[Closes App] Logs out the client and wipes local preference data.</string>
     <string name="settings_debug_clear_db_title">Clear Local Database</string>
@@ -688,14 +809,22 @@
     <string name="login_privacy_policy">Privacy Policy</string>
     <string name="login_welcome_back">Welcome Back</string>
     <string name="login_subtitle">Sign in to access your Steam library</string>
+    <string name="login_tab_credentials">Credentials</string>
+    <string name="login_tab_qr_code">QR Code</string>
     <string name="login_username">Username</string>
+    <string name="login_username_hint">Enter your Steam username</string>
     <string name="login_password">Password</string>
+    <string name="login_password_hint">Enter your password</string>
+    <string name="login_password_show">Show password</string>
+    <string name="login_password_hide">Hide password</string>
     <string name="login_remember_session">Remember session</string>
     <string name="login_sign_in">Sign In</string>
     <string name="login_qr_failed">QR Code Failed</string>
     <string name="login_retry_qr">Retry QR Code</string>
     <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>
     <string name="login_skip_steam">Skip Steam login</string>
+    <string name="login_or_sign_in_with">Or sign in with:</string>
+    <string name="login_skip_login">Skip login</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continue</string>
@@ -756,6 +885,7 @@
     <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
     <string name="main_join_kofi">Join on Ko-fi</string>
     <string name="main_share">Share</string>
+    <string name="main_share_text">Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Did the game work?</string>
     <string name="main_discord_support_message">Join the Discord to get support to fix your game or improve performance.</string>
     <string name="main_open_discord">Open Discord</string>
@@ -823,6 +953,7 @@
     <string name="supporters_app_icon">App Icon: Hachi</string>
     <string name="supporters_alt_icon">Alternate App Icon: rhapsody_mdr</string>
     <string name="supporters_loading">Loading supporters…</string>
+    <string name="supporters_error">Unable to load supporters</string>
     <string name="supporters_members">Members</string>
     <string name="supporters_supporters">Supporters</string>
     <string name="supporters_none">No supporters yet.</string>
@@ -842,7 +973,9 @@
     <string name="library_installing">Installing</string>
     <string name="library_not_installed">Not installed</string>
     <string name="library_family_shared">Family Shared</string>
+    <string name="library_shared_short">Shared</string>
     <string name="library_compatible">Compatible</string>
+    <string name="library_gpu_compatible">GPU Compatible</string>
     <string name="library_compatibility_unknown">Unknown</string>
     <string name="library_not_compatible">Not Compatible</string>
 
@@ -866,6 +999,7 @@
     <string name="library_layout_list">List</string>
     <string name="library_layout_capsule">Capsule</string>
     <string name="library_layout_hero">Hero</string>
+    <string name="library_layout_carousel">Carousel</string>
     <string name="library_search_placeholder">Search your games…</string>
     <string name="library_search_description">Search</string>
     <string name="library_search_clear">Clear search</string>
@@ -874,7 +1008,47 @@
     <string name="library_game_count">%1$d games • %2$d installed</string>
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">Custom Games</string>
+    <string name="library_source_title">Source</string>
     <string name="library_layout_title">Layout</string>
+    <string name="library_options">Options</string>
+    <string name="back">Back</string>
+    <string name="cloud">Cloud</string>
+    <string name="options">Options</string>
+    <string name="play_time">Play Time</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">Options</string>
+    <string name="options_panel_close">Close options</string>
+    <string name="options_sort_by">Sort By</string>
+    <string name="sort_installed_first">Installed First</string>
+    <string name="sort_name_asc">Name (A-Z)</string>
+    <string name="sort_name_desc">Name (Z-A)</string>
+    <string name="sort_recently_played">Recently Played</string>
+    <string name="sort_size_smallest">Size (Smallest)</string>
+    <string name="sort_size_largest">Size (Largest)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">Options</string>
+    <string name="game_options_quick_actions">Quick Actions</string>
+    <string name="game_options_game_management">Game Management</string>
+    <string name="game_options_container">Container</string>
+    <string name="game_options_cloud_saves">Cloud Saves</string>
+    <string name="game_options_help_info">Help &amp; Info</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">Press B to close</string>
+    <string name="menu">Menu</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">Select</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_details">Details</string>
+    <string name="action_add_game">Add Game</string>
+    <string name="action_system">System</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d result</string>
+    <string name="search_results_many">%d results</string>
 
     <!-- Two Factor Auth -->
     <string name="two_factor_login">Login</string>
@@ -923,6 +1097,7 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Customize your experience</string>
 
     <!-- Contents Install Finish -->
     <string name="contents_install_success">Content installed successfully</string>
@@ -993,11 +1168,11 @@
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">GOG Integration (Alpha)</string>
-    <string name="gog_settings_login_title">Sign in</string>
+    <string name="gog_settings_login_title">Sign in to GOG</string>
     <string name="gog_settings_login_subtitle">Sign in to your GOG account</string>
     <string name="gog_login_success_title">Login Successful</string>
     <string name="gog_login_cancel">Cancel</string>
-    <string name="gog_settings_logout_title">Logout</string>
+    <string name="gog_settings_logout_title">Sign out of GOG</string>
     <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>
     <string name="gog_logout_confirm_title">Logout from GOG?</string>
     <string name="gog_logout_confirm_message">This will remove your GOG credentials and clear your GOG library from this device. You can sign in again at any time.</string>
@@ -1008,11 +1183,11 @@
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>
-    <string name="epic_settings_login_title">Sign in</string>
+    <string name="epic_settings_login_title">Sign in to Epic</string>
     <string name="epic_settings_login_subtitle">Sign in to your Epic Games account</string>
     <string name="epic_login_success_title">Login Successful</string>
     <string name="epic_login_cancel">Cancel</string>
-    <string name="epic_settings_logout_title">Logout</string>
+    <string name="epic_settings_logout_title">Sign out of Epic</string>
     <string name="epic_settings_logout_subtitle">Sign out from your Epic Games account</string>
     <string name="epic_logout_confirm_title">Logout from Epic Games?</string>
     <string name="epic_logout_confirm_message">This will remove your Epic Games credentials and clear your Epic Games library from this device. You can sign in again at any time.</string>
@@ -1021,6 +1196,20 @@
     <string name="epic_logout_failed">Failed to logout: %s</string>
     <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
 
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_settings_login_title">Sign in to Amazon Games</string>
+    <string name="amazon_settings_login_subtitle">Sign in to your Amazon Games account</string>
+    <string name="amazon_login_success_title">Login Successful</string>
+    <string name="amazon_login_cancel">Cancel</string>
+    <string name="amazon_settings_logout_title">Sign out of Amazon Games</string>
+    <string name="amazon_settings_logout_subtitle">Sign out from your Amazon Games account</string>
+    <string name="amazon_logout_confirm_title">Logout from Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">This will remove your Amazon Games credentials and clear your Amazon library from this device. You can sign in again at any time.</string>
+    <string name="amazon_logout_confirm">Logout</string>
+    <string name="amazon_logout_success">Logged out from Amazon Games successfully</string>
+    <string name="amazon_logout_failed">Failed to logout: %s</string>
+    <string name="amazon_logout_in_progress">Logging out from Amazon Games…</string>
     <string name="manifest_downloading_item">Downloading %1$s...</string>
     <string name="manifest_download_failed">Download failed: %1$s</string>
     <string name="manifest_install_failed">Failed to install %1$s</string>

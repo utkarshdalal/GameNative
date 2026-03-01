@@ -40,6 +40,17 @@
     <string name="steam_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
     <string name="steam_uninstall_success">%1$s 已卸载</string>
     <string name="steam_uninstall_failed">卸载游戏失败</string>
+    <string name="amazon_uninstall_game_title">卸载游戏</string>
+    <string name="amazon_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
+    <string name="amazon_install_game_title">下载游戏</string>
+    <string name="amazon_install_confirmation_message">正在安装的应用程序有以下空间需求。是否继续？\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
+    <string name="amazon_verify_files_title">验证文件</string>
+    <string name="amazon_verify_files_message">这将检查所有已安装的文件与下载清单进行比对，以检测缺失或损坏的文件。\n\n对于大型游戏，这可能需要一段时间。</string>
+    <string name="amazon_verify_confirm">验证</string>
+    <string name="amazon_verify_in_progress">正在验证文件… 这可能需要一段时间。</string>
+    <string name="amazon_verify_success">所有文件验证成功。\n\n%1$d / %2$d 个文件 OK。</string>
+    <string name="amazon_verify_failed_detail">验证发现问题。\n\n%1$d / %2$d 个文件 OK\n%3$d 个缺失\n%4$d 个大小不匹配\n%5$d 个哈希不匹配\n\n重新安装游戏以修复损坏的文件。</string>
+    <string name="amazon_verify_error">验证失败：%1$s</string>
     <string name="gog_uninstall_game_title">卸载游戏</string>
     <string name="gog_uninstall_confirmation_message">您确定要卸载 %1$s 吗? 此操作无法撤回</string>
     <string name="gog_install_game_title">下载游戏</string>
@@ -76,6 +87,18 @@
     <string name="destination_library">游戏库</string>
     <string name="destination_downloads">下载</string>
     <string name="destination_friends">好友</string>
+
+    <!-- Library Tabs -->
+    <string name="tab_all">全部</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">已安装</string>
+    <string name="tab_local">自定义</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">关闭搜索</string>
+    <string name="default_user_name">用户</string>
 
     <!-- 自定义游戏 -->
     <string name="custom_games_title">自定义游戏</string>
@@ -188,6 +211,8 @@
     <string name="controller_disconnected">已断开</string>
     <string name="reset_onscreen_controls">重置屏幕控制器</string>
     <string name="open_navigation_menu">打开导航菜单</string>
+    <string name="quick_menu_title">快捷菜单</string>
+    <string name="quick_menu_back">返回</string>
     <string name="touchpad_help">触摸板支持</string>
     <string name="hide_controls_with_controller">使用控制器时隐藏屏幕控制器</string>
     <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏屏幕控制器</string>
@@ -402,6 +427,10 @@
     <string name="update_available">有可用更新</string>
     <string name="game_information">游戏信息</string>
     <string name="status">状态</string>
+    <string name="status_online">在线</string>
+    <string name="status_away">离开</string>
+    <string name="status_invisible">隐身</string>
+    <string name="system_menu_title">系统</string>
     <string name="size">大小</string>
     <string name="location">文件位置</string>
     <string name="developer">开发者</string>
@@ -414,6 +443,8 @@
     <string name="games">游戏</string>
     <string name="playtime_last_two_weeks">过去2周的游戏时间：%s 小时</string>
     <string name="total_playtime">总游戏时间：%s 小时</string>
+    <string name="last_played">上次游玩</string>
+    <string name="playtime">游戏时间</string>
     <string name="add_custom_game_content_desc">添加自定义游戏</string>
     <string name="add_custom_game_dialog_title">添加自定义游戏</string>
     <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的文件夹</string>
@@ -436,9 +467,18 @@
     <string name="app_filter_family">家庭共享</string>
 
     <!-- 登录与连接 -->
+    <string name="connecting_to_steam">正在连接 Steam…</string>
     <string name="no_connection_to_steam">未连接到 Steam</string>
     <string name="retry_steam_connection">重试连接 Steam</string>
     <string name="continue_offline">离线使用</string>
+    <string name="connection_reconnecting">正在重新连接 Steam…</string>
+    <string name="connection_disconnected">已断开 Steam 连接</string>
+    <string name="connection_disconnected_servers">已断开 Steam 服务器连接</string>
+    <string name="connection_logging_in">正在登录…</string>
+    <string name="connection_login_failed">登录失败</string>
+    <string name="connection_session_ended">会话已结束</string>
+    <string name="connection_offline_mode">离线模式</string>
+    <string name="connection_retry">重试</string>
 
     <!-- 游戏反馈对话框 -->
     <string name="game_feedback_game_run">游戏运行情况如何？</string>
@@ -451,6 +491,12 @@
     <string name="go_offline">进入离线模式</string>
     <string name="log_out">登出</string>
     <string name="close">关闭</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">登录 Steam</string>
+    <string name="steam_go_online">上线 (Steam)</string>
+    <string name="steam_go_offline">离线 (Steam)</string>
+    <string name="steam_sign_out">退出 Steam</string>
 
     <!-- 容器配置：通用 -->
     <string name="new_environment_variable">新建环境变量</string>
@@ -476,6 +522,8 @@
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
+    <string name="steam_offline_mode">Steam 离线模式</string>
+    <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
     <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
@@ -528,7 +576,76 @@
     <string name="directinput_mapper_type">DirectInput 映射器类型</string>
     <string name="disable_mouse_input">禁用鼠标输入</string>
     <string name="touchscreen_mode">触屏模式</string>
-    <string name="touchscreen_mode_description">直接触控到光标移动（开启） vs 触摸板式相对移动（关闭）</string>
+    <string name="touchscreen_mode_description">适用于视觉小说和即时战略游戏</string>
+    <string name="shooter_mode_toggle">射击模式</string>
+    <string name="shooter_mode_toggle_description">用动态摇杆替换摇杆元素</string>
+    <string name="shooter_mode_on">启用鼠标</string>
+    <string name="shooter_mode_off">启用摇杆</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">手势设置</string>
+    <string name="gesture_settings_title">触控手势设置</string>
+    <string name="gesture_tap">点击</string>
+    <string name="gesture_tap_subtitle">左键单击</string>
+    <string name="gesture_drag">拖动</string>
+    <string name="gesture_drag_subtitle">左键拖动（框选）</string>
+    <string name="gesture_long_press">长按</string>
+    <string name="gesture_long_press_delay">长按延迟（毫秒）</string>
+    <string name="gesture_double_tap">双击</string>
+    <string name="gesture_double_tap_subtitle">左键双击</string>
+    <string name="gesture_double_tap_delay">双击延迟（毫秒）</string>
+    <string name="gesture_two_finger_drag">双指拖动</string>
+    <string name="gesture_pinch">捏合</string>
+    <string name="gesture_two_finger_tap">双指点击</string>
+    <string name="gesture_action_left_click">左键单击</string>
+    <string name="gesture_action_right_click">右键单击</string>
+    <string name="gesture_action_middle_click">中键单击</string>
+    <string name="gesture_pan_middle_mouse">中键平移</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">方向键</string>
+    <string name="gesture_zoom_scroll_wheel">滚轮</string>
+    <string name="gesture_zoom_plus_minus">+/- 键</string>
+    <string name="gesture_zoom_page_up_down">Page Up/Down</string>
+    <string name="gesture_action_label">操作</string>
+    <string name="gesture_delay_label">延迟</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">动态摇杆设置</string>
+    <string name="movement_type">移动类型</string>
+    <string name="movement_type_subtitle">左侧移动的摇杆输出</string>
+    <string name="look_sensitivity">视角灵敏度</string>
+    <string name="look_sensitivity_subtitle">鼠标视角灵敏度倍数</string>
+    <string name="joystick_size">摇杆大小</string>
+    <string name="joystick_size_subtitle">动态摇杆大小倍数</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">方向键</string>
+    <string name="movement_gamepad_left_stick">手柄左摇杆</string>
+    <string name="look_type">视角类型</string>
+    <string name="look_type_subtitle">射击模式下右侧行为</string>
+    <string name="look_type_mouse">鼠标</string>
+    <string name="look_type_gamepad_right_stick">手柄右摇杆</string>
+
+    <string name="range_button_settings">范围按钮设置</string>
+    <string name="range_type">按键范围</string>
+    <string name="range_type_subtitle">循环使用的按键组</string>
+    <string name="range_orientation">方向</string>
+    <string name="range_orientation_subtitle">范围按钮的布局方向</string>
+    <string name="range_orientation_horizontal">水平</string>
+    <string name="range_orientation_vertical">垂直</string>
+    <string name="range_visible_segments">可见分段</string>
+    <string name="range_visible_segments_subtitle">一次显示的按键分段数量：%1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">锁定滚动</string>
+    <string name="range_lock_scrolling_subtitle">防止在范围内滚动</string>
+    <string name="button_settings">按钮设置</string>
+    <string name="button_toggleable">可切换</string>
+    <string name="button_toggleable_subtitle">点击激活，再次点击停用</string>
+
+    <string name="custom_game_exe_selection_title">需要选择可执行文件</string>
+    <string name="custom_game_exe_selection_message">此游戏有多个可执行文件。请打开自定义游戏设置以选择要启动的文件。</string>
+
     <string name="external_display_input">外接显示器输入</string>
     <string name="external_display_input_subtitle">选择已连接的演示显示器的行为方式</string>
     <string name="external_display_mode_off">不使用外接显示器</string>
@@ -620,7 +737,12 @@
     <string name="settings_debug_box_logs_title">启用 Box86/64 日志</string>
     <string name="settings_debug_box_logs_subtitle">将 Box86 与 Box64 的调试输出写入文件</string>
     <string name="settings_debug_view_crash_title">查看最新崩溃日志</string>
+    <string name="settings_debug_view_crash_subtitle">显示最新的崩溃报告</string>
+    <string name="settings_debug_no_crash_logs">未找到最近的崩溃报告</string>
     <string name="settings_debug_view_log_title">查看游戏调试日志</string>
+    <string name="settings_debug_view_log_subtitle">显示最新的 Wine/Box64 调试日志</string>
+    <string name="settings_debug_no_wine_logs">未找到 Wine 调试日志</string>
+    <string name="settings_debug_no_channels_selected">未选择任何通道</string>
     <string name="settings_debug_clear_prefs_title">清除偏好设置</string>
     <string name="settings_debug_clear_prefs_subtitle">[关闭应用程序] 登出客户端并清除本地偏好设置数据</string>
     <string name="settings_debug_clear_db_title">清除本地数据库</string>
@@ -664,14 +786,22 @@
     <string name="login_privacy_policy">隐私政策</string>
     <string name="login_welcome_back">欢迎回来</string>
     <string name="login_subtitle">登录以访问您的 Steam 游戏库</string>
+    <string name="login_tab_credentials">登录凭据</string>
+    <string name="login_tab_qr_code">二维码</string>
     <string name="login_username">用户名</string>
+    <string name="login_username_hint">输入您的 Steam 用户名</string>
     <string name="login_password">密码</string>
+    <string name="login_password_hint">输入您的密码</string>
+    <string name="login_password_show">显示密码</string>
+    <string name="login_password_hide">隐藏密码</string>
     <string name="login_remember_session">记住登录状态</string>
     <string name="login_sign_in">登录</string>
     <string name="login_qr_failed">QR 码扫描失败</string>
     <string name="login_retry_qr">重试 QR 码扫描</string>
     <string name="login_qr_instructions">打开 Steam 移动应用程序，扫描此 QR 码即可立即登录</string>
     <string name="login_skip_steam">跳过 Steam 登录</string>
+    <string name="login_or_sign_in_with">或使用以下方式登录：</string>
+    <string name="login_skip_login">跳过登录</string>
 
     <!-- 通用/可复用字符串 -->
     <string name="continue_action">继续</string>
@@ -731,6 +861,7 @@
     <string name="main_thank_you_message">通过与朋友分享应用程序或在 Ko-fi 成为会员，支持 Android 平台的开源 PC 游戏</string>
     <string name="main_join_kofi">加入 Ko-fi</string>
     <string name="main_share">分享</string>
+    <string name="main_share_text">试试 GameNative - 在 Android 上畅玩您的 PC Steam 游戏，完整支持云存档！\nhttps://gamenative.app\n加入社区：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">游戏运行正常吗？</string>
     <string name="main_discord_support_message">加入 Discord 社区，获取游戏修复与性能优化的支持</string>
     <string name="main_open_discord">打开 Discord</string>
@@ -796,6 +927,7 @@
     <string name="supporters_app_icon">应用图标：Hachi</string>
     <string name="supporters_alt_icon">备用应用图标：rhapsody_mdr</string>
     <string name="supporters_loading">正在加载支持者…</string>
+    <string name="supporters_error">无法加载支持者</string>
     <string name="supporters_members">会员</string>
     <string name="supporters_supporters">支持者</string>
     <string name="supporters_none">尚无支持者。</string>
@@ -815,6 +947,9 @@
     <string name="library_installing">安装中</string>
     <string name="library_not_installed">未安装</string>
     <string name="library_family_shared">家庭共享</string>
+    <string name="library_shared_short">共享</string>
+    <string name="library_compatible">兼容</string>
+    <string name="library_gpu_compatible">GPU 兼容</string>
 
     <!-- 最佳配置兼容性消息 -->
     <string name="best_config_exact_gpu_match">已知配置可在您的设备上运行</string>
@@ -837,6 +972,7 @@
     <string name="library_layout_list">列表</string>
     <string name="library_layout_capsule">胶囊</string>
     <string name="library_layout_hero">英雄</string>
+    <string name="library_layout_carousel">轮播</string>
     <string name="library_search_placeholder">搜索您的游戏...</string>
     <string name="library_search_description">搜索</string>
     <string name="library_search_clear">清除搜索</string>
@@ -845,7 +981,47 @@
     <string name="library_game_count">%1$d 款游戏 • %2$d 款已安装</string>
     <string name="library_source_steam">Steam</string>
     <string name="library_source_custom">自定义游戏</string>
+    <string name="library_source_title">来源</string>
     <string name="library_layout_title">布局</string>
+    <string name="library_options">选项</string>
+    <string name="back">返回</string>
+    <string name="cloud">云</string>
+    <string name="options">选项</string>
+    <string name="play_time">游戏时间</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">选项</string>
+    <string name="options_panel_close">关闭选项</string>
+    <string name="options_sort_by">排序方式</string>
+    <string name="sort_installed_first">已安装优先</string>
+    <string name="sort_name_asc">名称 (A-Z)</string>
+    <string name="sort_name_desc">名称 (Z-A)</string>
+    <string name="sort_recently_played">最近游玩</string>
+    <string name="sort_size_smallest">大小 (最小)</string>
+    <string name="sort_size_largest">大小 (最大)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">选项</string>
+    <string name="game_options_quick_actions">快捷操作</string>
+    <string name="game_options_game_management">游戏管理</string>
+    <string name="game_options_container">容器</string>
+    <string name="game_options_cloud_saves">云存档</string>
+    <string name="game_options_help_info">帮助与信息</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">按 B 关闭</string>
+    <string name="menu">菜单</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">选择</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_details">详情</string>
+    <string name="action_add_game">添加游戏</string>
+    <string name="action_system">系统</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d 个结果</string>
+    <string name="search_results_many">%d 个结果</string>
 
     <!-- 双重验证 -->
     <string name="two_factor_login">登录</string>
@@ -894,6 +1070,7 @@
 
     <!-- 设置界面 -->
     <string name="settings_title">设置</string>
+    <string name="settings_subtitle">自定义您的体验</string>
 
     <!-- 内容安装完成 -->
     <string name="contents_install_success">内容已成功安装</string>
@@ -965,11 +1142,11 @@
 
     <!-- GOG Integration -->
     <string name="gog_integration_title">GOG 集成 (Alpha)</string>
-    <string name="gog_settings_login_title">登录</string>
+    <string name="gog_settings_login_title">登录 GOG</string>
     <string name="gog_settings_login_subtitle">登录到您的 GOG 账户</string>
     <string name="gog_login_success_title">登录成功</string>
     <string name="gog_login_cancel">取消</string>
-    <string name="gog_settings_logout_title">注销</string>
+    <string name="gog_settings_logout_title">退出 GOG</string>
     <string name="gog_settings_logout_subtitle">从您的 GOG 账户登出</string>
     <string name="gog_logout_confirm_title">从 GOG 注销?</string>
     <string name="gog_logout_confirm_message">这将删除您的 GOG 凭据并清除此设备上的 GOG 库。您可以随时重新登录。</string>
@@ -984,7 +1161,7 @@
     <string name="epic_settings_login_subtitle">登录到您的 Epic Games 账户</string>
     <string name="epic_login_success_title">登录成功</string>
     <string name="epic_login_cancel">取消</string>
-    <string name="epic_settings_logout_title">注销</string>
+    <string name="epic_settings_logout_title">退出 Epic</string>
     <string name="epic_settings_logout_subtitle">从您的 Epic Games 账户登出</string>
     <string name="epic_logout_confirm_title">从 Epic Games 注销？</string>
     <string name="epic_logout_confirm_message">这将删除您的 Epic Games 凭据并清除此设备上的 Epic Games 库。您可以随时重新登录。</string>
@@ -992,6 +1169,21 @@
     <string name="epic_logout_success">已成功从 Epic Games 注销</string>
     <string name="epic_logout_failed">注销失败：%s</string>
     <string name="epic_logout_in_progress">正在从 Epic Games 注销…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games 集成 (Alpha)</string>
+    <string name="amazon_settings_login_title">登录 Amazon Games</string>
+    <string name="amazon_settings_login_subtitle">登录您的 Amazon Games 账户</string>
+    <string name="amazon_login_success_title">登录成功</string>
+    <string name="amazon_login_cancel">取消</string>
+    <string name="amazon_settings_logout_title">退出 Amazon Games</string>
+    <string name="amazon_settings_logout_subtitle">从您的 Amazon Games 账户注销</string>
+    <string name="amazon_logout_confirm_title">从 Amazon Games 注销？</string>
+    <string name="amazon_logout_confirm_message">这将删除您的 Amazon Games 凭据并清除此设备上的 Amazon 库。您可以随时重新登录。</string>
+    <string name="amazon_logout_confirm">注销</string>
+    <string name="amazon_logout_success">已成功从 Amazon Games 注销</string>
+    <string name="amazon_logout_failed">注销失败：%s</string>
+    <string name="amazon_logout_in_progress">正在从 Amazon Games 注销…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">卸载游戏</string>

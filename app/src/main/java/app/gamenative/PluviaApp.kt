@@ -8,19 +8,19 @@ import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.PlayIntegrity
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
+
+// Add PostHog imports
+import com.posthog.android.PostHogAndroid
+import com.posthog.android.PostHogAndroidConfig
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
 import com.winlator.xenvironment.XEnvironment
 import dagger.hilt.android.HiltAndroidApp
-import timber.log.Timber
-
-// Add PostHog imports
-import com.posthog.android.PostHogAndroid
-import com.posthog.android.PostHogAndroidConfig
 
 // Supabase imports
 import io.github.jan.supabase.SupabaseClient
@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
 
@@ -95,6 +96,8 @@ class PluviaApp : SplitCompatApplication() {
         }
         PostHogAndroid.setup(this, postHogConfig)
 
+        PlayIntegrity.warmUp(this)
+
         // Initialize Supabase client
         try {
             initSupabase()
@@ -123,6 +126,8 @@ class PluviaApp : SplitCompatApplication() {
         // Supabase client for game feedback
         lateinit var supabase: SupabaseClient
             private set
+
+        fun isSupabaseInitialized(): Boolean = ::supabase.isInitialized
 
         // Initialize Supabase client
         @OptIn(SupabaseInternal::class)

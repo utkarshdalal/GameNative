@@ -1,25 +1,33 @@
 package app.gamenative.ui.screen.login
 
+import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
-import androidx.compose.animation.Crossfade
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -44,29 +52,25 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -78,33 +82,166 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import app.gamenative.Constants
+import app.gamenative.ui.screen.auth.AmazonOAuthActivity
+import app.gamenative.ui.screen.auth.EpicOAuthActivity
+import app.gamenative.ui.screen.auth.GOGOAuthActivity
+import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.R
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.LoginScreen
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.UserLoginState
+import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.model.UserLoginViewModel
 import app.gamenative.ui.theme.PluviaTheme
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import app.gamenative.ui.enums.Orientation
-import app.gamenative.PluviaApp
-import app.gamenative.events.AndroidEvent
-import java.util.EnumSet
-import android.content.Context
-import androidx.compose.material3.FilledTonalButton
-import app.gamenative.PrefManager
 
 @Composable
 fun UserLoginScreen(
+    connectionState: ConnectionState,
     viewModel: UserLoginViewModel = viewModel(),
+    onRetryConnection: () -> Unit,
     onContinueOffline: () -> Unit,
+    onPlatformSignedIn: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
     val snackBarHostState = remember { SnackbarHostState() }
     val userLoginState by viewModel.loginState.collectAsState()
+
+    val gogOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.gog_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        val code = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_AUTH_CODE)
+        if (code == null) {
+            val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.gog_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        lifecycleScope.launch {
+            PlatformOAuthHandlers.handleGogAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { },
+                onError = { msg ->
+                    if (msg != null) {
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccess = {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.gog_login_success_title),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                    onPlatformSignedIn()
+                },
+                onDialogClose = { },
+            )
+        }
+    }
+
+    val epicOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.epic_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        val code = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_AUTH_CODE)
+        if (code == null) {
+            val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.epic_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        lifecycleScope.launch {
+            PlatformOAuthHandlers.handleEpicAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { },
+                onError = { msg ->
+                    if (msg != null) {
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccess = {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.epic_login_success_title),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                    onPlatformSignedIn()
+                },
+                onDialogClose = { },
+            )
+        }
+    }
+
+    val amazonOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            val message = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.amazon_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        val code = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_AUTH_CODE)
+        if (code == null) {
+            val message = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.amazon_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        lifecycleScope.launch {
+            PlatformOAuthHandlers.handleAmazonAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { },
+                onError = { msg ->
+                    if (msg != null) {
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccess = {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.amazon_login_success_title),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                    onPlatformSignedIn()
+                },
+                onDialogClose = { },
+            )
+        }
+    }
+
+    LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn) {
+        if (
+            userLoginState.loginScreen != LoginScreen.TWO_FACTOR &&
+            userLoginState.loginScreen != LoginScreen.QR &&
+            userLoginState.isLoggingIn.not()
+        ) {
+            viewModel.onShowLoginScreen(LoginScreen.QR)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.snackEvents.collect { message ->
@@ -114,6 +251,7 @@ fun UserLoginScreen(
 
     UserLoginScreenContent(
         snackBarHostState = snackBarHostState,
+        connectionState = connectionState,
         userLoginState = userLoginState,
         onUsername = viewModel::setUsername,
         onPassword = viewModel::setPassword,
@@ -123,15 +261,19 @@ fun UserLoginScreen(
         onTwoFactorLogin = viewModel::submit,
         onQrRetry = viewModel::onQrRetry,
         onSetTwoFactor = viewModel::setTwoFactorCode,
-        onRetryConnection = viewModel::retryConnection,
+        onRetryConnection = onRetryConnection,
         onContinueOffline = onContinueOffline,
+        onLaunchGog = { gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java)) },
+        onLaunchEpic = { epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java)) },
+        onLaunchAmazon = { amazonOAuthLauncher.launch(Intent(context, AmazonOAuthActivity::class.java)) },
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun UserLoginScreenContent(
     snackBarHostState: SnackbarHostState,
+    connectionState: ConnectionState,
     userLoginState: UserLoginState,
     onUsername: (String) -> Unit,
     onPassword: (String) -> Unit,
@@ -141,26 +283,28 @@ private fun UserLoginScreenContent(
     onTwoFactorLogin: () -> Unit,
     onQrRetry: () -> Unit,
     onSetTwoFactor: (String) -> Unit,
-    onRetryConnection: (Context) -> Unit,
+    onRetryConnection: () -> Unit,
     onContinueOffline: () -> Unit,
+    onLaunchGog: () -> Unit,
+    onLaunchEpic: () -> Unit,
+    onLaunchAmazon: () -> Unit,
 ) {
-    val context = LocalContext.current
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .imePadding()
+            .imePadding(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
         ) {
             // Header
             Row(
@@ -168,7 +312,7 @@ private fun UserLoginScreenContent(
                     .fillMaxWidth()
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Logo
                 Text(
@@ -176,9 +320,9 @@ private fun UserLoginScreenContent(
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         brush = Brush.horizontalGradient(
-                            colors = listOf(primaryColor, tertiaryColor)
-                        )
-                    )
+                            colors = listOf(primaryColor, tertiaryColor),
+                        ),
+                    ),
                 )
 
                 // Privacy Policy Button
@@ -186,11 +330,11 @@ private fun UserLoginScreenContent(
                 TextButton(
                     onClick = { uriHandler.openUri(Constants.Misc.PRIVACY_LINK) },
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.login_privacy_policy),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -200,12 +344,12 @@ private fun UserLoginScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 // SnackBar
                 SnackbarHost(
                     hostState = snackBarHostState,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
 
                 if (
@@ -216,14 +360,12 @@ private fun UserLoginScreenContent(
                     Card(
                         modifier = Modifier
                             .padding(16.dp)
-                            .fillMaxWidth()
-                            .width(400.dp)
-                            .heightIn(min = 450.dp),
+                            .fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
                         ),
                         border = BorderStroke(1.dp, primaryColor.copy(alpha = 0.2f)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
                     ) {
                         // Top gradient border
                         Box(
@@ -232,9 +374,9 @@ private fun UserLoginScreenContent(
                                 .height(2.dp)
                                 .background(
                                     brush = Brush.horizontalGradient(
-                                        colors = listOf(primaryColor, tertiaryColor, primaryColor)
-                                    )
-                                )
+                                        colors = listOf(primaryColor, tertiaryColor, primaryColor),
+                                    ),
+                                ),
                         )
 
                         // Make the content scrollable
@@ -243,103 +385,56 @@ private fun UserLoginScreenContent(
                             modifier = Modifier
                                 .padding(24.dp)
                                 .fillMaxWidth()
-                                .verticalScroll(scrollState),
+                                .verticalScroll(scrollState)
+                                .focusGroup(),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            // Title
-                            Text(
-                                text = stringResource(R.string.login_welcome_back),
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            if (userLoginState.loginScreen == LoginScreen.TWO_FACTOR) {
+                                TwoFactorAuthScreenContent(
+                                    userLoginState = userLoginState,
+                                    message = when {
+                                        userLoginState.previousCodeIncorrect ->
+                                            stringResource(R.string.steam_2fa_incorrect)
 
-                            // Subtitle
-                            Text(
-                                text = stringResource(R.string.login_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 24.dp)
-                            )
+                                        userLoginState.loginResult == LoginResult.DeviceAuth ->
+                                            stringResource(R.string.steam_2fa_device)
 
-                            // Tab selection between Credentials and QR Code
-                            var selectedTabIndex by remember {
-                                mutableIntStateOf(
-                                    when (userLoginState.loginScreen) {
-                                        LoginScreen.QR -> 1
-                                        else -> 0
-                                    }
-                                )
-                            }
+                                        userLoginState.loginResult == LoginResult.DeviceConfirm ->
+                                            stringResource(R.string.steam_2fa_confirmation)
 
-                            TabRow(
-                                selectedTabIndex = selectedTabIndex,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp)),
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                indicator = { tabPositions ->
-                                    if (selectedTabIndex < tabPositions.size) {
-                                        TabRowDefaults.Indicator(
-                                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                                            height = 3.dp,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            ) {
-                                Tab(
-                                    selected = selectedTabIndex == 0,
-                                    onClick = {
-                                        selectedTabIndex = 0
-                                        onShowLoginScreen(LoginScreen.CREDENTIAL)
+                                        userLoginState.loginResult == LoginResult.EmailAuth ->
+                                            stringResource(
+                                                R.string.steam_2fa_email,
+                                                userLoginState.email ?: "...",
+                                            )
+
+                                        else -> ""
                                     },
-                                    text = {
-                                        Text(
-                                            "Credentials",
-                                            color = if (selectedTabIndex == 0)
-                                                MaterialTheme.colorScheme.primary
-                                            else
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
+                                    onSetTwoFactor = onSetTwoFactor,
+                                    onLogin = onTwoFactorLogin,
                                 )
-                                Tab(
-                                    selected = selectedTabIndex == 1,
-                                    onClick = {
-                                        selectedTabIndex = 1
-                                        onShowLoginScreen(LoginScreen.QR)
-                                    },
-                                    text = {
-                                        Text(
-                                            "QR Code",
-                                            color = if (selectedTabIndex == 1)
-                                                MaterialTheme.colorScheme.primary
-                                            else
-                                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                if (isLandscape) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    ) {
+                                        QRCodeLogin(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight(),
+                                            isQrFailed = userLoginState.isQrFailed,
+                                            qrCode = userLoginState.qrCode,
+                                            onQrRetry = onQrRetry,
                                         )
-                                    }
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            // Content based on selected tab
-                            Crossfade(
-                                targetState = userLoginState.loginScreen,
-                                modifier = Modifier.fillMaxWidth()
-                            ) { screen ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(min = 350.dp)
-                                ) {
-                                    when (screen) {
-                                        LoginScreen.CREDENTIAL -> {
-                                            ModernUsernamePassword(
-                                                isSteamConnected = userLoginState.isSteamConnected,
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight(),
+                                        ) {
+                                            CredentialsForm(
+                                                connectionState = connectionState,
                                                 username = userLoginState.username,
                                                 onUsername = onUsername,
                                                 password = userLoginState.password,
@@ -349,60 +444,46 @@ private fun UserLoginScreenContent(
                                                 onLoginBtnClick = onCredentialLogin,
                                                 onRetryConnection = onRetryConnection,
                                                 onContinueOffline = onContinueOffline,
-                                                context = context,
                                             )
                                         }
-
-                                        LoginScreen.TWO_FACTOR -> {
-                                            TwoFactorAuthScreenContent(
-                                                userLoginState = userLoginState,
-                                                message = when {
-                                                    userLoginState.previousCodeIncorrect ->
-                                                        stringResource(R.string.steam_2fa_incorrect)
-
-                                                    userLoginState.loginResult == LoginResult.DeviceAuth ->
-                                                        stringResource(R.string.steam_2fa_device)
-
-                                                    userLoginState.loginResult == LoginResult.DeviceConfirm ->
-                                                        stringResource(R.string.steam_2fa_confirmation)
-
-                                                    userLoginState.loginResult == LoginResult.EmailAuth ->
-                                                        stringResource(
-                                                            R.string.steam_2fa_email,
-                                                            userLoginState.email ?: "...",
-                                                        )
-
-                                                    else -> ""
-                                                },
-                                                onSetTwoFactor = onSetTwoFactor,
-                                                onLogin = onTwoFactorLogin,
-                                            )
-                                        }
-
-                                        LoginScreen.QR -> {
-                                            ModernQRCode(
-                                                isQrFailed = userLoginState.isQrFailed,
-                                                qrCode = userLoginState.qrCode,
-                                                onQrRetry = onQrRetry
-                                            )
-                                        }
+                                    }
+                                } else {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    ) {
+                                        QRCodeLogin(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            isQrFailed = userLoginState.isQrFailed,
+                                            qrCode = userLoginState.qrCode,
+                                            onQrRetry = onQrRetry,
+                                        )
+                                        CredentialsForm(
+                                            connectionState = connectionState,
+                                            username = userLoginState.username,
+                                            onUsername = onUsername,
+                                            password = userLoginState.password,
+                                            onPassword = onPassword,
+                                            rememberSession = userLoginState.rememberSession,
+                                            onRememberSession = onRememberSession,
+                                            onLoginBtnClick = onCredentialLogin,
+                                            onRetryConnection = onRetryConnection,
+                                            onContinueOffline = onContinueOffline,
+                                        )
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (!userLoginState.isSteamConnected) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        LoadingScreen()
-                    }
+                    // User is logging in - show appropriate loading state
+                    LoadingScreen()
                 }
             }
-            
-            // Skip Steam login option
+
+            // Or sign in with: Epic · GOG · Amazon · Skip login
             if (
                 userLoginState.isLoggingIn.not() &&
                 userLoginState.loginResult != LoginResult.Success
@@ -412,19 +493,44 @@ private fun UserLoginScreenContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    TextButton(
-                        onClick = onContinueOffline,
-                        modifier = Modifier.padding(top = 0.dp)
+                    Text(
+                        text = stringResource(R.string.login_or_sign_in_with),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.Center,
                     ) {
-                        Text(
-                            text = stringResource(R.string.login_skip_steam),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Medium
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        TextButton(onClick = onLaunchEpic) {
+                            Text(
+                                text = "Epic",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        TextButton(onClick = onLaunchGog) {
+                            Text(
+                                text = "GOG",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        TextButton(onClick = onLaunchAmazon) {
+                            Text(
+                                text = "Amazon",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        TextButton(onClick = onContinueOffline) {
+                            Text(
+                                text = stringResource(R.string.login_skip_login),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                 }
             }
@@ -433,8 +539,8 @@ private fun UserLoginScreenContent(
 }
 
 @Composable
-private fun ModernUsernamePassword(
-    isSteamConnected: Boolean,
+private fun CredentialsForm(
+    connectionState: ConnectionState,
     username: String,
     onUsername: (String) -> Unit,
     password: String,
@@ -442,10 +548,11 @@ private fun ModernUsernamePassword(
     rememberSession: Boolean,
     onRememberSession: (Boolean) -> Unit,
     onLoginBtnClick: () -> Unit,
-    onRetryConnection: (Context) -> Unit,
+    onRetryConnection: () -> Unit,
     onContinueOffline: () -> Unit,
-    context: Context,
 ) {
+    val isConnecting = connectionState == ConnectionState.CONNECTING
+    val isSteamConnected = connectionState == ConnectionState.CONNECTED
     var passwordVisible by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val passwordFocusRequester = remember { FocusRequester() }
@@ -453,45 +560,73 @@ private fun ModernUsernamePassword(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Username field
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 16.dp),
         ) {
-            if (!isSteamConnected) {
+            // Show connecting state or disconnected error
+            if (isConnecting) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp),
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                                shape = RoundedCornerShape(16.dp),
+                            )
+                            .padding(24.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.connecting_to_steam),
+                            color = Color.White.copy(alpha = 0.9f),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            } else if (!isSteamConnected) {
+                // Show "No connection to Steam" error with retry button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .border(
                                 BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = RoundedCornerShape(16.dp),
                             )
-                            .padding(24.dp) // Padding inside the border
+                            .padding(24.dp),
                     ) {
                         Text(stringResource(R.string.no_connection_to_steam), color = Color.White)
                         Box(contentAlignment = Alignment.Center) {
-                            OutlinedButton (
-                                onClick = { onRetryConnection(context) },
+                            OutlinedButton(
+                                onClick = onRetryConnection,
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    // transparent container keeps the outline style
                                     containerColor = Color.Transparent,
-                                    // secondary-style text instead of primary
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                            {
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
+                            ) {
                                 Text(stringResource(R.string.retry_steam_connection))
                             }
                         }
@@ -510,7 +645,7 @@ private fun ModernUsernamePassword(
                 text = stringResource(R.string.login_username),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             OutlinedTextField(
@@ -522,21 +657,21 @@ private fun ModernUsernamePassword(
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
                     )
                     .focusRequester(usernameFocusRequester),
                 placeholder = {
                     Text(
-                        "Enter your Steam username",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        stringResource(R.string.login_username_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
                 },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
+                    imeAction = ImeAction.Next,
                 ),
                 keyboardActions = KeyboardActions(
-                    onNext = { passwordFocusRequester.requestFocus() }
+                    onNext = { passwordFocusRequester.requestFocus() },
                 ),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -545,8 +680,8 @@ private fun ModernUsernamePassword(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                )
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         }
 
@@ -554,13 +689,13 @@ private fun ModernUsernamePassword(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 16.dp),
         ) {
             Text(
                 text = stringResource(R.string.login_password),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             OutlinedTextField(
@@ -572,25 +707,25 @@ private fun ModernUsernamePassword(
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
                     )
                     .focusRequester(passwordFocusRequester),
                 placeholder = {
                     Text(
-                        "Enter your password",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        stringResource(R.string.login_password_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
                         keyboardController?.hide()
                         onLoginBtnClick()
-                    }
+                    },
                 ),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -599,7 +734,7 @@ private fun ModernUsernamePassword(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                 ),
                 trailingIcon = {
                     val image = if (passwordVisible) {
@@ -608,38 +743,22 @@ private fun ModernUsernamePassword(
                         Icons.Filled.VisibilityOff
                     }
 
-                    val description = if (passwordVisible) "Hide password" else "Show password"
+                    val description = if (passwordVisible) {
+                        stringResource(R.string.login_password_hide)
+                    } else {
+                        stringResource(R.string.login_password_show)
+                    }
 
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             imageVector = image,
                             contentDescription = description,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
+                },
             )
         }
-
-        // Remember session checkbox
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = rememberSession,
-                onCheckedChange = onRememberSession,
-            )
-            Text(
-                text = stringResource(R.string.login_remember_session),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Login button
         Button(
@@ -650,43 +769,41 @@ private fun ModernUsernamePassword(
             enabled = isSteamConnected && username.isNotEmpty() && password.isNotEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top=12.dp)
                 .height(56.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
-                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-            )
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            ),
         ) {
             Text(
                 text = stringResource(R.string.login_sign_in),
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimary
+                color = MaterialTheme.colorScheme.onPrimary,
             )
         }
-
     }
 }
 
 @Composable
-private fun ModernQRCode(
+private fun QRCodeLogin(
+    modifier: Modifier = Modifier,
     isQrFailed: Boolean,
     qrCode: String?,
-    onQrRetry: () -> Unit
+    onQrRetry: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 350.dp)
-            .padding(vertical = 16.dp),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         if (isQrFailed) {
             Text(
                 text = stringResource(R.string.login_qr_failed),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             OutlinedButton(
@@ -695,53 +812,62 @@ private fun ModernQRCode(
                 modifier = Modifier.padding(top = 16.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.tertiary
-                )
+                    contentColor = MaterialTheme.colorScheme.tertiary,
+                ),
             ) {
                 Text(
                     text = stringResource(R.string.login_retry_qr),
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = MaterialTheme.colorScheme.tertiary,
                 )
             }
         } else if (qrCode.isNullOrEmpty()) {
             CircularProgressIndicator(
                 modifier = Modifier
-                    .padding(32.dp)
-                    .size(48.dp),
-                color = MaterialTheme.colorScheme.primary
+                    .padding(vertical = 16.dp)
+                    .size(160.dp),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = stringResource(R.string.login_qr_instructions),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         } else {
             // QR Code with fancy border
             Box(
                 modifier = Modifier
                     .padding(vertical = 16.dp)
-                    .size(220.dp)
+                    .size(160.dp)
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 MaterialTheme.colorScheme.primary,
                                 MaterialTheme.colorScheme.tertiary,
-                                MaterialTheme.colorScheme.primary
-                            )
+                                MaterialTheme.colorScheme.primary,
+                            ),
                         ),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
                     )
                     .padding(2.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.White,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         QrCodeImage(
                             modifier = Modifier.fillMaxSize(0.95f),
                             content = qrCode,
-                            size = 200.dp
+                            size = 200.dp,
                         )
                     }
                 }
@@ -754,25 +880,34 @@ private fun ModernQRCode(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
     }
 }
 
-internal class UserLoginPreview : PreviewParameterProvider<UserLoginState> {
+/**
+ * Preview data class combining connection state and login state
+ */
+private data class LoginPreviewData(
+    val connectionState: ConnectionState,
+    val loginState: UserLoginState = UserLoginState(),
+)
+
+private class UserLoginPreview : PreviewParameterProvider<LoginPreviewData> {
     override val values = sequenceOf(
-        UserLoginState(isSteamConnected = true),
-        UserLoginState(isSteamConnected = true, loginScreen = LoginScreen.QR, qrCode = "Hello World!"),
-        UserLoginState(isSteamConnected = true, loginScreen = LoginScreen.QR, isQrFailed = true),
-        UserLoginState(isSteamConnected = false),
+        LoginPreviewData(ConnectionState.CONNECTED),
+        LoginPreviewData(ConnectionState.CONNECTED, UserLoginState(loginScreen = LoginScreen.QR, qrCode = "Hello World!")),
+        LoginPreviewData(ConnectionState.CONNECTED, UserLoginState(loginScreen = LoginScreen.QR, isQrFailed = true)),
+        LoginPreviewData(ConnectionState.CONNECTING),
+        LoginPreviewData(ConnectionState.DISCONNECTED),
     )
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Composable
 private fun Preview_UserLoginScreen(
-    @PreviewParameter(UserLoginPreview::class) state: UserLoginState,
+    @PreviewParameter(UserLoginPreview::class) previewData: LoginPreviewData,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -780,7 +915,8 @@ private fun Preview_UserLoginScreen(
         Surface {
             UserLoginScreenContent(
                 snackBarHostState = snackBarHostState,
-                userLoginState = state,
+                connectionState = previewData.connectionState,
+                userLoginState = previewData.loginState,
                 onUsername = { },
                 onPassword = { },
                 onRememberSession = { },
@@ -789,8 +925,47 @@ private fun Preview_UserLoginScreen(
                 onQrRetry = { },
                 onSetTwoFactor = { },
                 onShowLoginScreen = { },
-                onRetryConnection = { context -> },
-                onContinueOffline = { }
+                onRetryConnection = { },
+                onContinueOffline = { },
+                onLaunchGog = { },
+                onLaunchEpic = { },
+                onLaunchAmazon = { },
+            )
+        }
+    }
+}
+
+@Preview(
+    name = "UserLoginScreen - Landscape",
+    widthDp = 960,
+    heightDp = 540,
+    uiMode = Configuration.UI_MODE_NIGHT_NO or Configuration.UI_MODE_TYPE_NORMAL,
+)
+@Composable
+private fun Preview_UserLoginScreen_Landscape(
+    @PreviewParameter(UserLoginPreview::class) previewData: LoginPreviewData,
+) {
+    val snackBarHostState = remember { SnackbarHostState() }
+
+    PluviaTheme {
+        Surface {
+            UserLoginScreenContent(
+                snackBarHostState = snackBarHostState,
+                connectionState = previewData.connectionState,
+                userLoginState = previewData.loginState,
+                onUsername = { },
+                onPassword = { },
+                onRememberSession = { },
+                onCredentialLogin = { },
+                onTwoFactorLogin = { },
+                onQrRetry = { },
+                onSetTwoFactor = { },
+                onShowLoginScreen = { },
+                onRetryConnection = { },
+                onContinueOffline = { },
+                onLaunchGog = { },
+                onLaunchEpic = { },
+                onLaunchAmazon = { },
             )
         }
     }
