@@ -125,6 +125,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import kotlin.io.path.pathString
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -221,6 +222,8 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var licenses: List<License> = emptyList()
 
     private var retryAttempt = 0
+    private var reconnectJob: Job? = null
+    private var connectJob: Job? = null
 
     private val appPicsChannel = Channel<List<PICSRequest>>(
         capacity = 1_000,
@@ -274,6 +277,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         const val MAX_PICS_BUFFER = 256
 
         const val MAX_RETRY_ATTEMPTS = 20
+        private const val RECONNECT_BASE_DELAY_MS = 1_000L
+        private const val RECONNECT_MAX_DELAY_MS = 30_000L
 
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
@@ -2633,6 +2638,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             override fun onAvailable(network: Network) {
                 Timber.d("Wifi available")
                 isWifiConnected = true
+                scheduleReconnectIfEligible("network available")
             }
             override fun onCapabilitiesChanged(
                 network: Network,
@@ -2640,6 +2646,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             ) {
                 isWifiConnected = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                     caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+
+                if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                    scheduleReconnectIfEligible("network validated")
+                }
             }
 
             override fun onLost(network: Network) {
@@ -2775,35 +2785,146 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Unregister Wi-Fi connectivity callback
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
+        reconnectJob?.cancel()
+        reconnectJob = null
+        connectJob?.cancel()
+        connectJob = null
+
         scope.launch { stop() }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun connectToSteam() {
-        CoroutineScope(Dispatchers.Default).launch {
-            // this call errors out if run on the main thread
-            steamClient!!.connect()
+    private fun hasValidatedInternetConnection(): Boolean {
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
-            delay(5000)
+    private fun getReconnectDelayMs(attempt: Int): Long {
+        val exponent = (attempt - 1).coerceAtLeast(0).coerceAtMost(5)
+        val baseDelayMs = (RECONNECT_BASE_DELAY_MS shl exponent).coerceAtMost(RECONNECT_MAX_DELAY_MS)
+        val jitterMs = (baseDelayMs / 3).coerceAtLeast(1L)
+        return (baseDelayMs + Random.nextLong(0, jitterMs)).coerceAtMost(RECONNECT_MAX_DELAY_MS)
+    }
 
-            if (!isConnected) {
-                Timber.w("Failed to connect to Steam, marking endpoint bad and force disconnecting")
+    private fun scheduleReconnectIfEligible(reason: String) {
+        if (isStopping || isConnected || !isRunning) {
+            return
+        }
 
-                try {
-                    steamClient!!.servers.tryMark(steamClient!!.currentEndpoint, PROTOCOL_TYPES, ServerQuality.BAD)
-                } catch (e: NullPointerException) {
-                    // I don't care
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to mark endpoint as bad:")
+        if (!hasValidatedInternetConnection()) {
+            return
+        }
+
+        Timber.i("Connectivity recovered ($reason), scheduling Steam reconnect")
+        retryAttempt = 0
+        scheduleReconnect()
+    }
+
+    private fun scheduleReconnect() {
+        if (isStopping) {
+            return
+        }
+
+        if (reconnectJob?.isActive == true) {
+            return
+        }
+
+        if (!hasValidatedInternetConnection()) {
+            Timber.w("No validated internet connection, deferring Steam reconnect")
+            val event = SteamEvent.Disconnected
+            PluviaApp.events.emit(event)
+            return
+        }
+
+        if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
+            val event = SteamEvent.Disconnected
+            PluviaApp.events.emit(event)
+
+            if (keepAlive) {
+                Timber.w("Reconnect limit reached while keepAlive=true, keeping service alive")
+                return
+            }
+
+            clearValues()
+            stopSelf()
+            return
+        }
+
+        retryAttempt++
+        val delayMs = getReconnectDelayMs(retryAttempt)
+
+        Timber.w("Attempting to reconnect (retry $retryAttempt) in ${delayMs}ms")
+
+        val event = SteamEvent.RemotelyDisconnected
+        PluviaApp.events.emit(event)
+
+        reconnectJob = scope.launch {
+            delay(delayMs)
+
+            if (isStopping) {
+                return@launch
+            }
+
+            if (!hasValidatedInternetConnection()) {
+                Timber.w("Reconnect attempt skipped - no validated internet")
+                val disconnectedEvent = SteamEvent.Disconnected
+                PluviaApp.events.emit(disconnectedEvent)
+                return@launch
+            }
+
+            connectToSteam()
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (reconnectJob == job) {
+                    reconnectJob = null
                 }
+            }
+        }
+    }
 
-                try {
-                    steamClient!!.disconnect()
-                } catch (e: NullPointerException) {
-                    // I don't care
-                } catch (e: Exception) {
-                    Timber.e(e, "There was an issue when disconnecting:")
+    private fun connectToSteam() {
+        if (connectJob?.isActive == true) {
+            return
+        }
+
+        connectJob = scope.launch(Dispatchers.Default) {
+            val client = steamClient ?: return@launch
+
+            try {
+                // this call errors out if run on the main thread
+                client.connect()
+
+                delay(5000)
+
+                if (!isConnected) {
+                    Timber.w("Failed to connect to Steam, marking endpoint bad and force disconnecting")
+
+                    try {
+                        client.servers.tryMark(client.currentEndpoint, PROTOCOL_TYPES, ServerQuality.BAD)
+                    } catch (e: NullPointerException) {
+                        // I don't care
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to mark endpoint as bad:")
+                    }
+
+                    try {
+                        client.disconnect()
+                    } catch (e: NullPointerException) {
+                        // I don't care
+                    } catch (e: Exception) {
+                        Timber.e(e, "There was an issue when disconnecting:")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "connectToSteam failed")
+            }
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (connectJob == job) {
+                    connectJob = null
                 }
             }
         }
@@ -2811,6 +2932,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private suspend fun stop() {
         Timber.i("Stopping Steam service")
+
+        reconnectJob?.cancel()
+        reconnectJob = null
+        connectJob?.cancel()
+        connectJob = null
+
         if (steamClient != null && steamClient!!.isConnected) {
             isStopping = true
 
@@ -2833,6 +2960,11 @@ class SteamService : Service(), IChallengeUrlChanged {
         isConnected = false
         isLoggingOut = false
         isWaitingForQRAuth = false
+
+        reconnectJob?.cancel()
+        reconnectJob = null
+        connectJob?.cancel()
+        connectJob = null
 
         steamClient = null
         _steamUser = null
@@ -2873,6 +3005,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         Timber.i("Connected to Steam")
 
         retryAttempt = 0
+        reconnectJob?.cancel()
+        reconnectJob = null
         isConnected = true
 
         var isAutoLoggingIn = false
@@ -2896,24 +3030,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         isConnected = false
 
-        if (!isStopping && retryAttempt < MAX_RETRY_ATTEMPTS) {
-            retryAttempt++
-
-            Timber.w("Attempting to reconnect (retry $retryAttempt)")
-
-            // isLoggingOut = false
-            val event = SteamEvent.RemotelyDisconnected
-            PluviaApp.events.emit(event)
-
-            connectToSteam()
-        } else {
-            val event = SteamEvent.Disconnected
-            PluviaApp.events.emit(event)
-
-            clearValues()
-
-            stopSelf()
+        if (!isStopping) {
+            scheduleReconnect()
+            return
         }
+
+        val event = SteamEvent.Disconnected
+        PluviaApp.events.emit(event)
+
+        clearValues()
+
+        stopSelf()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
