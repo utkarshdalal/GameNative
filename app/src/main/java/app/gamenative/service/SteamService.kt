@@ -148,6 +148,8 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
@@ -224,6 +226,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var retryAttempt = 0
     private var reconnectJob: Job? = null
     private var connectJob: Job? = null
+    private val reconnectMutex = Mutex()
 
     private val appPicsChannel = Channel<List<PICSRequest>>(
         capacity = 1_000,
@@ -2638,7 +2641,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             override fun onAvailable(network: Network) {
                 Timber.d("Wifi available")
                 isWifiConnected = true
-                scheduleReconnectIfEligible("network available")
+                scheduleReconnectIfEligible("network available", network)
             }
             override fun onCapabilitiesChanged(
                 network: Network,
@@ -2648,7 +2651,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
 
                 if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                    scheduleReconnectIfEligible("network validated")
+                    scheduleReconnectIfEligible("network validated", network, caps)
                 }
             }
 
@@ -2670,6 +2673,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         val networkRequest = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
             .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
             .build()
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
 
@@ -2785,21 +2789,34 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Unregister Wi-Fi connectivity callback
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
-        reconnectJob?.cancel()
-        reconnectJob = null
-        connectJob?.cancel()
-        connectJob = null
+        scope.launch {
+            reconnectMutex.withLock {
+                reconnectJob?.cancel()
+                reconnectJob = null
+                connectJob?.cancel()
+                connectJob = null
+            }
+        }
 
         scope.launch { stop() }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun hasValidatedInternetConnection(): Boolean {
-        val activeNetwork = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+    private fun isValidatedReconnectNetwork(capabilities: NetworkCapabilities): Boolean {
+        val hasSupportedTransport = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+
+        return hasSupportedTransport &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
             capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun hasValidatedInternetConnection(network: Network? = connectivityManager.activeNetwork): Boolean {
+        val targetNetwork = network ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork) ?: return false
+        return isValidatedReconnectNetwork(capabilities)
     }
 
     private fun getReconnectDelayMs(attempt: Int): Long {
@@ -2809,89 +2826,168 @@ class SteamService : Service(), IChallengeUrlChanged {
         return (baseDelayMs + Random.nextLong(0, jitterMs)).coerceAtMost(RECONNECT_MAX_DELAY_MS)
     }
 
-    private fun scheduleReconnectIfEligible(reason: String) {
-        if (isStopping || isConnected || !isRunning) {
-            return
-        }
+    private fun scheduleReconnectIfEligible(
+        reason: String,
+        network: Network? = null,
+        networkCapabilities: NetworkCapabilities? = null,
+    ) {
+        scope.launch {
+            val hasValidatedNetwork = when {
+                networkCapabilities != null -> isValidatedReconnectNetwork(networkCapabilities)
+                network != null -> hasValidatedInternetConnection(network)
+                else -> hasValidatedInternetConnection()
+            }
 
-        if (!hasValidatedInternetConnection()) {
-            return
-        }
+            val shouldSchedule = reconnectMutex.withLock {
+                if (isStopping || isConnected || !isRunning) {
+                    return@withLock false
+                }
 
-        Timber.i("Connectivity recovered ($reason), scheduling Steam reconnect")
-        retryAttempt = 0
-        scheduleReconnect()
+                if (!hasValidatedNetwork) {
+                    return@withLock false
+                }
+
+                retryAttempt = 0
+                true
+            }
+
+            if (!shouldSchedule) {
+                return@launch
+            }
+
+            Timber.i("Connectivity recovered ($reason), scheduling Steam reconnect")
+            scheduleReconnect()
+        }
     }
 
     private fun scheduleReconnect() {
-        if (isStopping) {
-            return
-        }
+        scope.launch {
+            val runningJob = coroutineContext[Job] ?: return@launch
+            var shouldEmitDisconnected = false
+            var shouldEmitRemotelyDisconnected = false
+            var shouldStopService = false
+            var keepAliveLimitReached = false
+            var deferredForMissingInternetValidation = false
+            var shouldAttemptReconnect = false
+            var attemptForLog = 0
+            var delayMs = 0L
 
-        if (reconnectJob?.isActive == true) {
-            return
-        }
+            reconnectMutex.withLock {
+                if (isStopping) {
+                    return@withLock
+                }
 
-        if (!hasValidatedInternetConnection()) {
-            Timber.w("No validated internet connection, deferring Steam reconnect")
-            val event = SteamEvent.Disconnected
-            PluviaApp.events.emit(event)
-            return
-        }
+                if (reconnectJob?.isActive == true) {
+                    return@withLock
+                }
 
-        if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
-            val event = SteamEvent.Disconnected
-            PluviaApp.events.emit(event)
+                if (!hasValidatedInternetConnection()) {
+                    shouldEmitDisconnected = true
+                    deferredForMissingInternetValidation = true
+                    return@withLock
+                }
 
-            if (keepAlive) {
-                Timber.w("Reconnect limit reached while keepAlive=true, keeping service alive")
-                return
+                if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
+                    shouldEmitDisconnected = true
+                    if (keepAlive) {
+                        keepAliveLimitReached = true
+                    } else {
+                        shouldStopService = true
+                    }
+                    return@withLock
+                }
+
+                retryAttempt++
+                attemptForLog = retryAttempt
+                delayMs = getReconnectDelayMs(retryAttempt)
+                reconnectJob = runningJob
+                shouldEmitRemotelyDisconnected = true
+                shouldAttemptReconnect = true
             }
 
-            clearValues()
-            stopSelf()
-            return
-        }
+            if (shouldEmitDisconnected) {
+                if (deferredForMissingInternetValidation) {
+                    Timber.w("No validated internet connection, deferring Steam reconnect")
+                }
 
-        retryAttempt++
-        val delayMs = getReconnectDelayMs(retryAttempt)
+                val event = SteamEvent.Disconnected
+                PluviaApp.events.emit(event)
 
-        Timber.w("Attempting to reconnect (retry $retryAttempt) in ${delayMs}ms")
+                if (keepAliveLimitReached) {
+                    Timber.w("Reconnect limit reached while keepAlive=true, keeping service alive")
+                }
 
-        val event = SteamEvent.RemotelyDisconnected
-        PluviaApp.events.emit(event)
-
-        reconnectJob = scope.launch {
-            delay(delayMs)
-
-            if (isStopping) {
+                if (!keepAliveLimitReached && shouldStopService) {
+                    clearValues()
+                    stopSelf()
+                }
                 return@launch
             }
 
-            if (!hasValidatedInternetConnection()) {
-                Timber.w("Reconnect attempt skipped - no validated internet")
-                val disconnectedEvent = SteamEvent.Disconnected
-                PluviaApp.events.emit(disconnectedEvent)
+            if (!shouldAttemptReconnect) {
                 return@launch
             }
 
-            connectToSteam()
-        }.also { job ->
-            job.invokeOnCompletion {
-                if (reconnectJob == job) {
-                    reconnectJob = null
+            Timber.w("Attempting to reconnect (retry $attemptForLog) in ${delayMs}ms")
+
+            if (shouldEmitRemotelyDisconnected) {
+                val event = SteamEvent.RemotelyDisconnected
+                PluviaApp.events.emit(event)
+            }
+
+            try {
+                delay(delayMs)
+
+                if (isStopping) {
+                    return@launch
+                }
+
+                if (!hasValidatedInternetConnection()) {
+                    Timber.w("Reconnect attempt skipped - no validated internet")
+                    val disconnectedEvent = SteamEvent.Disconnected
+                    PluviaApp.events.emit(disconnectedEvent)
+                    return@launch
+                }
+
+                connectToSteam()
+            } finally {
+                reconnectMutex.withLock {
+                    if (reconnectJob == runningJob) {
+                        reconnectJob = null
+                    }
                 }
             }
         }
     }
 
     private fun connectToSteam() {
-        if (connectJob?.isActive == true) {
-            return
-        }
+        scope.launch(Dispatchers.Default) {
+            val runningJob = coroutineContext[Job] ?: return@launch
+            var shouldConnect = false
 
-        connectJob = scope.launch(Dispatchers.Default) {
-            val client = steamClient ?: return@launch
+            reconnectMutex.withLock {
+                if (connectJob?.isActive == true) {
+                    return@withLock
+                }
+
+                connectJob = runningJob
+                shouldConnect = true
+            }
+
+            if (!shouldConnect) {
+                return@launch
+            }
+
+            val client = steamClient
+            if (client == null) {
+                Timber.w("connectToSteam skipped - steamClient is null")
+                reconnectMutex.withLock {
+                    if (connectJob == runningJob) {
+                        connectJob = null
+                    }
+                }
+                return@launch
+            }
 
             try {
                 // this call errors out if run on the main thread
@@ -2919,12 +3015,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "connectToSteam failed")
-            }
-        }.also { job ->
-            job.invokeOnCompletion {
-                if (connectJob == job) {
-                    connectJob = null
+                Timber.e(e, "connectToSteam failed; scheduling reconnect")
+                scheduleReconnect()
+            } finally {
+                reconnectMutex.withLock {
+                    if (connectJob == runningJob) {
+                        connectJob = null
+                    }
                 }
             }
         }
@@ -2933,10 +3030,12 @@ class SteamService : Service(), IChallengeUrlChanged {
     private suspend fun stop() {
         Timber.i("Stopping Steam service")
 
-        reconnectJob?.cancel()
-        reconnectJob = null
-        connectJob?.cancel()
-        connectJob = null
+        reconnectMutex.withLock {
+            reconnectJob?.cancel()
+            reconnectJob = null
+            connectJob?.cancel()
+            connectJob = null
+        }
 
         if (steamClient != null && steamClient!!.isConnected) {
             isStopping = true
@@ -2961,10 +3060,15 @@ class SteamService : Service(), IChallengeUrlChanged {
         isLoggingOut = false
         isWaitingForQRAuth = false
 
-        reconnectJob?.cancel()
-        reconnectJob = null
-        connectJob?.cancel()
-        connectJob = null
+        runBlocking {
+            reconnectMutex.withLock {
+                reconnectJob?.cancel()
+                reconnectJob = null
+                connectJob?.cancel()
+                connectJob = null
+                retryAttempt = 0
+            }
+        }
 
         steamClient = null
         _steamUser = null
@@ -2980,7 +3084,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         _unifiedFriends = null
 
         isStopping = false
-        retryAttempt = 0
 
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
         PluviaApp.events.clearAllListenersOf<SteamEvent<Any>>()
@@ -3004,9 +3107,13 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onConnected(callback: ConnectedCallback) {
         Timber.i("Connected to Steam")
 
-        retryAttempt = 0
-        reconnectJob?.cancel()
-        reconnectJob = null
+        runBlocking {
+            reconnectMutex.withLock {
+                retryAttempt = 0
+                reconnectJob?.cancel()
+                reconnectJob = null
+            }
+        }
         isConnected = true
 
         var isAutoLoggingIn = false

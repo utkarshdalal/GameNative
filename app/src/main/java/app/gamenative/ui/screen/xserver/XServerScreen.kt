@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import android.view.Display
 import android.view.KeyEvent
@@ -157,6 +158,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Arrays
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.name
 import kotlin.text.lowercase
@@ -168,6 +170,9 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+
+private const val UNHANDLED_MOTION_LOG_THROTTLE_MS = 300L
+private val unhandledMotionLogTimestamps = ConcurrentHashMap<String, Long>()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
@@ -605,7 +610,7 @@ fun XServerScreen(
         navDialog.show()
     }
 
-    DisposableEffect(container, backActionOwnerId) {
+    DisposableEffect(container, backActionOwnerId, registerBackAction, gameBack) {
         Timber.d("XServerScreen[%s] registering back action", backActionOwnerId)
         registerBackAction(backActionOwnerId, gameBack)
         onDispose {
@@ -657,12 +662,25 @@ fun XServerScreen(
                 if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
 
                 if (!handled) {
-                    Timber.d(
-                        "XServerScreen[%s] unhandled gamepad motion source=%d device=%s",
-                        backActionOwnerId,
-                        it.event.source,
-                        it.event.device?.name,
-                    )
+                    val deviceName = it.event.device?.name ?: "unknown"
+                    val logKey = "$backActionOwnerId:${it.event.source}:$deviceName"
+                    val now = SystemClock.elapsedRealtime()
+                    val shouldLog = unhandledMotionLogTimestamps.compute(logKey) { _, lastLoggedAt ->
+                        if (lastLoggedAt == null || now - lastLoggedAt >= UNHANDLED_MOTION_LOG_THROTTLE_MS) {
+                            now
+                        } else {
+                            lastLoggedAt
+                        }
+                    } == now
+
+                    if (shouldLog) {
+                        Timber.d(
+                            "XServerScreen[%s] unhandled gamepad motion source=%d device=%s",
+                            backActionOwnerId,
+                            it.event.source,
+                            it.event.device?.name,
+                        )
+                    }
                 }
             }
             if (!handled) {

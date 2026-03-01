@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -218,7 +220,9 @@ fun PluviaMain(
 
     var openContainerConfigForAppId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val isGameSessionActive = SteamService.keepAlive && PluviaApp.xEnvironment != null
+    val isGameSessionActive by remember {
+        snapshotFlow { SteamService.keepAlive && PluviaApp.xEnvironment != null }
+    }.collectAsState(initial = SteamService.keepAlive && PluviaApp.xEnvironment != null)
     var pendingLogoutRedirect by rememberSaveable { mutableStateOf(false) }
 
     // Track if connection banner was dismissed by user
@@ -310,11 +314,16 @@ fun PluviaMain(
                     // Clear persisted route so next login starts fresh from Home
                     viewModel.clearPersistedRoute()
                     // Pop stack and go back to login
-                    navController.popBackStack(
+                    val popped = navController.popBackStack(
                         route = PluviaScreen.LoginUser.route,
                         inclusive = false,
                         saveState = false,
                     )
+                    if (!popped) {
+                        navController.navigate(PluviaScreen.LoginUser.route) {
+                            launchSingleTop = true
+                        }
+                    }
                 }
 
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
@@ -411,11 +420,16 @@ fun PluviaMain(
         if (!isGameSessionActive && pendingLogoutRedirect) {
             pendingLogoutRedirect = false
             viewModel.clearPersistedRoute()
-            navController.popBackStack(
+            val popped = navController.popBackStack(
                 route = PluviaScreen.LoginUser.route,
                 inclusive = false,
                 saveState = false,
             )
+            if (!popped) {
+                navController.navigate(PluviaScreen.LoginUser.route) {
+                    launchSingleTop = true
+                }
+            }
         }
     }
 
