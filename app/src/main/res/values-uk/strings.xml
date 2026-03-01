@@ -1204,5 +1204,13 @@
     <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
     <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
     <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
+    <string name="library_download_phase_downloading">Завантаження</string>
+    <string name="library_download_phase_preparing">Підготовка</string>
+    <string name="library_download_phase_patching">Застосування патча</string>
+    <string name="library_download_phase_verifying">Перевірка</string>
+    <string name="library_download_phase_applying_data">Застосування даних</string>
+    <string name="library_download_phase_finalizing">Завершення</string>
+    <string name="library_download_phase_paused">Призупинено</string>
+    <string name="library_download_phase_failed">Помилка</string>
 </resources>
 

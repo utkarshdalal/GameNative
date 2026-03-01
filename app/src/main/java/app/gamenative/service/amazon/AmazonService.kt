@@ -404,7 +404,7 @@ class AmazonService : Service() {
             )
             downloadInfo.setPersistencePath(installPath)
 
-            val persistedBytes = downloadInfo.loadPersistedBytesDownloaded(installPath)
+            val persistedBytes = DownloadInfo.loadPersistedResumeSnapshot(installPath)?.bytesDownloaded ?: 0L
             if (persistedBytes > 0L) {
                 downloadInfo.initializeBytesDownloaded(persistedBytes)
             }

@@ -301,9 +301,9 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         }
     }
 
-    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
+    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem, shouldPause: Boolean) {
         val appId = libraryItem.gameId
-        if (AmazonService.getDownloadInfoByAppId(appId) != null) {
+        if (shouldPause) {
             Timber.tag(TAG).i("Cancelling download for appId=$appId")
             AmazonService.cancelDownloadByAppId(appId)
         } else {

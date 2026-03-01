@@ -430,10 +430,10 @@ class EpicAppScreen : BaseAppScreen() {
         }
     }
 
-    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
+    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem, shouldPause: Boolean) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
 
-        if (isDownloading(context, libraryItem)) {
+        if (shouldPause) {
             val downloadInfo = EpicService.getDownloadInfo(libraryItem.gameId)
             // Cancel/pause download
             Timber.tag(TAG).i("Pausing Epic download: ${libraryItem.gameId}")

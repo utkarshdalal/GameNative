@@ -129,7 +129,7 @@ abstract class BaseAppScreen {
     /**
      * Handle pause/resume download click
      */
-    abstract fun onPauseResumeClick(context: Context, libraryItem: LibraryItem)
+    abstract fun onPauseResumeClick(context: Context, libraryItem: LibraryItem, shouldPause: Boolean)
 
     /**
      * Handle delete download click
@@ -676,9 +676,10 @@ abstract class BaseAppScreen {
                 }
             },
             onPauseResumeClick = {
-                onPauseResumeClick(context, libraryItem)
+                val shouldPause = isDownloadingState
+                onPauseResumeClick(context, libraryItem, shouldPause)
                 uiScope.launch {
-                    delay(100)
+                    delay(if (shouldPause) 1400L else 100L)
                     performStateRefresh(false)
                 }
             },

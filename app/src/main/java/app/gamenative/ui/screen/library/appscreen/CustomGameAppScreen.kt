@@ -193,7 +193,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(libraryItem.appId))
     }
 
-    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
+    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem, shouldPause: Boolean) {
         // Not applicable for Custom Games
     }
 

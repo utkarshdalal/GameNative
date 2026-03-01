@@ -1213,4 +1213,12 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+    <string name="library_download_phase_downloading">Downloading</string>
+    <string name="library_download_phase_preparing">Preparing</string>
+    <string name="library_download_phase_patching">Patching</string>
+    <string name="library_download_phase_verifying">Verifying</string>
+    <string name="library_download_phase_applying_data">Applying Data</string>
+    <string name="library_download_phase_finalizing">Finalizing</string>
+    <string name="library_download_phase_paused">Paused</string>
+    <string name="library_download_phase_failed">Failed</string>
 </resources>

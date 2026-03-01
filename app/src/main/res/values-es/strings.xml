@@ -1147,5 +1147,13 @@
     <string name="amazon_logout_success">La sesión de Amazon Games se ha cerrado correctamente.</string>
     <string name="amazon_logout_failed">Error al cerrar la sesión: %s</string>
     <string name="amazon_logout_in_progress">Cerrando sesión de Amazon Games…</string>
+    <string name="library_download_phase_downloading">Descargando</string>
+    <string name="library_download_phase_preparing">Preparando</string>
+    <string name="library_download_phase_patching">Aplicando parche</string>
+    <string name="library_download_phase_verifying">Verificando</string>
+    <string name="library_download_phase_applying_data">Aplicando datos</string>
+    <string name="library_download_phase_finalizing">Finalizando</string>
+    <string name="library_download_phase_paused">En pausa</string>
+    <string name="library_download_phase_failed">Fallido</string>
 </resources>
 

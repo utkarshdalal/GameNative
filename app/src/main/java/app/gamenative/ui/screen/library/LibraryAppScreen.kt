@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -83,6 +84,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -238,8 +240,10 @@ private fun PrimaryActionButton(
                 )
                 Text(
                     text = "${(downloadProgress * 100).toInt()}%",
+                    modifier = Modifier.widthIn(min = 40.dp),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color.White,
+                    textAlign = TextAlign.End,
                 )
             }
         } else {
@@ -455,10 +459,46 @@ private fun formatBytes(bytes: Long): String {
     val mb = kb * 1024
     val gb = mb * 1024
     return when {
-        bytes >= gb -> String.format("%.1f GB", bytes / gb)
-        bytes >= mb -> String.format("%.1f MB", bytes / mb)
-        bytes >= kb -> String.format("%.1f KB", bytes / kb)
+        bytes >= gb -> String.format("%.2f GB", bytes / gb)
+        bytes >= mb -> String.format("%.2f MB", bytes / mb)
+        bytes >= kb -> String.format("%.2f KB", bytes / kb)
         else -> "$bytes B"
+    }
+}
+
+// Formats network speed in bits per second using decimal units
+private fun formatNetworkSpeed(bytesPerSecond: Long): String {
+    val bitsPerSecond = (bytesPerSecond.coerceAtLeast(0L).toDouble() * 8.0)
+    val kb = 1000.0
+    val mb = kb * 1000.0
+    val gb = mb * 1000.0
+    return when {
+        bitsPerSecond >= gb -> String.format("%.1f Gb/s", bitsPerSecond / gb)
+        bitsPerSecond >= mb -> String.format("%.1f Mb/s", bitsPerSecond / mb)
+        bitsPerSecond >= kb -> String.format("%.1f Kb/s", bitsPerSecond / kb)
+        else -> "${bitsPerSecond.toLong()} b/s"
+    }
+}
+
+private fun formatStableEtaText(etaMs: Long): String {
+    val totalSeconds = ((etaMs + 999L) / 1000L).coerceAtLeast(0L)
+    val minutesLeft = totalSeconds / 60L
+    val secondsPart = totalSeconds % 60L
+    return "${minutesLeft}m ${secondsPart}s left"
+}
+
+private fun phaseStringResId(phase: app.gamenative.data.DownloadPhase): Int {
+    return when (phase) {
+        app.gamenative.data.DownloadPhase.UNKNOWN -> R.string.library_download_phase_downloading
+        app.gamenative.data.DownloadPhase.PREPARING -> R.string.library_download_phase_preparing
+        app.gamenative.data.DownloadPhase.DOWNLOADING -> R.string.library_download_phase_downloading
+        app.gamenative.data.DownloadPhase.PAUSED -> R.string.library_download_phase_paused
+        app.gamenative.data.DownloadPhase.FAILED -> R.string.library_download_phase_failed
+        app.gamenative.data.DownloadPhase.VERIFYING -> R.string.library_download_phase_verifying
+        app.gamenative.data.DownloadPhase.PATCHING -> R.string.library_download_phase_patching
+        app.gamenative.data.DownloadPhase.APPLYING_DATA -> R.string.library_download_phase_applying_data
+        app.gamenative.data.DownloadPhase.FINALIZING -> R.string.library_download_phase_finalizing
+        app.gamenative.data.DownloadPhase.COMPLETE -> R.string.library_download_phase_downloading
     }
 }
 
@@ -532,35 +572,84 @@ internal fun AppScreenContent(
     }
 
     // Download progress texts hoisted here so they can be shown inside the button
+    val downloadStateFlow = remember(downloadInfo) { downloadInfo?.getStatusFlow() }
+    val downloadState by (
+        downloadStateFlow?.collectAsState(initial = downloadStateFlow.value)
+            ?: remember { mutableStateOf<app.gamenative.data.DownloadPhase?>(null) }
+    )
+    val downloadStatus = downloadState ?: app.gamenative.data.DownloadPhase.UNKNOWN
+
     val downloadStatusMessageFlow = remember(downloadInfo) { downloadInfo?.getStatusMessageFlow() }
     val downloadStatusMessage by (
         downloadStatusMessageFlow?.collectAsState(initial = downloadStatusMessageFlow.value)
             ?: remember { mutableStateOf<String?>(null) }
     )
-    val downloadingLabel = stringResource(R.string.downloading)
-    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, downloadStatusMessage) {
-        val etaMs = downloadInfo?.getEstimatedTimeRemaining()
-        if (etaMs != null && etaMs > 0L) {
-            val totalSeconds = etaMs / 1000
-            val minutesLeft = totalSeconds / 60
-            val secondsPart = totalSeconds % 60
-            "${minutesLeft}m ${secondsPart}s left"
-        } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
+
+    // Auto ticking ETA & Speed
+    var etaTick by remember { mutableStateOf(0L) }
+    LaunchedEffect(isDownloading, downloadStatus) {
+        // Only tick and recalculate ETA & speed if we are actively downloading/verifying 
+        // to avoid unnecessary calculations and UI recompositions when paused/failed
+        val isActivePhase = downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING || 
+                          downloadStatus == app.gamenative.data.DownloadPhase.VERIFYING
+                          
+        while (isDownloading && isActivePhase) {
+            etaTick = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
+
+    val (networkSpeedText, downloadTimeLeftText) = remember(displayInfo.appId, downloadProgress, downloadInfo, etaTick) {
+        val speedBytes = downloadInfo?.getCurrentDownloadSpeed() ?: 0L
+        
+        val speedText = if (speedBytes > 0L) {
+            formatNetworkSpeed(speedBytes)
         } else {
             ""
         }
+        
+        val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+        val displayEtaMs = if (etaMs != null && etaMs > 0L) {
+            etaMs
+        } else {
+            val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
+            if (speedBytes > 0L && bytesTotal > bytesDone) {
+                (((bytesTotal - bytesDone).toDouble() / speedBytes) * 1000.0).toLong()
+            } else {
+                null
+            }
+        }
+
+        val etaText = if (displayEtaMs != null) {
+            formatStableEtaText(displayEtaMs)
+        } else {
+            null
+        }
+        
+        Pair(speedText, etaText)
     }
+
     val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
-        if (bytesTotal > 0L) {
-            "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
-        } else if (bytesDone > 0L) {
-            formatBytes(bytesDone)
-        } else {
-            downloadingLabel
+        when {
+            bytesDone <= 0L && bytesTotal > 0L -> "0 B / ${formatBytes(bytesTotal)}"
+            bytesDone <= 0L -> "0 / XX"
+            bytesTotal > 0L -> "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
+            else -> "${formatBytes(bytesDone)} / XX"
         }
     }
+
+    val phaseText = remember(displayInfo.gameId, downloadProgress, downloadInfo, downloadStatus) {
+        val (bytesDone, _) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
+        if (downloadProgress >= 0.99f && downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING) {
+            // Can't invoke @Composable stringResource inside remember directly, but we can return the ID
+            R.string.library_download_phase_finalizing
+        } else if (bytesDone == 0L && downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING) {
+            R.string.library_download_phase_preparing
+        } else {
+            phaseStringResId(downloadStatus)
+        }
+    }.let { stringResource(it) }
 
     // Handle gamepad button presses
     val handleKeyEvent: (KeyEvent) -> Boolean = { event ->
@@ -742,6 +831,7 @@ internal fun AppScreenContent(
                         // Primary action button (left-aligned)
                         if (isDownloading || hasPartialDownload) {
                             PrimaryActionButton(
+                                modifier = Modifier.widthIn(min = 210.dp),
                                 text = if (isDownloading) {
                                     stringResource(R.string.pause_download)
                                 } else {
@@ -762,6 +852,7 @@ internal fun AppScreenContent(
                                 else -> stringResource(R.string.install_app)
                             }
                             PrimaryActionButton(
+                                modifier = Modifier.widthIn(min = 210.dp),
                                 text = text,
                                 onClick = onDownloadInstallClick,
                                 enabled = buttonEnabled,
@@ -779,23 +870,60 @@ internal fun AppScreenContent(
                                     .padding(horizontal = 8.dp),
                                 verticalArrangement = Arrangement.Center,
                             ) {
-                                if (downloadSizeText.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
                                     Text(
                                         text = downloadSizeText,
+                                        modifier = Modifier.weight(1f),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.White.copy(alpha = 0.9f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
-                                }
-                                if (downloadTimeLeftText.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = downloadTimeLeftText,
+                                        text = phaseText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                val statusMsg = downloadStatusMessage
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = networkSpeedText,
+                                        modifier = Modifier.weight(1f),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White.copy(alpha = 0.65f),
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                                        overflow = TextOverflow.Ellipsis
                                     )
+                                    if (downloadTimeLeftText != null) {
+                                        Text(
+                                            text = downloadTimeLeftText,
+                                            modifier = Modifier.widthIn(min = 80.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.65f),
+                                            textAlign = TextAlign.End,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    } else if (!statusMsg.isNullOrBlank()) {
+                                        Text(
+                                            text = statusMsg,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.65f),
+                                            textAlign = TextAlign.End,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                 }
                             }
                         } else {

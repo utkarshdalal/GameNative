@@ -1212,4 +1212,12 @@
     <string name="manifest_content_untrusted">콘텐츠를 신뢰할 수 없으며 설치되지 않았습니다.</string>
     <string name="manifest_type_mismatch">다운로드한 콘텐츠가 예상 유형과 일치하지 않습니다.</string>
     <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
+    <string name="library_download_phase_downloading">다운로드 중</string>
+    <string name="library_download_phase_preparing">준비 중</string>
+    <string name="library_download_phase_patching">패치 중</string>
+    <string name="library_download_phase_verifying">검증 중</string>
+    <string name="library_download_phase_applying_data">데이터 적용 중</string>
+    <string name="library_download_phase_finalizing">마무리 중</string>
+    <string name="library_download_phase_paused">일시 중지됨</string>
+    <string name="library_download_phase_failed">실패</string>
 </resources>

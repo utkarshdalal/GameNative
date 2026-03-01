@@ -317,13 +317,13 @@ class GOGAppScreen : BaseAppScreen() {
         }
     }
 
-    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
+    override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem, shouldPause: Boolean) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
         val gameId = libraryItem.gameId.toString()
         val downloadInfo = GOGService.getDownloadInfo(gameId)
         val isDownloading = isDownloading(context, libraryItem)
 
-        if (isDownloading) {
+        if (shouldPause && downloadInfo != null) {
             Timber.tag(TAG).i("Cancelling GOG download: ${libraryItem.appId}")
             downloadInfo?.cancel()
             GOGService.cleanupDownload(gameId)
