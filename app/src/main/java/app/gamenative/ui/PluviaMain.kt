@@ -364,8 +364,21 @@ fun PluviaMain(
                                     }
                                 }
                             } else if (PluviaApp.xEnvironment == null) {
+                                val currentRoute = navController.currentDestination?.route
                                 val targetRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route
-                                navController.navigateFromLoginIfNeeded(targetRoute, "LogonEnded")
+                                if (currentRoute == PluviaScreen.LoginUser.route) {
+                                    navController.navigateFromLoginIfNeeded(targetRoute, "LogonEnded")
+                                } else if (currentRoute == PluviaScreen.Home.route + "?offline={offline}") {
+                                    val isCurrentlyOffline = navController.currentBackStackEntry
+                                        ?.arguments?.getBoolean("offline") ?: false
+                                    if (isCurrentlyOffline) {
+                                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
+                                            popUpTo(PluviaScreen.Home.route + "?offline={offline}") {
+                                                inclusive = true
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -1020,13 +1033,15 @@ fun PluviaMain(
             }
         }
 
-        val startDestination = when {
-            SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
-            GOGService.hasStoredCredentials(context) ||
-                EpicService.hasStoredCredentials(context) ||
-                AmazonService.hasStoredCredentials(context) ->
-                PluviaScreen.Home.route + "?offline=true"
-            else -> PluviaScreen.LoginUser.route
+        val startDestination = rememberSaveable {
+            when {
+                SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
+                GOGService.hasStoredCredentials(context) ||
+                    EpicService.hasStoredCredentials(context) ||
+                    AmazonService.hasStoredCredentials(context) ->
+                    PluviaScreen.Home.route + "?offline=true"
+                else -> PluviaScreen.LoginUser.route
+            }
         }
 
         NavHost(
