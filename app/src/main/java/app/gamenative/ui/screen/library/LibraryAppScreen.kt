@@ -484,7 +484,7 @@ private fun formatStableEtaText(etaMs: Long): String {
     val totalSeconds = ((etaMs + 999L) / 1000L).coerceAtLeast(0L)
     val minutesLeft = totalSeconds / 60L
     val secondsPart = totalSeconds % 60L
-    return "${minutesLeft}m ${secondsPart}s left"
+    return "${minutesLeft}m ${secondsPart}s"
 }
 
 private fun phaseStringResId(phase: app.gamenative.data.DownloadPhase): Int {
