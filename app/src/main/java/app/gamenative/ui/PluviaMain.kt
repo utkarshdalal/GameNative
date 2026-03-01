@@ -217,6 +217,9 @@ fun PluviaMain(
 
     var openContainerConfigForAppId by rememberSaveable { mutableStateOf<String?>(null) }
 
+    val isGameSessionActive = SteamService.keepAlive && PluviaApp.xEnvironment != null
+    var pendingLogoutRedirect by rememberSaveable { mutableStateOf(false) }
+
     // Track if connection banner was dismissed by user
     var connectionBannerDismissed by rememberSaveable { mutableStateOf(false) }
 
@@ -298,6 +301,11 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnLoggedOut -> {
+                    if (isGameSessionActive) {
+                        pendingLogoutRedirect = true
+                        return@collect
+                    }
+
                     // Clear persisted route so next login starts fresh from Home
                     viewModel.clearPersistedRoute()
                     // Pop stack and go back to login
@@ -395,6 +403,18 @@ fun PluviaMain(
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    LaunchedEffect(isGameSessionActive, pendingLogoutRedirect) {
+        if (!isGameSessionActive && pendingLogoutRedirect) {
+            pendingLogoutRedirect = false
+            viewModel.clearPersistedRoute()
+            navController.popBackStack(
+                route = PluviaScreen.LoginUser.route,
+                inclusive = false,
+                saveState = false,
+            )
         }
     }
 
@@ -1021,6 +1041,7 @@ fun PluviaMain(
         }
 
         val startDestination = when {
+            isGameSessionActive -> PluviaScreen.XServer.route
             SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
             GOGService.hasStoredCredentials(context) ||
                 EpicService.hasStoredCredentials(context) ||
