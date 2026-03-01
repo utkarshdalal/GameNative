@@ -212,6 +212,7 @@ fun PluviaMain(
     var isConnecting by rememberSaveable { mutableStateOf(false) }
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
+    var gameBackActionOwnerId by rememberSaveable { mutableStateOf<String?>(null) }
 
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
 
@@ -1040,7 +1041,7 @@ fun PluviaMain(
             }
         }
 
-        val startDestination = when {
+        val liveStartDestinationCandidate = when {
             isGameSessionActive -> PluviaScreen.XServer.route
             SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
             GOGService.hasStoredCredentials(context) ||
@@ -1050,9 +1051,36 @@ fun PluviaMain(
             else -> PluviaScreen.LoginUser.route
         }
 
+        val navHostStartDestination = rememberSaveable {
+            liveStartDestinationCandidate
+        }
+
+        LaunchedEffect(isGameSessionActive) {
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (isGameSessionActive && currentRoute != PluviaScreen.XServer.route) {
+                Timber.w(
+                    "Game session active while route=%s, restoring XServer route",
+                    currentRoute,
+                )
+                navController.navigate(PluviaScreen.XServer.route) {
+                    launchSingleTop = true
+                }
+            }
+        }
+
+        Timber.d(
+            "NavHost startDestination=%s liveCandidate=%s (isGameSessionActive=%s, keepAlive=%s, hasXEnvironment=%s, loggedIn=%s)",
+            navHostStartDestination,
+            liveStartDestinationCandidate,
+            isGameSessionActive,
+            SteamService.keepAlive,
+            PluviaApp.xEnvironment != null,
+            SteamService.isLoggedIn,
+        )
+
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = navHostStartDestination,
         ) {
             /** Login **/
             composable(route = PluviaScreen.LoginUser.route) {
@@ -1212,9 +1240,24 @@ fun PluviaMain(
                     appId = state.launchedAppId,
                     bootToContainer = state.bootToContainer,
                     testGraphics = state.testGraphics,
-                    registerBackAction = { cb ->
-                        Timber.d("registerBackAction called: $cb")
-                        gameBackAction = cb
+                    registerBackAction = { ownerId, cb ->
+                        when {
+                            cb != null -> {
+                                Timber.d("registerBackAction owner=$ownerId callback=$cb")
+                                gameBackActionOwnerId = ownerId
+                                gameBackAction = cb
+                            }
+
+                            gameBackActionOwnerId == ownerId -> {
+                                Timber.d("clearBackAction owner=$ownerId accepted")
+                                gameBackActionOwnerId = null
+                                gameBackAction = {}
+                            }
+
+                            else -> {
+                                Timber.d("clearBackAction owner=$ownerId ignored; activeOwner=$gameBackActionOwnerId")
+                            }
+                        }
                     },
                     navigateBack = {
                         CoroutineScope(Dispatchers.Main).launch {

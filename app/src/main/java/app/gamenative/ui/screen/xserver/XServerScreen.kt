@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.view.Display
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -155,6 +156,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Arrays
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.name
 import kotlin.text.lowercase
@@ -220,7 +222,7 @@ fun XServerScreen(
     appId: String,
     bootToContainer: Boolean,
     testGraphics: Boolean = false,
-    registerBackAction: ( ( ) -> Unit ) -> Unit,
+    registerBackAction: (ownerId: String, callback: (() -> Unit)?) -> Unit,
     navigateBack: () -> Unit,
     onExit: () -> Unit,
     onWindowMapped: ((Context, Window) -> Unit)? = null,
@@ -325,6 +327,8 @@ fun XServerScreen(
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
     var isOverlayPaused by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
+
+    val backActionOwnerId = remember { "xserver-back-${UUID.randomUUID()}" }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -601,28 +605,37 @@ fun XServerScreen(
         navDialog.show()
     }
 
-    DisposableEffect(container) {
-        registerBackAction(gameBack)
+    DisposableEffect(container, backActionOwnerId) {
+        Timber.d("XServerScreen[%s] registering back action", backActionOwnerId)
+        registerBackAction(backActionOwnerId, gameBack)
         onDispose {
-            Timber.d("XServerScreen leaving, clearing back action")
+            Timber.d("XServerScreen[%s] leaving, clearing back action", backActionOwnerId)
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
-            registerBackAction { }
+            registerBackAction(backActionOwnerId, null)
         }   // reset when screen leaves
     }
 
-    DisposableEffect(lifecycleOwner, container) {
+    DisposableEffect(lifecycleOwner, container, backActionOwnerId) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
-            Timber.i("onActivityDestroyed")
+            Timber.i("XServerScreen[%s] onActivityDestroyed", backActionOwnerId)
             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
             val isGamepad = ExternalController.isGameController(it.event.device)
-            // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
             var handled = false
             if (isGamepad) {
+                if (it.event.action == KeyEvent.ACTION_DOWN) {
+                    Timber.d(
+                        "XServerScreen[%s] gamepad key down keyCode=%d device=%s",
+                        backActionOwnerId,
+                        it.event.keyCode,
+                        it.event.device?.name,
+                    )
+                }
+
                 handled = physicalControllerHandler?.onKeyEvent(it.event) == true
                 if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                 // Final fallback to WinHandler passthrough
@@ -642,6 +655,15 @@ fun XServerScreen(
                 if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                 // Final fallback to WinHandler passthrough
                 if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
+
+                if (!handled) {
+                    Timber.d(
+                        "XServerScreen[%s] unhandled gamepad motion source=%d device=%s",
+                        backActionOwnerId,
+                        it.event.source,
+                        it.event.device?.name,
+                    )
+                }
             }
             if (!handled) {
                 handled = PluviaApp.touchpadView?.onExternalMouseEvent(it.event) == true
@@ -649,17 +671,18 @@ fun XServerScreen(
             handled
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
-            Timber.i("onGuestProgramTerminated")
+            Timber.i("XServerScreen[%s] onGuestProgramTerminated", backActionOwnerId)
             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
-            Timber.i("onForceCloseApp")
+            Timber.i("XServerScreen[%s] onForceCloseApp", backActionOwnerId)
             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
         }
 
+        Timber.d("XServerScreen[%s] registering key/motion/activity listeners", backActionOwnerId)
         PluviaApp.events.on<AndroidEvent.ActivityDestroyed, Unit>(onActivityDestroyed)
         PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(onKeyEvent)
         PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(onMotionEvent)
@@ -668,6 +691,7 @@ fun XServerScreen(
         ProcessHelper.addDebugCallback(debugCallback)
 
         onDispose {
+            Timber.d("XServerScreen[%s] unregistering key/motion/activity listeners", backActionOwnerId)
             PluviaApp.events.off<AndroidEvent.ActivityDestroyed, Unit>(onActivityDestroyed)
             PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(onKeyEvent)
             PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(onMotionEvent)
