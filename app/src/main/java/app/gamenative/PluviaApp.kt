@@ -32,6 +32,8 @@ import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -114,7 +116,14 @@ class PluviaApp : SplitCompatApplication() {
         internal var onDestinationChangedListener: NavChangedListener? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
-        internal var xEnvironment: XEnvironment? = null
+        private val _xEnvironmentFlow = MutableStateFlow<XEnvironment?>(null)
+        internal val xEnvironmentFlow = _xEnvironmentFlow.asStateFlow()
+        internal var xEnvironment: XEnvironment?
+            get() = _xEnvironmentFlow.value
+            set(value) {
+                _xEnvironmentFlow.value = value
+            }
+
         internal var xServerView: XServerView? = null
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null

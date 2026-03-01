@@ -31,6 +31,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -173,6 +174,19 @@ private val isExiting = AtomicBoolean(false)
 
 private const val UNHANDLED_MOTION_LOG_THROTTLE_MS = 300L
 private val unhandledMotionLogTimestamps = ConcurrentHashMap<String, Long>()
+
+private fun clearUnhandledMotionLogTimestampsForOwner(ownerId: String) {
+    val ownerPrefix = "$ownerId:"
+    val keysToRemove = unhandledMotionLogTimestamps.keys.filter { it.startsWith(ownerPrefix) }
+    keysToRemove.forEach { unhandledMotionLogTimestamps.remove(it) }
+    if (keysToRemove.isNotEmpty()) {
+        Timber.d(
+            "XServerScreen[%s] cleared %d unhandled motion log keys",
+            ownerId,
+            keysToRemove.size,
+        )
+    }
+}
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
@@ -610,14 +624,18 @@ fun XServerScreen(
         navDialog.show()
     }
 
-    DisposableEffect(container, backActionOwnerId, registerBackAction, gameBack) {
+    val currentGameBack = rememberUpdatedState(gameBack)
+    DisposableEffect(container, backActionOwnerId, registerBackAction) {
         Timber.d("XServerScreen[%s] registering back action", backActionOwnerId)
-        registerBackAction(backActionOwnerId, gameBack)
+        registerBackAction(backActionOwnerId) {
+            currentGameBack.value.invoke()
+        }
         onDispose {
             Timber.d("XServerScreen[%s] leaving, clearing back action", backActionOwnerId)
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
             registerBackAction(backActionOwnerId, null)
+            clearUnhandledMotionLogTimestampsForOwner(backActionOwnerId)
         }   // reset when screen leaves
     }
 
@@ -716,6 +734,7 @@ fun XServerScreen(
             PluviaApp.events.off<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
             ProcessHelper.removeDebugCallback(debugCallback)
+            clearUnhandledMotionLogTimestampsForOwner(backActionOwnerId)
         }
     }
 

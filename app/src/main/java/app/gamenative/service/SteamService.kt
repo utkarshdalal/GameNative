@@ -354,10 +354,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        private val _keepAliveFlow = MutableStateFlow(false)
+
+        @JvmStatic
+        val keepAliveFlow = _keepAliveFlow.asStateFlow()
+
         // Track whether a game is currently running to prevent premature service stop
         @JvmStatic
-        @Volatile
-        var keepAlive: Boolean = false
+        var keepAlive: Boolean
+            get() = _keepAliveFlow.value
+            set(value) {
+                _keepAliveFlow.value = value
+            }
 
         @Volatile
         var isImporting: Boolean = false
@@ -2639,10 +2647,25 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Register callback for Wi-Fi connectivity
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                Timber.d("Wifi available")
-                isWifiConnected = true
-                scheduleReconnectIfEligible("network available", network)
+                val caps = connectivityManager.getNetworkCapabilities(network)
+                val isWifiOrEthernet = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+                val isCellular = caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+
+                isWifiConnected = isWifiOrEthernet
+
+                Timber.d(
+                    "Network available: wifiOrEthernet=%s cellular=%s validated=%s",
+                    isWifiOrEthernet,
+                    isCellular,
+                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true,
+                )
+
+                if (isWifiOrEthernet) {
+                    scheduleReconnectIfEligible("network available", network, caps)
+                }
             }
+
             override fun onCapabilitiesChanged(
                 network: Network,
                 caps: NetworkCapabilities,
@@ -2847,7 +2870,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     return@withLock false
                 }
 
-                retryAttempt = 0
                 true
             }
 
@@ -2878,6 +2900,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 if (reconnectJob?.isActive == true) {
+                    return@withLock
+                }
+
+                if (connectJob?.isActive == true) {
+                    Timber.d("Reconnect skipped - connect attempt already in progress")
                     return@withLock
                 }
 
@@ -2964,6 +2991,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         scope.launch(Dispatchers.Default) {
             val runningJob = coroutineContext[Job] ?: return@launch
             var shouldConnect = false
+            var shouldScheduleReconnectAfterCleanup = false
 
             reconnectMutex.withLock {
                 if (connectJob?.isActive == true) {
@@ -2996,14 +3024,37 @@ class SteamService : Service(), IChallengeUrlChanged {
                 delay(5000)
 
                 if (!isConnected) {
+                    shouldScheduleReconnectAfterCleanup = true
                     Timber.w("Failed to connect to Steam, marking endpoint bad and force disconnecting")
 
-                    try {
-                        client.servers.tryMark(client.currentEndpoint, PROTOCOL_TYPES, ServerQuality.BAD)
-                    } catch (e: NullPointerException) {
-                        // I don't care
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to mark endpoint as bad:")
+                    val endpoint = client.currentEndpoint
+                    val servers = client.servers
+
+                    if (endpoint == null || servers == null) {
+                        Timber.e(
+                            "Cannot mark endpoint as bad (endpoint=%s, serversNull=%s, protocolTypes=%s)",
+                            endpoint,
+                            servers == null,
+                            PROTOCOL_TYPES,
+                        )
+                    } else {
+                        try {
+                            servers.tryMark(endpoint, PROTOCOL_TYPES, ServerQuality.BAD)
+                        } catch (e: NullPointerException) {
+                            Timber.e(
+                                e,
+                                "NPE while marking endpoint as bad (endpoint=%s, protocolTypes=%s)",
+                                endpoint,
+                                PROTOCOL_TYPES,
+                            )
+                        } catch (e: Exception) {
+                            Timber.e(
+                                e,
+                                "Failed to mark endpoint as bad (endpoint=%s, protocolTypes=%s)",
+                                endpoint,
+                                PROTOCOL_TYPES,
+                            )
+                        }
                     }
 
                     try {
@@ -3015,14 +3066,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "connectToSteam failed; scheduling reconnect")
-                scheduleReconnect()
+                Timber.e(e, "connectToSteam failed; reconnect will be scheduled after connect job cleanup")
+                shouldScheduleReconnectAfterCleanup = true
             } finally {
                 reconnectMutex.withLock {
                     if (connectJob == runningJob) {
                         connectJob = null
                     }
                 }
+            }
+
+            if (shouldScheduleReconnectAfterCleanup && !isStopping) {
+                scheduleReconnect()
             }
         }
     }

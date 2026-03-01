@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -99,6 +98,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -221,7 +221,9 @@ fun PluviaMain(
     var openContainerConfigForAppId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val isGameSessionActive by remember {
-        snapshotFlow { SteamService.keepAlive && PluviaApp.xEnvironment != null }
+        SteamService.keepAliveFlow.combine(PluviaApp.xEnvironmentFlow) { keepAlive, xEnvironment ->
+            keepAlive && xEnvironment != null
+        }
     }.collectAsState(initial = SteamService.keepAlive && PluviaApp.xEnvironment != null)
     var pendingLogoutRedirect by rememberSaveable { mutableStateOf(false) }
 
@@ -321,6 +323,9 @@ fun PluviaMain(
                     )
                     if (!popped) {
                         navController.navigate(PluviaScreen.LoginUser.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                inclusive = true
+                            }
                             launchSingleTop = true
                         }
                     }
@@ -427,6 +432,9 @@ fun PluviaMain(
             )
             if (!popped) {
                 navController.navigate(PluviaScreen.LoginUser.route) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        inclusive = true
+                    }
                     launchSingleTop = true
                 }
             }
