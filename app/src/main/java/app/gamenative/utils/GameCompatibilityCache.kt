@@ -17,7 +17,7 @@ object GameCompatibilityCache {
 
     private val inMemoryCache = ConcurrentHashMap<String, GameCompatibilityService.GameCompatibilityResponse>()
     private val timestamps = ConcurrentHashMap<String, Long>()
-    private var cacheLoaded = false
+    @Volatile private var cacheLoaded = false
 
     @Serializable
     data class CachedCompatibilityResponse(

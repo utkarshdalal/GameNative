@@ -34,7 +34,7 @@ public abstract class GPUInformation {
         if (cachedGpuCards == null) {
             try {
                 String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
-                cachedGpuCards = new JSONArray(gpuNameList);
+                cachedGpuCards = (gpuNameList != null) ? new JSONArray(gpuNameList) : new JSONArray();
             } catch (JSONException e) {
                 cachedGpuCards = new JSONArray();
             }

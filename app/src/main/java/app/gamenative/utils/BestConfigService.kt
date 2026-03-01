@@ -25,7 +25,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Collections
 
 /**
  * Service for fetching best configurations for games from GameNative API.
@@ -40,8 +40,14 @@ object BestConfigService {
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
 
-    // In-memory cache keyed by "${gameName}_${gpuName}"
-    private val cache = ConcurrentHashMap<String, BestConfigResponse>()
+    // In-memory cache keyed by "${gameName}_${gpuName}", insertion-ordered for FIFO eviction
+    private val cache: MutableMap<String, BestConfigResponse> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, BestConfigResponse>(MAX_CACHE_SIZE, 0.75f, false) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, BestConfigResponse>?): Boolean {
+                return size > MAX_CACHE_SIZE
+            }
+        }
+    )
 
     // Last missing content description from validation (e.g. "DXVK 1.10.3")
     private var lastMissingContentDescription: String? = null
@@ -141,13 +147,6 @@ object BestConfigService {
                         matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
                     )
 
-                    // Evict oldest entries if cache is full
-                    if (cache.size >= MAX_CACHE_SIZE) {
-                        val keysToRemove = cache.keys().toList().take(cache.size - MAX_CACHE_SIZE + 1)
-                        keysToRemove.forEach { cache.remove(it) }
-                    }
-
-                    // Cache the response
                     cache[cacheKey] = bestConfigResponse
 
                     Timber.tag("BestConfigService")
