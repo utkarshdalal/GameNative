@@ -325,7 +325,6 @@ object BestConfigService {
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableDxvk)) {
                 Timber.tag("BestConfigService").w("DXVK version $version not found, updating to PrefManager default")
                 return "DXVK $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
@@ -336,7 +335,6 @@ object BestConfigService {
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableVkd3d)) {
                 Timber.tag("BestConfigService").w("VKD3D version $version not found, updating to PrefManager default")
                 return "VKD3D $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
@@ -353,7 +351,6 @@ object BestConfigService {
             if (!ManifestComponentHelper.versionExists(box64Version, box64VersionsToCheck)) {
                 Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries, updating to PrefManager default")
                 return "Box64 $box64Version"
-                filteredJson.put("box64Version", PrefManager.box64Version)
             }
         }
 
@@ -369,7 +366,6 @@ object BestConfigService {
         if (fexcoreVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(fexcoreVersion, availableFexcore)) {
             Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found, updating to PrefManager default")
             return "FEXCore $fexcoreVersion"
-            filteredJson.put("fexcoreVersion", PrefManager.fexcoreVersion)
         }
 
         // Validate Wine/Proton version (check separately based on container variant)
@@ -385,7 +381,6 @@ object BestConfigService {
             if (!ManifestComponentHelper.versionExists(wineVersion, wineVersionsToCheck)) {
                 Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries, updating to PrefManager default")
                 return "Wine $wineVersion"
-                filteredJson.put("wineVersion", PrefManager.wineVersion)
             }
         }
 
@@ -411,7 +406,6 @@ object BestConfigService {
             if (preset == null) {
                 Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found, updating to PrefManager default")
                 return "Box64 preset $box64Preset"
-                filteredJson.put("box64Preset", PrefManager.box64Preset)
             }
         }
 
@@ -422,7 +416,6 @@ object BestConfigService {
             if (preset == null) {
                 Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found, updating to PrefManager default")
                 return "FEXCore preset $fexcorePreset"
-                filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
             }
         }
 
