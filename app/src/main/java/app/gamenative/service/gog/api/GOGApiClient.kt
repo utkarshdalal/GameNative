@@ -60,22 +60,22 @@ class GOGApiClient @Inject constructor(
                     .header("Authorization", "Bearer ${credentials.accessToken}")
                     .build()
 
-                val response = httpClient.newCall(request).execute()
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(
+                            Exception("Failed to fetch builds: HTTP ${response.code}"),
+                        )
+                    }
 
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(
-                        Exception("Failed to fetch builds: HTTP ${response.code}"),
-                    )
+                    val jsonStr = response.body?.string()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+
+                    val buildsResponse = parser.parseBuilds(jsonStr)
+
+                    Timber.tag("GOG").d("Found ${buildsResponse.totalCount} build(s) for game $gameId (gen $generation)")
+
+                    Result.success(buildsResponse)
                 }
-
-                val jsonStr = response.body?.string()
-                    ?: return@withContext Result.failure(Exception("Empty response"))
-
-                val buildsResponse = parser.parseBuilds(jsonStr)
-
-                Timber.tag("GOG").d("Found ${buildsResponse.totalCount} build(s) for game $gameId (gen $generation)")
-
-                Result.success(buildsResponse)
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to get builds for game $gameId")
                 Result.failure(e)
@@ -94,21 +94,21 @@ class GOGApiClient @Inject constructor(
                 .header("Authorization", "Bearer ${credentials.accessToken}")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(
+                        Exception("Failed to fetch manifest: HTTP ${response.code}"),
+                    )
+                }
 
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(
-                    Exception("Failed to fetch manifest: HTTP ${response.code}"),
-                )
+                val jsonStr = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response from dependency repository"))
+
+                val json = JSONObject(jsonStr)
+
+                val dependencyRepositoryDetails = DependencyRepository.fromJson(json)
+                Result.success(dependencyRepositoryDetails)
             }
-
-            val jsonStr = response.body?.string()
-                ?: return@withContext Result.failure(Exception("Empty response from dependency repository"))
-
-            val json = JSONObject(jsonStr)
-
-            val dependencyRepositoryDetails = DependencyRepository.fromJson(json)
-            Result.success(dependencyRepositoryDetails)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to fetch dependency repository from $url")
             Result.failure(e)
@@ -136,47 +136,47 @@ class GOGApiClient @Inject constructor(
                 .header("Authorization", "Bearer ${credentials.accessToken}")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(
+                        Exception("Failed to get dependency open link: HTTP ${response.code}"),
+                    )
+                }
 
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(
-                    Exception("Failed to get dependency open link: HTTP ${response.code}"),
-                )
-            }
+                val jsonStr = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
 
-            val jsonStr = response.body?.string()
-                ?: return@withContext Result.failure(Exception("Empty response"))
+                val json = JSONObject(jsonStr)
+                val urlsArray = json.optJSONArray("urls")
+                val urls = mutableListOf<String>()
 
-            val json = JSONObject(jsonStr)
-            val urlsArray = json.optJSONArray("urls")
-            val urls = mutableListOf<String>()
+                if (urlsArray != null) {
+                    for (i in 0 until urlsArray.length()) {
+                        val urlObj = urlsArray.optJSONObject(i)
+                        if (urlObj != null) {
+                            val urlFormat = urlObj.optString("url_format", "")
+                            val paramsObj = urlObj.optJSONObject("parameters")
 
-            if (urlsArray != null) {
-                for (i in 0 until urlsArray.length()) {
-                    val urlObj = urlsArray.optJSONObject(i)
-                    if (urlObj != null) {
-                        val urlFormat = urlObj.optString("url_format", "")
-                        val paramsObj = urlObj.optJSONObject("parameters")
-
-                        if (urlFormat.isNotEmpty() && paramsObj != null) {
-                            var constructedUrl = urlFormat
-                            val keys = paramsObj.keys()
-                            while (keys.hasNext()) {
-                                val key = keys.next()
-                                val value = paramsObj.get(key).toString()
-                                constructedUrl = constructedUrl.replace("{$key}", value)
-                            }
-                            constructedUrl = constructedUrl.replace("\\/", "/")
-                            if (constructedUrl.isNotEmpty()) {
-                                urls.add(constructedUrl)
+                            if (urlFormat.isNotEmpty() && paramsObj != null) {
+                                var constructedUrl = urlFormat
+                                val keys = paramsObj.keys()
+                                while (keys.hasNext()) {
+                                    val key = keys.next()
+                                    val value = paramsObj.get(key).toString()
+                                    constructedUrl = constructedUrl.replace("{$key}", value)
+                                }
+                                constructedUrl = constructedUrl.replace("\\/", "/")
+                                if (constructedUrl.isNotEmpty()) {
+                                    urls.add(constructedUrl)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Timber.tag("GOG").d("Got ${urls.size} dependency URL(s)")
-            Result.success(urls)
+                Timber.tag("GOG").d("Got ${urls.size} dependency URL(s)")
+                Result.success(urls)
+            }
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to get dependency open link")
             Result.failure(e)
@@ -195,25 +195,25 @@ class GOGApiClient @Inject constructor(
                     .header("Authorization", "Bearer ${credentials.accessToken}")
                     .build()
 
-                val response = httpClient.newCall(request).execute()
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(
+                            Exception("Failed to fetch manifest: HTTP ${response.code}"),
+                        )
+                    }
 
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(
-                        Exception("Failed to fetch manifest: HTTP ${response.code}"),
-                    )
+                    val manifestBytes = response.body?.bytes()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+
+                    // Decompress based on detected format
+                    val manifestStr = parser.decompressManifest(manifestBytes)
+
+                    Timber.tag("GOG").d("Manifest decompressed, size: ${manifestStr.length} bytes")
+
+                    val manifest = parser.parseDependencyManifest(manifestStr)
+
+                    Result.success(manifest)
                 }
-
-                val manifestBytes = response.body?.bytes()
-                    ?: return@withContext Result.failure(Exception("Empty response"))
-
-                // Decompress based on detected format
-                val manifestStr = parser.decompressManifest(manifestBytes)
-
-                Timber.tag("GOG").d("Manifest decompressed, size: ${manifestStr.length} bytes")
-
-                val manifest = parser.parseDependencyManifest(manifestStr)
-
-                Result.success(manifest)
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to fetch dependency manifest from $manifestUrl")
                 Result.failure(e)
@@ -241,29 +241,29 @@ class GOGApiClient @Inject constructor(
                     .header("Authorization", "Bearer ${credentials.accessToken}")
                     .build()
 
-                val response = httpClient.newCall(request).execute()
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(
+                            Exception("Failed to fetch manifest: HTTP ${response.code}"),
+                        )
+                    }
 
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(
-                        Exception("Failed to fetch manifest: HTTP ${response.code}"),
+                    val manifestBytes = response.body?.bytes()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+
+                    // Decompress based on detected format
+                    val manifestStr = parser.decompressManifest(manifestBytes)
+
+                    Timber.tag("GOG").d("Manifest decompressed, size: ${manifestStr.length} bytes")
+
+                    val manifest = parser.parseManifest(manifestStr)
+
+                    Timber.tag("GOG").i(
+                        "Manifest parsed: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)",
                     )
+
+                    Result.success(manifest)
                 }
-
-                val manifestBytes = response.body?.bytes()
-                    ?: return@withContext Result.failure(Exception("Empty response"))
-
-                // Decompress based on detected format
-                val manifestStr = parser.decompressManifest(manifestBytes)
-
-                Timber.tag("GOG").d("Manifest decompressed, size: ${manifestStr.length} bytes")
-
-                val manifest = parser.parseManifest(manifestStr)
-
-                Timber.tag("GOG").i(
-                    "Manifest parsed: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)",
-                )
-
-                Result.success(manifest)
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to fetch manifest from $manifestUrl")
                 Result.failure(e)
@@ -291,12 +291,13 @@ class GOGApiClient @Inject constructor(
                 .url(url)
                 .header("Authorization", "Bearer ${credentials.accessToken}")
                 .build()
-            val response = httpClient.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("Failed to fetch Gen 1 depot manifest: HTTP ${response.code}"))
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("Failed to fetch Gen 1 depot manifest: HTTP ${response.code}"))
+                }
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(body)
             }
-            val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
-            Result.success(body)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to fetch Gen 1 depot manifest")
             Result.failure(e)
@@ -328,28 +329,28 @@ class GOGApiClient @Inject constructor(
                     .header("Authorization", "Bearer ${credentials.accessToken}")
                     .build()
 
-                val response = httpClient.newCall(request).execute()
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(
+                            Exception("Failed to fetch depot manifest: HTTP ${response.code}"),
+                        )
+                    }
 
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(
-                        Exception("Failed to fetch depot manifest: HTTP ${response.code}"),
+                    val depotBytes = response.body?.bytes()
+                        ?: return@withContext Result.failure(Exception("Empty response"))
+
+                    // Depot manifests are also compressed
+                    val depotStr = parser.decompressManifest(depotBytes)
+
+                    val depotManifest = parser.parseDepotManifest(depotStr)
+
+                    Timber.tag("GOG").d(
+                        "Depot manifest parsed: ${depotManifest.files.size} file(s), " +
+                            "${depotManifest.directories.size} dir(s)",
                     )
+
+                    Result.success(depotManifest)
                 }
-
-                val depotBytes = response.body?.bytes()
-                    ?: return@withContext Result.failure(Exception("Empty response"))
-
-                // Depot manifests are also compressed
-                val depotStr = parser.decompressManifest(depotBytes)
-
-                val depotManifest = parser.parseDepotManifest(depotStr)
-
-                Timber.tag("GOG").d(
-                    "Depot manifest parsed: ${depotManifest.files.size} file(s), " +
-                        "${depotManifest.directories.size} dir(s)",
-                )
-
-                Result.success(depotManifest)
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to fetch depot manifest $manifestHash")
                 Result.failure(e)
@@ -381,28 +382,28 @@ class GOGApiClient @Inject constructor(
                 .url(url)
                 .build()
 
-            val response = httpClient.newCall(request).execute()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(
+                        Exception("Failed to fetch dependency depot manifest: HTTP ${response.code}"),
+                    )
+                }
 
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(
-                    Exception("Failed to fetch dependency depot manifest: HTTP ${response.code}"),
+                val depotBytes = response.body?.bytes()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
+
+                // Depot manifests are compressed
+                val depotStr = parser.decompressManifest(depotBytes)
+
+                val depotManifest = parser.parseDepotManifest(depotStr)
+
+                Timber.tag("GOG").d(
+                    "Dependency depot manifest parsed: ${depotManifest.files.size} file(s), " +
+                        "${depotManifest.directories.size} dir(s)",
                 )
+
+                Result.success(depotManifest)
             }
-
-            val depotBytes = response.body?.bytes()
-                ?: return@withContext Result.failure(Exception("Empty response"))
-
-            // Depot manifests are compressed
-            val depotStr = parser.decompressManifest(depotBytes)
-
-            val depotManifest = parser.parseDepotManifest(depotStr)
-
-            Timber.tag("GOG").d(
-                "Dependency depot manifest parsed: ${depotManifest.files.size} file(s), " +
-                    "${depotManifest.directories.size} dir(s)",
-            )
-
-            Result.success(depotManifest)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to fetch dependency depot manifest $manifestHash")
             Result.failure(e)
@@ -452,25 +453,25 @@ class GOGApiClient @Inject constructor(
                 .header("Authorization", "Bearer ${credentials.accessToken}")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(
+                        Exception("Failed to get secure link: HTTP ${response.code}"),
+                    )
+                }
 
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(
-                    Exception("Failed to get secure link: HTTP ${response.code}"),
-                )
+                val jsonStr = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
+
+                // Log the actual response to debug parsing issues
+                Timber.tag("GOG").d("Secure link response: $jsonStr")
+
+                val secureLinks = parser.parseSecureLinks(jsonStr)
+
+                Timber.tag("GOG").d("Got ${secureLinks.urls.size} secure URL(s) for product $productId")
+
+                Result.success(secureLinks)
             }
-
-            val jsonStr = response.body?.string()
-                ?: return@withContext Result.failure(Exception("Empty response"))
-
-            // Log the actual response to debug parsing issues
-            Timber.tag("GOG").d("Secure link response: $jsonStr")
-
-            val secureLinks = parser.parseSecureLinks(jsonStr)
-
-            Timber.tag("GOG").d("Got ${secureLinks.urls.size} secure URL(s) for product $productId")
-
-            Result.success(secureLinks)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to get secure link for product $productId")
             Result.failure(e)
