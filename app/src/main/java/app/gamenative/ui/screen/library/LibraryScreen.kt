@@ -62,6 +62,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -545,6 +546,23 @@ private fun LibraryScreenContent(
         // Update previous state trackers
         wasSystemMenuOpen = isSystemMenuOpen
         wasOptionsPanelOpen = state.isOptionsPanelOpen
+    }
+
+    // Restore focus when the window regains focus after a dialog (e.g. support prompt) is dismissed.
+    // Compose AlertDialog creates a separate window; when it closes the main window regains focus
+    // but no composable automatically receives it, leaving D-pad navigation broken.
+    val windowInfo = LocalWindowInfo.current
+    var wasWindowUnfocused by remember { mutableStateOf(false) }
+    LaunchedEffect(windowInfo.isWindowFocused) {
+        if (!windowInfo.isWindowFocused) {
+            wasWindowUnfocused = true
+        } else if (wasWindowUnfocused) {
+            wasWindowUnfocused = false
+            if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching && state.appInfoList.isNotEmpty()) {
+                kotlinx.coroutines.delay(100)
+                requestGridFocusOrDefer()
+            }
+        }
     }
 
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
