@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -256,6 +257,14 @@ fun XServerScreen(
         ContainerUtils.getContainer(context, appId)
     }
 
+    val suspendPolicy = remember(container.id) { container.suspendPolicy }
+    val neverSuspend = suspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true)
+    val manualResumeMode = suspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
+
+    LaunchedEffect(suspendPolicy) {
+        PluviaApp.activeSuspendPolicy = suspendPolicy
+    }
+
     val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
         mutableStateOf(
             XServerState(
@@ -324,11 +333,53 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
-    var isOverlayPaused by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
+
+    fun clearOverlayPauseState() {
+        PluviaApp.isOverlayPaused = false
+    }
+
+    fun pauseForOverlayIfAllowed() {
+        if (neverSuspend) {
+            Timber.d("Skipping overlay suspend due to suspend policy=never")
+            return
+        }
+        PluviaApp.xEnvironment?.onPause()
+        PluviaApp.isOverlayPaused = true
+    }
+
+    fun resumeIfAllowedAfterOverlay() {
+        if (!PluviaApp.isOverlayPaused) return
+        if (neverSuspend) {
+            clearOverlayPauseState()
+            return
+        }
+        if (manualResumeMode) {
+            Timber.d("Keeping game suspended until Resume is pressed")
+            return
+        }
+        PluviaApp.xEnvironment?.onResume()
+        clearOverlayPauseState()
+    }
+
+    fun forceResumeIfSuspended() {
+        if (PluviaApp.isOverlayPaused && !neverSuspend) {
+            PluviaApp.xEnvironment?.onResume()
+        }
+        clearOverlayPauseState()
+    }
+
+    fun resumeFromManualButton() {
+        if (!PluviaApp.isOverlayPaused) return
+        if (!neverSuspend) {
+            PluviaApp.xEnvironment?.onResume()
+        }
+        keepPausedForEditor = false
+        clearOverlayPauseState()
+    }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -412,10 +463,8 @@ fun XServerScreen(
             imeInputReceiver?.hideKeyboard()
         }
         keyboardRequestedFromOverlay = false
-        if (PluviaApp.isOverlayPaused && !keepPausedForEditor) {
-            PluviaApp.xEnvironment?.onResume()
-            isOverlayPaused = false
-            PluviaApp.isOverlayPaused = false
+        if (!keepPausedForEditor) {
+            resumeIfAllowedAfterOverlay()
         }
         showQuickMenu = false
     }
@@ -567,9 +616,7 @@ fun XServerScreen(
                 }
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
-                PluviaApp.xEnvironment?.onResume()
-                isOverlayPaused = false
-                PluviaApp.isOverlayPaused = false
+                forceResumeIfSuspended()
                 exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
             }
         }
@@ -601,9 +648,7 @@ fun XServerScreen(
         Timber.i("BackHandler")
 
         // Suspend game and audio while the navigation overlay is visible.
-        PluviaApp.xEnvironment?.onPause()
-        isOverlayPaused = true
-        PluviaApp.isOverlayPaused = true
+        pauseForOverlayIfAllowed()
         keyboardRequestedFromOverlay = false
 
         val controllerManager = ControllerManager.getInstance()
@@ -619,6 +664,8 @@ fun XServerScreen(
             Timber.d("XServerScreen leaving, clearing back action")
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
+            PluviaApp.activeSuspendPolicy = Container.SUSPEND_POLICY_DEFAULT
+            PluviaApp.isOverlayPaused = false
             registerBackAction { }
         }   // reset when screen leaves
     }
@@ -1254,11 +1301,7 @@ fun XServerScreen(
                         PluviaApp.inputControlsView?.invalidate()
                     }
                     keepPausedForEditor = false
-                    if (PluviaApp.isOverlayPaused) {
-                        PluviaApp.xEnvironment?.onResume()
-                        isOverlayPaused = false
-                        PluviaApp.isOverlayPaused = false
-                    }
+                    resumeIfAllowedAfterOverlay()
                 },
                 onClose = {
                     // Restore element positions from snapshot (cancel behavior)
@@ -1280,11 +1323,7 @@ fun XServerScreen(
                         PluviaApp.inputControlsView?.invalidate()
                     }
                     keepPausedForEditor = false
-                    if (PluviaApp.isOverlayPaused) {
-                        PluviaApp.xEnvironment?.onResume()
-                        isOverlayPaused = false
-                        PluviaApp.isOverlayPaused = false
-                    }
+                    resumeIfAllowedAfterOverlay()
                 },
                 onDuplicate = { id ->
                     val manager = PluviaApp.inputControlsManager
@@ -1348,6 +1387,19 @@ fun XServerScreen(
             onItemSelected = onQuickMenuItemSelected,
             hasPhysicalController = hasPhysicalController,
         )
+
+        if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 24.dp),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                androidx.compose.material3.Button(onClick = { resumeFromManualButton() }) {
+                    Text(text = stringResource(R.string.resume_game))
+                }
+            }
+        }
     }
 
     // Element Editor Dialog
@@ -1413,11 +1465,7 @@ fun XServerScreen(
                 onDismissRequest = {
                     showPhysicalControllerDialog = false
                     keepPausedForEditor = false
-                    if (PluviaApp.isOverlayPaused) {
-                        PluviaApp.xEnvironment?.onResume()
-                        isOverlayPaused = false
-                        PluviaApp.isOverlayPaused = false
-                    }
+                    resumeIfAllowedAfterOverlay()
                 }
             ) {
                 androidx.compose.foundation.layout.Box(
@@ -1430,11 +1478,7 @@ fun XServerScreen(
                         onDismiss = {
                             showPhysicalControllerDialog = false
                             keepPausedForEditor = false
-                            if (PluviaApp.isOverlayPaused) {
-                                PluviaApp.xEnvironment?.onResume()
-                                isOverlayPaused = false
-                                PluviaApp.isOverlayPaused = false
-                            }
+                            resumeIfAllowedAfterOverlay()
                         },
                         onSave = {
                             // Ensure controllersLoaded is true before saving
@@ -1456,11 +1500,7 @@ fun XServerScreen(
                             physicalControllerHandler?.setProfile(profile)
                             showPhysicalControllerDialog = false
                             keepPausedForEditor = false
-                            if (PluviaApp.isOverlayPaused) {
-                                PluviaApp.xEnvironment?.onResume()
-                                isOverlayPaused = false
-                                PluviaApp.isOverlayPaused = false
-                            }
+                            resumeIfAllowedAfterOverlay()
                         }
                     )
                 }
@@ -2589,6 +2629,8 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.keepAlive = false
+    PluviaApp.activeSuspendPolicy = Container.SUSPEND_POLICY_DEFAULT
+    PluviaApp.isOverlayPaused = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null

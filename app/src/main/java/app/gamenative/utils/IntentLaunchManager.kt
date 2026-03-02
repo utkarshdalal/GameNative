@@ -234,6 +234,7 @@ object IntentLaunchManager {
                 1.toByte()
             },
             disableMouseInput = if (json.has("disableMouseInput")) json.getBoolean("disableMouseInput") else false,
+            suspendPolicy = if (json.has("suspendPolicy")) json.getString("suspendPolicy") else Container.SUSPEND_POLICY_DEFAULT,
             shaderBackend = if (json.has("shaderBackend")) json.getString("shaderBackend") else "glsl",
             useGLSL = if (json.has("useGLSL")) json.getString("useGLSL") else "enabled",
         )
@@ -315,6 +316,7 @@ object IntentLaunchManager {
             enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
             dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
             disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
+            suspendPolicy = if (override.suspendPolicy != Container.SUSPEND_POLICY_DEFAULT) override.suspendPolicy else base.suspendPolicy,
             shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
             useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,
         )

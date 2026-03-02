@@ -318,6 +318,13 @@ object PrefManager {
             setPref(UNPACK_FILES, value)
         }
 
+    private val SUSPEND_POLICY = stringPreferencesKey("suspend_policy")
+    var suspendPolicy: String
+        get() = getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_DEFAULT)
+        set(value) {
+            setPref(SUSPEND_POLICY, value)
+        }
+
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String
         get() = getPref(CPU_LIST, Container.getFallbackCPUList())

@@ -58,6 +58,12 @@ public class Container {
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
+
+    // Process suspend policy for runtime behavior while in-game.
+    public static final String SUSPEND_POLICY_DEFAULT = "default";
+    public static final String SUSPEND_POLICY_NEVER = "never";
+    public static final String SUSPEND_POLICY_MANUAL = "manual";
+
     public static final String STEAM_TYPE_NORMAL = "normal";
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
@@ -141,6 +147,8 @@ public class Container {
     private boolean useLegacyDRM = false;
 
     private boolean unpackFiles = false;
+
+    private String suspendPolicy = SUSPEND_POLICY_DEFAULT;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -693,6 +701,9 @@ public class Container {
             // Unpack Files setting
             data.put("unpackFiles", unpackFiles);
 
+            // Process suspend policy setting
+            data.put("suspendPolicy", suspendPolicy);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -882,6 +893,9 @@ public class Container {
                 case "unpackFiles":
                     this.unpackFiles = data.getBoolean(key);
                     break;
+                case "suspendPolicy":
+                    setSuspendPolicy(data.getString(key));
+                    break;
             }
         }
     }
@@ -967,6 +981,25 @@ public class Container {
 
     public void setUnpackFiles(boolean unpackFiles) {
         this.unpackFiles = unpackFiles;
+    }
+
+    public String getSuspendPolicy() {
+        return suspendPolicy != null ? suspendPolicy : SUSPEND_POLICY_DEFAULT;
+    }
+
+    public void setSuspendPolicy(String suspendPolicy) {
+        String normalized = (suspendPolicy == null) ? "" : suspendPolicy.toLowerCase();
+        switch (normalized) {
+            case SUSPEND_POLICY_NEVER:
+                this.suspendPolicy = SUSPEND_POLICY_NEVER;
+                break;
+            case SUSPEND_POLICY_MANUAL:
+                this.suspendPolicy = SUSPEND_POLICY_MANUAL;
+                break;
+            default:
+                this.suspendPolicy = SUSPEND_POLICY_DEFAULT;
+                break;
+        }
     }
 
     public String getContainerJson() {

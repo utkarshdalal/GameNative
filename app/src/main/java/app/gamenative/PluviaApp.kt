@@ -1,6 +1,9 @@
 package app.gamenative
 
 import android.os.StrictMode
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
 import app.gamenative.events.AndroidEvent
@@ -15,6 +18,7 @@ import com.posthog.PersonProfiles
 // Add PostHog imports
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
+import com.winlator.container.Container
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
@@ -120,8 +124,14 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
 
-        @JvmField
-        var isOverlayPaused: Boolean = false
+        var isOverlayPaused by mutableStateOf(false)
+
+        // Active runtime suspend policy for the current in-game session.
+        var activeSuspendPolicy: String = Container.SUSPEND_POLICY_DEFAULT
+
+        fun isNeverSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true)
+
+        fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
         // Supabase client for game feedback
         lateinit var supabase: SupabaseClient
