@@ -412,7 +412,7 @@ fun XServerScreen(
             imeInputReceiver?.hideKeyboard()
         }
         keyboardRequestedFromOverlay = false
-        if (PluviaApp.isOverlayPaused) {
+        if (PluviaApp.isOverlayPaused && !keepPausedForEditor) {
             PluviaApp.xEnvironment?.onResume()
             isOverlayPaused = false
             PluviaApp.isOverlayPaused = false
@@ -475,6 +475,7 @@ fun XServerScreen(
 
             QuickMenuAction.EDIT_CONTROLS -> {
                 PostHog.capture(event = "edit_controls_in_game")
+                keepPausedForEditor = true
 
                 // Get or create profile for this container
                 val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
@@ -549,6 +550,7 @@ fun XServerScreen(
 
             QuickMenuAction.EDIT_PHYSICAL_CONTROLLER -> {
                 PostHog.capture(event = "edit_physical_controller_from_menu")
+                keepPausedForEditor = true
                 showPhysicalControllerDialog = true
             }
 

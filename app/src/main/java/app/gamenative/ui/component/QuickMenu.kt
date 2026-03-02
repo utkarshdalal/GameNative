@@ -291,7 +291,6 @@ private fun QuickMenuItemRow(
                     Modifier.focusRequester(focusRequester)
                 } else Modifier
             )
-            .focusable(enabled = isEnabled, interactionSource = interactionSource)
             .selectable(
                 selected = isFocused,
                 enabled = isEnabled,
