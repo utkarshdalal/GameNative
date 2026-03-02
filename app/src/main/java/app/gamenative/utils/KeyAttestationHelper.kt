@@ -3,7 +3,7 @@ package app.gamenative.utils
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.security.keystore.StrongBoxUnavailableException
+import java.security.ProviderException
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,9 +74,13 @@ object KeyAttestationHelper {
             )
             keyPairGenerator.initialize(specBuilder.build())
             keyPairGenerator.generateKeyPair()
-        } catch (e: StrongBoxUnavailableException) {
-            Timber.tag(TAG).w("StrongBox unavailable, falling back to TEE")
-            generateKeyPair(alias, challenge, useStrongBox = false)
+        } catch (e: ProviderException) {
+            if (useStrongBox) {
+                Timber.tag(TAG).w("StrongBox failed, falling back to TEE: ${e.message}")
+                generateKeyPair(alias, challenge, useStrongBox = false)
+            } else {
+                throw e
+            }
         }
     }
 
