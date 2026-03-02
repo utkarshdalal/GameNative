@@ -17,11 +17,15 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.Marker
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.MarkerUtils
+import java.io.File
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.utils.ContainerUtils.getContainer
 import com.winlator.container.ContainerData
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -124,15 +128,16 @@ class GOGAppScreen : BaseAppScreen() {
         // Parse GOG's ISO 8601 release date string to Unix timestamp
         // GOG returns dates like "2022-08-18T17:50:00+0300" (without colon in timezone)
         // GameDisplayInfo expects Unix timestamp in SECONDS, not milliseconds
-        val releaseDateTimestamp = if (game?.releaseDate?.isNotEmpty() == true) {
+        val rawReleaseDate = game?.releaseDate
+        val releaseDateTimestamp = if (!rawReleaseDate.isNullOrEmpty() && rawReleaseDate != "null") {
             try {
                 val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
-                val timestampMillis = java.time.ZonedDateTime.parse(game.releaseDate, formatter).toInstant().toEpochMilli()
+                val timestampMillis = java.time.ZonedDateTime.parse(rawReleaseDate, formatter).toInstant().toEpochMilli()
                 val timestampSeconds = timestampMillis / 1000
-                Timber.tag(TAG).d("Parsed release date '${game.releaseDate}' -> $timestampSeconds seconds (${java.util.Date(timestampMillis)})")
+                Timber.tag(TAG).d("Parsed release date '$rawReleaseDate' -> $timestampSeconds seconds (${java.util.Date(timestampMillis)})")
                 timestampSeconds
             } catch (e: Exception) {
-                Timber.tag(TAG).w(e, "Failed to parse release date: ${game.releaseDate}")
+                Timber.tag(TAG).d("Release date not parseable (ignored): $rawReleaseDate")
                 0L
             }
         } else {
@@ -199,9 +204,9 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
-        // GOG downloads cannot be paused/resumed, so never show as having partial download
-        // This prevents the UI from showing a resume button
-        return false
+        if (isDownloading(context, libraryItem) || isInstalled(context, libraryItem)) return false
+        val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+        return File(installPath).exists() && !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
     }
 
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
@@ -209,7 +214,7 @@ class GOGAppScreen : BaseAppScreen() {
         // GOGService expects numeric gameId
         val gameId = libraryItem.gameId.toString()
         val downloadInfo = GOGService.getDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = isDownloading(context, libraryItem)
         val installed = isInstalled(context, libraryItem)
 
         Timber.tag(TAG).d("onDownloadInstallClick: appId=${libraryItem.appId}, isDownloading=$isDownloading, installed=$installed")
@@ -217,7 +222,7 @@ class GOGAppScreen : BaseAppScreen() {
         if (isDownloading) {
             // Cancel ongoing download
             Timber.tag(TAG).i("Cancelling GOG download for: ${libraryItem.appId}")
-            downloadInfo.cancel()
+            downloadInfo?.cancel()
             GOGService.cleanupDownload(gameId)
         } else if (installed) {
             // Already installed: launch game
@@ -225,34 +230,39 @@ class GOGAppScreen : BaseAppScreen() {
             onClickPlay(false)
         } else {
             // Show install confirmation dialog
-            Timber.tag(TAG).i("Showing install confirmation dialog for: ${libraryItem.appId}")
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                try {
-                    val game = GOGService.getGOGGameOf(gameId)
+            showGOGInstallConfirmationDialog(context, libraryItem)
+        }
+    }
 
-                    // Calculate sizes
-                    val downloadSize = app.gamenative.utils.StorageUtils.formatBinarySize(game?.downloadSize ?: 0L)
-                    val availableSpace = app.gamenative.utils.StorageUtils.formatBinarySize(
-                        app.gamenative.utils.StorageUtils.getAvailableSpace(app.gamenative.service.gog.GOGConstants.defaultGOGGamesPath)
-                    )
+    private fun showGOGInstallConfirmationDialog(context: Context, libraryItem: LibraryItem) {
+        val gameId = libraryItem.gameId.toString()
+        Timber.tag(TAG).i("Showing install confirmation dialog for: ${libraryItem.appId}")
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val game = GOGService.getGOGGameOf(gameId)
 
-                    val message = context.getString(
-                        R.string.gog_install_confirmation_message,
-                        downloadSize,
-                        availableSpace
-                    )
-                    val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
-                        visible = true,
-                        type = app.gamenative.ui.enums.DialogType.INSTALL_APP,
-                        title = context.getString(R.string.gog_install_game_title),
-                        message = message,
-                        confirmBtnText = context.getString(R.string.download),
-                        dismissBtnText = context.getString(R.string.cancel)
-                    )
-                    BaseAppScreen.showInstallDialog(libraryItem.appId, state)
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to show install dialog for: ${libraryItem.appId}")
-                }
+                // Calculate sizes
+                val downloadSize = app.gamenative.utils.StorageUtils.formatBinarySize(game?.downloadSize ?: 0L)
+                val availableSpace = app.gamenative.utils.StorageUtils.formatBinarySize(
+                    app.gamenative.utils.StorageUtils.getAvailableSpace(app.gamenative.service.gog.GOGConstants.defaultGOGGamesPath)
+                )
+
+                val message = context.getString(
+                    R.string.gog_install_confirmation_message,
+                    downloadSize,
+                    availableSpace
+                )
+                val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
+                    visible = true,
+                    type = app.gamenative.ui.enums.DialogType.INSTALL_APP,
+                    title = context.getString(R.string.gog_install_game_title),
+                    message = message,
+                    confirmBtnText = context.getString(R.string.download),
+                    dismissBtnText = context.getString(R.string.cancel)
+                )
+                BaseAppScreen.showInstallDialog(libraryItem.appId, state)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to show install dialog for: ${libraryItem.appId}")
             }
         }
     }
@@ -264,6 +274,8 @@ class GOGAppScreen : BaseAppScreen() {
             try {
                 // Get install path
                 val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                val containerData = loadContainerData(context, libraryItem)
+
                 Timber.d("Downloading GOG game to: $installPath")
 
                 // Show starting download toast
@@ -276,7 +288,7 @@ class GOGAppScreen : BaseAppScreen() {
                 }
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
-                val result = GOGService.downloadGame(context, gameId, installPath)
+                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language)
 
                 if (result.isSuccess) {
                     Timber.i("GOG download started successfully for: $gameId")
@@ -307,40 +319,39 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
-        // GOG downloads cannot be paused - only canceled
-        // This method should not be called for GOG since hasPartialDownload returns false,
-        // but if it is called, just cancel the download
         val gameId = libraryItem.gameId.toString()
         val downloadInfo = GOGService.getDownloadInfo(gameId)
+        val isDownloading = isDownloading(context, libraryItem)
 
-        if (downloadInfo != null) {
+        if (isDownloading) {
             Timber.tag(TAG).i("Cancelling GOG download: ${libraryItem.appId}")
-            downloadInfo.cancel()
+            downloadInfo?.cancel()
             GOGService.cleanupDownload(gameId)
+        } else {
+            // Partial data only: "Resume" means start/restart install – show install confirmation
+            showGOGInstallConfirmationDialog(context, libraryItem)
         }
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onDeleteDownloadClick: appId=${libraryItem.appId}")
-        // GOGService expects numeric gameId
-        val gameId = libraryItem.gameId.toString()
-        val downloadInfo = GOGService.getDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
-        val isInstalled = isInstalled(context, libraryItem)
-        Timber.tag(TAG).d("onDeleteDownloadClick: appId=${libraryItem.appId}, isDownloading=$isDownloading, isInstalled=$isInstalled")
-
-        if (isDownloading) {
-            // Cancel download immediately if currently downloading
-            Timber.tag(TAG).i("Cancelling active download for GOG game: ${libraryItem.appId}")
-            downloadInfo.cancel()
-            GOGService.cleanupDownload(gameId)
-            android.widget.Toast.makeText(
-                context,
-                "Download cancelled",
-                android.widget.Toast.LENGTH_SHORT,
-            ).show()
-        } else if (isInstalled) {
-            // Show uninstall confirmation dialog
+        val isDownloadingFlag = isDownloading(context, libraryItem)
+        val isInstalledFlag = isInstalled(context, libraryItem)
+        val hasPartial = hasPartialDownload(context, libraryItem)
+        Timber.tag(TAG).d("onDeleteDownloadClick: appId=${libraryItem.appId}, isDownloading=$isDownloadingFlag, isInstalled=$isInstalledFlag, hasPartial=$hasPartial")
+        if (isDownloadingFlag || hasPartial) {
+            showInstallDialog(
+                libraryItem.appId,
+                app.gamenative.ui.component.dialog.state.MessageDialogState(
+                    visible = true,
+                    type = app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD,
+                    title = context.getString(R.string.cancel_download_prompt_title),
+                    message = context.getString(R.string.library_delete_download_message),
+                    confirmBtnText = context.getString(R.string.yes),
+                    dismissBtnText = context.getString(R.string.no),
+                )
+            )
+        } else if (isInstalledFlag) {
             Timber.tag(TAG).i("Showing uninstall dialog for: ${libraryItem.appId}")
             showUninstallDialog(libraryItem.appId)
         }
@@ -394,9 +405,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun getExportFileExtension(): String {
-        Timber.tag(TAG).d("getExportFileExtension: returning 'tzst'")
-        // GOG containers use the same export format as other Wine containers
-        return "tzst"
+        return ".gog"
     }
 
     override fun getInstallPath(context: Context, libraryItem: LibraryItem): String? {
@@ -423,9 +432,23 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
-        // Save GOG-specific container configuration using ContainerUtils
+        val container = getContainer(context, libraryItem.appId)
+        val previousLanguage = container.language
         app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+
+        if (previousLanguage != config.language) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val gameId = libraryItem.gameId.toString()
+                if (!GOGService.isGameInstalled(gameId)) return@launch
+                if (GOGService.getDownloadInfo(gameId)?.isActive() == true) return@launch
+
+                val installPath = GOGService.getInstallPath(gameId)
+                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
+
+                GOGService.downloadGame(context, gameId, installPath, config.language)
+            }
+        }
     }
 
     override fun supportsContainerConfig(): Boolean {
@@ -575,6 +598,45 @@ class GOGAppScreen : BaseAppScreen() {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
                         performDownload(context, libraryItem) {}
+                    }
+                }
+                app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
+                    {
+                        BaseAppScreen.hideInstallDialog(appId)
+                        val gameId = libraryItem.gameId.toString()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val downloadInfo = GOGService.getDownloadInfo(gameId)
+                            val wasDownloading = downloadInfo != null &&
+                                downloadInfo.isActive() &&
+                                (downloadInfo.getProgress() ?: 0f) < 1f
+                            downloadInfo?.cancel()
+                            downloadInfo?.awaitCompletion()
+                            GOGService.cleanupDownload(gameId)
+
+                            val isInstalledAfterCancel = GOGService.isGameInstalled(gameId)
+                            if (isInstalledAfterCancel) {
+                                // Download completed and game ended up installed; don't show "Download cancelled"
+                                return@launch
+                            }
+
+                            val result = GOGService.deleteGame(context, libraryItem)
+                            withContext(Dispatchers.Main) {
+                                if (wasDownloading && !isInstalledAfterCancel) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Download cancelled",
+                                        android.widget.Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                                if (result.isFailure) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Failed to delete download: ${result.exceptionOrNull()?.message}",
+                                        android.widget.Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                            }
+                        }
                     }
                 }
                 else -> null

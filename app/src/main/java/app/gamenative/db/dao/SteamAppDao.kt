@@ -44,11 +44,20 @@ interface SteamAppDao {
     @Query("SELECT * FROM steam_app WHERE id = :appId")
     suspend fun findApp(appId: Int): SteamApp?
 
-    @Query("SELECT * FROM steam_app AS app WHERE dlc_for_app_id = :appId AND " +
+    @Query("SELECT * FROM steam_app AS app WHERE dlc_for_app_id = :appId AND depots <> '{}' AND " +
             " EXISTS (" +
             "   SELECT * FROM steam_license AS license " +
             "     WHERE license.license_type <> 0 AND " +
-            "       REPLACE(REPLACE(app_ids, '[', ','), ']', ',') LIKE ('%,' || app.id || ',%') " +
+            "       REPLACE(REPLACE(license.app_ids, '[', ','), ']', ',') LIKE ('%,' || app.id || ',%') " +
+            ")"
+    )
+    suspend fun findDownloadableDLCApps(appId: Int): List<SteamApp>?
+
+    @Query("SELECT * FROM steam_app AS app WHERE dlc_for_app_id = :appId AND depots = '{}' AND " +
+            " EXISTS (" +
+            "   SELECT * FROM steam_license AS license " +
+            "     WHERE license.license_type <> 0 AND " +
+            "       REPLACE(REPLACE(license.app_ids, '[', ','), ']', ',') LIKE ('%,' || app.id || ',%') " +
             ")"
     )
     suspend fun findHiddenDLCApps(appId: Int): List<SteamApp>?

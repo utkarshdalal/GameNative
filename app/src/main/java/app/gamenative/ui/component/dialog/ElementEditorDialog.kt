@@ -24,10 +24,14 @@ import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsTextField
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
+import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Compose-based element editor dialog matching the app's settings design pattern.
@@ -107,6 +111,67 @@ fun ElementEditorDialog(
 
     // State for size adjustment mode
     var showSizeAdjuster by remember { mutableStateOf(false) }
+
+    // Shooter mode settings state
+    val movementTypeOptions = listOf("wasd", "arrow_keys", "gamepad_left_stick")
+    val movementTypeLabels = listOf(
+        stringResource(R.string.movement_wasd),
+        stringResource(R.string.movement_arrow_keys),
+        stringResource(R.string.movement_gamepad_left_stick)
+    )
+    val lookTypeOptions = listOf("mouse", "gamepad_right_stick")
+    val lookTypeLabels = listOf(
+        stringResource(R.string.look_type_mouse),
+        stringResource(R.string.look_type_gamepad_right_stick)
+    )
+    var currentMovementTypeIndex by remember {
+        mutableIntStateOf(movementTypeOptions.indexOf(element.shooterMovementType).coerceAtLeast(0))
+    }
+    var currentLookTypeIndex by remember {
+        mutableIntStateOf(lookTypeOptions.indexOf(element.shooterLookType).coerceAtLeast(0))
+    }
+    var currentLookSensitivity by remember { mutableFloatStateOf(element.shooterLookSensitivity) }
+    var currentJoystickSize by remember { mutableFloatStateOf(element.shooterJoystickSize) }
+    // Store original shooter mode values for cancel/restore
+    val originalMovementType by remember { mutableStateOf(element.shooterMovementType) }
+    val originalLookType by remember { mutableStateOf(element.shooterLookType) }
+    val originalLookSensitivity by remember { mutableFloatStateOf(element.shooterLookSensitivity) }
+    val originalJoystickSize by remember { mutableFloatStateOf(element.shooterJoystickSize) }
+
+    // Range button settings state
+    val rangeTypes = listOf(
+        ControlElement.Range.FROM_A_TO_Z,
+        ControlElement.Range.FROM_0_TO_9,
+        ControlElement.Range.FROM_F1_TO_F12
+    )
+    val rangeTypeLabels = listOf(
+        stringResource(R.string.range_a_to_z),
+        stringResource(R.string.range_1_to_0),
+        stringResource(R.string.range_f1_to_f12)
+    )
+    var currentRangeTypeIndex by remember {
+        mutableIntStateOf(rangeTypes.indexOf(element.range).coerceAtLeast(0))
+    }
+    var currentOrientation by remember {
+        mutableIntStateOf(element.orientation.toInt())
+    }
+    var currentVisibleSegments by remember {
+        mutableIntStateOf(element.bindingCount)
+    }
+    var currentScrollLocked by remember {
+        mutableStateOf(element.isScrollLocked)
+    }
+    // Store original range button values for cancel/restore
+    val originalRange by remember { mutableStateOf(element.range) }
+    val originalOrientation by remember { mutableIntStateOf(element.orientation.toInt()) }
+    val originalVisibleSegments by remember { mutableIntStateOf(element.bindingCount) }
+    val originalScrollLocked by remember { mutableStateOf(element.isScrollLocked) }
+
+    // Button settings state
+    var currentToggleSwitch by remember {
+        mutableStateOf(element.isToggleSwitch)
+    }
+    val originalToggleSwitch by remember { mutableStateOf(element.isToggleSwitch) }
 
     // Get types array for saving
     val types = remember { ControlElement.Type.values() }
@@ -211,6 +276,27 @@ fun ElementEditorDialog(
                                 element.setTypeWithoutReset(types[currentTypeIndex])
                             }
 
+                            // Save shooter mode properties
+                            if (types[currentTypeIndex] == ControlElement.Type.SHOOTER_MODE) {
+                                element.shooterMovementType = movementTypeOptions[currentMovementTypeIndex]
+                                element.shooterLookType = lookTypeOptions[currentLookTypeIndex]
+                                element.shooterLookSensitivity = currentLookSensitivity
+                                element.shooterJoystickSize = currentJoystickSize
+                            }
+
+                    // Save range button properties
+                    if (types[currentTypeIndex] == ControlElement.Type.RANGE_BUTTON) {
+                        element.setRange(rangeTypes[currentRangeTypeIndex])
+                        element.setOrientation(currentOrientation.toByte())
+                        element.setBindingCount(currentVisibleSegments)
+                        element.isScrollLocked = currentScrollLocked
+                    }
+
+                            // Save button properties
+                            if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
+                                element.setToggleSwitch(currentToggleSwitch)
+                            }
+
                             // Save to disk
                             view.profile?.save()
 
@@ -275,7 +361,10 @@ fun ElementEditorDialog(
 
                     // Element Type
                     val types = ControlElement.Type.values()
-                    val typeNames = types.map { it.name.replace("_", " ") }
+                    val typeNames = types.map {
+                        if (it == ControlElement.Type.SHOOTER_MODE) "DYNAMIC JOYSTICKS"
+                        else it.name.replace("_", " ")
+                    }
                     SettingsListDropdown(
                         colors = settingsTileColors(),
                         title = { Text(stringResource(R.string.element_type)) },
@@ -314,6 +403,10 @@ fun ElementEditorDialog(
                             // Don't allow changing shape
                             listOf(element.shape)
                         }
+                        ControlElement.Type.SHOOTER_MODE -> {
+                            // Shooter Mode is always rendered as CIRCLE
+                            listOf(ControlElement.Shape.CIRCLE)
+                        }
                         ControlElement.Type.BUTTON -> {
                             // Buttons fully support all shapes
                             ControlElement.Shape.values().toList()
@@ -347,6 +440,23 @@ fun ElementEditorDialog(
                     }
                 }
 
+                // Button Settings Section (only for BUTTON type)
+                if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
+                    SettingsGroup(title = { Text(stringResource(R.string.button_settings)) }) {
+                        SettingsSwitch(
+                            colors = settingsTileColorsAlt(),
+                            title = { Text(stringResource(R.string.button_toggleable)) },
+                            subtitle = { Text(stringResource(R.string.button_toggleable_subtitle)) },
+                            state = currentToggleSwitch,
+                            onCheckedChange = {
+                                currentToggleSwitch = it
+                                element.setToggleSwitch(it)
+                                hasUnsavedChanges = true
+                            },
+                        )
+                    }
+                }
+
                 // Bindings Section
                 // Use key() with bindingsRefreshKey to force recomposition when bindings change
                 key(bindingsRefreshKey) {
@@ -366,6 +476,15 @@ fun ElementEditorDialog(
                         }
 
                         if (element.type == ControlElement.Type.RANGE_BUTTON) {
+                            SettingsMenuLink(
+                                colors = settingsTileColors(),
+                                title = { Text(stringResource(R.string.bindings_auto_generated)) },
+                                subtitle = { Text(stringResource(R.string.bindings_auto_generated_subtitle)) },
+                                enabled = false,
+                                onClick = {}
+                            )
+                        } else if (element.type == ControlElement.Type.SHOOTER_MODE) {
+                            // Bindings auto-generated for these types
                             SettingsMenuLink(
                                 colors = settingsTileColors(),
                                 title = { Text(stringResource(R.string.bindings_auto_generated)) },
@@ -427,6 +546,191 @@ fun ElementEditorDialog(
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
+                        }
+                    }
+                }
+
+                // Range Button Settings Section (only for RANGE_BUTTON type)
+                if (types[currentTypeIndex] == ControlElement.Type.RANGE_BUTTON) {
+                    SettingsGroup(title = { Text(stringResource(R.string.range_button_settings)) }) {
+                        // Key Range dropdown
+                        SettingsListDropdown(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.range_type)) },
+                            subtitle = { Text(stringResource(R.string.range_type_subtitle)) },
+                            value = currentRangeTypeIndex,
+                            items = rangeTypeLabels,
+                            onItemSelected = { index ->
+                                currentRangeTypeIndex = index
+                                element.setRange(rangeTypes[index])
+                                // Clamp visible segments to the new range's max
+                                val newMax = rangeTypes[index].max.toInt()
+                                if (currentVisibleSegments > newMax) {
+                                    currentVisibleSegments = newMax
+                                    element.setBindingCount(newMax)
+                                }
+                                hasUnsavedChanges = true
+                                view.invalidate()
+                            }
+                        )
+
+                        // Orientation dropdown
+                        val orientationLabels = listOf(
+                            stringResource(R.string.range_orientation_horizontal),
+                            stringResource(R.string.range_orientation_vertical)
+                        )
+                        SettingsListDropdown(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.range_orientation)) },
+                            subtitle = { Text(stringResource(R.string.range_orientation_subtitle)) },
+                            value = currentOrientation,
+                            items = orientationLabels,
+                            onItemSelected = { index ->
+                                currentOrientation = index
+                                element.setOrientation(index.toByte())
+                                hasUnsavedChanges = true
+                                view.invalidate()
+                            }
+                        )
+
+                        // Visible Segments slider
+                        val maxSegments = rangeTypes[currentRangeTypeIndex].max.toInt()
+                        SettingsMenuLink(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.range_visible_segments)) },
+                            subtitle = { Text(stringResource(R.string.range_visible_segments_subtitle, currentVisibleSegments)) },
+                            onClick = {}
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Slider(
+                                value = currentVisibleSegments.toFloat(),
+                                onValueChange = {
+                                    val newCount = it.roundToInt().coerceIn(1, maxSegments)
+                                    currentVisibleSegments = newCount
+                                    element.setBindingCount(newCount)
+                                    hasUnsavedChanges = true
+                                    view.invalidate()
+                                },
+                                valueRange = 1f..maxSegments.toFloat(),
+                                steps = (maxSegments - 2).coerceAtLeast(0),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "$currentVisibleSegments",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Lock Scrolling switch
+                        SettingsSwitch(
+                            colors = settingsTileColorsAlt(),
+                            title = { Text(stringResource(R.string.range_lock_scrolling)) },
+                            subtitle = { Text(stringResource(R.string.range_lock_scrolling_subtitle)) },
+                            state = currentScrollLocked,
+                            onCheckedChange = {
+                                currentScrollLocked = it
+                                element.isScrollLocked = it
+                                hasUnsavedChanges = true
+                            },
+                        )
+                    }
+                }
+
+                // Shooter Mode Settings Section (only for SHOOTER_MODE type)
+                if (types[currentTypeIndex] == ControlElement.Type.SHOOTER_MODE) {
+                    SettingsGroup(title = { Text(stringResource(R.string.shooter_mode_settings)) }) {
+                        // Movement Type dropdown
+                        SettingsListDropdown(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.movement_type)) },
+                            subtitle = { Text(stringResource(R.string.movement_type_subtitle)) },
+                            value = currentMovementTypeIndex,
+                            items = movementTypeLabels,
+                            onItemSelected = { index ->
+                                currentMovementTypeIndex = index
+                                hasUnsavedChanges = true
+                            }
+                        )
+
+                        // Look Type dropdown
+                        SettingsListDropdown(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.look_type)) },
+                            subtitle = { Text(stringResource(R.string.look_type_subtitle)) },
+                            value = currentLookTypeIndex,
+                            items = lookTypeLabels,
+                            onItemSelected = { index ->
+                                currentLookTypeIndex = index
+                                hasUnsavedChanges = true
+                            }
+                        )
+
+                        // Look Sensitivity slider
+                        SettingsMenuLink(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.look_sensitivity)) },
+                            subtitle = { Text(stringResource(R.string.look_sensitivity_subtitle)) },
+                            onClick = {}
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Slider(
+                                value = currentLookSensitivity,
+                                onValueChange = {
+                                    currentLookSensitivity = it
+                                    hasUnsavedChanges = true
+                                },
+                                valueRange = 0.1f..10.0f,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = String.format(Locale.US, "%.1fx", currentLookSensitivity),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Joystick Size slider
+                        SettingsMenuLink(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.joystick_size)) },
+                            subtitle = { Text(stringResource(R.string.joystick_size_subtitle)) },
+                            onClick = {}
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Slider(
+                                value = currentJoystickSize,
+                                onValueChange = {
+                                    currentJoystickSize = it
+                                    hasUnsavedChanges = true
+                                },
+                                valueRange = 0.5f..3.0f,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = String.format(Locale.US, "%.1fx", currentJoystickSize),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -518,6 +822,24 @@ fun ElementEditorDialog(
                     if (element.type != types[currentTypeIndex]) {
                         element.setTypeWithoutReset(types[currentTypeIndex])
                     }
+                    // Save shooter mode properties
+                    if (types[currentTypeIndex] == ControlElement.Type.SHOOTER_MODE) {
+                        element.shooterMovementType = movementTypeOptions[currentMovementTypeIndex]
+                        element.shooterLookType = lookTypeOptions[currentLookTypeIndex]
+                        element.shooterLookSensitivity = currentLookSensitivity
+                        element.shooterJoystickSize = currentJoystickSize
+                    }
+                    // Save range button properties
+                    if (types[currentTypeIndex] == ControlElement.Type.RANGE_BUTTON) {
+                        element.setRange(rangeTypes[currentRangeTypeIndex])
+                        element.setOrientation(currentOrientation.toByte())
+                        element.setBindingCount(currentVisibleSegments)
+                        element.isScrollLocked = currentScrollLocked
+                    }
+                    // Save button properties
+                    if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
+                        element.setToggleSwitch(currentToggleSwitch)
+                    }
                     view.profile?.save()
                     view.invalidate()
                     showExitConfirmation = false
@@ -539,6 +861,18 @@ fun ElementEditorDialog(
                             element.setBindingAt(index, binding)
                         }
                     }
+                    // Restore original shooter mode properties
+                    element.shooterMovementType = originalMovementType
+                    element.shooterLookType = originalLookType
+                    element.shooterLookSensitivity = originalLookSensitivity
+                    element.shooterJoystickSize = originalJoystickSize
+                    // Restore original range button properties
+                    element.setRange(originalRange)
+                    element.setOrientation(originalOrientation.toByte())
+                    element.setBindingCount(originalVisibleSegments)
+                    element.isScrollLocked = originalScrollLocked
+                    // Restore original button properties
+                    element.setToggleSwitch(originalToggleSwitch)
                     view.invalidate()
                     showExitConfirmation = false
                     onDismiss()
@@ -606,7 +940,7 @@ private fun SizeAdjusterOverlay(
                         style = MaterialTheme.typography.labelLarge
                     )
                     Text(
-                        text = String.format("%.2fx", currentScale),
+                        text = String.format(Locale.US, "%.2fx", currentScale),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
@@ -718,7 +1052,7 @@ private fun showCopySizeDialog(
     // Create display items showing element info with better formatting
     val elementNames = otherElements.map { element ->
         val typeStr = element.type.name.replace("_", " ")
-        val scaleStr = String.format("%.2fx", element.scale)
+        val scaleStr = String.format(Locale.US, "%.2fx", element.scale)
 
         // Get display text/binding
         val label = if (!element.text.isNullOrEmpty()) {

@@ -1,11 +1,24 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package app.gamenative.ui.screen.library.components
 
+import android.graphics.drawable.ColorDrawable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import android.view.KeyEvent
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,35 +26,33 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,28 +63,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import app.gamenative.theme.runtime.LocalSpatialFocusManager
-import app.gamenative.theme.runtime.SpatialFocusManager
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.widget.doAfterTextChanged
 import app.gamenative.PrefManager
-import app.gamenative.data.LibraryItem
-import app.gamenative.data.GameSource
+import app.gamenative.R
+import app.gamenative.theme.runtime.LocalSpatialFocusManager
+import app.gamenative.theme.runtime.SpatialFocusManager
 import app.gamenative.ui.data.LibraryState
-import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -102,7 +123,7 @@ data class SearchBarStyle(
     val highlightBorderWidth: Dp = 2.dp,
     /** Highlight transition animation duration in milliseconds. */
     val highlightTransitionSpeed: Int = 200,
-    /** 
+    /**
      * Navigation ID for this element. Used for registration with SpatialFocusManager
      * and for navigation references from other elements.
      */
@@ -134,7 +155,7 @@ data class SearchBarStyle(
         left = navigateLeft,
         right = navigateRight,
     )
-    
+
     /**
      * Create a Shadow from the shadow properties, or null if no shadow color is set.
      */
@@ -147,46 +168,41 @@ data class SearchBarStyle(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+/**
+ * Theme-engine search bar variant: uses LibraryState and SearchBarStyle for themed rendering.
+ * Called from the theme engine rendering path in LibraryScreen.
+ */
 @Composable
-internal fun LibrarySearchBar(
+fun LibrarySearchBar(
     state: LibraryState,
     listState: LazyGridState,
     onSearchQuery: (String) -> Unit,
     style: SearchBarStyle = SearchBarStyle(),
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val internalSearchText = remember { MutableStateFlow(state.searchQuery) }
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
-    
+    val scope = rememberCoroutineScope()
+
     // Spatial focus manager for position-based navigation (null in non-theme mode)
     val spatialFocusManager = LocalSpatialFocusManager.current
 
-    val scope = rememberCoroutineScope()
-
-    // Lambda function to provide new test to both onSearchQuery and internalSearchText
-    val onSearchText: (String) -> Unit = {
-        onSearchQuery(it)
-        if (internalSearchText.value != it) {
-            // Input text changed, so update and scroll to top
-            internalSearchText.value = it
-            scope.launch {
-                listState.scrollToItem(0)
-            }
+    val onSearchText: (String) -> Unit = { newText ->
+        onSearchQuery(newText)
+        scope.launch {
+            listState.scrollToItem(0)
         }
     }
 
     // Prevent focus by default, so it doesn't scoop up every controller input for focus
     val allowFocusing = remember { mutableStateOf(false) }
-    
+
     // Track if user has activated the search (clicked/tapped) - separate from focus highlight
     var isActivated by remember { mutableStateOf(false) }
-    
+
     // Determine if search bar should be expanded (not collapsed)
-    // Only expand when activated (clicked) or has text, NOT just from controller focus highlight
     val isExpanded = !style.collapsible || isActivated || state.searchQuery.isNotEmpty()
-    
+
     // Background color from theme or default
     val bgColor = style.backgroundColor ?: MaterialTheme.colorScheme.surfaceVariant
     // Text/icon color from theme or default
@@ -194,10 +210,10 @@ internal fun LibrarySearchBar(
     val cornerRadius = style.borderRadius.dp
     // Text shadow from theme
     val textShadow = style.toShadow()
-    
+
     // Collapsed size equals height (makes it round/square when collapsed)
     val collapsedSize = style.height
-    
+
     // Animate width for collapsible search bar
     val targetWidth = if (style.collapsible) {
         if (isExpanded) style.expandedWidth.coerceAtLeast(200.dp) else collapsedSize
@@ -209,18 +225,15 @@ internal fun LibrarySearchBar(
         animationSpec = tween(durationMillis = 250),
         label = "searchBarWidth"
     )
-    
-    // Alignment based on expand direction (when collapsible) or anchor (when not)
-    // expandDirection="right" means icon on left, expands to the right (CenterStart)
-    // expandDirection="left" means icon on right, expands to the left (CenterEnd)
+
+    // Alignment based on expand direction
     val contentAlignment = if (style.collapsible) {
         if (style.expandDirection.lowercase() == "right") Alignment.CenterStart else Alignment.CenterEnd
     } else {
         if (style.anchorRight) Alignment.CenterEnd else Alignment.CenterStart
     }
-    
+
     // Highlight border animation for controller navigation (theme-only feature)
-    // Use gradient brush for default focus styling (matching grid behavior)
     val hasHighlightStyling = style.highlightColor != null
     val highlightAlpha by animateFloatAsState(
         targetValue = if (isFocused && hasHighlightStyling) style.highlightOpacity else 0f,
@@ -246,8 +259,6 @@ internal fun LibrarySearchBar(
     // Navigation links for explicit navigation overrides
     val navigationLinks = style.toNavigationLinks()
 
-    // Modern search field with rounded corners
-    // Use explicit width if specified (> 0), otherwise fill width
     val hasExplicitWidth = style.expandedWidth > 0.dp
     Box(
         modifier = Modifier
@@ -260,7 +271,6 @@ internal fun LibrarySearchBar(
                     Modifier.fillMaxWidth()
                 }
             )
-            // Register with spatial focus manager for position-based navigation
             .onGloballyPositioned { coordinates ->
                 spatialFocusManager?.register(
                     id = style.navigationId,
@@ -269,10 +279,8 @@ internal fun LibrarySearchBar(
                     navigationLinks = navigationLinks
                 )
             }
-            // Use focusGroup to track child focus for highlight border
             .focusGroup()
             .onFocusChanged { focusState ->
-                // Update isFocused when any child gains/loses focus
                 isFocused = focusState.hasFocus
                 if (focusState.hasFocus) {
                     spatialFocusManager?.setFocused(style.navigationId)
@@ -283,14 +291,12 @@ internal fun LibrarySearchBar(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
-                // When tapped, activate and expand the search bar
                 allowFocusing.value = true
                 isActivated = true
             },
         contentAlignment = contentAlignment
     ) {
         if (style.collapsible) {
-            // Use AnimatedContent for smooth transition between collapsed and expanded states
             AnimatedContent(
                 targetState = isExpanded,
                 transitionSpec = {
@@ -299,8 +305,6 @@ internal fun LibrarySearchBar(
                 label = "searchBarContent"
             ) { expanded ->
                 if (!expanded) {
-                    // Collapsed mode - show only the search icon
-                    // Make it focusable for controller navigation (highlight only, not expand)
                     Box(
                         modifier = Modifier
                             .size(collapsedSize)
@@ -309,7 +313,6 @@ internal fun LibrarySearchBar(
                             .focusRequester(focusRequester)
                             .focusable()
                             .onFocusChanged { focusState ->
-                                // Only update highlight state, don't expand
                                 isFocused = focusState.isFocused || focusState.hasFocus
                                 if (focusState.isFocused) {
                                     spatialFocusManager?.setFocused(style.navigationId)
@@ -318,7 +321,6 @@ internal fun LibrarySearchBar(
                             .onKeyEvent { keyEvent ->
                                 if (keyEvent.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
                                     when (keyEvent.key) {
-                                        // Activate on Enter/A button press
                                         androidx.compose.ui.input.key.Key.Enter,
                                         androidx.compose.ui.input.key.Key.DirectionCenter,
                                         androidx.compose.ui.input.key.Key.ButtonA -> {
@@ -326,7 +328,6 @@ internal fun LibrarySearchBar(
                                             isActivated = true
                                             true
                                         }
-                                        // Handle D-pad navigation using spatial focus manager
                                         androidx.compose.ui.input.key.Key.DirectionUp -> {
                                             spatialFocusManager?.navigateInDirection(
                                                 style.navigationId,
@@ -356,7 +357,6 @@ internal fun LibrarySearchBar(
                                 } else false
                             }
                             .clickable {
-                                // Activate on tap/click
                                 allowFocusing.value = true
                                 isActivated = true
                             },
@@ -364,12 +364,11 @@ internal fun LibrarySearchBar(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                            contentDescription = stringResource(R.string.library_search_description),
                             tint = iconColor
                         )
                     }
                 } else {
-                    // Expanded mode - show full search field
                     var hasHadFocus by remember { mutableStateOf(false) }
                     val interactionSource = remember { MutableInteractionSource() }
                     BasicTextField(
@@ -387,7 +386,6 @@ internal fun LibrarySearchBar(
                                 if (focusState.isFocused) {
                                     hasHadFocus = true
                                 }
-                                // Only collapse if TextField had focus before and now lost it
                                 if (!focusState.isFocused && hasHadFocus && state.searchQuery.isEmpty()) {
                                     allowFocusing.value = false
                                     isActivated = false
@@ -405,11 +403,11 @@ internal fun LibrarySearchBar(
                                 innerTextField = innerTextField,
                                 enabled = true,
                                 singleLine = true,
-                                visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+                                visualTransformation = VisualTransformation.None,
                                 interactionSource = interactionSource,
                                 placeholder = {
                                     Text(
-                                        text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
+                                        text = stringResource(R.string.library_search_placeholder),
                                         color = iconColor.copy(alpha = 0.7f),
                                         style = textShadow?.let { androidx.compose.ui.text.TextStyle(shadow = it) } ?: androidx.compose.ui.text.TextStyle.Default
                                     )
@@ -417,7 +415,7 @@ internal fun LibrarySearchBar(
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Search,
-                                        contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                                        contentDescription = stringResource(R.string.library_search_description),
                                         tint = iconColor
                                     )
                                 },
@@ -428,7 +426,7 @@ internal fun LibrarySearchBar(
                                             content = {
                                                 Icon(
                                                     Icons.Default.Clear,
-                                                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
+                                                    contentDescription = stringResource(R.string.library_search_clear),
                                                     tint = iconColor
                                                 )
                                             }
@@ -445,19 +443,18 @@ internal fun LibrarySearchBar(
                             )
                         }
                     )
-                    
-                    // Request focus when expanded in collapsible mode
+
                     LaunchedEffect(Unit) {
                         focusRequester.requestFocus()
                     }
                 }
             }
         } else {
-            // Non-collapsible mode - show search field but don't activate until user presses Enter/A
+            // Non-collapsible mode
             var isTextFieldActive by remember { mutableStateOf(false) }
             val textFieldFocusRequester = remember { FocusRequester() }
             val interactionSource = remember { MutableInteractionSource() }
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -466,7 +463,6 @@ internal fun LibrarySearchBar(
                     .background(bgColor, RoundedCornerShape(cornerRadius))
                     .then(
                         if (!isTextFieldActive) {
-                            // When not active, the outer box is focusable for navigation
                             Modifier
                                 .focusRequester(focusRequester)
                                 .focusable()
@@ -479,14 +475,12 @@ internal fun LibrarySearchBar(
                                 .onKeyEvent { keyEvent ->
                                     if (keyEvent.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
                                         when (keyEvent.key) {
-                                            // Activate text input on Enter/A button
                                             androidx.compose.ui.input.key.Key.Enter,
                                             androidx.compose.ui.input.key.Key.DirectionCenter,
                                             androidx.compose.ui.input.key.Key.ButtonA -> {
                                                 isTextFieldActive = true
                                                 true
                                             }
-                                            // Handle D-pad navigation
                                             androidx.compose.ui.input.key.Key.DirectionUp -> {
                                                 spatialFocusManager?.navigateInDirection(
                                                     style.navigationId,
@@ -516,7 +510,6 @@ internal fun LibrarySearchBar(
                                     } else false
                                 }
                                 .clickable {
-                                    // Activate on tap/click
                                     isTextFieldActive = true
                                 }
                         } else Modifier
@@ -530,7 +523,6 @@ internal fun LibrarySearchBar(
                         .fillMaxWidth()
                         .focusRequester(textFieldFocusRequester)
                         .onFocusChanged { focusState ->
-                            // Deactivate when text field loses focus
                             if (!focusState.isFocused && isTextFieldActive) {
                                 isTextFieldActive = false
                             }
@@ -549,11 +541,11 @@ internal fun LibrarySearchBar(
                             innerTextField = innerTextField,
                             enabled = isTextFieldActive,
                             singleLine = true,
-                            visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+                            visualTransformation = VisualTransformation.None,
                             interactionSource = interactionSource,
                             placeholder = {
                                 Text(
-                                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_placeholder),
+                                    text = stringResource(R.string.library_search_placeholder),
                                     color = iconColor.copy(alpha = 0.7f),
                                     style = textShadow?.let { androidx.compose.ui.text.TextStyle(shadow = it) } ?: androidx.compose.ui.text.TextStyle.Default
                                 )
@@ -561,7 +553,7 @@ internal fun LibrarySearchBar(
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Search,
-                                    contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_description),
+                                    contentDescription = stringResource(R.string.library_search_description),
                                     tint = iconColor
                                 )
                             },
@@ -572,7 +564,7 @@ internal fun LibrarySearchBar(
                                         content = {
                                             Icon(
                                                 Icons.Default.Clear,
-                                                contentDescription = androidx.compose.ui.res.stringResource(app.gamenative.R.string.library_search_clear),
+                                                contentDescription = stringResource(R.string.library_search_clear),
                                                 tint = iconColor
                                             )
                                         }
@@ -592,8 +584,7 @@ internal fun LibrarySearchBar(
                     }
                 )
             }
-            
-            // Request focus on text field when activated
+
             LaunchedEffect(isTextFieldActive) {
                 if (isTextFieldActive) {
                     textFieldFocusRequester.requestFocus()
@@ -601,8 +592,252 @@ internal fun LibrarySearchBar(
             }
         }
     }
+}
 
-    // The dropdown search results are handled elsewhere in the LibraryList component
+/**
+ * Standard search bar variant used by the non-themed library UI (master's new design).
+ * Uses AnimatedVisibility and AndroidView EditText for better IME handling.
+ */
+@Composable
+fun LibrarySearchBar(
+    isVisible: Boolean,
+    searchQuery: String,
+    resultCount: Int,
+    listState: LazyGridState,
+    onSearchQuery: (String) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = expandVertically(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+            expandFrom = Alignment.Top,
+        ) + fadeIn(),
+        exit = shrinkVertically(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessHigh,
+            ),
+            shrinkTowards = Alignment.Top,
+        ) + fadeOut(),
+        modifier = modifier,
+    ) {
+        // Gradient background container
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                            Color.Transparent,
+                        ),
+                    ),
+                )
+                .padding(top = 8.dp, bottom = 20.dp, start = 12.dp, end = 12.dp),
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SearchBarInput(
+                    searchQuery = searchQuery,
+                    listState = listState,
+                    onSearchQuery = onSearchQuery,
+                    onDismiss = onDismiss,
+                )
+
+                // Results count
+                if (searchQuery.isNotEmpty()) {
+                    Text(
+                        text = if (resultCount == 1) {
+                            stringResource(R.string.search_results_one, resultCount)
+                        } else {
+                            stringResource(R.string.search_results_many, resultCount)
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBarInput(
+    searchQuery: String,
+    listState: LazyGridState,
+    onSearchQuery: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    var editTextRef by remember { mutableStateOf<EditText?>(null) }
+    var isFocused by remember { mutableStateOf(false) }
+
+    // Request focus when search bar appears
+    LaunchedEffect(editTextRef) {
+        editTextRef?.requestFocus()
+    }
+
+    val onSearchText: (String) -> Unit = { newText ->
+        onSearchQuery(newText)
+        scope.launch {
+            listState.scrollToItem(0)
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    ),
+                ),
+            )
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        RoundedCornerShape(24.dp),
+                    )
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Back/Close button
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .clickable { onDismiss() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = stringResource(R.string.library_search_close),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+
+        // Search icon
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = if (isFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(22.dp),
+        )
+
+        // Text input using AndroidView with EditText
+        val textColor = MaterialTheme.colorScheme.onSurface
+        val hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        val cursorColor = MaterialTheme.colorScheme.primary
+        val placeholderText = stringResource(R.string.library_search_placeholder)
+
+        AndroidView(
+            factory = { context ->
+                EditText(context).apply {
+                    imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_SEARCH
+                    inputType = android.text.InputType.TYPE_CLASS_TEXT
+                    isSingleLine = true
+                    hint = placeholderText
+                    background = ColorDrawable(android.graphics.Color.TRANSPARENT)
+                    setPadding(0, 0, 0, 0)
+
+                    setTextColor(textColor.toArgb())
+                    setHintTextColor(hintColor.toArgb())
+
+                    textSize = 16f
+
+                    setOnEditorActionListener { _, actionId, _ ->
+                        if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                            keyboardController?.hide()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+
+                    setOnKeyListener { v, keyCode, event ->
+                        if (event.action == KeyEvent.ACTION_DOWN &&
+                            keyCode == KeyEvent.KEYCODE_DPAD_DOWN
+                        ) {
+                            keyboardController?.hide()
+                            val nextFocus = v.focusSearch(View.FOCUS_DOWN)
+                            nextFocus?.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+
+                    doAfterTextChanged { editable ->
+                        onSearchText(editable?.toString() ?: "")
+                    }
+
+                    setOnFocusChangeListener { _, hasFocus ->
+                        isFocused = hasFocus
+                    }
+
+                    editTextRef = this
+                }
+            },
+            update = { editText ->
+                if (editText.text.toString() != searchQuery) {
+                    editText.setText(searchQuery)
+                    editText.setSelection(searchQuery.length)
+                }
+
+                editText.setTextColor(textColor.toArgb())
+                editText.setHintTextColor(hintColor.toArgb())
+            },
+            modifier = Modifier
+                .weight(1f)
+                .height(24.dp),
+        )
+
+        // Clear button
+        if (searchQuery.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .clickable { onSearchText("") },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = stringResource(R.string.library_search_clear),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
 }
 
 /***********
@@ -617,20 +852,31 @@ private fun Preview_LibrarySearchBar() {
     PluviaTheme {
         Surface {
             LibrarySearchBar(
-                state = LibraryState(
-                    isSearching = false,
-                    appInfoList = List(5) { idx ->
-                        val item = fakeAppInfo(idx)
-                        LibraryItem(
-                            index = idx,
-                            appId = "${GameSource.STEAM.name}_${item.id}",
-                            name = item.name,
-                            iconHash = item.iconHash,
-                        )
-                    },
-                ),
+                isVisible = true,
+                searchQuery = "Balatro",
+                resultCount = 5,
                 listState = rememberLazyGridState(),
                 onSearchQuery = { },
+                onDismiss = { },
+            )
+        }
+    }
+}
+
+@Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES or android.content.res.Configuration.UI_MODE_TYPE_NORMAL)
+@Composable
+private fun Preview_LibrarySearchBar_Empty() {
+    val context = LocalContext.current
+    PrefManager.init(context)
+    PluviaTheme {
+        Surface {
+            LibrarySearchBar(
+                isVisible = true,
+                searchQuery = "",
+                resultCount = 0,
+                listState = rememberLazyGridState(),
+                onSearchQuery = { },
+                onDismiss = { },
             )
         }
     }

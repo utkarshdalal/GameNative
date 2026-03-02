@@ -3,55 +3,68 @@ package app.gamenative.ui.screen.library.appscreen
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
-import app.gamenative.PluviaApp
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
-import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.GameCompatibilityCache
+import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.MarkerUtils
-import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.SteamUtils
-import com.posthog.PostHog
+import app.gamenative.utils.StorageUtils
 import com.google.android.play.core.splitcompat.SplitCompat
+import com.posthog.PostHog
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
+import com.winlator.core.GPUInformation
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.xenvironment.ImageFsInstaller
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
-import com.winlator.core.GPUInformation
-import timber.log.Timber
 import java.nio.file.Paths
 import kotlin.io.path.pathString
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import app.gamenative.ui.component.dialog.GameManagerDialog
+import app.gamenative.ui.screen.library.GameMigrationDialog
+import app.gamenative.ui.component.dialog.state.GameManagerDialogState
+import app.gamenative.utils.ContainerUtils.getContainer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import org.json.JSONObject
+import timber.log.Timber
+import java.io.File
 
 private data class InstallSizeInfo(
     val downloadSize: String,
@@ -61,12 +74,156 @@ private data class InstallSizeInfo(
     val availableBytes: Long,
 )
 
+data class KnownConfigInstallState(
+    val visible: Boolean,
+    val progress: Float,
+    val label: String,
+)
+
+private suspend fun installMissingComponentsForConfig(
+    context: Context,
+    gameId: Int,
+    configJson: kotlinx.serialization.json.JsonObject,
+    matchType: String,
+    uiScope: CoroutineScope,
+): Boolean {
+    val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
+        context,
+        configJson,
+        matchType,
+    )
+    if (missingRequests.isEmpty()) return true
+
+    uiScope.launch(Dispatchers.Main.immediate) {
+        SteamAppScreen.showKnownConfigInstallState(
+            gameId,
+            KnownConfigInstallState(
+                visible = true,
+                progress = -1f,
+                label = missingRequests.first().entry.name,
+            ),
+        )
+    }
+
+    for (request in missingRequests) {
+        val label = request.entry.id
+        uiScope.launch(Dispatchers.Main.immediate) {
+            SteamAppScreen.showKnownConfigInstallState(
+                gameId,
+                KnownConfigInstallState(
+                    visible = true,
+                    progress = -1f,
+                    label = label,
+                ),
+            )
+        }
+        val result = ManifestInstaller.installManifestEntry(
+            context = context,
+            entry = request.entry,
+            isDriver = request.isDriver,
+            contentType = request.contentType,
+            onProgress = { progress ->
+                val clamped = progress.coerceIn(0f, 1f)
+                uiScope.launch(Dispatchers.Main.immediate) {
+                    SteamAppScreen.showKnownConfigInstallState(
+                        gameId,
+                        KnownConfigInstallState(
+                            visible = true,
+                            progress = clamped,
+                            label = label,
+                        ),
+                    )
+                }
+            },
+        )
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+        }
+        if (!result.success) {
+            uiScope.launch(Dispatchers.Main.immediate) { SteamAppScreen.hideKnownConfigInstallState(gameId) }
+            return false
+        }
+    }
+
+    uiScope.launch(Dispatchers.Main.immediate) { SteamAppScreen.hideKnownConfigInstallState(gameId) }
+    return true
+}
+
+private suspend fun applyConfigForContainer(
+    context: Context,
+    gameId: Int,
+    appId: String,
+    configJson: kotlinx.serialization.json.JsonObject,
+    matchType: String,
+    uiScope: CoroutineScope,
+): Boolean {
+    return try {
+        val installsOk = installMissingComponentsForConfig(
+            context,
+            gameId,
+            configJson,
+            matchType,
+            uiScope,
+        )
+        if (!installsOk) return false
+
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
+        val containerData = ContainerUtils.toContainerData(container)
+        val parsedConfig = BestConfigService.parseConfigToContainerData(
+            context,
+            configJson,
+            matchType,
+            true,
+        )
+        val missingContentDescription = BestConfigService.consumeLastMissingContentDescription()
+        if (parsedConfig != null && parsedConfig.isNotEmpty()) {
+            val updatedContainerData = ContainerUtils.applyBestConfigMapToContainerData(
+                containerData,
+                parsedConfig,
+            )
+            ContainerUtils.applyToContainer(context, container, updatedContainerData)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.best_config_applied_successfully),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        } else {
+            withContext(Dispatchers.Main) {
+                val message = if (missingContentDescription != null) {
+                    context.getString(R.string.best_config_missing_content, missingContentDescription)
+                } else {
+                    context.getString(R.string.best_config_known_config_invalid)
+                }
+                Toast.makeText(
+                    context,
+                    message,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+        true
+    } catch (e: Exception) {
+        Timber.w(e, "Failed to apply config: ${e.message}")
+        withContext(Dispatchers.Main) {
+            SteamAppScreen.hideKnownConfigInstallState(gameId)
+            Toast.makeText(
+                context,
+                context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+        false
+    }
+}
+
 private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
     val message = context.getString(
         R.string.steam_install_space_prompt,
         info.downloadSize,
         info.installSize,
-        info.availableSpace
+        info.availableSpace,
     )
     return MessageDialogState(
         visible = true,
@@ -82,7 +239,7 @@ private fun buildNotEnoughSpaceState(context: Context, info: InstallSizeInfo): M
     val message = context.getString(
         R.string.steam_install_not_enough_space,
         info.installSize,
-        info.availableSpace
+        info.availableSpace,
     )
     return MessageDialogState(
         visible = true,
@@ -130,6 +287,62 @@ class SteamAppScreen : BaseAppScreen() {
             return installDialogStates[gameId]
         }
 
+        private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
+
+        fun showKnownConfigInstallState(gameId: Int, state: KnownConfigInstallState) {
+            knownConfigInstallStates[gameId] = state
+        }
+
+        fun hideKnownConfigInstallState(gameId: Int) {
+            knownConfigInstallStates.remove(gameId)
+        }
+
+        fun getKnownConfigInstallState(gameId: Int): KnownConfigInstallState? {
+            return knownConfigInstallStates[gameId]
+        }
+
+        private val importConfigRequests = mutableStateMapOf<Int, Boolean>()
+
+        fun requestImportConfig(gameId: Int) {
+            importConfigRequests[gameId] = true
+        }
+
+        fun clearImportConfigRequest(gameId: Int) {
+            importConfigRequests.remove(gameId)
+        }
+
+        fun shouldImportConfig(gameId: Int): Boolean {
+            return importConfigRequests[gameId] == true
+        }
+
+        private val exportConfigRequests = mutableStateMapOf<Int, Boolean>()
+
+        fun requestExportConfig(gameId: Int) {
+            exportConfigRequests[gameId] = true
+        }
+
+        fun clearExportConfigRequest(gameId: Int) {
+            exportConfigRequests.remove(gameId)
+        }
+
+        fun shouldExportConfig(gameId: Int): Boolean {
+            return exportConfigRequests[gameId] == true
+        }
+
+        private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
+
+        fun showGameManagerDialog(gameId: Int, state: GameManagerDialogState) {
+            gameManagerDialogStates[gameId] = state
+        }
+
+        fun hideGameManagerDialog(gameId: Int) {
+            gameManagerDialogStates.remove(gameId)
+        }
+
+        fun getGameManagerDialogState(gameId: Int): GameManagerDialogState? {
+            return gameManagerDialogStates[gameId]
+        }
+
         // Shared state for update/verify operation - map of gameId to AppOptionMenuType
         private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
 
@@ -145,10 +358,11 @@ class SteamAppScreen : BaseAppScreen() {
             return pendingUpdateVerifyOperations[gameId]
         }
     }
+
     @Composable
     override fun getGameDisplayInfo(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): GameDisplayInfo {
         val gameId = libraryItem.gameId
         val appInfo = remember(libraryItem.appId) {
@@ -193,7 +407,9 @@ class SteamAppScreen : BaseAppScreen() {
         val installLocation = remember(isInstalled, gameId) {
             if (isInstalled) {
                 getAppDirPath(gameId)
-            } else null
+            } else {
+                null
+            }
         }
 
         // Get size on disk (async, will update via state)
@@ -212,23 +428,33 @@ class SteamAppScreen : BaseAppScreen() {
         var sizeFromStore by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(isInstalled, gameId) {
             if (!isInstalled) {
-                // Load size from store asynchronously to avoid blocking UI
-                withContext(Dispatchers.IO) {
-                    val size = DownloadService.getSizeFromStoreDisplay(gameId)
-                    sizeFromStore = size
+                // Load size from store on IO, assign on Main to respect Compose threading
+                val size = withContext(Dispatchers.IO) {
+                    DownloadService.getSizeFromStoreDisplay(gameId)
                 }
+                sizeFromStore = size
             } else {
                 sizeFromStore = null
             }
         }
 
-        // Get last played text from container timestamp
-        val lastPlayedText = remember(isInstalled, libraryItem.appId) {
+        // Get last played text from container timestamp (preferred) or file-based fallback
+        val lastPlayedText = remember(isInstalled, libraryItem.appId, gameId) {
             try {
+                // Try container-based timestamp first
                 val containerManager = ContainerManager(context)
                 val container = containerManager.containers.find { it.id == libraryItem.appId }
                 if (container != null && container.lastPlayedTimestamp > 0) {
                     SteamUtils.fromSteamTime((container.lastPlayedTimestamp / 1000).toInt())
+                } else if (isInstalled) {
+                    // Fall back to file-based last modified time
+                    val path = getAppDirPath(gameId)
+                    val file = File(path)
+                    if (file.exists()) {
+                        SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
+                    } else {
+                        context.getString(R.string.library_never_played)
+                    }
                 } else {
                     context.getString(R.string.library_never_played)
                 }
@@ -246,20 +472,20 @@ class SteamAppScreen : BaseAppScreen() {
                 val game = games.firstOrNull { it.appId == gameId }
                 playtimeText = if (game != null) {
                     SteamUtils.formatPlayTime(game.playtimeForever) + " hrs"
-                } else "0 hrs"
+                } else {
+                    "0 hrs"
+                }
             }
         }
 
-        // Fetch best config compatibility info for uninstalled games
+        // Fetch compatibility info from cache
         var compatibilityMessage by remember { mutableStateOf<String?>(null) }
         var compatibilityColor by remember { mutableStateOf<ULong?>(null) }
         LaunchedEffect(isInstalled, gameId, appInfo.name) {
-            // Check if container exists
             try {
-                val gpuName = GPUInformation.getRenderer(context)
-                val bestConfig = BestConfigService.fetchBestConfig(appInfo.name, gpuName)
-                if (bestConfig != null) {
-                    val message = BestConfigService.getCompatibilityMessage(context, bestConfig.matchType)
+                val cachedResponse = GameCompatibilityCache.getCached(appInfo.name)
+                if (cachedResponse != null) {
+                    val message = GameCompatibilityService.getCompatibilityMessageFromResponse(context, cachedResponse)
                     compatibilityMessage = message.text
                     compatibilityColor = message.color.value
                 } else {
@@ -267,7 +493,7 @@ class SteamAppScreen : BaseAppScreen() {
                     compatibilityColor = null
                 }
             } catch (e: Exception) {
-                Timber.tag("SteamAppScreen").e(e, "Failed to fetch best config")
+                Timber.tag("SteamAppScreen").e(e, "Failed to get compatibility from cache")
                 compatibilityMessage = null
                 compatibilityColor = null
             }
@@ -320,7 +546,7 @@ class SteamAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onStateChanged: () -> Unit,
         onProgressChanged: (Float) -> Unit,
-        onHasPartialDownloadChanged: ((Boolean) -> Unit)?
+        onHasPartialDownloadChanged: ((Boolean) -> Unit)?,
     ): (() -> Unit)? {
         val appId = libraryItem.gameId
         val disposables = mutableListOf<() -> Unit>()
@@ -370,7 +596,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     private fun attachDownloadProgressListener(
         appId: Int,
-        onProgressChanged: (Float) -> Unit
+        onProgressChanged: (Float) -> Unit,
     ): (() -> Unit)? {
         val downloadInfo = SteamService.getAppDownloadInfo(appId) ?: return null
         val listener: (Float) -> Unit = { progress ->
@@ -396,13 +622,13 @@ class SteamAppScreen : BaseAppScreen() {
     override fun onRunContainerClick(
         context: Context,
         libraryItem: LibraryItem,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val gameId = libraryItem.gameId
         val appInfo = SteamService.getAppInfoOf(gameId)
         PostHog.capture(
             event = "container_opened",
-            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+            properties = mapOf("game_name" to (appInfo?.name ?: "")),
         )
         super.onRunContainerClick(context, libraryItem, onClickPlay)
     }
@@ -410,7 +636,7 @@ class SteamAppScreen : BaseAppScreen() {
     override fun onDownloadInstallClick(
         context: Context,
         libraryItem: LibraryItem,
-        onClickPlay: (Boolean) -> Unit
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val gameId = libraryItem.gameId
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
@@ -428,7 +654,7 @@ class SteamAppScreen : BaseAppScreen() {
                     message = context.getString(R.string.steam_cancel_download_message),
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
-                )
+                ),
             )
         } else if (SteamService.hasPartialDownload(gameId)) {
             // Resume incomplete download
@@ -438,14 +664,10 @@ class SteamAppScreen : BaseAppScreen() {
         } else if (!isInstalled) {
             // Request storage permissions first, then show install dialog
             // This will be handled by the permission launcher in AdditionalDialogs
-            showInstallDialog(
+            showGameManagerDialog(
                 gameId,
-                MessageDialogState(
-                    visible = true,
-                    type = DialogType.INSTALL_APP_PENDING,
-                    title = context.getString(R.string.download_prompt_title),
-                    message = context.getString(R.string.calculating_space_requirements),
-                    dismissBtnText = context.getString(R.string.cancel),
+                GameManagerDialogState(
+                    visible = true
                 )
             )
         } else {
@@ -453,7 +675,11 @@ class SteamAppScreen : BaseAppScreen() {
             val appInfo = SteamService.getAppInfoOf(gameId)
             PostHog.capture(
                 event = "game_launched",
-                properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                properties = mapOf(
+                    "game_name" to (appInfo?.name ?: ""),
+                    "key_attestation_available" to PrefManager.keyAttestationAvailable,
+                    "play_integrity_available" to PrefManager.playIntegrityAvailable,
+                ),
             )
             onClickPlay(false)
         }
@@ -489,8 +715,8 @@ class SteamAppScreen : BaseAppScreen() {
                     title = context.getString(R.string.cancel_download_prompt_title),
                     message = context.getString(R.string.steam_delete_download_message),
                     confirmBtnText = context.getString(R.string.yes),
-                    dismissBtnText = context.getString(R.string.no)
-                )
+                    dismissBtnText = context.getString(R.string.no),
+                ),
             )
         } else if (isInstalled) {
             // Show uninstall dialog when installed
@@ -511,7 +737,7 @@ class SteamAppScreen : BaseAppScreen() {
     override fun getEditContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-        onEditContainer: () -> Unit
+        onEditContainer: () -> Unit,
     ): AppMenuOption {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
@@ -533,7 +759,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 message = context.getString(R.string.steam_imagefs_download_install_message),
                                 confirmBtnText = context.getString(R.string.proceed),
                                 dismissBtnText = context.getString(R.string.cancel),
-                            )
+                            ),
                         )
                     } else {
                         showInstallDialog(
@@ -545,13 +771,13 @@ class SteamAppScreen : BaseAppScreen() {
                                 message = context.getString(R.string.steam_imagefs_install_message),
                                 confirmBtnText = context.getString(R.string.proceed),
                                 dismissBtnText = context.getString(R.string.cancel),
-                            )
+                            ),
                         )
                     }
                 } else {
                     onEditContainer()
                 }
-            }
+            },
         )
     }
 
@@ -561,7 +787,7 @@ class SteamAppScreen : BaseAppScreen() {
     @Composable
     override fun getResetContainerOption(
         context: Context,
-        libraryItem: LibraryItem
+        libraryItem: LibraryItem,
     ): AppMenuOption {
         val gameId = libraryItem.gameId
         var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -572,13 +798,13 @@ class SteamAppScreen : BaseAppScreen() {
                     showResetConfirmDialog = false
                     resetContainerToDefaults(context, libraryItem)
                 },
-                onDismiss = { showResetConfirmDialog = false }
+                onDismiss = { showResetConfirmDialog = false },
             )
         }
 
         return AppMenuOption(
             AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true }
+            onClick = { showResetConfirmDialog = true },
         )
     }
 
@@ -592,15 +818,18 @@ class SteamAppScreen : BaseAppScreen() {
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
         onClickPlay: (Boolean) -> Unit,
-        isInstalled: Boolean
+        isInstalled: Boolean,
     ): List<AppMenuOption> {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
+        val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
 
-        if (!isInstalled) {
+        if (!isInstalled || isDownloadInProgress) {
             return emptyList()
         }
+
+        val scope = rememberCoroutineScope()
 
         // Steam-specific options (only when installed)
         return listOf(
@@ -616,6 +845,17 @@ class SteamAppScreen : BaseAppScreen() {
                 },
             ),
             AppMenuOption(
+                AppOptionMenuType.ManageGameContent,
+                onClick = {
+                    showGameManagerDialog(
+                        gameId,
+                        GameManagerDialogState(
+                            visible = true,
+                        )
+                    )
+                }
+            ),
+            AppMenuOption(
                 AppOptionMenuType.VerifyFiles,
                 onClick = {
                     // Show confirmation dialog before verifying
@@ -629,7 +869,7 @@ class SteamAppScreen : BaseAppScreen() {
                             message = context.getString(R.string.steam_verify_files_message),
                             confirmBtnText = context.getString(R.string.steam_continue),
                             dismissBtnText = context.getString(R.string.cancel),
-                        )
+                        ),
                     )
                 },
             ),
@@ -647,7 +887,7 @@ class SteamAppScreen : BaseAppScreen() {
                             message = context.getString(R.string.steam_update_message),
                             confirmBtnText = context.getString(R.string.steam_continue),
                             dismissBtnText = context.getString(R.string.cancel),
-                        )
+                        ),
                     )
                 },
             ),
@@ -658,7 +898,7 @@ class SteamAppScreen : BaseAppScreen() {
                 onClick = {
                     PostHog.capture(
                         event = "cloud_sync_forced",
-                        properties = mapOf("game_name" to appInfo.name)
+                        properties = mapOf("game_name" to appInfo.name),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
                         val steamId = SteamService.userSteamId
@@ -667,7 +907,7 @@ class SteamAppScreen : BaseAppScreen() {
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.steam_not_logged_in),
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_SHORT,
                                 ).show()
                             }
                             return@launch
@@ -682,7 +922,7 @@ class SteamAppScreen : BaseAppScreen() {
                         }
                         val syncResult = SteamService.forceSyncUserFiles(
                             appId = gameId,
-                            prefixToPath = prefixToPath
+                            prefixToPath = prefixToPath,
                         ).await()
 
                         withContext(Dispatchers.Main) {
@@ -691,93 +931,84 @@ class SteamAppScreen : BaseAppScreen() {
                                     Toast.makeText(
                                         context,
                                         context.getString(R.string.steam_cloud_sync_success),
-                                        Toast.LENGTH_SHORT
+                                        Toast.LENGTH_SHORT,
                                     ).show()
                                 }
+
                                 SyncResult.UpToDate -> {
                                     Toast.makeText(
                                         context,
                                         context.getString(R.string.steam_cloud_sync_up_to_date),
-                                        Toast.LENGTH_SHORT
+                                        Toast.LENGTH_SHORT,
                                     ).show()
                                 }
+
                                 else -> {
                                     Toast.makeText(
                                         context,
                                         context.getString(
                                             R.string.steam_cloud_sync_failed,
-                                            syncResult.syncResult
+                                            syncResult.syncResult,
                                         ),
-                                        Toast.LENGTH_SHORT
+                                        Toast.LENGTH_SHORT,
                                     ).show()
                                 }
                             }
                         }
                     }
-                }
+                },
             ),
             AppMenuOption(
                 AppOptionMenuType.UseKnownConfig,
                 onClick = {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    scope.launch(Dispatchers.IO) {
                         try {
-                            val container = ContainerUtils.getOrCreateContainer(context, appId)
-                            val containerData = ContainerUtils.toContainerData(container)
                             val gameName = appInfo.name
                             val gpuName = GPUInformation.getRenderer(context)
 
                             val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
                             if (bestConfig != null && bestConfig.matchType != "no_match") {
-                                val parsedConfig = BestConfigService.parseConfigToContainerData(
+                                applyConfigForContainer(
                                     context,
+                                    gameId,
+                                    appId,
                                     bestConfig.bestConfig,
                                     bestConfig.matchType,
-                                    true // applyKnownConfig=true to get all fields
+                                    scope,
                                 )
-
-                                if (parsedConfig != null && parsedConfig.isNotEmpty()) {
-                                    val updatedContainerData = ContainerUtils.applyBestConfigMapToContainerData(
-                                        containerData,
-                                        parsedConfig
-                                    )
-                                    ContainerUtils.applyToContainer(context, container, updatedContainerData)
-
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            context.getString(R.string.best_config_applied_successfully),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                } else {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            context.getString(R.string.best_config_known_config_invalid),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
                             } else {
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(
                                         context,
                                         context.getString(R.string.best_config_no_config_available),
-                                        Toast.LENGTH_SHORT
+                                        Toast.LENGTH_SHORT,
                                     ).show()
                                 }
                             }
                         } catch (e: Exception) {
                             Timber.w(e, "Failed to apply known config: ${e.message}")
                             withContext(Dispatchers.Main) {
+                                hideKnownConfigInstallState(gameId)
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_SHORT,
                                 ).show()
                             }
                         }
                     }
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ImportConfig,
+                onClick = {
+                    requestImportConfig(gameId)
+                }
+            ),
+            AppMenuOption(
+                AppOptionMenuType.ExportConfig,
+                onClick = {
+                    requestExportConfig(gameId)
                 }
             )
         )
@@ -789,7 +1020,14 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+        val container = getContainer(context, libraryItem.appId)
         ContainerUtils.applyToContainer(context, libraryItem.appId, config)
+
+        if (container.language != config.language) {
+            CoroutineScope(Dispatchers.IO).launch {
+                SteamService.downloadApp(libraryItem.gameId)
+            }
+        }
     }
 
     override fun supportsContainerConfig(): Boolean = true
@@ -801,7 +1039,7 @@ class SteamAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
-        onBack: () -> Unit
+        onBack: () -> Unit,
     ) {
         val context = LocalContext.current
         val gameId = libraryItem.gameId
@@ -831,6 +1069,50 @@ class SteamAppScreen : BaseAppScreen() {
                 }
         }
 
+        var knownConfigInstallState by remember(gameId) {
+            mutableStateOf(getKnownConfigInstallState(gameId) ?: KnownConfigInstallState(false, -1f, ""))
+        }
+
+        LaunchedEffect(gameId) {
+            snapshotFlow { getKnownConfigInstallState(gameId) }
+                .collect { state ->
+                    knownConfigInstallState = state ?: KnownConfigInstallState(false, -1f, "")
+                }
+        }
+
+        var importConfigRequested by remember(gameId) {
+            mutableStateOf(shouldImportConfig(gameId))
+        }
+
+        LaunchedEffect(gameId) {
+            snapshotFlow { shouldImportConfig(gameId) }
+                .collect { shouldRequest ->
+                    importConfigRequested = shouldRequest
+                }
+        }
+
+        var exportConfigRequested by remember(gameId) {
+            mutableStateOf(shouldExportConfig(gameId))
+        }
+
+        LaunchedEffect(gameId) {
+            snapshotFlow { shouldExportConfig(gameId) }
+                .collect { shouldRequest ->
+                    exportConfigRequested = shouldRequest
+                }
+        }
+
+        var gameManagerDialogState by remember(gameId) {
+            mutableStateOf(getGameManagerDialogState(gameId) ?: GameManagerDialogState(false))
+        }
+
+        LaunchedEffect(gameId) {
+            snapshotFlow { getGameManagerDialogState(gameId) }
+                .collect { state ->
+                    gameManagerDialogState = state ?: GameManagerDialogState(false)
+                }
+        }
+
         // Migration state
         val scope = rememberCoroutineScope()
         var showMoveDialog by remember { mutableStateOf(false) }
@@ -844,11 +1126,11 @@ class SteamAppScreen : BaseAppScreen() {
         val initialStoragePermissionGranted = remember {
             val writePermissionGranted = ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
             ) == PackageManager.PERMISSION_GRANTED
             val readPermissionGranted = ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.READ_EXTERNAL_STORAGE
+                Manifest.permission.READ_EXTERNAL_STORAGE,
             ) == PackageManager.PERMISSION_GRANTED
             writePermissionGranted && readPermissionGranted
         }
@@ -880,7 +1162,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Permission launcher for storage permissions
         val permissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions()
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { permissions ->
             val writePermissionGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
             val readPermissionGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
@@ -891,9 +1173,109 @@ class SteamAppScreen : BaseAppScreen() {
                 Toast.makeText(
                     context,
                     context.getString(R.string.steam_storage_permission_required),
-                    Toast.LENGTH_SHORT
+                    Toast.LENGTH_SHORT,
                 ).show()
                 hideInstallDialog(gameId)
+                hideGameManagerDialog(gameId)
+            }
+        }
+
+        val importConfigLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) { uri: Uri? ->
+            if (uri == null) {
+                clearImportConfigRequest(gameId)
+                return@rememberLauncherForActivityResult
+            }
+
+            scope.launch(Dispatchers.Main) {
+                try {
+                    SteamService.keepAlive = true
+                    val jsonText = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    }.orEmpty()
+                    if (jsonText.isBlank()) {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.best_config_known_config_invalid),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+
+                    val configJson = Json.parseToJsonElement(jsonText).jsonObject
+                    val matchType = "exact_gpu_match"
+                    applyConfigForContainer(
+                        context,
+                        gameId,
+                        libraryItem.appId,
+                        configJson,
+                        matchType,
+                        scope,
+                    )
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to import config: ${e.message}")
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } finally {
+                    clearImportConfigRequest(gameId)
+                    SteamService.keepAlive = false
+                }
+            }
+        }
+
+        LaunchedEffect(importConfigRequested) {
+            if (importConfigRequested) {
+                importConfigLauncher.launch(
+                    arrayOf("application/json", "text/json", "text/plain")
+                )
+            }
+        }
+
+        val exportConfigLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json"),
+        ) { uri: Uri? ->
+            if (uri == null) {
+                clearExportConfigRequest(gameId)
+                return@rememberLauncherForActivityResult
+            }
+
+            CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
+                try {
+                    val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                    val jsonText = JSONObject(container.containerJson).toString(2)
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                            outputStream.write(jsonText.toByteArray(Charsets.UTF_8))
+                            outputStream.flush()
+                        }
+                    }
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.base_app_exported),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to export config: ${e.message}")
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.base_app_export_failed, e.message ?: "Unknown error"),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } finally {
+                    clearExportConfigRequest(gameId)
+                }
+            }
+        }
+
+        LaunchedEffect(exportConfigRequested) {
+            if (exportConfigRequested) {
+                val gameName = appInfo?.name ?: "game"
+                val suggestedFileName = "${gameName}_config.json"
+                exportConfigLauncher.launch(suggestedFileName)
             }
         }
 
@@ -948,6 +1330,28 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
+        LaunchedEffect(gameManagerDialogState.visible, hasStoragePermission) {
+            if (!gameManagerDialogState.visible) return@LaunchedEffect
+            if (!hasStoragePermission) {
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ),
+                )
+            }
+        }
+
+        LoadingDialog(
+            visible = knownConfigInstallState.visible,
+            progress = knownConfigInstallState.progress,
+            message = if (knownConfigInstallState.label.isNotEmpty()) {
+                context.getString(R.string.manifest_downloading_item, knownConfigInstallState.label)
+            } else {
+                context.getString(R.string.working)
+            },
+        )
+
         // Install dialog (INSTALL_APP, NOT_ENOUGH_SPACE, CANCEL_APP_DOWNLOAD)
         if (installDialogState.visible) {
             val onDismissRequest: (() -> Unit)? = {
@@ -958,11 +1362,12 @@ class SteamAppScreen : BaseAppScreen() {
             }
             val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
                 DialogType.INSTALL_APP_PENDING -> null
+
                 DialogType.INSTALL_APP -> {
                     {
                         PostHog.capture(
                             event = "game_install_started",
-                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                            properties = mapOf("game_name" to (appInfo?.name ?: "")),
                         )
                         hideInstallDialog(gameId)
                         CoroutineScope(Dispatchers.IO).launch {
@@ -970,16 +1375,18 @@ class SteamAppScreen : BaseAppScreen() {
                         }
                     }
                 }
+
                 DialogType.NOT_ENOUGH_SPACE -> {
                     {
                         hideInstallDialog(gameId)
                     }
                 }
+
                 DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
                         PostHog.capture(
                             event = "game_install_cancelled",
-                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                            properties = mapOf("game_name" to (appInfo?.name ?: "")),
                         )
                         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
                         downloadInfo?.cancel()
@@ -992,6 +1399,7 @@ class SteamAppScreen : BaseAppScreen() {
                         }
                     }
                 }
+
                 DialogType.UPDATE_VERIFY_CONFIRM -> {
                     {
                         hideInstallDialog(gameId)
@@ -1015,14 +1423,14 @@ class SteamAppScreen : BaseAppScreen() {
                                         SteamService.forceSyncUserFiles(
                                             appId = gameId,
                                             prefixToPath = prefixToPath,
-                                            overrideLocalChangeNumber = -1
+                                            overrideLocalChangeNumber = -1,
                                         ).await()
                                     } else {
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
                                                 context,
                                                 context.getString(R.string.steam_not_logged_in),
-                                                Toast.LENGTH_SHORT
+                                                Toast.LENGTH_SHORT,
                                             ).show()
                                         }
                                     }
@@ -1034,6 +1442,7 @@ class SteamAppScreen : BaseAppScreen() {
                         }
                     }
                 }
+
                 DialogType.INSTALL_IMAGEFS -> {
                     {
                         hideInstallDialog(gameId)
@@ -1049,7 +1458,7 @@ class SteamAppScreen : BaseAppScreen() {
                                         onDownloadProgress = { /* TODO: Update loading dialog progress */ },
                                         this,
                                         variant = variant,
-                                        context = context
+                                        context = context,
                                     ).await()
                                 }
                                 if (!SteamService.isImageFsInstalled(context)) {
@@ -1067,7 +1476,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     Toast.makeText(
                                         context,
                                         context.getString(R.string.steam_imagefs_installed),
-                                        Toast.LENGTH_SHORT
+                                        Toast.LENGTH_SHORT,
                                     ).show()
                                 }
                             } catch (e: Exception) {
@@ -1076,15 +1485,16 @@ class SteamAppScreen : BaseAppScreen() {
                                         context,
                                         context.getString(
                                             R.string.steam_imagefs_install_failed,
-                                            e.message ?: ""
+                                            e.message ?: "",
                                         ),
-                                        Toast.LENGTH_LONG
+                                        Toast.LENGTH_LONG,
                                     ).show()
                                 }
                             }
                         }
                     }
                 }
+
                 else -> null
             }
 
@@ -1111,8 +1521,8 @@ class SteamAppScreen : BaseAppScreen() {
                     Text(
                         text = stringResource(
                             R.string.steam_uninstall_confirmation_message,
-                            appInfo?.name ?: libraryItem.name
-                        )
+                            appInfo?.name ?: libraryItem.name,
+                        ),
                     )
                 },
                 confirmButton = {
@@ -1132,26 +1542,26 @@ class SteamAppScreen : BaseAppScreen() {
                                             context,
                                             context.getString(
                                                 R.string.steam_uninstall_success,
-                                                appInfo?.name ?: libraryItem.name
+                                                appInfo?.name ?: libraryItem.name,
                                             ),
-                                            Toast.LENGTH_SHORT
+                                            Toast.LENGTH_SHORT,
                                         ).show()
                                         PostHog.capture(
                                             event = "game_uninstalled",
-                                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                                            properties = mapOf("game_name" to (appInfo?.name ?: "")),
                                         )
                                     } else {
                                         Toast.makeText(
                                             context,
                                             context.getString(R.string.steam_uninstall_failed),
-                                            Toast.LENGTH_SHORT
+                                            Toast.LENGTH_SHORT,
                                         ).show()
                                     }
                                 }
                             }
-                        }
+                        },
                     ) {
-                        Text(stringResource(R.string.uninstall), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.uninstall), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
@@ -1160,11 +1570,10 @@ class SteamAppScreen : BaseAppScreen() {
                     }) {
                         Text(stringResource(R.string.cancel))
                     }
-                }
+                },
             )
         }
 
-        // Game migration dialog
         if (showMoveDialog) {
             GameMigrationDialog(
                 progress = progress,
@@ -1173,6 +1582,36 @@ class SteamAppScreen : BaseAppScreen() {
                 totalFiles = total,
             )
         }
+
+        if (gameManagerDialogState.visible) {
+            GameManagerDialog(
+                visible = true,
+                onGetDisplayInfo = { context ->
+                    return@GameManagerDialog getGameDisplayInfo(context, libraryItem)
+                },
+                onInstall = { dlcAppIds ->
+                    hideGameManagerDialog(gameId)
+
+                    val installedApp = SteamService.getInstalledApp(gameId)
+                    if (installedApp != null) {
+                        // Remove markers if the app is already installed
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    }
+
+                    PostHog.capture(
+                        event = "game_install_started",
+                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false)
+                    }
+                },
+                onDismissRequest = {
+                    hideGameManagerDialog(gameId)
+                }
+            )
+        }
     }
 }
-

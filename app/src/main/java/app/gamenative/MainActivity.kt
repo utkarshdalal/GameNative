@@ -8,32 +8,32 @@ import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.OrientationEventListener
 import androidx.activity.ComponentActivity
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.lifecycleScope
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import coil.intercept.Interceptor
 import coil.request.CachePolicy
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
@@ -47,7 +47,13 @@ import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.util.Collections
 import java.util.EnumSet
+import java.util.concurrent.atomic.AtomicBoolean
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import kotlin.math.abs
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
@@ -55,7 +61,36 @@ import timber.log.Timber
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    // ignore VPN and mesh transports — they don't reliably indicate internet
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        private val validated = Collections.synchronizedSet(mutableSetOf<Network>())
+
+        private fun skip(caps: NetworkCapabilities) =
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_LOWPAN)
+
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            if (skip(caps)) return
+            if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                validated.add(network)
+            } else {
+                validated.remove(network)
+            }
+            _hasInternet.set(validated.isNotEmpty())
+        }
+
+        override fun onLost(network: Network) {
+            validated.remove(network)
+            _hasInternet.set(validated.isNotEmpty())
+        }
+    }
+
     companion object {
+        // updated by NetworkCallback, read by Coil interceptor
+        private val _hasInternet = AtomicBoolean(false)
+        val hasInternet: Boolean get() = _hasInternet.get()
+
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
@@ -93,10 +128,14 @@ class MainActivity : ComponentActivity() {
         fun hasPendingLaunchRequest(): Boolean {
             return pendingLaunchRequest != null
         }
+        
+        @Volatile
+        var wasLaunchedViaExternalIntent: Boolean = false
     }
 
     private val onSetSystemUi: (AndroidEvent.SetSystemUIVisibility) -> Unit = {
-        AppUtils.hideSystemUI(this, !it.visible)
+        desiredSystemUiVisible = it.visible
+        applyImmersiveMode()
     }
 
     private val onSetAllowedOrientation: (AndroidEvent.SetAllowedOrientation) -> Unit = {
@@ -119,6 +158,7 @@ class MainActivity : ComponentActivity() {
 
     // Add a property to keep a reference to the orientation sensor listener
     private var orientationSensorListener: OrientationEventListener? = null
+    private var desiredSystemUiVisible: Boolean = false
 
     override fun attachBaseContext(newBase: Context) {
         // Initialize PrefManager to read language setting
@@ -131,9 +171,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Full immersive mode - transparent system bars for console-like experience
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.rgb(30, 30, 30)),
-            navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT),
+            statusBarStyle = SystemBarStyle.dark(TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
         
@@ -142,12 +183,24 @@ class MainActivity : ComponentActivity() {
         currentOrientation.value = config.orientation
         currentScreenWidthDp.value = config.screenWidthDp
 
+        // Apply immersive mode based on user preference
+        applyImmersiveMode()
+
         // Initialize the controller management system
-        ControllerManager.getInstance().init(getApplicationContext());
+        ControllerManager.getInstance().init(getApplicationContext())
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
         handleLaunchIntent(intent)
+
+        // track real network state (callback filters out VPN/mesh transports)
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.registerNetworkCallback(
+            NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(),
+            networkCallback,
+        )
 
         // Prevent device from sleeping while app is open
         AppUtils.keepScreenOn(this)
@@ -192,11 +245,21 @@ class MainActivity : ComponentActivity() {
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCache(diskCache)
                     .components {
+                        // serve cached images when device has no internet
+                        add(Interceptor { chain ->
+                            val request = if (!hasInternet) {
+                                chain.request.newBuilder()
+                                    .networkCachePolicy(CachePolicy.DISABLED)
+                                    .build()
+                            } else {
+                                chain.request
+                            }
+                            chain.proceed(request)
+                        })
                         add(IconDecoder.Factory())
                         add(AnimatedPngDecoder.Factory())
                         add(coil.decode.SvgDecoder.Factory())
                     }
-                    // .logger(logger)
                     .build()
             }
 
@@ -216,6 +279,7 @@ class MainActivity : ComponentActivity() {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
+                wasLaunchedViaExternalIntent = true
 
                 // If already logged in, emit event immediately
                 // Otherwise store for processing after login
@@ -235,6 +299,7 @@ class MainActivity : ComponentActivity() {
                     Timber.d("[IntentLaunch]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
                 }
             } else {
+                wasLaunchedViaExternalIntent = false
                 Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
@@ -244,6 +309,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.unregisterNetworkCallback(networkCallback)
 
         PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 
@@ -260,24 +328,35 @@ class MainActivity : ComponentActivity() {
             isChangingConfigurations,
         )
 
-        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.isGameRunning) {
+        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.keepAlive) {
             Timber.i("Stopping Steam Service")
             SteamService.stop()
         }
 
-        if(GOGService.isRunning) {
+        if (GOGService.isRunning && !isChangingConfigurations) {
             Timber.i("Stopping GOG Service")
             GOGService.stop()
+        }
+
+        // Stop EpicService when app is destroyed (unless config change)
+        if (EpicService.isRunning && !isChangingConfigurations) {
+            Timber.i("Stopping EpicService - app destroyed")
+            EpicService.stop()
         }
     }
 
     override fun onResume() {
         super.onResume()
+        // Re-apply immersive mode to ensure fullscreen persists
+        if (!desiredSystemUiVisible) {
+            applyImmersiveMode()
+        }
+
         // disable auto-stop when returning to foreground
         SteamService.autoStopWhenIdle = false
 
-        // Resume game if it was running
-        if (SteamService.isGameRunning) {
+        // Resume game if it was running and not currently suspended by the navigation overlay
+        if (SteamService.keepAlive && !PluviaApp.isOverlayPaused) {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
@@ -288,11 +367,18 @@ class MainActivity : ComponentActivity() {
             GOGService.start(this)
         }
 
+        // Restart EpicService if it went down and user is authenticated
+        if (EpicService.hasStoredCredentials(this) &&
+            !EpicService.isRunning) {
+            Timber.i("EpicService was down on resume - restarting")
+            EpicService.start(this)
+        }
+
         PostHog.capture(event = "app_foregrounded")
     }
 
     override fun onPause() {
-        if (SteamService.isGameRunning) {
+        if (SteamService.keepAlive) {
             PluviaApp.xEnvironment?.onPause()
             Timber.d("Game paused due to app backgrounded")
         }
@@ -308,16 +394,43 @@ class MainActivity : ComponentActivity() {
         // enable auto-stop behavior if backgrounded
         SteamService.autoStopWhenIdle = true
 
+        Timber.d(
+            "onStop - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Keep Alive: %b, Is Importing: %b",
+            index,
+            SteamService.isConnected,
+            SteamService.isLoggedIn,
+            isChangingConfigurations,
+            SteamService.keepAlive,
+            SteamService.isImporting,
+        )
         // stop SteamService only if no downloads or sync are in progress
         if (!isChangingConfigurations &&
             SteamService.isConnected &&
             !SteamService.hasActiveOperations() &&
             !SteamService.isLoginInProgress &&
-            !SteamService.isGameRunning &&
+            !SteamService.keepAlive &&
             !SteamService.isImporting
         ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stop()
+        }
+
+        // Stop GOGService if running and no downloads in progress
+        if (GOGService.isRunning && !isChangingConfigurations) {
+            if(!GOGService.hasActiveOperations()) {
+                Timber.i("Stopping GOG Service - no active operations")
+                GOGService.stop()
+            }
+        }
+
+        // Stop EpicService if running, unless there are active downloads or sync operations
+        if (EpicService.isRunning && !isChangingConfigurations) {
+            if (!EpicService.hasActiveOperations()) {
+                Timber.i("Stopping EpicService - no active operations")
+                EpicService.stop()
+            } else {
+                Timber.d("EpicService kept running - has active operations")
+            }
         }
     }
 
@@ -343,7 +456,7 @@ class MainActivity : ComponentActivity() {
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
             if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (SteamService.isGameRunning){
+                if (SteamService.keepAlive){
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
                     eventDispatched = true
                 }
@@ -389,6 +502,61 @@ class MainActivity : ComponentActivity() {
 
         // enable if possible
         orientationSensorListener?.takeIf { it.canDetectOrientation() }?.enable()
+    }
+
+    /**
+     * Apply immersive mode for a full-screen experience.
+     * Must be called in multiple lifecycle methods to ensure bars stay hidden.
+     */
+    private fun applyImmersiveMode() {
+        if (desiredSystemUiVisible) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(true)
+                window.insetsController?.show(
+                    android.view.WindowInsets.Type.statusBars() or
+                        android.view.WindowInsets.Type.navigationBars(),
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+                }
+            }
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Use WindowInsetsController for Android 11+
+            window.setDecorFitsSystemWindows(false) // TODO: look into the proper way of doing this
+            window.insetsController?.let { controller ->
+                controller.hide(
+                    android.view.WindowInsets.Type.statusBars() or
+                        android.view.WindowInsets.Type.navigationBars(),
+                )
+                // Allow transient bars to appear on swipe from edge
+                controller.systemBarsBehavior =
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            // Legacy approach for older Android versions
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Re-apply immersive mode when window gains focus to ensure bars stay hidden
+        if (hasFocus && !desiredSystemUiVisible) {
+            applyImmersiveMode()
+        }
     }
 
     private fun setOrientationTo(orientation: Int, conformTo: EnumSet<Orientation>) {

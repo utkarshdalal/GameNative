@@ -257,7 +257,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             for (int i = 0; i < elementsJSONArray.length(); i++) {
                 JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
                 ControlElement element = new ControlElement(inputControlsView);
-                element.setType(ControlElement.Type.valueOf(elementJSONObject.getString("type")));
+                try {
+                    element.setType(ControlElement.Type.valueOf(elementJSONObject.getString("type")));
+                } catch (IllegalArgumentException e) {
+                    Log.w("ControlsProfile", "Skipping element with unknown type: " + elementJSONObject.getString("type"));
+                    continue;
+                }
                 element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
                 element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
@@ -267,6 +272,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 element.setIconId(elementJSONObject.getInt("iconId"));
                 if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
                 if (elementJSONObject.has("orientation")) element.setOrientation((byte)elementJSONObject.getInt("orientation"));
+                if (elementJSONObject.has("scrollLocked")) element.setScrollLocked(elementJSONObject.getBoolean("scrollLocked"));
+
+                if (elementJSONObject.has("shooterMovementType")) element.setShooterMovementType(elementJSONObject.getString("shooterMovementType"));
+                if (elementJSONObject.has("shooterLookType")) element.setShooterLookType(elementJSONObject.getString("shooterLookType"));
+                if (elementJSONObject.has("shooterLookSensitivity")) element.setShooterLookSensitivity((float)elementJSONObject.getDouble("shooterLookSensitivity"));
+                if (elementJSONObject.has("shooterJoystickSize")) element.setShooterJoystickSize((float)elementJSONObject.getDouble("shooterJoystickSize"));
 
                 boolean hasGamepadBinding = true;
                 JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");

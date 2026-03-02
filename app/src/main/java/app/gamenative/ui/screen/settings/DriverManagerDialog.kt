@@ -56,6 +56,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import android.content.res.Configuration
 import android.widget.Toast
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.dialog.LoadingDialog
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -168,6 +169,12 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
+    LoadingDialog(
+        visible = isDownloading,
+        progress = downloadProgress,
+        message = stringResource(R.string.downloading),
+    )
+
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let {
             scope.launch {
@@ -269,6 +276,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 450.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text(
                     text = "Import a custom graphics driver package",
@@ -443,8 +451,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f) // Take remaining space
-                            .verticalScroll(rememberScrollState()) // Make it scrollable
+                            .padding(bottom = 8.dp)
                     ) {
                         for (id in installedDrivers) {
                             Row(
@@ -555,4 +562,3 @@ private fun Preview_DriverManagerDialog() {
         }
     }
 }
-

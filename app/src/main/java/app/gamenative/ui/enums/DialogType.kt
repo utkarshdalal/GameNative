@@ -12,6 +12,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     DISCORD,
     SYNC_CONFLICT,
     SYNC_FAIL,
+    SYNC_IN_PROGRESS,
     MULTIPLE_PENDING_OPERATIONS,
     PENDING_OPERATION_NONE,
     PENDING_UPLOAD,
@@ -32,6 +33,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     GAME_FEEDBACK,
     SAVE_CONTAINER_CONFIG,
     APP_UPDATE,
+    EXECUTABLE_NOT_FOUND,
 
     NONE,
 

@@ -36,6 +36,18 @@
     <string name="destination_downloads">Downloads</string>
     <string name="destination_friends">Amigos</string>
 
+    <!-- Library Tabs -->
+    <string name="tab_all">Todos</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">Instalado</string>
+    <string name="tab_local">Personalizado</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">Fechar pesquisa</string>
+    <string name="default_user_name">Usuário</string>
+
     <!--Winlator-->
     <string name="disabled">Desabilitado</string>
     <string name="copy">Copiar</string>
@@ -45,7 +57,17 @@
     <string name="performance">Desempenho</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="denuvo">Denuvo</string>
+    <string name="extreme">Extreme</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
+    <string name="epic_cancel_download_message">Tem certeza de que deseja cancelar o download do aplicativo?</string>
+    <string name="epic_delete_download_message">Excluir todos os dados baixados deste jogo?</string>
+    <string name="epic_cloud_sync_starting">Iniciando sincronização de salvamentos na nuvem…</string>
+    <string name="epic_cloud_sync_success">Salvamentos na nuvem sincronizados com sucesso</string>
+    <string name="epic_cloud_sync_failed">Falha na sincronização de salvamentos na nuvem</string>
+    <string name="epic_cloud_sync_error">Erro na sincronização de salvamentos na nuvem: %1$s</string>
+    <string name="epic_uninstall_failed">Falha na desinstalação: %1$s</string>
+    <string name="epic_uninstall_error">Erro na desinstalação: %1$s</string>
 
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
@@ -71,6 +93,8 @@
     <string name="content_info">Info de Conteúdo</string>
     <string name="game_not_installed_title">Jogo Não instalado</string>
     <string name="game_not_installed_message">%s não está instalado. Por favor instale o jogo primeiro antes de iniciar.</string>
+    <string name="game_executable_not_found_title">Não é possível iniciar</string>
+    <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>
     <string name="save_container_settings_message">Foram aplicadas alterações temporárias na configuração do contêiner para esta inicialização. Deseja salvá-las??</string>
     <string name="sync_error_title">Erro de Sincronização</string>
@@ -116,6 +140,8 @@
     <string name="controller_disconnected">Desconectado</string>
     <string name="reset_onscreen_controls">Redefinir Controles On-screen</string>
     <string name="open_navigation_menu">Abrir Menu de Navegação</string>
+    <string name="quick_menu_title">Menu rápido</string>
+    <string name="quick_menu_back">Voltar</string>
     <string name="touchpad_help">Ajuda Touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
     <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
@@ -269,6 +295,10 @@
     <string name="update_available">Atualização disponível</string>
     <string name="game_information">Informações do jogo</string>
     <string name="status">Status</string>
+    <string name="status_online">Online</string>
+    <string name="status_away">Ausente</string>
+    <string name="status_invisible">Invisível</string>
+    <string name="system_menu_title">Sistema</string>
     <string name="size">Tamanho</string>
     <string name="location">Localização</string>
     <string name="developer">Desenvolvedor</string>
@@ -281,11 +311,22 @@
     <string name="games">Jogos</string>
     <string name="playtime_last_two_weeks">Tempo de jogo nas últimas 2 semanas: %s h</string>
     <string name="total_playtime">Tempo total de jogo: %s h</string>
+    <string name="last_played">Última vez jogado</string>
+    <string name="playtime">Tempo de jogo</string>
 
     <!-- Login & Connection -->
+    <string name="connecting_to_steam">Conectando ao Steam…</string>
     <string name="no_connection_to_steam">Sem conexão com o Steam</string>
     <string name="retry_steam_connection">Tentar reconectar ao Steam</string>
     <string name="continue_offline">Continuar offline</string>
+    <string name="connection_reconnecting">Reconectando ao Steam…</string>
+    <string name="connection_disconnected">Desconectado do Steam</string>
+    <string name="connection_disconnected_servers">Desconectado dos servidores Steam</string>
+    <string name="connection_logging_in">Entrando…</string>
+    <string name="connection_login_failed">Falha no login</string>
+    <string name="connection_session_ended">Sessão encerrada</string>
+    <string name="connection_offline_mode">Modo offline</string>
+    <string name="connection_retry">Tentar novamente</string>
 
     <!-- Profile & Menu -->
     <string name="help_and_support">Ajuda e Suporte</string>
@@ -294,6 +335,12 @@
     <string name="go_offline">Ir offline</string>
     <string name="log_out">Sair</string>
     <string name="close">Fechar</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Entrar no Steam</string>
+    <string name="steam_go_online">Ficar online (Steam)</string>
+    <string name="steam_go_offline">Ficar offline (Steam)</string>
+    <string name="steam_sign_out">Sair do Steam</string>
 
     <!-- Container Configuration: General -->
     <string name="new_environment_variable">Nova Variável de Ambiente</string>
@@ -316,6 +363,8 @@
     <string name="force_dlc">Forçar DLC</string>
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
+    <string name="steam_offline_mode">Modo Offline do Steam</string>
+    <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
     <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>
@@ -349,12 +398,90 @@
 
     <!-- Container Configuration: Input -->
     <string name="use_sdl_api">Usar API SDL</string>
+    <string name="use_steam_input">Usar Steam Input</string>
     <string name="enable_xinput_api">Habilitar API XInput</string>
     <string name="enable_directinput_api">Habilitar API DirectInput</string>
     <string name="directinput_mapper_type">Tipo de mapeador DirectInput</string>
     <string name="disable_mouse_input">Desabilitar entrada do mouse</string>
     <string name="touchscreen_mode">Modo Touchscreen</string>
-    <string name="touchscreen_mode_description">Movimento direto de toque para cursor (LIGADO) vs movimento relativo estilo touchpad (DESLIGADO)</string>
+    <string name="touchscreen_mode_description">Para visual novels e jogos de estratégia em tempo real</string>
+    <string name="shooter_mode_toggle">Modo tiro</string>
+    <string name="shooter_mode_toggle_description">Substituir sticks por joysticks dinâmicos</string>
+    <string name="shooter_mode_on">Ativar mouse</string>
+    <string name="shooter_mode_off">Ativar sticks</string>
+
+    <!-- Gesture Settings Dialog -->
+    <string name="gesture_settings">Configurações de gestos</string>
+    <string name="gesture_settings_title">Configurações de gestos touch</string>
+    <string name="gesture_tap">Toque</string>
+    <string name="gesture_tap_subtitle">Clique esquerdo</string>
+    <string name="gesture_drag">Arrastar dedo</string>
+    <string name="gesture_drag_subtitle">Arrastar clique esquerdo (seleção retangular)</string>
+    <string name="gesture_long_press">Toque longo</string>
+    <string name="gesture_long_press_delay">Atraso toque longo (ms)</string>
+    <string name="gesture_double_tap">Toque duplo</string>
+    <string name="gesture_double_tap_subtitle">Duplo clique esquerdo</string>
+    <string name="gesture_double_tap_delay">Atraso toque duplo (ms)</string>
+    <string name="gesture_two_finger_drag">Arrastar dois dedos</string>
+    <string name="gesture_pinch">Pinça</string>
+    <string name="gesture_two_finger_tap">Toque dois dedos</string>
+    <string name="gesture_action_left_click">Clique esquerdo</string>
+    <string name="gesture_action_right_click">Clique direito</string>
+    <string name="gesture_action_middle_click">Clique central</string>
+    <string name="gesture_pan_middle_mouse">Pan botão central</string>
+    <string name="gesture_pan_wasd">WASD</string>
+    <string name="gesture_pan_arrow_keys">Teclas de seta</string>
+    <string name="gesture_zoom_scroll_wheel">Roda de rolagem</string>
+    <string name="gesture_zoom_plus_minus">Teclas +/-</string>
+    <string name="gesture_zoom_page_up_down">PgUp/PgDn</string>
+    <string name="gesture_action_label">Ação</string>
+    <string name="gesture_delay_label">Atraso</string>
+
+    <!-- Shooter Mode -->
+    <string name="shooter_mode_settings">Configurações de joysticks dinâmicos</string>
+    <string name="movement_type">Tipo de movimento</string>
+    <string name="movement_type_subtitle">Saída do joystick para movimento lateral esquerdo</string>
+    <string name="look_sensitivity">Sensibilidade de olhar</string>
+    <string name="look_sensitivity_subtitle">Multiplicador de sensibilidade do mouse</string>
+    <string name="joystick_size">Tamanho do joystick</string>
+    <string name="joystick_size_subtitle">Multiplicador de tamanho do joystick dinâmico</string>
+    <string name="movement_wasd">WASD</string>
+    <string name="movement_arrow_keys">Teclas de seta</string>
+    <string name="movement_gamepad_left_stick">Stick esquerdo do gamepad</string>
+    <string name="look_type">Tipo de olhar</string>
+    <string name="look_type_subtitle">Comportamento do lado direito no modo tiro</string>
+    <string name="look_type_mouse">Mouse</string>
+    <string name="look_type_gamepad_right_stick">Stick direito do gamepad</string>
+
+    <string name="range_button_settings">Configurações do botão de intervalo</string>
+    <string name="range_type">Intervalo de teclas</string>
+    <string name="range_type_subtitle">Qual conjunto de teclas percorrer</string>
+    <string name="range_orientation">Orientação</string>
+    <string name="range_orientation_subtitle">Direção do layout do botão de intervalo</string>
+    <string name="range_orientation_horizontal">Horizontal</string>
+    <string name="range_orientation_vertical">Vertical</string>
+    <string name="range_visible_segments">Segmentos visíveis</string>
+    <string name="range_visible_segments_subtitle">Número de segmentos de teclas exibidos: %1$d</string>
+    <string name="range_a_to_z">A – Z</string>
+    <string name="range_1_to_0">1 – 0</string>
+    <string name="range_f1_to_f12">F1 – F12</string>
+    <string name="range_lock_scrolling">Bloquear rolagem</string>
+    <string name="range_lock_scrolling_subtitle">Impedir rolagem pelo intervalo</string>
+    <string name="button_settings">Configurações do botão</string>
+    <string name="button_toggleable">Alternável</string>
+    <string name="button_toggleable_subtitle">Toque para ativar, toque novamente para desativar</string>
+
+    <string name="custom_game_exe_selection_title">Seleção de executável necessária</string>
+    <string name="custom_game_exe_selection_message">Este jogo tem vários executáveis. Abra as configurações personalizadas do jogo para selecionar qual iniciar.</string>
+
+    <string name="external_display_input">Entrada de exibição externa</string>
+    <string name="external_display_input_subtitle">Escolha como uma tela de apresentação conectada deve se comportar</string>
+    <string name="external_display_mode_off">Não usar exibição externa</string>
+    <string name="external_display_mode_touchpad">Usar como superfície de touchpad</string>
+    <string name="external_display_mode_keyboard">Usar como teclado completo</string>
+    <string name="external_display_mode_hybrid">Híbrido (touchpad + botão de teclado)</string>
+    <string name="external_display_swap">Mostrar o jogo na exibição externa</string>
+    <string name="external_display_swap_subtitle">Trocar as telas para que o jogo seja renderizado na exibição externa e este dispositivo se torne a superfície de controle</string>
     <string name="start_with_controls_hidden">Iniciar com Controles On-screen Ocultos</string>
     <string name="start_with_controls_hidden_description">Controles on-screen estarão ocultos quando o jogo iniciar. Alterne via o menu de navegação.</string>
     <string name="emulate_keyboard_mouse">Emular teclado e mouse</string>
@@ -373,6 +500,9 @@
     <string name="environment_variables">Variáveis de Ambiente</string>
     <string name="no_environment_variables">Sem variáveis de ambiente</string>
     <string name="no_drives">Sem drives</string>
+    <string name="add_drive">Adicionar unidade</string>
+    <string name="drive_letter">Letra da unidade</string>
+    <string name="no_available_drive_letters">Nenhuma letra de unidade disponível</string>
     <string name="startup_selection">Seleção de Inicialização</string>
     <string name="processor_affinity_32bit">Afinidade de processador (apps 32-bit)</string>
     <string name="executable_path">Caminho Executável</string>
@@ -433,7 +563,12 @@
     <string name="settings_debug_box_logs_title">Habilitar logs do Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Gravar saída de debug do Box86 &amp; Box64 em arquivo</string>
     <string name="settings_debug_view_crash_title">Ver última falha</string>
+    <string name="settings_debug_view_crash_subtitle">Mostra o log de falha mais recente</string>
+    <string name="settings_debug_no_crash_logs">Nenhum log de falha recente encontrado</string>
     <string name="settings_debug_view_log_title">Ver log de debug do jogo</string>
+    <string name="settings_debug_view_log_subtitle">Mostra o último log de debug Wine/Box64</string>
+    <string name="settings_debug_no_wine_logs">Nenhum log de debug Wine encontrado</string>
+    <string name="settings_debug_no_channels_selected">Nenhum canal selecionado</string>
     <string name="settings_debug_clear_prefs_title">Limpar preferências</string>
     <string name="settings_debug_clear_prefs_subtitle">[Fecha o app] Faz logout do cliente e limpa dados de preferências locais.</string>
     <string name="settings_debug_clear_db_title">Limpar banco de dados local</string>
@@ -478,13 +613,22 @@
     <string name="login_privacy_policy">Política de Privacidade</string>
     <string name="login_welcome_back">Bem-vindo de volta</string>
     <string name="login_subtitle">Entre para acessar sua biblioteca do Steam</string>
+    <string name="login_tab_credentials">Credenciais</string>
+    <string name="login_tab_qr_code">Código QR</string>
     <string name="login_username">Nome de usuário</string>
+    <string name="login_username_hint">Digite seu nome de usuário Steam</string>
     <string name="login_password">Senha</string>
+    <string name="login_password_hint">Digite sua senha</string>
+    <string name="login_password_show">Mostrar senha</string>
+    <string name="login_password_hide">Ocultar senha</string>
     <string name="login_remember_session">Lembrar sessão</string>
     <string name="login_sign_in">Entrar</string>
     <string name="login_qr_failed">Falha no código QR</string>
     <string name="login_retry_qr">Tentar código QR novamente</string>
     <string name="login_qr_instructions">Abra o aplicativo móvel do Steam e escaneie este código QR para entrar instantaneamente</string>
+    <string name="login_skip_steam">Pular login do Steam</string>
+    <string name="login_or_sign_in_with">Ou entre com:</string>
+    <string name="login_skip_login">Pular login</string>
 
     <!-- TODO: Revisão manual - Strings genéricas/reutilizáveis -->
     <string name="continue_action">Continuar</string>
@@ -537,6 +681,8 @@
     <string name="main_later_button">Mais tarde</string>
     <string name="main_update_failed_title">Atualização falhou</string>
     <string name="main_update_failed_message">Falha ao baixar ou instalar a atualização. Por favor, tente novamente mais tarde.</string>
+    <string name="launch_dependency_failed_title">Falha ao baixar dependência de lançamento</string>
+    <string name="launch_dependency_failed_message">Falha ao baixar um componente necessário. Por favor, tente novamente mais tarde.</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Falha e suporte -->
     <string name="main_recent_crash_title">Falha recente</string>
@@ -545,6 +691,7 @@
     <string name="main_thank_you_message">Apoie jogos de PC de código aberto no Android compartilhando o aplicativo com seus amigos ou se tornando um membro no Ko-fi.</string>
     <string name="main_join_kofi">Junte-se no Ko-fi</string>
     <string name="main_share">Compartilhar</string>
+    <string name="main_share_text">Confira o GameNative - jogue seus jogos Steam de PC no Android, com suporte completo a salvamentos na nuvem!\nhttps://gamenative.app\nJunte-se à comunidade: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">O jogo funcionou?</string>
     <string name="main_discord_support_message">Junte-se ao Discord para obter suporte para corrigir seu jogo ou melhorar o desempenho.</string>
     <string name="main_open_discord">Abrir Discord</string>
@@ -570,6 +717,9 @@
     <!-- TODO: Revisão manual - PluviaMain: Erros de sincronização -->
     <string name="main_sync_in_progress_retry">A operação de sincronização está demorando muito. Por favor, tente iniciar o jogo novamente em um momento.</string>
     <string name="main_sync_in_progress">A sincronização está em andamento. Por favor, tente novamente em um momento.</string>
+    <string name="main_sync_in_progress_launch_anyway_message">A sincronização na nuvem deste jogo já está em andamento. Você pode esperar e tentar novamente ou iniciar mesmo assim sem sincronizar (pode causar conflitos de salvamento).</string>
+    <string name="main_launch_anyway">Iniciar mesmo assim</string>
+    <string name="main_wait">Esperar</string>
     <string name="main_sync_failed">Falha ao sincronizar arquivos de save: %s.</string>
 
     <!-- TODO: Revisão manual - PluviaMain: Operações pendentes -->
@@ -607,6 +757,7 @@
     <string name="supporters_app_icon">Ícone do app: Hachi</string>
     <string name="supporters_alt_icon">Ícone alternativo do app: rhapsody_mdr</string>
     <string name="supporters_loading">Carregando apoiadores...</string>
+    <string name="supporters_error">Não foi possível carregar os apoiadores</string>
     <string name="supporters_members">Membros</string>
     <string name="supporters_supporters">Apoiadores</string>
     <string name="supporters_none">Ainda não há apoiadores.</string>
@@ -626,7 +777,9 @@
     <string name="library_installing">Instalando</string>
     <string name="library_not_installed">Não instalado</string>
     <string name="library_family_shared">Compartilhado na família</string>
+    <string name="library_shared_short">Compartilhado</string>
     <string name="library_compatible">Compatível</string>
+    <string name="library_gpu_compatible">Compatível com GPU</string>
     <string name="library_compatibility_unknown">Compatibilidade Desconhecida</string>
     <string name="library_not_compatible">Não Compatível</string>
 
@@ -637,10 +790,13 @@
     <string name="best_config_compatibility_unknown">Nenhuma config conhecida</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Melhor config aplicada com sucesso</string>
+    <string name="best_config_applied_successfully">Config aplicada com sucesso</string>
     <string name="best_config_known_config_invalid">Config conhecida inválida</string>
     <string name="best_config_no_config_available">Nenhuma melhor config disponível para este jogo</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
+    <string name="best_config_missing_content">%s ausente</string>
+    <string name="import_config">Importar configuração</string>
+    <string name="export_config">Exportar configuração</string>
 
     <string name="library_app_type">Tipo de app</string>
     <string name="library_app_status">Status do app</string>
@@ -648,12 +804,56 @@
     <string name="library_layout_list">Lista</string>
     <string name="library_layout_capsule">Cápsula</string>
     <string name="library_layout_hero">Herói</string>
+    <string name="library_layout_carousel">Carrossel</string>
     <string name="library_search_placeholder">Pesquisar seus jogos...</string>
     <string name="library_search_description">Pesquisar</string>
     <string name="library_search_clear">Limpar pesquisa</string>
     <string name="library_no_items">Nenhum item listado com a seleção</string>
     <string name="library_filters">Filtros</string>
     <string name="library_game_count">%1$d jogos • %2$d instalados</string>
+    <string name="library_source_steam">Steam</string>
+    <string name="library_source_custom">Jogos personalizados</string>
+    <string name="library_source_title">Fonte</string>
+    <string name="library_layout_title">Layout</string>
+    <string name="library_options">Opções</string>
+    <string name="back">Voltar</string>
+    <string name="cloud">Nuvem</string>
+    <string name="options">Opções</string>
+    <string name="play_time">Tempo de jogo</string>
+
+    <!-- Options Panel -->
+    <string name="options_panel_title">Opções</string>
+    <string name="options_panel_close">Fechar opções</string>
+    <string name="options_sort_by">Ordenar por</string>
+    <string name="sort_installed_first">Instalados primeiro</string>
+    <string name="sort_name_asc">Nome (A-Z)</string>
+    <string name="sort_name_desc">Nome (Z-A)</string>
+    <string name="sort_recently_played">Jogados recentemente</string>
+    <string name="sort_size_smallest">Tamanho (menor)</string>
+    <string name="sort_size_largest">Tamanho (maior)</string>
+
+    <!-- Game Options Panel -->
+    <string name="game_options_title">Opções</string>
+    <string name="game_options_quick_actions">Ações rápidas</string>
+    <string name="game_options_game_management">Gerenciamento do jogo</string>
+    <string name="game_options_container">Contêiner</string>
+    <string name="game_options_cloud_saves">Salvamentos na nuvem</string>
+    <string name="game_options_help_info">Ajuda e informações</string>
+
+    <!-- System Menu -->
+    <string name="press_b_to_close">Pressione B para fechar</string>
+    <string name="menu">Menu</string>
+
+    <!-- Gamepad Actions -->
+    <string name="action_select">Selecionar</string>
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_details">Detalhes</string>
+    <string name="action_add_game">Adicionar jogo</string>
+    <string name="action_system">Sistema</string>
+
+    <!-- Search -->
+    <string name="search_results_one">%d resultado</string>
+    <string name="search_results_many">%d resultados</string>
 
     <!-- TODO: Revisão manual - Autenticação de dois fatores -->
     <string name="two_factor_login">Login</string>
@@ -702,6 +902,7 @@
 
     <!-- TODO: Revisão manual - Tela de configurações -->
     <string name="settings_title">Configurações</string>
+    <string name="settings_subtitle">Personalize sua experiência</string>
 
     <!-- TODO: Revisão manual - Conclusão da instalação de conteúdos -->
     <string name="contents_install_success">Conteúdo instalado com sucesso</string>
@@ -722,6 +923,8 @@
 
     <!-- TODO: Revisão manual - Container Configuration: Steam Integration (faltando) -->
     <string name="use_legacy_drm">Usar DRM legado</string>
+    <string name="unpack_files">Descompactar arquivos</string>
+    <string name="unpack_files_description">Use apenas se receber \'Application Load Error 3:0000065432\'.</string>
 
     <!-- TODO: Revisão manual - Library Status -->
     <string name="library_status_ready">Pronto</string>
@@ -729,6 +932,7 @@
     <!-- TODO: Revisão manual - Novas strings do último pull -->
     <!-- Diálogos específicos do Steam -->
     <string name="steam_install_space_prompt">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tTamanho no disco: %2$s\n\tEspaço disponível: %3$s</string>
+    <string name="steam_install_space">Tamanho do download: %1$s\nTamanho no disco: %2$s\nEspaço disponível: %3$s</string>
     <string name="steam_install_not_enough_space">O aplicativo sendo instalado precisa de %1$s de espaço, mas há apenas %2$s restante neste dispositivo</string>
     <string name="steam_cancel_download_message">Tem certeza de que deseja cancelar o download do aplicativo?</string>
     <string name="steam_delete_download_message">Excluir todos os dados baixados para este jogo?</string>
@@ -750,6 +954,17 @@
     <string name="steam_imagefs_installed">ImageFS instalado. Por favor, tente editar o contêiner novamente.</string>
     <string name="steam_imagefs_install_failed">Falha ao instalar ImageFS: %s</string>
     <string name="steam_uninstall_game_title">Desinstalar jogo</string>
+    <string name="amazon_uninstall_game_title">Desinstalar jogo</string>
+    <string name="amazon_uninstall_confirmation_message">Tem certeza de que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
+    <string name="amazon_install_game_title">Baixar jogo</string>
+    <string name="amazon_install_confirmation_message">O aplicativo que está sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tEspaço disponível: %2$s</string>
+    <string name="amazon_verify_files_title">Verificar arquivos</string>
+    <string name="amazon_verify_files_message">Isso verificará todos os arquivos instalados em relação ao manifesto de download para detectar arquivos ausentes ou corrompidos.\n\nIsso pode demorar para jogos grandes.</string>
+    <string name="amazon_verify_confirm">Verificar</string>
+    <string name="amazon_verify_in_progress">Verificando arquivos… Isso pode demorar.</string>
+    <string name="amazon_verify_success">Todos os arquivos verificados com sucesso.\n\n%1$d / %2$d arquivos OK.</string>
+    <string name="amazon_verify_failed_detail">A verificação encontrou problemas.\n\n%1$d / %2$d arquivos OK\n%3$d ausentes\n%4$d tamanho diferente\n%5$d hash diferente\n\nReinstale o jogo para corrigir arquivos corrompidos.</string>
+    <string name="amazon_verify_error">Verificação falhou: %1$s</string>
 
     <!-- Jogos personalizados -->
     <string name="custom_games_title">Jogos personalizados</string>
@@ -771,8 +986,8 @@
     <string name="custom_games_folders_found">%d pastas encontradas</string>
     <string name="custom_games_scan_description">As pastas nesses caminhos são verificadas em busca de arquivos .exe e listadas como jogos personalizados.</string>
     <string name="custom_game_folder_picker_error">Falha ao resolver o caminho da pasta</string>
-    <string name="custom_game_exe_selection_title">Seleção de executável necessária</string>
-    <string name="custom_game_exe_selection_message">Este jogo tem vários executáveis. Por favor, abra as Configurações de jogo personalizado para selecionar qual iniciar.</string>
+    <string name="container_config_drive_letter_missing">A letra da unidade está faltando</string>
+    <string name="container_config_invalid_drive_path">Caminho da unidade inválido</string>
     <string name="custom_game_settings">Configurações de jogo personalizado</string>
     <string name="custom_game_delete_title">Excluir jogo</string>
     <string name="custom_game_delete_message">Tem certeza de que deseja excluir este jogo? Isso removerá os arquivos do jogo e todos os dados associados.</string>
@@ -799,31 +1014,15 @@
     <string name="base_app_exported">Exportado</string>
     <string name="base_app_export_failed">Falha ao exportar: %s</string>
     <string name="base_app_export_cancelled">Exportação cancelada</string>
+    <string name="auth_webview_title">Autorização</string>
 
-    <!-- GOG Settings -->
+    <!-- GOG Integration -->
     <string name="gog_integration_title">Integração GOG (Alpha)</string>
-    <string name="gog_settings_login_title">Login GOG</string>
+    <string name="gog_settings_login_title">Entrar no GOG</string>
     <string name="gog_settings_login_subtitle">Entre na sua conta GOG</string>
-    <string name="gog_settings_sync_subtitle_syncing">Sincronizando…</string>
-    <string name="gog_settings_sync_subtitle_error">Erro: %1$s</string>
-    <string name="gog_settings_sync_subtitle_success">✓ %1$d jogos sincronizados</string>
-    <string name="gog_settings_sync_subtitle_default">Buscar sua biblioteca de jogos GOG</string>
     <string name="gog_login_success_title">Login bem-sucedido</string>
-    <string name="gog_login_success_message">Você está conectado ao GOG.\nVamos sincronizar sua biblioteca em segundo plano.</string>
-
-    <!-- GOG Login Dialog -->
-    <string name="gog_login_title">Entrar no GOG</string>
-    <string name="gog_login_auto_auth_info">Toque em \'Abrir Login GOG\' e entre. Após fazer login, copie a URL e cole abaixo</string>
-    <string name="gog_login_auth_example">Exemplo: https://embed.gog.com/on_login_success?origin=client&amp;code=aaa</string>
-    <string name="gog_login_open_button">Abrir Login GOG</string>
-    <string name="gog_login_auth_code_label">Código de autorização ou URL de sucesso do login</string>
-    <string name="gog_login_auth_code_placeholder">Cole o código ou url aqui</string>
-    <string name="gog_login_button">Entrar</string>
     <string name="gog_login_cancel">Cancelar</string>
-    <string name="gog_login_browser_error">Não foi possível abrir o navegador</string>
-
-    <!-- GOG Logout -->
-    <string name="gog_settings_logout_title">Sair</string>
+    <string name="gog_settings_logout_title">Sair do GOG</string>
     <string name="gog_settings_logout_subtitle">Desconectar da sua conta GOG</string>
     <string name="gog_logout_confirm_title">Sair do GOG?</string>
     <string name="gog_logout_confirm_message">Isso removerá suas credenciais GOG e limpará sua biblioteca GOG deste dispositivo. Você pode entrar novamente a qualquer momento.</string>
@@ -831,4 +1030,52 @@
     <string name="gog_logout_success">Desconectado do GOG com sucesso</string>
     <string name="gog_logout_failed">Falha ao sair: %s</string>
     <string name="gog_logout_in_progress">Saindo do GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Integração Epic Games</string>
+    <string name="epic_settings_login_title">Entrar no Epic</string>
+    <string name="epic_settings_login_subtitle">Entre na sua conta Epic Games</string>
+    <string name="epic_login_success_title">Login bem-sucedido</string>
+    <string name="epic_login_cancel">Cancelar</string>
+    <string name="epic_settings_logout_title">Sair do Epic</string>
+    <string name="epic_settings_logout_subtitle">Desconecte sua conta Epic Games</string>
+    <string name="epic_logout_confirm_title">Sair do Epic Games?</string>
+    <string name="epic_logout_confirm_message">Isso removerá suas credenciais Epic Games e limpará sua biblioteca Epic Games deste dispositivo. Você pode entrar novamente a qualquer momento.</string>
+    <string name="epic_logout_confirm">Sair</string>
+    <string name="epic_logout_success">Desconectado do Epic Games com sucesso</string>
+    <string name="epic_logout_failed">Falha ao sair: %s</string>
+    <string name="epic_logout_in_progress">Saindo do Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Integração Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Entrar no Amazon Games</string>
+    <string name="amazon_settings_login_subtitle">Entre na sua conta Amazon Games</string>
+    <string name="amazon_login_success_title">Login realizado com sucesso</string>
+    <string name="amazon_login_cancel">Cancelar</string>
+    <string name="amazon_settings_logout_title">Sair do Amazon Games</string>
+    <string name="amazon_settings_logout_subtitle">Sair da sua conta Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Sair do Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Isso removerá suas credenciais Amazon Games e limpará sua biblioteca Amazon deste dispositivo. Você pode entrar novamente a qualquer momento.</string>
+    <string name="amazon_logout_confirm">Sair</string>
+    <string name="amazon_logout_success">Desconectado do Amazon Games com sucesso</string>
+    <string name="amazon_logout_failed">Falha ao sair: %s</string>
+    <string name="amazon_logout_in_progress">Saindo do Amazon Games…</string>
+
+    <!-- Epic Install/Uninstall -->
+    <string name="epic_uninstall_game_title">Desinstalar jogo</string>
+    <string name="epic_uninstall_game_message">Tem certeza de que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
+    <string name="epic_install_game_title">Baixar jogo</string>
+    <string name="epic_install_game_message">O aplicativo que está sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tTamanho no disco: %2$s\n\tEspaço disponível: %3$s</string>
+    <string name="epic_game_not_found">Jogo não encontrado</string>
+    <string name="epic_starting_download">Iniciando download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Iniciando download: %1$s + DLCs</string>
+    <string name="epic_download_failed">Falha ao iniciar o download: %1$s</string>
+    <string name="epic_download_error">Erro no download: %1$s</string>
+    <string name="manifest_downloading_item">Baixando %1$s...</string>
+    <string name="manifest_download_failed">Falha no download: %1$s</string>
+    <string name="manifest_install_failed">Falha ao instalar %1$s</string>
+    <string name="manifest_install_success">%1$s instalado</string>
+    <string name="manifest_content_untrusted">O conteúdo não é confiável e não foi instalado.</string>
+    <string name="manifest_type_mismatch">O conteúdo baixado não corresponde ao tipo esperado.</string>
+    <string name="manifest_glibc_not_supported">Compilações GLIBC não são suportadas.</string>
 </resources>

@@ -112,6 +112,21 @@ object PrefManager {
         }
     }
 
+    /* Manifest Cache */
+    private val COMPONENT_MANIFEST_JSON = stringPreferencesKey("component_manifest_json")
+    var componentManifestJson: String
+        get() = getPref(COMPONENT_MANIFEST_JSON, "")
+        set(value) {
+            setPref(COMPONENT_MANIFEST_JSON, value)
+        }
+
+    private val COMPONENT_MANIFEST_FETCHED_AT = longPreferencesKey("component_manifest_fetched_at")
+    var componentManifestFetchedAt: Long
+        get() = getPref(COMPONENT_MANIFEST_FETCHED_AT, 0L)
+        set(value) {
+            setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
@@ -282,11 +297,25 @@ object PrefManager {
             setPref(FORCE_DLC, value)
         }
 
+    private val STEAM_OFFLINE_MODE = booleanPreferencesKey("steam_offline_mode")
+    var steamOfflineMode: Boolean
+        get() = getPref(STEAM_OFFLINE_MODE, false)
+        set(value) {
+            setPref(STEAM_OFFLINE_MODE, value)
+        }
+
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
         get() = getPref(USE_LEGACY_DRM, false)
         set(value) {
             setPref(USE_LEGACY_DRM, value)
+        }
+
+    private val UNPACK_FILES = booleanPreferencesKey("unpack_files")
+    var unpackFiles: Boolean
+        get() = getPref(UNPACK_FILES, false)
+        set(value) {
+            setPref(UNPACK_FILES, value)
         }
 
     private val CPU_LIST = stringPreferencesKey("cpu_list")
@@ -402,6 +431,13 @@ object PrefManager {
         }
 
     // Controller Input Defaults
+    private val USE_STEAM_INPUT = booleanPreferencesKey("use_steam_input")
+    var useSteamInput: Boolean
+        get() = getPref(USE_STEAM_INPUT, false)
+        set(value) {
+            setPref(USE_STEAM_INPUT, value)
+        }
+
     private val XINPUT_ENABLED = booleanPreferencesKey("xinput_enabled")
     var xinputEnabled: Boolean
         get() = getPref(XINPUT_ENABLED, true)
@@ -422,6 +458,17 @@ object PrefManager {
         set(value) {
             setPref(DINPUT_MAPPER_TYPE, value)
         }
+
+    // External display input mode (off|touchpad|keyboard|hybrid)
+    private val EXTERNAL_DISPLAY_INPUT_MODE = stringPreferencesKey("external_display_input_mode")
+    var externalDisplayInputMode: String
+        get() = getPref(EXTERNAL_DISPLAY_INPUT_MODE, Container.DEFAULT_EXTERNAL_DISPLAY_MODE)
+        set(value) { setPref(EXTERNAL_DISPLAY_INPUT_MODE, value) }
+
+    private val EXTERNAL_DISPLAY_SWAP = booleanPreferencesKey("external_display_swap")
+    var externalDisplaySwap: Boolean
+        get() = getPref(EXTERNAL_DISPLAY_SWAP, false)
+        set(value) { setPref(EXTERNAL_DISPLAY_SWAP, value) }
 
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")
@@ -547,6 +594,24 @@ object PrefManager {
         }
         set(value) {
             setPref(LIBRARY_FILTER, AppFilter.toFlags(value))
+        }
+
+    private val LIBRARY_SORT_KEY = stringPreferencesKey("library_sort_key")
+    private val LIBRARY_SORT_LEGACY = intPreferencesKey("library_sort")
+    var librarySortOption: app.gamenative.ui.enums.SortOption
+        get() {
+            // Try string key first, fall back to legacy ordinal for migration
+            val keyValue = getPref(LIBRARY_SORT_KEY, "")
+            return if (keyValue.isNotEmpty()) {
+                app.gamenative.ui.enums.SortOption.fromKey(keyValue)
+            } else {
+                val ordinal = getPref(LIBRARY_SORT_LEGACY, app.gamenative.ui.enums.SortOption.INSTALLED_FIRST.ordinal)
+                @Suppress("DEPRECATION")
+                app.gamenative.ui.enums.SortOption.fromOrdinal(ordinal)
+            }
+        }
+        set(value) {
+            setPref(LIBRARY_SORT_KEY, value.key)
         }
 
     /**
@@ -712,6 +777,20 @@ object PrefManager {
             setPref(SHOW_GOG_IN_LIBRARY, value)
         }
 
+    private val SHOW_EPIC_IN_LIBRARY = booleanPreferencesKey("show_epic_in_library")
+    var showEpicInLibrary: Boolean
+        get() = getPref(SHOW_EPIC_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_EPIC_IN_LIBRARY, value)
+        }
+
+    private val SHOW_AMAZON_IN_LIBRARY = booleanPreferencesKey("show_amazon_in_library")
+    var showAmazonInLibrary: Boolean
+        get() = getPref(SHOW_AMAZON_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_AMAZON_IN_LIBRARY, value)
+        }
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int
@@ -734,11 +813,32 @@ object PrefManager {
             setPref(GOG_GAMES_COUNT, value)
         }
 
+    private val EPIC_GAMES_COUNT = intPreferencesKey("epic_games_count")
+    var epicGamesCount: Int
+        get() = getPref(EPIC_GAMES_COUNT, 0)
+        set(value) {
+            setPref(EPIC_GAMES_COUNT, value)
+        }
+
     private val GOG_INSTALLED_GAMES_COUNT = intPreferencesKey("gog_installed_games_count")
     var gogInstalledGamesCount: Int
         get() = getPref(GOG_INSTALLED_GAMES_COUNT, 0)
         set(value) {
             setPref(GOG_INSTALLED_GAMES_COUNT, value)
+        }
+
+    private val EPIC_INSTALLED_GAMES_COUNT = intPreferencesKey("epic_installed_games_count")
+    var epicInstalledGamesCount: Int
+        get() = getPref(EPIC_INSTALLED_GAMES_COUNT, 0)
+        set(value) {
+            setPref(EPIC_INSTALLED_GAMES_COUNT, value)
+        }
+
+    private val AMAZON_INSTALLED_GAMES_COUNT = intPreferencesKey("amazon_installed_games_count")
+    var amazonInstalledGamesCount: Int
+        get() = getPref(AMAZON_INSTALLED_GAMES_COUNT, 0)
+        set(value) {
+            setPref(AMAZON_INSTALLED_GAMES_COUNT, value)
         }
 
     // Show dialog when adding custom game folder
@@ -897,4 +997,29 @@ object PrefManager {
     fun removeExternalThemePath(path: String) {
         externalThemePaths = externalThemePaths - path
     }
+
+    // auto-apply known config from BestConfigService on first container creation
+    private val AUTO_APPLY_KNOWN_CONFIG = booleanPreferencesKey("auto_apply_known_config")
+    var autoApplyKnownConfig: Boolean
+        get() = getPref(AUTO_APPLY_KNOWN_CONFIG, true)
+        set(value) = setPref(AUTO_APPLY_KNOWN_CONFIG, value)
+
+    // Game compatibility cache (JSON string)
+    private val GAME_COMPATIBILITY_CACHE = stringPreferencesKey("game_compatibility_cache")
+    var gameCompatibilityCache: String
+        get() = getPref(GAME_COMPATIBILITY_CACHE, "{}")
+        set(value) {
+            setPref(GAME_COMPATIBILITY_CACHE, value)
+        }
+
+    /* Security / Attestation */
+    private val KEY_ATTESTATION_AVAILABLE = booleanPreferencesKey("key_attestation_available")
+    var keyAttestationAvailable: Boolean
+        get() = getPref(KEY_ATTESTATION_AVAILABLE, false)
+        set(value) = setPref(KEY_ATTESTATION_AVAILABLE, value)
+
+    private val PLAY_INTEGRITY_AVAILABLE = booleanPreferencesKey("play_integrity_available")
+    var playIntegrityAvailable: Boolean
+        get() = getPref(PLAY_INTEGRITY_AVAILABLE, false)
+        set(value) = setPref(PLAY_INTEGRITY_AVAILABLE, value)
 }

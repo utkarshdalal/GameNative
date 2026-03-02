@@ -33,12 +33,14 @@
         <item>System</item>
         <item>v762</item>
         <item>v805</item>
+        <item>Turnip_Gen8_V23</item>
         <item>turnip25.1.0</item>
         <item>turnip25.3.0_R3_Auto</item>
         <item>turnip25.3.0_R3_Gmem</item>
         <item>turnip25.3.0_R6_Gmem</item>
-        <item>25.3.0_R11</item>
-        <item>26.0.0_R4</item>
+        <item>turnip25.3.0_R11</item>
+        <item>turnip26.0.0_R4</item>
+        <item>turnip26.0.0_R8</item>
     </string-array>
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>
@@ -85,6 +87,7 @@
         <item>1.10.3</item>
         <item>1.10.1</item>
         <item>1.10.9-sarek</item>
+        <item>1.11.1-sarek</item>
         <item>1.9.2</item>
         <item>2.4.1</item>
         <item>2.4.1-gplasync</item>
@@ -104,6 +107,9 @@
         <item>1024 MB</item>
         <item>2048 MB</item>
         <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
     </string-array>
     <string-array name="present_mode_entries">
         <item>Never</item>
@@ -133,6 +139,7 @@
     </string-array>
     <string-array name="bcn_emulation_type_entries">
         <item>software</item>
+        <item>compute</item>
     </string-array>
     <string-array name="bcn_emulation_cache_entries">
         <item>0</item>
@@ -169,12 +176,15 @@
     </string-array>
     <string-array name="box64_bionic_version_entries">
         <item>0.3.7 (Default)</item>
+        <item>0.4.0</item>
         <item>0.3.8</item>
         <item>0.3.6</item>
         <item>0.3.2</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
+        <item>0.4.0</item>
         <item>0.3.7</item>
+        <item>0.3.6</item>
         <item>0.3.4</item>
     </string-array>
     <string-array name="fexcore_version_entries">
@@ -182,6 +192,7 @@
         <item>2508</item>
         <item>2511</item>
         <item>2512</item>
+        <item>2601</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>

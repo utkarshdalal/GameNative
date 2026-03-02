@@ -171,6 +171,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text(
                     text = "Install additional components (.wcp: tar.xz/zst)",
@@ -206,7 +207,6 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
                             .padding(top = 8.dp)
                     ) {
                         InfoRow(label = "Type", value = profile.type.toString())
@@ -292,7 +292,6 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
                             .padding(top = 8.dp)
                     ) {
                         installedProfiles.forEach { p ->
@@ -432,5 +431,4 @@ private suspend fun performFinishInstall(
     onDone(msg)
     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 }
-
 

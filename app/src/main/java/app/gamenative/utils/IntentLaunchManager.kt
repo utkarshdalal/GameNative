@@ -15,6 +15,8 @@ import timber.log.Timber
 object IntentLaunchManager {
 
     private const val EXTRA_APP_ID = "app_id"
+
+    private const val EXTRA_GAME_SOURCE = "game_source"
     private const val EXTRA_CONTAINER_CONFIG = "container_config"
     private const val ACTION_LAUNCH_GAME = "app.gamenative.LAUNCH_GAME"
     private const val MAX_CONFIG_JSON_SIZE = 50000 // 50KB limit to prevent memory exhaustion
@@ -40,7 +42,14 @@ object IntentLaunchManager {
             return null
         }
 
-        val appId = "${GameSource.STEAM.name}_$gameId"
+        // Get Game Source for launch intent
+        var gameSource = intent.getStringExtra(EXTRA_GAME_SOURCE)?.uppercase(java.util.Locale.ROOT)
+        val isValidGameSource = GameSource.entries.any { it.name == gameSource }
+        if (!isValidGameSource) {
+            gameSource = GameSource.STEAM.name
+        }
+
+        val appId = "${gameSource}_$gameId"
         Timber.d("[IntentLaunchManager]: Converted to appId: $appId")
 
         val containerConfigJson = intent.getStringExtra(EXTRA_CONTAINER_CONFIG)

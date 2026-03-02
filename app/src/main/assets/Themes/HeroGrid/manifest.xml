@@ -1,0 +1,13 @@
+<manifest>
+    <id>hero_grid</id>
+    <title>Hero Grid</title>
+    <version>1.0.0</version>
+    <engineVersion>1.0.0</engineVersion>
+    <minAppVersion>0.0.0</minAppVersion>
+    <description>A responsive grid of landscape hero art with compatibility badges and game titles. Adapts to portrait and landscape orientations.</description>
+    <author>
+        <name>Radical Thomas</name>
+    </author>
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" />
+</manifest>

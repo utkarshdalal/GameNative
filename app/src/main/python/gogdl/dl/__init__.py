@@ -1,3 +1,0 @@
-"""
-Android-compatible download module
-"""

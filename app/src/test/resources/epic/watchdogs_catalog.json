@@ -1,0 +1,114 @@
+{
+	"6dc445f656de4e029834b2d32b6a2f77": {
+		"id": "6dc445f656de4e029834b2d32b6a2f77",
+		"title": "Watch Dogs",
+		"description": "Watch Dogs",
+		"keyImages": [
+			{
+				"type": "DieselGameBox",
+				"url": "https://cdn1.epicgames.com/ecebf45065bc4993abfe0e84c40ff18e/item/WDOG_STD_Store_Landscape_2580x1450-2580x1450-3fd07dcc02e65aca288d794c177c7512.jpg",
+				"md5": "3fd07dcc02e65aca288d794c177c7512",
+				"width": 2580,
+				"height": 1450,
+				"size": 485271,
+				"uploadedDate": "2020-03-18T22:18:36.583Z"
+			},
+			{
+				"type": "DieselGameBoxTall",
+				"url": "https://cdn1.epicgames.com/ecebf45065bc4993abfe0e84c40ff18e/item/WDOG_STD_Store_Portrait_1280x1420-1280x1420-7678e6c2b81692027935c7c2b685438d.jpg",
+				"md5": "7678e6c2b81692027935c7c2b685438d",
+				"width": 1280,
+				"height": 1420,
+				"size": 487998,
+				"uploadedDate": "2020-03-18T22:18:50.560Z"
+			}
+		],
+		"categories": [
+			{
+				"path": "public"
+			},
+			{
+				"path": "games"
+			},
+			{
+				"path": "applications"
+			}
+		],
+		"namespace": "ecebf45065bc4993abfe0e84c40ff18e",
+		"status": "ACTIVE",
+		"creationDate": "2020-02-13T19:28:26.229Z",
+		"lastModifiedDate": "2024-04-30T20:34:15.847Z",
+		"customAttributes": {
+			"CanRunOffline": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"NeverUpdate": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"RegistryPath": {
+				"type": "STRING",
+				"value": "SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs\\274"
+			},
+			"UseAccessControl": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"RequirementsJson": {
+				"type": "STRING",
+				"value": "[]"
+			},
+			"CanSkipKoreanIdVerification": {
+				"type": "STRING",
+				"value": "true"
+			},
+			"partnerLinkId": {
+				"type": "STRING",
+				"value": "afdd0a52d9e745ff8f79258a3cca003a"
+			},
+			"partnerLinkType": {
+				"type": "STRING",
+				"value": "ubisoft"
+			},
+			"FolderName": {
+				"type": "STRING",
+				"value": "WatchDogs"
+			},
+			"ThirdPartyManagedProvider": {
+				"type": "STRING",
+				"value": "UbisoftConnect"
+			},
+			"RegistryKey": {
+				"type": "STRING",
+				"value": "InstallDir"
+			},
+			"GameID": {
+				"type": "STRING",
+				"value": "274"
+			}
+		},
+		"entitlementName": "6dc445f656de4e029834b2d32b6a2f77",
+		"entitlementType": "EXECUTABLE",
+		"itemType": "DURABLE",
+		"releaseInfo": [
+			{
+				"id": "ecc2d262a0214a65aa0fa977c8e921dc",
+				"appId": "Jasper",
+				"platform": [
+					"Windows"
+				]
+			}
+		],
+		"developer": "Ubisoft Entertainment",
+		"developerId": "o-3efjudxdtgsqnulml4bkeq3v9nec38",
+		"eulaIds": [
+			"egstore"
+		],
+		"endOfSupport": false,
+		"mainGameItemList": [],
+		"ageGatings": {},
+		"applicationId": "",
+		"unsearchable": false
+	}
+}

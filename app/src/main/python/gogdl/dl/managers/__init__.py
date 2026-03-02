@@ -1,4 +1,0 @@
-"""
-Android-compatible download managers
-"""
-
