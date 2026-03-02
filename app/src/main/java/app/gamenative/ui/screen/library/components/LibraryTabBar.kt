@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -131,6 +133,18 @@ private fun CompactLibraryTabBar(
     modifier: Modifier = Modifier,
 ) {
     val tabs = LibraryTab.entries
+    val currentIndex = tabs.indexOf(currentTab)
+    val scrollState = rememberScrollState()
+    val tabPositions = remember { mutableStateMapOf<Int, Float>() }
+    val tabWidths = remember { mutableStateMapOf<Int, Float>() }
+
+    LaunchedEffect(currentTab) {
+        val pos = tabPositions[currentIndex] ?: return@LaunchedEffect
+        val width = tabWidths[currentIndex] ?: return@LaunchedEffect
+        val targetCenter = (pos + width / 2).toInt()
+        val viewportCenter = scrollState.viewportSize / 2
+        scrollState.animateScrollTo((targetCenter - viewportCenter).coerceAtLeast(0))
+    }
 
     Box(
         modifier = modifier
@@ -174,30 +188,32 @@ private fun CompactLibraryTabBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // Left: Options button
             CompactIconButton(
                 icon = Icons.Default.Tune,
                 contentDescription = stringResource(R.string.options),
                 onClick = onOptionsClick,
             )
 
-            // Center: Tabs (takes remaining space, centered)
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScroll(scrollState)
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                tabs.forEach { tab ->
+                tabs.forEachIndexed { index, tab ->
                     val isSelected = tab == currentTab
                     val tabInteractionSource = remember { MutableInteractionSource() }
                     val isTabFocused by tabInteractionSource.collectIsFocusedAsState()
                     Box(
                         modifier = Modifier
+                            .onGloballyPositioned { coordinates ->
+                                tabPositions[index] = coordinates.positionInParent().x
+                                tabWidths[index] = coordinates.size.width.toFloat()
+                            }
                             .then(
                                 if (isTabFocused) {
                                     Modifier.border(
@@ -243,6 +259,8 @@ private fun CompactLibraryTabBar(
                             text = label,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             color = when {
                                 isSelected -> MaterialTheme.colorScheme.onPrimary
                                 isTabFocused -> MaterialTheme.colorScheme.primary
@@ -253,7 +271,6 @@ private fun CompactLibraryTabBar(
                 }
             }
 
-            // Right: Search, Add, Menu buttons
             CompactIconButton(
                 icon = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search),
@@ -355,14 +372,13 @@ private fun ExpandedLibraryTabBar(
 ) {
     val tabs = LibraryTab.entries
     val currentIndex = tabs.indexOf(currentTab)
+    val scrollState = rememberScrollState()
 
-    // Track tab positions and widths for the sliding indicator
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
     val tabWidths = remember { mutableStateMapOf<Int, Float>() }
 
     val density = LocalDensity.current
 
-    // Animated indicator position and width
     val indicatorOffset by animateDpAsState(
         targetValue = with(density) { (tabPositions[currentIndex] ?: 0f).toDp() },
         animationSpec = spring(
@@ -381,7 +397,14 @@ private fun ExpandedLibraryTabBar(
         label = "indicatorWidth",
     )
 
-    // Gradient background container - content scrolls behind this
+    LaunchedEffect(currentTab) {
+        val pos = tabPositions[currentIndex] ?: return@LaunchedEffect
+        val width = tabWidths[currentIndex] ?: return@LaunchedEffect
+        val targetCenter = (pos + width / 2).toInt()
+        val viewportCenter = scrollState.viewportSize / 2
+        scrollState.animateScrollTo((targetCenter - viewportCenter).coerceAtLeast(0))
+    }
+
     Box(
         modifier = modifier
             .background(
@@ -424,14 +447,12 @@ private fun ExpandedLibraryTabBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Options button (opens filter/sort panel)
             IconActionButton(
                 icon = Icons.Default.Tune,
                 contentDescription = stringResource(R.string.options),
                 onClick = onOptionsClick,
             )
 
-            // Tab container with sliding indicator
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -445,6 +466,7 @@ private fun ExpandedLibraryTabBar(
                             ),
                         ),
                     )
+                    .horizontalScroll(scrollState)
                     .padding(4.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
@@ -465,10 +487,8 @@ private fun ExpandedLibraryTabBar(
                         ),
                 )
 
-                // Tab items row
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     tabs.forEachIndexed { index, tab ->
@@ -486,21 +506,18 @@ private fun ExpandedLibraryTabBar(
                 }
             }
 
-            // Search button
             IconActionButton(
                 icon = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
             )
 
-            // Add game button
             IconActionButton(
                 icon = Icons.Default.Add,
                 contentDescription = stringResource(R.string.action_add_game),
                 onClick = onAddGameClick,
             )
 
-            // Menu button (opens system menu)
             IconActionButton(
                 icon = Icons.Default.Menu,
                 contentDescription = stringResource(R.string.menu),
@@ -663,6 +680,8 @@ private fun TabItem(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = when {
                 isSelected -> MaterialTheme.colorScheme.onPrimary
                 else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
