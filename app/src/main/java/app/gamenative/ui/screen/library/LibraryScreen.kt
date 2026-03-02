@@ -62,7 +62,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -548,20 +548,21 @@ private fun LibraryScreenContent(
         wasOptionsPanelOpen = state.isOptionsPanelOpen
     }
 
-    // Restore focus when the window regains focus after a dialog (e.g. support prompt) is dismissed.
-    // Compose AlertDialog creates a separate window; when it closes the main window regains focus
-    // but no composable automatically receives it, leaving D-pad navigation broken.
-    val windowInfo = LocalWindowInfo.current
-    var wasWindowUnfocused by remember { mutableStateOf(false) }
-    LaunchedEffect(windowInfo.isWindowFocused) {
-        if (!windowInfo.isWindowFocused) {
-            wasWindowUnfocused = true
-        } else if (wasWindowUnfocused) {
-            wasWindowUnfocused = false
-            if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching && state.appInfoList.isNotEmpty()) {
-                kotlinx.coroutines.delay(100)
-                requestGridFocusOrDefer()
+    // Restore focus when the activity window regains focus after a dialog (e.g. support prompt)
+    // is dismissed. Compose AlertDialog creates a separate Android window; when it closes the
+    // activity window regains focus but no composable automatically receives it, leaving D-pad
+    // navigation broken. We use the View-level OnWindowFocusChangeListener because Compose's
+    // LocalWindowInfo.isWindowFocused does not reliably detect dialog window changes.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val listener = android.view.ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+            if (hasFocus) {
+                pendingGridFocusRequest = true
             }
+        }
+        view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+        onDispose {
+            view.viewTreeObserver.removeOnWindowFocusChangeListener(listener)
         }
     }
 
@@ -703,6 +704,9 @@ private fun LibraryScreenContent(
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     focusManager.clearFocus()
+                    // After clearing search/keyboard focus, schedule grid/carousel
+                    // focus restoration so D-pad navigation keeps working.
+                    pendingGridFocusRequest = true
                 })
             }
             .focusRequester(rootFocusRequester)
