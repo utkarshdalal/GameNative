@@ -1052,7 +1052,10 @@ private fun LibraryScreenContent(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(safePaddingModifier),
-                            onItemClick = { item -> selectedAppId = item.appId },
+                            onItemClick = { item ->
+                                selectedAppId = item.appId
+                                selectedLibraryItem = item
+                            },
                             onItemFocus = { /* Can be used for preview pane later */ },
                             bindingProvider = bindingProvider,
                             themePath = themeRootDir,
@@ -1071,7 +1074,10 @@ private fun LibraryScreenContent(
                                     .then(safePaddingModifier),
                                 initialPage = carouselPageIndex,
                                 onPageChanged = onCarouselPageChanged,
-                                onItemClick = { item -> selectedAppId = item.appId },
+                                onItemClick = { item ->
+                                    selectedAppId = item.appId
+                                    selectedLibraryItem = item
+                                },
                                 onItemFocus = { /* Can be used for preview pane later */ },
                                 bindingProvider = bindingProvider,
                                 themePath = themeRootDir,
