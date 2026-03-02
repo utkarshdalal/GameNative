@@ -27,7 +27,7 @@ class ThemeLoaderSmokeTest {
             )
 
             // split file to be included
-            val split = File(themeDir, "sections\\grid.xml")
+            val split = File(themeDir, "sections${File.separator}grid.xml")
             split.parentFile.mkdirs()
             split.writeText(
                 """

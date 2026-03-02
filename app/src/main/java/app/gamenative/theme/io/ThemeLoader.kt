@@ -39,8 +39,9 @@ class ThemeLoader {
 
         val manifestEntry = readManifestEntry(themeDir, errors)
         val themeXmlPath = resolvePath(themeDir, manifestEntry?.themePath ?: "theme.xml")
-        val includeResolver = IncludeResolver(themeDir.absolutePath)
-        val parsed = includeResolver.parseWithIncludes(themeXmlPath.absolutePath)
+        val canonicalRoot = themeDir.canonicalPath
+        val includeResolver = IncludeResolver(canonicalRoot)
+        val parsed = includeResolver.parseWithIncludes(themeXmlPath.canonicalPath)
         errors += parsed.errors
         val root = parsed.root
         if (root == null) {

@@ -52,9 +52,9 @@ class ThemeLoaderIncludeTest {
                   <image id="img" x="0" y="0" width="100" height="50" src="@{game.capsule}"/>
                 </template>
               </templates>
-              <layout>
+              <layouts>
                 <include src="sections/a.xml"/>
-              </layout>
+              </layouts>
             </theme>
             """.trimIndent()
         )
@@ -75,7 +75,7 @@ class ThemeLoaderIncludeTest {
                 assertEquals("#0000FF", result.tree.variables["color"]) // inherited
 
                 // ensure grid came from included B file (source path preserved)
-                val layouts = result.tree.themeXml.children.first { it.name == "layout" }
+                val layouts = result.tree.themeXml.children.first { it.name == "layouts" }
                 val grid = layouts.children.first { it.name == "grid" }
                 assertTrue(grid.source?.filePath?.endsWith("sections${File.separator}b.xml") == true)
             }

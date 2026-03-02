@@ -18,7 +18,7 @@ class MediaResolverTest {
     fun resolve_image_primaryFound_returnsPrimary() {
         val theme = makeTempThemeDir()
         try {
-            val img = File(theme, "images\\card.png").apply {
+            val img = File(theme, "images${File.separator}card.png").apply {
                 parentFile.mkdirs(); writeText("fake")
             }
             val manager = MediaSourceManager()
@@ -39,7 +39,7 @@ class MediaResolverTest {
     fun resolve_image_primaryMissing_usesFallback() {
         val theme = makeTempThemeDir()
         try {
-            val fb = File(theme, "images\\fallback.png").apply {
+            val fb = File(theme, "images${File.separator}fallback.png").apply {
                 parentFile.mkdirs(); writeText("fake")
             }
             val manager = MediaSourceManager()
@@ -58,7 +58,7 @@ class MediaResolverTest {
     fun resolve_video_notAllowed_returnsPosterImage() {
         val theme = makeTempThemeDir()
         try {
-            val poster = File(theme, "images\\poster.jpg").apply { parentFile.mkdirs(); writeText("fake") }
+            val poster = File(theme, "images${File.separator}poster.jpg").apply { parentFile.mkdirs(); writeText("fake") }
             val manager = MediaSourceManager()
             val media = MediaSource.Video(
                 src = lit("videos/preview.mp4"),
@@ -81,7 +81,7 @@ class MediaResolverTest {
     fun resolve_video_missing_usesFallbackImageElsePoster() {
         val theme = makeTempThemeDir()
         try {
-            val fallback = File(theme, "images\\fb.jpg").apply { parentFile.mkdirs(); writeText("fake") }
+            val fallback = File(theme, "images${File.separator}fb.jpg").apply { parentFile.mkdirs(); writeText("fake") }
             val manager = MediaSourceManager()
             val media = MediaSource.Video(
                 src = lit("videos/missing.mp4"),
@@ -103,8 +103,8 @@ class MediaResolverTest {
     fun resolve_video_found_returnsVideoWithOptionalPoster() {
         val theme = makeTempThemeDir()
         try {
-            val video = File(theme, "videos\\preview.mp4").apply { parentFile.mkdirs(); writeText("fakebin") }
-            val poster = File(theme, "images\\poster.jpg").apply { parentFile.mkdirs(); writeText("fake") }
+            val video = File(theme, "videos${File.separator}preview.mp4").apply { parentFile.mkdirs(); writeText("fakebin") }
+            val poster = File(theme, "images${File.separator}poster.jpg").apply { parentFile.mkdirs(); writeText("fake") }
             val manager = MediaSourceManager()
             val media = MediaSource.Video(
                 src = lit("videos/preview.mp4"),
