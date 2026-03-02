@@ -97,6 +97,12 @@ object BestConfigService {
                     put("gpuName", gpuName)
                 }
 
+                val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
+                if (attestation != null) {
+                    requestBody.put("nonce", attestation.first)
+                    requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
+                }
+
                 val mediaType = "application/json".toMediaType()
                 val bodyString = requestBody.toString()
                 val body = bodyString.toRequestBody(mediaType)
