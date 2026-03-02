@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.app.Application
 import app.gamenative.BuildConfig
+import app.gamenative.PrefManager
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenProvider
@@ -31,8 +32,10 @@ object PlayIntegrity {
                 .build(),
         ).addOnSuccessListener { provider ->
             tokenProvider = provider
+            PrefManager.playIntegrityAvailable = true
             Timber.tag("PlayIntegrity").d("Token provider ready")
         }.addOnFailureListener { e ->
+            PrefManager.playIntegrityAvailable = false
             Timber.tag("PlayIntegrity").e(e, "Failed to prepare integrity token provider")
         }
     }

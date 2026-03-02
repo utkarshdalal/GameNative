@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.security.ProviderException
 import android.util.Base64
+import app.gamenative.PrefManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -93,9 +94,11 @@ object KeyAttestationHelper {
         return try {
             val nonce = fetchNonce(baseUrl)
             val chain = generateAttestedKey(nonce)
+            PrefManager.keyAttestationAvailable = true
             Pair(nonce, chain)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Key attestation failed, continuing without it")
+            PrefManager.keyAttestationAvailable = false
             null
         }
     }

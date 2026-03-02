@@ -958,4 +958,15 @@ object PrefManager {
         set(value) {
             setPref(GAME_COMPATIBILITY_CACHE, value)
         }
+
+    /* Security / Attestation */
+    private val KEY_ATTESTATION_AVAILABLE = booleanPreferencesKey("key_attestation_available")
+    var keyAttestationAvailable: Boolean
+        get() = getPref(KEY_ATTESTATION_AVAILABLE, false)
+        set(value) = setPref(KEY_ATTESTATION_AVAILABLE, value)
+
+    private val PLAY_INTEGRITY_AVAILABLE = booleanPreferencesKey("play_integrity_available")
+    var playIntegrityAvailable: Boolean
+        get() = getPref(PLAY_INTEGRITY_AVAILABLE, false)
+        set(value) = setPref(PLAY_INTEGRITY_AVAILABLE, value)
 }
