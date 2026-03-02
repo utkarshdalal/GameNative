@@ -79,6 +79,7 @@
     <string name="download">Download</string>
     <string name="install">Install</string>
     <string name="install_app">Install</string>
+    <string name="add_game">Add Game</string>
     <string name="delete_app">Delete</string>
     <string name="uninstall">Uninstall</string>
     <string name="run_app">Play</string>
@@ -493,7 +494,6 @@
     <string name="games">Games</string>
     <string name="playtime_last_two_weeks">Playtime last 2 weeks: %s hrs</string>
     <string name="total_playtime">Total Playtime: %s hrs</string>
-    <string name="last_played">Last Played</string>
     <string name="playtime">Playtime</string>
     <string name="add_custom_game_content_desc">Add custom game</string>
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
@@ -974,6 +974,8 @@
     <string name="library_gpu_compatible">GPU Compatible</string>
     <string name="library_compatibility_unknown">Unknown</string>
     <string name="library_not_compatible">Not Compatible</string>
+    <string name="library_never_played">Never played</string>
+    <string name="last_played">Last played</string>
 
     <!-- Best Config Compatibility Messages -->
     <string name="best_config_exact_gpu_match">Known config works on your GPU</string>
@@ -991,6 +993,7 @@
     <string name="export_config">Export config</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
+    <string name="library_app_source">App Source</string>
     <string name="library_layout">Layout</string>
     <string name="library_layout_list">List</string>
     <string name="library_layout_capsule">Capsule</string>
@@ -1176,6 +1179,45 @@
     <string name="gog_logout_success">Logged out from GOG successfully</string>
     <string name="gog_logout_failed">Failed to logout: %s</string>
     <string name="gog_logout_in_progress">Logging out from GOG…</string>
+
+    <!-- Theme Engine (picker) -->
+    <string name="settings_theme_picker_title">Theme</string>
+    <string name="settings_theme_source_builtin">Built-in</string>
+    <string name="settings_theme_source_user">User</string>
+    <string name="settings_theme_reload_dev">Reload theme (dev)</string>
+    <string name="theme_applied_toast">Theme applied: %1$s</string>
+    <string name="theme_fallback_toast">Theme load failed. Falling back to %1$s</string>
+
+    <!-- Theme Engine UI toggle -->
+    <string name="settings_use_theme_engine_ui_title">Use Theme Engine UI (experimental)</string>
+    <string name="settings_use_theme_engine_ui_subtitle">Enable the new themed Library screen. May reduce interactivity.</string>
+
+    <!-- Sort by last played -->
+    <string name="settings_interface_sort_last_played_title">Sort installed by last played</string>
+    <string name="settings_interface_sort_last_played_subtitle">Show recently played games first in the library</string>
+
+    <!-- Theme Selector Screen -->
+    <string name="theme_selector_title">Select Theme</string>
+    <string name="theme_no_description">No description available</string>
+    <string name="theme_by_author">By %s</string>
+    <string name="theme_menu_button">Themes</string>
+    <string name="theme_activate">Activate</string>
+    <string name="theme_active">Active</string>
+
+    <!-- External Themes -->
+    <string name="theme_add_external">Add Theme</string>
+    <string name="theme_source_external">External</string>
+    <string name="theme_remove">Remove</string>
+    <string name="theme_remove_title">Remove Theme</string>
+    <string name="theme_remove_message">Remove \"%1$s\" from the theme list?\n\nThis will not delete the theme files from your device.</string>
+    <string name="theme_remove_confirm">Remove</string>
+    <string name="theme_added_toast">Theme added: %1$s</string>
+    <string name="theme_removed_toast">Theme removed: %1$s</string>
+    <string name="theme_validation_failed">Invalid theme: %1$s</string>
+    <string name="theme_select_folder">Select a folder containing a theme</string>
+    <string name="theme_add_dialog_title">Add External Theme</string>
+    <string name="theme_add_dialog_message">Please select a folder containing a valid theme.\n\nA valid theme folder must include a manifest.xml file with the required fields (id, version, engineVersion, minAppVersion).\n\nNote: The app may restart after selecting a folder.</string>
+    <string name="theme_add_dont_show_again">Don\'t show this dialog again</string>
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>

@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.data.SteamFriend
 import app.gamenative.events.SteamEvent
@@ -32,6 +34,7 @@ fun AccountButton(
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
+    iconSize: Dp = 40.dp,
 ) {
     val scope = rememberCoroutineScope()
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
@@ -88,6 +91,7 @@ fun AccountButton(
             SteamIconImage(
                 image = { persona?.avatarHash?.getAvatarURL() },
                 contentDescription = "Logged in account user profile",
+                size = iconSize,
             )
         },
     )

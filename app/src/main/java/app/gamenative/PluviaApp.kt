@@ -68,6 +68,9 @@ class PluviaApp : SplitCompatApplication() {
         // Initialize GOGConstants
         app.gamenative.service.gog.GOGConstants.init(this)
 
+        // Initialize ThemeManager (scan themes, migrate old layout to theme, and activate)
+        app.gamenative.theme.ThemeManager.init(this)
+
         DownloadService.populateDownloadService(this)
 
         appScope.launch {

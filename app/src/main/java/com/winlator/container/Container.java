@@ -140,6 +140,8 @@ public class Container {
 
     private boolean useLegacyDRM = false;
 
+    private long lastPlayedTimestamp = 0L;
+
     private boolean unpackFiles = false;
 
     private String containerVariant = DEFAULT_VARIANT;
@@ -690,6 +692,9 @@ public class Container {
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
+            // Last played timestamp
+            data.put("lastPlayedTimestamp", lastPlayedTimestamp);
+
             // Unpack Files setting
             data.put("unpackFiles", unpackFiles);
 
@@ -879,6 +884,9 @@ public class Container {
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
+                case "lastPlayedTimestamp":
+                    this.lastPlayedTimestamp = data.getLong(key);
+                    break;
                 case "unpackFiles":
                     this.unpackFiles = data.getBoolean(key);
                     break;
@@ -959,6 +967,14 @@ public class Container {
 
     public void setUseLegacyDRM(boolean useLegacyDRM) {
         this.useLegacyDRM = useLegacyDRM;
+    }
+
+    public long getLastPlayedTimestamp() {
+        return lastPlayedTimestamp;
+    }
+
+    public void setLastPlayedTimestamp(long timestamp) {
+        this.lastPlayedTimestamp = timestamp;
     }
 
     public boolean isUnpackFiles() {

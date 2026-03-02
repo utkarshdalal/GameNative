@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,12 +30,20 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import app.gamenative.ui.screen.library.components.LibraryBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,14 +51,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,6 +77,8 @@ import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.SteamService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
@@ -93,7 +106,17 @@ import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.PlatformLogoutCallbacks
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.SteamUtils
+import com.winlator.container.ContainerManager
+import app.gamenative.theme.runtime.FixedElementCallbacks
+import app.gamenative.theme.runtime.LocalSpatialFocusManager
+import app.gamenative.theme.runtime.RenderFixedElements
+import app.gamenative.theme.runtime.SpatialFocusManager
+import androidx.compose.runtime.CompositionLocalProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.EnumSet
 import android.os.SystemClock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,9 +133,20 @@ fun HomeLibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // Read configuration from MainActivity state (not LocalConfiguration)
+    // This is needed because android:configChanges prevents LocalConfiguration from updating
+    val currentOrientation = app.gamenative.MainActivity.currentOrientation.value
+    val currentScreenWidthDp = app.gamenative.MainActivity.currentScreenWidthDp.value
+    val configChangeCount = app.gamenative.MainActivity.configurationChangeCounter.value
+    val orientationTrigger = "$currentOrientation-$currentScreenWidthDp-$configChangeCount"
+
+    // Key on orientation to force full recomposition when configuration changes
+    key(orientationTrigger) {
     LibraryScreenContent(
         state = state,
         listState = viewModel.listState,
+        carouselPageIndex = viewModel.carouselPageIndex,
+        onCarouselPageChanged = { viewModel.carouselPageIndex = it },
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
         onPageChange = viewModel::onPageChange,
@@ -134,6 +168,7 @@ fun HomeLibraryScreen(
         onNextTab = viewModel::onNextTab,
         isOffline = isOffline,
     )
+    } // end key(orientationTrigger)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
@@ -141,6 +176,8 @@ fun HomeLibraryScreen(
 private fun LibraryScreenContent(
     state: LibraryState,
     listState: LazyGridState,
+    carouselPageIndex: Int,
+    onCarouselPageChanged: (Int) -> Unit,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
     onPageChange: (Int) -> Unit,
@@ -511,6 +548,24 @@ private fun LibraryScreenContent(
         wasOptionsPanelOpen = state.isOptionsPanelOpen
     }
 
+    // Restore focus when the activity window regains focus after a dialog (e.g. support prompt)
+    // is dismissed. Compose AlertDialog creates a separate Android window; when it closes the
+    // activity window regains focus but no composable automatically receives it, leaving D-pad
+    // navigation broken. We use the View-level OnWindowFocusChangeListener because Compose's
+    // LocalWindowInfo.isWindowFocused does not reliably detect dialog window changes.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val listener = android.view.ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+            if (hasFocus) {
+                pendingGridFocusRequest = true
+            }
+        }
+        view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+        onDispose {
+            view.viewTreeObserver.removeOnWindowFocusChangeListener(listener)
+        }
+    }
+
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
     // This runs at the app event bus layer, independent of current Compose focus target.
     DisposableEffect(
@@ -627,11 +682,33 @@ private fun LibraryScreenContent(
         }
     }
 
+    // Collect the active ThemeDefinition and dev reload tick (DEBUG only)
+    val activeTheme by app.gamenative.theme.ThemeManager.activeTheme.collectAsStateWithLifecycle()
+    val reloadTick by app.gamenative.theme.ThemeManager.reloadTick.collectAsStateWithLifecycle()
+    val themeRootDir by app.gamenative.theme.ThemeManager.activeThemeRootDir.collectAsStateWithLifecycle()
+
+    // Trigger theme remapping when orientation changes (for breakpoint-aware variables)
+    app.gamenative.theme.runtime.OrientationAwareThemeEffect()
+    
+    // Get orientation key for forcing recomposition when orientation changes
+    val orientationKey = app.gamenative.theme.runtime.rememberOrientationKey()
+
+    // Focus manager for clearing search bar focus when tapping elsewhere
+    val focusManager = LocalFocusManager.current
+
     Box(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .then(safePaddingModifier)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                    // After clearing search/keyboard focus, schedule grid/carousel
+                    // focus restoration so D-pad navigation keeps working.
+                    pendingGridFocusRequest = true
+                })
+            }
             .focusRequester(rootFocusRequester)
             .focusable()
             .onFocusChanged { focusState ->
@@ -778,69 +855,353 @@ private fun LibraryScreenContent(
             }
     ) {
         if (selectedAppId == null) {
-            // Use Box to allow content to scroll behind the tab bar
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Library list (content scrolls behind tab bar)
-                LibraryListPane(
-                    state = state,
-                    listState = listState,
-                    currentLayout = currentPaneType,
-                    firstGridItemFocusRequester = gridFirstItemFocusRequester,
-                    focusTargetListIndex = gridFocusTargetListIndex,
-                    onPageChange = onPageChange,
-                    onNavigate = { appId ->
-                        selectedAppId = appId
-                        selectedLibraryItem = state.appInfoList.find { it.appId == appId }
-                    },
-                    onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
+            val def = activeTheme
+            val useThemeUi = PrefManager.useThemeEngineUi
+            if (useThemeUi && def != null) {
+                // Key on orientation to force full recomposition when orientation changes
+                // This ensures all positioning from theme breakpoints is properly applied
+                key(orientationKey, reloadTick) {
+                // Create spatial focus manager for position-based controller navigation
+                val spatialFocusManager = remember { SpatialFocusManager() }
+
+                // Provide spatial focus manager to all themed components
+                CompositionLocalProvider(LocalSpatialFocusManager provides spatialFocusManager) {
+                // Render themed layout using the Theme Engine (experimental)
+                val cards = remember(def.cards, reloadTick) { def.cards.associateBy { it.id } }
+
+                // Helper function to resolve Steam/custom game images
+                fun findSteamGridDBImage(item: LibraryItem, imageType: String): String? {
+                    if (item.gameSource == GameSource.CUSTOM_GAME) {
+                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(item.appId)
+                        gameFolderPath?.let { path ->
+                            val folder = java.io.File(path)
+                            val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                file.name.startsWith("steamgriddb_$imageType") &&
+                                        (file.name.endsWith(".png", true) || file.name.endsWith(".jpg", true) || file.name.endsWith(".webp", true))
+                            }
+                            return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                        }
+                    }
+                    return null
+                }
+
+                // Helper function to find the full hero image (not grid_hero) for custom games
+                fun findSteamGridDBHeroImage(item: LibraryItem): String? {
+                    if (item.gameSource == GameSource.CUSTOM_GAME) {
+                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(item.appId)
+                        gameFolderPath?.let { path ->
+                            val folder = java.io.File(path)
+                            val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                file.name.startsWith("steamgriddb_hero") &&
+                                        !file.name.contains("grid") &&
+                                        (file.name.endsWith(".png", true) || file.name.endsWith(".jpg", true) || file.name.endsWith(".webp", true))
+                            }
+                            return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                        }
+                    }
+                    return null
+                }
+
+                // Load container timestamps for last played info
+                val containerTimestamps: Map<String, Long> = remember {
+                    try {
+                        ContainerManager(context).containers
+                            .associate { container -> container.id to container.lastPlayedTimestamp }
+                    } catch (e: Exception) {
+                        emptyMap()
+                    }
+                }
+                val neverPlayedText = stringResource(R.string.library_never_played)
+
+                // Create binding provider that maps LibraryItem to binding values
+                val bindingProvider: (LibraryItem) -> Map<String, String> = remember(state.compatibilityMap, reloadTick, containerTimestamps) {
+                    { item: LibraryItem ->
+                        val title = item.name
+                        val capsuleUrl = when (item.gameSource) {
+                            GameSource.CUSTOM_GAME ->
+                                findSteamGridDBImage(item, "grid_capsule")
+                                    ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_600x900.jpg" else "")
+                            GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_600x900.jpg"
+                            GameSource.GOG -> item.iconHash.ifEmpty { "" }
+                            else -> item.iconHash.ifEmpty { "" }
+                        }
+                        val heroUrl = when (item.gameSource) {
+                            GameSource.CUSTOM_GAME ->
+                                findSteamGridDBImage(item, "grid_hero")
+                                    ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg" else "")
+                            GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/header.jpg"
+                            GameSource.GOG -> item.iconHash.ifEmpty { "" }
+                            else -> item.iconHash.ifEmpty { "" }
+                        }
+                        // Library hero - the large 1920x620 banner used on game info screens
+                        val libraryHeroUrl = when (item.gameSource) {
+                            GameSource.CUSTOM_GAME ->
+                                findSteamGridDBHeroImage(item)
+                                    ?: findSteamGridDBImage(item, "grid_hero")
+                                    ?: (if (item.iconHash.isNotEmpty()) "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_hero.jpg" else "")
+                            GameSource.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/library_hero.jpg"
+                            GameSource.GOG -> item.iconHash.ifEmpty { "" }
+                            else -> item.iconHash.ifEmpty { "" }
+                        }
+                        val coverUrl = item.clientIconUrl
+
+                        // Compatibility status bindings
+                        val compatStatus = state.compatibilityMap[item.name]
+                        val (compatLabel, compatColor) = when (compatStatus) {
+                            GameCompatibilityStatus.COMPATIBLE -> context.getString(R.string.library_compatible) to "#FF00C853"
+                            GameCompatibilityStatus.GPU_COMPATIBLE -> context.getString(R.string.library_compatible) to "#FF00C853"
+                            GameCompatibilityStatus.NOT_COMPATIBLE -> context.getString(R.string.library_not_compatible) to "#FFFF1744"
+                            GameCompatibilityStatus.UNKNOWN -> context.getString(R.string.library_compatibility_unknown) to "#FF888888"
+                            null -> "" to "#00000000"
+                        }
+
+                        // Check if game is installed
+                        val isInstalled = when (item.gameSource) {
+                            GameSource.STEAM -> SteamService.isAppInstalled(item.gameId)
+                            GameSource.CUSTOM_GAME -> true // Custom games are always "installed"
+                            GameSource.GOG -> GOGService.isGameInstalled(item.gameId.toString())
+                            else -> false
+                        }
+                        val installStatusLabel = if (isInstalled) {
+                            context.getString(R.string.library_installed)
+                        } else {
+                            context.getString(R.string.library_not_installed)
+                        }
+                        val installStatusColor = if (isInstalled) "#FF00C853" else "#FF888888"
+
+                        // Get last played timestamp from container
+                        val lastPlayedTimestamp = containerTimestamps[item.appId] ?: 0L
+                        val lastPlayedText = if (lastPlayedTimestamp > 0) {
+                            SteamUtils.fromSteamTime((lastPlayedTimestamp / 1000).toInt())
+                        } else {
+                            neverPlayedText
+                        }
+
+                        // Game source bindings
+                        val isSteam = item.gameSource == GameSource.STEAM
+                        val isCustom = item.gameSource == GameSource.CUSTOM_GAME
+                        val isGOG = item.gameSource == GameSource.GOG
+
+                        mapOf(
+                            "game.title" to title,
+                            "game.cover" to coverUrl,
+                            "game.capsule" to capsuleUrl,
+                            "game.hero" to heroUrl,
+                            "game.libraryHero" to libraryHeroUrl,
+                            "game.appId" to item.appId,
+                            "game.compatibility.label" to compatLabel,
+                            "game.compatibility.color" to compatColor,
+                            "game.compatibility.visible" to if (compatStatus != null) "true" else "false",
+                            "game.isInstalled" to isInstalled.toString(),
+                            "game.installStatus" to installStatusLabel,
+                            "game.installStatus.color" to installStatusColor,
+                            "game.lastPlayed" to lastPlayedText,
+                            "game.isSteam" to isSteam.toString(),
+                            "game.isCustom" to isCustom.toString(),
+                            "game.isGOG" to isGOG.toString(),
+                            "game.source" to item.gameSource.name.lowercase(),
+                        )
+                    }
+                }
+
+                // Fixed element callbacks (shared by top and bottom)
+                val fixedCallbacks = FixedElementCallbacks(
+                    onNavigateRoute = onNavigateRoute,
+                    onLogout = onLogout,
+                    onGoOnline = onGoOnline,
+                    onFilterClick = { onModalBottomSheet(true) },
+                    onAddClick = onAddCustomGameClick,
+                    onSearchQuery = onSearchQuery,
+                    isOffline = isOffline,
+                    filterExpanded = filterFabExpanded,
+                    isSearching = state.isSearching,
                 )
 
-                // Top overlay: Tab bar OR Search bar
-                if (state.isSearching) {
-                    // Search overlay replaces tab bar when searching
-                    // TODO: Gamepad focus is a bit wonky whenever we show the search bar
-                    LibrarySearchBar(
-                        isVisible = true,
-                        searchQuery = state.searchQuery,
-                        resultCount = state.totalAppsInFilter,
+                val accountButtonContent: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { iconSize ->
+                    app.gamenative.ui.component.topbar.AccountButton(
+                        onNavigateRoute = onNavigateRoute,
+                        onLogout = onLogout,
+                        onGoOnline = onGoOnline,
+                        isOffline = isOffline,
+                        iconSize = iconSize,
+                    )
+                }
+
+                val searchBarContent: @Composable (app.gamenative.ui.screen.library.components.SearchBarStyle) -> Unit = { style ->
+                    app.gamenative.ui.screen.library.components.LibrarySearchBar(
+                        state = state,
                         listState = listState,
                         onSearchQuery = onSearchQuery,
-                        onDismiss = { onIsSearching(false) },
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth(),
+                        style = style,
                     )
-                } else {
-                    // Tab bar when not searching
-                    LibraryTabBar(
-                        currentTab = state.currentTab,
-                        tabCounts = mapOf(
-                            LibraryTab.ALL to state.allCount,
-                            LibraryTab.STEAM to state.steamCount,
-                            LibraryTab.GOG to state.gogCount,
-                            LibraryTab.EPIC to state.epicCount,
-                            LibraryTab.AMAZON to state.amazonCount,
-                            LibraryTab.LOCAL to state.localCount,
-                        ),
-                        onTabSelected = onTabChanged,
-                        onOptionsClick = { onOptionsPanelToggle(true) },
-                        onSearchClick = { onIsSearching(true) },
-                        onAddGameClick = onAddCustomGameClick,
-                        onMenuClick = { isSystemMenuOpen = true },
-                        onNavigateDownToGrid = {
-                            if (state.appInfoList.isNotEmpty()) {
-                                gridFocusTargetListIndex = listState.firstVisibleItemIndex
-                                    .coerceIn(0, state.appInfoList.lastIndex)
-                                pendingGridFocusRequest = true
-                            }
+                }
+
+                // Sort layout elements by z-index (treat null as 0), then by declaration order
+                val sortedElements = remember(def.layoutElements) {
+                    def.layoutElements.sortedWith(
+                        compareBy<app.gamenative.theme.model.LayoutElement> { it.zIndex ?: 0 }
+                            .thenBy { it.declarationOrder }
+                    )
+                }
+
+                // Render all layout elements in z-order
+                sortedElements.forEach { element ->
+                    when (element) {
+                        is app.gamenative.theme.model.LayoutElement.Fixed -> {
+                            // Render fixed container
+                            RenderFixedElements(
+                                fixedContainers = listOf(element.container),
+                                state = state,
+                                listState = listState,
+                                themeName = def.manifest.id,
+                                callbacks = fixedCallbacks,
+                                accountButtonContent = accountButtonContent,
+                                searchBarContent = searchBarContent,
+                                themeRootDir = themeRootDir,
+                            )
+                        }
+                        is app.gamenative.theme.model.LayoutElement.Content -> {
+                            // Render content (grid/carousel/canvas)
+                            when (val layout = element.node) {
+                    is app.gamenative.theme.model.LayoutNode.Grid -> {
+                    val card = cards[layout.itemCard]
+                    if (card != null) {
+                        app.gamenative.theme.runtime.ThemedGameGrid(
+                            items = state.appInfoList,
+                            gridConfig = layout,
+                            card = card,
+                            listState = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(safePaddingModifier),
+                            onItemClick = { item ->
+                                selectedAppId = item.appId
+                                selectedLibraryItem = item
+                            },
+                            onItemFocus = { /* Can be used for preview pane later */ },
+                            bindingProvider = bindingProvider,
+                            themePath = themeRootDir,
+                            firstItemFocusRequester = gridFirstItemFocusRequester,
+                        )
+                    }
+                    }
+                    is app.gamenative.theme.model.LayoutNode.Carousel -> {
+                        val card = cards[layout.itemCard]
+                        if (card != null) {
+                            app.gamenative.theme.runtime.ThemedGameCarousel(
+                                items = state.appInfoList,
+                                carouselConfig = layout,
+                                card = card,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(safePaddingModifier),
+                                initialPage = carouselPageIndex,
+                                onPageChanged = onCarouselPageChanged,
+                                onItemClick = { item ->
+                                    selectedAppId = item.appId
+                                    selectedLibraryItem = item
+                                },
+                                onItemFocus = { /* Can be used for preview pane later */ },
+                                bindingProvider = bindingProvider,
+                                themePath = themeRootDir,
+                                firstItemFocusRequester = gridFirstItemFocusRequester,
+                            )
+                        }
+                    }
+                                is app.gamenative.theme.model.LayoutNode.Canvas -> {
+                        // Fallback to basic ThemeLayout for Canvas layouts
+                    val baseBinding = remember(reloadTick) {
+                        app.gamenative.theme.runtime.MapBindingContext()
+                    }
+                    val itemBindingProvider = remember(state.appInfoList, reloadTick) {
+                        { index: Int ->
+                            val item = state.appInfoList.getOrNull(index)
+                            val bindings = item?.let { bindingProvider(it) } ?: emptyMap()
+                            app.gamenative.theme.runtime.MapBindingContext(strings = bindings)
+                        }
+                    }
+                    app.gamenative.theme.runtime.ThemeLayout(
+                        layout = layout,
+                        cards = cards,
+                        binding = baseBinding,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(safePaddingModifier)
+                            .padding(8.dp),
+                        itemBindingProvider = itemBindingProvider,
+                    )
+                }
+                }
+                        }
+                    }
+                }
+                } // end CompositionLocalProvider
+                } // end key(orientationKey)
+            } else {
+                // Legacy interactive Library list (master's new layout)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Library list (content scrolls behind tab bar)
+                    LibraryListPane(
+                        state = state,
+                        listState = listState,
+                        currentLayout = currentPaneType,
+                        firstGridItemFocusRequester = gridFirstItemFocusRequester,
+                        focusTargetListIndex = gridFocusTargetListIndex,
+                        onPageChange = onPageChange,
+                        onNavigate = { appId ->
+                            selectedAppId = appId
+                            selectedLibraryItem = state.appInfoList.find { it.appId == appId }
                         },
-                        onPreviousTab = onPreviousTab,
-                        onNextTab = onNextTab,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth(),
+                        onRefresh = onRefresh,
+                        modifier = Modifier.fillMaxSize(),
                     )
+
+                    // Top overlay: Tab bar OR Search bar
+                    if (state.isSearching) {
+                        // Search overlay replaces tab bar when searching
+                        // TODO: Gamepad focus is a bit wonky whenever we show the search bar
+                        LibrarySearchBar(
+                            isVisible = true,
+                            searchQuery = state.searchQuery,
+                            resultCount = state.totalAppsInFilter,
+                            listState = listState,
+                            onSearchQuery = onSearchQuery,
+                            onDismiss = { onIsSearching(false) },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth(),
+                        )
+                    } else {
+                        // Tab bar when not searching
+                        LibraryTabBar(
+                            currentTab = state.currentTab,
+                            tabCounts = mapOf(
+                                LibraryTab.ALL to state.allCount,
+                                LibraryTab.STEAM to state.steamCount,
+                                LibraryTab.GOG to state.gogCount,
+                                LibraryTab.EPIC to state.epicCount,
+                                LibraryTab.AMAZON to state.amazonCount,
+                                LibraryTab.LOCAL to state.localCount,
+                            ),
+                            onTabSelected = onTabChanged,
+                            onOptionsClick = { onOptionsPanelToggle(true) },
+                            onSearchClick = { onIsSearching(true) },
+                            onAddGameClick = onAddCustomGameClick,
+                            onMenuClick = { isSystemMenuOpen = true },
+                            onNavigateDownToGrid = {
+                                if (state.appInfoList.isNotEmpty()) {
+                                    gridFocusTargetListIndex = listState.firstVisibleItemIndex
+                                        .coerceIn(0, state.appInfoList.lastIndex)
+                                    pendingGridFocusRequest = true
+                                }
+                            },
+                            onPreviousTab = onPreviousTab,
+                            onNextTab = onNextTab,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth(),
+                        )
+                    }
                 }
             }
         } else {
@@ -863,8 +1224,9 @@ private fun LibraryScreenContent(
             )
         }
 
-        // Bottom action bar
-        if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+        // Bottom action bar (hidden when theme engine is active, as themes handle their own UI)
+        val useThemeUiForActionBar = PrefManager.useThemeEngineUi && app.gamenative.theme.ThemeManager.activeTheme.value != null
+        if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen && !useThemeUiForActionBar) {
             val libraryActions = if (state.isSearching) {
                 listOf(
                     LibraryActions.select,
@@ -1029,6 +1391,26 @@ private fun LibraryScreenContent(
                 },
             )
         }
+
+        // Filter bottom sheet - shown for themed views (LibraryListPane handles its own)
+        val useThemeUi = PrefManager.useThemeEngineUi
+        if (useThemeUi && state.modalBottomSheet && selectedAppId == null) {
+            ModalBottomSheet(
+                onDismissRequest = { onModalBottomSheet(false) },
+                sheetState = sheetState,
+            ) {
+                LibraryBottomSheet(
+                    selectedFilters = state.appInfoSortType,
+                    onFilterChanged = onFilterChanged,
+                    currentView = PaneType.GRID_CAPSULE, // Theme controls layout, not this
+                    onViewChanged = { /* No-op when using themes */ },
+                    showSteam = state.showSteamInLibrary,
+                    showCustomGames = state.showCustomGamesInLibrary,
+                    showGOG = state.showGOGInLibrary,
+                    onSourceToggle = onSourceToggle,
+                )
+            }
+        }
     }
 }
 
@@ -1076,6 +1458,8 @@ private fun Preview_LibraryScreenContent() {
     PluviaTheme {
         LibraryScreenContent(
             listState = rememberLazyGridState(),
+            carouselPageIndex = 0,
+            onCarouselPageChanged = {},
             state = state,
             sheetState = sheetState,
             onIsSearching = {},

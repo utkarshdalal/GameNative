@@ -241,7 +241,14 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
     implementation(libs.landscapist.coil)
+    implementation(libs.coil.svg)
     debugImplementation(libs.androidx.ui.tooling)
+
+    // Media3 (ExoPlayer) for video playback
+    implementation(libs.bundles.media3)
+
+    // Baseline Profiles - enables precompilation of critical code paths
+    implementation(libs.profileinstaller)
 
     // Support
     implementation(libs.androidx.core.ktx)

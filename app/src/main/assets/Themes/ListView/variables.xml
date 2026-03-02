@@ -1,0 +1,40 @@
+<variables>
+    <!-- Colors (used multiple times) -->
+    <var name="textColor" value="#FFFFFFFF" />
+    <var name="highlightColor" value="#9575CD" />
+
+    <!-- Highlight styling (used by multiple elements) -->
+    <var name="highlightOpacity" value="0.9" />
+    <var name="highlightBorderWidth" value="2" />
+    <var name="highlightTransitionSpeed" value="200" />
+
+    <!-- Shared dimensions -->
+    <var name="cornerRadius" value="15" />
+    <var name="rowHeight" value="92" />
+    <var name="coverSize" value="60" />
+    <var name="textSizeTitle" value="16" />
+    <var name="titleWidth" value="65%" />
+
+    <!-- Shared spacing -->
+    <var name="paddingMedium" value="16" />
+    <var name="bottomOffset" value="24" />
+
+    <!-- Top bar (in breakpoint) -->
+    <var name="topBarHeight" value="72" />
+    <var name="searchBarWidth" value="600" />
+    <var name="searchBarX" value="200" />
+    <var name="searchBarY" value="12" />
+    <var name="profileButtonY" value="12" />
+    <var name="gridPaddingTop" value="80" />
+
+    <!-- Portrait overrides -->
+    <breakpoint orientation="portrait">
+        <var name="topBarHeight" value="130" />
+        <var name="gridPaddingTop" value="160" />
+        <var name="searchBarWidth" value="90%" />
+        <var name="searchBarX" value="5%" />
+        <var name="searchBarY" value="80" />
+        <var name="profileButtonY" value="10" />
+        <var name="titleWidth" value="45%" />
+    </breakpoint>
+</variables>

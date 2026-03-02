@@ -1,0 +1,14 @@
+<manifest>
+    <id>list_view</id>
+    <title>List View</title>
+    <version>1.0.0</version>
+    <engineVersion>1.0.0</engineVersion>
+    <minAppVersion>0.0.0</minAppVersion>
+    <description>A traditional list layout with game details, install status, and quick actions.</description>
+    <author>
+        <name>Utkarsh Dalal</name>
+        <github>https://github.com/utkarshdalal</github>
+    </author>
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" locales="/locales" />
+</manifest>

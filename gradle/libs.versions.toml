@@ -20,6 +20,7 @@ kotlin = "2.1.21" # https://mvnrepository.com/artifact/org.jetbrains.kotlin.andr
 kotlinter = "5.0.1" # https://plugins.gradle.org/plugin/org.jmailen.kotlinter
 ksp = "2.1.21-2.0.2" # https://mvnrepository.com/artifact/com.google.devtools.ksp/symbol-processing-api
 landscapistCoil = "2.4.6" # https://mvnrepository.com/artifact/com.github.skydoves/landscapist-coil
+coil = "2.7.0" # https://mvnrepository.com/artifact/io.coil-kt/coil
 lifecycleRuntimeKtx = "2.8.7" # https://mvnrepository.com/artifact/androidx.lifecycle/lifecycle-runtime-ktx
 material = "1.12.0" # https://mvnrepository.com/artifact/com.google.android.material/material
 material3Adaptive = "1.0.0" # https://mvnrepository.com/artifact/androidx.compose.material3.adaptive/adaptive-layout
@@ -41,6 +42,9 @@ spongycastle = "1.58.0.0" # https://mvnrepository.com/artifact/com.madgag.spongy
 timber = "5.0.1" # https://mvnrepository.com/artifact/com.jakewharton.timber/timber
 zstd-jni = "1.5.7-5" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
 zxing = "3.5.3" # https://mvnrepository.com/artifact/com.google.zxing/core
+constraintlayoutComposeAndroid = "1.1.1" # https://mvnrepository.com/artifact/androidx.constraintlayout/constraintlayout-compose
+media3 = "1.5.1" # https://mvnrepository.com/artifact/androidx.media3/media3-exoplayer
+profileinstaller = "1.4.1" # https://mvnrepository.com/artifact/androidx.profileinstaller/profileinstaller
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -79,6 +83,7 @@ javasteam-depotdownloader = { group = "io.github.joshuatam", name = "javasteam-d
 jetbrains-kotlinx-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "json" }
 kotlin-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 landscapist-coil = { module = "com.github.skydoves:landscapist-coil", version.ref = "landscapistCoil" }
+coil-svg = { module = "io.coil-kt:coil-svg", version.ref = "coil" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
@@ -112,9 +117,18 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.1.0"} # https://
 okhttp-coroutines = { module = "com.squareup.okhttp3:okhttp-coroutines", version = "5.1.0"} # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-coroutines
 xz = { module = "org.tukaani:xz", version = "1.10" } # https://mvnrepository.com/artifact/org.tukaani/xz
 
+# Media3 (ExoPlayer) for video playback
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+
+# Baseline Profiles
+profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-dynamic-feature = { id = "com.android.dynamic-feature", version.ref = "agp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version = "1.3.3" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "dagger-hilt" }
 jetbrains-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -169,4 +183,8 @@ javasteam-dev = [
 google = [
     "feature-delivery",
     "play-integrity",
+]
+media3 = [
+    "media3-exoplayer",
+    "media3-ui",
 ]

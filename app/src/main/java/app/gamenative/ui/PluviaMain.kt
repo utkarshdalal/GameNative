@@ -3,6 +3,10 @@ package app.gamenative.ui
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -1247,6 +1251,13 @@ fun PluviaMain(
                     paletteStyle = state.paletteStyle,
                     onAppTheme = viewModel::setTheme,
                     onPaletteStyle = viewModel::setPalette,
+                    onBack = { navController.navigateUp() },
+                )
+            }
+
+            /** Theme Selector **/
+            composable(route = PluviaScreen.ThemeSelector.route) {
+                app.gamenative.ui.screen.settings.ThemeSelectorScreen(
                     onBack = { navController.navigateUp() },
                 )
             }

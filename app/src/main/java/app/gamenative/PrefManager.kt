@@ -945,6 +945,59 @@ object PrefManager {
         get() = getPref(APP_LANGUAGE, "")
         set(value) = setPref(APP_LANGUAGE, value)
 
+    // Active Theme Engine theme id (for ThemeManager)
+    private val ACTIVE_THEME_ID = stringPreferencesKey("active_theme_id")
+    var activeThemeId: String
+        get() = getPref(ACTIVE_THEME_ID, "")
+        set(value) = setPref(ACTIVE_THEME_ID, value)
+
+    // One-time migration flag: legacy Library layout -> ThemeManager theme id
+    private val THEME_LAYOUT_MIGRATED = booleanPreferencesKey("theme_layout_migrated")
+    var themeLayoutMigrated: Boolean
+        get() = getPref(THEME_LAYOUT_MIGRATED, false)
+        set(value) = setPref(THEME_LAYOUT_MIGRATED, value)
+
+    // Experimental: Use Theme Engine UI for Library screen
+    private val USE_THEME_ENGINE_UI = booleanPreferencesKey("use_theme_engine_ui")
+    var useThemeEngineUi: Boolean
+        get() = getPref(USE_THEME_ENGINE_UI, false)
+        set(value) = setPref(USE_THEME_ENGINE_UI, value)
+
+    // Sort installed games by last played time
+    private val SORT_INSTALLED_BY_LAST_PLAYED = booleanPreferencesKey("sort_installed_by_last_played")
+    var sortInstalledByLastPlayed: Boolean
+        get() = getPref(SORT_INSTALLED_BY_LAST_PLAYED, false)
+        set(value) = setPref(SORT_INSTALLED_BY_LAST_PLAYED, value)
+
+    // Show dialog when adding external theme
+    private val SHOW_ADD_THEME_DIALOG = booleanPreferencesKey("show_add_theme_dialog")
+    var showAddThemeDialog: Boolean
+        get() = getPref(SHOW_ADD_THEME_DIALOG, true)
+        set(value) = setPref(SHOW_ADD_THEME_DIALOG, value)
+
+    // Pending theme added toast (stores theme name to show toast after app restart)
+    private val PENDING_THEME_ADDED_TOAST = stringPreferencesKey("pending_theme_added_toast")
+    var pendingThemeAddedToast: String?
+        get() = getPref(PENDING_THEME_ADDED_TOAST, "").takeIf { it.isNotBlank() }
+        set(value) = setPref(PENDING_THEME_ADDED_TOAST, value ?: "")
+
+    // External theme paths (comma-separated list of folder paths)
+    private val EXTERNAL_THEME_PATHS = stringPreferencesKey("external_theme_paths")
+    var externalThemePaths: Set<String>
+        get() {
+            val raw = getPref(EXTERNAL_THEME_PATHS, "")
+            return if (raw.isBlank()) emptySet() else raw.split("|||").toSet()
+        }
+        set(value) = setPref(EXTERNAL_THEME_PATHS, value.joinToString("|||"))
+
+    fun addExternalThemePath(path: String) {
+        externalThemePaths = externalThemePaths + path
+    }
+
+    fun removeExternalThemePath(path: String) {
+        externalThemePaths = externalThemePaths - path
+    }
+
     // auto-apply known config from BestConfigService on first container creation
     private val AUTO_APPLY_KNOWN_CONFIG = booleanPreferencesKey("auto_apply_known_config")
     var autoApplyKnownConfig: Boolean

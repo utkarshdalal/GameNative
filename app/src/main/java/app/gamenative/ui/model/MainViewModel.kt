@@ -438,6 +438,10 @@ class MainViewModel @Inject constructor(
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
+                // Record last played timestamp
+                container.lastPlayedTimestamp = System.currentTimeMillis()
+                container.saveData()
+
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
                     if (container.isLaunchRealSteam()) {

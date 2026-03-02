@@ -1,0 +1,69 @@
+<theme>
+    <elements>
+        <card id="listItem" width="100%" height="@{vars.rowHeight}">
+            <rect id="rowBg" x="0" y="0" width="100%" height="@{vars.rowHeight}"
+                  color="#AA1E1E1E" cornerRadius="@{vars.cornerRadius}"
+                  borderWidth="1" borderColor="#22FFFFFF" />
+
+            <image id="cover" x="@{vars.paddingMedium}" y="@{vars.paddingMedium}"
+                   width="@{vars.coverSize}" height="@{vars.coverSize}"
+                   src="@{game.cover}" cornerRadius="@{vars.cornerRadius}" scaleType="cover" />
+
+            <text id="title" x="88" y="18" width="@{vars.titleWidth}" height="24"
+                  text="@{game.title}" textSize="@{vars.textSizeTitle}"
+                  color="@{vars.textColor}" maxLines="1" fontWeight="bold"
+                  overflow="ellipsis" />
+
+            <text id="installIndicator" x="88" y="40" width="16" height="16"
+                  text="●" textSize="@{vars.textSizeTitle}"
+                  color="@{game.installStatus.color}" fontWeight="bold" />
+
+            <text id="installStatus" x="100" y="42" width="300" height="16"
+                  text="@{game.installStatus}" textSize="12"
+                  color="#FF888888" />
+
+            <text id="compatStatus" x="88" y="60" width="300" height="18"
+                  text="@{game.compatibility.label}" textSize="13"
+                  color="@{game.compatibility.color}" fontStyle="italic" />
+
+            <button id="openBtn" x="26" y="26" height="40" padding="0 20" anchor="topRight"
+                    text="@string/open_button" backgroundColor="@color/primary" textColor="@color/onPrimary"
+                    textSize="14" cornerRadius="@{vars.cornerRadius}" />
+        </card>
+    </elements>
+
+    <layout>
+        <grid columns="1" cellWidth="100%" cellSpacing="0"
+              padding="@{vars.gridPaddingTop} 20"
+              selectionMode="moving" itemCard="listItem">
+            <separator height="1" margin="12 0">
+                <rect x="0" y="0" width="100%" height="1" color="#22FFFFFF" />
+            </separator>
+        </grid>
+
+        <fixed id="topBar" backgroundColor="#CC000000" height="@{vars.topBarHeight}">
+            <header x="@{vars.paddingMedium}" y="8" anchor="topLeft"
+                textColor="@{vars.textColor}" showAppName="true" showGameCount="true" />
+            <searchBar x="@{vars.searchBarX}" y="@{vars.searchBarY}" width="@{vars.searchBarWidth}" height="56"
+                anchor="topLeft" backgroundColor="#FF1E1E1E" borderRadius="24"
+                highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+            <profileButton x="@{vars.paddingMedium}" y="@{vars.profileButtonY}" anchor="topRight" size="56"
+                iconSize="36" padding="10"
+                backgroundColor="#66808080" cornerRadius="12"
+                highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+
+        <fixed id="bottomBar">
+            <filterButton x="100" y="@{vars.bottomOffset}" anchor="bottomRight" expanded="true"
+                          cornerRadius="16" size="56" iconSize="24"
+                          highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                          highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+            <addButton x="@{vars.paddingMedium}" y="@{vars.bottomOffset}" anchor="bottomRight"
+                       cornerRadius="16" size="56" iconSize="24"
+                       highlightColor="@{vars.highlightColor}" highlightOpacity="@{vars.highlightOpacity}"
+                       highlightBorderWidth="@{vars.highlightBorderWidth}" highlightTransitionSpeed="@{vars.highlightTransitionSpeed}" />
+        </fixed>
+    </layout>
+</theme>

@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -58,6 +61,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import timber.log.Timber
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gamenative.theme.ThemeManager
 
 /**
  * Calculates the installed games count based on the current filter state.
@@ -125,6 +130,7 @@ internal fun LibraryListPane(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
     val snackBarHost = remember { SnackbarHostState() }
 
     // Calculate installed count based on current filter state
@@ -139,6 +145,10 @@ internal fun LibraryListPane(
     ) {
         calculateInstalledCount(state)
     }
+
+
+    // Observe currently selected Theme (to provide a visible cue when themes change)
+    val selectedThemeId by ThemeManager.selectedThemeId.collectAsStateWithLifecycle(null)
 
     val pullToRefreshState = rememberPullToRefreshState()
     val windowWidthClass = rememberWindowWidthClass()
@@ -197,7 +207,12 @@ internal fun LibraryListPane(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
         ) {
             var shouldShowSkeletonOverlay by remember { mutableStateOf(true) }
 

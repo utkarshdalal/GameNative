@@ -1,0 +1,13 @@
+<manifest>
+    <id>capsule_grid</id>
+    <title>Capsule Grid</title>
+    <version>1.0.0</version>
+    <engineVersion>1.0.0</engineVersion>
+    <minAppVersion>0.0.0</minAppVersion>
+    <description>A responsive grid of portrait capsule art with compatibility badges and game titles.</description>
+    <author>
+        <name>Radical Thomas</name>
+    </author>
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" />
+</manifest>

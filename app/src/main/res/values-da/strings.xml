@@ -1078,4 +1078,30 @@
     <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
     <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
+
+    <!-- Theme Engine -->
+    <string name="library_never_played">Aldrig spillet</string>
+    <string name="theme_applied_toast">Tema anvendt: %1$s</string>
+    <string name="theme_fallback_toast">Tema kunne ikke indlæses. Falder tilbage til %1$s</string>
+    <string name="settings_use_theme_engine_ui_title">Brug tema-motor UI (eksperimentel)</string>
+    <string name="settings_use_theme_engine_ui_subtitle">Aktivér det nye tema-baserede biblioteksskærmbillede. Kan reducere interaktivitet.</string>
+    <string name="theme_selector_title">Vælg tema</string>
+    <string name="theme_no_description">Ingen beskrivelse tilgængelig</string>
+    <string name="theme_by_author">Af %s</string>
+    <string name="theme_menu_button">Temaer</string>
+    <string name="theme_activate">Aktivér</string>
+    <string name="theme_active">Aktivt</string>
+    <string name="theme_add_external">Tilføj tema</string>
+    <string name="theme_source_external">Ekstern</string>
+    <string name="theme_remove">Fjern</string>
+    <string name="theme_remove_title">Fjern tema</string>
+    <string name="theme_remove_message">Fjern \"%1$s\" fra temalisten?\n\nDette vil ikke slette temafilerne fra din enhed.</string>
+    <string name="theme_remove_confirm">Fjern</string>
+    <string name="theme_added_toast">Tema tilføjet: %1$s</string>
+    <string name="theme_removed_toast">Tema fjernet: %1$s</string>
+    <string name="theme_validation_failed">Ugyldigt tema: %1$s</string>
+    <string name="theme_select_folder">Vælg en mappe der indeholder et tema</string>
+    <string name="theme_add_dialog_title">Tilføj eksternt tema</string>
+    <string name="theme_add_dialog_message">Vælg venligst en mappe der indeholder et gyldigt tema.\n\nEn gyldig temamappe skal indeholde en manifest.xml fil med de påkrævede felter (id, version, engineVersion, minAppVersion).\n\nBemærk: Appen kan genstarte efter valg af mappe.</string>
+    <string name="theme_add_dont_show_again">Vis ikke denne dialog igen</string>
 </resources>

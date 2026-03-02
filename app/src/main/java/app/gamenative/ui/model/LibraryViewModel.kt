@@ -33,6 +33,7 @@ import app.gamenative.ui.enums.SortOption
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import com.winlator.container.ContainerManager
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -65,6 +66,9 @@ class LibraryViewModel @Inject constructor(
 
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
+
+    // Keep the carousel page index for carousel-based themes
+    var carouselPageIndex: Int by mutableStateOf(0)
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
         onFilterApps(paginationCurrentPage)
@@ -598,6 +602,20 @@ class LibraryViewModel @Inject constructor(
                 currentTab.showAmazon
             }
 
+            // Build map of appId -> lastPlayedTimestamp for installed games (used by RECENTLY_PLAYED sort)
+            val lastPlayedMap: Map<String, Long> = if (currentState.currentSortOption == SortOption.RECENTLY_PLAYED) {
+                try {
+                    val containerManager = ContainerManager(context)
+                    containerManager.containers
+                        .associate { container -> container.id to container.lastPlayedTimestamp }
+                } catch (e: Exception) {
+                    Timber.tag("LibraryViewModel").e(e, "Error loading container timestamps")
+                    emptyMap()
+                }
+            } else {
+                emptyMap()
+            }
+
             // Combine both lists and apply sort option
             val sortComparator: Comparator<LibraryEntry> = when (currentState.currentSortOption) {
                 SortOption.INSTALLED_FIRST -> compareBy<LibraryEntry> { entry ->
@@ -610,6 +628,8 @@ class LibraryViewModel @Inject constructor(
 
                 SortOption.RECENTLY_PLAYED -> compareBy<LibraryEntry> { entry ->
                     if (entry.isInstalled) 0 else 1
+                }.thenByDescending { entry ->
+                    if (entry.isInstalled) lastPlayedMap[entry.item.appId] ?: 0L else 0L
                 }.thenBy { it.item.name.lowercase() }
 
                 SortOption.SIZE_SMALLEST -> compareBy<LibraryEntry> { it.item.sizeBytes }

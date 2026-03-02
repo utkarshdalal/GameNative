@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -238,6 +239,32 @@ fun SettingsGroupInterface(
             title = { Text(text = stringResource(R.string.settings_language)) },
             subtitle = { Text(text = LocaleHelper.getLanguageDisplayName(PrefManager.appLanguage)) },
             onClick = { openLanguageDialog = true },
+        )
+
+        // Enable Theme Engine UI rendering
+        var useThemeEngineUi by rememberSaveable { mutableStateOf(PrefManager.useThemeEngineUi) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_use_theme_engine_ui_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_use_theme_engine_ui_subtitle)) },
+            state = useThemeEngineUi,
+            onCheckedChange = {
+                useThemeEngineUi = it
+                PrefManager.useThemeEngineUi = it
+            },
+        )
+
+        // Sort installed games by last played
+        var sortByLastPlayed by rememberSaveable { mutableStateOf(PrefManager.sortInstalledByLastPlayed) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_sort_last_played_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_sort_last_played_subtitle)) },
+            state = sortByLastPlayed,
+            onCheckedChange = {
+                sortByLastPlayed = it
+                PrefManager.sortInstalledByLastPlayed = it
+            },
         )
 
         // Unified visual icon picker (affects app and notification icons)

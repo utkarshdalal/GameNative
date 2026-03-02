@@ -438,18 +438,28 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Get last played text
-        val lastPlayedText = remember(isInstalled, gameId) {
-            if (isInstalled) {
-                val path = getAppDirPath(gameId)
-                val file = File(path)
-                if (file.exists()) {
-                    SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
+        // Get last played text from container timestamp (preferred) or file-based fallback
+        val lastPlayedText = remember(isInstalled, libraryItem.appId, gameId) {
+            try {
+                // Try container-based timestamp first
+                val containerManager = ContainerManager(context)
+                val container = containerManager.containers.find { it.id == libraryItem.appId }
+                if (container != null && container.lastPlayedTimestamp > 0) {
+                    SteamUtils.fromSteamTime((container.lastPlayedTimestamp / 1000).toInt())
+                } else if (isInstalled) {
+                    // Fall back to file-based last modified time
+                    val path = getAppDirPath(gameId)
+                    val file = File(path)
+                    if (file.exists()) {
+                        SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
+                    } else {
+                        context.getString(R.string.library_never_played)
+                    }
                 } else {
-                    context.getString(R.string.steam_never)
+                    context.getString(R.string.library_never_played)
                 }
-            } else {
-                context.getString(R.string.steam_never)
+            } catch (e: Exception) {
+                context.getString(R.string.library_never_played)
             }
         }
 

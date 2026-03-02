@@ -1,0 +1,14 @@
+<manifest>
+    <id>carousel</id>
+    <title>Carousel</title>
+    <version>1.0.0</version>
+    <engineVersion>1.0.0</engineVersion>
+    <minAppVersion>0.0.0</minAppVersion>
+    <description>A center-focused carousel with large hero images. The highlighted game in the center scales up for emphasis.</description>
+    <author>
+        <name>Mikkel Bjørnmose Bundgaard</name>
+        <github>https://github.com/maaggel</github>
+    </author>
+    <preview src="/assets/theme.png" />
+    <theme source="/theme.xml" variables="/variables.xml" />
+</manifest>
