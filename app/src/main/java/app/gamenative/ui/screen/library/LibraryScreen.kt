@@ -1059,6 +1059,7 @@ private fun LibraryScreenContent(
                             onItemFocus = { /* Can be used for preview pane later */ },
                             bindingProvider = bindingProvider,
                             themePath = themeRootDir,
+                            firstItemFocusRequester = gridFirstItemFocusRequester,
                         )
                     }
                     }
@@ -1081,6 +1082,7 @@ private fun LibraryScreenContent(
                                 onItemFocus = { /* Can be used for preview pane later */ },
                                 bindingProvider = bindingProvider,
                                 themePath = themeRootDir,
+                                firstItemFocusRequester = gridFirstItemFocusRequester,
                             )
                         }
                     }

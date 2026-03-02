@@ -89,6 +89,7 @@ fun ThemedGameGrid(
     onItemFocus: (LibraryItem) -> Unit = {},
     bindingProvider: (LibraryItem) -> Map<String, String> = { emptyMap() },
     themePath: String? = null,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     // String resolver for @string/ references
     val context = LocalContext.current
@@ -280,9 +281,16 @@ fun ThemedGameGrid(
                 items = items,
                 key = { _, item -> item.appId }
             ) { index, item ->
-                // Get or create focus requester for this item
-                val itemFocusRequester = remember {
-                    itemFocusRequesters.getOrPut(index) { FocusRequester() }
+                // Get or create focus requester for this item.
+                // For index 0, use the externally provided requester if available
+                // so the parent's bootstrap mechanism can focus the first grid item.
+                val itemFocusRequester = remember(index, firstItemFocusRequester) {
+                    if (index == 0 && firstItemFocusRequester != null) {
+                        itemFocusRequesters[0] = firstItemFocusRequester
+                        firstItemFocusRequester
+                    } else {
+                        itemFocusRequesters.getOrPut(index) { FocusRequester() }
+                    }
                 }
                 
                 Column {
@@ -361,6 +369,7 @@ fun ThemedGameCarousel(
     onItemFocus: (LibraryItem) -> Unit = {},
     bindingProvider: (LibraryItem) -> Map<String, String> = { emptyMap() },
     themePath: String? = null,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val context = LocalContext.current
     val stringResolver = remember(themePath) {
@@ -394,8 +403,12 @@ fun ThemedGameCarousel(
         // Coroutine scope for animating page changes
         val coroutineScope = rememberCoroutineScope()
 
-        // Focus requester for controller navigation
-        val focusRequester = remember { FocusRequester() }
+        // Focus requester for controller navigation.
+        // Use externally provided requester if available so the parent's
+        // bootstrap mechanism can restore focus after dialog dismissal.
+        val focusRequester = remember(firstItemFocusRequester) {
+            firstItemFocusRequester ?: FocusRequester()
+        }
 
         // Spatial focus manager for directional navigation based on screen position
         val spatialFocusManager = LocalSpatialFocusManager.current
