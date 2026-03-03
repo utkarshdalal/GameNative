@@ -62,6 +62,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean pressExecuted;
     private final boolean capturePointerOnExternalMouse;
     private boolean pointerCaptureRequested;
+    private float capturedPointerRemainderX = 0f;
+    private float capturedPointerRemainderY = 0f;
+    private boolean isFirstCapturedMove = true;
 
     // ── Gesture configuration ────────────────────────────────────────
     private TouchGestureConfig gestureConfig = new TouchGestureConfig();
@@ -143,6 +146,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         super.onWindowFocusChanged(hasFocus);
         // allow re-capture after app returns from background
         if (hasFocus) pointerCaptureRequested = false;
+    }
+
+    @Override
+    public void onPointerCaptureChange(boolean hasCapture) {
+        super.onPointerCaptureChange(hasCapture);
+        if (hasCapture) isFirstCapturedMove = true;
     }
 
     private static StateListDrawable createTransparentBackground() {
@@ -1196,10 +1205,22 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 case MotionEvent.ACTION_MOVE:
                 case MotionEvent.ACTION_HOVER_MOVE:
                     float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-                    if (xServer.isRelativeMouseMovement())
-                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-                    else
-                        xServer.injectPointerMove((int)transformedPoint[0], (int)transformedPoint[1]);
+                    int tx = Mathf.clamp((int)transformedPoint[0], 0, xServer.screenInfo.width - 1);
+                    int ty = Mathf.clamp((int)transformedPoint[1], 0, xServer.screenInfo.height - 1);
+
+                    if (xServer.isRelativeMouseMovement()) {
+                        // If we are in relative mode but not captured (or using standard events),
+                        // calculate delta manually to avoid sending absolute coordinates to the guest.
+                        int dx = tx - xServer.pointer.getX();
+                        int dy = ty - xServer.pointer.getY();
+
+                        // Only send if the delta is reasonable (prevents initial jumps)
+                        if (Math.abs(dx) < 600 && Math.abs(dy) < 600) {
+                            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+                        }
+                    }
+
+                    xServer.injectPointerMove(tx, ty);
                     handled = true;
                     break;
                 case MotionEvent.ACTION_SCROLL:
@@ -1241,23 +1262,131 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override // android.view.View.OnCapturedPointerListener
     public boolean onCapturedPointer(View view, MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_MOVE) {
-            float dx = 0f;
-            float dy = 0f;
-
-            int historySize = event.getHistorySize();
-            for (int i = 0; i < historySize; i++) {
-                dx += event.getHistoricalX(i);
-                dy += event.getHistoricalY(i);
+        int action = event.getAction();
+        if (action == MotionEvent.ACTION_MOVE) {
+            // Xiaomi Fix: Skip the first move event after capture because it often 
+            // contains absolute coordinates that cause the cursor to jump to the corner.
+            if (isFirstCapturedMove) {
+                isFirstCapturedMove = false;
+                return true;
             }
 
-            dx += event.getX();
-            dy += event.getY();
-            this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
+            // Prefer AXIS_RELATIVE if the device reports it (more reliable on some Xiaomi ROMs)
+            float dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
+            float dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
+
+            // Fallback to standard X/Y if relative axes are 0 (they report deltas in captured mode)
+            if (dx == 0 && dy == 0) {
+                dx = event.getX();
+                dy = event.getY();
+            }
+
+            int historySize = event.getHistorySize();
+            if (historySize > 0) {
+                for (int i = 0; i < historySize; i++) {
+                    float hx = event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_X, i);
+                    float hy = event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_Y, i);
+                    if (hx == 0 && hy == 0) {
+                        dx += event.getHistoricalX(i);
+                        dy += event.getHistoricalY(i);
+                    } else {
+                        dx += hx;
+                        dy += hy;
+                    }
+                }
+            }
+
+            // Apply sensitivity to captured movement
+            dx *= sensitivity;
+            dy *= sensitivity;
+
+            // Handle suspiciously large deltas (absolute coords leak)
+            if (Math.abs(dx) > 600 || Math.abs(dy) > 600) return true;
+
+            dx += capturedPointerRemainderX;
+            dy += capturedPointerRemainderY;
+
+            int idx = Mathf.roundPoint(dx);
+            int idy = Mathf.roundPoint(dy);
+
+            capturedPointerRemainderX = dx - idx;
+            capturedPointerRemainderY = dy - idy;
+
+            if (idx != 0 || idy != 0) {
+                // Update local X11 pointer
+                this.xServer.injectPointerMoveDelta(idx, idy);
+                
+                // IMPORTANT: If we are in relative mouse mode (common in games),
+                // we must also send the delta to the Windows side via WinHandler.
+                if (this.xServer.isRelativeMouseMovement()) {
+                    this.xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, idx, idy, 0);
+                }
+            }
             return true;
         }
+
+        // For non-move events (clicks, scrolls), reset the first move flag if necessary
+        // and handle via button logic.
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_HOVER_MOVE) {
+            return onExternalMouseCapturedButtonEvent(event);
+        }
+
         event.setSource(event.getSource() | InputDevice.SOURCE_MOUSE);
         return onExternalMouseEvent(event);
+    }
+
+    private boolean onExternalMouseCapturedButtonEvent(MotionEvent event) {
+        // Limited version of onExternalMouseEvent that only handles buttons and scroll
+        if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+            int actionButton = event.getActionButton();
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_BUTTON_PRESS:
+                    handleExternalMouseButton(actionButton, true);
+                    return true;
+                case MotionEvent.ACTION_BUTTON_RELEASE:
+                    handleExternalMouseButton(actionButton, false);
+                    return true;
+                case MotionEvent.ACTION_SCROLL:
+                    return handleExternalMouseScroll(event);
+            }
+        }
+        return false;
+    }
+
+    private void handleExternalMouseButton(int actionButton, boolean pressed) {
+        Pointer.Button btn = null;
+        if (actionButton == MotionEvent.BUTTON_PRIMARY) btn = Pointer.Button.BUTTON_LEFT;
+        else if (actionButton == MotionEvent.BUTTON_SECONDARY) btn = Pointer.Button.BUTTON_RIGHT;
+        else if (actionButton == MotionEvent.BUTTON_TERTIARY) btn = Pointer.Button.BUTTON_MIDDLE;
+
+        if (btn != null) {
+            if (pressed) {
+                if (xServer.isRelativeMouseMovement())
+                    xServer.getWinHandler().mouseEvent(buttonToDownFlag(btn), 0, 0, 0);
+                else
+                    xServer.injectPointerButtonPress(btn);
+            } else {
+                if (xServer.isRelativeMouseMovement())
+                    xServer.getWinHandler().mouseEvent(buttonToUpFlag(btn), 0, 0, 0);
+                else
+                    xServer.injectPointerButtonRelease(btn);
+            }
+        }
+    }
+
+    private boolean handleExternalMouseScroll(MotionEvent event) {
+        float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+        if (Math.abs(scrollY) >= 1.0f) {
+            if (xServer.isRelativeMouseMovement())
+                xServer.getWinHandler().mouseEvent(MouseEventFlags.WHEEL, 0, 0, (int) scrollY);
+            else {
+                Pointer.Button scrollBtn = scrollY > 0 ? Pointer.Button.BUTTON_SCROLL_UP : Pointer.Button.BUTTON_SCROLL_DOWN;
+                xServer.injectPointerButtonPress(scrollBtn);
+                xServer.injectPointerButtonRelease(scrollBtn);
+            }
+            return true;
+        }
+        return false;
     }
 
     public void setSimTouchScreen(boolean simTouchScreen) {
