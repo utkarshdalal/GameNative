@@ -33,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -690,6 +691,7 @@ fun XServerScreen(
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     // var launchedView by rememberSaveable { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
+        key(isPortrait) {
         AndroidView(
         modifier = Modifier
             .fillMaxSize()
@@ -1208,7 +1210,8 @@ fun XServerScreen(
         if (isEditMode && areControlsVisible) {
             EditModeToolbar(
                 onAdd = {
-                    if (PluviaApp.inputControlsView?.addElement() == true) {
+     
+        }               if (PluviaApp.inputControlsView?.addElement() == true) {
                         // Element was added, refresh the view
                         PluviaApp.inputControlsView?.invalidate()
                     }
