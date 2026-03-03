@@ -201,6 +201,8 @@ class UserLoginViewModel : ViewModel() {
         Timber.tag("UserLoginViewModel").d("init")
 
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
+        PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
+        PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemoteDisconnected)
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLogonStarted)
         PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
@@ -224,6 +226,8 @@ class UserLoginViewModel : ViewModel() {
         Timber.tag("UserLoginViewModel").d("onCleared")
 
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
+        PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
+        PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemoteDisconnected)
         PluviaApp.events.off<SteamEvent.LogonStarted, Unit>(onLogonStarted)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)

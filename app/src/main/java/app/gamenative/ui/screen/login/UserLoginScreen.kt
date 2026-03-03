@@ -233,8 +233,9 @@ fun UserLoginScreen(
         }
     }
 
-    LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn) {
+    LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn, connectionState) {
         if (
+            connectionState == ConnectionState.CONNECTED &&
             userLoginState.loginScreen != LoginScreen.TWO_FACTOR &&
             userLoginState.loginScreen != LoginScreen.QR &&
             userLoginState.isLoggingIn.not()
