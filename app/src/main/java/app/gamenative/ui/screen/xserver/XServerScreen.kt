@@ -1215,13 +1215,13 @@ fun XServerScreen(
             windowModificationListener = null
         },
     )
+        }
 
         // Floating toolbar for edit mode (always visible in edit mode)
         if (isEditMode && areControlsVisible) {
             EditModeToolbar(
                 onAdd = {
-     
-        }               if (PluviaApp.inputControlsView?.addElement() == true) {
+                    if (PluviaApp.inputControlsView?.addElement() == true) {
                         // Element was added, refresh the view
                         PluviaApp.inputControlsView?.invalidate()
                     }
