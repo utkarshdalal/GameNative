@@ -2440,6 +2440,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     JsDownloadPhase.UNKNOWN -> DownloadPhase.UNKNOWN
                     JsDownloadPhase.PREPARING -> DownloadPhase.PREPARING
                     JsDownloadPhase.DOWNLOADING -> DownloadPhase.DOWNLOADING
+                    JsDownloadPhase.DECOMPRESSING -> DownloadPhase.DECOMPRESSING
                     JsDownloadPhase.VERIFYING -> DownloadPhase.VERIFYING
                     JsDownloadPhase.COMPLETE -> DownloadPhase.COMPLETE
                 }
@@ -2451,7 +2452,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 ) {
                     val nowMs = System.currentTimeMillis()
                     val recentlyMovedBytes = nowMs - lastByteProgressAtMs <= 5_000L
-                    if (recentlyMovedBytes && downloadInfo.getStatusFlow().value == DownloadPhase.DOWNLOADING) {
+                    if (recentlyMovedBytes && (
+                        downloadInfo.getStatusFlow().value == DownloadPhase.DOWNLOADING ||
+                        downloadInfo.getStatusFlow().value == DownloadPhase.DECOMPRESSING
+                    )) {
                         return
                     }
                 }

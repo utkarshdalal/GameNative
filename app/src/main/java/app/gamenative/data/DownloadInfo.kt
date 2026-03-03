@@ -22,6 +22,7 @@ enum class DownloadPhase {
     UNKNOWN,
     PREPARING,
     DOWNLOADING,
+    DECOMPRESSING,
     PAUSED,
     FAILED,
     VERIFYING,
@@ -266,11 +267,10 @@ class DownloadInfo(
         val previousStatus = this.status.value
         this.status.value = status
 
-        // When returning to active downloading after a different phase, drop old speed history
-        if (status == DownloadPhase.DOWNLOADING &&
-            previousStatus != DownloadPhase.DOWNLOADING &&
-            previousStatus != DownloadPhase.UNKNOWN
-        ) {
+        // When returning to active downloading/decompressing after a non-active phase, drop old speed history
+        val isActivePhase = status == DownloadPhase.DOWNLOADING || status == DownloadPhase.DECOMPRESSING
+        val wasActivePhase = previousStatus == DownloadPhase.DOWNLOADING || previousStatus == DownloadPhase.DECOMPRESSING
+        if (isActivePhase && !wasActivePhase && previousStatus != DownloadPhase.UNKNOWN) {
             resetSpeedTracking()
         }
 
@@ -396,7 +396,7 @@ class DownloadInfo(
     fun getEstimatedTimeRemaining(): Long? {
         if (!isActive) return null
         val currentStatus = status.value
-        if (currentStatus != DownloadPhase.UNKNOWN && currentStatus != DownloadPhase.DOWNLOADING) {
+        if (currentStatus != DownloadPhase.UNKNOWN && currentStatus != DownloadPhase.DOWNLOADING && currentStatus != DownloadPhase.DECOMPRESSING) {
             return null
         }
         val total = totalExpectedBytes.get()

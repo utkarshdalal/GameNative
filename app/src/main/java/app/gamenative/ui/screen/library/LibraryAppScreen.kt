@@ -492,6 +492,7 @@ private fun phaseStringResId(phase: app.gamenative.data.DownloadPhase): Int {
         app.gamenative.data.DownloadPhase.UNKNOWN -> R.string.library_download_phase_downloading
         app.gamenative.data.DownloadPhase.PREPARING -> R.string.library_download_phase_preparing
         app.gamenative.data.DownloadPhase.DOWNLOADING -> R.string.library_download_phase_downloading
+        app.gamenative.data.DownloadPhase.DECOMPRESSING -> R.string.library_download_phase_decompressing
         app.gamenative.data.DownloadPhase.PAUSED -> R.string.library_download_phase_paused
         app.gamenative.data.DownloadPhase.FAILED -> R.string.library_download_phase_failed
         app.gamenative.data.DownloadPhase.VERIFYING -> R.string.library_download_phase_verifying
@@ -591,6 +592,7 @@ internal fun AppScreenContent(
         // Only tick and recalculate ETA & speed if we are actively downloading/verifying 
         // to avoid unnecessary calculations and UI recompositions when paused/failed
         val isActivePhase = downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING || 
+                          downloadStatus == app.gamenative.data.DownloadPhase.DECOMPRESSING ||
                           downloadStatus == app.gamenative.data.DownloadPhase.VERIFYING
                           
         while (isDownloading && isActivePhase) {
@@ -641,7 +643,7 @@ internal fun AppScreenContent(
 
     val phaseText = remember(displayInfo.gameId, downloadProgress, downloadInfo, downloadStatus) {
         val (bytesDone, _) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
-        if (downloadProgress >= 0.99f && downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING) {
+        if (downloadProgress >= 0.99f && (downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING || downloadStatus == app.gamenative.data.DownloadPhase.DECOMPRESSING)) {
             // Can't invoke @Composable stringResource inside remember directly, but we can return the ID
             R.string.library_download_phase_finalizing
         } else if (bytesDone == 0L && downloadStatus == app.gamenative.data.DownloadPhase.DOWNLOADING) {

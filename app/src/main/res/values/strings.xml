@@ -1214,6 +1214,7 @@
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
     <string name="library_download_phase_downloading">Downloading</string>
+    <string name="library_download_phase_decompressing">Decompressing</string>
     <string name="library_download_phase_preparing">Preparing</string>
     <string name="library_download_phase_patching">Patching</string>
     <string name="library_download_phase_verifying">Verifying</string>
