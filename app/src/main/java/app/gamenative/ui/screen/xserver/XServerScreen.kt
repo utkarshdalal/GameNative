@@ -329,6 +329,7 @@ fun XServerScreen(
     var areControlsVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var gameRoot by remember { mutableStateOf<View?>(null) }
+    var windowModificationListener by remember { mutableStateOf<WindowManager.OnWindowModificationListener?>(null) }
     // Snapshot of element positions before entering edit mode (for cancel behavior)
     var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
     var showElementEditor by remember { mutableStateOf(false) }
@@ -785,8 +786,11 @@ fun XServerScreen(
                         renderer.forceFullscreenWMClass = Paths.get(container.executablePath).name
                     }
                 }
-                getxServer().windowManager.addOnWindowModificationListener(
-                    object : WindowManager.OnWindowModificationListener {
+                // Remove any previous listener before adding a new one (handles key(isPortrait) recreation)
+                windowModificationListener?.let {
+                    getxServer().windowManager.removeOnWindowModificationListener(it)
+                }
+                val wmListener = object : WindowManager.OnWindowModificationListener {
                         private fun changeFrameRatingVisibility(window: Window, property: Property?) {
                             if (frameRating == null) return
                             if (property != null) {
@@ -849,8 +853,9 @@ fun XServerScreen(
                             startExitWatchForUnmappedGameWindow(window)
                             onWindowUnmapped?.invoke(window)
                         }
-                    },
-                )
+                    }
+                getxServer().windowManager.addOnWindowModificationListener(wmListener)
+                windowModificationListener = wmListener
 
                 if (PluviaApp.xEnvironment == null) {
                     // Launch all blocking wine setup operations on a background thread to avoid blocking main thread
@@ -1203,6 +1208,11 @@ fun XServerScreen(
         },
         onRelease = { view ->
             gameRoot = null
+            // Remove the WindowManager listener to prevent duplicates on AndroidView recreation
+            windowModificationListener?.let { listener ->
+                xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
+            }
+            windowModificationListener = null
         },
     )
 
