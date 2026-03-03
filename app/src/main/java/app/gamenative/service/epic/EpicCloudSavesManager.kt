@@ -17,6 +17,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 
 /**
  * Manages Epic Cloud Saves - downloading and uploading save files
@@ -1193,29 +1199,17 @@ object EpicCloudSavesManager {
             "{appname}" to game.appName,
         )
 
-        // Map to Wine prefix paths (like GOG does)
-        // Check for both proper casing (AppData) and legacy lowercase (appdata)
-        val usersPath = File(winePrefix, "drive_c/users/$user")
-        val appDataDir = when {
-            File(usersPath, "AppData").exists() -> "AppData"
-            File(usersPath, "appdata").exists() -> "appdata"
-            File(usersPath, "appData").exists() -> "appData"
-            else -> "AppData" // Default to proper Windows casing
-        }
-
-        Timber.tag("Epic").d("[Cloud Saves] Using AppData directory name: $appDataDir")
-
-        val appDataPath = File(winePrefix, "drive_c/users/$user/$appDataDir/Local").absolutePath
-        val appDataRoamingPath = File(winePrefix, "drive_c/users/$user/$appDataDir/Roaming").absolutePath
-        val documentsPath = File(winePrefix, "drive_c/users/$user/Documents").absolutePath
-        val savedGamesPath = File(winePrefix, "drive_c/users/$user/Saved Games").absolutePath
+        val appDataPath = "C:/users/$user/AppData/Local"
+        val appDataRoamingPath = "C:/users/$user/AppData/Roaming"
+        val documentsPath = "C:/users/$user/Documents"
+        val savedGamesPath = "C:/users/$user/Saved Games"
 
         pathVars["{appdata}"] = appDataPath
         pathVars["{localappdata}"] = appDataPath       // Windows %LocalAppData% — same as AppData/Local
         pathVars["{roamingappdata}"] = appDataRoamingPath // Windows %AppData% (Roaming)
         pathVars["{userdir}"] = documentsPath
         pathVars["{usersavedgames}"] = savedGamesPath
-        pathVars["{userprofile}"] = File(winePrefix, "drive_c/users/$user").absolutePath
+        pathVars["{userprofile}"] = "C:/users/$user"
 
         // Normalize path separators first
         var resolvedPath = cloudSaveFolder.replace("\\", "/")
@@ -1252,7 +1246,8 @@ object EpicCloudSavesManager {
             }
         }
 
-        val finalPath = File(normalizedParts.joinToString("/"))
+        val resolvedWinePath: String = windowsToWinePath(winePrefix, normalizedParts.joinToString("/")) ?: return null
+        val finalPath = File(resolvedWinePath)
 
         // Check subdirectories for save files
         // Some games store saves in user-specific subdirectories (e.g., "0/", "1/", etc.)
@@ -1278,7 +1273,7 @@ object EpicCloudSavesManager {
             }
 
             // Always check for subdirectories with files
-            val subDirs = finalPath.listFiles { it -> it.isDirectory } ?: emptyArray()
+            val subDirs = finalPath.listFiles { it.isDirectory } ?: emptyArray()
             val dirWithFiles = subDirs.firstOrNull { subDir ->
                 subDir.listFiles()?.any { it.isFile } == true
             }
@@ -1298,6 +1293,50 @@ object EpicCloudSavesManager {
         Timber.tag("Epic").d("[Cloud Saves]   Resolved: ${actualPath.absolutePath}")
 
         return actualPath
+    }
+
+    // Resolve a Windows path against a wine prefix path case insensitively
+    private fun windowsToWinePath(winePrefix:String, windowsPath: String): String? {
+        val pathParts = windowsPath.replace("\\", "/").split("/").toMutableList()
+        val drive = pathParts[0]
+
+        if (drive.length != 2 || !drive.endsWith(":")) {
+            Timber.tag("Epic").w("[Cloud Saves] Could not resolve drive; aborting")
+            return null
+        }
+
+        pathParts[0] = "drive_" + pathParts[0][0]
+
+        var currentPath = Path(winePrefix)
+
+        for (segment in pathParts) {
+            // If we're at a place where the current path doesn't exist,
+            // just resolve as-is and continue
+            if (!currentPath.exists() || !currentPath.isDirectory()) {
+                currentPath = currentPath.resolve(segment)
+                continue
+            }
+
+            // Avoid directory traversal if possible by trying to directly resolve
+            val exactMatchPath = currentPath.resolve(segment)
+            if (exactMatchPath.exists()) {
+                currentPath = exactMatchPath
+                continue
+            }
+
+            val match = try {
+                currentPath.listDirectoryEntries().firstOrNull {
+                    it.name.equals(segment, ignoreCase = true)
+                }
+            } catch (_: Exception) {
+                null
+            }
+
+            // Use matched casing if not, otherwise fallback to requested casing
+            currentPath = match ?: currentPath.resolve(segment)
+        }
+
+        return currentPath.absolutePathString()
     }
 
     private fun getSyncTimestamp(context: Context, appId: Int): String? {
