@@ -1199,17 +1199,17 @@ object EpicCloudSavesManager {
             "{appname}" to game.appName,
         )
 
-        val appDataPath = "C:/users/$user/AppData/Local"
-        val appDataRoamingPath = "C:/users/$user/AppData/Roaming"
-        val documentsPath = "C:/users/$user/Documents"
-        val savedGamesPath = "C:/users/$user/Saved Games"
+        val appDataPath = File(winePrefix, "drive_c/users/$user/AppData/Local").absolutePath
+        val appDataRoamingPath = File(winePrefix, "drive_c/users/$user/AppData/Roaming").absolutePath
+        val documentsPath = File(winePrefix, "drive_c/users/$user/Documents").absolutePath
+        val savedGamesPath = File(winePrefix, "drive_c/users/$user/Saved Games").absolutePath
 
         pathVars["{appdata}"] = appDataPath
         pathVars["{localappdata}"] = appDataPath       // Windows %LocalAppData% — same as AppData/Local
         pathVars["{roamingappdata}"] = appDataRoamingPath // Windows %AppData% (Roaming)
         pathVars["{userdir}"] = documentsPath
         pathVars["{usersavedgames}"] = savedGamesPath
-        pathVars["{userprofile}"] = "C:/users/$user"
+        pathVars["{userprofile}"] = File(winePrefix, "drive_c/users/$user").absolutePath
 
         // Normalize path separators first
         var resolvedPath = cloudSaveFolder.replace("\\", "/")
@@ -1246,7 +1246,7 @@ object EpicCloudSavesManager {
             }
         }
 
-        val resolvedWinePath: String = windowsToWinePath(winePrefix, normalizedParts.joinToString("/")) ?: return null
+        val resolvedWinePath: String = resolveCaseInsensitivity(normalizedParts.joinToString("/"))
         val finalPath = File(resolvedWinePath)
 
         // Check subdirectories for save files
@@ -1295,19 +1295,10 @@ object EpicCloudSavesManager {
         return actualPath
     }
 
-    // Resolve a Windows path against a wine prefix path case insensitively
-    private fun windowsToWinePath(winePrefix:String, windowsPath: String): String? {
-        val pathParts = windowsPath.replace("\\", "/").split("/").toMutableList()
-        val drive = pathParts[0]
-
-        if (drive.length != 2 || !drive.endsWith(":")) {
-            Timber.tag("Epic").w("[Cloud Saves] Could not resolve drive; aborting")
-            return null
-        }
-
-        pathParts[0] = "drive_" + pathParts[0][0]
-
-        var currentPath = Path(winePrefix)
+    // Resolve a path case insensitively if there's no direct casing match
+    private fun resolveCaseInsensitivity(path: String): String {
+        val pathParts = path.replace("\\", "/").split("/")
+        var currentPath = Path("/")
 
         for (segment in pathParts) {
             // If we're at a place where the current path doesn't exist,
