@@ -578,7 +578,8 @@
     <string name="enable_xinput_api">Activer l\'API XInput</string>
     <string name="enable_directinput_api">Activer l\'API DirectInput</string>
     <string name="directinput_mapper_type">Type de mappeur DirectInput</string>
-    <string name="disable_mouse_input">Désactiver l\'entrée souris</string>
+    <string name="disable_mouse_input">Désactiver l\'écran tactile</string>
+    <string name="disable_mouse_input_description">Empêche le toucher de générer des événements souris. La souris externe et la manette fonctionnent toujours.</string>
     <string name="touchscreen_mode">Mode écran tactile</string>
     <string name="touchscreen_mode_description">Pour les visual novels et jeux de stratégie en temps réel</string>
     <string name="shooter_mode_toggle">Mode tireur</string>

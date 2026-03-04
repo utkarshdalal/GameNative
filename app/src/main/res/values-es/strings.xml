@@ -627,7 +627,8 @@
     <string name="enable_xinput_api">Activar API de XInput</string>
     <string name="enable_directinput_api">Activar API de DirectInput</string>
     <string name="directinput_mapper_type">Tipo de mapeador de DirectInput</string>
-    <string name="disable_mouse_input">Desactivar entrada de ratón</string>
+    <string name="disable_mouse_input">Desactivar pantalla táctil</string>
+    <string name="disable_mouse_input_description">Evita que el toque genere eventos de ratón. El ratón externo y el mando siguen funcionando.</string>
     <string name="touchscreen_mode">Modo de pantalla táctil</string>
     <string name="touchscreen_mode_description">Para novelas visuales y juegos de estrategia en tiempo real.</string>
     <string name="shooter_mode_toggle">Modo tirador</string>

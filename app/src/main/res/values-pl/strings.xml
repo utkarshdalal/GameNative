@@ -591,7 +591,8 @@
     <string name="enable_xinput_api">Włącz API XInput</string>
     <string name="enable_directinput_api">Włącz API DirectInput</string>
     <string name="directinput_mapper_type">Typ mapowania DirectInput</string>
-    <string name="disable_mouse_input">Wyłącz wejście myszy</string>
+    <string name="disable_mouse_input">Wyłącz ekran dotykowy</string>
+    <string name="disable_mouse_input_description">Zapobiega generowaniu zdarzeń myszy przez dotyk. Zewnętrzna mysz i kontroler nadal działają.</string>
     <string name="touchscreen_mode">Tryb ekranu dotykowego</string>
     <string name="touchscreen_mode_description">Dla powieści wizualnych i gier RTS</string>
     <string name="shooter_mode_toggle">Tryb strzelanki</string>

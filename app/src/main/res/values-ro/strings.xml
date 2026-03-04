@@ -583,7 +583,8 @@
 	<string name="enable_xinput_api">Activează API XInput</string>
 	<string name="enable_directinput_api">Activează API DirectInput</string>
 	<string name="directinput_mapper_type">Tip mapper DirectInput</string>
-	<string name="disable_mouse_input">Dezactivează input-ul de mouse</string>
+	<string name="disable_mouse_input">Dezactivează ecranul tactil</string>
+	<string name="disable_mouse_input_description">Împiedică atingerea să genereze evenimente de mouse. Mouse-ul extern și controller-ul funcționează în continuare.</string>
 	<string name="touchscreen_mode">Mod touchscreen</string>
 	<string name="touchscreen_mode_description">Pentru visual novels și jocuri RTS</string>
 	<string name="shooter_mode_toggle">Mod shooter</string>

@@ -574,7 +574,8 @@
     <string name="enable_xinput_api">Увімкнути XInput API</string>
     <string name="enable_directinput_api">Увімкнути DirectInput API</string>
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>
-    <string name="disable_mouse_input">Вимкнути введення мишею</string>
+    <string name="disable_mouse_input">Вимкнути сенсорний екран</string>
+    <string name="disable_mouse_input_description">Запобігає генерації подій миші дотиком. Зовнішня миша та контролер продовжують працювати.</string>
     <string name="touchscreen_mode">Режим сенсорного екрану</string>
     <string name="touchscreen_mode_description">Для візуальних романів та ігор RTS</string>
     <string name="shooter_mode_toggle">Режим шутера</string>

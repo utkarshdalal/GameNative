@@ -402,7 +402,8 @@
     <string name="enable_xinput_api">Habilitar API XInput</string>
     <string name="enable_directinput_api">Habilitar API DirectInput</string>
     <string name="directinput_mapper_type">Tipo de mapeador DirectInput</string>
-    <string name="disable_mouse_input">Desabilitar entrada do mouse</string>
+    <string name="disable_mouse_input">Desabilitar tela de toque</string>
+    <string name="disable_mouse_input_description">Impede que o toque gere eventos de mouse. Mouse externo e controle continuam funcionando.</string>
     <string name="touchscreen_mode">Modo Touchscreen</string>
     <string name="touchscreen_mode_description">Para visual novels e jogos de estratégia em tempo real</string>
     <string name="shooter_mode_toggle">Modo tiro</string>

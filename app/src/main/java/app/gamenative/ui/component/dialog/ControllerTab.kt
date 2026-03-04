@@ -68,17 +68,19 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.disable_mouse_input)) },
+            subtitle = { Text(text = stringResource(R.string.disable_mouse_input_description)) },
             state = config.disableMouseInput,
             onCheckedChange = { state.config.value = config.copy(disableMouseInput = it) },
         )
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),
+            enabled = !config.disableMouseInput,
             title = { Text(text = stringResource(R.string.touchscreen_mode)) },
             subtitle = { Text(text = stringResource(R.string.touchscreen_mode_description)) },
             onClick = { state.config.value = config.copy(touchscreenMode = !config.touchscreenMode) },
             action = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { showGestureDialog = true }) {
+                    IconButton(enabled = !config.disableMouseInput, onClick = { showGestureDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = stringResource(R.string.gesture_settings),
@@ -86,6 +88,7 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
                     }
                     Switch(
                         checked = config.touchscreenMode,
+                        enabled = !config.disableMouseInput,
                         onCheckedChange = { state.config.value = config.copy(touchscreenMode = it) },
                     )
                 }

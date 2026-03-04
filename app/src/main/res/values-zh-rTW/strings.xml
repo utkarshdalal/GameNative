@@ -576,7 +576,8 @@
     <string name="enable_xinput_api">啟用 XInput API</string>
     <string name="enable_directinput_api">啟用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput Mapper 類型</string>
-    <string name="disable_mouse_input">停用滑鼠輸入</string>
+    <string name="disable_mouse_input">停用觸控螢幕</string>
+    <string name="disable_mouse_input_description">防止觸控產生滑鼠事件。外接滑鼠和控制器仍可正常使用。</string>
     <string name="touchscreen_mode">觸屏模式</string>
     <string name="touchscreen_mode_description">適用於視覺小說與即時戰略遊戲</string>
     <string name="shooter_mode_toggle">射擊模式</string>

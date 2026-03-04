@@ -592,7 +592,8 @@
     <string name="enable_xinput_api">XInput API 활성화</string>
     <string name="enable_directinput_api">DirectInput API 활성화</string>
     <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
-    <string name="disable_mouse_input">마우스 입력 비활성화</string>
+    <string name="disable_mouse_input">터치스크린 비활성화</string>
+    <string name="disable_mouse_input_description">터치로 마우스 이벤트가 생성되지 않습니다. 외부 마우스와 컨트롤러는 계속 작동합니다.</string>
     <string name="touchscreen_mode">터치스크린 모드</string>
     <string name="touchscreen_mode_description">비주얼 노벨 및 RTS 게임용</string>
     <string name="shooter_mode_toggle">슈터 모드</string>
