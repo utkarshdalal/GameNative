@@ -34,11 +34,11 @@ public class Pointer {
     }
 
     public void setX(int x) {
-        this.x = (short)Mathf.clamp(x, 0, xServer.screenInfo.width - 1);
+        this.x = (short)x;
     }
 
     public void setY(int y) {
-        this.y = (short)Mathf.clamp(y, 0, xServer.screenInfo.height - 1);
+        this.y = (short)y;
     }
 
     public short getX() {
@@ -50,11 +50,11 @@ public class Pointer {
     }
 
     public short getClampedX() {
-        return x;
+        return (short)Mathf.clamp(x, 0, xServer.screenInfo.width - 1);
     }
 
     public short getClampedY() {
-        return y;
+        return (short)Mathf.clamp(y, 0, xServer.screenInfo.height - 1);
     }
 
     public void setPosition(int x, int y) {
