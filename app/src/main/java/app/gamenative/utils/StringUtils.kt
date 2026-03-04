@@ -4,7 +4,7 @@ import android.text.Html
 import app.gamenative.Constants
 import java.text.Normalizer
 
-private val REGEX_UNACCENT = "\\p{InCombiningDiacriticalMarks}+".toRegex()
+private val REGEX_UNACCENT = "\\p{M}+".toRegex()
 
 
 /**
