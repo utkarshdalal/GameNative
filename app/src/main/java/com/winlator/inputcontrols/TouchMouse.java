@@ -304,6 +304,10 @@ public class TouchMouse {
         boolean handled = false;
         // if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
         if (isMouseDevice(event.getDevice())) {
+            // show cursor on external mouse event
+            if (!xServer.getRenderer().isCursorVisible()) {
+                xServer.getRenderer().setCursorVisible(true);
+            }
             int actionButton = event.getActionButton();
             switch (event.getAction()) {
                 case MotionEvent.ACTION_BUTTON_PRESS:

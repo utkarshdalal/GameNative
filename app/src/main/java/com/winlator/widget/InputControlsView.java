@@ -342,6 +342,8 @@ public class InputControlsView extends View {
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
+                    // show cursor when on-screen control simulates mouse
+                    if (!xServer.getRenderer().isCursorVisible()) xServer.getRenderer().setCursorVisible(true);
                     xServer.injectPointerMoveDelta((int)(mouseMoveOffset.x * 10 * cursorSpeed), (int)(mouseMoveOffset.y * 10 * cursorSpeed));
                 }
             }, 0, 1000 / 60);

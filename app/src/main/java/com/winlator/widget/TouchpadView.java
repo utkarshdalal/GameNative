@@ -226,6 +226,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 && !event.isFromSource(InputDevice.SOURCE_MOUSE)) {
             return true; // consume without generating mouse events
         }
+        // hide cursor on touch in touchscreen mode, it reappears on external mouse event
+        if (isTouchscreenMode && !event.isFromSource(InputDevice.SOURCE_MOUSE) && xServer.getRenderer().isCursorVisible()) {
+            xServer.getRenderer().setCursorVisible(false);
+        }
         if (toolType == MotionEvent.TOOL_TYPE_STYLUS) {
             return handleStylusEvent(event);
         } else if (isTouchscreenMode) {
@@ -1142,6 +1146,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {
+        // show cursor on external mouse event
+        if (event.isFromSource(InputDevice.SOURCE_MOUSE)
+                && !xServer.getRenderer().isCursorVisible()) {
+            xServer.getRenderer().setCursorVisible(true);
+        }
         // one-shot: capture external mouse on first event, don't re-capture after user release
         if (capturePointerOnExternalMouse && !pointerCaptureRequested) {
             pointerCaptureRequested = true;

@@ -824,7 +824,7 @@ fun XServerScreen(
                         }
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
-                                if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
+                                if (!container.isDisableMouseInput) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
                             if (window.id == frameRatingWindowId) {
