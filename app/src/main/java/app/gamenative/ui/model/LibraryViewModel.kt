@@ -33,6 +33,7 @@ import app.gamenative.ui.enums.SortOption
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -387,7 +388,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 .filter { item ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        item.name.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(item.name, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -448,7 +449,7 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(game.title, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -483,7 +484,7 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(game.title, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -518,7 +519,7 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(game.title, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -667,6 +668,14 @@ class LibraryViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Compares the game name against the search query using an exact match
+     * and then again using a normalized form with diacritics removed.
+     */
+    private fun matches(gameName: String, searchQuery:String): Boolean {
+        return gameName.contains(searchQuery, ignoreCase = true) || gameName.unaccent().contains(searchQuery, ignoreCase = true)
     }
 
     /**
