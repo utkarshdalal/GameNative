@@ -20,7 +20,7 @@ fun String.getAvatarURL(): String =
 fun String.fromHtml(): String = Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY).toString()
 
 fun CharSequence.unaccent(): String {
-    val temp = Normalizer.normalize(this, Normalizer.Form.NFD)
+    val temp = Normalizer.normalize(this, Normalizer.Form.NFKD)
     return REGEX_UNACCENT.replace(temp, "")
 }
 
