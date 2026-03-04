@@ -65,6 +65,7 @@ import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
@@ -389,6 +390,7 @@ fun XServerScreen(
                                     frameRating,
                                     currentAppInfo,
                                     container,
+                                    appId,
                                     onExit,
                                     navigateBack,
                                 )
@@ -555,22 +557,19 @@ fun XServerScreen(
             }
 
             QuickMenuAction.EXIT_GAME -> {
-                if (currentAppInfo != null) {
-                    PostHog.capture(
-                        event = "game_closed",
-                        properties = mapOf(
-                            "game_name" to currentAppInfo.name,
-                        ),
-                    )
-                } else {
-                    PostHog.capture(event = "game_closed")
-                }
+                PostHog.capture(
+                    event = "game_closed",
+                    properties = mapOf(
+                        "game_name" to ContainerUtils.resolveGameName(appId),
+                        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+                    ),
+                )
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
                 PluviaApp.xEnvironment?.onResume()
                 isOverlayPaused = false
                 PluviaApp.isOverlayPaused = false
-                exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
+                exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
             }
         }
     }
@@ -626,7 +625,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner, container) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -672,11 +671,11 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
@@ -2563,7 +2562,7 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
-private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
+private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, appId: String, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
 
     // Prevent duplicate PostHog events when multiple exit triggers fire simultaneously
@@ -2571,7 +2570,8 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
         PostHog.capture(
             event = "game_exited",
             properties = mapOf(
-                "game_name" to appInfo?.name.toString(),
+                "game_name" to ContainerUtils.resolveGameName(appId),
+                "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
                 "session_length" to (frameRating?.sessionLengthSec ?: 0),
                 "avg_fps" to (frameRating?.avgFPS ?: 0.0),
                 "container_config" to container.containerJson,

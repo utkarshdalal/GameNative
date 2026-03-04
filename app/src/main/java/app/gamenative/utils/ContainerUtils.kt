@@ -1071,6 +1071,26 @@ object ContainerUtils {
     }
 
     /**
+     * Resolves the display name for a game from its container ID,
+     * looking up the appropriate store service.
+     */
+    fun resolveGameName(containerId: String): String {
+        val gameSource = extractGameSourceFromContainerId(containerId)
+        val gameId = extractGameIdFromContainerId(containerId)
+        return when (gameSource) {
+            GameSource.STEAM -> SteamService.getAppInfoOf(gameId)?.name
+            GameSource.GOG -> GOGService.getGOGGameOf(gameId.toString())?.title
+            GameSource.EPIC -> EpicService.getEpicGameOf(gameId)?.title
+            GameSource.AMAZON -> AmazonService.getAmazonGameByAppId(gameId)?.title
+            GameSource.CUSTOM_GAME -> {
+                val customAppId = "${GameSource.CUSTOM_GAME.name}_$gameId"
+                CustomGameScanner.getFolderPathFromAppId(customAppId)
+                    ?.let { File(it).name }
+            }
+        } ?: "Unknown"
+    }
+
+    /**
      * Gets the file system path for the container's A: drive
      */
     fun getADrivePath(drives: String): String? {

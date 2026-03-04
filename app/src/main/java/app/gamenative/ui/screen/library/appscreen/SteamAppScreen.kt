@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import app.gamenative.PluviaApp
-import app.gamenative.PrefManager
+
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
@@ -661,16 +661,6 @@ class SteamAppScreen : BaseAppScreen() {
                 )
             )
         } else {
-            // Already installed: launch app
-            val appInfo = SteamService.getAppInfoOf(gameId)
-            PostHog.capture(
-                event = "game_launched",
-                properties = mapOf(
-                    "game_name" to (appInfo?.name ?: ""),
-                    "key_attestation_available" to PrefManager.keyAttestationAvailable,
-                    "play_integrity_available" to PrefManager.playIntegrityAvailable,
-                ),
-            )
             onClickPlay(false)
         }
     }

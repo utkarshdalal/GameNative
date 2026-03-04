@@ -47,6 +47,11 @@ class AmazonManager @Inject constructor(
         amazonGameDao.getByProductId(productId)
     }
 
+    /** Look up a game by auto-generated appId. */
+    suspend fun getGameByAppId(appId: Int): AmazonGame? = withContext(Dispatchers.IO) {
+        amazonGameDao.getByAppId(appId)
+    }
+
     /** Return all Amazon games from DB. */
     suspend fun getAllGames(): List<AmazonGame> = withContext(Dispatchers.IO) {
         amazonGameDao.getAllAsList()

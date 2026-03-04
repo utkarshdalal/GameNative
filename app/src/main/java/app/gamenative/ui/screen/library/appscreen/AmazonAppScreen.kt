@@ -187,7 +187,7 @@ class AmazonAppScreen : BaseAppScreen() {
     }
 
 override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
-        AmazonService.isGameInstalledByAppId(libraryItem.gameId)
+        AmazonService.isGameInstalledByAppId(context, libraryItem.gameId)
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean =
         !isInstalled(context, libraryItem) &&
@@ -428,7 +428,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         currentDownloadInfo = null
                     }
                     // If not installed after download stopped → paused/cancelled: show Resume state
-                    val nowInstalled = AmazonService.isGameInstalledByAppId(gameId)
+                    val nowInstalled = AmazonService.isGameInstalledByAppId(context, gameId)
                     onHasPartialDownloadChanged?.invoke(!nowInstalled && hasPartialDownload(context, libraryItem))
                 }
                 onStateChanged()

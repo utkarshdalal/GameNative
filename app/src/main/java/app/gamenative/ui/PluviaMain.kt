@@ -48,6 +48,7 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
+import com.posthog.PostHog
 import app.gamenative.ui.component.ConnectionStatusBanner
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -129,7 +130,7 @@ private sealed class GameResolutionResult {
     ) : GameResolutionResult()
 }
 
-private fun resolveGameAppId(appId: String): GameResolutionResult {
+private fun resolveGameAppId(context: Context, appId: String): GameResolutionResult {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
     val isInstalled = when (gameSource) {
@@ -142,11 +143,11 @@ private fun resolveGameAppId(appId: String): GameResolutionResult {
         }
 
         GameSource.EPIC -> {
-            EpicService.isGameInstalled(gameId)
+            EpicService.isGameInstalled(context, gameId)
         }
 
         GameSource.AMAZON -> {
-            AmazonService.isGameInstalledByAppId(gameId)
+            AmazonService.isGameInstalledByAppId(context, gameId)
         }
 
         GameSource.CUSTOM_GAME -> {
@@ -172,18 +173,22 @@ private fun resolveGameAppId(appId: String): GameResolutionResult {
     )
 }
 
-private fun resolveNotInstalledGameName(context: Context, appId: String, gameId: Int): String {
-    return when (ContainerUtils.extractGameSourceFromContainerId(appId)) {
-        GameSource.STEAM -> SteamService.getAppInfoOf(gameId)?.name
-        GameSource.GOG -> GOGService.getGOGGameOf(gameId.toString())?.title
-        GameSource.EPIC -> EpicService.getEpicGameOf(gameId)?.title
-        GameSource.AMAZON -> null // Amazon game title lookup requires suspend, use fallback
-        GameSource.CUSTOM_GAME -> {
-            val customAppId = "${GameSource.CUSTOM_GAME.name}_$gameId"
-            CustomGameScanner.getFolderPathFromAppId(customAppId)
-                ?.let { java.io.File(it).name }
-        }
-    } ?: context.getString(R.string.unknown_app)
+private fun resolveNotInstalledGameName(appId: String): String {
+    return ContainerUtils.resolveGameName(appId)
+}
+
+private fun trackGameLaunched(appId: String) {
+    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+    val gameName = ContainerUtils.resolveGameName(appId)
+    PostHog.capture(
+        event = "game_launched",
+        properties = mapOf(
+            "game_name" to gameName,
+            "game_store" to gameSource.name,
+            "key_attestation_available" to PrefManager.keyAttestationAvailable,
+            "play_integrity_available" to PrefManager.playIntegrityAvailable,
+        ),
+    )
 }
 
 @Composable
@@ -255,10 +260,11 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ExternalGameLaunch -> {
                     Timber.i("[PluviaMain]: Received ExternalGameLaunch UI event for app ${event.appId}")
 
-                    when (val resolution = resolveGameAppId(event.appId)) {
+                    when (val resolution = resolveGameAppId(context, event.appId)) {
                         is GameResolutionResult.Success -> {
                             Timber.i("[PluviaMain]: Using appId: ${resolution.finalAppId} (original: ${event.appId}, isSteamInstalled: ${resolution.isSteamInstalled}, isCustomGame: ${resolution.isCustomGame})")
 
+                            trackGameLaunched(resolution.finalAppId)
                             viewModel.setLaunchedAppId(resolution.finalAppId)
                             viewModel.setBootToContainer(false)
                             preLaunchApp(
@@ -273,7 +279,7 @@ fun PluviaMain(
                         }
 
                         is GameResolutionResult.NotFound -> {
-                            val appName = resolveNotInstalledGameName(context, resolution.originalAppId, resolution.gameId)
+                            val appName = resolveNotInstalledGameName(resolution.originalAppId)
                             Timber.w("[PluviaMain]: Game not installed: $appName (${event.appId})")
                             msgDialogState = MessageDialogState(
                                 visible = true,
@@ -315,9 +321,9 @@ fun PluviaMain(
                                 MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
                                     Timber.tag("IntentLaunch")
                                         .i("Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
-                                    when (val resolution = resolveGameAppId(launchRequest.appId)) {
+                                    when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
                                         is GameResolutionResult.NotFound -> {
-                                            val appName = resolveNotInstalledGameName(context, resolution.originalAppId, resolution.gameId)
+                                            val appName = resolveNotInstalledGameName(resolution.originalAppId)
                                             Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
                                             msgDialogState = MessageDialogState(
                                                 visible = true,
@@ -349,6 +355,7 @@ fun PluviaMain(
                                                 }
                                             }
 
+                                            trackGameLaunched(launchRequest.appId)
                                             viewModel.setLaunchedAppId(launchRequest.appId)
                                             viewModel.setBootToContainer(false)
                                             preLaunchApp(
@@ -1125,6 +1132,7 @@ fun PluviaMain(
 
                 HomeScreen(
                     onClickPlay = { appId, asContainer ->
+                        trackGameLaunched(appId)
                         viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(asContainer)
                         viewModel.setTestGraphics(false)

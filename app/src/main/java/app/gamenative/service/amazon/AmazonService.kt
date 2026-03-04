@@ -63,19 +63,6 @@ class AmazonService : Service() {
     // Active install paths keyed by Amazon product ID (used for robust partial-download detection)
     private val activeDownloadPaths = ConcurrentHashMap<String, String>()
 
-    // In-memory cache for install status + path — avoids runBlocking for fast UI lookups
-    // Keyed by productId (the Amazon product UUID string)
-    private val installInfoCache = ConcurrentHashMap<String, CachedInstallInfo>()
-
-    // Reverse lookup: appId (auto-generated Int) → productId (Amazon UUID string)
-    // Populated during syncLibrary for ContainerUtils lookups
-    private val appIdToProductId = ConcurrentHashMap<Int, String>()
-
-    private data class CachedInstallInfo(
-        val isInstalled: Boolean,
-        val installPath: String,
-    )
-
     companion object {
         private const val ACTION_SYNC_LIBRARY = "app.gamenative.AMAZON_SYNC_LIBRARY"
         private const val ACTION_MANUAL_SYNC = "app.gamenative.AMAZON_MANUAL_SYNC"
@@ -207,37 +194,43 @@ class AmazonService : Service() {
             return size
         }
 
-        /** Return whether a game is installed, using in-memory cache. */
-        fun isGameInstalled(productId: String): Boolean {
-            val info = instance?.installInfoCache?.get(productId) ?: return false
-            if (!info.isInstalled || info.installPath.isEmpty()) return false
+        /** Return whether a game is installed, using marker-based detection with DB reconciliation. */
+        fun isGameInstalled(context: Context, productId: String): Boolean {
+            val game = getAmazonGameOf(productId) ?: return false
 
-            // Prefer marker-based install detection (same pattern as Steam)
-            if (MarkerUtils.hasMarker(info.installPath, Marker.DOWNLOAD_COMPLETE_MARKER)) {
+            if (game.isInstalled && game.installPath.isNotEmpty()) {
+                return MarkerUtils.hasMarker(game.installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            }
+
+            val installPath = game.installPath.takeIf { it.isNotEmpty() }
+                ?: game.title.takeIf { it.isNotEmpty() }?.let {
+                    AmazonConstants.getGameInstallPath(context, it)
+                }
+                ?: return false
+
+            val isDownloadComplete = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val isDownloadInProgress = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            if (isDownloadComplete && !isDownloadInProgress) {
+                runBlocking(Dispatchers.IO) {
+                    instance?.amazonManager?.markInstalled(productId, installPath, 0L)
+                }
                 return true
             }
 
-            // Backward-compatible fallback for installs created before marker enforcement
-            val installDir = File(info.installPath)
-            return installDir.exists() && !MarkerUtils.hasMarker(info.installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            return false
         }
 
         /** Return whether a game is installed, looked up by appId. */
-        fun isGameInstalledByAppId(appId: Int): Boolean {
-            val productId = instance?.appIdToProductId?.get(appId) ?: return false
-            return isGameInstalled(productId)
+        fun isGameInstalledByAppId(context: Context, appId: Int): Boolean {
+            val game = getAmazonGameByAppId(appId) ?: return false
+            return isGameInstalled(context, game.productId)
         }
 
         /** Return expected install path for [appId], even when partially downloaded. */
         fun getExpectedInstallPathByAppId(context: Context, appId: Int): String? {
-            val svc = instance ?: return null
-            val productId = svc.appIdToProductId[appId] ?: return null
+            val game = getAmazonGameByAppId(appId) ?: return null
 
-            svc.activeDownloadPaths[productId]?.let { return it }
-
-            val game = runBlocking(Dispatchers.IO) {
-                svc.amazonManager.getGameById(productId)
-            } ?: return null
+            instance?.activeDownloadPaths?.get(game.productId)?.let { return it }
 
             val title = game.title.ifBlank { return null }
             return AmazonConstants.getGameInstallPath(context, title)
@@ -249,7 +242,7 @@ class AmazonService : Service() {
                 Timber.tag("Amazon").d("[PARTIAL] appId=$appId partial=true reason=active_download")
                 return true
             }
-            if (isGameInstalledByAppId(appId)) {
+            if (isGameInstalledByAppId(context, appId)) {
                 Timber.tag("Amazon").d("[PARTIAL] appId=$appId partial=false reason=installed")
                 return false
             }
@@ -295,27 +288,34 @@ class AmazonService : Service() {
         }
 
         /** Return [AmazonGame] for a product ID, or null if unavailable. */
-        suspend fun getAmazonGameOf(productId: String): AmazonGame? {
-            return withContext(Dispatchers.IO) {
+        fun getAmazonGameOf(productId: String): AmazonGame? {
+            return runBlocking(Dispatchers.IO) {
                 instance?.amazonManager?.getGameById(productId)
+            }
+        }
+
+        /** Return [AmazonGame] for an appId, or null if unavailable. */
+        fun getAmazonGameByAppId(appId: Int): AmazonGame? {
+            return runBlocking(Dispatchers.IO) {
+                instance?.amazonManager?.getGameByAppId(appId)
             }
         }
 
         /** Return install path for [productId], or null if not installed. */
         fun getInstallPath(productId: String): String? {
-            val info = instance?.installInfoCache?.get(productId) ?: return null
-            return if (info.isInstalled && info.installPath.isNotEmpty()) info.installPath else null
+            val game = getAmazonGameOf(productId) ?: return null
+            return if (game.isInstalled && game.installPath.isNotEmpty()) game.installPath else null
         }
 
         /** Return install path for [appId], or null if not installed. */
         fun getInstallPathByAppId(appId: Int): String? {
-            val productId = instance?.appIdToProductId?.get(appId) ?: return null
-            return getInstallPath(productId)
+            val game = getAmazonGameByAppId(appId) ?: return null
+            return if (game.isInstalled && game.installPath.isNotEmpty()) game.installPath else null
         }
 
-        /** Convert appId to productId using in-memory lookup. */
+        /** Convert appId to productId via DB lookup. */
         fun getProductIdByAppId(appId: Int): String? {
-            return instance?.appIdToProductId?.get(appId)
+            return getAmazonGameByAppId(appId)?.productId
         }
 
         /**
@@ -358,19 +358,19 @@ class AmazonService : Service() {
 
         /** Returns the active [DownloadInfo] for [appId], or null if not downloading. */
         fun getDownloadInfoByAppId(appId: Int): DownloadInfo? {
-            val productId = instance?.appIdToProductId?.get(appId) ?: return null
+            val productId = getProductIdByAppId(appId) ?: return null
             return getDownloadInfo(productId)
         }
 
         /** Cancel an in-progress download by [appId]. */
         fun cancelDownloadByAppId(appId: Int): Boolean {
-            val productId = instance?.appIdToProductId?.get(appId) ?: return false
+            val productId = getProductIdByAppId(appId) ?: return false
             return cancelDownload(productId)
         }
 
         /** Check whether an installed game (by appId) has an update available. */
         suspend fun isUpdatePendingByAppId(appId: Int): Boolean {
-            val productId = instance?.appIdToProductId?.get(appId) ?: return false
+            val productId = getProductIdByAppId(appId) ?: return false
             return isUpdatePending(productId)
         }
 
@@ -433,11 +433,6 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").i("Download succeeded for $productId")
                         downloadInfo.setActive(false)
                         downloadInfo.clearPersistedBytesDownloaded(installPath)
-                        // Update install info cache
-                        instance.installInfoCache[productId] = CachedInstallInfo(
-                            isInstalled = true,
-                            installPath = installPath,
-                        )
                         withContext(Dispatchers.Main) {
                             android.widget.Toast.makeText(
                                 context,
@@ -596,12 +591,6 @@ class AmazonService : Service() {
                     }
 
                     instance.amazonManager.markUninstalled(productId)
-
-                    // Update install info cache
-                    instance.installInfoCache[productId] = CachedInstallInfo(
-                        isInstalled = false,
-                        installPath = "",
-                    )
 
                     // Delete cached manifest
                     try {
@@ -855,11 +844,6 @@ class AmazonService : Service() {
             }.onFailure {
                 Timber.tag("Amazon").w(it, "Failed to mark game uninstalled after failed install: ${game.productId}")
             }
-
-            installInfoCache[game.productId] = CachedInstallInfo(
-                isInstalled = false,
-                installPath = "",
-            )
         }
 
         withContext(Dispatchers.Main) {
@@ -878,7 +862,6 @@ class AmazonService : Service() {
         setSyncInProgress(true)
         try {
             amazonManager.refreshLibrary()
-            refreshInstallInfoCache()
             lastSyncTimestamp = System.currentTimeMillis()
             hasPerformedInitialSync = true
             Timber.i("[Amazon] Sync complete — next auto-sync in 15 minutes")
@@ -889,22 +872,4 @@ class AmazonService : Service() {
         }
     }
 
-    /** Refresh in-memory install and appId/productId lookup caches from DB. */
-    private suspend fun refreshInstallInfoCache() {
-        val games = withContext(Dispatchers.IO) {
-            amazonManager.getAllGames()
-        }
-        installInfoCache.clear()
-        appIdToProductId.clear()
-        for (game in games) {
-            // Populate install info cache (keyed by productId)
-            installInfoCache[game.productId] = CachedInstallInfo(
-                isInstalled = game.isInstalled,
-                installPath = game.installPath,
-            )
-            // Populate reverse lookup: appId → productId
-            appIdToProductId[game.appId] = game.productId
-        }
-        Timber.d("[Amazon] Install info cache refreshed: ${games.size} entries")
-    }
 }

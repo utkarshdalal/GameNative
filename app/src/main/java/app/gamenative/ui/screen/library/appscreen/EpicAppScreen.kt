@@ -273,8 +273,7 @@ class EpicAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("isInstalled: checking appId=${libraryItem.appId}")
 
         return try {
-            val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
-            val installed = epicGame?.isInstalled ?: false
+            val installed = EpicService.isGameInstalled(context, libraryItem.gameId)
             Timber.tag(TAG).d("isInstalled: appId=${libraryItem.appId}, result=$installed")
             installed
         } catch (e: Exception) {

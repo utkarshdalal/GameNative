@@ -278,9 +278,33 @@ class EpicService : Service() {
         }
 
 
-        fun isGameInstalled(appId: Int): Boolean {
-            val game = getEpicGameOf(appId)
-            return game?.isInstalled == true
+        fun isGameInstalled(context: Context, appId: Int): Boolean {
+            val game = getEpicGameOf(appId) ?: return false
+
+            if (game.isInstalled && game.installPath.isNotEmpty()) {
+                return MarkerUtils.hasMarker(game.installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            }
+
+            val installPath = game.installPath.takeIf { it.isNotEmpty() }
+                ?: game.appName.takeIf { it.isNotEmpty() }?.let {
+                    EpicConstants.getGameInstallPath(context, it)
+                }
+                ?: return false
+
+            val isDownloadComplete = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val isDownloadInProgress = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            if (isDownloadComplete && !isDownloadInProgress) {
+                val updatedGame = game.copy(
+                    isInstalled = true,
+                    installPath = installPath,
+                )
+                runBlocking(Dispatchers.IO) {
+                    getInstance()?.epicManager?.updateGame(updatedGame)
+                }
+                return true
+            }
+
+            return false
         }
 
         fun getInstallPath(appId: Int): String? {

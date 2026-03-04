@@ -113,7 +113,7 @@ object GOGConstants {
     val internalGOGGamesPath: String
         get() {
             val context = appContext ?: throw IllegalStateException("GOGConstants not initialized. Call init() first.")
-            val path = Paths.get(context.filesDir.absolutePath, "GOG", "games", "common").toString()
+            val path = Paths.get(context.dataDir.path, "GOG", "games", "common").toString()
             // Ensure directory exists for StatFs
             File(path).mkdirs()
             return path
