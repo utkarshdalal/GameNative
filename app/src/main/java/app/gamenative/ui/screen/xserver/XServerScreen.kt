@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.ui.util.SnackbarManager
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -1346,7 +1347,7 @@ fun XServerScreen(
                                 }
 
                                 icView.invalidate()
-                                android.widget.Toast.makeText(context, context.getString(R.string.toast_controls_reset), android.widget.Toast.LENGTH_SHORT).show()
+                                SnackbarManager.show(context.getString(R.string.toast_controls_reset))
                             }
                         }
                     }

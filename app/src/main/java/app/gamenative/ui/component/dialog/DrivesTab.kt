@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -94,11 +94,7 @@ fun DrivesTabContent(state: ContainerConfigState) {
             },
             onClick = {
                 if (state.availableDriveLetters.isEmpty()) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.no_available_drive_letters),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.no_available_drive_letters))
                     return@SettingsMenuLink
                 }
                 state.selectedDriveLetter.value = state.availableDriveLetters.first()

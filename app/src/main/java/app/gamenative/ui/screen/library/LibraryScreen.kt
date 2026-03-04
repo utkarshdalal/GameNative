@@ -4,7 +4,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -171,14 +171,14 @@ private fun LibraryScreenContent(
         if (result.resultCode != android.app.Activity.RESULT_OK) {
             val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
                 ?: context.getString(R.string.gog_login_cancel)
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(message)
             return@rememberLauncherForActivityResult
         }
         val code = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_AUTH_CODE)
         if (code == null) {
             val message = result.data?.getStringExtra(GOGOAuthActivity.EXTRA_ERROR)
                 ?: context.getString(R.string.gog_login_cancel)
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(message)
             return@rememberLauncherForActivityResult
         }
         lifecycleScope.launch {
@@ -189,15 +189,11 @@ private fun LibraryScreenContent(
                 onLoadingChange = { },
                 onError = { msg ->
                     if (msg != null) {
-                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(msg)
                     }
                 },
                 onSuccess = {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.gog_login_success_title),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.gog_login_success_title))
                 },
                 onDialogClose = { },
             )
@@ -210,14 +206,14 @@ private fun LibraryScreenContent(
         if (result.resultCode != android.app.Activity.RESULT_OK) {
             val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
                 ?: context.getString(R.string.epic_login_cancel)
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(message)
             return@rememberLauncherForActivityResult
         }
         val code = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_AUTH_CODE)
         if (code == null) {
             val message = result.data?.getStringExtra(EpicOAuthActivity.EXTRA_ERROR)
                 ?: context.getString(R.string.epic_login_cancel)
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(message)
             return@rememberLauncherForActivityResult
         }
         lifecycleScope.launch {
@@ -228,15 +224,11 @@ private fun LibraryScreenContent(
                 onLoadingChange = { },
                 onError = { msg ->
                     if (msg != null) {
-                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(msg)
                     }
                 },
                 onSuccess = {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.epic_login_success_title),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.epic_login_success_title))
                 },
                 onDialogClose = { },
             )
@@ -249,14 +241,14 @@ private fun LibraryScreenContent(
         if (result.resultCode != android.app.Activity.RESULT_OK) {
             val message = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_ERROR)
                 ?: context.getString(R.string.amazon_login_cancel)
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(message)
             return@rememberLauncherForActivityResult
         }
         val code = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_AUTH_CODE)
         if (code == null) {
             val message = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_ERROR)
                 ?: context.getString(R.string.amazon_login_cancel)
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(message)
             return@rememberLauncherForActivityResult
         }
         lifecycleScope.launch {
@@ -267,15 +259,11 @@ private fun LibraryScreenContent(
                 onLoadingChange = { },
                 onError = { msg ->
                     if (msg != null) {
-                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(msg)
                     }
                 },
                 onSuccess = {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.amazon_login_success_title),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.amazon_login_success_title))
                 },
                 onDialogClose = { },
             )
@@ -356,7 +344,7 @@ private fun LibraryScreenContent(
             onAddCustomGameFolder(path)
         },
         onFailure = { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            SnackbarManager.show(message)
         },
     )
 

@@ -86,6 +86,7 @@ import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.ui.util.PlatformAuthUiHelpers
+import app.gamenative.ui.util.SnackbarManager
 
 @Composable
 fun SettingsGroupInterface(
@@ -181,16 +182,12 @@ fun SettingsGroupInterface(
                     onLoadingChange = { gogLoginLoading = it },
                     onError = { msg ->
                         if (msg != null) {
-                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                            SnackbarManager.show(msg)
                         }
                     },
                     onSuccess = { count ->
                         gogLibraryGameCount = count
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(R.string.gog_login_success_title),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.gog_login_success_title))
                     },
                     onDialogClose = { }
                 )

@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +41,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 // TODO: Verify all tests and do DLC auto-install with base game.
@@ -370,9 +370,7 @@ class EpicAppScreen : BaseAppScreen() {
                 val game = EpicService.getEpicGameOf(libraryItem.gameId)
                 if (game == null) {
                     Timber.e("Game not found: ${libraryItem.gameId}")
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, context.getString(R.string.epic_game_not_found), Toast.LENGTH_SHORT).show()
-                    }
+                    SnackbarManager.show(context.getString(R.string.epic_game_not_found))
                     return@launch
                 }
 
@@ -384,19 +382,13 @@ class EpicAppScreen : BaseAppScreen() {
                 val withDlcs = selectedGameIds.size > 1
                 Timber.tag(TAG).d("Download with DLCs: $withDlcs (${selectedGameIds.size} items selected)")
 
-                // Show starting download toast
-                withContext(Dispatchers.Main) {
-                    val message = if (withDlcs) {
-                        context.getString(R.string.epic_starting_download_with_dlcs, game.title)
-                    } else {
-                        context.getString(R.string.epic_starting_download, game.title)
-                    }
-                    android.widget.Toast.makeText(
-                        context,
-                        message,
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
+                // Show starting download snackbar
+                val message = if (withDlcs) {
+                    context.getString(R.string.epic_starting_download_with_dlcs, game.title)
+                } else {
+                    context.getString(R.string.epic_starting_download, game.title)
                 }
+                SnackbarManager.show(message)
 
                 // Start download - EpicService will handle monitoring, database updates, verification, and events
                 // Pass the selected DLC IDs (excluding the base game)
@@ -408,23 +400,11 @@ class EpicAppScreen : BaseAppScreen() {
                     // Success toast will be shown when download completes (monitored by EpicService)
                 } else {
                     Timber.e("Failed to start Epic game download: ${libraryItem.gameId} - ${result.exceptionOrNull()?.message}")
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(R.string.epic_download_failed, result.exceptionOrNull()?.message ?: ""),
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    SnackbarManager.show(context.getString(R.string.epic_download_failed, result.exceptionOrNull()?.message ?: ""))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error during Epic download")
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(R.string.epic_download_error, e.message ?: ""),
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
-                }
+                SnackbarManager.show(context.getString(R.string.epic_download_error, e.message ?: ""))
             }
         }
     }
@@ -484,23 +464,11 @@ class EpicAppScreen : BaseAppScreen() {
                     Timber.tag(TAG).i("Epic game uninstalled successfully: ${libraryItem.appId}")
                 } else {
                     Timber.e("Failed to uninstall Epic game: ${libraryItem.appId} - ${result.exceptionOrNull()?.message}")
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(R.string.epic_uninstall_failed, result.exceptionOrNull()?.message ?: ""),
-                            android.widget.Toast.LENGTH_SHORT,
-                        ).show()
-                    }
+                    SnackbarManager.show(context.getString(R.string.epic_uninstall_failed, result.exceptionOrNull()?.message ?: ""))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uninstalling Epic game")
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        context.getString(R.string.epic_uninstall_error, e.message ?: ""),
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
-                }
+                SnackbarManager.show(context.getString(R.string.epic_uninstall_error, e.message ?: ""))
             }
         }
     }
@@ -572,11 +540,7 @@ class EpicAppScreen : BaseAppScreen() {
                         val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
                         scope.launch {
                             try {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.epic_cloud_sync_starting),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_starting))
 
                                 val result = withContext(Dispatchers.IO) {
                                     EpicCloudSavesManager.syncCloudSaves(
@@ -586,18 +550,12 @@ class EpicAppScreen : BaseAppScreen() {
                                     )
                                 }
 
-                                Toast.makeText(
-                                    context,
+                                SnackbarManager.show(
                                     if (result) context.getString(R.string.epic_cloud_sync_success) else context.getString(R.string.epic_cloud_sync_failed),
-                                    Toast.LENGTH_LONG,
-                                ).show()
+                                )
                             } catch (e: Exception) {
                                 Timber.tag(TAG).e(e, "[Cloud Saves] Sync failed")
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.epic_cloud_sync_error, e.message ?: ""),
-                                    Toast.LENGTH_LONG,
-                                ).show()
+                                SnackbarManager.show(context.getString(R.string.epic_cloud_sync_error, e.message ?: ""))
                             }
                         }
                     },

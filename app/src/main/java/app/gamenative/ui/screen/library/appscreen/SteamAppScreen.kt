@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -59,6 +58,7 @@ import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils.getContainer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -136,9 +136,7 @@ private suspend fun installMissingComponentsForConfig(
                 }
             },
         )
-        withContext(Dispatchers.Main) {
-            Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
-        }
+        SnackbarManager.show(result.message)
         if (!result.success) {
             uiScope.launch(Dispatchers.Main.immediate) { SteamAppScreen.hideKnownConfigInstallState(gameId) }
             return false
@@ -182,38 +180,22 @@ private suspend fun applyConfigForContainer(
                 parsedConfig,
             )
             ContainerUtils.applyToContainer(context, container, updatedContainerData)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.best_config_applied_successfully),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
+            SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
         } else {
-            withContext(Dispatchers.Main) {
-                val message = if (missingContentDescription != null) {
-                    context.getString(R.string.best_config_missing_content, missingContentDescription)
-                } else {
-                    context.getString(R.string.best_config_known_config_invalid)
-                }
-                Toast.makeText(
-                    context,
-                    message,
-                    Toast.LENGTH_SHORT,
-                ).show()
+            val message = if (missingContentDescription != null) {
+                context.getString(R.string.best_config_missing_content, missingContentDescription)
+            } else {
+                context.getString(R.string.best_config_known_config_invalid)
             }
+            SnackbarManager.show(message)
         }
         true
     } catch (e: Exception) {
         Timber.w(e, "Failed to apply config: ${e.message}")
         withContext(Dispatchers.Main) {
             SteamAppScreen.hideKnownConfigInstallState(gameId)
-            Toast.makeText(
-                context,
-                context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
-                Toast.LENGTH_SHORT,
-            ).show()
         }
+        SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
         false
     }
 }
@@ -883,13 +865,7 @@ class SteamAppScreen : BaseAppScreen() {
                     CoroutineScope(Dispatchers.IO).launch {
                         val steamId = SteamService.userSteamId
                         if (steamId == null) {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.steam_not_logged_in),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
+                            SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                             return@launch
                         }
 
@@ -905,34 +881,22 @@ class SteamAppScreen : BaseAppScreen() {
                             prefixToPath = prefixToPath,
                         ).await()
 
-                        withContext(Dispatchers.Main) {
-                            when (syncResult.syncResult) {
-                                SyncResult.Success -> {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.steam_cloud_sync_success),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
+                        when (syncResult.syncResult) {
+                            SyncResult.Success -> {
+                                SnackbarManager.show(context.getString(R.string.steam_cloud_sync_success))
+                            }
 
-                                SyncResult.UpToDate -> {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.steam_cloud_sync_up_to_date),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
+                            SyncResult.UpToDate -> {
+                                SnackbarManager.show(context.getString(R.string.steam_cloud_sync_up_to_date))
+                            }
 
-                                else -> {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(
-                                            R.string.steam_cloud_sync_failed,
-                                            syncResult.syncResult,
-                                        ),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
+                            else -> {
+                                SnackbarManager.show(
+                                    context.getString(
+                                        R.string.steam_cloud_sync_failed,
+                                        syncResult.syncResult,
+                                    ),
+                                )
                             }
                         }
                     }
@@ -957,24 +921,14 @@ class SteamAppScreen : BaseAppScreen() {
                                     scope,
                                 )
                             } else {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.best_config_no_config_available),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
+                                SnackbarManager.show(context.getString(R.string.best_config_no_config_available))
                             }
                         } catch (e: Exception) {
                             Timber.w(e, "Failed to apply known config: ${e.message}")
                             withContext(Dispatchers.Main) {
                                 hideKnownConfigInstallState(gameId)
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
                             }
+                            SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
                         }
                     }
                 }
@@ -1150,11 +1104,7 @@ class SteamAppScreen : BaseAppScreen() {
             hasStoragePermission = granted
             if (!granted) {
                 // Permissions denied
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.steam_storage_permission_required),
-                    Toast.LENGTH_SHORT,
-                ).show()
+                SnackbarManager.show(context.getString(R.string.steam_storage_permission_required))
                 hideInstallDialog(gameId)
                 hideGameManagerDialog(gameId)
             }
@@ -1175,11 +1125,7 @@ class SteamAppScreen : BaseAppScreen() {
                         context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                     }.orEmpty()
                     if (jsonText.isBlank()) {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.best_config_known_config_invalid),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
                         return@launch
                     }
 
@@ -1195,11 +1141,7 @@ class SteamAppScreen : BaseAppScreen() {
                     )
                 } catch (e: Exception) {
                     Timber.w(e, "Failed to import config: ${e.message}")
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
                 } finally {
                     clearImportConfigRequest(gameId)
                     SteamService.keepAlive = false
@@ -1233,18 +1175,10 @@ class SteamAppScreen : BaseAppScreen() {
                             outputStream.flush()
                         }
                     }
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.base_app_exported),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.base_app_exported))
                 } catch (e: Exception) {
                     Timber.w(e, "Failed to export config: ${e.message}")
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.base_app_export_failed, e.message ?: "Unknown error"),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.base_app_export_failed, e.message ?: "Unknown error"))
                 } finally {
                     clearExportConfigRequest(gameId)
                 }
@@ -1406,13 +1340,7 @@ class SteamAppScreen : BaseAppScreen() {
                                             overrideLocalChangeNumber = -1,
                                         ).await()
                                     } else {
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.steam_not_logged_in),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                        }
+                                        SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                                     }
                                 }
 
@@ -1450,26 +1378,14 @@ class SteamAppScreen : BaseAppScreen() {
                                     }.get()
                                 }
                                 // After installation, trigger container edit
-                                withContext(Dispatchers.Main) {
-                                    // Trigger the container edit callback
-                                    // This will be handled by the menu option's onClick
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.steam_imagefs_installed),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
+                                SnackbarManager.show(context.getString(R.string.steam_imagefs_installed))
                             } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(
-                                            R.string.steam_imagefs_install_failed,
-                                            e.message ?: "",
-                                        ),
-                                        Toast.LENGTH_LONG,
-                                    ).show()
-                                }
+                                SnackbarManager.show(
+                                    context.getString(
+                                        R.string.steam_imagefs_install_failed,
+                                        e.message ?: "",
+                                    ),
+                                )
                             }
                         }
                     }
@@ -1518,24 +1434,18 @@ class SteamAppScreen : BaseAppScreen() {
                                 withContext(Dispatchers.Main) {
                                     if (success) {
                                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
-                                        Toast.makeText(
-                                            context,
+                                        SnackbarManager.show(
                                             context.getString(
                                                 R.string.steam_uninstall_success,
                                                 appInfo?.name ?: libraryItem.name,
                                             ),
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        )
                                         PostHog.capture(
                                             event = "game_uninstalled",
                                             properties = mapOf("game_name" to (appInfo?.name ?: "")),
                                         )
                                     } else {
-                                        Toast.makeText(
-                                            context,
-                                            context.getString(R.string.steam_uninstall_failed),
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        SnackbarManager.show(context.getString(R.string.steam_uninstall_failed))
                                     }
                                 }
                             }

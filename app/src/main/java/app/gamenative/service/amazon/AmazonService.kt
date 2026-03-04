@@ -33,6 +33,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 /** Amazon Games foreground service. */
@@ -433,13 +434,7 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").i("Download succeeded for $productId")
                         downloadInfo.setActive(false)
                         downloadInfo.clearPersistedBytesDownloaded(installPath)
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download completed: ${game.title}",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show("Download completed: ${game.title}")
                         PluviaApp.events.emitJava(
                             AndroidEvent.LibraryInstallStatusChanged(game.appId)
                         )
@@ -448,13 +443,7 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").e(error, "Download failed for $productId")
                         downloadInfo.setActive(false)
                         instance.cleanupFailedInstall(context, game, installPath)
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
-                        }
+                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
                 } catch (e: Exception) {
                     if (e is java.util.concurrent.CancellationException) {

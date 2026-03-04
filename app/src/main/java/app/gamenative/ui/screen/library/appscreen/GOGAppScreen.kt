@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 /**
@@ -278,14 +279,7 @@ class GOGAppScreen : BaseAppScreen() {
 
                 Timber.d("Downloading GOG game to: $installPath")
 
-                // Show starting download toast
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Starting download for ${libraryItem.name}...",
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
-                }
+                SnackbarManager.show("Starting download for ${libraryItem.name}...")
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
                 val result = GOGService.downloadGame(context, gameId, installPath, containerData.language)
@@ -296,23 +290,11 @@ class GOGAppScreen : BaseAppScreen() {
                 } else {
                     val error = result.exceptionOrNull()
                     Timber.e(error, "Failed to start GOG download")
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Failed to start download: ${error?.message}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    SnackbarManager.show("Failed to start download: ${error?.message}")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error during GOG download")
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Download error: ${e.message}",
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
-                }
+                SnackbarManager.show("Download error: ${e.message}")
             }
         }
     }
@@ -366,33 +348,15 @@ class GOGAppScreen : BaseAppScreen() {
 
                 if (result.isSuccess) {
                     Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Game uninstalled successfully",
-                            android.widget.Toast.LENGTH_SHORT,
-                        ).show()
-                    }
+                    SnackbarManager.show("Game uninstalled successfully")
                 } else {
                     val error = result.exceptionOrNull()
                     Timber.e(error, "Failed to uninstall GOG game: ${libraryItem.appId}")
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Failed to uninstall game: ${error?.message}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    SnackbarManager.show("Failed to uninstall game: ${error?.message}")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uninstalling GOG game")
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Failed to uninstall game: ${e.message}",
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
-                }
+                SnackbarManager.show("Failed to uninstall game: ${e.message}")
             }
         }
     }
@@ -620,21 +584,11 @@ class GOGAppScreen : BaseAppScreen() {
                             }
 
                             val result = GOGService.deleteGame(context, libraryItem)
-                            withContext(Dispatchers.Main) {
-                                if (wasDownloading && !isInstalledAfterCancel) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Download cancelled",
-                                        android.widget.Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                                if (result.isFailure) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Failed to delete download: ${result.exceptionOrNull()?.message}",
-                                        android.widget.Toast.LENGTH_LONG,
-                                    ).show()
-                                }
+                            if (wasDownloading && !isInstalledAfterCancel) {
+                                SnackbarManager.show("Download cancelled")
+                            }
+                            if (result.isFailure) {
+                                SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
                             }
                         }
                     }

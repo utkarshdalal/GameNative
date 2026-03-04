@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.settings
 
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,6 +30,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.PrefManager
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.winlator.PrefManager as WinlatorPrefManager
 import kotlinx.coroutines.Dispatchers
@@ -108,7 +108,7 @@ fun SettingsGroupDebug() {
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Failed to save logcat to destination", Toast.LENGTH_SHORT).show()
+            SnackbarManager.show("Failed to save logcat to destination")
         }
     }
 
@@ -124,7 +124,7 @@ fun SettingsGroupDebug() {
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(context, context.getString(R.string.toast_failed_log_save), Toast.LENGTH_SHORT).show()
+            SnackbarManager.show(context.getString(R.string.toast_failed_log_save))
         }
     }
 
@@ -160,7 +160,7 @@ fun SettingsGroupDebug() {
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Failed to save Wine log to destination", Toast.LENGTH_SHORT).show()
+            SnackbarManager.show("Failed to save Wine log to destination")
         }
     }
 
@@ -259,7 +259,7 @@ fun SettingsGroupDebug() {
                     (context as ComponentActivity).finishAffinity()
                 },
                 onClick = {
-                    Toast.makeText(context, "Long click to activate", Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show("Long click to activate")
                 },
             ),
             colors = settingsTileColorsDebug(),
@@ -276,7 +276,7 @@ fun SettingsGroupDebug() {
                     (context as ComponentActivity).finishAffinity()
                 },
                 onClick = {
-                    Toast.makeText(context, "Long click to activate", Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show("Long click to activate")
                 },
             ),
             colors = settingsTileColorsDebug(),
@@ -292,7 +292,7 @@ fun SettingsGroupDebug() {
                     context.imageLoader.memoryCache?.clear()
                 },
                 onClick = {
-                    Toast.makeText(context, "Long click to activate", Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show("Long click to activate")
                 },
             ),
             colors = settingsTileColorsDebug(),

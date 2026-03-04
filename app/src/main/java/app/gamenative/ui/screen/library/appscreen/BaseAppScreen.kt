@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,7 +41,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Abstract base class for AppScreen implementations.
@@ -274,24 +273,9 @@ abstract class BaseAppScreen {
                             gameSource = gameSource,
                             iconUrl = iconUrl,
                         )
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.base_app_shortcut_created),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_created))
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                context.getString(
-                                    R.string.base_app_shortcut_failed,
-                                    e.message ?: "",
-                                ),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_failed, e.message ?: ""))
                     }
                 }
             },
@@ -346,33 +330,12 @@ abstract class BaseAppScreen {
                             PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
                             onAfterFetchImages(context, libraryItem, gameFolderPath)
 
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.base_app_images_fetched),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
+                            SnackbarManager.show(context.getString(R.string.base_app_images_fetched))
                         } else {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.base_app_game_folder_not_found),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
+                            SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
                         }
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                context.getString(
-                                    R.string.base_app_images_fetch_failed,
-                                    e.message ?: "",
-                                ),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show(context.getString(R.string.base_app_images_fetch_failed, e.message ?: ""))
                     }
                 }
             },
@@ -440,7 +403,7 @@ abstract class BaseAppScreen {
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
 
-        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+        SnackbarManager.show("Container reset to defaults")
     }
 
     /**
@@ -603,27 +566,12 @@ abstract class BaseAppScreen {
                             outputStream.write(content.toByteArray(Charsets.UTF_8))
                             outputStream.flush()
                         }
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.base_app_exported),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.base_app_exported))
                     } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            context.getString(
-                                R.string.base_app_export_failed,
-                                e.message ?: "",
-                            ),
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.base_app_export_failed, e.message ?: ""))
                     }
                 } else {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.base_app_export_cancelled),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.base_app_export_cancelled))
                 }
             },
         )

@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import kotlinx.coroutines.*
+import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 /**
@@ -391,42 +392,21 @@ class EpicService : Service() {
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
 
-                        // Show success toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download completed successfully!",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show("Download completed successfully!")
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setProgress(-1.0f)
                         downloadInfo.setActive(false)
 
-                        // Show failure toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
-                        }
+                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
-                    // Show error toast
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Download error: ${e.message ?: "Unknown error"}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
                     instance.activeDownloads.remove(appId)
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
