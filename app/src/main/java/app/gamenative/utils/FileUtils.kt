@@ -14,6 +14,9 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import timber.log.Timber
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.moveTo
 
 object FileUtils {
 
@@ -217,5 +220,76 @@ object FileUtils {
             current = match
         }
         return current.takeIf { it.exists() }
+    }
+
+    /**
+     * Walks a base directory and merges sibling directories that share a
+     * case-insensitive name.
+     */
+    fun mergeCaseInsensitiveDirectories(basePath: Path) {
+        if (!basePath.isDirectory()) return
+
+        // 1. Get all directories at the current level
+        val directories = basePath.listDirectoryEntries().filter { it.isDirectory() }
+
+        // 2. Group them by case-insensitive name
+        val groupedDirs = directories.groupBy { it.name.lowercase() }
+
+        for ((_, dirGroup) in groupedDirs) {
+            if (dirGroup.size > 1) {
+                // A clash exists! Pick the first one as the main target
+                val targetDir = dirGroup.first()
+                val sourceDirs = dirGroup.drop(1)
+
+                for (source in sourceDirs) {
+                    mergeContents(source, targetDir)
+
+                    // Once contents are safely moved, delete the empty source directory
+                    if (source.listDirectoryEntries().isEmpty()) {
+                        source.deleteExisting()
+                    }
+                }
+                // 3. Recurse into the newly merged target directory
+                mergeCaseInsensitiveDirectories(targetDir)
+            } else {
+                // No clash here, just continue walking down the tree
+                mergeCaseInsensitiveDirectories(dirGroup.first())
+            }
+        }
+    }
+
+    /**
+     * Helper function to recursively move contents from a source directory into a target directory,
+     * resolving case-insensitive collisions along the way.
+     */
+    private fun mergeContents(source: Path, target: Path) {
+        // Cache target entries by lowercase name for quick O(1) lookups
+        val targetEntries = target.listDirectoryEntries().associateBy { it.name.lowercase() }
+
+        for (sourceChild in source.listDirectoryEntries()) {
+            val lowerName = sourceChild.name.lowercase()
+            val matchingTarget = targetEntries[lowerName]
+
+            if (matchingTarget != null) {
+                // A case-insensitive match already exists in the target
+                if (sourceChild.isDirectory() && matchingTarget.isDirectory()) {
+                    // Both are directories: recursively merge them further down
+                    mergeContents(sourceChild, matchingTarget)
+
+                    // Delete the nested source directory if it's now empty
+                    if (sourceChild.listDirectoryEntries().isEmpty()) {
+                        sourceChild.deleteExisting()
+                    }
+                } else {
+                    // File conflict (or file vs. directory conflict).
+                    // Defaulting to overwriting the target with the source file.
+                    sourceChild.moveTo(matchingTarget, overwrite = true)
+                }
+            } else {
+                // No collision exists; simply move the file/directory over entirely
+                val newDest = target.resolve(sourceChild.name)
+                sourceChild.moveTo(newDest)
+            }
+        }
     }
 }

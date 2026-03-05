@@ -152,6 +152,7 @@ import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.db.dao.DownloadingAppInfoDao
+import app.gamenative.utils.FileUtils
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.CopyOnWriteArrayList
 import okhttp3.OkHttpClient
@@ -159,6 +160,7 @@ import okhttp3.Request
 import okhttp3.FormBody
 import org.json.JSONObject
 import com.winlator.container.ContainerManager
+import kotlin.io.path.Path
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -1717,6 +1719,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Remove the job here
                         removeDownloadJob(appId)
+
+                        // Merge any mismatched directory casings
+                        FileUtils.mergeCaseInsensitiveDirectories(Path(getAppDirPath(appId)))
 
                         // Remove the downloading app info
                         runBlocking {
