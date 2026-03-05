@@ -305,6 +305,8 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
+    // Persist index for keeping the user's place in the library view
+    var lastSelectedAppIndex by remember { mutableIntStateOf(0) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     // Dialog state for add custom game prompt
@@ -396,7 +398,10 @@ private fun LibraryScreenContent(
             // Brief delay to let the UI settle after transition
             kotlinx.coroutines.delay(100)
             // Restore focus to content area
+            // Also now persists the target index to keep track of where user left off.
             if (state.appInfoList.isNotEmpty()) {
+                gridFocusTargetListIndex = lastSelectedAppIndex
+                    .coerceIn(0, state.appInfoList.lastIndex)
                 requestGridFocusOrDefer()
             } else {
                 requestRootFocusSafe()
@@ -791,6 +796,7 @@ private fun LibraryScreenContent(
                     onNavigate = { appId ->
                         selectedAppId = appId
                         selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                        lastSelectedAppIndex = selectedLibraryItem?.index ?: listState.firstVisibleItemIndex
                     },
                     onRefresh = onRefresh,
                     modifier = Modifier.fillMaxSize(),
