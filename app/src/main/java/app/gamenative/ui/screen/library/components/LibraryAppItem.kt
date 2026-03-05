@@ -266,19 +266,16 @@ internal fun AppItem(
 
                             GameSource.STEAM -> {
                                 if (paneType == PaneType.GRID_CAPSULE) {
-                                    appInfo.capsuleImageUrl to appInfo.clientIconUrl
-                                } else {
-                                    // try header first, fall back to hero image from library assets
-                                    val fallback = if (appInfo.heroImageUrl.isNotEmpty()) appInfo.heroImageUrl else appInfo.clientIconUrl
-                                    appInfo.headerImageUrl to fallback
-                                }
-                            }
+            appInfo.capsuleImageUrl = appInfo.clientIconUrl
+        } else if (appInfo.heroImageUrl.isNotEmpty()) {
+            appInfo.headerImageUrl = appInfo.heroImageUrl
+        } else {
+            appInfo.headerImageUrl = appInfo.clientIconUrl
+        }
                         }
                     }
 var imageUrl by remember(primaryUrl, imageRefreshCounter) { mutableStateOf(primaryUrl) }
-                    // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
-                    LaunchedEffect(imageUrl) {
-                        if (paneType != PaneType.LIST) {
+         var imageUrl by remember(primaryUrl, imageRefreshCounter) { mutableStateOf(primaryUrl) }           
                             hideText = true
                             alpha = 1f
                         }
