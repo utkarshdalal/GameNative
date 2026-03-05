@@ -814,7 +814,7 @@
     <string name="login_password_show">비밀번호 표시</string>
     <string name="login_password_hide">비밀번호 숨기기</string>
     <string name="login_remember_session">세션 기억</string>
-    <string name="login_sign_in">로그인</string>
+    <string name="login_sign_in">Steam으로 로그인</string>
     <string name="login_qr_failed">QR 코드 실패</string>
     <string name="login_retry_qr">QR 코드 재시도</string>
     <string name="login_qr_instructions">Steam 모바일 앱을 열고 이 QR 코드를 스캔하여 즉시 로그인하세요</string>

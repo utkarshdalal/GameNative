@@ -796,7 +796,7 @@
     <string name="login_password_show">Показати пароль</string>
     <string name="login_password_hide">Приховати пароль</string>
     <string name="login_remember_session">Запам\'ятати мене</string>
-    <string name="login_sign_in">Увійти</string>
+    <string name="login_sign_in">Увійти через Steam</string>
     <string name="login_qr_failed">Помилка QR-коду</string>
     <string name="login_retry_qr">Спробувати ще раз</string>
     <string name="login_qr_instructions">Відкрийте мобільний застосунок Steam і відскануйте цей QR-код, щоб миттєво увійти.</string>

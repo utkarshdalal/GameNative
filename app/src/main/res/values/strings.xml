@@ -814,7 +814,7 @@
     <string name="login_password_show">Show password</string>
     <string name="login_password_hide">Hide password</string>
     <string name="login_remember_session">Remember session</string>
-    <string name="login_sign_in">Sign In</string>
+    <string name="login_sign_in">Sign in with Steam</string>
     <string name="login_qr_failed">QR Code Failed</string>
     <string name="login_retry_qr">Retry QR Code</string>
     <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>

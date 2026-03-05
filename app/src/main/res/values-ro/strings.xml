@@ -805,7 +805,7 @@
 	<string name="login_password_show">Arată parola</string>
 	<string name="login_password_hide">Ascunde parola</string>
 	<string name="login_remember_session">Ține-mă minte</string>
-	<string name="login_sign_in">Autentificare</string>
+	<string name="login_sign_in">Autentificare cu Steam</string>
 	<string name="login_qr_failed">Cod QR eșuat</string>
 	<string name="login_retry_qr">Reîncearcă codul QR</string>
 	<string name="login_qr_instructions">Deschide aplicația Steam pe mobil și scanează acest cod QR pentru autentificare instantă</string>

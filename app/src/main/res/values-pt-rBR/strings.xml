@@ -622,7 +622,7 @@
     <string name="login_password_show">Mostrar senha</string>
     <string name="login_password_hide">Ocultar senha</string>
     <string name="login_remember_session">Lembrar sessão</string>
-    <string name="login_sign_in">Entrar</string>
+    <string name="login_sign_in">Entrar com Steam</string>
     <string name="login_qr_failed">Falha no código QR</string>
     <string name="login_retry_qr">Tentar código QR novamente</string>
     <string name="login_qr_instructions">Abra o aplicativo móvel do Steam e escaneie este código QR para entrar instantaneamente</string>

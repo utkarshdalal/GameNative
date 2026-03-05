@@ -762,7 +762,7 @@
     <string name="login_password_show">Passwort anzeigen</string>
     <string name="login_password_hide">Passwort verbergen</string>
     <string name="login_remember_session">Angemeldet bleiben</string>
-    <string name="login_sign_in">Anmelden</string>
+    <string name="login_sign_in">Mit Steam anmelden</string>
     <string name="login_qr_failed">QR-Code fehlgeschlagen</string>
     <string name="login_retry_qr">QR-Code erneut versuchen</string>
     <string name="login_qr_instructions">Öffne die Steam Mobile App und scanne diesen QR-Code, um dich sofort anzumelden</string>

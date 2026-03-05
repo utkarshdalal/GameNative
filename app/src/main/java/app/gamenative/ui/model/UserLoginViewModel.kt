@@ -180,8 +180,6 @@ class UserLoginViewModel : ViewModel() {
         _loginState.update { currentState ->
             currentState.copy(isQrFailed = !it.success, qrCode = null)
         }
-
-        it.message?.let(::showSnack)
     }
 
     private val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = {

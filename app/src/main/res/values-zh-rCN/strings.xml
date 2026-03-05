@@ -795,7 +795,7 @@
     <string name="login_password_show">显示密码</string>
     <string name="login_password_hide">隐藏密码</string>
     <string name="login_remember_session">记住登录状态</string>
-    <string name="login_sign_in">登录</string>
+    <string name="login_sign_in">通过 Steam 登录</string>
     <string name="login_qr_failed">QR 码扫描失败</string>
     <string name="login_retry_qr">重试 QR 码扫描</string>
     <string name="login_qr_instructions">打开 Steam 移动应用程序，扫描此 QR 码即可立即登录</string>

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
@@ -85,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.gamenative.Constants
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
@@ -233,13 +235,17 @@ fun UserLoginScreen(
         }
     }
 
-    LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn) {
+    LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn, connectionState, userLoginState.isQrFailed) {
         if (
+            connectionState == ConnectionState.CONNECTED &&
             userLoginState.loginScreen != LoginScreen.TWO_FACTOR &&
-            userLoginState.loginScreen != LoginScreen.QR &&
             userLoginState.isLoggingIn.not()
         ) {
-            viewModel.onShowLoginScreen(LoginScreen.QR)
+            if (userLoginState.loginScreen != LoginScreen.QR) {
+                viewModel.onShowLoginScreen(LoginScreen.QR)
+            } else if (userLoginState.isQrFailed) {
+                viewModel.onQrRetry()
+            }
         }
     }
 
@@ -359,7 +365,7 @@ private fun UserLoginScreenContent(
                     // Login Card
                     Card(
                         modifier = Modifier
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp)
                             .fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
@@ -383,7 +389,7 @@ private fun UserLoginScreenContent(
                         val scrollState = rememberScrollState()
                         Column(
                             modifier = Modifier
-                                .padding(24.dp)
+                                .padding(horizontal = 24.dp, vertical = 12.dp)
                                 .fillMaxWidth()
                                 .verticalScroll(scrollState)
                                 .focusGroup(),
@@ -492,7 +498,7 @@ private fun UserLoginScreenContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .padding(bottom = 8.dp),
+                        .padding(top = 16.dp, bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
@@ -553,6 +559,17 @@ private fun CredentialsForm(
 ) {
     val isConnecting = connectionState == ConnectionState.CONNECTING
     val isSteamConnected = connectionState == ConnectionState.CONNECTED
+    var showDisconnected by remember { mutableStateOf(false) }
+    LaunchedEffect(connectionState) {
+        if (connectionState == ConnectionState.CONNECTED || connectionState == ConnectionState.CONNECTING) {
+            showDisconnected = false
+        } else if (connectionState == ConnectionState.DISCONNECTED) {
+            delay(3000)
+            showDisconnected = true
+        } else {
+            showDisconnected = !isSteamConnected
+        }
+    }
     var passwordVisible by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val passwordFocusRequester = remember { FocusRequester() }
@@ -566,8 +583,7 @@ private fun CredentialsForm(
         // Username field
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .fillMaxWidth(),
         ) {
             // Show connecting state or disconnected error
             if (isConnecting) {
@@ -600,8 +616,7 @@ private fun CredentialsForm(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-            } else if (!isSteamConnected) {
-                // Show "No connection to Steam" error with retry button
+            } else if (showDisconnected) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -641,24 +656,13 @@ private fun CredentialsForm(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            Text(
-                text = stringResource(R.string.login_username),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-
             OutlinedTextField(
                 value = username,
                 onValueChange = onUsername,
                 singleLine = true,
+                label = { Text(stringResource(R.string.login_username_hint)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp),
-                    )
                     .focusRequester(usernameFocusRequester),
                 placeholder = {
                     Text(
@@ -685,82 +689,64 @@ private fun CredentialsForm(
             )
         }
 
-        // Password field
-        Column(
+        OutlinedTextField(
+            value = password,
+            onValueChange = onPassword,
+            singleLine = true,
+            label = { Text(stringResource(R.string.login_password_hint)) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.login_password),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = onPassword,
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    .focusRequester(passwordFocusRequester),
-                placeholder = {
-                    Text(
-                        stringResource(R.string.login_password_hint),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    )
+                .padding(top = 8.dp)
+                .focusRequester(passwordFocusRequester),
+            placeholder = {
+                Text(
+                    stringResource(R.string.login_password_hint),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardController?.hide()
+                    onLoginBtnClick()
                 },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        keyboardController?.hide()
-                        onLoginBtnClick()
-                    },
-                ),
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                ),
-                trailingIcon = {
-                    val image = if (passwordVisible) {
-                        Icons.Filled.Visibility
-                    } else {
-                        Icons.Filled.VisibilityOff
-                    }
+            ),
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            ),
+            trailingIcon = {
+                val image = if (passwordVisible) {
+                    Icons.Filled.Visibility
+                } else {
+                    Icons.Filled.VisibilityOff
+                }
 
-                    val description = if (passwordVisible) {
-                        stringResource(R.string.login_password_hide)
-                    } else {
-                        stringResource(R.string.login_password_show)
-                    }
+                val description = if (passwordVisible) {
+                    stringResource(R.string.login_password_hide)
+                } else {
+                    stringResource(R.string.login_password_show)
+                }
 
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = image,
-                            contentDescription = description,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-            )
-        }
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = image,
+                        contentDescription = description,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+        )
 
-        // Login button
         Button(
             onClick = {
                 keyboardController?.hide()
@@ -769,8 +755,8 @@ private fun CredentialsForm(
             enabled = isSteamConnected && username.isNotEmpty() && password.isNotEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top=12.dp)
-                .height(56.dp),
+                .padding(top = 16.dp, bottom = 8.dp)
+                .height(48.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -793,95 +779,111 @@ private fun QRCodeLogin(
     qrCode: String?,
     onQrRetry: () -> Unit,
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        if (isQrFailed) {
-            Text(
-                text = stringResource(R.string.login_qr_failed),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
+    BoxWithConstraints(modifier = modifier) {
+        val instructionTextHeight = 40.dp
+        val qrPadding = 16.dp
+        val availableForQr = maxHeight - instructionTextHeight - qrPadding
+        val qrSize = availableForQr.coerceIn(100.dp, 200.dp)
 
-            OutlinedButton(
-                onClick = onQrRetry,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary),
-                modifier = Modifier.padding(top = 16.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.tertiary,
-                ),
-            ) {
-                Text(
-                    text = stringResource(R.string.login_retry_qr),
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
+        var showQrFailed by remember { mutableStateOf(false) }
+        LaunchedEffect(isQrFailed) {
+            if (isQrFailed) {
+                delay(3000)
+                showQrFailed = true
+            } else {
+                showQrFailed = false
             }
-        } else if (qrCode.isNullOrEmpty()) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .padding(vertical = 16.dp)
-                    .size(160.dp),
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+        }
 
-            Text(
-                text = stringResource(R.string.login_qr_instructions),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        } else {
-            // QR Code with fancy border
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 16.dp)
-                    .size(160.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                                MaterialTheme.colorScheme.primary,
-                            ),
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                    )
-                    .padding(2.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.White,
-                    shape = RoundedCornerShape(14.dp),
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            if (showQrFailed) {
+                Text(
+                    text = stringResource(R.string.login_qr_failed),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+
+                OutlinedButton(
+                    onClick = onQrRetry,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary),
+                    modifier = Modifier.padding(top = 16.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.tertiary,
+                    ),
                 ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        QrCodeImage(
-                            modifier = Modifier.fillMaxSize(0.95f),
-                            content = qrCode,
-                            size = 200.dp,
+                    Text(
+                        text = stringResource(R.string.login_retry_qr),
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            } else if (qrCode.isNullOrEmpty()) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
+                        .size(qrSize),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.login_qr_instructions),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
+                        .size(qrSize)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                    MaterialTheme.colorScheme.primary,
+                                ),
+                            ),
+                            shape = RoundedCornerShape(16.dp),
                         )
+                        .padding(2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.White,
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            QrCodeImage(
+                                modifier = Modifier.fillMaxSize(0.95f),
+                                content = qrCode,
+                                size = qrSize,
+                            )
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.login_qr_instructions),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = stringResource(R.string.login_qr_instructions),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
         }
     }
 }
@@ -936,9 +938,9 @@ private fun Preview_UserLoginScreen(
 }
 
 @Preview(
-    name = "UserLoginScreen - Landscape",
-    widthDp = 960,
-    heightDp = 540,
+    name = "UserLoginScreen - Landscape (Pixel 7)",
+    widthDp = 915,
+    heightDp = 412,
     uiMode = Configuration.UI_MODE_NIGHT_NO or Configuration.UI_MODE_TYPE_NORMAL,
 )
 @Composable

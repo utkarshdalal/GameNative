@@ -813,7 +813,7 @@
     <string name="login_password_show">Pokaż hasło</string>
     <string name="login_password_hide">Ukryj hasło</string>
     <string name="login_remember_session">Zapamiętaj sesję</string>
-    <string name="login_sign_in">Zaloguj się</string>
+    <string name="login_sign_in">Zaloguj się przez Steam</string>
     <string name="login_qr_failed">Błąd kodu QR</string>
     <string name="login_retry_qr">Ponów kod QR</string>
     <string name="login_qr_instructions">Otwórz aplikację mobilną Steam i zeskanuj ten kod QR, aby zalogować się natychmiast</string>
