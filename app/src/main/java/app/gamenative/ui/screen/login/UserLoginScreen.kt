@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.login
 
 import android.content.Context
+import android.view.KeyEvent
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -64,12 +65,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -101,6 +106,38 @@ import app.gamenative.ui.data.UserLoginState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.model.UserLoginViewModel
 import app.gamenative.ui.theme.PluviaTheme
+
+/**
+ * Modifier that allows D-pad up/down and B-button to escape focus from a text field,
+ * which otherwise consumes these events for cursor movement.
+ */
+private fun Modifier.dpadFocusEscape(
+    focusManager: FocusManager,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    onUp: (() -> Unit)? = { focusManager.moveFocus(FocusDirection.Up) },
+    onDown: (() -> Unit)? = { focusManager.moveFocus(FocusDirection.Down) },
+): Modifier = onPreviewKeyEvent { keyEvent ->
+    if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+        when (keyEvent.nativeKeyEvent.keyCode) {
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                onDown?.invoke()
+                onDown != null
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                onUp?.invoke()
+                onUp != null
+            }
+            KeyEvent.KEYCODE_BUTTON_B -> {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                true
+            }
+            else -> false
+        }
+    } else {
+        false
+    }
+}
 
 @Composable
 fun UserLoginScreen(
@@ -310,7 +347,8 @@ private fun UserLoginScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .focusGroup(),
         ) {
             // Header
             Row(
@@ -391,8 +429,7 @@ private fun UserLoginScreenContent(
                             modifier = Modifier
                                 .padding(horizontal = 24.dp, vertical = 12.dp)
                                 .fillMaxWidth()
-                                .verticalScroll(scrollState)
-                                .focusGroup(),
+                                .verticalScroll(scrollState),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             if (userLoginState.loginScreen == LoginScreen.TWO_FACTOR) {
@@ -572,6 +609,7 @@ private fun CredentialsForm(
     }
     var passwordVisible by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val passwordFocusRequester = remember { FocusRequester() }
     val usernameFocusRequester = remember { FocusRequester() }
 
@@ -663,7 +701,12 @@ private fun CredentialsForm(
                 label = { Text(stringResource(R.string.login_username_hint)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(usernameFocusRequester),
+                    .focusRequester(usernameFocusRequester)
+                    .dpadFocusEscape(
+                        focusManager = focusManager,
+                        keyboardController = keyboardController,
+                        onDown = { passwordFocusRequester.requestFocus() },
+                    ),
                 placeholder = {
                     Text(
                         stringResource(R.string.login_username_hint),
@@ -697,7 +740,12 @@ private fun CredentialsForm(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
-                .focusRequester(passwordFocusRequester),
+                .focusRequester(passwordFocusRequester)
+                .dpadFocusEscape(
+                    focusManager = focusManager,
+                    keyboardController = keyboardController,
+                    onUp = { usernameFocusRequester.requestFocus() },
+                ),
             placeholder = {
                 Text(
                     stringResource(R.string.login_password_hint),
