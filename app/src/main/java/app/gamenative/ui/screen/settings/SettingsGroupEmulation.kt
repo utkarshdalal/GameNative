@@ -16,7 +16,7 @@ import app.gamenative.R
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
-import app.gamenative.ui.component.dialog.OrientationDialog
+
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -30,13 +30,7 @@ fun SettingsGroupEmulation() {
     SettingsGroup(
     ) {
         var showConfigDialog by rememberSaveable { mutableStateOf(false) }
-        var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
         var showBox64PresetsDialog by rememberSaveable { mutableStateOf(false) }
-
-        OrientationDialog(
-            openDialog = showOrientationDialog,
-            onDismiss = { showOrientationDialog = false },
-        )
 
         ContainerConfigDialog(
             visible = showConfigDialog,
@@ -78,12 +72,6 @@ fun SettingsGroupEmulation() {
             WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
         }
 
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_orientations_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_orientations_subtitle)) },
-            onClick = { showOrientationDialog = true },
-        )
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_emulation_default_config_title)) },

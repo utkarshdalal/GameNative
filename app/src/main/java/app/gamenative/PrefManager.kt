@@ -478,6 +478,13 @@ object PrefManager {
             setPref(DISABLE_MOUSE_INPUT, value)
         }
 
+    private val PORTRAIT_MODE = booleanPreferencesKey("portrait_mode")
+    var portraitMode: Boolean
+        get() = getPref(PORTRAIT_MODE, false)
+        set(value) {
+            setPref(PORTRAIT_MODE, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)

@@ -352,6 +352,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
     options.forEach { option ->
         when (option.optionType) {
             // Quick Actions
+            AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
@@ -366,7 +367,6 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             -> gameManagement.add(option)
 
             // Container Settings
-            AppOptionMenuType.EditContainer,
             AppOptionMenuType.ResetToDefaults,
             AppOptionMenuType.ResetDrm,
             AppOptionMenuType.UseKnownConfig,

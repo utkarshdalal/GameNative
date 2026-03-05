@@ -531,6 +531,8 @@
     <string name="height">높이</string>
     <string name="audio_driver">오디오 드라이버</string>
     <string name="show_fps">FPS 표시</string>
+    <string name="portrait_mode">세로 모드</string>
+    <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
     <string name="remove_driver_confirmation">드라이버 "%s"을(를) 제거하시겠습니까? 이 작업은 실행 취소할 수 없습니다</string>
 
     <!-- Container Configuration: Steam Integration -->

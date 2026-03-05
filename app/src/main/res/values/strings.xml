@@ -566,6 +566,8 @@
     <string name="height">Height</string>
     <string name="audio_driver">Audio Driver</string>
     <string name="show_fps">Show FPS</string>
+    <string name="portrait_mode">Portrait Mode</string>
+    <string name="portrait_mode_description">For 8BitDo FlipPad/GameSir Pocket Taco type controllers</string>
     <string name="remove_driver_confirmation">Are you sure you want to remove driver "%s"? This cannot be undone</string>
 
     <!-- Container Configuration: Steam Integration -->

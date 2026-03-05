@@ -566,6 +566,8 @@
     <string name="height">Alto</string>
     <string name="audio_driver">Controlador de audio</string>
     <string name="show_fps">Mostrar FPS</string>
+    <string name="portrait_mode">Modo vertical</string>
+    <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
     <string name="remove_driver_confirmation">¿Deseas eliminar el controlador "%s"? Esta acción no se puede deshacer.</string>
 
     <!-- Container Configuration: Steam Integration -->

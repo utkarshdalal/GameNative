@@ -495,6 +495,8 @@
     <string name="height">Höhe</string>
     <string name="audio_driver">Audiotreiber</string>
     <string name="show_fps">FPS anzeigen</string>
+    <string name="portrait_mode">Hochformat-Modus</string>
+    <string name="portrait_mode_description">Für 8BitDo FlipPad/GameSir Pocket Taco Controller</string>
     <string name="remove_driver_confirmation">Möchtest du den Treiber "%s" wirklich entfernen? Dies kann nicht rückgängig gemacht werden.</string>
     <!-- Container Configuration: Steam Integration -->
     <string name="use_legacy_drm">Legacy DRM verwenden</string>

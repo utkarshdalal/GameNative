@@ -142,6 +142,8 @@ public class Container {
 
     private boolean unpackFiles = false;
 
+    private boolean portraitMode = false;
+
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -693,6 +695,8 @@ public class Container {
             // Unpack Files setting
             data.put("unpackFiles", unpackFiles);
 
+            data.put("portraitMode", portraitMode);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -882,6 +886,9 @@ public class Container {
                 case "unpackFiles":
                     this.unpackFiles = data.getBoolean(key);
                     break;
+                case "portraitMode":
+                    this.portraitMode = data.getBoolean(key);
+                    break;
             }
         }
     }
@@ -967,6 +974,14 @@ public class Container {
 
     public void setUnpackFiles(boolean unpackFiles) {
         this.unpackFiles = unpackFiles;
+    }
+
+    public boolean isPortraitMode() {
+        return portraitMode;
+    }
+
+    public void setPortraitMode(boolean portraitMode) {
+        this.portraitMode = portraitMode;
     }
 
     public String getContainerJson() {

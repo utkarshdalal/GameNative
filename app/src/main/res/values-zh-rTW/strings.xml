@@ -515,6 +515,8 @@
     <string name="height">高度</string>
     <string name="audio_driver">音訊驅動程式</string>
     <string name="show_fps">顯示幀率</string>
+    <string name="portrait_mode">直向模式</string>
+    <string name="portrait_mode_description">適用於 8BitDo FlipPad/GameSir Pocket Taco 類型控制器</string>
     <string name="remove_driver_confirmation">您確定要移除驅動程式 "%s"? 此操作無法復原</string>
 
     <!-- Container Configuration: Steam Integration -->

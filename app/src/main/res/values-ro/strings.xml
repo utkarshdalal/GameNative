@@ -522,6 +522,8 @@
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
 	<string name="show_fps">Afișează FPS</string>
+	<string name="portrait_mode">Mod portret</string>
+	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->

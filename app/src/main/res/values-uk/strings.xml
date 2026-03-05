@@ -513,6 +513,8 @@
     <string name="height">Висота</string>
     <string name="audio_driver">Аудіо драйвер</string>
     <string name="show_fps">Показати FPS</string>
+    <string name="portrait_mode">Портретний режим</string>
+    <string name="portrait_mode_description">Для контролерів типу 8BitDo FlipPad/GameSir Pocket Taco</string>
     <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер «%s»? Цю дію не можна скасувати.</string>
 
     <!-- Container Configuration: Steam Integration -->
