@@ -736,9 +736,9 @@ fun XServerScreen(
             },
         factory = { context ->
             Timber.i("Creating XServerView and XServer")
-            val isPortrait = context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val dm = context.resources.displayMetrics
-            val controlsHeightPortrait = dm.widthPixels * 9 / 16
+            val screenWidth = if (isPortrait) minOf(dm.widthPixels, dm.heightPixels) else dm.widthPixels
+            val controlsHeightPortrait = screenWidth * 9 / 16
             val mainRoot = if (isPortrait) {
                 LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
