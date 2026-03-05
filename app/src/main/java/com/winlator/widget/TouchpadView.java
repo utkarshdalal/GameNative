@@ -110,6 +110,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     // Accumulated deltas for deciding which two-finger gesture to lock into
     private float accumulatedPinchDelta, accumulatedPanDelta;
 
+    private final Runnable[] pendingButtonReleases = new Runnable[Pointer.Button.values().length];
+
     public TouchpadView(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
         super(context);
         this.capturePointerOnExternalMouse = capturePointerOnExternalMouse;
@@ -151,7 +153,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     @Override
     public void onPointerCaptureChange(boolean hasCapture) {
         super.onPointerCaptureChange(hasCapture);
-        if (hasCapture) isFirstCapturedMove = true;
+        if (hasCapture) {
+            isFirstCapturedMove = true;
+            capturedPointerRemainderX = 0f;
+            capturedPointerRemainderY = 0f;
+        }
     }
 
     private static StateListDrawable createTransparentBackground() {
@@ -822,6 +828,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void injectClick(String action) {
         Pointer.Button btn = actionToButton(action);
         if (btn != null) {
+            cancelPendingRelease(btn);
             if (xServer.isRelativeMouseMovement()) {
                 xServer.getWinHandler().mouseEvent(buttonToDownFlag(btn), 0, 0, 0);
             } else {
@@ -833,6 +840,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void injectRelease(String action) {
         Pointer.Button btn = actionToButton(action);
         if (btn != null) {
+            cancelPendingRelease(btn);
             if (xServer.isRelativeMouseMovement()) {
                 xServer.getWinHandler().mouseEvent(buttonToUpFlag(btn), 0, 0, 0);
             } else {
@@ -860,6 +868,37 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (btn == Pointer.Button.BUTTON_RIGHT)  return MouseEventFlags.RIGHTUP;
         if (btn == Pointer.Button.BUTTON_MIDDLE) return MouseEventFlags.MIDDLEUP;
         return MouseEventFlags.LEFTUP;
+    }
+
+    private void cancelPendingRelease(Pointer.Button button) {
+        if (button == null) return;
+        int index = button.ordinal();
+        if (index < pendingButtonReleases.length && pendingButtonReleases[index] != null) {
+            removeCallbacks(pendingButtonReleases[index]);
+            pendingButtonReleases[index] = null;
+        }
+    }
+
+    private Pointer.Button externalToXButton(int motionButton) {
+        if (motionButton == MotionEvent.BUTTON_PRIMARY) return Pointer.Button.BUTTON_LEFT;
+        if (motionButton == MotionEvent.BUTTON_SECONDARY) return Pointer.Button.BUTTON_RIGHT;
+        if (motionButton == MotionEvent.BUTTON_TERTIARY) return Pointer.Button.BUTTON_MIDDLE;
+        return null;
+    }
+
+    private void delayedRelease(Pointer.Button button) {
+        if (button == null) return;
+        cancelPendingRelease(button);
+        final int index = button.ordinal();
+        Runnable releaseTask = () -> {
+            if (xServer.isRelativeMouseMovement())
+                xServer.getWinHandler().mouseEvent(buttonToUpFlag(button), 0, 0, 0);
+            else
+                xServer.injectPointerButtonRelease(button);
+            pendingButtonReleases[index] = null;
+        };
+        pendingButtonReleases[index] = releaseTask;
+        postDelayed(releaseTask, 30);
     }
 
     private float twoFingerDistance(MotionEvent event) {
@@ -906,7 +945,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void performMiddleMousePan(float dx, float dy) {
         if (!twoFingerMiddleButtonDown) {
-            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE);
+            Pointer.Button button = Pointer.Button.BUTTON_MIDDLE;
+            cancelPendingRelease(button);
+            xServer.injectPointerButtonPress(button);
             twoFingerMiddleButtonDown = true;
         }
         // Convert raw screen pixel delta to X-server coordinates by transforming
@@ -926,7 +967,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void releaseTwoFingerMiddleButton() {
         if (twoFingerMiddleButtonDown) {
-            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE);
+            Pointer.Button button = Pointer.Button.BUTTON_MIDDLE;
+            cancelPendingRelease(button);
+            xServer.injectPointerButtonRelease(button);
             twoFingerMiddleButtonDown = false;
         }
     }
@@ -1064,6 +1107,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void pressPointerButtonLeft(Finger finger) {
         if (isEnabled() && this.pointerButtonLeftEnabled) {
+            Pointer.Button button = Pointer.Button.BUTTON_LEFT;
+            cancelPendingRelease(button);
             // Relative mouse movement support
             if (this.xServer.isRelativeMouseMovement()) {
                 this.xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTDOWN, 0, 0, 0);
@@ -1071,7 +1116,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 return;
             }
             Pointer pointer = this.xServer.pointer;
-            Pointer.Button button = Pointer.Button.BUTTON_LEFT;
             if (!pointer.isButtonPressed(button)) {
                 this.xServer.injectPointerButtonPress(button);
                 this.fingerPointerButtonLeft = finger;
@@ -1081,6 +1125,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void pressPointerButtonRight(Finger finger) {
         if (isEnabled() && this.pointerButtonRightEnabled) {
+            Pointer.Button button = Pointer.Button.BUTTON_RIGHT;
+            cancelPendingRelease(button);
             // Relative mouse movement support
             if (this.xServer.isRelativeMouseMovement()) {
                 this.xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTDOWN, 0, 0, 0);
@@ -1088,7 +1134,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 return;
             }
             Pointer pointer = this.xServer.pointer;
-            Pointer.Button button = Pointer.Button.BUTTON_RIGHT;
             if (!pointer.isButtonPressed(button)) {
                 this.xServer.injectPointerButtonPress(button);
                 this.fingerPointerButtonRight = finger;
@@ -1097,36 +1142,16 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void releasePointerButtonLeft(Finger finger) {
-        // Relative mouse movement support
-        if (isEnabled() && this.pointerButtonLeftEnabled && finger == this.fingerPointerButtonLeft && this.xServer.isRelativeMouseMovement()) {
-            postDelayed(() -> {
-                xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
-                fingerPointerButtonLeft = null;
-            }, 30);
-            return;
-        }
-        if (isEnabled() && this.pointerButtonLeftEnabled && finger == this.fingerPointerButtonLeft && this.xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
-            postDelayed(() -> {
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
-                fingerPointerButtonLeft = null;
-            }, 30);
+        if (isEnabled() && this.pointerButtonLeftEnabled && finger == this.fingerPointerButtonLeft) {
+            delayedRelease(Pointer.Button.BUTTON_LEFT);
+            fingerPointerButtonLeft = null;
         }
     }
 
     private void releasePointerButtonRight(Finger finger) {
-        // Relative mouse movement support
-        if (isEnabled() && this.pointerButtonRightEnabled && finger == this.fingerPointerButtonRight && this.xServer.isRelativeMouseMovement()) {
-            postDelayed(() -> {
-                xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
-                fingerPointerButtonRight = null;
-            }, 30);
-            return;
-        }
-        if (isEnabled() && this.pointerButtonRightEnabled && finger == this.fingerPointerButtonRight && this.xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
-            postDelayed(() -> {
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
-                fingerPointerButtonRight = null;
-            }, 30);
+        if (isEnabled() && this.pointerButtonRightEnabled && finger == this.fingerPointerButtonRight) {
+            delayedRelease(Pointer.Button.BUTTON_RIGHT);
+            fingerPointerButtonRight = null;
         }
     }
 
@@ -1165,44 +1190,18 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             int actionButton = event.getActionButton();
             switch (event.getAction()) {
                 case MotionEvent.ACTION_BUTTON_PRESS:
-                    if (actionButton == MotionEvent.BUTTON_PRIMARY) {
+                    Pointer.Button pressBtn = externalToXButton(actionButton);
+                    if (pressBtn != null) {
+                        cancelPendingRelease(pressBtn);
                         if (xServer.isRelativeMouseMovement())
-                            xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTDOWN, 0, 0, 0);
+                            xServer.getWinHandler().mouseEvent(buttonToDownFlag(pressBtn), 0, 0, 0);
                         else
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-                    } else if (actionButton == MotionEvent.BUTTON_SECONDARY) {
-                        if (xServer.isRelativeMouseMovement())
-                            xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTDOWN, 0, 0, 0);
-                        else
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
-                    } else if (actionButton == MotionEvent.BUTTON_TERTIARY) {
-                        if (xServer.isRelativeMouseMovement())
-                            xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEDOWN, 0, 0, 0);
-                        else
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE);
+                            xServer.injectPointerButtonPress(pressBtn);
                     }
                     handled = true;
                     break;
                 case MotionEvent.ACTION_BUTTON_RELEASE:
-                    final int finalActionButton = actionButton;
-                    postDelayed(() -> {
-                        if (finalActionButton == MotionEvent.BUTTON_PRIMARY) {
-                            if (xServer.isRelativeMouseMovement())
-                                xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
-                            else
-                                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
-                        } else if (finalActionButton == MotionEvent.BUTTON_SECONDARY) {
-                            if (xServer.isRelativeMouseMovement())
-                                xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
-                            else
-                                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
-                        } else if (finalActionButton == MotionEvent.BUTTON_TERTIARY) {
-                            if (xServer.isRelativeMouseMovement())
-                                xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEUP, 0, 0, 0);
-                            else
-                                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE);
-                        }
-                    }, 30);
+                    delayedRelease(externalToXButton(actionButton));
                     handled = true;
                     break;
                 case MotionEvent.ACTION_MOVE:
@@ -1265,8 +1264,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override // android.view.View.OnCapturedPointerListener
     public boolean onCapturedPointer(View view, MotionEvent event) {
-        int action = event.getAction();
-        if (action == MotionEvent.ACTION_MOVE) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_HOVER_MOVE) {
             // Xiaomi Fix: Skip the first move event after capture because it often 
             // contains absolute coordinates that cause the cursor to jump to the corner.
             if (isFirstCapturedMove) {
@@ -1316,11 +1315,24 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             capturedPointerRemainderY = dy - idy;
 
             if (idx != 0 || idy != 0) {
+                // Prevent X11 short overflow by clamping to Short limits rather than screen bounds.
+                // Clamping to screen width/height breaks infinite dragging in PC games that rely on 
+                // the cursor going out of physical bounds.
+                int candX = this.xServer.pointer.getX() + idx;
+                int candY = this.xServer.pointer.getY() + idy;
+                int clampedX = Mathf.clamp(candX, Short.MIN_VALUE, Short.MAX_VALUE);
+                int clampedY = Mathf.clamp(candY, Short.MIN_VALUE, Short.MAX_VALUE);
+                int safeDx = clampedX - this.xServer.pointer.getX();
+                int safeDy = clampedY - this.xServer.pointer.getY();
+
                 // Update local X11 pointer
-                this.xServer.injectPointerMoveDelta(idx, idy);
+                if (safeDx != 0 || safeDy != 0) {
+                    this.xServer.injectPointerMoveDelta(safeDx, safeDy);
+                }
                 
                 // IMPORTANT: If we are in relative mouse mode (common in games),
-                // we must also send the delta to the Windows side via WinHandler.
+                // we must also send the *original* delta to the Windows side via WinHandler
+                // because games read raw relative motion, not clamped screen coordinates.
                 if (this.xServer.isRelativeMouseMovement()) {
                     this.xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, idx, idy, 0);
                 }
@@ -1371,18 +1383,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (btn == null) btn = Pointer.Button.BUTTON_LEFT;
 
         if (pressed) {
+            cancelPendingRelease(btn);
             if (xServer.isRelativeMouseMovement())
                 xServer.getWinHandler().mouseEvent(buttonToDownFlag(btn), 0, 0, 0);
             else
                 xServer.injectPointerButtonPress(btn);
         } else {
-            final Pointer.Button finalBtn = btn;
-            postDelayed(() -> {
-                if (xServer.isRelativeMouseMovement())
-                    xServer.getWinHandler().mouseEvent(buttonToUpFlag(finalBtn), 0, 0, 0);
-                else
-                    xServer.injectPointerButtonRelease(finalBtn);
-            }, 30);
+            delayedRelease(btn);
         }
     }
 
