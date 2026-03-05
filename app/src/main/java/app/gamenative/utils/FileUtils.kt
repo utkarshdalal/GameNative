@@ -233,7 +233,7 @@ object FileUtils {
         val directories = basePath.listDirectoryEntries().filter { it.isDirectory() }
 
         // 2. Group them by case-insensitive name
-        val groupedDirs = directories.groupBy { it.name.lowercase() }
+        val groupedDirs = directories.groupBy { it.name.lowercase(Locale.ROOT) }
 
         for ((_, dirGroup) in groupedDirs) {
             if (dirGroup.size > 1) {
@@ -264,10 +264,10 @@ object FileUtils {
      */
     private fun mergeContents(source: Path, target: Path) {
         // Cache target entries by lowercase name for quick O(1) lookups
-        val targetEntries = target.listDirectoryEntries().associateBy { it.name.lowercase() }
+        val targetEntries = target.listDirectoryEntries().associateBy { it.name.lowercase(Locale.ROOT) }
 
         for (sourceChild in source.listDirectoryEntries()) {
-            val lowerName = sourceChild.name.lowercase()
+            val lowerName = sourceChild.name.lowercase(Locale.ROOT)
             val matchingTarget = targetEntries[lowerName]
 
             if (matchingTarget != null) {
