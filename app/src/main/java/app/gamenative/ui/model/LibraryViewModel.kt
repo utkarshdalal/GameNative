@@ -388,8 +388,9 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .filter { item ->
-                    if (currentState.searchQuery.isNotEmpty()) {
-                        item.name.contains(currentState.searchQuery, ignoreCase = true)
+                    val trimmedQuery = currentState.searchQuery.trim()
+                    if (trimmedQuery.isNotEmpty()) {
+                        item.name.contains(trimmedQuery, ignoreCase = true)
                     } else {
                         true
                     }

@@ -269,7 +269,7 @@ private fun SearchBarInput(
 
                     // Text change listener
                     doAfterTextChanged { editable ->
-                        onSearchText(editable?.toString()?.trim() ?: "")
+                        onSearchText(editable?.toString() ?: "")
                     }
 
                     // Focus change listener for border highlight
