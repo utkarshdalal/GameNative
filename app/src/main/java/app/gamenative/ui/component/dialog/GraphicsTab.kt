@@ -461,14 +461,13 @@ private fun DxWrapperSection(state: ContainerConfigState) {
     run {
         val isD7VK = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "d7vk"
         if (isD7VK) {
-            val label = "D7VK Version"
             val availableVersions = state.d7vkVersionsAll.value
             val selectedVersion = KeyValueSet(config.dxwrapperConfig).get("version").ifEmpty { DefaultVersion.D7VK }
             val selectedIndex = availableVersions.indexOf(selectedVersion).coerceAtLeast(0)
 
             SettingsListDropdown(
                 colors = settingsTileColors(),
-                title = { Text(text = label) },
+                title = { Text(text = stringResource(R.string.d7vk_version)) },
                 value = selectedIndex,
                 items = availableVersions,
                 onItemSelected = { idx ->

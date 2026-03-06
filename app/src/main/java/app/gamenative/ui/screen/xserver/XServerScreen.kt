@@ -2588,15 +2588,15 @@ private fun cleanupD7vkFromGameDirectory(
 
         val rootDir = imageFs.getRootDir()
 
-        // Convert Windows path to Unix path if necessary
-        var unixPath = executablePath
-        if (executablePath.contains(":\\")) {
-            unixPath = executablePath.replace("\\", "/")
-                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
-                .let { path ->
-                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
-                }
+        if (!executablePath.contains(":\\")) {
+            Timber.w("D7VK: executable path is not a Windows absolute path, skipping cleanup: $executablePath")
+            return
         }
+
+        // Convert Windows path to Unix path
+        val unixPath = executablePath.replace("\\", "/")
+            .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
+            .let { path -> File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath }
 
         // Get the directory containing the executable
         val gameDir = File(unixPath).parentFile
@@ -2605,17 +2605,24 @@ private fun cleanupD7vkFromGameDirectory(
             return
         }
 
-        // Remove ddraw.dll from game directory
+        // Restore original ddraw.dll if it was backed up, otherwise remove D7VK's copy
         val ddrawDll = File(gameDir, "ddraw.dll")
-        if (ddrawDll.exists()) {
-            val deleted = ddrawDll.delete()
-            if (deleted) {
-                Timber.i("Removed D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
-            } else {
-                Timber.w("Failed to remove D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+        val backupDll = File(gameDir, "ddraw.dll.bak")
+        when {
+            backupDll.exists() -> {
+                ddrawDll.delete()
+                backupDll.renameTo(ddrawDll)
+                Timber.i("Restored original ddraw.dll at: ${ddrawDll.absolutePath}")
             }
-        } else {
-            Timber.d("D7VK ddraw.dll not found in game directory, nothing to clean")
+            ddrawDll.exists() -> {
+                val deleted = ddrawDll.delete()
+                if (deleted) {
+                    Timber.i("Removed D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+                } else {
+                    Timber.w("Failed to remove D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+                }
+            }
+            else -> Timber.d("D7VK ddraw.dll not found in game directory, nothing to clean")
         }
     } catch (e: Exception) {
         Timber.e(e, "Failed to cleanup D7VK ddraw.dll from game directory")
@@ -3409,18 +3416,16 @@ private fun copyD7vkToGameDirectory(
             return
         }
 
-        // Convert Windows path to Unix path if necessary
-        var unixPath = gameExecutablePath
-        if (gameExecutablePath.contains(":\\")) {
-            // Convert Windows path (e.g., "C:\Program Files\Game\game.exe") to Unix path
-            unixPath = gameExecutablePath.replace("\\", "/")
-                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
-                .let { path ->
-                    // Map drive letter to actual path
-                    // Most games are on C: drive which maps to drive_c
-                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
-                }
+        // Only absolute Windows paths (drive-letter paths) are resolvable; skip relative paths
+        if (!gameExecutablePath.contains(":\\")) {
+            Timber.w("D7VK: executable path is not a Windows absolute path, skipping copy: $gameExecutablePath")
+            return
         }
+
+        // Convert Windows path (e.g., "C:\Program Files\Game\game.exe") to Unix path
+        val unixPath = gameExecutablePath.replace("\\", "/")
+            .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
+            .let { path -> File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath }
 
         // Get the directory containing the executable
         val gameDir = File(unixPath).parentFile
@@ -3431,23 +3436,22 @@ private fun copyD7vkToGameDirectory(
 
         Timber.i("Game directory: ${gameDir.absolutePath}")
 
-        // D7VK is 32-bit only, so we copy from syswow64
-        val d7vkDll = File(d7vkStagingDir, "syswow64/ddraw.dll")
-        if (!d7vkDll.exists()) {
-            // Try system32 as fallback
-            val d7vkDll32 = File(d7vkStagingDir, "system32/ddraw.dll")
-            if (d7vkDll32.exists()) {
-                val targetDll = File(gameDir, "ddraw.dll")
-                FileUtils.copy(d7vkDll32, targetDll)
-                Timber.i("Copied D7VK ddraw.dll from system32 to: ${targetDll.absolutePath}")
-            } else {
+        // D7VK is 32-bit only, so we copy from syswow64; fall back to system32
+        val sourceDll = File(d7vkStagingDir, "syswow64/ddraw.dll").takeIf { it.exists() }
+            ?: File(d7vkStagingDir, "system32/ddraw.dll").takeIf { it.exists() }
+            ?: run {
                 Timber.w("D7VK ddraw.dll not found in staging directory")
+                return
             }
-        } else {
-            val targetDll = File(gameDir, "ddraw.dll")
-            FileUtils.copy(d7vkDll, targetDll)
-            Timber.i("Copied D7VK ddraw.dll to: ${targetDll.absolutePath}")
+
+        val targetDll = File(gameDir, "ddraw.dll")
+        val backupDll = File(gameDir, "ddraw.dll.bak")
+        if (targetDll.exists() && !backupDll.exists()) {
+            targetDll.renameTo(backupDll)
+            Timber.i("Backed up original ddraw.dll to: ${backupDll.absolutePath}")
         }
+        FileUtils.copy(sourceDll, targetDll)
+        Timber.i("Copied D7VK ddraw.dll to: ${targetDll.absolutePath}")
     } catch (e: Exception) {
         Timber.e(e, "Failed to copy D7VK ddraw.dll to game directory")
     }
