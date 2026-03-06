@@ -905,7 +905,7 @@ public class Container {
                 if (dxwrapper.equals("original-wined3d")) {
                     data.put("dxwrapper", DEFAULT_DXWRAPPER);
                 }
-                else if (dxwrapper.startsWith("d8vk-") || dxwrapper.startsWith("dxvk-")) {
+                else if (dxwrapper.startsWith("d8vk-") || dxwrapper.startsWith("d7vk-") || dxwrapper.startsWith("dxvk-")) {
                     data.put("dxwrapper", dxwrapper);
                 }
             }

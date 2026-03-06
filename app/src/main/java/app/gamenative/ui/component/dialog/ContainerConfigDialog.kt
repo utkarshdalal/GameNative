@@ -170,6 +170,7 @@ fun ContainerConfigDialog(
         val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
         // Start with defaults from resources
         val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
+        val d7vkVersionsBase = stringArrayResource(R.array.d7vk_version_entries).toList()
         val vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList()
         val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
         val gpuCards = ContainerUtils.getGPUCards(context)
@@ -221,6 +222,8 @@ fun ContainerConfigDialog(
         var wrapperVersions by wrapperVersionsRef
         val dxvkVersionsAllRef = remember { mutableStateOf(dxvkVersionsBase) }
         var dxvkVersionsAll by dxvkVersionsAllRef
+        val d7vkVersionsAllRef = remember { mutableStateOf(d7vkVersionsBase) }
+        var d7vkVersionsAll by d7vkVersionsAllRef
         val componentAvailabilityRef = remember { mutableStateOf<ManifestComponentHelper.ComponentAvailability?>(null) }
         var componentAvailability by componentAvailabilityRef
         var manifestInstallInProgress by remember { mutableStateOf(false) }
@@ -667,6 +670,9 @@ fun ContainerConfigDialog(
         val dxvkVersionIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var dxvkVersionIndex by dxvkVersionIndexRef
 
+        var d7vkVersionIndexRef by rememberSaveable { mutableIntStateOf(0) }
+        var d7vkVersionIndex = d7vkVersionIndexRef
+
         // VKD3D version control (forced depending on driver)
         fun vkd3dForcedVersion(): String {
             val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
@@ -914,6 +920,7 @@ fun ContainerConfigDialog(
             glibcWineEntries = glibcWineEntriesRef,
             wrapperVersions = wrapperVersionsRef,
             dxvkVersionsAll = dxvkVersionsAllRef,
+            d7vkVersionsAll = d7vkVersionsAllRef,
             componentAvailability = componentAvailabilityRef,
             showCustomResolutionDialog = showCustomResolutionDialogRef,
             customResolutionValidationError = customResolutionValidationErrorRef,
@@ -942,6 +949,7 @@ fun ContainerConfigDialog(
             graphicsDriverIndex = graphicsDriverIndexRef,
             dxWrapperIndex = dxWrapperIndexRef,
             dxvkVersionIndex = dxvkVersionIndexRef,
+            d7vkVersionIndex = d7vkVersionIndexRef,
             graphicsDriverVersionIndex = graphicsDriverVersionIndexRef,
             audioDriverIndex = audioDriverIndexRef,
             gpuNameIndex = gpuNameIndexRef,

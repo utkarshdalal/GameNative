@@ -1963,6 +1963,12 @@ private fun setupXEnvironment(
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
+
+        // Copy D7VK ddraw.dll to game directory if D7VK is enabled
+        if (!bootToContainer && !testGraphics && container.executablePath.isNotEmpty()) {
+            copyD7vkToGameDirectory(container, imageFs, container.executablePath)
+        }
+
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
         // Set steam type for selecting appropriate box64rc
@@ -2557,6 +2563,65 @@ private fun getWineStartCommand(
 
     return "winhandler.exe $args"
 }
+
+/**
+ * Removes D7VK ddraw.dll from the game directory during cleanup.
+ *
+ **/
+private fun cleanupD7vkFromGameDirectory(
+    container: Container,
+    imageFs: ImageFs,
+) {
+    try {
+        val dxwrapper = container.getExtra("dxwrapper", "")
+        if (!dxwrapper.startsWith("d7vk")) {
+            return
+        }
+
+        val executablePath = container.executablePath
+        if (executablePath.isEmpty()) {
+            Timber.d("No executable path set, skipping D7VK cleanup")
+            return
+        }
+
+        Timber.i("Cleaning up D7VK ddraw.dll from game directory: $executablePath")
+
+        val rootDir = imageFs.getRootDir()
+
+        // Convert Windows path to Unix path if necessary
+        var unixPath = executablePath
+        if (executablePath.contains(":\\")) {
+            unixPath = executablePath.replace("\\", "/")
+                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
+                .let { path ->
+                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
+                }
+        }
+
+        // Get the directory containing the executable
+        val gameDir = File(unixPath).parentFile
+        if (gameDir == null || !gameDir.exists()) {
+            Timber.w("Game directory not found for cleanup: $gameDir")
+            return
+        }
+
+        // Remove ddraw.dll from game directory
+        val ddrawDll = File(gameDir, "ddraw.dll")
+        if (ddrawDll.exists()) {
+            val deleted = ddrawDll.delete()
+            if (deleted) {
+                Timber.i("Removed D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+            } else {
+                Timber.w("Failed to remove D7VK ddraw.dll from: ${ddrawDll.absolutePath}")
+            }
+        } else {
+            Timber.d("D7VK ddraw.dll not found in game directory, nothing to clean")
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to cleanup D7VK ddraw.dll from game directory")
+    }
+}
+
 private fun getSteamlessTarget(
     appId: String,
     container: Container,
@@ -2607,6 +2672,12 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     }
 
     PluviaApp.touchpadView?.releasePointerCapture()
+
+    // Cleanup D7VK files from game directory if exists
+    environment?.let {
+        cleanupD7vkFromGameDirectory(container, it.imageFs)
+    }
+
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.keepAlive = false
@@ -3067,6 +3138,19 @@ private fun setupWineSystemFiles(
         )
     }
 
+    if (xServerState.value.dxwrapper == "d7vk") {
+        Timber.d("Setting D7VK")
+        // Set version for d7vk or use default if not found.
+        var version = xServerState.value.dxwrapperConfig?.get("version")
+        if (version == null || (version is String && version.isBlank())) {
+            version = DefaultVersion.D7VK
+            xServerState.value.dxwrapperConfig?.put("version", version)
+        }
+        xServerState.value = xServerState.value.copy(
+            dxwrapper = "d7vk-" + version,
+        )
+    }
+
     val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
 
     Timber.i("needReextract is " + needReextract)
@@ -3241,13 +3325,44 @@ private fun extractDXWrapperFiles(
                 )
             }
         }
+        "d7vk" -> {
+            Timber.i("Preparing D7VK for dxwrapper: $dxwrapper")
+
+            // Restore original ddraw.dll in Windows directories
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, "ddraw.dll")
+
+            // Extract d7vk files to staging directory for later copying to game directory
+            val d7vkStagingDir = File(rootDir, ImageFs.CACHE_PATH + "/d7vk")
+            d7vkStagingDir.mkdirs()
+
+            val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
+            if (profile != null) {
+                Timber.d("Applying user-defined D7VK content profile: " + dxwrapper)
+                contentsManager.applyContent(profile);
+            } else {
+                // Extract to staging directory (will be copied to game dir at launch time)
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/$dxwrapper.tzst", d7vkStagingDir, onExtractFileListener,
+                )
+            }
+
+            // Also extract d8vk for other DirectX versions
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD,
+                context.assets,
+                "dxwrapper/d8vk-${DefaultVersion.D8VK}.tzst",
+                windowsDir,
+                onExtractFileListener,
+            )
+        }
         else -> {
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
-            // This block handles dxvk-VERSION strings
+            // Handle dxvk-*, d8vk-* versions (dxvk-2.4.1, d8vk-1.0, etc.)
             Timber.i("Extracting DXVK/D8VK DLLs for dxwrapper: $dxwrapper")
             restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll", "ddraw.dll")
             if (profile != null) {
-                Timber.d("Applying user-defined DXVK content profile: " + dxwrapper)
+                Timber.d("Applying user-defined content profile: " + dxwrapper)
                 contentsManager.applyContent(profile);
             } else {
                 TarCompressorUtils.extract(
@@ -3265,6 +3380,79 @@ private fun extractDXWrapperFiles(
         }
     }
 }
+
+/**
+ * Copies D7VK ddraw.dll to the game's executable directory.
+ * D7VK requires ddraw.dll to be placed next to the game executable
+**/
+private fun copyD7vkToGameDirectory(
+    container: Container,
+    imageFs: ImageFs,
+    gameExecutablePath: String,
+) {
+    try {
+        // Check if d7vk is enabled
+        val dxwrapper = container.getExtra("dxwrapper", "")
+        if (!dxwrapper.startsWith("d7vk")) {
+            Timber.d("D7VK not enabled, skipping ddraw.dll copy")
+            return
+        }
+
+        Timber.i("Copying D7VK ddraw.dll to game directory for executable: $gameExecutablePath")
+
+        val rootDir = imageFs.getRootDir()
+        val d7vkStagingDir = File(rootDir, ImageFs.CACHE_PATH + "/d7vk")
+
+        // Check if staging directory exists
+        if (!d7vkStagingDir.exists()) {
+            Timber.w("D7VK staging directory not found, skipping copy")
+            return
+        }
+
+        // Convert Windows path to Unix path if necessary
+        var unixPath = gameExecutablePath
+        if (gameExecutablePath.contains(":\\")) {
+            // Convert Windows path (e.g., "C:\Program Files\Game\game.exe") to Unix path
+            unixPath = gameExecutablePath.replace("\\", "/")
+                .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
+                .let { path ->
+                    // Map drive letter to actual path
+                    // Most games are on C: drive which maps to drive_c
+                    File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath
+                }
+        }
+
+        // Get the directory containing the executable
+        val gameDir = File(unixPath).parentFile
+        if (gameDir == null || !gameDir.exists()) {
+            Timber.w("Game directory not found: $gameDir")
+            return
+        }
+
+        Timber.i("Game directory: ${gameDir.absolutePath}")
+
+        // D7VK is 32-bit only, so we copy from syswow64
+        val d7vkDll = File(d7vkStagingDir, "syswow64/ddraw.dll")
+        if (!d7vkDll.exists()) {
+            // Try system32 as fallback
+            val d7vkDll32 = File(d7vkStagingDir, "system32/ddraw.dll")
+            if (d7vkDll32.exists()) {
+                val targetDll = File(gameDir, "ddraw.dll")
+                FileUtils.copy(d7vkDll32, targetDll)
+                Timber.i("Copied D7VK ddraw.dll from system32 to: ${targetDll.absolutePath}")
+            } else {
+                Timber.w("D7VK ddraw.dll not found in staging directory")
+            }
+        } else {
+            val targetDll = File(gameDir, "ddraw.dll")
+            FileUtils.copy(d7vkDll, targetDll)
+            Timber.i("Copied D7VK ddraw.dll to: ${targetDll.absolutePath}")
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to copy D7VK ddraw.dll to game directory")
+    }
+}
+
 private fun cloneOriginalDllFiles(imageFs: ImageFs, vararg dlls: String) {
     val rootDir = imageFs.rootDir
     val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")

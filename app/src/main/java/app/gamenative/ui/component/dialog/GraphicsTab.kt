@@ -17,6 +17,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
+import com.winlator.core.DefaultVersion
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
@@ -343,7 +344,8 @@ private fun DxWrapperSection(state: ContainerConfigState) {
     run {
         val context = state.currentDxvkContext()
         val isVKD3D = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "vkd3d"
-        if (!isVKD3D) {
+        val isD7VK = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "d7vk"
+        if (!isVKD3D && !isD7VK) {
             val items = context.labels
             val itemIds = context.ids
             val itemMuted = context.muted
@@ -386,13 +388,16 @@ private fun DxWrapperSection(state: ContainerConfigState) {
                 },
             )
         } else {
-            // Ensure default version for vortek-like when hidden
-            val driverType = StringUtils.parseIdentifier(state.graphicsDrivers.value.getOrNull(state.graphicsDriverIndex.value).orEmpty())
-            val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
-            val version = if (isVortekLike) "1.10.3" else "2.4.1"
-            val currentConfig = KeyValueSet(config.dxwrapperConfig)
-            currentConfig.put("version", version)
-            state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+            // Only set DXVK version if the selected wrapper is a DXVK variant
+            val selectedWrapper = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty())
+            if (selectedWrapper.startsWith("dxvk")) {
+                val driverType = StringUtils.parseIdentifier(state.graphicsDrivers.value.getOrNull(state.graphicsDriverIndex.value).orEmpty())
+                val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
+                val version = if (isVortekLike) "1.10.3" else "2.4.1"
+                val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                currentConfig.put("version", version)
+                state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+            }
         }
     }
     // VKD3D Version UI (visible only when VKD3D selected)
@@ -447,6 +452,29 @@ private fun DxWrapperSection(state: ContainerConfigState) {
                     val selected = featureLevels[it]
                     val currentConfig = KeyValueSet(config.dxwrapperConfig)
                     currentConfig.put("vkd3dFeatureLevel", selected)
+                    state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
+                },
+            )
+        }
+    }
+    // D7VK Version UI (visible only when D7VK selected)
+    run {
+        val isD7VK = StringUtils.parseIdentifier(state.dxWrappers.getOrNull(state.dxWrapperIndex.value).orEmpty()) == "d7vk"
+        if (isD7VK) {
+            val label = "D7VK Version"
+            val availableVersions = state.d7vkVersionsAll.value
+            val selectedVersion = KeyValueSet(config.dxwrapperConfig).get("version").ifEmpty { DefaultVersion.D7VK }
+            val selectedIndex = availableVersions.indexOf(selectedVersion).coerceAtLeast(0)
+
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = label) },
+                value = selectedIndex,
+                items = availableVersions,
+                onItemSelected = { idx ->
+                    val selectedId = availableVersions.getOrNull(idx).orEmpty()
+                    val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                    currentConfig.put("version", selectedId.ifEmpty { DefaultVersion.D7VK })
                     state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
                 },
             )

@@ -163,6 +163,7 @@
     <string name="wmdecoder">Windows Media Decoder</string>
     <string name="opengl">OpenGL</string>
     <string name="dxvk_version">DXVK Version</string>
+    <string name="d7vk_version">D7VK Version</string>
     <string name="run">Run</string>
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>

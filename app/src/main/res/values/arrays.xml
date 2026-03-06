@@ -78,6 +78,7 @@
     <string-array name="dxwrapper_entries">
         <item>WineD3D</item>
         <item>DXVK</item>
+        <item>D7VK</item>
         <item>VKD3D</item>
         <item>CNC DDraw</item>
     </string-array>
@@ -93,6 +94,9 @@
         <item>2.4.1-gplasync</item>
         <item>2.6.1-gplasync</item>
         <item>2.6-arm64ec</item>
+    </string-array>
+    <string-array name="d7vk_version_entries">
+        <item>1.4</item>
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>2.6</item>
