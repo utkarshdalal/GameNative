@@ -179,6 +179,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Gen 1 (legacy): different manifest format and download flow (direct file URLs, no chunks)
             if (selectedBuild.generation == 1 && gameManifest.productTimestamp != null) {
+                Timber.tag("GOG").i("Using Gen 1 (legacy) downloader for game $gameId")
                 return@withContext downloadGameGen1(
                     gameId = gameId,
                     installPath = installPath,
@@ -190,6 +191,8 @@ class GOGDownloadManager @Inject constructor(
                     supportDir = supportDir,
                 )
             }
+
+            Timber.tag("GOG").i("Using Gen 2 downloader for game $gameId")
 
             // Grab Dependencies from the gameManifest for later.
             val dependencies = gameManifest.dependencies
@@ -534,14 +537,20 @@ class GOGDownloadManager @Inject constructor(
         supportDir: File?,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            Timber.tag("GOG").i("Starting Gen 1 (legacy) download for game $gameId")
             val timestamp = gameManifest.productTimestamp ?: return@withContext Result.failure(Exception("Gen 1 manifest missing productTimestamp"))
             val platform = selectedBuild.platform
             val ownedGameIds = gogManager.getAllGameIds()
 
-            // Gen 1: do not filter by language — some games put main content in a depot tagged with another
-            // language (or no tag), so filtering to en-US can leave only a small depot and skip the main one.
+            // Filter depots by selected language (same logic as Gen 2), then by ownership
             downloadInfo.updateStatusMessage("Filtering depots...")
-            val depots = parser.filterDepotsByOwnership(gameManifest.depots, ownedGameIds)
+            val (languageDepots, effectiveLang) = parser.filterDepotsByLanguage(gameManifest, language)
+            if (languageDepots.isEmpty()) {
+                return@withContext Result.failure(
+                    Exception("No depots found for requested or fallback (English) languages"),
+                )
+            }
+            val depots = parser.filterDepotsByOwnership(languageDepots, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found"))
             }
@@ -696,7 +705,6 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            val (_, effectiveLang) = parser.filterDepotsByLanguage(gameManifest, language)
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
