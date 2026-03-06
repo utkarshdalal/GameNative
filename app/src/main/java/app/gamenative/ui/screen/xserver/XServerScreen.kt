@@ -2586,22 +2586,9 @@ private fun cleanupD7vkFromGameDirectory(
 
         Timber.i("Cleaning up D7VK ddraw.dll from game directory: $executablePath")
 
-        val rootDir = imageFs.getRootDir()
-
-        if (!executablePath.contains(":\\")) {
-            Timber.w("D7VK: executable path is not a Windows absolute path, skipping cleanup: $executablePath")
-            return
-        }
-
-        // Convert Windows path to Unix path
-        val unixPath = executablePath.replace("\\", "/")
-            .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
-            .let { path -> File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath }
-
-        // Get the directory containing the executable
-        val gameDir = File(unixPath).parentFile
+        val gameDir = resolveGameDirForD7vk(container, imageFs, executablePath)
         if (gameDir == null || !gameDir.exists()) {
-            Timber.w("Game directory not found for cleanup: $gameDir")
+            Timber.w("D7VK: could not resolve game directory for cleanup: $executablePath")
             return
         }
 
@@ -3389,6 +3376,41 @@ private fun extractDXWrapperFiles(
 }
 
 /**
+ * Resolves a game's containing directory from a Windows executable path.
+ * Handles both absolute Windows paths (e.g. "C:\dir\game.exe", "D:\dir\game.exe")
+ * and relative paths (e.g. "game.exe") by searching the container's mapped drives.
+ */
+private fun resolveGameDirForD7vk(
+    container: Container,
+    imageFs: ImageFs,
+    executablePath: String,
+): File? {
+    val normalized = executablePath.replace("\\", "/")
+    val rootDir = imageFs.getRootDir()
+    return if (normalized.length >= 2 && normalized[1] == ':') {
+        val driveLetter = normalized[0].uppercaseChar()
+        val pathFromRoot = normalized.substring(2) // e.g. "/Game/game.exe"
+        if (driveLetter == 'C') {
+            File(rootDir, "${ImageFs.WINEPREFIX}/drive_c$pathFromRoot").parentFile
+        } else {
+            for (drive in container.drivesIterator()) {
+                if (drive[0].uppercase() == driveLetter.toString()) {
+                    return File(drive[1] + pathFromRoot).parentFile
+                }
+            }
+            null
+        }
+    } else {
+        // Relative path: find the mapped drive whose root contains this executable
+        for (drive in container.drivesIterator()) {
+            val candidate = File(drive[1], normalized)
+            if (candidate.exists()) return candidate.parentFile
+        }
+        null
+    }
+}
+
+/**
  * Copies D7VK ddraw.dll to the game's executable directory.
  * D7VK requires ddraw.dll to be placed next to the game executable
 **/
@@ -3416,21 +3438,9 @@ private fun copyD7vkToGameDirectory(
             return
         }
 
-        // Only absolute Windows paths (drive-letter paths) are resolvable; skip relative paths
-        if (!gameExecutablePath.contains(":\\")) {
-            Timber.w("D7VK: executable path is not a Windows absolute path, skipping copy: $gameExecutablePath")
-            return
-        }
-
-        // Convert Windows path (e.g., "C:\Program Files\Game\game.exe") to Unix path
-        val unixPath = gameExecutablePath.replace("\\", "/")
-            .replaceFirst(Regex("^[A-Z]:", RegexOption.IGNORE_CASE), "")
-            .let { path -> File(rootDir, ImageFs.WINEPREFIX + "/drive_c" + path).absolutePath }
-
-        // Get the directory containing the executable
-        val gameDir = File(unixPath).parentFile
+        val gameDir = resolveGameDirForD7vk(container, imageFs, gameExecutablePath)
         if (gameDir == null || !gameDir.exists()) {
-            Timber.w("Game directory not found: $gameDir")
+            Timber.w("D7VK: could not resolve game directory for: $gameExecutablePath")
             return
         }
 
