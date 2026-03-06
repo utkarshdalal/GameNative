@@ -436,7 +436,7 @@ class MainViewModel @Inject constructor(
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
-            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE)))
+            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)

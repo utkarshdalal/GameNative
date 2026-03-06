@@ -260,7 +260,7 @@ fun XServerScreen(
     PluviaApp.events.emit(
         AndroidEvent.SetAllowedOrientation(
             if (container.isPortraitMode) EnumSet.of(Orientation.PORTRAIT)
-            else EnumSet.of(Orientation.LANDSCAPE)
+            else PrefManager.allowedOrientation,
         ),
     )
 

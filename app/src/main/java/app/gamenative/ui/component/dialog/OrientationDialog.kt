@@ -62,7 +62,7 @@ fun OrientationDialog(
         },
         text = {
             Column {
-                Orientation.entries.dropLast(1).forEach { orientation ->
+                arrayOf(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE).forEach { orientation ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = currentSettings.contains(orientation),
