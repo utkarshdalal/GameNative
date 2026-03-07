@@ -134,6 +134,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- ContentProvider for external apps to query installed games -->
+        <provider
+            android:name=".provider.InstalledGamesProvider"
+            android:authorities="app.gamenative.games"
+            android:exported="true" />
+
         <!-- FileProvider for secure file sharing (for APK installation) -->
         <provider
             android:name="androidx.core.content.FileProvider"
