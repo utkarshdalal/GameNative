@@ -184,6 +184,8 @@ class PluviaApp : SplitCompatApplication() {
         var touchpadView: TouchpadView? = null
 
         var isOverlayPaused by mutableStateOf(false)
+        @Volatile
+        var isActivityInForeground: Boolean = true
 
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_DEFAULT

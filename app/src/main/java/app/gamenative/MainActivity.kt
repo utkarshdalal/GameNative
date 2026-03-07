@@ -347,6 +347,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        PluviaApp.isActivityInForeground = true
         // Re-apply immersive mode to ensure fullscreen persists
         if (!desiredSystemUiVisible) {
             applyImmersiveMode()
@@ -390,6 +391,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        PluviaApp.isActivityInForeground = false
         if (hasReadyGameLifecycleState("pause")) {
             when {
                 PluviaApp.isNeverSuspendMode() -> {

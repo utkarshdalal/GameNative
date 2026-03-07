@@ -1051,6 +1051,15 @@ fun XServerScreen(
                                 onGameLaunchError,
                                 navigateBack,
                             )
+                            if (!PluviaApp.isActivityInForeground && !neverSuspend) {
+                                PluviaApp.xEnvironment?.onPause()
+                                if (manualResumeMode) {
+                                    PluviaApp.isOverlayPaused = true
+                                    Timber.d("Game paused after environment setup while app was backgrounded (manual resume required)")
+                                } else {
+                                    Timber.d("Game paused after environment setup while app was backgrounded")
+                                }
+                            }
                         } catch (e: Exception) {
                             Timber.e(e, "Error during wine setup operations")
                             onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
