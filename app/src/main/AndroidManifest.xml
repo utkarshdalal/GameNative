@@ -33,6 +33,7 @@
         android:largeHeap="true"
         android:theme="@style/Theme.Pluvia"
         android:allowAudioPlaybackCapture="true"
+        android:appCategory="game"
         tools:targetApi="29">
         <!--
          android:windowSoftInputMode must always be in the activity block.
@@ -78,6 +79,12 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- Amazon OAuth (in-app WebView; PKCE flow for Amazon Games auth) -->
+        <activity
+            android:name=".ui.screen.auth.AmazonOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- Launcher icon aliases to allow switching app icon at runtime -->
         <activity-alias
             android:name=".MainActivityAliasDefault"
@@ -117,6 +124,12 @@
 
         <service
             android:name=".service.epic.EpicService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".service.amazon.AmazonService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

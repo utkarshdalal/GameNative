@@ -143,7 +143,7 @@ object SteamUtils {
      * Replaces any existing `steam_api.dll` or `steam_api64.dll` in the app directory
      * with our pipe dll stored in assets
      */
-    suspend fun replaceSteamApi(context: Context, appId: String) {
+    suspend fun replaceSteamApi(context: Context, appId: String, isOffline: Boolean = false) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
@@ -188,7 +188,7 @@ object SteamUtils {
                 }
                 Timber.i("Replaced $dllName")
                 if (is64Bit) replaced64Count++ else replaced32Count++
-                ensureSteamSettings(context, path, appId, ticketBase64)
+                ensureSteamSettings(context, path, appId, ticketBase64, isOffline)
             }
         }
 
@@ -230,7 +230,7 @@ object SteamUtils {
     /**
      * Replaces any existing `steamclient.dll` or `steamclient64.dll` in the Steam directory
      */
-    suspend fun replaceSteamclientDll(context: Context, appId: String) {
+    suspend fun replaceSteamclientDll(context: Context, appId: String, isOffline: Boolean = false) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
@@ -264,7 +264,7 @@ object SteamUtils {
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
         val path = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath()
-        ensureSteamSettings(context, path, appId, ticketBase64)
+        ensureSteamSettings(context, path, appId, ticketBase64, isOffline)
         generateAchievementsFile(path, appId)
 
         // Game-specific Handling
@@ -810,7 +810,7 @@ object SteamUtils {
     /**
      * Sibling folder "steam_settings" + empty "offline.txt" file, no-ops if they already exist.
      */
-    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null) {
+    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String, ticketBase64: String? = null, isOffline: Boolean = false) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val steamDir = dllPath.parent
         Files.createDirectories(steamDir)
@@ -922,9 +922,14 @@ object SteamUtils {
 
         val mainIni = settingsDir.resolve("configs.main.ini")
 
+        val steamOfflineMode = container.isSteamOfflineMode()
+        val useOfflineConfig = steamOfflineMode || isOffline
         val mainIniContent = buildString {
             appendLine("[main::connectivity]")
-            appendLine("disable_lan_only=1")
+            appendLine("disable_lan_only=${if (useOfflineConfig) 0 else 1}")
+            if (useOfflineConfig) {
+                appendLine("offline=1")
+            }
         }
 
         if (Files.notExists(mainIni)) Files.createFile(mainIni)
@@ -1200,6 +1205,46 @@ object SteamUtils {
                 vdfData.children.add(software)
 
                 vdfData.saveToFile(localConfigFile, false)
+            }
+
+            val userLanguage = container.language
+            val steamappsDir = File(steamPath, "steamapps")
+            val appManifestFile = File(steamappsDir, "appmanifest_$appId.acf")
+
+            if (appManifestFile.exists()) {
+                val manifestContent = FileUtils.readFileAsString(appManifestFile.absolutePath)
+                val manifestData = KeyValue.loadFromString(manifestContent!!)!!
+
+                val userConfig = manifestData.children.firstOrNull { it.name == "UserConfig" }
+                if (userConfig != null) {
+                    val languageKey = userConfig.children.firstOrNull { it.name == "language" }
+                    if (languageKey != null) {
+                        languageKey.value = userLanguage
+                    } else {
+                        userConfig.children.add(KeyValue("language", userLanguage))
+                    }
+                } else {
+                    val newUserConfig = KeyValue("UserConfig")
+                    newUserConfig.children.add(KeyValue("language", userLanguage))
+                    manifestData.children.add(newUserConfig)
+                }
+
+                val mountedConfig = manifestData.children.firstOrNull { it.name == "MountedConfig" }
+                if (mountedConfig != null) {
+                    val languageKey = mountedConfig.children.firstOrNull { it.name == "language" }
+                    if (languageKey != null) {
+                        languageKey.value = userLanguage
+                    } else {
+                        mountedConfig.children.add(KeyValue("language", userLanguage))
+                    }
+                } else {
+                    val newMountedConfig = KeyValue("MountedConfig")
+                    newMountedConfig.children.add(KeyValue("language", userLanguage))
+                    manifestData.children.add(newMountedConfig)
+                }
+
+                manifestData.saveToFile(appManifestFile, false)
+                Timber.i("Updated app manifest language to $userLanguage for appId $appId")
             }
         } catch (e: Exception) {
             Timber.e(e, "Failed to update or modify local config")

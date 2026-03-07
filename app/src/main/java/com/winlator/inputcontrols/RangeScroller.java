@@ -99,6 +99,8 @@ public class RangeScroller {
 
     public void handleTouchMove(float x, float y) {
         if (isActionDown) {
+            if (element.isScrollLocked()) return;
+
             float position = element.getOrientation() == 0 ? x : y;
             float deltaPosition = position - lastPosition;
 

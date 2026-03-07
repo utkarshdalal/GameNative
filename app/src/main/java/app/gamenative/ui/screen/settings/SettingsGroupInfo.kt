@@ -23,7 +23,7 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 
 @Composable
 fun SettingsGroupInfo() {
-    SettingsGroup(title = { Text(text = stringResource(R.string.settings_info_title)) }) {
+    SettingsGroup() {
         val uriHandler = LocalUriHandler.current
         var askForTip by rememberSaveable { mutableStateOf(!PrefManager.tipped) }
         var showLibrariesDialog by rememberSaveable { mutableStateOf(false) }

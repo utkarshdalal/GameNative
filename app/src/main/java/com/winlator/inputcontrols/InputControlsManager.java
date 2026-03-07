@@ -6,6 +6,7 @@ import android.content.res.AssetManager;
 import android.media.MediaScannerConnection;
 import android.os.Environment;
 import android.util.JsonReader;
+import android.util.Log;
 
 import com.winlator.PrefManager;
 import com.winlator.core.AppUtils;
@@ -59,7 +60,7 @@ public class InputControlsManager {
         PrefManager.init(context);
         String newVersion = String.valueOf(AppUtils.getVersionCode(context));
         String oldVersion = PrefManager.getString("inputcontrols_app_version", "0");
-        if (oldVersion == newVersion) return;
+        if (oldVersion.equals(newVersion)) return;
         PrefManager.putString("inputcontrols_app_version", newVersion);
 
         File[] files = profilesDir.listFiles();
@@ -68,6 +69,14 @@ public class InputControlsManager {
         try {
             AssetManager assetManager = context.getAssets();
             String[] assetFiles = assetManager.list("inputcontrols/profiles");
+
+            // Pre-compute max local ID for assigning new profile IDs
+            int nextNewId = 0;
+            for (File f : files) {
+                ControlsProfile p = loadProfile(context, f);
+                if (p != null) nextNewId = Math.max(nextNewId, p.id + 1);
+            }
+
             for (String assetFile : assetFiles) {
                 String assetPath = "inputcontrols/profiles/"+assetFile;
                 ControlsProfile originProfile = loadProfile(context, assetManager.open(assetPath));
@@ -84,6 +93,35 @@ public class InputControlsManager {
 
                 if (targetFile != null) {
                     FileUtils.copy(context, assetPath, targetFile);
+                } else if (originProfile != null) {
+                    // New asset profile — add if not already present
+                    File defaultFile = new File(profilesDir, assetFile);
+                    if (!defaultFile.exists()) {
+                        FileUtils.copy(context, assetPath, defaultFile);
+                    } else {
+                        // Filename occupied by a different profile — check if
+                        // this asset profile (by name) already exists under any ID
+                        boolean alreadyExists = false;
+                        for (File file2 : files) {
+                            ControlsProfile p = loadProfile(context, file2);
+                            if (p != null && p.getName().equals(originProfile.getName())) {
+                                alreadyExists = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyExists) {
+                            int newId = nextNewId++;
+                            File freeFile = ControlsProfile.getProfileFile(context, newId);
+                            try {
+                                String json = FileUtils.readString(context, assetPath);
+                                JSONObject data = new JSONObject(json);
+                                data.put("id", newId);
+                                FileUtils.writeString(freeFile, data.toString());
+                            } catch (Exception e) {
+                                Log.w("InputControlsManager", "Failed to create profile '" + originProfile.getName() + "' (newId=" + newId + ", file=" + freeFile + ")", e);
+                            }
+                        }
+                    }
                 }
             }
 

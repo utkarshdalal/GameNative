@@ -36,5 +36,28 @@ val Icons.Filled.Steam: ImageVector
 
 private var _steam: ImageVector? = null
 
+val Icons.Filled.Amazon: ImageVector
+    get() {
+        if (_amazon != null) return _amazon!!
+        _amazon = ImageVector.Builder(
+            name = "Amazon",
+            defaultWidth = 24.0.dp,
+            defaultHeight = 24.0.dp,
+            viewportWidth = 24.0f,
+            viewportHeight = 24.0f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes("M8.333 4.143a3.143 3.143 0 0 1 6.286 0c0 0.146-0.024 0.371-0.053 0.65-0.086 0.817-0.22 2.09 0.053 3.151 0.367 1.425 2.258 4.986 3.904 6.14 0.394 0.277 0.856 0.516 1.33 0.76 1.51 0.779 3.147 1.624 3.147 3.966A4.19 4.19 0 0 1 18.81 23c-1.004 0-1.8-0.587-2.645-1.21-0.483-0.355-0.982-0.723-1.546-1-1.549-0.762-8.033-0.688-9.114-0.344-0.47 0.15-0.84 0.355-1.173 0.54-0.432 0.239-0.799 0.443-1.237 0.443A2.095 2.095 0 0 1 1 19.333c0-1.085 1.176-2.029 1.947-2.648l0.148-0.12c0.758-0.614 3.51-4.771 4.916-8.375 0.405-1.04 0.374-2.033 0.341-3.11a28.36 28.36 0 0 1-0.019-0.937ZM7.201 16.767c0.782 1.237 7.17 1.44 8.382 0 1.023-1.215-1.943-7.104-4.038-7.255C9.449 9.36 6.418 15.53 7.2 16.767Z"),
+                fill = SolidColor(Color(0xFF000000)),
+                fillAlpha = 1.0f,
+                stroke = null,
+                pathFillType = PathFillType.EvenOdd,
+            )
+        }.build()
+        return _amazon!!
+    }
+
+private var _amazon: ImageVector? = null
+
 val Icons.Filled.CustomGame: ImageVector
     get() = Icons.Filled.FolderOpen

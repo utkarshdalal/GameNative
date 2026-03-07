@@ -10,7 +10,7 @@ This is a fork of [Pluvia](https://github.com/oxters168/Pluvia), a Steam client 
 ## How to Use
 
 (Note that GameNative is still in its early stages, and all games may not work, or may require tweaking to get working well)
-1. Download the latest release [here](https://github.com/utkarshdalal/GameNative/releases/download/v0.7.2/gamenative-v0.7.2.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/0.8.0/gamenative-v0.8.0-hotfix.apk)
 2. Install the APK on your Android device
 3. Login to your Steam account
 4. Install your game
@@ -26,9 +26,7 @@ You can support GameNative on Ko-fi at https://ko-fi.com/gamenative
 ## Building
 ### IF YOU JUST WANT TO USE THE APP, PLEASE SEE THE HOW TO USE SECTION ABOVE. THIS IS ONLY NEEDED IF YOU WANT TO CONTRIBUTE FOR DEVELOPMENT.
 1. I use a normal build in Android studio. Hit me up if you can't figure out how to build.
-2. You may need to download some additional files and place them in the `src/main/assets` folder.
-These files are available on request for legitimate development purposes. Please write to me on Discord and I can share them with you there.
-3. **SteamGridDB API Key (Optional):** To enable automatic fetching of game images for Custom Games, add your SteamGridDB API key to `local.properties`:
+2. **SteamGridDB API Key (Optional):** To enable automatic fetching of game images for Custom Games, add your SteamGridDB API key to `local.properties`:
    ```
    STEAMGRIDDB_API_KEY=your_api_key_here
    ```

@@ -320,10 +320,24 @@ class EpicManager @Inject constructor(
                     val catalogItemId = record.getString("catalogItemId")
                     val sandboxType = record.optString("sandboxType", "")
                     val country = record.optString("country", "")
+                    val platformsArray = record.optJSONArray("platform")
+                    val platforms = buildList {
+                        if (platformsArray != null) {
+                            for (j in 0 until platformsArray.length()) {
+                                add(platformsArray.getString(j))
+                            }
+                        }
+                    }
 
                     // Skip UE assets, private sandboxes, and broken entries
                     if (namespace == "ue" || sandboxType == "PRIVATE" || appName == "1") {
-                        Timber.tag("Epic").d("Skipping $appName (namespace=$namespace, sandbox=$sandboxType)")
+                        Timber.tag("Epic").d("Skipping due to invalid app: $appName (namespace=$namespace, sandbox=$sandboxType)")
+                        continue
+                    }
+
+                    // Skip invalid platform (such as Android versions)
+                    if(platforms.isNotEmpty() && !platforms.contains("Win32") && !platforms.contains("Windows")){ 
+                        Timber.tag("Epic").d("Skipping due to invalid platform: $appName (namespace=$namespace, sandbox=$sandboxType)")
                         continue
                     }
 
@@ -343,6 +357,14 @@ class EpicManager @Inject constructor(
             Timber.tag("Epic").e(e, "Failed to fetch Epic library")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Resolves the effective launch executable for an Epic game.
+     * Returns empty string if game is not installed or no executable can be found.
+     */
+    suspend fun getLaunchExecutable(appId: Int): String {
+        return getInstalledExe(appId)
     }
 
     suspend fun getInstalledExe(appId: Int): String {
@@ -374,7 +396,7 @@ class EpicManager @Inject constructor(
         val mainExe = exeFiles.firstOrNull()
         if (mainExe != null) {
             Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
-            return mainExe.absolutePath
+            return mainExe.relativeTo(installDir).path
         }
 
         Timber.tag("Epic").w("No executable found in ${game.installPath}")
@@ -544,7 +566,6 @@ class EpicManager @Inject constructor(
             val release = releaseInfo.getJSONObject(0)
             releaseDate = release.optString("dateAdded", "")
         }
-
         // Parse genres/tags from categories
         val genresList = mutableListOf<String>()
         val tagsList = mutableListOf<String>()
@@ -618,9 +639,9 @@ class EpicManager @Inject constructor(
         )
     }
 
-    suspend fun deleteAllGames() {
+    suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
-            epicGameDao.deleteAll()
+            epicGameDao.deleteAllNonInstalledGames()
         }
     }
 

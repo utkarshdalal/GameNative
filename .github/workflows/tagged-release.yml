@@ -60,8 +60,6 @@ jobs:
           cat <<EOF > local.properties
           POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
           EOF
 
       - name: Install Android SDK Build Tools

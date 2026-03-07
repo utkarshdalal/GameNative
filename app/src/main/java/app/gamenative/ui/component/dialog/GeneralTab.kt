@@ -286,6 +286,13 @@ fun GeneralTabContent(
                 }
             },
         )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.portrait_mode)) },
+            subtitle = { Text(text = stringResource(R.string.portrait_mode_description)) },
+            state = config.portraitMode,
+            onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
+        )
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },
@@ -324,6 +331,13 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(unpackFiles = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.steam_offline_mode)) },
+            subtitle = { Text(text = stringResource(R.string.steam_offline_mode_description)) },
+            state = config.steamOfflineMode,
+            onCheckedChange = { state.config.value = config.copy(steamOfflineMode = it) },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },

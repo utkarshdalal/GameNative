@@ -19,6 +19,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
+import timber.log.Timber
 
 @OptIn(
     ExperimentalLayoutApi::class,
@@ -149,7 +150,7 @@ fun GameFeedbackDialog(
 
                         Button(
                             onClick = {
-                                timber.log.Timber.d("GameFeedback: Submit button clicked with rating=${state.rating}")
+                                Timber.d("GameFeedback: Submit button clicked with rating=${state.rating}")
                                 onSubmit(state)
                             },
                             modifier = Modifier.padding(start = 8.dp),

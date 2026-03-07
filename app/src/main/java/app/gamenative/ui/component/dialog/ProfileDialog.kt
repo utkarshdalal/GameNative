@@ -176,7 +176,6 @@ fun ProfileDialog(
                                     }
                                 } else {
                                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                                        SteamService.stop()
                                         onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
                                     }) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)

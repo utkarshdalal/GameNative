@@ -1,5 +1,6 @@
 package app.gamenative.service.gog.api
 
+import app.gamenative.service.gog.GOGConstants
 import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -21,15 +22,16 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Select the correct build - Uses Gen 2 builds as they're all there.
+     * Select a build for the given platform and generation.
+     *
      * @param builds List of available builds
-     * @param preferredGeneration Preferred generation (1 or 2), null = auto-detect
+     * @param preferredGeneration Generation to select (1 = legacy, 2 = modern)
      * @param platform Target platform (e.g., "windows", "linux", "osx")
-     * @return Selected build or null if none suitable
+     * @return Selected build or null if none matching
      */
     fun selectBuild(
         builds: List<GOGBuild>,
-        preferredGeneration: Int? = null,
+        preferredGeneration: Int = 2,
         platform: String = "windows"
     ): GOGBuild? {
         if (builds.isEmpty()) {
@@ -37,52 +39,61 @@ class GOGManifestParser @Inject constructor() {
             return null
         }
 
-        // Filter by generation and platform
         val filtered = builds.filter {
-            it.generation == 2 && it.platform.equals(platform, ignoreCase = true)
+            it.generation == preferredGeneration && it.platform.equals(platform, ignoreCase = true)
         }
 
         if (filtered.isEmpty()) {
-            Timber.tag(TAG).w("No Gen 2 builds found for platform: $platform")
+            val summary = builds.joinToString { "Gen ${it.generation}/${it.platform}" }
+            Timber.tag(TAG).w("No Gen $preferredGeneration builds for platform: $platform. Available: [$summary]")
             return null
         }
 
         val selected = filtered.first()
-        Timber.tag(TAG).d("Selected build ${selected.buildId} for platform ${selected.platform}")
-
+        Timber.tag(TAG).d("Selected build ${selected.buildId} (Gen ${selected.generation}, ${selected.platform})")
         return selected
     }
 
     /**
-     * Filter depots based on language
+     * Filter depots based on container language. Resolves container language to GOG manifest codes
+     * via [GOGConstants.containerLanguageToGogCodes], tries each in order, and for each tries English
+     * fallback if needed. Returns the first non-empty result.
      *
      * @param manifest Main manifest metadata
-     * @param language Target language (e.g., "en-US") or is *
-     * @return Filtered list of depots matching language
+     * @param containerLanguage Container language name (e.g. "english", "german"). See [GOGConstants.containerLanguageToGogCodes].
+     * @return Pair of (filtered list of depots, effective GOG language code that matched)
      */
-    fun filterDepotsByLanguage(manifest: GOGManifestMeta, language: String): List<Depot> {
-        val filtered = manifest.depots.filter { depot ->
-            depot.matchesLanguage(language) || (depot.languages?.contains("*") == true)
+    fun filterDepotsByLanguage(manifest: GOGManifestMeta, containerLanguage: String): Pair<List<Depot>, String> {
+        val allDepotLangCodes = manifest.depots.flatMap { it.languages }.distinct().sorted()
+        Timber.tag(TAG).d("Language depots codes in manifest: $allDepotLangCodes")
+
+        val starDepots = manifest.depots.filter { it.matchesLanguage("*") }
+        fun filter(lang: String): List<Depot> = manifest.depots.filter { it.matchesLanguage(lang) }
+        val requestedCodes = GOGConstants.containerLanguageToGogCodes(containerLanguage)
+        val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
+
+        // Try all requested language codes first (e.g. de-DE, then de)
+        for (lang in requestedCodes) {
+            val matched = filter(lang)
+            if (matched.isNotEmpty()) {
+                val result = (matched + starDepots).distinct()
+                Timber.tag(TAG).d("Filtered ${result.size}/${manifest.depots.size} depots for language: $lang")
+                return result to lang
+            }
         }
-
-        Timber.tag(TAG).d("Filtered ${filtered.size}/${manifest.depots.size} depots for language: $language")
-        return filtered
-    }
-
-    /**
-     * Filter depots based on OS bitness
-     *
-     * @param depots List of depots to filter
-     * @param bitness Target bitness (e.g., "64", "32")
-     * @return Filtered list of depots matching bitness
-     */
-    fun filterDepotsByBitness(depots: List<Depot>, bitness: String = "64"): List<Depot> {
-        val filtered = depots.filter { depot ->
-            depot.osBitness == null || depot.osBitness.contains(bitness)
+        // Only then try English fallbacks (en-US, then en)
+        for (fallbackLang in englishCodes) {
+            val matched = filter(fallbackLang)
+            if (matched.isNotEmpty()) {
+                val result = (matched + starDepots).distinct()
+                Timber.tag(TAG).d("No depots for requested language codes, fell back to $fallbackLang: ${result.size}/${manifest.depots.size} depots")
+                return result to fallbackLang
+            }
         }
-
-        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for bitness: $bitness")
-        return filtered
+        // No language-specific match: return all depots with first requested language as effective
+        val effectiveLang = requestedCodes.firstOrNull() ?: "en"
+        Timber.tag(TAG).d("No language match for $containerLanguage, using all ${manifest.depots.size} depots with effective: $effectiveLang")
+        return manifest.depots to effectiveLang
     }
 
     /**
@@ -318,14 +329,120 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Parse manifest metadata JSON
+     * Parse manifest metadata JSON (Gen 2 or Gen 1).
+     * Gen 1 repository.json has "product" with "depots", "installDirectory", "rootGameID", "timestamp".
      */
     fun parseManifest(json: String): GOGManifestMeta {
-        return GOGManifestMeta.fromJson(JSONObject(json))
+        val obj = JSONObject(json)
+        if (obj.has("product")) {
+            val product = obj.getJSONObject("product")
+            if (product.has("depots")) return parseManifestV1(obj)
+        }
+        return GOGManifestMeta.fromJson(obj)
     }
 
     /**
-     * Parse depot manifest JSON
+     * Parse Gen 1 (v1) repository.json to GOGManifestMeta.
+     * Structure per heroic-gogdl: product.depots, product.installDirectory, product.rootGameID, product.timestamp, product.gameIDs.
+     */
+    fun parseManifestV1(json: JSONObject): GOGManifestMeta {
+        val product = json.getJSONObject("product")
+        val installDirectory = product.optString("installDirectory", "")
+        val baseProductId = product.optString("rootGameID", "")
+        val timestamp = product.optString("timestamp", "")
+
+        val depotsArray = product.optJSONArray("depots")
+        val depots = mutableListOf<Depot>()
+        val dependencies = mutableListOf<String>()
+
+        if (depotsArray != null) {
+            for (i in 0 until depotsArray.length()) {
+                val d = depotsArray.getJSONObject(i)
+                if (d.has("redist")) {
+                    dependencies.add(d.getString("redist"))
+                    continue
+                }
+                val gameIds = d.optJSONArray("gameIDs")
+                val productId = if (gameIds != null && gameIds.length() > 0) gameIds.getString(0) else ""
+                val langs = mutableListOf<String>()
+                val langArr = d.optJSONArray("languages")
+                if (langArr != null) {
+                    for (j in 0 until langArr.length()) {
+                        val lang = langArr.getString(j)
+                        langs.add(if (lang == "Neutral") "*" else lang)
+                    }
+                }
+                // Gen 1: depots with no languages array are language-agnostic (main content); include them
+                if (langs.isEmpty()) langs.add("*")
+                depots.add(
+                    Depot(
+                        productId = productId,
+                        languages = langs,
+                        manifest = d.optString("manifest", ""),
+                        compressedSize = d.optLong("size", 0),
+                        size = d.optLong("size", 0),
+                        osBitness = null
+                    )
+                )
+            }
+        }
+
+        val products = mutableListOf<Product>()
+        val gameIdsArray = product.optJSONArray("gameIDs")
+        if (gameIdsArray != null) {
+            for (i in 0 until gameIdsArray.length()) {
+                val g = gameIdsArray.getJSONObject(i)
+                val pid = g.optString("gameID", "")
+                val nameObj = g.optJSONObject("name")
+                val name = nameObj?.optString("en", nameObj.optString("English", pid)) ?: pid
+                products.add(Product(productId = pid, name = name))
+            }
+        }
+
+        Timber.tag(TAG).d("Parsed Gen 1 manifest: installDirectory=$installDirectory, depots=${depots.size}, timestamp=$timestamp")
+        return GOGManifestMeta(
+            baseProductId = baseProductId,
+            installDirectory = installDirectory,
+            depots = depots,
+            dependencies = dependencies,
+            products = products,
+            productTimestamp = timestamp
+        )
+    }
+
+    /**
+     * Parse Gen 1 depot manifest (depot.files with path, hash, size, url, offset).
+     */
+    fun parseV1DepotManifest(json: String): List<V1DepotFile> {
+        val obj = JSONObject(json)
+        val depot = obj.optJSONObject("depot") ?: obj
+        val filesArray = depot.optJSONArray("files") ?: return emptyList()
+        val list = mutableListOf<V1DepotFile>()
+        for (i in 0 until filesArray.length()) {
+            val f = filesArray.getJSONObject(i)
+            if (f.has("directory")) continue
+            val path = f.optString("path", "").replace("\\", "/").removePrefix("/")
+            val size = f.optLong("size", 0)
+            val hash = f.optString("hash", "")
+            val url = if (f.has("url") && !f.isNull("url")) f.getString("url") else null
+            val offset = if (f.has("offset") && !f.isNull("offset")) f.optLong("offset", 0) else null
+            val isSupport = f.optBoolean("support", false)
+            list.add(
+                V1DepotFile(
+                    path = path,
+                    size = size,
+                    hash = hash,
+                    url = url,
+                    offset = offset,
+                    isSupport = isSupport
+                )
+            )
+        }
+        return list
+    }
+
+    /**
+     * Parse depot manifest JSON (Gen 2)
      */
     fun parseDepotManifest(json: String): DepotManifest {
         return DepotManifest.fromJson(JSONObject(json))

@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="steam_uninstall_success">%1$s a fost dezinstalat</string>
     <string name="steam_uninstall_failed">Dezinstalarea jocului a eșuat</string>
+    <string name="amazon_uninstall_game_title">Dezinstalare joc</string>
+    <string name="amazon_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
+    <string name="amazon_install_game_title">Descărcare joc</string>
+    <string name="amazon_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
+    <string name="amazon_verify_files_title">Verificare fișiere</string>
+    <string name="amazon_verify_files_message">Se vor verifica toate fișierele instalate în raport cu manifestul de descărcare pentru a detecta fișiere lipsă sau corupte.\n\nAcest lucru poate dura ceva timp pentru jocuri mari.</string>
+    <string name="amazon_verify_confirm">Verificare</string>
+    <string name="amazon_verify_in_progress">Se verifică fișierele… Poate dura ceva timp.</string>
+    <string name="amazon_verify_success">Toate fișierele au fost verificate cu succes.\n\n%1$d / %2$d fișiere OK.</string>
+    <string name="amazon_verify_failed_detail">Verificarea a găsit probleme.\n\n%1$d / %2$d fișiere OK\n%3$d lipsă\n%4$d dimensiune incorectă\n%5$d hash incorect\n\nReinstalează jocul pentru a repara fișierele corupte.</string>
+    <string name="amazon_verify_error">Verificarea a eșuat: %1$s</string>
     <string name="gog_uninstall_game_title">Dezinstalare joc</string>
     <string name="gog_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="gog_install_game_title">Descărcare joc</string>
@@ -78,6 +89,18 @@
     <string name="destination_downloads">Descărcări</string>
     <string name="destination_friends">Prieteni</string>
 
+    <!-- Library Tabs -->
+    <string name="tab_all">Toate</string>
+    <string name="tab_steam">Steam</string>
+    <string name="tab_gog">GOG</string>
+    <string name="tab_epic">Epic</string>
+    <string name="tab_amazon">Amazon</string>
+    <string name="tab_installed">Instalate</string>
+    <string name="tab_local">Personalizat</string>
+    <string name="library_tab_with_count">%1$s (%2$d)</string>
+    <string name="library_search_close">Închide căutarea</string>
+    <string name="default_user_name">Utilizator</string>
+
     <!-- Custom Games -->
     <string name="custom_games_title">Jocuri personalizate</string>
     <string name="custom_games_no_paths">Nicio cale adăugată</string>
@@ -100,8 +123,6 @@
     <string name="custom_game_folder_picker_error">Nu s-a putut rezolva calea folderului</string>
     <string name="container_config_drive_letter_missing">Lipsește litera unității</string>
     <string name="container_config_invalid_drive_path">Calea unității este invalidă</string>
-    <string name="custom_game_exe_selection_title">Selectarea executabilului necesară</string>
-    <string name="custom_game_exe_selection_message">Acest joc are mai multe executabile. Deschide Setările Jocului Personalizat pentru a alege pe care să-l lansezi.</string>
     <string name="custom_game_settings">Setări joc personalizat</string>
     <string name="custom_game_delete_title">Ștergere joc</string>
     <string name="custom_game_delete_message">Sigur vrei să dezinstalezi %1$s?</string>
@@ -146,6 +167,8 @@
     <string name="content_info">Informații conținut</string>
     <string name="game_not_installed_title">Joc neinstalat</string>
     <string name="game_not_installed_message">%s nu este instalat. Instalează jocul înainte de a-l porni.</string>
+    <string name="game_executable_not_found_title">Nu se poate porni</string>
+    <string name="game_executable_not_found">Executabilul nu a putut fi selectat automat. Setează calea executabilului în setările containerului.</string>
     <string name="save_container_settings_title">Salvezi configurația containerului?</string>
     <string name="save_container_settings_message">Modificările temporare ale configurației au fost aplicate pentru această lansare. Vrei să le salvezi?</string>
     <string name="sync_error_title">Eroare de sincronizare</string>
@@ -191,6 +214,8 @@
     <string name="controller_disconnected">Deconectat</string>
     <string name="reset_onscreen_controls">Resetează controalele pe ecran</string>
     <string name="open_navigation_menu">Deschide meniul de navigare</string>
+    <string name="quick_menu_title">Meniu rapid</string>
+    <string name="quick_menu_back">Înapoi</string>
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>
@@ -409,6 +434,10 @@
     <string name="update_available">Actualizare disponibilă</string>
     <string name="game_information">Informații joc</string>
     <string name="status">Stare</string>
+    <string name="status_online">Online</string>
+    <string name="status_away">Absent</string>
+    <string name="status_invisible">Invizibil</string>
+    <string name="system_menu_title">Sistem</string>
     <string name="size">Dimensiune</string>
     <string name="location">Locație</string>
     <string name="developer">Dezvoltator</string>
@@ -421,6 +450,8 @@
     <string name="games">Jocuri</string>
     <string name="playtime_last_two_weeks">Timp jucat în ultimele 2 săptămâni: %s ore</string>
     <string name="total_playtime">Timp total jucat: %s ore</string>
+    <string name="last_played">Ultima dată jucat</string>
+    <string name="playtime">Timp de joc</string>
     <string name="add_custom_game_content_desc">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_title">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_message">Selectează folderul care conține fișierele jocului pe care vrei să-l adaugi ca joc personalizat.</string>
@@ -444,10 +475,18 @@
 	<string name="app_filter_family">Familie</string>
 
     <!-- Login & Connection -->
+	<string name="connecting_to_steam">Se conectează la Steam…</string>
 	<string name="no_connection_to_steam">Fără conexiune la Steam</string>
 	<string name="retry_steam_connection">Reîncearcă conectarea la Steam</string>
 	<string name="continue_offline">Continuă offline</string>
-
+	<string name="connection_reconnecting">Reconectare la Steam…</string>
+	<string name="connection_disconnected">Deconectat de la Steam</string>
+	<string name="connection_disconnected_servers">Deconectat de la serverele Steam</string>
+	<string name="connection_logging_in">Autentificare…</string>
+	<string name="connection_login_failed">Autentificare eșuată</string>
+	<string name="connection_session_ended">Sesiune încheiată</string>
+	<string name="connection_offline_mode">Mod offline</string>
+	<string name="connection_retry">Reîncearcă</string>
 
     <!--Game Feedback Dialog -->
 	<string name="game_feedback_game_run">Cum a rulat jocul?</string>
@@ -461,6 +500,12 @@
 	<string name="go_offline">Mergi offline</string>
 	<string name="log_out">Deconectare</string>
 	<string name="close">Închide</string>
+
+    <!-- System menu platform actions -->
+    <string name="steam_sign_in">Autentificare la Steam</string>
+    <string name="steam_go_online">Intră online (Steam)</string>
+    <string name="steam_go_offline">Intră offline (Steam)</string>
+    <string name="steam_sign_out">Deconectare de la Steam</string>
 
     <!-- Container Configuration: General -->
 	<string name="new_environment_variable">Variabilă de mediu nouă</string>
@@ -477,6 +522,8 @@
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
 	<string name="show_fps">Afișează FPS</string>
+	<string name="portrait_mode">Mod portret</string>
+	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -486,6 +533,8 @@
 	<string name="force_dlc">Forțează DLC</string>
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
+	<string name="steam_offline_mode">Mod Offline Steam</string>
+	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>
@@ -496,6 +545,7 @@
 	<string name="graphics_driver_version">Versiune driver grafic</string>
 	<string name="exposed_vulkan_extensions">Extensii Vulkan expuse</string>
 	<string name="max_device_memory">Memorie maximă dispozitiv</string>
+	<string name="frame_synchronization">Sincronizare cadre</string>
 	<string name="use_adrenotools_turnip">Folosește Adrenotools Turnip</string>
 	<string name="vulkan_version">Versiune Vulkan</string>
 	<string name="image_cache_size">Dimensiune cache imagini</string>
@@ -537,7 +587,76 @@
 	<string name="directinput_mapper_type">Tip mapper DirectInput</string>
 	<string name="disable_mouse_input">Dezactivează input-ul de mouse</string>
 	<string name="touchscreen_mode">Mod touchscreen</string>
-	<string name="touchscreen_mode_description">Mișcare directă touch-la-cursor (ON) vs mișcare relativă tip touchpad (OFF)</string>
+	<string name="touchscreen_mode_description">Pentru visual novels și jocuri RTS</string>
+	<string name="shooter_mode_toggle">Mod shooter</string>
+	<string name="shooter_mode_toggle_description">Înlocuiește stick-urile cu joystick-uri dinamice</string>
+	<string name="shooter_mode_on">Activează mouse-ul</string>
+	<string name="shooter_mode_off">Activează stick-urile</string>
+
+	<!-- Gesture Settings Dialog -->
+	<string name="gesture_settings">Setări gesturi</string>
+	<string name="gesture_settings_title">Setări gesturi touch</string>
+	<string name="gesture_tap">Atingere</string>
+	<string name="gesture_tap_subtitle">Clic stânga</string>
+	<string name="gesture_drag">Trage cu degetul</string>
+	<string name="gesture_drag_subtitle">Trage clic stânga (selecție dreptunghiulară)</string>
+	<string name="gesture_long_press">Apăsare lungă</string>
+	<string name="gesture_long_press_delay">Întârziere apăsare lungă (ms)</string>
+	<string name="gesture_double_tap">Atingere dublă</string>
+	<string name="gesture_double_tap_subtitle">Dublu clic stânga</string>
+	<string name="gesture_double_tap_delay">Întârziere atingere dublă (ms)</string>
+	<string name="gesture_two_finger_drag">Trage cu două degete</string>
+	<string name="gesture_pinch">Pinch</string>
+	<string name="gesture_two_finger_tap">Atingere două degete</string>
+	<string name="gesture_action_left_click">Clic stânga</string>
+	<string name="gesture_action_right_click">Clic dreapta</string>
+	<string name="gesture_action_middle_click">Clic mijloc</string>
+	<string name="gesture_pan_middle_mouse">Pan mouse mijloc</string>
+	<string name="gesture_pan_wasd">WASD</string>
+	<string name="gesture_pan_arrow_keys">Taste săgeți</string>
+	<string name="gesture_zoom_scroll_wheel">Roată scroll</string>
+	<string name="gesture_zoom_plus_minus">Taste +/-</string>
+	<string name="gesture_zoom_page_up_down">PgSus/PgJos</string>
+	<string name="gesture_action_label">Acțiune</string>
+	<string name="gesture_delay_label">Întârziere</string>
+
+	<!-- Shooter Mode -->
+	<string name="shooter_mode_settings">Setări joystick-uri dinamice</string>
+	<string name="movement_type">Tip mișcare</string>
+	<string name="movement_type_subtitle">Ieșire joystick pentru mișcare stânga</string>
+	<string name="look_sensitivity">Sensibilitate privire</string>
+	<string name="look_sensitivity_subtitle">Multiplicator sensibilitate mouse</string>
+	<string name="joystick_size">Dimensiune joystick</string>
+	<string name="joystick_size_subtitle">Multiplicator dimensiune joystick dinamic</string>
+	<string name="movement_wasd">WASD</string>
+	<string name="movement_arrow_keys">Taste săgeți</string>
+	<string name="movement_gamepad_left_stick">Stick stânga gamepad</string>
+	<string name="look_type">Tip privire</string>
+	<string name="look_type_subtitle">Comportament partea dreaptă în mod shooter</string>
+	<string name="look_type_mouse">Mouse</string>
+	<string name="look_type_gamepad_right_stick">Stick dreapta gamepad</string>
+
+	<string name="range_button_settings">Setări buton interval</string>
+	<string name="range_type">Interval taste</string>
+	<string name="range_type_subtitle">Ce set de taste parcurge</string>
+	<string name="range_orientation">Orientare</string>
+	<string name="range_orientation_subtitle">Direcție layout buton interval</string>
+	<string name="range_orientation_horizontal">Orizontal</string>
+	<string name="range_orientation_vertical">Vertical</string>
+	<string name="range_visible_segments">Segmente vizibile</string>
+	<string name="range_visible_segments_subtitle">Număr segmente taste afișate: %1$d</string>
+	<string name="range_a_to_z">A – Z</string>
+	<string name="range_1_to_0">1 – 0</string>
+	<string name="range_f1_to_f12">F1 – F12</string>
+	<string name="range_lock_scrolling">Blochează scroll</string>
+	<string name="range_lock_scrolling_subtitle">Împiedică parcurgerea intervalului</string>
+	<string name="button_settings">Setări buton</string>
+	<string name="button_toggleable">Comutabil</string>
+	<string name="button_toggleable_subtitle">Atinge pentru activare, atinge din nou pentru dezactivare</string>
+
+	<string name="custom_game_exe_selection_title">Selecție executabil necesară</string>
+	<string name="custom_game_exe_selection_message">Acest joc are mai multe executabile. Deschide setările personalizate ale jocului pentru a selecta care să pornească.</string>
+
 	<string name="external_display_input">Intrare afișaj extern</string>
 	<string name="external_display_input_subtitle">Alege cum ar trebui să se comporte un afișaj de prezentare conectat</string>
 	<string name="external_display_mode_off">Nu utiliza afișaj extern</string>
@@ -629,7 +748,12 @@
 	<string name="settings_debug_box_logs_title">Activează logurile Box86/64</string>
 	<string name="settings_debug_box_logs_subtitle">Scrie ieșirea de debug Box86 &amp; Box64 în fișier</string>
 	<string name="settings_debug_view_crash_title">Vezi ultimul crash</string>
+	<string name="settings_debug_view_crash_subtitle">Afișează cel mai recent raport de crash</string>
+	<string name="settings_debug_no_crash_logs">Nu s-au găsit rapoarte de crash recente</string>
 	<string name="settings_debug_view_log_title">Vezi logul de debug al jocului</string>
+	<string name="settings_debug_view_log_subtitle">Afișează cel mai recent jurnal de debug Wine/Box64</string>
+	<string name="settings_debug_no_wine_logs">Nu s-au găsit jurnale de debug Wine</string>
+	<string name="settings_debug_no_channels_selected">Niciun canal selectat</string>
 	<string name="settings_debug_clear_prefs_title">Șterge preferințele</string>
 	<string name="settings_debug_clear_prefs_subtitle">[Închide aplicația] Deconectează clientul și șterge datele locale de preferințe.</string>
 	<string name="settings_debug_clear_db_title">Șterge baza de date locală</string>
@@ -674,13 +798,22 @@
 	<string name="login_privacy_policy">Politica de confidențialitate</string>
 	<string name="login_welcome_back">Bine ai revenit</string>
 	<string name="login_subtitle">Autentifică-te pentru a accesa biblioteca ta Steam</string>
+	<string name="login_tab_credentials">Date de autentificare</string>
+	<string name="login_tab_qr_code">Cod QR</string>
 	<string name="login_username">Nume utilizator</string>
+	<string name="login_username_hint">Introdu numele de utilizator Steam</string>
 	<string name="login_password">Parolă</string>
+	<string name="login_password_hint">Introdu parola</string>
+	<string name="login_password_show">Arată parola</string>
+	<string name="login_password_hide">Ascunde parola</string>
 	<string name="login_remember_session">Ține-mă minte</string>
-	<string name="login_sign_in">Autentificare</string>
+	<string name="login_sign_in">Autentificare cu Steam</string>
 	<string name="login_qr_failed">Cod QR eșuat</string>
 	<string name="login_retry_qr">Reîncearcă codul QR</string>
 	<string name="login_qr_instructions">Deschide aplicația Steam pe mobil și scanează acest cod QR pentru autentificare instantă</string>
+	<string name="login_skip_steam">Omite autentificarea Steam</string>
+	<string name="login_or_sign_in_with">Sau conectează-te cu:</string>
+	<string name="login_skip_login">Omite autentificarea</string>
 
 	<!-- Generic/Reusable strings -->
 	<string name="continue_action">Continuă</string>
@@ -730,6 +863,8 @@
 	<string name="main_later_button">Mai târziu</string>
 	<string name="main_update_failed_title">Actualizare eșuată</string>
 	<string name="main_update_failed_message">Nu s-a putut descărca sau instala actualizarea. Încearcă din nou mai târziu.</string>
+	<string name="launch_dependency_failed_title">Descărcarea dependenței de lansare a eșuat</string>
+	<string name="launch_dependency_failed_message">Nu s-a putut descărca o componentă necesară. Încearcă din nou mai târziu.</string>
 
 	<!-- PluviaMain: Crash & Support -->
 	<string name="main_recent_crash_title">Crash recent</string>
@@ -738,6 +873,7 @@
 	<string name="main_thank_you_message">Susține gaming-ul open‑source pe Android distribuind aplicația prietenilor sau devenind membru pe Ko‑fi.</string>
 	<string name="main_join_kofi">Alătură-te pe Ko‑fi</string>
 	<string name="main_share">Distribuie</string>
+	<string name="main_share_text">Descoperă GameNative - joacă jocurile tale Steam pe PC pe Android, cu suport complet pentru salvări în cloud!\nhttps://gamenative.app\nAlătură-te comunității: https://discord.gg/2hKv4VfZfE</string>
 	<string name="main_discord_support_title">A funcționat jocul?</string>
 	<string name="main_discord_support_message">Alătură-te serverului de Discord pentru suport și optimizare.</string>
 	<string name="main_open_discord">Deschide Discord</string>
@@ -803,6 +939,7 @@
 	<string name="supporters_app_icon">Icon aplicație: Hachi</string>
 	<string name="supporters_alt_icon">Icon alternativ: rhapsody_mdr</string>
 	<string name="supporters_loading">Se încarcă susținătorii…</string>
+	<string name="supporters_error">Nu s-au putut încărca susținătorii</string>
 	<string name="supporters_members">Membri</string>
 	<string name="supporters_supporters">Susținători</string>
 	<string name="supporters_none">Niciun susținător încă.</string>
@@ -822,7 +959,9 @@
 	<string name="library_installing">Se instalează</string>
 	<string name="library_not_installed">Neinstalat</string>
 	<string name="library_family_shared">Partajat în familie</string>
+	<string name="library_shared_short">Partajat</string>
 	<string name="library_compatible">Compatibil</string>
+	<string name="library_gpu_compatible">Compatibil GPU</string>
 	<string name="library_compatibility_unknown">Necunoscut</string>
 	<string name="library_not_compatible">Necompatibil</string>
 
@@ -846,6 +985,7 @@
 	<string name="library_layout_list">Listă</string>
 	<string name="library_layout_capsule">Capsulă</string>
 	<string name="library_layout_hero">Hero</string>
+	<string name="library_layout_carousel">Carusel</string>
 	<string name="library_search_placeholder">Caută jocurile tale…</string>
 	<string name="library_search_description">Căutare</string>
 	<string name="library_search_clear">Șterge căutarea</string>
@@ -854,7 +994,47 @@
 	<string name="library_game_count">%1$d jocuri • %2$d instalate</string>
 	<string name="library_source_steam">Steam</string>
 	<string name="library_source_custom">Jocuri personalizate</string>
+	<string name="library_source_title">Sursă</string>
 	<string name="library_layout_title">Aspect</string>
+	<string name="library_options">Opțiuni</string>
+	<string name="back">Înapoi</string>
+	<string name="cloud">Cloud</string>
+	<string name="options">Opțiuni</string>
+	<string name="play_time">Timp de joc</string>
+
+	<!-- Options Panel -->
+	<string name="options_panel_title">Opțiuni</string>
+	<string name="options_panel_close">Închide opțiunile</string>
+	<string name="options_sort_by">Sortare după</string>
+	<string name="sort_installed_first">Instalate mai întâi</string>
+	<string name="sort_name_asc">Nume (A-Z)</string>
+	<string name="sort_name_desc">Nume (Z-A)</string>
+	<string name="sort_recently_played">Jucat recent</string>
+	<string name="sort_size_smallest">Dimensiune (cea mai mică)</string>
+	<string name="sort_size_largest">Dimensiune (cea mai mare)</string>
+
+	<!-- Game Options Panel -->
+	<string name="game_options_title">Opțiuni</string>
+	<string name="game_options_quick_actions">Acțiuni rapide</string>
+	<string name="game_options_game_management">Gestionare jocuri</string>
+	<string name="game_options_container">Container</string>
+	<string name="game_options_cloud_saves">Salvări cloud</string>
+	<string name="game_options_help_info">Ajutor &amp; Info</string>
+
+	<!-- System Menu -->
+	<string name="press_b_to_close">Apasă B pentru a închide</string>
+	<string name="menu">Meniu</string>
+
+	<!-- Gamepad Actions -->
+	<string name="action_select">Selectează</string>
+	<string name="action_refresh">Reîmprospătează</string>
+	<string name="action_details">Detalii</string>
+	<string name="action_add_game">Adaugă joc</string>
+	<string name="action_system">Sistem</string>
+
+	<!-- Search -->
+	<string name="search_results_one">%d rezultat</string>
+	<string name="search_results_many">%d rezultate</string>
 
 	<!-- Two Factor Auth -->
 	<string name="two_factor_login">Autentificare</string>
@@ -903,6 +1083,7 @@
 
 	<!-- Settings Screen -->
 	<string name="settings_title">Setări</string>
+	<string name="settings_subtitle">Personalizează experiența ta</string>
 
 	<!-- Contents Install Finish -->
 	<string name="contents_install_success">Conținut instalat cu succes</string>
@@ -974,11 +1155,11 @@
 
 	<!-- GOG Integration -->
 	<string name="gog_integration_title">Integrare GOG (Alpha)</string>
-	<string name="gog_settings_login_title">Autentificare</string>
+	<string name="gog_settings_login_title">Autentificare la GOG</string>
 	<string name="gog_settings_login_subtitle">Autentifică-te în contul tău GOG</string>
 	<string name="gog_login_success_title">Autentificare reușită</string>
 	<string name="gog_login_cancel">Anulează</string>
-	<string name="gog_settings_logout_title">Deconectare</string>
+	<string name="gog_settings_logout_title">Deconectare de la GOG</string>
 	<string name="gog_settings_logout_subtitle">Deconectează-te din contul tău GOG</string>
 	<string name="gog_logout_confirm_title">Te deconectezi de la GOG?</string>
 	<string name="gog_logout_confirm_message">Aceasta va elimina datele tale GOG și va șterge biblioteca GOG de pe acest dispozitiv. Te poți autentifica din nou oricând.</string>
@@ -989,11 +1170,11 @@
 
 	<!-- Epic Games Integration -->
 	<string name="epic_integration_title">Integrare Epic Games</string>
-	<string name="epic_settings_login_title">Autentificare</string>
+	<string name="epic_settings_login_title">Autentificare la Epic</string>
 	<string name="epic_settings_login_subtitle">Autentifică-te în contul tău Epic Games</string>
 	<string name="epic_login_success_title">Autentificare reușită</string>
 	<string name="epic_login_cancel">Anulează</string>
-	<string name="epic_settings_logout_title">Deconectare</string>
+	<string name="epic_settings_logout_title">Deconectare de la Epic</string>
 	<string name="epic_settings_logout_subtitle">Deconectează-te din contul tău Epic Games</string>
 	<string name="epic_logout_confirm_title">Te deconectezi de la Epic Games?</string>
 	<string name="epic_logout_confirm_message">Aceasta va elimina datele tale Epic Games și va șterge biblioteca Epic Games de pe acest dispozitiv. Te poți autentifica din nou oricând.</string>
@@ -1001,6 +1182,21 @@
 	<string name="epic_logout_success">Deconectat de la Epic Games cu succes</string>
 	<string name="epic_logout_failed">Deconectare eșuată: %s</string>
 	<string name="epic_logout_in_progress">Se deconectează de la Epic Games…</string>
+
+	<!-- Amazon Games Integration -->
+	<string name="amazon_integration_title">Integrare Amazon Games (Alpha)</string>
+	<string name="amazon_settings_login_title">Autentificare</string>
+	<string name="amazon_settings_login_subtitle">Autentifică-te în contul tău Amazon Games</string>
+	<string name="amazon_login_success_title">Autentificare reușită</string>
+	<string name="amazon_login_cancel">Anulare</string>
+	<string name="amazon_settings_logout_title">Deconectare de la Amazon Games</string>
+	<string name="amazon_settings_logout_subtitle">Deconectează-te din contul tău Amazon Games</string>
+	<string name="amazon_logout_confirm_title">Deconectare de la Amazon Games?</string>
+	<string name="amazon_logout_confirm_message">Acest lucru va șterge datele de autentificare Amazon Games și va curăța biblioteca Amazon de pe acest dispozitiv. Te poți autentifica din nou oricând.</string>
+	<string name="amazon_logout_confirm">Deconectare</string>
+	<string name="amazon_logout_success">Deconectat de la Amazon Games cu succes</string>
+	<string name="amazon_logout_failed">Deconectare eșuată: %s</string>
+	<string name="amazon_logout_in_progress">Se deconectează de la Amazon Games…</string>
 
 	<!-- Epic Install/Uninstall -->
 	<string name="epic_uninstall_game_title">Dezinstalare joc</string>

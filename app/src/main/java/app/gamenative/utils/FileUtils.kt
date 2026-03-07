@@ -204,4 +204,18 @@ object FileUtils {
             false
         }
     }
+
+    /**
+     * Resolves a relative path against a base dir using case-insensitive matching for each segment.
+     * Info file may list e.g. "checkapplication.exe" while the actual file is "CheckApplication.exe" (Linux/Android are case-sensitive).
+     */
+    fun findFileCaseInsensitive(baseDir: File, relativePath: String): File? {
+        val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
+        var current = baseDir
+        for (segment in segments) {
+            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) } ?: return null
+            current = match
+        }
+        return current.takeIf { it.exists() }
+    }
 }

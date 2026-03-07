@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import kotlinx.coroutines.*
+import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 /**
@@ -127,9 +128,9 @@ class EpicService : Service() {
                     // Get instance to clean up service-specific data
                     val instance = getInstance()
                     if (instance != null) {
-                        // Clear all Epic games from database
-                        instance.epicManager.deleteAllGames()
-                        Timber.tag("Epic").i("All Epic games removed from database")
+                        // Clear all nonInstalled Epic games from database
+                        instance.epicManager.deleteAllNonInstalledGames()
+                        Timber.tag("Epic").i("All Non-installed Epic games removed from database")
 
                         // Stop the service
                         stop()
@@ -278,9 +279,33 @@ class EpicService : Service() {
         }
 
 
-        fun isGameInstalled(appId: Int): Boolean {
-            val game = getEpicGameOf(appId)
-            return game?.isInstalled == true
+        fun isGameInstalled(context: Context, appId: Int): Boolean {
+            val game = getEpicGameOf(appId) ?: return false
+
+            if (game.isInstalled && game.installPath.isNotEmpty()) {
+                return MarkerUtils.hasMarker(game.installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            }
+
+            val installPath = game.installPath.takeIf { it.isNotEmpty() }
+                ?: game.appName.takeIf { it.isNotEmpty() }?.let {
+                    EpicConstants.getGameInstallPath(context, it)
+                }
+                ?: return false
+
+            val isDownloadComplete = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val isDownloadInProgress = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            if (isDownloadComplete && !isDownloadInProgress) {
+                val updatedGame = game.copy(
+                    isInstalled = true,
+                    installPath = installPath,
+                )
+                runBlocking(Dispatchers.IO) {
+                    getInstance()?.epicManager?.updateGame(updatedGame)
+                }
+                return true
+            }
+
+            return false
         }
 
         fun getInstallPath(appId: Int): String? {
@@ -294,6 +319,21 @@ class EpicService : Service() {
 
         suspend fun getInstalledExe(appId: Int): String {
             return getInstance()?.epicManager?.getInstalledExe(appId) ?: ""
+        }
+
+        /**
+         * Resolves the effective launch executable for an Epic game.
+         * Container id is expected to be "EPIC_&lt;numericId&gt;" (from library). Returns empty if
+         * game is not installed, no executable can be found, or containerId cannot be parsed.
+         */
+        suspend fun getLaunchExecutable(containerId: String): String {
+            val gameId = try {
+                ContainerUtils.extractGameIdFromContainerId(containerId)
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "Failed to parse Epic containerId: $containerId")
+                return ""
+            }
+            return getInstance()?.epicManager?.getLaunchExecutable(gameId) ?: ""
         }
 
         suspend fun refreshLibrary(context: Context): Result<Int> {
@@ -352,42 +392,21 @@ class EpicService : Service() {
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
 
-                        // Show success toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download completed successfully!",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show("Download completed successfully!")
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setProgress(-1.0f)
                         downloadInfo.setActive(false)
 
-                        // Show failure toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
-                        }
+                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "[Download] Exception for game $gameId")
                     downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
-                    // Show error toast
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Download error: ${e.message ?: "Unknown error"}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
                     instance.activeDownloads.remove(appId)
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
@@ -455,8 +474,6 @@ class EpicService : Service() {
                 null
             }
         }
-
-
     }
 
     private lateinit var notificationHelper: NotificationHelper

@@ -41,6 +41,60 @@ object GOGConstants {
             "&response_type=code" +
             "&layout=galaxy"
 
+    /** GOG download language (short code as used in manifest depots, e.g. "en"). */
+    const val GOG_FALLBACK_DOWNLOAD_LANGUAGE = "english"
+
+    /**
+     * GOG language codes per container language: primary code first, then fallbacks (as in GOG's Language list).
+     * Keys match [PrefManager.containerLanguage]. Unknown languages fall back to English.
+     */
+    internal val CONTAINER_LANGUAGE_TO_GOG_CODES: Map<String, List<String>> = mapOf(
+        "arabic" to listOf("ar"),
+        "bulgarian" to listOf("bg-BG", "bg", "bl"),
+        "schinese" to listOf("zh-Hans", "zh_Hans", "zh", "cn"),
+        "tchinese" to listOf("zh-Hant", "zh_Hant"),
+        "czech" to listOf("cs-CZ", "cz"),
+        "danish" to listOf("da-DK", "da"),
+        "dutch" to listOf("nl-NL", "nl"),
+        "english" to listOf("en-US", "en"),
+        "finnish" to listOf("fi-FI", "fi"),
+        "french" to listOf("fr-FR", "fr"),
+        "german" to listOf("de-DE", "de"),
+        "greek" to listOf("el-GR", "gk", "el-GK"),
+        "hungarian" to listOf("hu-HU", "hu"),
+        "italian" to listOf("it-IT", "it"),
+        "japanese" to listOf("ja-JP", "jp"),
+        "koreana" to listOf("ko-KR", "ko"),
+        "norwegian" to listOf("nb-NO", "no"),
+        "polish" to listOf("pl-PL", "pl"),
+        "portuguese" to listOf("pt-PT", "pt"),
+        "brazilian" to listOf("pt-BR", "br"),
+        "romanian" to listOf("ro-RO", "ro"),
+        "russian" to listOf("ru-RU", "ru"),
+        "spanish" to listOf("es-ES", "es"),
+        "latam" to listOf("es-MX", "es_mx"),
+        "swedish" to listOf("sv-SE", "sv"),
+        "thai" to listOf("th-TH", "th"),
+        "turkish" to listOf("tr-TR", "tr"),
+        "ukrainian" to listOf("uk-UA", "uk"),
+        "vietnamese" to listOf("vi-VN", "vi"),
+    )
+
+    /**
+     * Maps container language name (e.g. "english", "german") to an ordered list of GOG manifest language codes
+     * (primary first, then fallbacks). Uses the same names as [PrefManager.containerLanguage].
+     * Returns English codes (CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOG_FALLBACK_DOWNLOAD_LANGUAGE)) for unknown languages.
+     */
+    fun containerLanguageToGogCodes(containerLanguage: String): List<String> =
+        CONTAINER_LANGUAGE_TO_GOG_CODES[containerLanguage.lowercase()] ?: CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOG_FALLBACK_DOWNLOAD_LANGUAGE)
+
+    /** Path under _CommonRedist to a file that indicates this dependency is installed. */
+    val GOG_DEPENDENCY_INSTALLED_PATH: Map<String, String> = mapOf(
+        "ISI" to "ISI/scriptinterpreter.exe",
+        "MSVC2017" to "MSVC2017/VC_redist.x86.exe",
+        "MSVC2017_x64" to "MSVC2017_x64/VC_redist.x64.exe",
+    )
+
     /**
      * Builds a full Galaxy OAuth login URL with a fresh state parameter for CSRF protection.
      * @return Pair of (full auth URL, state) – store state and validate it on redirect.
@@ -59,7 +113,7 @@ object GOGConstants {
     val internalGOGGamesPath: String
         get() {
             val context = appContext ?: throw IllegalStateException("GOGConstants not initialized. Call init() first.")
-            val path = Paths.get(context.filesDir.absolutePath, "GOG", "games", "common").toString()
+            val path = Paths.get(context.dataDir.path, "GOG", "games", "common").toString()
             // Ensure directory exists for StatFs
             File(path).mkdirs()
             return path

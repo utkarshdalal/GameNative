@@ -90,14 +90,26 @@ object GameCompatibilityService {
                     put("gpuName", gpuName)
                 }
 
-                val mediaType = "application/json".toMediaType()
-                val body = requestBody.toString().toRequestBody(mediaType)
+                val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
+                if (attestation != null) {
+                    requestBody.put("nonce", attestation.first)
+                    requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
+                }
 
-                val request = Request.Builder()
+                val mediaType = "application/json".toMediaType()
+                val bodyString = requestBody.toString()
+                val body = bodyString.toRequestBody(mediaType)
+
+                val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
+
+                val requestBuilder = Request.Builder()
                     .url(API_BASE_URL)
                     .post(body)
                     .header("Content-Type", "application/json")
-                    .build()
+                if (integrityToken != null) {
+                    requestBuilder.header("X-Integrity-Token", integrityToken)
+                }
+                val request = requestBuilder.build()
 
                 val response = httpClient.newCall(request).execute()
 

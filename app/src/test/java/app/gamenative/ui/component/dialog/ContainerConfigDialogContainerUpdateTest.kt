@@ -165,6 +165,8 @@ class ContainerConfigDialogContainerUpdateTest {
             dinputMapperType = 2,
             disableMouseInput = true,
             touchscreenMode = true,
+            shooterMode = false,
+            gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -204,6 +206,8 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.sdlControllerAPI, container.isSdlControllerAPI)
         assertEquals(mutated.disableMouseInput, container.isDisableMouseInput)
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
+        assertEquals(mutated.shooterMode, container.isShooterMode)
+        assertEquals(mutated.gestureConfig, container.gestureConfig)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -304,6 +308,8 @@ class ContainerConfigDialogContainerUpdateTest {
             dinputMapperType = 2,
             disableMouseInput = true,
             touchscreenMode = true,
+            shooterMode = false,
+            gestureConfig = "{\"longPressEnabled\":true,\"twoFingerTapAction\":\"middle_click\"}",
             startupSelection = Container.STARTUP_SELECTION_AGGRESSIVE,
             cpuList = "0,2,4,6",
             cpuListWoW64 = "1,3,5,7",
@@ -344,6 +350,8 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.sdlControllerAPI, container.isSdlControllerAPI)
         assertEquals(mutated.disableMouseInput, container.isDisableMouseInput)
         assertEquals(mutated.touchscreenMode, container.isTouchscreenMode)
+        assertEquals(mutated.shooterMode, container.isShooterMode)
+        assertEquals(mutated.gestureConfig, container.gestureConfig)
 
         // Steam type
         assertEquals(mutated.steamType, container.getSteamType())
@@ -458,6 +466,7 @@ class ContainerConfigDialogContainerUpdateTest {
             enableDInput = true,
             disableMouseInput = true,
             touchscreenMode = true,
+            shooterMode = true,
             wow64Mode = true
         )
 
@@ -471,6 +480,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertTrue(container.isSdlControllerAPI)
         assertTrue(container.isDisableMouseInput)
         assertTrue(container.isTouchscreenMode)
+        assertTrue(container.isShooterMode)
     }
 
     @Test

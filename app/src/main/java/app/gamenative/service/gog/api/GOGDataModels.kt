@@ -157,14 +157,17 @@ data class GOGDependencyManifestMeta(
 }
 
 /**
- * Main manifest metadata
+ * Main manifest metadata (Gen 2 and Gen 1 converted)
+ * @param productTimestamp Only set for Gen 1; used to build v1 depot manifest URLs
  */
 data class GOGManifestMeta(
     val baseProductId: String,
     val installDirectory: String,
     val depots: List<Depot>,
     val dependencies: List<String>,
-    val products: List<Product>
+    val products: List<Product>,
+    val productTimestamp: String? = null,
+    val scriptInterpreter: Boolean = false,
 ) {
     companion object {
         fun fromJson(json: JSONObject): GOGManifestMeta {
@@ -200,11 +203,36 @@ data class GOGManifestMeta(
                 installDirectory = json.optString("installDirectory", ""),
                 depots = depots,
                 dependencies = dependencies,
-                products = products
+                products = products,
+                productTimestamp = null,
+                scriptInterpreter = json.optBoolean("scriptInterpreter", false),
             )
         }
     }
 }
+
+/**
+ * Gen 1 (v1) depot file: direct download by URL or range, no chunks.
+ * See heroic-gogdl gogdl/dl/objects/v1.py
+ */
+data class V1DepotFile(
+    val path: String,
+    val size: Long,
+    val hash: String,
+    val url: String?,
+    val offset: Long?,
+    val isSupport: Boolean = false
+)
+
+/**
+ * Deprecated/short language codes for matching (Heroic-style).
+ * Some manifests use short codes ("en") and others use full locales ("en-US").
+ * This map: full code -> set of deprecated/short codes that should match it.
+ */
+private val GOG_LANGUAGE_DEPRECATED: Map<String, Set<String>> = mapOf(
+    "en-US" to setOf("en"),
+    "en-GB" to setOf("en"),
+)
 
 /**
  * Depot metadata (contains files for specific language/platform)
@@ -249,27 +277,30 @@ data class Depot(
     }
 
     /**
-     * Check if this depot matches the target language
+     * True if this depot lists the target language (case-insensitive exact match).
+     * Fallback and deprecated code handling (e.g. en vs en-US) is done by the caller.
      */
-    fun matchesLanguage(targetLanguage: String): Boolean {
-        return languages.contains("*") || languages.any {
-            it.equals(targetLanguage, ignoreCase = true)
-        }
-    }
+    fun matchesLanguage(targetLanguage: String): Boolean =
+        languages.any { it.equals(targetLanguage, ignoreCase = true) }
 }
 
 /**
  * Product metadata (base game or DLC)
+ * @param temp_executable Optional post-install exe (e.g. game-specific installer) when scriptInterpreter is false
  */
 data class Product(
     val productId: String,
-    val name: String
+    val name: String,
+    val temp_executable: String? = null,
+    val temp_arguments: String? = null,
 ) {
     companion object {
         fun fromJson(json: JSONObject): Product {
             return Product(
                 productId = json.optString("productId", ""),
-                name = json.optString("name", "")
+                name = json.optString("name", ""),
+                temp_executable = json.optString("temp_executable", "").takeIf { it.isNotEmpty() },
+                temp_arguments = json.optString("temp_arguments", "").takeIf { it.isNotEmpty() },
             )
         }
     }

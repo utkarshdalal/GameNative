@@ -34,32 +34,26 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE id = :gameId")
     suspend fun getById(gameId: String): GOGGame?
 
-    @Query("SELECT * FROM gog_games WHERE exclude = false ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE exclude = 0 ORDER BY title ASC")
     fun getAll(): Flow<List<GOGGame>>
 
-    @Query("SELECT * FROM gog_games WHERE exclude = false ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE exclude = 0 ORDER BY title ASC")
     suspend fun getAllAsList(): List<GOGGame>
 
-    @Query("SELECT * FROM gog_games WHERE is_installed = :isInstalled AND exclude = false ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE is_installed = :isInstalled AND exclude = 0 ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<GOGGame>>
 
-    @Query("SELECT * FROM gog_games WHERE exclude = false AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
+    @Query("SELECT * FROM gog_games WHERE exclude = 0 AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<GOGGame>>
 
-    @Query("DELETE FROM gog_games")
-    suspend fun deleteAll()
+    @Query("DELETE FROM gog_games WHERE is_installed = 0")
+    suspend fun deleteAllNonInstalledGames()
 
-    @Query("SELECT COUNT(*) FROM gog_games WHERE exclude = false")
+    @Query("SELECT COUNT(*) FROM gog_games WHERE exclude = 0")
     fun getCount(): Flow<Int>
 
     @Query("SELECT id FROM gog_games")
     suspend fun getAllGameIdsIncludingExcluded(): List<String>
-
-    @Transaction
-    suspend fun replaceAll(games: List<GOGGame>) {
-        deleteAll()
-        insertAll(games)
-    }
 
     /**
      * Upsert GOG games while preserving install status and paths

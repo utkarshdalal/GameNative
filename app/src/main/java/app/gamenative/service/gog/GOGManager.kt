@@ -3,6 +3,7 @@ package app.gamenative.service.gog
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import app.gamenative.PluviaApp
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
@@ -30,8 +31,6 @@ import com.winlator.core.envvars.EnvVars
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.EnumSet
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -124,9 +123,9 @@ class GOGManager @Inject constructor(
         }
     }
 
-    suspend fun deleteAllGames() {
+    suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
-            gogGameDao.deleteAll()
+            gogGameDao.deleteAllNonInstalledGames()
         }
     }
 
@@ -467,6 +466,7 @@ class GOGManager @Inject constructor(
                 val gameId = libraryItem.gameId.toString()
                 val installPath = getGameInstallPath(gameId, libraryItem.name)
                 val installDir = File(installPath)
+                val wasInstalled = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
 
                 // Delete the manifest file
                 val manifestPath = File(context.filesDir, "manifests/$gameId")
@@ -482,25 +482,24 @@ class GOGManager @Inject constructor(
                         Timber.i("Successfully deleted game directory: $installPath")
                     } else {
                         Timber.w("Failed to delete some game files")
+                        return@withContext Result.failure(Exception("Failed to fully delete at $installPath"))
                     }
                 } else {
                     Timber.w("GOG game directory doesn't exist: $installPath")
                 }
 
-                // Remove all markers
-                val appDirPath = getAppDirPath(libraryItem.appId)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
-                // Update database - mark as not installed
-                val game = getGameFromDbById(gameId)
-                if (game != null) {
-                    val updatedGame = game.copy(isInstalled = false, installPath = "")
-                    gogGameDao.update(updatedGame)
-                    Timber.d("Updated database: game marked as not installed")
+                if (wasInstalled) {
+                    val game = getGameFromDbById(gameId)
+                    if (game != null) {
+                        val updatedGame = game.copy(isInstalled = false, installPath = "")
+                        gogGameDao.update(updatedGame)
+                        Timber.d("Updated database: game marked as not installed")
+                    }
                 }
 
-                // Delete container (must run on Main thread)
                 withContext(Dispatchers.Main) {
                     ContainerUtils.deleteContainer(context, libraryItem.appId)
                 }
@@ -583,20 +582,33 @@ class GOGManager @Inject constructor(
                 return@withContext getGameExecutable(installPath, v2GameDir)
             }
 
-            // Try V1 structure
+            // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
             val installDirFile = File(installPath)
+            val exe = getGameExecutable(installPath, installDirFile)
+            if (exe.isNotEmpty()) return@withContext exe
             val subdirs = installDirFile.listFiles()?.filter {
-                it.isDirectory && it.name != "saves"
+                it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
             } ?: emptyList()
 
-            if (subdirs.isNotEmpty()) {
-                return@withContext getGameExecutable(installPath, subdirs.first())
+            for (subdir in subdirs) {
+                val subdirExe = getGameExecutable(installPath, subdir)
+                if (subdirExe.isNotEmpty()) return@withContext subdirExe
             }
 
             ""
         } catch (e: Exception) {
             Timber.e(e, "Failed to get executable for GOG game $gameId")
             ""
+        }
+    }
+
+    /**
+     * Resolves the effective launch executable for a GOG game (container config or auto-detected).
+     * Returns empty string if no executable can be found.
+     */
+    suspend fun getLaunchExecutable(appId: String, container: Container): String = withContext(Dispatchers.IO) {
+        container.executablePath.ifEmpty {
+            getInstalledExe(LibraryItem(appId = appId, name = "", gameSource = GameSource.GOG))
         }
     }
 
@@ -659,23 +671,22 @@ class GOGManager @Inject constructor(
             }
 
             val playTasks = jsonObject.getJSONArray("playTasks")
+            val installDir = File(installPath)
+
             for (i in 0 until playTasks.length()) {
                 val task = playTasks.getJSONObject(i)
                 if (task.has("isPrimary") && task.getBoolean("isPrimary")) {
                     val executablePath = task.getString("path")
-
-                    // Construct full path - executablePath may include subdirectories
-                    val exeFile = File(gameDir, executablePath)
-
-                    if (exeFile.exists()) {
-                        val parentDir = gameDir.parentFile ?: gameDir
-                        val relativePath = exeFile.relativeTo(parentDir).path
+                    Timber.e("executable_path: $executablePath, gameDir: ${gameDir.absolutePath}")
+                    val exeFile = FileUtils.findFileCaseInsensitive(gameDir, executablePath)
+                    if (exeFile != null) {
+                        val relativePath = exeFile.relativeTo(installDir).path
                         return Result.success(relativePath)
                     }
-
                     return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
                 }
             }
+
             Result.failure(Exception("No primary executable found in playTasks"))
         } catch (e: Exception) {
             Result.failure(Exception("Error parsing GOG info file in ${gameDir.absolutePath}: ${e.message}", e))
@@ -689,9 +700,8 @@ class GOGManager @Inject constructor(
         appLaunchInfo: LaunchInfo?,
         envVars: EnvVars,
         guestProgramLauncherComponent: GuestProgramLauncherComponent,
+        gameId: Int,
     ): String {
-        val gameId = ContainerUtils.extractGameIdFromContainerId(libraryItem.appId)
-
         // Verify installation
         val (isValid, errorMessage) = verifyInstallation(gameId.toString())
         if (!isValid) {
@@ -720,6 +730,10 @@ class GOGManager @Inject constructor(
         } else {
             val detectedPath = runBlocking { getInstalledExe(libraryItem) }
             Timber.d("Auto-detected executable path: $detectedPath")
+            if (detectedPath.isNotEmpty()) {
+                container.executablePath = detectedPath
+                container.saveData()
+            }
             detectedPath
         }
 
@@ -766,6 +780,77 @@ class GOGManager @Inject constructor(
 
         Timber.d("GOG Wine command: \"$windowsPath\"")
         return "\"$windowsPath\""
+    }
+
+    /**
+     * Runs GOG scriptinterpreter.exe before launch when the game's _gog_manifest.json has scriptInterpreter true.
+     * Uses scriptinterpreter from the game dir (_CommonRedist/ISI/scriptinterpreter.exe).
+     */
+    fun runScriptInterpreterIfNeeded(
+        appId: String,
+        guestProgramLauncherComponent: GuestProgramLauncherComponent,
+    ) {
+        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+        Timber.tag("GOG").i("runScriptInterpreterIfNeeded: appId=$appId")
+        val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return
+        val computedPath = getGameInstallPath(gameId.toString(), game.title)
+        val gameInstallPath = when {
+            game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
+            else -> computedPath
+        }
+        val gameInstallDir = File(gameInstallPath)
+        if (!GOGManifestUtils.needsScriptInterpreter(gameInstallDir)) return
+        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return
+        val isiRelativePath = "_CommonRedist/ISI/scriptinterpreter.exe"
+        if (!File(gameInstallPath, isiRelativePath).exists()) {
+            Timber.tag("GOG").w("scriptinterpreter.exe not found at $isiRelativePath, skipping setup")
+            return
+        }
+        val isiRelativePathWin = isiRelativePath.replace('/', '\\')
+        val gameDriveLetter = "A"
+        val buildId = root.optString("buildId", "")
+        val versionName = root.optString("versionName", "")
+        val langCode = root.optString("language", "en").let { if (it.length <= 2) "$it-US" else it }
+        val language = when {
+            langCode.startsWith("en") -> "English"
+            else -> "English"
+        }
+        val productsArray = root.optJSONArray("products") ?: return
+
+        for (i in 0 until productsArray.length()) {
+            val product = productsArray.getJSONObject(i)
+            val productId = product.optString("productId", "")
+            if (productId.isEmpty()) continue
+            val exePathWin = "$gameDriveLetter:\\$isiRelativePathWin"
+            val args = listOf(
+                "/VERYSILENT",
+                "/DIR=$gameDriveLetter:\\",
+                "/Language=$language",
+                "/LANG=$language",
+                "/ProductId=$productId",
+                "/galaxyclient",
+                "/buildId=$buildId",
+                "/versionName=$versionName",
+                "/lang-code=$langCode",
+                "/supportDir=$gameDriveLetter:\\",
+                "/nodesktopshorctut",
+                "/nodesktopshortcut",
+            ).joinToString(" ")
+            val exePathEscaped = exePathWin.replace("\\", "\\\\")
+            val argsEscaped = args.replace("\\", "\\\\")
+            val cmd = "wine $exePathEscaped $argsEscaped"
+            Timber.tag("GOG").i("Running scriptinterpreter for product $productId")
+            val previousWorkingDir = guestProgramLauncherComponent.workingDir
+            try {
+                PluviaApp.events.emit(app.gamenative.events.AndroidEvent.SetBootingSplashText("Running GOG script interpreter..."))
+                guestProgramLauncherComponent.workingDir = gameInstallDir
+                guestProgramLauncherComponent.execShellCommand(cmd, true)
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(e, "scriptinterpreter failed for product $productId")
+            } finally {
+                guestProgramLauncherComponent.workingDir = previousWorkingDir
+            }
+        }
     }
 
     // ==========================================================================

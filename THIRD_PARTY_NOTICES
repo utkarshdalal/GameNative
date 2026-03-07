@@ -1,0 +1,34 @@
+# Third-Party Notices
+
+This file contains notices for third-party assets and libraries used in this project.
+
+---
+
+## Kenney Input Prompts
+
+**Asset Pack:** Input Prompts
+**Author:** Kenney (https://kenney.nl)
+**Source:** https://kenney.nl/assets/input-prompts
+**License:** CC0 1.0 Universal (Public Domain)
+
+The input prompt icons used for gamepad, keyboard, and mouse button indicators
+are from Kenney's Input Prompts asset pack. These icons are located in:
+- `app/src/main/res/drawable/ic_input_xbox_*.xml` (Xbox controller icons)
+- `app/src/main/res/drawable/ic_input_kbd_*.xml` (Keyboard and mouse icons)
+
+While CC0 doesn't require attribution, we gratefully acknowledge Kenney's
+excellent work in creating these assets.
+
+---
+
+## License Text: CC0 1.0 Universal
+
+The person who associated a work with this deed has dedicated the work to the
+public domain by waiving all of his or her rights to the work worldwide under
+copyright law, including all related and neighboring rights, to the extent
+allowed by law.
+
+You can copy, modify, distribute and perform the work, even for commercial
+purposes, all without asking permission.
+
+Full license text: https://creativecommons.org/publicdomain/zero/1.0/

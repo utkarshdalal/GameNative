@@ -8,14 +8,19 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.IBinder
+import android.util.Base64
 import android.widget.Toast
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
-import app.gamenative.R
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.AppInfo
+import app.gamenative.data.CachedLicense
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.Emoticon
+import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.OwnedGames
@@ -25,27 +30,35 @@ import app.gamenative.data.SteamControllerConfigDetail
 import app.gamenative.data.SteamFriend
 import app.gamenative.data.SteamLicense
 import app.gamenative.data.UserFileInfo
-import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.db.PluviaDatabase
+import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.db.dao.CachedLicenseDao
 import app.gamenative.db.dao.ChangeNumbersDao
+import app.gamenative.db.dao.EncryptedAppTicketDao
 import app.gamenative.db.dao.FileChangeListsDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.SteamLicenseDao
-import app.gamenative.db.dao.CachedLicenseDao
 import app.gamenative.enums.LoginResult
+import app.gamenative.enums.Marker
 import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.LicenseSerializer
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
-import app.gamenative.utils.MarkerUtils
-import app.gamenative.enums.Marker
 import app.gamenative.utils.generateSteamApp
+import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import dagger.hilt.android.AndroidEntryPoint
+import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
+import `in`.dragonbra.javasteam.depotdownloader.IDownloadListener
+import `in`.dragonbra.javasteam.depotdownloader.data.AppItem
+import `in`.dragonbra.javasteam.depotdownloader.data.DownloadItem
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
 import `in`.dragonbra.javasteam.enums.EOSType
@@ -61,12 +74,11 @@ import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import `in`.dragonbra.javasteam.steam.authentication.IChallengeUrlChanged
 import `in`.dragonbra.javasteam.steam.authentication.QrAuthSession
-import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
-import `in`.dragonbra.javasteam.depotdownloader.IDownloadListener
 import `in`.dragonbra.javasteam.depotdownloader.Steam3Session
 import `in`.dragonbra.javasteam.steam.discovery.FileServerListProvider
 import `in`.dragonbra.javasteam.steam.discovery.ServerQuality
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.LicenseListCallback
@@ -82,13 +94,16 @@ import `in`.dragonbra.javasteam.steam.handlers.steamuser.LogOnDetails
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.SteamUser
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOffCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallback
+import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.SteamUserStats
 import `in`.dragonbra.javasteam.steam.handlers.steamworkshop.SteamWorkshop
+import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
 import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
 import `in`.dragonbra.javasteam.steam.steamclient.callbackmgr.CallbackManager
 import `in`.dragonbra.javasteam.steam.steamclient.callbacks.ConnectedCallback
 import `in`.dragonbra.javasteam.steam.steamclient.callbacks.DisconnectedCallback
 import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfiguration
+import `in`.dragonbra.javasteam.types.DepotManifest
 import `in`.dragonbra.javasteam.types.FileData
 import `in`.dragonbra.javasteam.types.KeyValue
 import `in`.dragonbra.javasteam.types.PublishedFileID
@@ -97,12 +112,16 @@ import `in`.dragonbra.javasteam.util.log.LogListener
 import `in`.dragonbra.javasteam.util.log.LogManager
 import java.io.Closeable
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
+import java.lang.NullPointerException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Collections
 import java.util.EnumSet
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import kotlin.io.path.pathString
@@ -112,11 +131,15 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -127,38 +150,18 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
-import java.lang.NullPointerException
-import app.gamenative.data.AppInfo
-import app.gamenative.db.dao.AppInfoDao
-import kotlinx.coroutines.ensureActive
-import app.gamenative.utils.LicenseSerializer
-import app.gamenative.data.CachedLicense
-import com.winlator.container.Container
-import `in`.dragonbra.javasteam.depotdownloader.data.AppItem
-import `in`.dragonbra.javasteam.depotdownloader.data.DownloadItem
-import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
-import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
-import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
-import `in`.dragonbra.javasteam.types.DepotManifest
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import app.gamenative.data.DownloadingAppInfo
+import app.gamenative.db.dao.DownloadingAppInfoDao
+import kotlinx.coroutines.flow.update
+import java.util.concurrent.CopyOnWriteArrayList
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.FormBody
 import org.json.JSONArray
 import org.json.JSONObject
-import android.util.Base64
-import app.gamenative.data.DownloadingAppInfo
-import app.gamenative.db.dao.DownloadingAppInfoDao
-import app.gamenative.db.dao.EncryptedAppTicketDao
+import com.winlator.container.ContainerManager
 import app.gamenative.statsgen.Achievement
 import app.gamenative.statsgen.StatsAchievementsGenerator
-import kotlinx.coroutines.flow.update
-import java.io.InputStream
-import java.io.OutputStream
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.TimeUnit
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -529,7 +532,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             val accountId = client.steamID?.accountID?.toInt() ?: return emptyMap()
             val ownedGameIds = getOwnedGames(userSteamId!!.convertToUInt64()).map { it.appId }.toHashSet()
 
-
             return getAppDlc(appId).filter { (_, depot) ->
                 when {
                     /* Base-game depots always download */
@@ -644,29 +646,36 @@ class SteamService : Service(), IChallengeUrlChanged {
             return true
         }
 
-        fun getMainAppDepots(appId: Int): Map<Int, DepotInfo> {
+        fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val preferredLanguage = PrefManager.containerLanguage
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
 
             return appInfo.depots.asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc)
                 }
                 .associate { it.toPair() }
         }
 
         /**
-         * Get downloadable depots for a given app, including all DLCs
+         * Get downloadable depots for a given app (default language), including all DLCs
          * @return Map of app ID to depot ID to depot info
          */
         fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
+            val preferredLanguage = PrefManager.containerLanguage
+            return getDownloadableDepots(appId, preferredLanguage)
+        }
+
+        /**
+         * Get downloadable depots for a given app (container language), including all DLCs
+         * @return Map of app ID to depot ID to depot info
+         */
+        fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val preferredLanguage = PrefManager.containerLanguage
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
@@ -717,7 +726,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun getAppDirPath(gameId: Int): String {
-
             val info = getAppInfoOf(gameId)
             val appName = getAppDirName(info)
             val oldName = info?.name.orEmpty()
@@ -744,7 +752,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // SteamKit-JVM (most forks) – flags is EnumSet<EDepotFileFlag>
             is EnumSet<*> -> {
                 flags.contains(EDepotFileFlag.Executable) ||
-                        flags.contains(EDepotFileFlag.CustomExecutable)
+                    flags.contains(EDepotFileFlag.CustomExecutable)
             }
 
             // SteamKit-C# protobuf port – flags is UInt / Int / Long
@@ -836,7 +844,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             files: List<FileData>?,
             gameName: String,
         ): FileData? = files?.maxWithOrNull { a, b ->
-            val sa = scoreExe(a, gameName, isExecutable(a.flags))   // <- fixed
+            val sa = scoreExe(a, gameName, isExecutable(a.flags)) // <- fixed
             val sb = scoreExe(b, gameName, isExecutable(b.flags))
 
             when {
@@ -859,8 +867,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             val installDir = appInfo.config.installDir.ifEmpty { appInfo.name }
 
             val depots = appInfo.depots.values.filter { d ->
-                !d.sharedInstall && (d.osList.isEmpty() ||
-                        d.osList.any { it.name.equals("windows", true) || it.name.equals("none", true) })
+                !d.sharedInstall && (
+                    d.osList.isEmpty() ||
+                        d.osList.any { it.name.equals("windows", true) || it.name.equals("none", true) }
+                    )
             }
             Timber.i("Depots considered: $depots")
 
@@ -871,7 +881,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Launch targets from appinfo: $launchTargets")
 
             /* ---------------------------------------------------------- */
-            val flagged = mutableListOf<Pair<FileData, Long>>()   // (file, depotSize)
+            val flagged = mutableListOf<Pair<FileData, Long>>() // (file, depotSize)
             var largestDepotSize = 0L
 
             // Use DepotDownloader to fetch manifests
@@ -880,9 +890,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (steamClient == null || licenses.isEmpty()) {
                 Timber.w("Cannot fetch manifests: steamClient or licenses not available")
                 // Fallback to last resort
-                return (getAppInfoOf(appId)?.let { appInfo ->
-                    getWindowsLaunchInfos(appId).firstOrNull()
-                })?.executable ?: ""
+                return (
+                    getAppInfoOf(appId)?.let { appInfo ->
+                        getWindowsLaunchInfos(appId).firstOrNull()
+                    }
+                    )?.executable ?: ""
             }
 
             for (depot in depots) {
@@ -934,9 +946,21 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             /* 4️⃣ last resort */
             Timber.w("No executable found; falling back to install dir")
-            return (getAppInfoOf(appId)?.let { appInfo ->
-                getWindowsLaunchInfos(appId).firstOrNull()
-            })?.executable ?: ""
+            return (
+                getAppInfoOf(appId)?.let { appInfo ->
+                    getWindowsLaunchInfos(appId).firstOrNull()
+                }
+                )?.executable ?: ""
+        }
+
+        /**
+         * Resolves the effective launch executable for a Steam game (container config or auto-detected).
+         * Returns a non-empty sentinel when [Container.isLaunchRealSteam] is true so the launch is not blocked.
+         */
+        fun getLaunchExecutable(appId: String, container: Container): String {
+            if (container.isLaunchRealSteam) return "steam"
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            return container.executablePath.ifEmpty { getInstalledExe(gameId) }
         }
 
         fun deleteApp(appId: Int): Boolean {
@@ -998,8 +1022,23 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return null
             }
             return getAppInfoOf(appId)?.let { appInfo ->
-                val depots = getDownloadableDepots(appId)
-                downloadApp(appId, depots, dlcAppIds, "public", isUpdateOrVerify)
+                val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
+                val containerLanguage = if (container != null) {
+                    container.language
+                } else {
+                    PrefManager.containerLanguage
+                }
+
+                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage")
+
+                val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
+                downloadApp(
+                    appId = appId,
+                    downloadableDepots = depots,
+                    userSelectedDlcAppIds = dlcAppIds,
+                    branch = "public",
+                    containerLanguage = containerLanguage,
+                    isUpdateOrVerify = isUpdateOrVerify)
             }
         }
 
@@ -1111,7 +1150,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("imagefs will be downloaded")
             if (variant == Container.BIONIC) {
                 val dest = File(instance!!.filesDir, "imagefs_bionic.txz")
-                Timber.d("Downloading imagefs_bionic to " + dest.toString());
+                Timber.d("Downloading imagefs_bionic to " + dest.toString())
                 fetchFileWithFallback("imagefs_bionic.txz", dest, context, onDownloadProgress)
             } else {
                 Timber.d("Downloading imagefs_gamenative to " + File(instance!!.filesDir, "imagefs_gamenative.txz"));
@@ -1131,7 +1170,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         ) = parentScope.async {
             Timber.i("imagefs will be downloaded")
             val dest = File(instance!!.filesDir, "imagefs_patches_gamenative.tzst")
-            Timber.d("Downloading imagefs_patches_gamenative.tzst to " + dest.toString());
+            Timber.d("Downloading imagefs_patches_gamenative.tzst to " + dest.toString())
             fetchFileWithFallback("imagefs_patches_gamenative.tzst", dest, context, onDownloadProgress)
         }
 
@@ -1139,11 +1178,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             onDownloadProgress: (Float) -> Unit,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             context: Context,
-            fileName: String
+            fileName: String,
         ) = parentScope.async {
-            Timber.i("${fileName} will be downloaded")
+            Timber.i("$fileName will be downloaded")
             val dest = File(instance!!.filesDir, fileName)
-            Timber.d("Downloading ${fileName} to " + dest.toString());
+            Timber.d("Downloading $fileName to " + dest.toString())
             fetchFileWithFallback(fileName, dest, context, onDownloadProgress)
         }
 
@@ -1154,7 +1193,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         ) = parentScope.async {
             Timber.i("imagefs will be downloaded")
             val dest = File(instance!!.filesDir, "steam.tzst")
-            Timber.d("Downloading steam.tzst to " + dest.toString());
+            Timber.d("Downloading steam.tzst to " + dest.toString())
             fetchFileWithFallback("steam.tzst", dest, context, onDownloadProgress)
         }
 
@@ -1324,6 +1363,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             downloadableDepots: Map<Int, DepotInfo>,
             userSelectedDlcAppIds: List<Int>,
             branch: String,
+            containerLanguage: String,
             isUpdateOrVerify: Boolean,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
@@ -1340,7 +1380,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
 
             // Depots from Main game
-            val mainDepots = getMainAppDepots(appId)
+            val mainDepots = getMainAppDepots(appId, containerLanguage)
             var mainAppDepots = mainDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             } + mainDepots.filter { (_, depot) ->
@@ -1860,7 +1900,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
             return getAppInfoOf(appId)?.let { appInfo ->
                 appInfo.config.launch.filter { launchInfo ->
@@ -1914,10 +1953,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 |   processId: ${process.processId}
                                 |   processIdParent: ${process.processIdParent}
                                 |   parentIsSteam: ${process.parentIsSteam}
-                                """.trimMargin()
+                                    """.trimMargin()
                                 }
                             }
-                        """.trimMargin()
+                            """.trimMargin()
                         },
                     )
 
@@ -1949,55 +1988,69 @@ class SteamService : Service(), IChallengeUrlChanged {
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
-                PrefManager.clientId?.let { clientId ->
-                    instance?.let { steamInstance ->
-                        getAppInfoOf(appId)?.let { appInfo ->
-                            steamInstance._steamCloud?.let { steamCloud ->
-                                val postSyncInfo = SteamAutoCloud.syncUserFiles(
-                                    appInfo = appInfo,
-                                    clientId = clientId,
-                                    steamInstance = steamInstance,
-                                    steamCloud = steamCloud,
-                                    preferredSave = preferredSave,
-                                    parentScope = parentScope,
-                                    prefixToPath = prefixToPath,
-                                    onProgress = onProgress,
-                                ).await()
-
-                                postSyncInfo?.let { info ->
-                                    syncResult = info
-
-                                    if (info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate) {
-                                        Timber.i(
-                                            "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
-                                            appId,
-                                            PrefManager.clientId,
-                                            EOSType.AndroidUnknown,
-                                        )
-
-                                        val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
-                                            appId = appId,
+                val maxAttempts = 3
+                for (attempt in 1..maxAttempts) {
+                    try {
+                        PrefManager.clientId?.let { clientId ->
+                            instance?.let { steamInstance ->
+                                getAppInfoOf(appId)?.let { appInfo ->
+                                    steamInstance._steamCloud?.let { steamCloud ->
+                                        val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                                            appInfo = appInfo,
                                             clientId = clientId,
-                                            machineName = SteamUtils.getMachineName(steamInstance),
-                                            ignorePendingOperations = ignorePendingOperations,
-                                            osType = EOSType.AndroidUnknown,
+                                            steamInstance = steamInstance,
+                                            steamCloud = steamCloud,
+                                            preferredSave = preferredSave,
+                                            parentScope = parentScope,
+                                            prefixToPath = prefixToPath,
+                                            onProgress = onProgress,
                                         ).await()
 
-                                        if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
-                                            syncResult = PostSyncInfo(
-                                                syncResult = SyncResult.PendingOperations,
-                                                pendingRemoteOperations = pendingRemoteOperations,
-                                            )
-                                        } else if (ignorePendingOperations &&
-                                            pendingRemoteOperations.any {
-                                                it.operation == ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionActive
+                                        postSyncInfo?.let { info ->
+                                            syncResult = info
+
+                                            if (info.syncResult == SyncResult.Success || info.syncResult == SyncResult.UpToDate) {
+                                                Timber.i(
+                                                    "Signaling app launch:\n\tappId: %d\n\tclientId: %s\n\tosType: %s",
+                                                    appId,
+                                                    PrefManager.clientId,
+                                                    EOSType.AndroidUnknown,
+                                                )
+
+                                                val pendingRemoteOperations = steamCloud.signalAppLaunchIntent(
+                                                    appId = appId,
+                                                    clientId = clientId,
+                                                    machineName = SteamUtils.getMachineName(steamInstance),
+                                                    ignorePendingOperations = ignorePendingOperations,
+                                                    osType = EOSType.AndroidUnknown,
+                                                ).await()
+
+                                                if (pendingRemoteOperations.isNotEmpty() && !ignorePendingOperations) {
+                                                    syncResult = PostSyncInfo(
+                                                        syncResult = SyncResult.PendingOperations,
+                                                        pendingRemoteOperations = pendingRemoteOperations,
+                                                    )
+                                                } else if (ignorePendingOperations &&
+                                                    pendingRemoteOperations.any {
+                                                        it.operation == ECloudPendingRemoteOperation.k_ECloudPendingRemoteOperationAppSessionActive
+                                                    }
+                                                ) {
+                                                    steamInstance._steamUser!!.kickPlayingSession()
+                                                }
                                             }
-                                        ) {
-                                            steamInstance._steamUser!!.kickPlayingSession()
                                         }
                                     }
                                 }
                             }
+                        }
+                        break
+                    } catch (e: AsyncJobFailedException) {
+                        if (attempt == maxAttempts) {
+                            Timber.e(e, "Cloud sync failed after $maxAttempts attempts")
+                            syncResult = PostSyncInfo(SyncResult.UnknownFail)
+                        } else {
+                            Timber.w("Cloud sync attempt $attempt failed (AsyncJobFailedException), retrying...")
+                            delay(1000L * attempt)
                         }
                     }
                 }
@@ -2023,26 +2076,39 @@ class SteamService : Service(), IChallengeUrlChanged {
             try {
                 var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
-                PrefManager.clientId?.let { clientId ->
-                    instance?.let { steamInstance ->
-                        getAppInfoOf(appId)?.let { appInfo ->
-                            steamInstance._steamCloud?.let { steamCloud ->
-                                val postSyncInfo = SteamAutoCloud.syncUserFiles(
-                                    appInfo = appInfo,
-                                    clientId = clientId,
-                                    steamInstance = steamInstance,
-                                    steamCloud = steamCloud,
-                                    preferredSave = preferredSave,
-                                    parentScope = parentScope,
-                                    prefixToPath = prefixToPath,
-                                    overrideLocalChangeNumber = overrideLocalChangeNumber,
-                                ).await()
+                val maxAttempts = 3
+                for (attempt in 1..maxAttempts) {
+                    try {
+                        PrefManager.clientId?.let { clientId ->
+                            instance?.let { steamInstance ->
+                                getAppInfoOf(appId)?.let { appInfo ->
+                                    steamInstance._steamCloud?.let { steamCloud ->
+                                        val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                                            appInfo = appInfo,
+                                            clientId = clientId,
+                                            steamInstance = steamInstance,
+                                            steamCloud = steamCloud,
+                                            preferredSave = preferredSave,
+                                            parentScope = parentScope,
+                                            prefixToPath = prefixToPath,
+                                            overrideLocalChangeNumber = overrideLocalChangeNumber,
+                                        ).await()
 
-                                postSyncInfo?.let { info ->
-                                    syncResult = info
-                                    Timber.i("Force cloud sync completed for app $appId with result: ${info.syncResult}")
+                                        postSyncInfo?.let { info ->
+                                            syncResult = info
+                                            Timber.i("Force cloud sync completed for app $appId with result: ${info.syncResult}")
+                                        }
+                                    }
                                 }
                             }
+                        }
+                        break
+                    } catch (e: AsyncJobFailedException) {
+                        if (attempt == maxAttempts) {
+                            Timber.e(e, "Force cloud sync failed after $maxAttempts attempts")
+                        } else {
+                            Timber.w("Force cloud sync attempt $attempt failed (AsyncJobFailedException), retrying...")
+                            delay(1000L * attempt)
                         }
                     }
                 }
@@ -2065,26 +2131,39 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 try {
-                    PrefManager.clientId?.let { clientId ->
-                        instance?.let { steamInstance ->
-                            getAppInfoOf(appId)?.let { appInfo ->
-                                steamInstance._steamCloud?.let { steamCloud ->
-                                    val postSyncInfo = SteamAutoCloud.syncUserFiles(
-                                        appInfo = appInfo,
-                                        clientId = clientId,
-                                        steamInstance = steamInstance,
-                                        steamCloud = steamCloud,
-                                        parentScope = this,
-                                        prefixToPath = prefixToPath,
-                                    ).await()
+                    val maxAttempts = 3
+                    for (attempt in 1..maxAttempts) {
+                        try {
+                            PrefManager.clientId?.let { clientId ->
+                                instance?.let { steamInstance ->
+                                    getAppInfoOf(appId)?.let { appInfo ->
+                                        steamInstance._steamCloud?.let { steamCloud ->
+                                            val postSyncInfo = SteamAutoCloud.syncUserFiles(
+                                                appInfo = appInfo,
+                                                clientId = clientId,
+                                                steamInstance = steamInstance,
+                                                steamCloud = steamCloud,
+                                                parentScope = this,
+                                                prefixToPath = prefixToPath,
+                                            ).await()
 
-                                    steamCloud.signalAppExitSyncDone(
-                                        appId = appId,
-                                        clientId = clientId,
-                                        uploadsCompleted = postSyncInfo?.uploadsCompleted == true,
-                                        uploadsRequired = postSyncInfo?.uploadsRequired == false,
-                                    )
+                                            steamCloud.signalAppExitSyncDone(
+                                                appId = appId,
+                                                clientId = clientId,
+                                                uploadsCompleted = postSyncInfo?.uploadsCompleted == true,
+                                                uploadsRequired = postSyncInfo?.uploadsRequired == false,
+                                            )
+                                        }
+                                    }
                                 }
+                            }
+                            break
+                        } catch (e: AsyncJobFailedException) {
+                            if (attempt == maxAttempts) {
+                                Timber.e(e, "Close app sync failed after $maxAttempts attempts")
+                            } else {
+                                Timber.w("Close app sync attempt $attempt failed (AsyncJobFailedException), retrying...")
+                                delay(1000L * attempt)
                             }
                         }
                     }
@@ -2135,7 +2214,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 appendLine("}")
             }
 
-            return vdf;
+            return vdf
         }
 
         private fun login(
@@ -2143,7 +2222,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             accessToken: String? = null,
             refreshToken: String? = null,
             password: String? = null,
-            rememberSession: Boolean = false,
+            rememberSession: Boolean = true,
             twoFactorAuth: String? = null,
             emailAuth: String? = null,
             clientId: Long? = null,
@@ -2213,7 +2292,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 instance!!.steamClient?.let { steamClient ->
                     val authDetails = AuthSessionDetails().apply {
                         this.username = username.trim()
-                        this.password = password.trim()
+                        this.password = password // Not trimming as some passwords have leading spaces.
                         this.persistentSession = rememberSession
                         this.authenticator = authenticator
                         this.deviceFriendlyName = SteamUtils.getMachineName(instance!!)
@@ -2262,7 +2341,15 @@ class SteamService : Service(), IChallengeUrlChanged {
             try {
                 Timber.i("Logging in via QR.")
 
-                instance!!.steamClient?.let { steamClient ->
+                val service = instance
+                if (service == null) {
+                    Timber.e("Could not start QR logon: Service not initialized")
+                    val event = SteamEvent.QrAuthEnded(success = false, message = "Service not initialized")
+                    PluviaApp.events.emit(event)
+                    return@withContext
+                }
+
+                service.steamClient?.let { steamClient ->
                     isWaitingForQRAuth = true
 
                     val authDetails = AuthSessionDetails().apply {
@@ -2274,7 +2361,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val authSession = steamClient.authentication.beginAuthSessionViaQR(authDetails).await()
 
                     // Steam will periodically refresh the challenge url, this callback allows you to draw a new qr code.
-                    authSession.challengeUrlChanged = instance
+                    authSession.challengeUrlChanged = service
 
                     val qrEvent = SteamEvent.QrChallengeReceived(authSession.challengeUrl)
                     PluviaApp.events.emit(qrEvent)
@@ -2437,7 +2524,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 ?.apps
                 ?.values
                 ?.firstOrNull()
-                ?: return@withContext false          // nothing returned ⇒ treat as up-to-date
+                ?: return@withContext false // nothing returned ⇒ treat as up-to-date
 
             val remoteSteamApp = remoteAppInfo.keyValues.generateSteamApp()
             val localSteamApp = getAppInfoOf(appId) ?: return@withContext true // not cached yet
@@ -2629,13 +2716,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.d("Wifi available")
                 isWifiConnected = true
             }
-
             override fun onCapabilitiesChanged(
                 network: Network,
                 caps: NetworkCapabilities,
             ) {
                 isWifiConnected = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                        caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
             }
 
             override fun onLost(network: Network) {
@@ -2686,9 +2772,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 it.withConnectionTimeout(60000L)
                 it.withHttpClient(
                     OkHttpClient.Builder()
-                        .connectTimeout(10, TimeUnit.SECONDS)   // Time to establish connection
-                        .readTimeout(60, TimeUnit.SECONDS)      // Max inactivity between reads
-                        .writeTimeout(30, TimeUnit.SECONDS)     // Time for writes
+                        .connectTimeout(10, TimeUnit.SECONDS) // Time to establish connection
+                        .readTimeout(60, TimeUnit.SECONDS) // Max inactivity between reads
+                        .writeTimeout(30, TimeUnit.SECONDS) // Time for writes
                         .build(),
                 )
             }
@@ -2750,7 +2836,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             connectToSteam()
         }
 
-        val notification = notificationHelper.createForegroundNotification("Starting up...")
+        val notification = notificationHelper.createForegroundNotification("Running...")
         startForeground(1, notification)
 
         return START_STICKY
@@ -3042,12 +3128,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val avatarHash = callback.avatarHash.toHexString()
                     val playerName = callback.playerName
 
+                    // When connected, callback may return Offline due to missing Status flag in request.
+                    // Trust PrefManager.personaState (user's chosen state) in that case.
+                    val state = if (callback.personaState == EPersonaState.Offline && isConnected) {
+                        PrefManager.personaState
+                    } else {
+                        callback.personaState
+                    }
+
                     // Update local state flow
                     _localPersona.update {
                         it.copy(
                             avatarHash = avatarHash,
                             name = playerName,
-                            state = callback.personaState,
+                            state = state,
                             gameAppID = callback.gamePlayedAppId,
                             gameName = appDao.findApp(callback.gamePlayedAppId)?.name ?: callback.gameName,
                         )
@@ -3189,15 +3283,15 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 Timber.d(
                     "picsGetChangesSince:" +
-                            "\n\tlastChangeNumber: ${changesSince.lastChangeNumber}" +
-                            "\n\tcurrentChangeNumber: ${changesSince.currentChangeNumber}" +
-                            "\n\tisRequiresFullUpdate: ${changesSince.isRequiresFullUpdate}" +
-                            "\n\tisRequiresFullAppUpdate: ${changesSince.isRequiresFullAppUpdate}" +
-                            "\n\tisRequiresFullPackageUpdate: ${changesSince.isRequiresFullPackageUpdate}" +
-                            "\n\tappChangesCount: ${changesSince.appChanges.size}" +
-                            "\n\tpkgChangesCount: ${changesSince.packageChanges.size}",
+                        "\n\tlastChangeNumber: ${changesSince.lastChangeNumber}" +
+                        "\n\tcurrentChangeNumber: ${changesSince.currentChangeNumber}" +
+                        "\n\tisRequiresFullUpdate: ${changesSince.isRequiresFullUpdate}" +
+                        "\n\tisRequiresFullAppUpdate: ${changesSince.isRequiresFullAppUpdate}" +
+                        "\n\tisRequiresFullPackageUpdate: ${changesSince.isRequiresFullPackageUpdate}" +
+                        "\n\tappChangesCount: ${changesSince.appChanges.size}" +
+                        "\n\tpkgChangesCount: ${changesSince.packageChanges.size}",
 
-                    )
+                )
 
                 // Process any app changes
                 launch {
@@ -3274,8 +3368,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                     callback.results.forEachIndexed { index, picsCallback ->
                         Timber.d(
                             "onPicsProduct: ${index + 1} of ${callback.results.size}" +
-                                    "\n\tReceived PICS result of ${picsCallback.apps.size} app(s)." +
-                                    "\n\tReceived PICS result of ${picsCallback.packages.size} package(s).",
+                                "\n\tReceived PICS result of ${picsCallback.apps.size} app(s)." +
+                                "\n\tReceived PICS result of ${picsCallback.packages.size} package(s).",
                         )
 
                         ensureActive()

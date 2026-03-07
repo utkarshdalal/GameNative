@@ -7,7 +7,8 @@ enum class GameSource {
     STEAM,
     CUSTOM_GAME,
     GOG,
-    EPIC
+    EPIC,
+    AMAZON
     // Add other platforms here..
 }
 
@@ -18,17 +19,20 @@ enum class GameCompatibilityStatus {
     GPU_COMPATIBLE
 }
 
-/**
- * Data class for the Library list
- */
+/** Library list item. */
 data class LibraryItem(
     val index: Int = 0,
     val appId: String = "",
     val name: String = "",
     val iconHash: String = "",
+    val capsuleImageUrl: String = "",
+    val headerImageUrl: String = "",
+    val heroImageUrl: String = "",
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
     val compatibilityStatus: GameCompatibilityStatus? = null,
+    val sizeBytes: Long = 0L,
+    val isInstalled: Boolean = false,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {
@@ -59,12 +63,12 @@ data class LibraryItem(
             GameSource.EPIC -> {
                 iconHash
             }
+            GameSource.AMAZON -> {
+                iconHash
+            }
         }
 
-    /**
-     * Helper property to get the game ID as an integer
-     * For all game sources, extract the numeric part after the prefix
-     */
+    /** Numeric game ID extracted from the source-prefixed appId; returns 0 if parsing fails. */
     val gameId: Int
         get() = appId.removePrefix("${gameSource.name}_").toIntOrNull() ?: 0
 }

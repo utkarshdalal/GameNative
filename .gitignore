@@ -41,6 +41,7 @@ app/.cxx/
 # Kotlin 2.0
 .kotlin/sessions
 *.salive
+kls_database.db
 
 # Signing Configs
 *.jks

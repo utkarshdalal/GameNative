@@ -119,6 +119,10 @@ public class Container {
     private boolean disableMouseInput = false;
     // Touchscreen mode
     private boolean touchscreenMode = false;
+    // Shooter mode
+    private boolean shooterMode = true;
+    // Serialised JSON gesture configuration (used when touchscreenMode is true)
+    private String gestureConfig = "";
     // External display input handling
     private String externalDisplayMode = DEFAULT_EXTERNAL_DISPLAY_MODE;
     // Swap game/input between internal and external displays
@@ -132,9 +136,13 @@ public class Container {
 
     private boolean forceDlc = false;
 
+    private boolean steamOfflineMode = false;
+
     private boolean useLegacyDRM = false;
 
     private boolean unpackFiles = false;
+
+    private boolean portraitMode = false;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -659,6 +667,12 @@ public class Container {
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
             data.put("touchscreenMode", touchscreenMode);
+            // Shooter mode flag
+            data.put("shooterMode", shooterMode);
+            // Gesture configuration JSON
+            if (gestureConfig != null && !gestureConfig.isEmpty()) {
+                data.put("gestureConfig", gestureConfig);
+            }
             data.put("externalDisplayMode", externalDisplayMode);
             data.put("externalDisplaySwap", externalDisplaySwap);
             data.put("useDRI3", useDRI3);
@@ -672,11 +686,16 @@ public class Container {
             // Force DLC setting
             data.put("forceDlc", forceDlc);
 
+            // Steam offline mode setting
+            data.put("steamOfflineMode", steamOfflineMode);
+
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
             // Unpack Files setting
             data.put("unpackFiles", unpackFiles);
+
+            data.put("portraitMode", portraitMode);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -834,6 +853,12 @@ public class Container {
                 case "touchscreenMode" :
                     setTouchscreenMode(data.getBoolean(key));
                     break;
+                case "shooterMode" :
+                    setShooterMode(data.getBoolean(key));
+                    break;
+                case "gestureConfig" :
+                    setGestureConfig(data.optString(key, ""));
+                    break;
                 case "externalDisplayMode" :
                     setExternalDisplayMode(data.getString(key));
                     break;
@@ -852,11 +877,17 @@ public class Container {
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
                     break;
+                case "steamOfflineMode":
+                    this.steamOfflineMode = data.getBoolean(key);
+                    break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
                 case "unpackFiles":
                     this.unpackFiles = data.getBoolean(key);
+                    break;
+                case "portraitMode":
+                    this.portraitMode = data.getBoolean(key);
                     break;
             }
         }
@@ -921,6 +952,14 @@ public class Container {
         this.forceDlc = forceDlc;
     }
 
+    public boolean isSteamOfflineMode() {
+        return steamOfflineMode;
+    }
+
+    public void setSteamOfflineMode(boolean steamOfflineMode) {
+        this.steamOfflineMode = steamOfflineMode;
+    }
+
     public boolean isUseLegacyDRM() {
         return useLegacyDRM;
     }
@@ -935,6 +974,14 @@ public class Container {
 
     public void setUnpackFiles(boolean unpackFiles) {
         this.unpackFiles = unpackFiles;
+    }
+
+    public boolean isPortraitMode() {
+        return portraitMode;
+    }
+
+    public void setPortraitMode(boolean portraitMode) {
+        this.portraitMode = portraitMode;
     }
 
     public String getContainerJson() {
@@ -976,6 +1023,24 @@ public class Container {
 
     public void setTouchscreenMode(boolean touchscreenMode) {
         this.touchscreenMode = touchscreenMode;
+    }
+
+    // Shooter mode
+    public boolean isShooterMode() {
+        return shooterMode;
+    }
+
+    public void setShooterMode(boolean shooterMode) {
+        this.shooterMode = shooterMode;
+    }
+
+    // Gesture configuration JSON
+    public String getGestureConfig() {
+        return gestureConfig != null ? gestureConfig : "";
+    }
+
+    public void setGestureConfig(String gestureConfig) {
+        this.gestureConfig = gestureConfig != null ? gestureConfig : "";
     }
 
     // External display mode

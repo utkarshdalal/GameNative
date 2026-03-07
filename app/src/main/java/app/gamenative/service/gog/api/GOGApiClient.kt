@@ -33,9 +33,17 @@ class GOGApiClient @Inject constructor(
     // TODO: Compose any functions to reduce DRYNESS.
 
     /**
-     * Get all available builds for a game (Gen 2 Only)
+     * Get available builds for a game.
+     *
+     * @param gameId GOG product ID
+     * @param platform Target platform (e.g. "windows", "linux", "osx")
+     * @param generation 1 = legacy, 2 = modern; only builds of this generation are returned
      */
-    suspend fun getBuildsForGame(gameId: String, platform: String = "windows"): Result<BuildsResponse> =
+    suspend fun getBuildsForGame(
+        gameId: String,
+        platform: String = "windows",
+        generation: Int = 2,
+    ): Result<BuildsResponse> =
         withContext(Dispatchers.IO) {
             try {
                 val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()
@@ -43,8 +51,7 @@ class GOGApiClient @Inject constructor(
                     return@withContext Result.failure(Exception("Not authenticated"))
                 }
 
-                // ! Filter to Gen 2 only as they're a more consistent format for gog
-                val url = "$GOG_CONTENT_SYSTEM/products/$gameId/os/$platform/builds?generation=2"
+                val url = "$GOG_CONTENT_SYSTEM/products/$gameId/os/$platform/builds?generation=$generation"
 
                 Timber.tag("GOG").d("Fetching builds from: $url")
 
@@ -66,13 +73,7 @@ class GOGApiClient @Inject constructor(
 
                 val buildsResponse = parser.parseBuilds(jsonStr)
 
-                Timber.tag("GOG").d("Found ${buildsResponse.totalCount} build(s) for game $gameId")
-
-                if(buildsResponse.totalCount == 0){
-                    return@withContext Result.failure(
-                        Exception("No viable builds found"),
-                    )
-                }
+                Timber.tag("GOG").d("Found ${buildsResponse.totalCount} build(s) for game $gameId (gen $generation)")
 
                 Result.success(buildsResponse)
             } catch (e: Exception) {
@@ -259,7 +260,7 @@ class GOGApiClient @Inject constructor(
                 val manifest = parser.parseManifest(manifestStr)
 
                 Timber.tag("GOG").i(
-                    "Dependency Manifest parsed: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)",
+                    "Manifest parsed: ${manifest.installDirectory}, ${manifest.depots.size} depot(s)",
                 )
 
                 Result.success(manifest)
@@ -270,7 +271,40 @@ class GOGApiClient @Inject constructor(
         }
 
     /**
-     * Fetch depot manifest (contains file list for a specific depot)
+     * Fetch Gen 1 (v1) depot manifest (plain JSON, depot.files format).
+     * URL: GOG_CDN/content-system/v1/manifests/{productId}/{platform}/{timestamp}/{manifestHash}
+     */
+    suspend fun fetchDepotManifestV1(
+        productId: String,
+        platform: String,
+        timestamp: String,
+        manifestHash: String,
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val credentials = GOGAuthManager.getStoredCredentials(context).getOrNull()
+            if (credentials == null) {
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
+            val url = "$GOG_CDN/content-system/v1/manifests/$productId/$platform/$timestamp/$manifestHash"
+            Timber.tag("GOG").d("Fetching Gen 1 depot manifest: $url")
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer ${credentials.accessToken}")
+                .build()
+            val response = httpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("Failed to fetch Gen 1 depot manifest: HTTP ${response.code}"))
+            }
+            val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+            Result.success(body)
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to fetch Gen 1 depot manifest")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch depot manifest (contains file list for a specific depot) — Gen 2
      *
      * @param manifestHash Hash from depot.manifest field
      * @return Parsed depot manifest

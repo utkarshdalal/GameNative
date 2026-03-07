@@ -2,22 +2,24 @@ package app.gamenative.ui.model
 
 import android.content.Context
 import android.os.Process
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
-import app.gamenative.data.LibraryItem
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.ui.enums.Orientation
+import java.util.EnumSet
 import app.gamenative.service.SteamService
-import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.ui.data.MainState
+import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IntentLaunchManager
@@ -45,8 +47,13 @@ import timber.log.Timber
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
     private val appTheme: IAppTheme,
 ) : ViewModel() {
+
+    companion object {
+        private const val KEY_CURRENT_SCREEN_ROUTE = "current_screen_route"
+    }
 
     sealed class MainUiEvent {
         data object OnBackPressed : MainUiEvent()
@@ -56,7 +63,6 @@ class MainViewModel @Inject constructor(
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
-        data class ShowToast(val message: String) : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -80,17 +86,53 @@ class MainViewModel @Inject constructor(
     }
 
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
-        Timber.tag("MainViewModel").i("Received is connected")
-        _state.update { it.copy(isSteamConnected = true) }
+        Timber.i("Received is connected")
+        _state.update {
+            it.copy(
+                isSteamConnected = true,
+                connectionState = ConnectionState.CONNECTED,
+            )
+        }
     }
 
     private val onSteamDisconnected: (SteamEvent.Disconnected) -> Unit = {
-        Timber.tag("MainViewModel").i("Received disconnected from Steam")
-        _state.update { it.copy(isSteamConnected = false) }
+        Timber.i("Received disconnected from Steam")
+        _state.update {
+            it.copy(
+                isSteamConnected = false,
+                connectionState = if (it.connectionState != ConnectionState.OFFLINE_MODE) {
+                    ConnectionState.DISCONNECTED
+                } else {
+                    it.connectionState // Keep offline mode if user chose it
+                },
+                connectionMessage = null,
+            )
+        }
+    }
+
+    private val onRemotelyDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = {
+        Timber.i("Received remotely disconnected from Steam")
+        _state.update {
+            it.copy(
+                isSteamConnected = false,
+                connectionState = if (it.connectionState != ConnectionState.OFFLINE_MODE) {
+                    ConnectionState.DISCONNECTED
+                } else {
+                    it.connectionState // Keep offline mode if user chose it
+                },
+                connectionMessage = null,
+            )
+        }
     }
 
     private val onLoggingIn: (SteamEvent.LogonStarted) -> Unit = {
-        Timber.tag("MainViewModel").i("Received logon started")
+        Timber.i("Received logon started")
+        _state.update {
+            it.copy(
+                connectionMessage = null,
+                isSteamConnected = true,
+            )
+        }
     }
 
     private val onBackPressed: (AndroidEvent.BackPressed) -> Unit = {
@@ -99,10 +141,33 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = {
+    private val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = { event ->
         Timber.tag("MainViewModel").i("Received logon ended")
         viewModelScope.launch {
-            _uiEvent.send(MainUiEvent.OnLogonEnded(it.loginResult))
+            _uiEvent.send(MainUiEvent.OnLogonEnded(event.loginResult))
+        }
+        // Update connection state based on login result
+        when (event.loginResult) {
+            LoginResult.Success -> {
+                _state.update {
+                    it.copy(
+                        connectionMessage = null,
+                        connectionTimeoutSeconds = 0,
+                    )
+                }
+            }
+
+            LoginResult.Failed -> {
+                _state.update {
+                    it.copy(
+                        connectionMessage = event.message, // null falls back to UI string resource
+                    )
+                }
+            }
+
+            else -> {
+                // DeviceAuth, DeviceConfirm, EmailAuth, InProgress - keep connecting state
+            }
         }
     }
 
@@ -110,6 +175,14 @@ class MainViewModel @Inject constructor(
         Timber.tag("MainViewModel").i("Received logged out")
         viewModelScope.launch {
             _uiEvent.send(MainUiEvent.OnLoggedOut)
+        }
+        // Session expired or user logged out - must re-authenticate
+        _state.update {
+            it.copy(
+                connectionState = ConnectionState.LOGGED_OUT,
+                connectionMessage = null,
+                isSteamConnected = false,
+            )
         }
     }
 
@@ -126,17 +199,49 @@ class MainViewModel @Inject constructor(
     }
 
     private var bootingSplashTimeoutJob: Job? = null
+    private var connectionTimeoutJob: Job? = null
 
     init {
+        // Restore persisted screen from SavedStateHandle if available
+        val persistedRoute = savedStateHandle.get<String>(KEY_CURRENT_SCREEN_ROUTE)
+        val restoredScreen = when (persistedRoute) {
+            PluviaScreen.Home.route -> PluviaScreen.Home
+            PluviaScreen.XServer.route -> PluviaScreen.XServer
+            PluviaScreen.Settings.route -> PluviaScreen.Settings
+            PluviaScreen.Chat.route -> PluviaScreen.Chat
+            else -> null
+        }
+
+        // Determine initial connection state based on service state
+        // On app startup, Steam service is starting to connect, so default to CONNECTING
+        // Only use DISCONNECTED after an actual disconnect event occurs
+        val initialConnectionState = when {
+            SteamService.isConnected -> ConnectionState.CONNECTED
+            else -> ConnectionState.CONNECTING // Service is starting up or connecting
+        }
+
+        _state.update {
+            it.copy(
+                isSteamConnected = SteamService.isConnected,
+                hasCrashedLastStart = PrefManager.recentlyCrashed,
+                launchedAppId = "",
+                currentScreen = restoredScreen,
+                connectionState = initialConnectionState,
+            )
+        }
+
+        // Register event handlers
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.on<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
+        PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
 
+        // Collect theme preferences
         viewModelScope.launch {
             appTheme.themeFlow.collect { value ->
                 _state.update { it.copy(appTheme = value) }
@@ -156,19 +261,11 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
+        PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
         PluviaApp.events.off<SteamEvent.LogonStarted, Unit>(onLoggingIn)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
-    }
-
-    init {
-        _state.update {
-            it.copy(
-                isSteamConnected = SteamService.isConnected,
-                hasCrashedLastStart = PrefManager.recentlyCrashed,
-                launchedAppId = "",
-            )
-        }
+        connectionTimeoutJob?.cancel()
     }
 
     fun setTheme(value: AppTheme) {
@@ -207,13 +304,70 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootingSplashText = value) }
     }
 
+    // Connection state management
+
+    /**
+     * Called when starting a reconnection attempt.
+     * Sets state to CONNECTING and starts a timeout counter.
+     */
+    fun startConnecting(message: String? = null) {
+        connectionTimeoutJob?.cancel()
+        _state.update {
+            it.copy(
+                connectionState = ConnectionState.CONNECTING,
+                connectionMessage = message,
+                connectionTimeoutSeconds = 0,
+            )
+        }
+
+        // Start timeout counter
+        connectionTimeoutJob = viewModelScope.launch {
+            var seconds = 0
+            while (seconds < 30 && _state.value.connectionState == ConnectionState.CONNECTING) {
+                delay(1000)
+                seconds++
+                _state.update { it.copy(connectionTimeoutSeconds = seconds) }
+            }
+        }
+    }
+
+    /**
+     * Called when user chooses to continue in offline mode.
+     * Stops reconnection attempts and allows app to function offline.
+     */
+    fun continueOffline() {
+        connectionTimeoutJob?.cancel()
+        _state.update {
+            it.copy(
+                connectionState = ConnectionState.OFFLINE_MODE,
+                connectionMessage = null,
+                connectionTimeoutSeconds = 0,
+            )
+        }
+    }
+
+    /**
+     * Called when user wants to retry connection.
+     * Resets offline mode and triggers reconnection.
+     */
+    fun retryConnection() {
+        if (_state.value.connectionState == ConnectionState.OFFLINE_MODE ||
+            _state.value.connectionState == ConnectionState.DISCONNECTED
+        ) {
+            startConnecting()
+        }
+    }
+
     fun setCurrentScreen(currentScreen: String?) {
-        val screen = when (currentScreen) {
-            PluviaScreen.LoginUser.route -> PluviaScreen.LoginUser
-            PluviaScreen.Home.route -> PluviaScreen.Home
-            PluviaScreen.XServer.route -> PluviaScreen.XServer
-            PluviaScreen.Settings.route -> PluviaScreen.Settings
-            PluviaScreen.Chat.route -> PluviaScreen.Chat
+        // Route matching accounts for query params and path params in templates
+        // e.g., "home?offline={offline}" should match Home, "chat/{id}" should match Chat
+        val screen = when {
+            currentScreen == null -> PluviaScreen.LoginUser
+            currentScreen == PluviaScreen.LoginUser.route -> PluviaScreen.LoginUser
+            currentScreen.startsWith(PluviaScreen.Home.route) -> PluviaScreen.Home
+            currentScreen == PluviaScreen.XServer.route -> PluviaScreen.XServer
+            currentScreen == PluviaScreen.Settings.route -> PluviaScreen.Settings
+            currentScreen.startsWith("chat") -> PluviaScreen.Chat
             else -> PluviaScreen.LoginUser
         }
 
@@ -222,6 +376,36 @@ class MainViewModel @Inject constructor(
 
     fun setCurrentScreen(value: PluviaScreen) {
         _state.update { it.copy(currentScreen = value) }
+        savedStateHandle[KEY_CURRENT_SCREEN_ROUTE] = value.route
+    }
+
+    /**
+     * Gets the persisted route from SavedStateHandle
+     *
+     * Returns the route the user was on before process death, or null if:
+     * - No route was persisted
+     * - The persisted route is LoginUser (not meaningful to restore)
+     * - The persisted route is XServer (game session is gone after process death)
+     * - The persisted route is Chat (dynamic IDs require special handling)
+     *
+     * Navigation decisions should be made by the caller based on the current
+     * NavController destination, not by tracking internal flags.
+     *
+     * TODO: reconsider this approach when merging GOG and Epic
+     */
+    fun getPersistedRoute(): String? {
+        val persistedRoute = savedStateHandle.get<String>(KEY_CURRENT_SCREEN_ROUTE)
+        return when {
+            persistedRoute == null -> null
+            persistedRoute == PluviaScreen.LoginUser.route -> null
+            persistedRoute == PluviaScreen.XServer.route -> null
+            persistedRoute.startsWith("chat") -> null
+            else -> persistedRoute
+        }
+    }
+
+    fun clearPersistedRoute() {
+        savedStateHandle[KEY_CURRENT_SCREEN_ROUTE] = PluviaScreen.LoginUser.route
     }
 
     fun setHasCrashedLastStart(value: Boolean) {
@@ -255,13 +439,17 @@ class MainViewModel @Inject constructor(
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
-                if (container.isLaunchRealSteam()) {
-                    SteamUtils.restoreSteamApi(context, appId)
-                } else {
-                    if (container.isUseLegacyDRM) {
-                        SteamUtils.replaceSteamApi(context, appId)
+                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                if (gameSource == GameSource.STEAM) {
+                    if (container.isLaunchRealSteam()) {
+                        SteamUtils.restoreSteamApi(context, appId)
                     } else {
-                        SteamUtils.replaceSteamclientDll(context, appId)
+                        val offline = _offline.value
+                        if (container.isUseLegacyDRM) {
+                            SteamUtils.replaceSteamApi(context, appId, offline)
+                        } else {
+                            SteamUtils.replaceSteamclientDll(context, appId, offline)
+                        }
                     }
                 }
             }
@@ -346,6 +534,7 @@ class MainViewModel @Inject constructor(
             }
 
             // After app closes, check if we need to show the feedback dialog
+            // Show feedback if: first time running this game OR config was changed
             try {
                 // Do not show the Feedback form for non-steam games until we can support.
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
@@ -371,8 +560,8 @@ class MainViewModel @Inject constructor(
                 } else {
                     Timber.d("Non-Steam Game Detected, not showing feedback")
                 }
-            } catch (_: Exception) {
-                // ignore container errors
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to check/update feedback dialog state for $appId")
             }
         }
     }
@@ -448,9 +637,4 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun showToast(message: String) {
-        viewModelScope.launch {
-            _uiEvent.send(MainUiEvent.ShowToast(message))
-        }
-    }
 }

@@ -206,13 +206,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         PrefManager.init(context);
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", true);
-        boolean openWithAndroidBrowser = PrefManager.getBoolean("open_with_android_browser", false);
         boolean shareAndroidClipboard = PrefManager.getBoolean("share_android_clipboard", false);
         boolean enablePebLogs = PrefManager.getBoolean("enable_peb_logs", false);
 
+        // Always set this to defer handling to WineRequestComponent
+        envVars.put("WINE_OPEN_WITH_ANDROID_BROwSER", "1"); // Pipetto wine has a typo, so we need 2 envvar for it to work
+        envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
 
-        if (openWithAndroidBrowser)
-            envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
         if (shareAndroidClipboard) {
             envVars.put("WINE_FROM_ANDROID_CLIPBOARD", "1");
             envVars.put("WINE_TO_ANDROID_CLIPBOARD", "1");
