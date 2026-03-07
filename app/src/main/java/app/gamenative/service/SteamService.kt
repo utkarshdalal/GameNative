@@ -2288,7 +2288,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 instance!!.steamClient?.let { steamClient ->
                     val authDetails = AuthSessionDetails().apply {
                         this.username = username.trim()
-                        this.password = password.trim()
+                        this.password = password // Not trimming as some passwords have leading spaces.
                         this.persistentSession = rememberSession
                         this.authenticator = authenticator
                         this.deviceFriendlyName = SteamUtils.getMachineName(instance!!)

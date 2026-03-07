@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -191,7 +191,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             if (detectedType == null) {
                 statusMessage = ctx.getString(R.string.wine_proton_filename_error)
                 isStatusSuccess = false
-                Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
+                SnackbarManager.show(statusMessage ?: "")
                 isBusy = false
                 SteamService.isImporting = false
                 return@launch
@@ -262,7 +262,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }
                 isStatusSuccess = false
                 Timber.tag("WineProtonManagerDialog").e(error, "Import failed: $statusMessage")
-                Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
+                SnackbarManager.show(statusMessage ?: "")
                 isBusy = false
                 SteamService.isImporting = false
                 return@launch
@@ -273,7 +273,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
                 statusMessage = ctx.getString(R.string.wine_proton_not_wine_or_proton, profile.type)
                 isStatusSuccess = false
-                Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
+                SnackbarManager.show(statusMessage ?: "")
                 isBusy = false
                 SteamService.isImporting = false
                 return@launch
@@ -283,7 +283,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             if (profile.type != detectedType) {
                 statusMessage = ctx.getString(R.string.wine_proton_type_mismatch, detectedType, profile.type)
                 isStatusSuccess = false
-                Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
+                SnackbarManager.show(statusMessage ?: "")
                 isBusy = false
                 SteamService.isImporting = false
                 return@launch
@@ -308,7 +308,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     Timber.tag("WineProtonManagerDialog").e(e, "Error cleaning tmp dir")
                 }
 
-                Toast.makeText(ctx, statusMessage, Toast.LENGTH_LONG).show()
+                SnackbarManager.show(statusMessage ?: "")
                 isBusy = false
                 SteamService.isImporting = false
                 return@launch
@@ -391,7 +391,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
                         isStatusSuccess = false
-                        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(errorMsg)
                     }
                     return@launch
                 }
@@ -445,7 +445,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMessage
                         isStatusSuccess = false
-                        Toast.makeText(ctx, errorMessage, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(errorMessage)
                     }
                     Timber.e(error, "WineProtonManagerDialog: Install failed")
                     return@launch
@@ -458,7 +458,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
                         isStatusSuccess = false
-                        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(errorMsg)
                     }
                     return@launch
                 }
@@ -468,7 +468,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
                         isStatusSuccess = false
-                        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(errorMsg)
                     }
                     return@launch
                 }
@@ -484,7 +484,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     withContext(Dispatchers.Main) {
                         statusMessage = errorMsg
                         isStatusSuccess = false
-                        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
+                        SnackbarManager.show(errorMsg)
                     }
                     try {
                         ContentsManager.cleanTmpDir(ctx)
@@ -530,7 +530,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 withContext(Dispatchers.Main) {
                     statusMessage = errorMessage
                     isStatusSuccess = false
-                    Toast.makeText(ctx, errorMessage, Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show(errorMessage)
                 }
                 Timber.e(e, "WineProtonManagerDialog: Download timeout")
             } catch (e: IOException) {
@@ -542,7 +542,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 withContext(Dispatchers.Main) {
                     statusMessage = errorMessage
                     isStatusSuccess = false
-                    Toast.makeText(ctx, errorMessage, Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show(errorMessage)
                 }
                 Timber.e(e, "WineProtonManagerDialog: Download failed with IO error")
             } catch (e: Exception) {
@@ -550,7 +550,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 withContext(Dispatchers.Main) {
                     statusMessage = errorMessage
                     isStatusSuccess = false
-                    Toast.makeText(ctx, errorMessage, Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show(errorMessage)
                 }
                 Timber.e(e, "WineProtonManagerDialog: Download/install failed")
             } finally {
@@ -753,7 +753,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             importLauncher.launch(arrayOf("application/octet-stream", "*/*"))
                         } catch (e: Exception) {
                             SteamService.isImporting = false
-                            Toast.makeText(ctx, ctx.getString(R.string.wine_proton_failed_file_picker, e.message ?: ""), Toast.LENGTH_SHORT).show()
+                            SnackbarManager.show(ctx.getString(R.string.wine_proton_failed_file_picker, e.message ?: ""))
                         }
                     },
                     enabled = !isBusy,
@@ -946,11 +946,11 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             // Refresh on main thread
                             withContext(Dispatchers.Main) {
                                 refreshInstalled()
-                                Toast.makeText(ctx, ctx.getString(R.string.wine_proton_removed_toast, target.verName), Toast.LENGTH_SHORT).show()
+                                SnackbarManager.show(ctx.getString(R.string.wine_proton_removed_toast, target.verName))
                             }
                         } catch (e: Exception) {
                             Timber.tag("WineProtonManagerDialog").e(e, "Delete failed")
-                            Toast.makeText(ctx, ctx.getString(R.string.wine_proton_remove_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
+                            SnackbarManager.show(ctx.getString(R.string.wine_proton_remove_failed, e.message ?: ""))
                         }
                         deleteTarget = null
                     }
@@ -1029,7 +1029,7 @@ private suspend fun performFinishInstall(
     }
     Timber.tag("WineProtonManagerDialog").d("📦 performFinishInstall complete: success=${result.second}, message='${result.first}'")
     onDone(result.first, result.second)
-    Toast.makeText(context, result.first, Toast.LENGTH_SHORT).show()
+    SnackbarManager.show(result.first)
 }
 
 /**

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsTextField
 import app.gamenative.ui.theme.settingsTileColors
@@ -1041,11 +1042,7 @@ private fun showCopySizeDialog(
     val otherElements = elements.filter { it != currentElement }
 
     if (otherElements.isEmpty()) {
-        android.widget.Toast.makeText(
-            context,
-            context.getString(R.string.toast_no_elements_to_copy),
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
+        SnackbarManager.show(context.getString(R.string.toast_no_elements_to_copy))
         return
     }
 
@@ -1075,11 +1072,7 @@ private fun showCopySizeDialog(
         .setItems(elementNames) { _, which ->
             val selectedElement = otherElements[which]
             onSizeCopied(selectedElement.scale)
-            android.widget.Toast.makeText(
-                context,
-                context.getString(R.string.toast_copied_size, selectedElement.scale),
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            SnackbarManager.show(context.getString(R.string.toast_copied_size, selectedElement.scale))
         }
         .setNegativeButton(context.getString(R.string.cancel), null)
         .show()

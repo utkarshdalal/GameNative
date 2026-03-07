@@ -1,34 +1,30 @@
 package app.gamenative.utils
 
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import app.gamenative.api.ApiResult
+import app.gamenative.api.SupportersApi
 import timber.log.Timber
 
-@Serializable
 data class KofiSupporter(
-    @SerialName("Name") val name: String? = null,
-    @SerialName("OneOff") val oneOff: Boolean? = null,
-    @SerialName("Total") val total: Double? = null,
+    val name: String? = null,
+    val oneOff: Boolean? = null,
+    val total: Double? = null,
 )
 
 /**
- * Fetch supporters from Supabase `kofi_supporters` table.
- * Only fetches fields needed for display.
+ * Fetch supporters from the worker API.
  */
-suspend fun fetchKofiSupporters(supabase: SupabaseClient): List<KofiSupporter> {
-    return try {
-        Timber.d("Fetching Ko-fi supporters from Supabase")
-        supabase
-            .from("kofi_supporters")
-            .select(columns = Columns.list("Name", "OneOff", "Total"))
-            .decodeList<KofiSupporter>()
-    } catch (e: Exception) {
-        Timber.e(e, "Failed to fetch Ko-fi supporters: ${e.message}")
-        emptyList()
+suspend fun fetchKofiSupporters(): List<KofiSupporter> {
+    return when (val result = SupportersApi.fetch()) {
+        is ApiResult.Success -> result.data.map {
+            KofiSupporter(name = it.name, oneOff = it.oneOff, total = it.total)
+        }
+        is ApiResult.HttpError -> {
+            Timber.e("Failed to fetch Ko-fi supporters: HTTP ${result.code} ${result.message}")
+            emptyList()
+        }
+        is ApiResult.NetworkError -> {
+            Timber.e(result.exception, "Failed to fetch Ko-fi supporters: network error")
+            emptyList()
+        }
     }
 }
-
-

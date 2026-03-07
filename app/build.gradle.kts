@@ -24,10 +24,6 @@ val keystoreProperties: Properties? = if (keystorePropertiesFile.exists()) {
 val posthogApiKey: String = project.findProperty("POSTHOG_API_KEY") as String? ?: System.getenv("POSTHOG_API_KEY") ?: ""
 val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: System.getenv("POSTHOG_HOST") ?: "https://us.i.posthog.com"
 
-// Add Supabase URL and key as build-time variables
-val supabaseUrl: String = project.findProperty("SUPABASE_URL") as String? ?: System.getenv("SUPABASE_URL") ?: "https://your-project.supabase.co"
-val supabaseKey: String = project.findProperty("SUPABASE_KEY") as String? ?: System.getenv("SUPABASE_KEY") ?: ""
-
 room {
     schemaDirectory("$projectDir/schemas")
 }
@@ -56,7 +52,7 @@ android {
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 11
+        versionCode = 12
         versionName = "0.8.0"
 
         buildConfigField("boolean", "GOLD", "false")
@@ -65,8 +61,6 @@ android {
 
         buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
-        buildConfigField("String", "SUPABASE_URL",  "\"${secret("SUPABASE_URL")}\"")
-        buildConfigField("String", "SUPABASE_KEY",  "\"${secret("SUPABASE_KEY")}\"")
         buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
         val iconValue = "@mipmap/ic_launcher"
@@ -287,15 +281,6 @@ dependencies {
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.8.0")
-
-    // 1) import the platform – it pins *every* Supabase + Ktor module
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.1.4"))
-
-    // 2) add whichever supabase-kt modules you actually use
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")   // PostgREST
-    implementation("io.github.jan-tennert.supabase:realtime-kt")
-
-    implementation("io.ktor:ktor-client-android:3.1.3")
 
     implementation("com.auth0.android:jwtdecode:2.0.2")
 }

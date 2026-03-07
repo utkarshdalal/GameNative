@@ -357,6 +357,8 @@
     <string name="height">Altura</string>
     <string name="audio_driver">Driver de Áudio</string>
     <string name="show_fps">Mostrar FPS</string>
+    <string name="portrait_mode">Modo Retrato</string>
+    <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
     <string name="remove_driver_confirmation">Tem certeza de que deseja remover o driver "%s"? Isso não pode ser desfeito</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -622,7 +624,7 @@
     <string name="login_password_show">Mostrar senha</string>
     <string name="login_password_hide">Ocultar senha</string>
     <string name="login_remember_session">Lembrar sessão</string>
-    <string name="login_sign_in">Entrar</string>
+    <string name="login_sign_in">Entrar com Steam</string>
     <string name="login_qr_failed">Falha no código QR</string>
     <string name="login_retry_qr">Tentar código QR novamente</string>
     <string name="login_qr_instructions">Abra o aplicativo móvel do Steam e escaneie este código QR para entrar instantaneamente</string>

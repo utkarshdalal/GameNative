@@ -522,6 +522,8 @@
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
 	<string name="show_fps">Afișează FPS</string>
+	<string name="portrait_mode">Mod portret</string>
+	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -805,7 +807,7 @@
 	<string name="login_password_show">Arată parola</string>
 	<string name="login_password_hide">Ascunde parola</string>
 	<string name="login_remember_session">Ține-mă minte</string>
-	<string name="login_sign_in">Autentificare</string>
+	<string name="login_sign_in">Autentificare cu Steam</string>
 	<string name="login_qr_failed">Cod QR eșuat</string>
 	<string name="login_retry_qr">Reîncearcă codul QR</string>
 	<string name="login_qr_instructions">Deschide aplicația Steam pe mobil și scanează acest cod QR pentru autentificare instantă</string>

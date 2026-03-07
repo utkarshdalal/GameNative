@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -134,7 +134,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     else -> "Unable to install content"
                 }
                 statusMessage = error?.message?.let { "$msg: $it" } ?: msg
-                Toast.makeText(ctx, statusMessage, Toast.LENGTH_SHORT).show()
+                SnackbarManager.show(statusMessage ?: "")
                 isBusy = false
                 return@launch
             }
@@ -378,7 +378,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     scope.launch {
                         withContext(Dispatchers.IO) { mgr.removeContent(target) }
                         refreshInstalled()
-                        Toast.makeText(ctx, "Removed ${target.verName}", Toast.LENGTH_SHORT).show()
+                        SnackbarManager.show("Removed ${target.verName}")
                         deleteTarget = null
                     }
                 }) { Text(stringResource(R.string.remove)) }
@@ -429,6 +429,6 @@ private suspend fun performFinishInstall(
         message
     }
     onDone(msg)
-    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+    SnackbarManager.show(msg)
 }
 

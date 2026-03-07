@@ -150,6 +150,8 @@ public class Container {
 
     private String suspendPolicy = SUSPEND_POLICY_DEFAULT;
 
+    private boolean portraitMode = false;
+
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -703,6 +705,7 @@ public class Container {
 
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
+            data.put("portraitMode", portraitMode);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -896,6 +899,9 @@ public class Container {
                 case "suspendPolicy":
                     setSuspendPolicy(data.getString(key));
                     break;
+                case "portraitMode":
+                    this.portraitMode = data.getBoolean(key);
+                    break;
             }
         }
     }
@@ -1000,6 +1006,14 @@ public class Container {
                 this.suspendPolicy = SUSPEND_POLICY_DEFAULT;
                 break;
         }
+    }
+
+    public boolean isPortraitMode() {
+        return portraitMode;
+    }
+
+    public void setPortraitMode(boolean portraitMode) {
+        this.portraitMode = portraitMode;
     }
 
     public String getContainerJson() {

@@ -286,6 +286,13 @@ fun GeneralTabContent(
                 }
             },
         )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.portrait_mode)) },
+            subtitle = { Text(text = stringResource(R.string.portrait_mode_description)) },
+            state = config.portraitMode,
+            onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
+        )
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },

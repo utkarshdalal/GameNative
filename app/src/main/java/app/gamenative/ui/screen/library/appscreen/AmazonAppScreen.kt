@@ -1,7 +1,7 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -187,7 +187,7 @@ class AmazonAppScreen : BaseAppScreen() {
     }
 
 override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
-        AmazonService.isGameInstalledByAppId(libraryItem.gameId)
+        AmazonService.isGameInstalledByAppId(context, libraryItem.gameId)
 
     override fun isValidToDownload(context: Context, libraryItem: LibraryItem): Boolean =
         !isInstalled(context, libraryItem) &&
@@ -282,9 +282,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         CoroutineScope(Dispatchers.IO).launch {
             val game = AmazonService.getAmazonGameOf(productId) ?: run {
                 Timber.tag(TAG).w("performDownload: game not found for $productId")
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Game not found — try syncing library", Toast.LENGTH_SHORT).show()
-                }
+                SnackbarManager.show("Game not found — try syncing library")
                 return@launch
             }
             val installPath = AmazonConstants.getGameInstallPath(context, game.title)
@@ -294,9 +292,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             if (result.isFailure) {
                 val msg = result.exceptionOrNull()?.message ?: "Unknown error"
                 Timber.tag(TAG).e("downloadGame failed: $msg")
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Failed to start download: $msg", Toast.LENGTH_LONG).show()
-                }
+                SnackbarManager.show("Failed to start download: $msg")
             }
         }
     }
@@ -428,7 +424,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         currentDownloadInfo = null
                     }
                     // If not installed after download stopped → paused/cancelled: show Resume state
-                    val nowInstalled = AmazonService.isGameInstalledByAppId(gameId)
+                    val nowInstalled = AmazonService.isGameInstalledByAppId(context, gameId)
                     onHasPartialDownloadChanged?.invoke(!nowInstalled && hasPartialDownload(context, libraryItem))
                 }
                 onStateChanged()

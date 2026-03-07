@@ -4,14 +4,18 @@ import android.os.StrictMode
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
+import app.gamenative.db.dao.AmazonGameDao
+import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
+import java.io.File
+import javax.inject.Inject
+import kotlinx.coroutines.runBlocking
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
 
@@ -26,13 +30,6 @@ import com.winlator.widget.XServerView
 import com.winlator.xenvironment.XEnvironment
 import dagger.hilt.android.HiltAndroidApp
 
-// Supabase imports
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.annotations.SupabaseInternal
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.network.supabaseApi
-import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,6 +40,9 @@ typealias NavChangedListener = NavController.OnDestinationChangedListener
 
 @HiltAndroidApp
 class PluviaApp : SplitCompatApplication() {
+
+    @Inject lateinit var gogGameDao: GOGGameDao
+    @Inject lateinit var amazonGameDao: AmazonGameDao
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -74,6 +74,8 @@ class PluviaApp : SplitCompatApplication() {
 
         DownloadService.populateDownloadService(this)
 
+        migrateGogAmazonPaths()
+
         appScope.launch {
             ContainerMigrator.migrateLegacyContainersIfNeeded(
                 context = applicationContext,
@@ -102,14 +104,71 @@ class PluviaApp : SplitCompatApplication() {
 
         PlayIntegrity.warmUp(this)
 
-        // Initialize Supabase client
-        try {
-            initSupabase()
-            Timber.d("Supabase client initialized with URL: ${BuildConfig.SUPABASE_URL}")
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to initialize Supabase client: ${e.message}")
-            e.printStackTrace()
+    }
+
+    /**
+     * One-time migration: moves GOG/Amazon game directories from
+     * {filesDir}/ to {dataDir}/ to match Steam/Epic, and updates DB paths.
+     */
+    private fun migrateGogAmazonPaths() {
+        if (PrefManager.gogAmazonPathMigrated) return
+
+        val dataDir = dataDir.path
+        val filesDir = filesDir.absolutePath
+        Timber.i("[Migration] Migrating GOG/Amazon install paths from $filesDir to $dataDir")
+
+        val migrations = listOf(
+            File(filesDir, "GOG") to File(dataDir, "GOG"),
+            File(filesDir, "Amazon") to File(dataDir, "Amazon"),
+        )
+
+        for ((oldDir, newDir) in migrations) {
+            if (!oldDir.exists()) continue
+            if (newDir.exists()) {
+                Timber.w("[Migration] Target already exists, skipping rename: ${newDir.path}")
+                continue
+            }
+            val renamed = oldDir.renameTo(newDir)
+            if (renamed) {
+                Timber.i("[Migration] Renamed ${oldDir.path} -> ${newDir.path}")
+            } else {
+                Timber.w("[Migration] Failed to rename ${oldDir.path} -> ${newDir.path}")
+            }
         }
+
+        val oldPrefix = "$filesDir/"
+        val newPrefix = "$dataDir/"
+
+        runBlocking(Dispatchers.IO) {
+            try {
+                val gogGames = gogGameDao.getAllAsList()
+                for (game in gogGames) {
+                    if (game.installPath.isNotEmpty() && game.installPath.contains(oldPrefix)) {
+                        val updated = game.copy(installPath = game.installPath.replace(oldPrefix, newPrefix))
+                        gogGameDao.update(updated)
+                    }
+                }
+                Timber.i("[Migration] Updated ${gogGames.count { it.installPath.contains(oldPrefix) }} GOG install paths")
+            } catch (e: Exception) {
+                Timber.e(e, "[Migration] Failed to update GOG DB paths")
+            }
+
+            try {
+                val amazonGames = amazonGameDao.getAllAsList()
+                for (game in amazonGames) {
+                    if (game.installPath.isNotEmpty() && game.installPath.contains(oldPrefix)) {
+                        val newPath = game.installPath.replace(oldPrefix, newPrefix)
+                        amazonGameDao.markAsInstalled(game.productId, newPath, game.installSize, game.versionId)
+                    }
+                }
+                Timber.i("[Migration] Updated ${amazonGames.count { it.installPath.contains(oldPrefix) }} Amazon install paths")
+            } catch (e: Exception) {
+                Timber.e(e, "[Migration] Failed to update Amazon DB paths")
+            }
+        }
+
+        PrefManager.gogAmazonPathMigrated = true
+        Timber.i("[Migration] GOG/Amazon path migration complete")
     }
 
     companion object {
@@ -133,37 +192,5 @@ class PluviaApp : SplitCompatApplication() {
 
         fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
-        // Supabase client for game feedback
-        lateinit var supabase: SupabaseClient
-            private set
-
-        fun isSupabaseInitialized(): Boolean = ::supabase.isInitialized
-
-        // Initialize Supabase client
-        @OptIn(SupabaseInternal::class)
-        fun initSupabase() {
-            Timber.d("Initializing Supabase client with URL: ${BuildConfig.SUPABASE_URL}")
-            if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_KEY.isBlank()) {
-                Timber.e("Invalid Supabase URL or key - URL: ${BuildConfig.SUPABASE_URL}, key empty: ${BuildConfig.SUPABASE_KEY.isBlank()}")
-                throw IllegalStateException("Supabase URL or key is empty")
-            }
-
-            supabase = createSupabaseClient(
-                supabaseUrl = BuildConfig.SUPABASE_URL,
-                supabaseKey = BuildConfig.SUPABASE_KEY
-            ) {
-                Timber.d("Configuring Supabase client")
-                httpConfig {
-                    Timber.d("Setting up HTTP timeouts")
-                    install(HttpTimeout) {
-                        requestTimeoutMillis = 30_000   // overall call
-                        connectTimeoutMillis = 15_000   // TCP handshake / TLS
-                        socketTimeoutMillis  = 30_000   // idle socket
-                    }
-                }
-                install(Postgrest)
-                Timber.d("Postgrest plugin installed")
-            }
-        }
     }
 }

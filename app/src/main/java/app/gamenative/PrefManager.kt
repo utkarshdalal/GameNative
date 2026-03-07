@@ -485,6 +485,13 @@ object PrefManager {
             setPref(DISABLE_MOUSE_INPUT, value)
         }
 
+    private val PORTRAIT_MODE = booleanPreferencesKey("portrait_mode")
+    var portraitMode: Boolean
+        get() = getPref(PORTRAIT_MODE, false)
+        set(value) {
+            setPref(PORTRAIT_MODE, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)
@@ -976,4 +983,9 @@ object PrefManager {
     var playIntegrityAvailable: Boolean
         get() = getPref(PLAY_INTEGRITY_AVAILABLE, false)
         set(value) = setPref(PLAY_INTEGRITY_AVAILABLE, value)
+
+    private val GOG_AMAZON_PATH_MIGRATED = booleanPreferencesKey("gog_amazon_path_migrated")
+    var gogAmazonPathMigrated: Boolean
+        get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
+        set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
 }

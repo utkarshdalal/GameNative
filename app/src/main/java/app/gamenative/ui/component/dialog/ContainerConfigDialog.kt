@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.content.res.Configuration
@@ -73,6 +72,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -390,11 +390,7 @@ fun ContainerConfigDialog(
             showManifestDownloadDialog = true
             manifestDownloadProgress = -1f
             manifestDownloadLabel = label
-            Toast.makeText(
-                context,
-                context.getString(R.string.manifest_downloading_item, label),
-                Toast.LENGTH_SHORT,
-            ).show()
+            SnackbarManager.show(context.getString(R.string.manifest_downloading_item, label))
             installScope.launch {
                 try {
                     val result = ManifestInstaller.installManifestEntry(
@@ -413,7 +409,7 @@ fun ContainerConfigDialog(
                         refreshInstalledLists()
                         onInstalled()
                     }
-                    Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show(result.message)
                 } finally {
                     manifestInstallInProgress = false
                     showManifestDownloadDialog = false
@@ -841,28 +837,16 @@ fun ContainerConfigDialog(
                 SteamService.keepAlive = false
                 val letter = pendingDriveLetter.uppercase(Locale.ENGLISH)
                 if (letter.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.container_config_drive_letter_missing),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.container_config_drive_letter_missing))
                     return@rememberCustomGameFolderPicker
                 }
                 if (!availableDriveLetters.contains(letter)) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.no_available_drive_letters),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.no_available_drive_letters))
                     pendingDriveLetter = ""
                     return@rememberCustomGameFolderPicker
                 }
                 if (path.isBlank() || path.contains(":")) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.container_config_invalid_drive_path),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.container_config_invalid_drive_path))
                     pendingDriveLetter = ""
                     return@rememberCustomGameFolderPicker
                 }
@@ -882,7 +866,7 @@ fun ContainerConfigDialog(
             },
             onFailure = { message ->
                 SteamService.keepAlive = false
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                SnackbarManager.show(message)
             },
             onCancel = {
                 SteamService.keepAlive = false

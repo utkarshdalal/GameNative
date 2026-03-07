@@ -136,6 +136,7 @@ object ContainerUtils {
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
+            portraitMode = PrefManager.portraitMode,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
             sharpnessEffect = PrefManager.sharpnessEffect,
@@ -198,6 +199,7 @@ object ContainerUtils {
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
         PrefManager.suspendPolicy = containerData.suspendPolicy
+        PrefManager.portraitMode = containerData.portraitMode
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
@@ -293,6 +295,7 @@ object ContainerUtils {
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
+            portraitMode = container.isPortraitMode,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -470,6 +473,7 @@ object ContainerUtils {
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
+        container.setPortraitMode(containerData.portraitMode)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }
@@ -838,6 +842,7 @@ object ContainerUtils {
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
                 suspendPolicy = PrefManager.suspendPolicy,
+                portraitMode = PrefManager.portraitMode,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
             )
@@ -1074,6 +1079,26 @@ object ContainerUtils {
             // Add other platforms here..
             else -> GameSource.STEAM // default fallback
         }
+    }
+
+    /**
+     * Resolves the display name for a game from its container ID,
+     * looking up the appropriate store service.
+     */
+    fun resolveGameName(containerId: String): String {
+        val gameSource = extractGameSourceFromContainerId(containerId)
+        val gameId = extractGameIdFromContainerId(containerId)
+        return when (gameSource) {
+            GameSource.STEAM -> SteamService.getAppInfoOf(gameId)?.name
+            GameSource.GOG -> GOGService.getGOGGameOf(gameId.toString())?.title
+            GameSource.EPIC -> EpicService.getEpicGameOf(gameId)?.title
+            GameSource.AMAZON -> AmazonService.getAmazonGameByAppId(gameId)?.title
+            GameSource.CUSTOM_GAME -> {
+                val customAppId = "${GameSource.CUSTOM_GAME.name}_$gameId"
+                CustomGameScanner.getFolderPathFromAppId(customAppId)
+                    ?.let { File(it).name }
+            }
+        } ?: "Unknown"
     }
 
     /**

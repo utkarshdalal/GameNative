@@ -357,6 +357,8 @@
     <string name="height">Højde</string>
     <string name="audio_driver">Lyd-driver</string>
     <string name="show_fps">Vis FPS</string>
+    <string name="portrait_mode">Portrættilstand</string>
+    <string name="portrait_mode_description">Til 8BitDo FlipPad/GameSir Pocket Taco-type controllere</string>
     <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -622,7 +624,7 @@
     <string name="login_password_show">Vis adgangskode</string>
     <string name="login_password_hide">Skjul adgangskode</string>
     <string name="login_remember_session">Husk session</string>
-    <string name="login_sign_in">Log ind</string>
+    <string name="login_sign_in">Log ind med Steam</string>
     <string name="login_qr_failed">QR-kode fejlede</string>
     <string name="login_retry_qr">Prøv QR-kode igen</string>
     <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>

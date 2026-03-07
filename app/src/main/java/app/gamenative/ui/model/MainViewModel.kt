@@ -15,6 +15,8 @@ import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.ui.enums.Orientation
+import java.util.EnumSet
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
@@ -61,7 +63,6 @@ class MainViewModel @Inject constructor(
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
-        data class ShowToast(val message: String) : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -636,9 +637,4 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun showToast(message: String) {
-        viewModelScope.launch {
-            _uiEvent.send(MainUiEvent.ShowToast(message))
-        }
-    }
 }

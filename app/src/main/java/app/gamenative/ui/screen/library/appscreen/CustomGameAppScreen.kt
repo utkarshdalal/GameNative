@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +28,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import android.net.Uri
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 /**
@@ -444,13 +444,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                                     }
 
                                     // Navigate back and show notification
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "\"${libraryItem.name}\" has been deleted",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                    SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
 
+                                    withContext(Dispatchers.Main) {
                                         // Small delay to ensure file system updates are complete
                                         // before navigating back (list will auto-refresh when displayed)
                                         delay(100)
@@ -459,13 +455,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         onBack()
                                     }
                                 } catch (e: Exception) {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "Failed to delete game: ${e.message}",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
+                                    SnackbarManager.show("Failed to delete game: ${e.message}")
                                 }
                             }
                         }
