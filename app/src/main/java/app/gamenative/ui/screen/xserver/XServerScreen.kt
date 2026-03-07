@@ -1054,8 +1054,10 @@ fun XServerScreen(
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()
                                 if (manualResumeMode) {
-                                    PluviaApp.isOverlayPaused = true
-                                    Timber.d("Game paused after environment setup while app was backgrounded (manual resume required)")
+                                    view.post {
+                                        PluviaApp.isOverlayPaused = true
+                                        Timber.d("Game paused after environment setup while app was backgrounded (manual resume required)")
+                                    }
                                 } else {
                                     Timber.d("Game paused after environment setup while app was backgrounded")
                                 }
