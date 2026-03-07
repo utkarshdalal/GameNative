@@ -735,7 +735,7 @@ object SteamUtils {
     }
 
     fun findSteamApiDllRootFile(file: File, depth: Int): File? {
-        if (depth <= 0) return null
+        if (depth < 0) return null
         val (files, directories) = file.walkTopDown().maxDepth(1).partition { it.isFile }
 
         val steamApi = files.firstOrNull {
