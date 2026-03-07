@@ -745,7 +745,7 @@ object SteamUtils {
         if (steamApi != null)
             return steamApi.parentFile
 
-        return directories.filter { it != file }.map { findSteamApiDllRootFile(it, depth - 1) }.firstOrNull();
+        return directories.filter { it != file }.firstNotNullOfOrNull { findSteamApiDllRootFile(it, depth - 1) }
     }
 
     fun putBackSteamDlls(appDirPath: String) {
