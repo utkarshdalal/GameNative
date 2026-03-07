@@ -113,6 +113,17 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import app.gamenative.enums.PathType
+import com.winlator.container.ContainerManager
+import app.gamenative.enums.SyncResult
+import app.gamenative.enums.Marker
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import app.gamenative.NetworkMonitor
+import app.gamenative.events.AndroidEvent
+import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.createPinnedShortcut
+import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -480,15 +491,10 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     vararg optionsMenu: AppMenuOption,
 ) {
-    // Determine Wi-Fi connectivity for 'Wi-Fi only' preference
     val context = LocalContext.current
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-    val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    val wifiConnected = capabilities?.run {
-        hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-            hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-    } == true
+    // reactive — recomposes when network state changes
+    val hasInternet by NetworkMonitor.hasInternet.collectAsState()
+    val wifiConnected by NetworkMonitor.isWifiConnected.collectAsState()
     val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
     val scrollState = rememberScrollState()
 

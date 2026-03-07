@@ -47,13 +47,7 @@ import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import java.util.Collections
 import java.util.EnumSet
-import java.util.concurrent.atomic.AtomicBoolean
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import kotlin.math.abs
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
@@ -61,36 +55,7 @@ import timber.log.Timber
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // ignore VPN and mesh transports — they don't reliably indicate internet
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        private val validated = Collections.synchronizedSet(mutableSetOf<Network>())
-
-        private fun skip(caps: NetworkCapabilities) =
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) ||
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) ||
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_LOWPAN)
-
-        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-            if (skip(caps)) return
-            if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                validated.add(network)
-            } else {
-                validated.remove(network)
-            }
-            _hasInternet.set(validated.isNotEmpty())
-        }
-
-        override fun onLost(network: Network) {
-            validated.remove(network)
-            _hasInternet.set(validated.isNotEmpty())
-        }
-    }
-
     companion object {
-        // updated by NetworkCallback, read by Coil interceptor
-        private val _hasInternet = AtomicBoolean(false)
-        val hasInternet: Boolean get() = _hasInternet.get()
-
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
@@ -181,15 +146,6 @@ class MainActivity : ComponentActivity() {
 
         handleLaunchIntent(intent)
 
-        // track real network state (callback filters out VPN/mesh transports)
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        cm.registerNetworkCallback(
-            NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build(),
-            networkCallback,
-        )
-
         // Prevent device from sleeping while app is open
         AppUtils.keepScreenOn(this)
 
@@ -235,7 +191,7 @@ class MainActivity : ComponentActivity() {
                     .components {
                         // serve cached images when device has no internet
                         add(Interceptor { chain ->
-                            val request = if (!hasInternet) {
+                            val request = if (!NetworkMonitor.hasInternet.value) {
                                 chain.request.newBuilder()
                                     .networkCachePolicy(CachePolicy.DISABLED)
                                     .build()
@@ -296,9 +252,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        cm.unregisterNetworkCallback(networkCallback)
 
         PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 

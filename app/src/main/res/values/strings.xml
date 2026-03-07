@@ -866,6 +866,10 @@
     <string name="library_wifi_only_enabled">Install over Wi-Fi/LAN only enabled</string>
     <string name="library_file_count">File %1$d of %2$d</string>
 
+    <!-- SteamService: Download Notifications -->
+    <string name="download_no_wifi">Not connected to Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Download paused – waiting for Wi-Fi/LAN</string>
+
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Update Available</string>
     <string name="main_update_available_message">A new version (%1$s) is available!%2$s</string>

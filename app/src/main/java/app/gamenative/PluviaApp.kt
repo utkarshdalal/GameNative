@@ -59,6 +59,8 @@ class PluviaApp : SplitCompatApplication() {
             Timber.plant(ReleaseTree())
         }
 
+        NetworkMonitor.init(this)
+
         // Init our custom crash handler.
         CrashHandler.initialize(this)
 
