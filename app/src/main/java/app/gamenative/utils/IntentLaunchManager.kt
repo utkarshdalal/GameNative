@@ -151,7 +151,14 @@ object IntentLaunchManager {
     }
 
     fun getTemporaryOverride(appId: String): ContainerData? {
-        return TemporaryConfigStore.getOverride(appId)
+        return TemporaryConfigStore.getOverride(appId)?.let { config ->
+            config.copy(
+                suspendPolicy = resolveSuspendPolicyOverride(
+                    overridePolicy = config.suspendPolicy,
+                    fallbackPolicy = Container.SUSPEND_POLICY_DEFAULT,
+                ),
+            )
+        }
     }
 
     fun getOriginalConfig(appId: String): ContainerData? {
