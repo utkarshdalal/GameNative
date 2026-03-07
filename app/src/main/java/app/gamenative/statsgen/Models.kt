@@ -27,7 +27,8 @@ data class ProcessingResult(
     val achievements: List<Achievement>,
     val stats: List<Stat>,
     val copyDefaultUnlockedImg: Boolean,
-    val copyDefaultLockedImg: Boolean
+    val copyDefaultLockedImg: Boolean,
+    val nameToBlockBit: Map<String, Pair<Int, Int>> = emptyMap(),
 )
 
 object StatType {

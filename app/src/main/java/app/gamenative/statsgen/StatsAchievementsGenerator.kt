@@ -26,6 +26,7 @@ class StatsAchievementsGenerator {
         val parsedSchema = vdfParser.binaryLoads(schema)
         val achievementsOut = mutableListOf<Achievement>()
         val statsOut = mutableListOf<Stat>()
+        val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
 
         for ((appId, appData) in parsedSchema) {
             if (appData !is Map<*, *>) continue
@@ -86,6 +87,14 @@ class StatsAchievementsGenerator {
                         }
 
                         achievementBuilder["name"] = ach["name"] ?: ""
+                        val achName = ach["name"]?.toString() ?: ""
+                        if (achName.isNotEmpty()) {
+                            val blockId = statKey.toIntOrNull()
+                            val bitIndex = achNumKey.toIntOrNull()
+                            if (blockId != null && bitIndex != null) {
+                                nameToBlockBit[achName] = Pair(blockId, bitIndex)
+                            }
+                        }
                         if (ach.containsKey("progress")) {
                             achievementBuilder["progress"] = ach["progress"] as Any
                         }
@@ -333,7 +342,8 @@ class StatsAchievementsGenerator {
             achievements = achievementsOut,
             stats = statsOut,
             copyDefaultUnlockedImg = copyDefaultUnlockedImg,
-            copyDefaultLockedImg = copyDefaultLockedImg
+            copyDefaultLockedImg = copyDefaultLockedImg,
+            nameToBlockBit = nameToBlockBit,
         )
     }
 }
