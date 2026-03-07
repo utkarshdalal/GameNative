@@ -48,6 +48,16 @@ fun GeneralTabContent(
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
+    val suspendBehaviorEntries = listOf(
+        stringResource(R.string.suspend_behavior_default),
+        stringResource(R.string.suspend_behavior_never),
+        stringResource(R.string.suspend_behavior_manual),
+    )
+    val suspendBehaviorIndex = when {
+        config.suspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true) -> 1
+        config.suspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true) -> 2
+        else -> 0
+    }
 
     if (state.showCustomResolutionDialog.value) {
         AlertDialog(
@@ -363,6 +373,20 @@ fun GeneralTabContent(
                     else -> Container.STEAM_TYPE_NORMAL
                 }
                 state.config.value = config.copy(steamType = type)
+            },
+        )
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.suspend_behavior)) },
+            value = suspendBehaviorIndex,
+            items = suspendBehaviorEntries,
+            onItemSelected = { index ->
+                val policy = when (index) {
+                    1 -> Container.SUSPEND_POLICY_NEVER
+                    2 -> Container.SUSPEND_POLICY_MANUAL
+                    else -> Container.SUSPEND_POLICY_DEFAULT
+                }
+                state.config.value = config.copy(suspendPolicy = policy)
             },
         )
     }

@@ -14,6 +14,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -1409,13 +1410,25 @@ fun XServerScreen(
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 24.dp),
-                contentAlignment = Alignment.TopCenter,
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
             ) {
-                androidx.compose.material3.Button(onClick = { resumeFromManualButton() }) {
-                    Text(text = stringResource(R.string.resume_game))
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(
+                            color = androidx.compose.ui.graphics.Color.White,
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        )
+                        .clickable(onClick = ::resumeFromManualButton),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = stringResource(R.string.resume_game),
+                        tint = androidx.compose.ui.graphics.Color.Black,
+                        modifier = Modifier.size(40.dp),
+                    )
                 }
             }
         }
