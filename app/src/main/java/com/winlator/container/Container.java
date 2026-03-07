@@ -19,6 +19,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.Locale;
 
 public class Container {
     public enum XrControllerMapping {
@@ -989,23 +990,24 @@ public class Container {
         this.unpackFiles = unpackFiles;
     }
 
+    public static String normalizeSuspendPolicy(String suspendPolicy) {
+        String normalized = (suspendPolicy == null) ? "" : suspendPolicy.toLowerCase(Locale.ROOT);
+        switch (normalized) {
+            case SUSPEND_POLICY_NEVER:
+                return SUSPEND_POLICY_NEVER;
+            case SUSPEND_POLICY_MANUAL:
+                return SUSPEND_POLICY_MANUAL;
+            default:
+                return SUSPEND_POLICY_DEFAULT;
+        }
+    }
+
     public String getSuspendPolicy() {
-        return suspendPolicy != null ? suspendPolicy : SUSPEND_POLICY_DEFAULT;
+        return normalizeSuspendPolicy(suspendPolicy);
     }
 
     public void setSuspendPolicy(String suspendPolicy) {
-        String normalized = (suspendPolicy == null) ? "" : suspendPolicy.toLowerCase();
-        switch (normalized) {
-            case SUSPEND_POLICY_NEVER:
-                this.suspendPolicy = SUSPEND_POLICY_NEVER;
-                break;
-            case SUSPEND_POLICY_MANUAL:
-                this.suspendPolicy = SUSPEND_POLICY_MANUAL;
-                break;
-            default:
-                this.suspendPolicy = SUSPEND_POLICY_DEFAULT;
-                break;
-        }
+        this.suspendPolicy = normalizeSuspendPolicy(suspendPolicy);
     }
 
     public boolean isPortraitMode() {

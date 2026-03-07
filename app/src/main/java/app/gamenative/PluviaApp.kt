@@ -187,6 +187,21 @@ class PluviaApp : SplitCompatApplication() {
 
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_DEFAULT
+            private set
+        private var hasInitializedSuspendPolicyState: Boolean = false
+
+        fun setActiveSuspendPolicy(policy: String) {
+            activeSuspendPolicy = Container.normalizeSuspendPolicy(policy)
+            hasInitializedSuspendPolicyState = true
+        }
+
+        fun clearActiveSuspendState() {
+            activeSuspendPolicy = Container.SUSPEND_POLICY_DEFAULT
+            isOverlayPaused = false
+            hasInitializedSuspendPolicyState = false
+        }
+
+        fun hasValidSuspendPolicyState(): Boolean = hasInitializedSuspendPolicyState
 
         fun isNeverSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true)
 

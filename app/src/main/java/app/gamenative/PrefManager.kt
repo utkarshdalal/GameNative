@@ -320,9 +320,9 @@ object PrefManager {
 
     private val SUSPEND_POLICY = stringPreferencesKey("suspend_policy")
     var suspendPolicy: String
-        get() = getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_DEFAULT)
+        get() = Container.normalizeSuspendPolicy(getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_DEFAULT))
         set(value) {
-            setPref(SUSPEND_POLICY, value)
+            setPref(SUSPEND_POLICY, Container.normalizeSuspendPolicy(value))
         }
 
     private val CPU_LIST = stringPreferencesKey("cpu_list")

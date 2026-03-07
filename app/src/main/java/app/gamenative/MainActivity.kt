@@ -332,6 +332,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun hasReadyGameLifecycleState(action: String): Boolean {
+        if (!SteamService.keepAlive) return false
+        if (!PluviaApp.hasValidSuspendPolicyState()) {
+            Timber.d("Skipping game %s because suspend policy state is not initialized", action)
+            return false
+        }
+        if (PluviaApp.xEnvironment == null) {
+            Timber.d("Skipping game %s because xEnvironment is not ready", action)
+            return false
+        }
+        return true
+    }
+
     override fun onResume() {
         super.onResume()
         // Re-apply immersive mode to ensure fullscreen persists
@@ -343,7 +356,7 @@ class MainActivity : ComponentActivity() {
         SteamService.autoStopWhenIdle = false
 
         // Resume game according to the active suspend policy.
-        if (SteamService.keepAlive) {
+        if (hasReadyGameLifecycleState("resume")) {
             when {
                 PluviaApp.isNeverSuspendMode() -> {
                     Timber.d("Game resume skipped due to suspend policy=never")
@@ -377,7 +390,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        if (SteamService.keepAlive) {
+        if (hasReadyGameLifecycleState("pause")) {
             when {
                 PluviaApp.isNeverSuspendMode() -> {
                     Timber.d("Game pause skipped due to suspend policy=never")

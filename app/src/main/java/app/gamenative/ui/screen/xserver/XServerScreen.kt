@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.DropdownMenu
@@ -26,10 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.key
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -264,8 +265,8 @@ fun XServerScreen(
     val neverSuspend = suspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true)
     val manualResumeMode = suspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
-    LaunchedEffect(suspendPolicy) {
-        PluviaApp.activeSuspendPolicy = suspendPolicy
+    SideEffect {
+        PluviaApp.setActiveSuspendPolicy(suspendPolicy)
     }
 
     PluviaApp.events.emit(
@@ -673,10 +674,13 @@ fun XServerScreen(
             Timber.d("XServerScreen leaving, clearing back action")
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
-            PluviaApp.activeSuspendPolicy = Container.SUSPEND_POLICY_DEFAULT
-            PluviaApp.isOverlayPaused = false
+            if (!SteamService.keepAlive) {
+                PluviaApp.clearActiveSuspendState()
+            } else if (!manualResumeMode) {
+                PluviaApp.isOverlayPaused = false
+            }
             registerBackAction { }
-        }   // reset when screen leaves
+        }   // preserve suspend state across activity recreation while a game is still running
     }
 
     DisposableEffect(lifecycleOwner, container) {
@@ -1408,9 +1412,15 @@ fun XServerScreen(
             hasPhysicalController = hasPhysicalController,
         )
 
-        if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu) {
+        if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
@@ -2663,8 +2673,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.keepAlive = false
-    PluviaApp.activeSuspendPolicy = Container.SUSPEND_POLICY_DEFAULT
-    PluviaApp.isOverlayPaused = false
+    PluviaApp.clearActiveSuspendState()
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null
