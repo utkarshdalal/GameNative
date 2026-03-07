@@ -734,10 +734,31 @@ object SteamUtils {
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
+    fun findSteamApiDllPath(file: File, depth: Int): File? {
+        if (depth <= 0) return null
+        val (files, directories) = file.walkTopDown().maxDepth(1).partition { it.isFile }
+
+        val steamApi = files.firstOrNull {
+            it.toPath().name.startsWith("steam_api", true) && it.toPath().name.endsWith(".dll", true)
+        }
+
+        if (steamApi != null)
+            return steamApi.parentFile
+
+        return directories.filter { it != file }.map { findSteamApiDllPath(it, depth - 1) }.firstOrNull();
+    }
+
     fun putBackSteamDlls(appDirPath: String) {
         val rootPath = Paths.get(appDirPath)
 
-        rootPath.toFile().walkTopDown().maxDepth(10).forEach { file ->
+        val dllRootFile = findSteamApiDllPath(rootPath.toFile(), 10)
+
+        if (dllRootFile == null) {
+            Timber.w("Failed to find steam_api.dll/steam_api64.dll on a Steam game")
+            return
+        }
+
+        dllRootFile.walkTopDown().maxDepth(1).forEach { file ->
             val path = file.toPath()
             if (!file.isFile || !path.name.startsWith("steam_api", ignoreCase = true) || !path.name.endsWith(".orig", ignoreCase = true)) return@forEach
 
