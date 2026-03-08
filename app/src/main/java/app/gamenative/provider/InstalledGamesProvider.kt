@@ -83,12 +83,23 @@ class InstalledGamesProvider : ContentProvider() {
 
         try {
             addSteamGames(cursor, cols)
+        } catch (e: Exception) {
+            Timber.e(e, "[InstalledGamesProvider] Error querying Steam games")
+        }
+        try {
             addGOGGames(cursor, cols)
+        } catch (e: Exception) {
+            Timber.e(e, "[InstalledGamesProvider] Error querying GOG games")
+        }
+        try {
             addEpicGames(cursor, cols)
+        } catch (e: Exception) {
+            Timber.e(e, "[InstalledGamesProvider] Error querying Epic games")
+        }
+        try {
             addAmazonGames(cursor, cols)
         } catch (e: Exception) {
-            Timber.e(e, "[InstalledGamesProvider] Error querying installed games")
-            return cursor
+            Timber.e(e, "[InstalledGamesProvider] Error querying Amazon games")
         }
 
         cursor.setNotificationUri(context?.contentResolver, uri)
