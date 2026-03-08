@@ -46,9 +46,11 @@ fun SettingsCPUList(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 for (cpu in 0 until Runtime.getRuntime().availableProcessors()) {
+                    val isLastSelectedCpu = cpuAffinity.size == 1 && cpuAffinity.contains(cpu)
                     Column {
                         Checkbox(
                             checked = cpuAffinity.contains(cpu),
+                            enabled = enabled && !isLastSelectedCpu,
                             onCheckedChange = {
                                 val newAffinity = if (it) {
                                     (cpuAffinity + cpu).sorted()
