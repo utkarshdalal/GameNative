@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.content.Intent
+import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -112,7 +113,7 @@ object IntentLaunchManager {
                 override != null -> override.copy(
                     suspendPolicy = resolveSuspendPolicyOverride(
                         overridePolicy = override.suspendPolicy,
-                        fallbackPolicy = Container.SUSPEND_POLICY_MANUAL,
+                        fallbackPolicy = PrefManager.suspendPolicy,
                     ),
                 )
                 else -> baseConfig
@@ -155,7 +156,7 @@ object IntentLaunchManager {
             config.copy(
                 suspendPolicy = resolveSuspendPolicyOverride(
                     overridePolicy = config.suspendPolicy,
-                    fallbackPolicy = Container.SUSPEND_POLICY_MANUAL,
+                    fallbackPolicy = PrefManager.suspendPolicy,
                 ),
             )
         }

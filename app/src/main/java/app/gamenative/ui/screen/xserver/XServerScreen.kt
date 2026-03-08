@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.view.Display
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -691,9 +692,25 @@ fun XServerScreen(
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
             val isGamepad = ExternalController.isGameController(it.event.device)
+            val waitingForManualResume =
+                manualResumeMode &&
+                    PluviaApp.isOverlayPaused &&
+                    !showQuickMenu &&
+                    !keepPausedForEditor
             // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
-            if (showQuickMenu && isGamepad) {
+            if (waitingForManualResume && isGamepad) {
+                when (it.event.keyCode) {
+                    KeyEvent.KEYCODE_BUTTON_A,
+                    KeyEvent.KEYCODE_BUTTON_START -> {
+                        if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0) {
+                            resumeFromManualButton()
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            } else if (showQuickMenu && isGamepad) {
                 // Let Compose focus system handle gamepad navigation/selection while menu is visible.
                 false
             } else {
