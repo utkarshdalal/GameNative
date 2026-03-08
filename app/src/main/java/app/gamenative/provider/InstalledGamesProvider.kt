@@ -122,7 +122,7 @@ class InstalledGamesProvider : ContentProvider() {
             SELECT s.id, s.name, s.client_icon_hash, a.is_downloaded
             FROM steam_app s
             INNER JOIN app_info a ON s.id = a.id
-            WHERE s.type != 0 AND s.id != 480
+            WHERE s.type != 0 AND s.id != 480 -- Spacewar (Valve SDK test app)
               AND a.is_downloaded = 1
             ORDER BY s.name COLLATE NOCASE
         """.trimIndent()
@@ -145,7 +145,12 @@ class InstalledGamesProvider : ContentProvider() {
 
         db.query(sql).use { c ->
             while (c.moveToNext()) {
-                val numericId = c.getString(0).toIntOrNull() ?: continue
+                val rawId = c.getString(0)
+                val numericId = rawId.toIntOrNull()
+                if (numericId == null) {
+                    Timber.w("[InstalledGamesProvider] Skipping GOG game with non-numeric ID: %s", rawId)
+                    continue
+                }
                 addRow(cursor, cols, numericId, c.getString(1), "GOG", c.getString(2) ?: "", c.getInt(3))
             }
         }
