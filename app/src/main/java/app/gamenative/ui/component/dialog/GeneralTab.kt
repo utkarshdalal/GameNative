@@ -49,14 +49,14 @@ fun GeneralTabContent(
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
     val suspendBehaviorEntries = listOf(
-        stringResource(R.string.suspend_behavior_default),
-        stringResource(R.string.suspend_behavior_never),
         stringResource(R.string.suspend_behavior_manual),
+        stringResource(R.string.suspend_behavior_auto),
+        stringResource(R.string.suspend_behavior_never),
     )
     val suspendBehaviorIndex = when {
-        config.suspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true) -> 1
-        config.suspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true) -> 2
-        else -> 0
+        config.suspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true) -> 0
+        config.suspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true) -> 2
+        else -> 1
     }
 
     if (state.showCustomResolutionDialog.value) {
@@ -382,9 +382,10 @@ fun GeneralTabContent(
             items = suspendBehaviorEntries,
             onItemSelected = { index ->
                 val policy = when (index) {
-                    1 -> Container.SUSPEND_POLICY_NEVER
-                    2 -> Container.SUSPEND_POLICY_MANUAL
-                    else -> Container.SUSPEND_POLICY_DEFAULT
+                    0 -> Container.SUSPEND_POLICY_MANUAL
+                    1 -> Container.SUSPEND_POLICY_AUTO
+                    2 -> Container.SUSPEND_POLICY_NEVER
+                    else -> Container.SUSPEND_POLICY_MANUAL
                 }
                 state.config.value = config.copy(suspendPolicy = policy)
             },

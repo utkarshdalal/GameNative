@@ -61,7 +61,7 @@ public class Container {
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
 
     // Process suspend policy for runtime behavior while in-game.
-    public static final String SUSPEND_POLICY_DEFAULT = "default";
+    public static final String SUSPEND_POLICY_AUTO = "auto";
     public static final String SUSPEND_POLICY_NEVER = "never";
     public static final String SUSPEND_POLICY_MANUAL = "manual";
 
@@ -149,7 +149,7 @@ public class Container {
 
     private boolean unpackFiles = false;
 
-    private String suspendPolicy = SUSPEND_POLICY_DEFAULT;
+    private String suspendPolicy = SUSPEND_POLICY_MANUAL;
 
     private boolean portraitMode = false;
 
@@ -997,8 +997,9 @@ public class Container {
                 return SUSPEND_POLICY_NEVER;
             case SUSPEND_POLICY_MANUAL:
                 return SUSPEND_POLICY_MANUAL;
+            case SUSPEND_POLICY_AUTO:
             default:
-                return SUSPEND_POLICY_DEFAULT;
+                return SUSPEND_POLICY_AUTO;
         }
     }
 

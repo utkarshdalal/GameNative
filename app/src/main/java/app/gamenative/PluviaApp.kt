@@ -188,7 +188,7 @@ class PluviaApp : SplitCompatApplication() {
         var isActivityInForeground: Boolean = true
 
         // Active runtime suspend policy for the current in-game session.
-        var activeSuspendPolicy: String = Container.SUSPEND_POLICY_DEFAULT
+        var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL
             private set
         private var hasInitializedSuspendPolicyState: Boolean = false
 
@@ -198,7 +198,7 @@ class PluviaApp : SplitCompatApplication() {
         }
 
         fun clearActiveSuspendState() {
-            activeSuspendPolicy = Container.SUSPEND_POLICY_DEFAULT
+            activeSuspendPolicy = Container.SUSPEND_POLICY_MANUAL
             isOverlayPaused = false
             hasInitializedSuspendPolicyState = false
         }

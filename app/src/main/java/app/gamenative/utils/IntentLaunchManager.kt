@@ -112,7 +112,7 @@ object IntentLaunchManager {
                 override != null -> override.copy(
                     suspendPolicy = resolveSuspendPolicyOverride(
                         overridePolicy = override.suspendPolicy,
-                        fallbackPolicy = Container.SUSPEND_POLICY_DEFAULT,
+                        fallbackPolicy = Container.SUSPEND_POLICY_MANUAL,
                     ),
                 )
                 else -> baseConfig
@@ -155,7 +155,7 @@ object IntentLaunchManager {
             config.copy(
                 suspendPolicy = resolveSuspendPolicyOverride(
                     overridePolicy = config.suspendPolicy,
-                    fallbackPolicy = Container.SUSPEND_POLICY_DEFAULT,
+                    fallbackPolicy = Container.SUSPEND_POLICY_MANUAL,
                 ),
             )
         }
