@@ -38,14 +38,14 @@ class InstalledGamesProvider : ContentProvider() {
         const val COLUMN_APP_ID = "app_id"
         const val COLUMN_NAME = "name"
         const val COLUMN_GAME_SOURCE = "game_source"
-        const val COLUMN_ICON_HASH = "icon_hash"
+        const val COLUMN_ICON_REF = "icon_ref"
         const val COLUMN_IS_INSTALLED = "is_installed"
 
         private val COLUMNS = arrayOf(
             COLUMN_APP_ID,
             COLUMN_NAME,
             COLUMN_GAME_SOURCE,
-            COLUMN_ICON_HASH,
+            COLUMN_ICON_REF,
             COLUMN_IS_INSTALLED,
         )
 
@@ -101,7 +101,7 @@ class InstalledGamesProvider : ContentProvider() {
         appId: Int,
         name: String,
         gameSource: String,
-        iconHash: String,
+        iconRef: String,
         isInstalled: Int,
     ) {
         cursor.addRow(cols.map { col ->
@@ -109,7 +109,7 @@ class InstalledGamesProvider : ContentProvider() {
                 COLUMN_APP_ID -> appId
                 COLUMN_NAME -> name
                 COLUMN_GAME_SOURCE -> gameSource
-                COLUMN_ICON_HASH -> iconHash
+                COLUMN_ICON_REF -> iconRef
                 COLUMN_IS_INSTALLED -> isInstalled
                 else -> null
             }
