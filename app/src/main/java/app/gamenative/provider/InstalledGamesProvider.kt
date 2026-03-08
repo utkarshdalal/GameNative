@@ -6,6 +6,7 @@ import android.content.UriMatcher
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import app.gamenative.BuildConfig
 import app.gamenative.db.PluviaDatabase
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -16,9 +17,10 @@ import timber.log.Timber
 /**
  * Read-only ContentProvider that exposes the list of installed games to external apps.
  *
- * Authority: app.gamenative.games
- * URI: content://app.gamenative.games/installed
+ * Authority: ${applicationId}.games (e.g., app.gamenative.games or app.gamenative.gold.games)
+ * URI: content://${applicationId}.games/installed
  *
+ * External apps can discover the provider via PackageManager.resolveContentProvider().
  */
 class InstalledGamesProvider : ContentProvider() {
 
@@ -29,7 +31,7 @@ class InstalledGamesProvider : ContentProvider() {
     }
 
     companion object {
-        const val AUTHORITY = "app.gamenative.games"
+        val AUTHORITY = "${BuildConfig.APPLICATION_ID}.games"
         private const val PATH_INSTALLED = "installed"
         private const val CODE_INSTALLED = 1
 

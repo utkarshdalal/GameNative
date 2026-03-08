@@ -137,7 +137,7 @@
         <!-- ContentProvider for external apps to query installed games -->
         <provider
             android:name=".provider.InstalledGamesProvider"
-            android:authorities="app.gamenative.games"
+            android:authorities="${applicationId}.games"
             android:exported="true" />
 
         <!-- FileProvider for secure file sharing (for APK installation) -->
