@@ -40,7 +40,7 @@ fun SettingsCPUList(
         shadowElevation = shadowElevation,
         action = action,
         subtitle = {
-            val cpuAffinity = value.split(",").map { it.toInt() }
+            val cpuAffinity = value.split(",").mapNotNull { it.toIntOrNull() }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -53,7 +53,7 @@ fun SettingsCPUList(
                                 val newAffinity = if (it) {
                                     (cpuAffinity + cpu).sorted()
                                 } else {
-                                    cpuAffinity.filter { it != cpu }
+                                    cpuAffinity.takeIf { it.size > 1 }?.filter { it != cpu } ?: cpuAffinity
                                 }
                                 onValueChange(newAffinity.joinToString(","))
                             },
