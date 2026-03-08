@@ -354,6 +354,7 @@ class LibraryViewModel @Inject constructor(
 
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
+            val normalizedQuery = currentState.searchQuery.trim()
 
             // Fetch download directory apps once on IO thread and cache as a HashSet for O(1) lookups
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
@@ -388,9 +389,8 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .filter { item ->
-                    val trimmedQuery = currentState.searchQuery.trim()
-                    if (trimmedQuery.isNotEmpty()) {
-                        item.name.contains(trimmedQuery, ignoreCase = true)
+                    if (normalizedQuery.isNotEmpty()) {
+                        item.name.contains(normalizedQuery, ignoreCase = true)
                     } else {
                         true
                     }
@@ -450,8 +450,8 @@ class LibraryViewModel @Inject constructor(
             val filteredGOGGames = gogGameList
                 .asSequence()
                 .filter { game ->
-                    if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                    if (normalizedQuery.isNotEmpty()) {
+                        game.title.contains(normalizedQuery, ignoreCase = true)
                     } else {
                         true
                     }
@@ -485,8 +485,8 @@ class LibraryViewModel @Inject constructor(
             val filteredEpicGames = epicGameList
                 .asSequence()
                 .filter { game ->
-                    if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                    if (normalizedQuery.isNotEmpty()) {
+                        game.title.contains(normalizedQuery, ignoreCase = true)
                     } else {
                         true
                     }
@@ -520,8 +520,8 @@ class LibraryViewModel @Inject constructor(
             val filteredAmazonGames = amazonGameList
                 .asSequence()
                 .filter { game ->
-                    if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                    if (normalizedQuery.isNotEmpty()) {
+                        game.title.contains(normalizedQuery, ignoreCase = true)
                     } else {
                         true
                     }
@@ -557,7 +557,7 @@ class LibraryViewModel @Inject constructor(
             val amazonInstalledCount = filteredAmazonGames.count { it.isInstalled }
             // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
             // This needs to happen before filtering by source, so we save the total counts
-            if (currentState.searchQuery.isEmpty()) {
+            if (normalizedQuery.isEmpty()) {
                 PrefManager.customGamesCount = customGameItems.size
                 PrefManager.steamGamesCount = filteredSteamApps.size
                 PrefManager.gogGamesCount = filteredGOGGames.size
