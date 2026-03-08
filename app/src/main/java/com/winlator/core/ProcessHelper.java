@@ -345,9 +345,10 @@ public abstract class ProcessHelper {
 
         for (int index = 0; index < allPids.length; index++){
             String data = "";
-            try {
+            try (
                 FileInputStream fr = new FileInputStream(proc + "/" + allPids[index] + "/stat");
                 BufferedReader br = new BufferedReader(new InputStreamReader(fr));
+            ) {
                 data = br.readLine();
             }
             catch (IOException e) {}
