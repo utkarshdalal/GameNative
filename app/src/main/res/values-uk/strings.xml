@@ -526,6 +526,8 @@
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
+    <string name="show_achievement_popups">Показувати спливаючі вікна досягнень</string>
+    <string name="show_achievement_popups_description">Може спричинити проблеми з рендерингом або збої</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>

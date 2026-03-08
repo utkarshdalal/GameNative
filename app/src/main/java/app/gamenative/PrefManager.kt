@@ -304,6 +304,13 @@ object PrefManager {
             setPref(STEAM_OFFLINE_MODE, value)
         }
 
+    private val SHOW_ACHIEVEMENT_POPUPS = booleanPreferencesKey("show_achievement_popups")
+    var showAchievementPopups: Boolean
+        get() = getPref(SHOW_ACHIEVEMENT_POPUPS, false)
+        set(value) {
+            setPref(SHOW_ACHIEVEMENT_POPUPS, value)
+        }
+
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
         get() = getPref(USE_LEGACY_DRM, false)

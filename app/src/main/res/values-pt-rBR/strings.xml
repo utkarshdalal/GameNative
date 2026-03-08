@@ -367,6 +367,8 @@
     <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
+    <string name="show_achievement_popups">Mostrar popups de conquistas</string>
+    <string name="show_achievement_popups_description">Pode causar problemas de renderização ou travamentos</string>
     <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>

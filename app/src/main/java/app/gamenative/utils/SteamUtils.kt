@@ -955,6 +955,18 @@ object SteamUtils {
             }
         }
 
+        val showAchievementPopups = container.getExtra("showAchievementPopups", "false").toBoolean()
+        val overlayIni = settingsDir.resolve("configs.overlay.ini")
+        if (showAchievementPopups) {
+            val overlayContent = buildString {
+                appendLine("[overlay::general]")
+                appendLine("enable_experimental_overlay=1")
+            }
+            if (Files.notExists(overlayIni)) Files.createFile(overlayIni)
+            overlayIni.toFile().writeText(overlayContent)
+        } else if (Files.exists(overlayIni)) {
+            Files.delete(overlayIni)
+        }
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")

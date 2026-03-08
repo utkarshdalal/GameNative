@@ -543,6 +543,8 @@
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
+    <string name="show_achievement_popups">Pokaż wyskakujące okna osiągnięć</string>
+    <string name="show_achievement_popups_description">Może powodować problemy z renderowaniem lub awarie</string>
     <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>

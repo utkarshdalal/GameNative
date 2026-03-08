@@ -580,6 +580,8 @@
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
+    <string name="show_achievement_popups">Show Achievement Popups</string>
+    <string name="show_achievement_popups_description">May cause rendering issues or crashes</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>

@@ -2126,18 +2126,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                     return@async
                 }
 
-                try {
-                    syncAchievementsFromGoldberg(context, appId)
-                } catch (e: Exception) {
-                    Timber.e(e, "Achievement sync failed for appId=$appId, continuing with cloud save sync")
-                }
-
                 if (!tryAcquireSync(appId)) {
                     Timber.w("Cannot close app when sync already in progress for appId=$appId")
                     return@async
                 }
 
                 try {
+                    try {
+                        syncAchievementsFromGoldberg(context, appId)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Achievement sync failed for appId=$appId, continuing with cloud save sync")
+                    }
+
                     val maxAttempts = 3
                     for (attempt in 1..maxAttempts) {
                         try {
@@ -2638,10 +2638,21 @@ class SteamService : Service(), IChallengeUrlChanged {
                 imageFs.rootDir,
                 "${ImageFs.WINEPREFIX}/drive_c/users/xuser/AppData/Roaming/GSE Saves/$appId"
             )
-            val goldbergAchFile = File(gseSavesDir, "achievements.json")
+            var goldbergAchFile = File(gseSavesDir, "achievements.json")
             if (!goldbergAchFile.exists()) {
-                Timber.d("No Goldberg achievements.json found at ${goldbergAchFile.absolutePath} for appId=$appId")
-                return
+                Timber.d("No Goldberg achievements.json at ${goldbergAchFile.absolutePath}, checking userdata path")
+                val accountId = userSteamId?.accountID?.toInt()
+                if (accountId != null) {
+                    val userdataDir = File(
+                        imageFs.rootDir,
+                        "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
+                    )
+                    goldbergAchFile = File(userdataDir, "achievements.json")
+                }
+                if (!goldbergAchFile.exists()) {
+                    Timber.d("No Goldberg achievements.json found for appId=$appId")
+                    return
+                }
             }
 
             val unlockedNames = mutableSetOf<String>()
@@ -2670,12 +2681,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             Timber.i("Found ${unlockedNames.size} earned achievements for appId=$appId, syncing to Steam")
-            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames)
-            result.onSuccess {
-                Timber.i("Successfully synced achievements to Steam for appId=$appId")
-            }.onFailure { e ->
-                Timber.e(e, "Failed to sync achievements to Steam for appId=$appId")
-            }
+//            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames)
+//            result.onSuccess {
+//                Timber.i("Successfully synced achievements to Steam for appId=$appId")
+//            }.onFailure { e ->
+//                Timber.e(e, "Failed to sync achievements to Steam for appId=$appId")
+//            }
         }
 
         private fun findSteamSettingsDir(context: Context, appId: Int): String? {
@@ -2739,7 +2750,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 blockBitmasks[blockId] = current or (1 shl bitIndex)
             }
             val statsToStore = blockBitmasks.map { (id, mask) -> Stats(statId = id, statValue = mask) }
-            val callback = instance?._steamUserStats!!.storeUserStats(appId, statsToStore).await()
+            Timber.d("storeUserStats: appId=$appId, crcStats=${userStats.crcStats}, stats=$statsToStore")
+            val mySteamId = steamUser.steamID!!
+            val callback = instance?._steamUserStats!!.storeUserStats(
+                appId, statsToStore, mySteamId, mySteamId, userStats.crcStats
+            ).await()
             if (callback.result != EResult.OK) {
                 throw IllegalStateException("storeUserStats failed: ${callback.result}")
             }

@@ -535,6 +535,8 @@
 	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
+	<string name="show_achievement_popups">Afișează popup-uri realizări</string>
+	<string name="show_achievement_popups_description">Poate cauza probleme de randare sau blocări</string>
 	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>

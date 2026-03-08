@@ -530,6 +530,8 @@
     <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
+    <string name="show_achievement_popups">Afficher les popups de succès</string>
+    <string name="show_achievement_popups_description">Peut causer des problèmes de rendu ou des plantages</string>
     <string name="launch_steam_client_description">Réduit les performances et ralentit le lancement\nPermet le jeu en ligne et corrige les problèmes de DRM et de contrôleur\nTous les jeux ne fonctionnent pas</string>
     <string name="allow_steam_updates">Autoriser les mises à jour Steam</string>
     <string name="allow_steam_updates_description">Met à jour Steam vers la dernière version. Réduit considérablement les performances.</string>
