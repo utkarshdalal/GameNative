@@ -247,13 +247,7 @@ class PerformanceHudView(
         return readTemperatureC(
             discoverThermalZoneTempPaths { type ->
                 type.contains("cpu") || type.contains("tsens")
-            } + listOf(
-                "/sys/class/thermal/thermal_zone0/temp",
-                "/sys/class/thermal/thermal_zone1/temp",
-                "/sys/class/thermal/thermal_zone7/temp",
-                "/sys/class/thermal/thermal_zone10/temp",
-                "/sys/class/thermal/thermal_zone11/temp",
-            ),
+            },
         )
     }
 
@@ -262,8 +256,7 @@ class PerformanceHudView(
             listOf("/sys/class/kgsl/kgsl-3d0/temp") +
                 discoverThermalZoneTempPaths { type ->
                     type.contains("gpu") || type.contains("kgsl")
-                } +
-                listOf("/sys/class/thermal/thermal_zone11/temp"),
+                },
         )
     }
 
