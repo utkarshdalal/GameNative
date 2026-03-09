@@ -87,6 +87,10 @@ public class FrameRating extends FrameLayout implements Runnable {
         frameCount++;
     }
 
+    public float getCurrentFPS() {
+        return lastFPS;
+    }
+
     public float getAvgFPS() {
         if (readingCount == 0) return 0;
         return (float) fpsSum / readingCount;

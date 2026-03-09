@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.view.Display
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -79,6 +80,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.data.XServerState
+import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -350,6 +352,47 @@ fun XServerScreen(
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
+    var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
+
+    fun removePerformanceHud() {
+        performanceHudView?.let { hud ->
+            (hud.parent as? ViewGroup)?.removeView(hud)
+        }
+        performanceHudView = null
+    }
+
+    fun updatePerformanceHud(show: Boolean) {
+        if (!show) {
+            removePerformanceHud()
+            return
+        }
+        if (performanceHudView != null) {
+            return
+        }
+
+        var parent = xServerView?.parent as? ViewGroup
+        while (parent != null && parent !is FrameLayout) {
+            parent = parent.parent as? ViewGroup
+        }
+        val targetLayout = parent as? FrameLayout ?: return
+        val margin = (12 * context.resources.displayMetrics.density).toInt()
+
+        val hud = PerformanceHudView(context) {
+            frameRating?.currentFPS ?: 0f
+        }
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            marginStart = margin
+            topMargin = margin
+        }
+
+        targetLayout.addView(hud, layoutParams)
+        hud.bringToFront()
+        performanceHudView = hud
+    }
 
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
@@ -617,6 +660,15 @@ fun XServerScreen(
                 showPhysicalControllerDialog = true
             }
 
+            QuickMenuAction.PERFORMANCE_HUD -> {
+                val enabled = performanceHudView == null
+                updatePerformanceHud(enabled)
+                PostHog.capture(
+                    event = "performance_hud_toggled",
+                    properties = mapOf("enabled" to enabled),
+                )
+            }
+
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
@@ -673,6 +725,7 @@ fun XServerScreen(
         registerBackAction(gameBack)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
+            removePerformanceHud()
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
             if (!SteamService.keepAlive) {
@@ -1312,6 +1365,7 @@ fun XServerScreen(
         },
         onRelease = { view ->
             gameRoot = null
+            removePerformanceHud()
             // Remove the WindowManager listener to prevent duplicates on AndroidView recreation
             windowModificationListener?.let { listener ->
                 xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
