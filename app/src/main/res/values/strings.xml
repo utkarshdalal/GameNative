@@ -208,6 +208,7 @@
     <string name="exit">Exit Game</string>
     <string name="keyboard">Keyboard</string>
     <string name="resume_game">Resume Game</string>
+    <string name="resume_game_hint">Tap, press A, or press Start to resume</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Clear Search</string>
     <string name="buttons">Buttons</string>

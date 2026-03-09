@@ -1451,21 +1451,30 @@ fun XServerScreen(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(
-                            color = androidx.compose.ui.graphics.Color.White,
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                        )
-                        .clickable(onClick = ::resumeFromManualButton),
-                    contentAlignment = Alignment.Center,
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.resume_game),
-                        tint = androidx.compose.ui.graphics.Color.Black,
-                        modifier = Modifier.size(40.dp),
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(
+                                color = androidx.compose.ui.graphics.Color.White,
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                            )
+                            .clickable(onClick = ::resumeFromManualButton),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = stringResource(R.string.resume_game),
+                            tint = androidx.compose.ui.graphics.Color.Black,
+                            modifier = Modifier.size(40.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.resume_game_hint),
+                        color = androidx.compose.ui.graphics.Color.White,
                     )
                 }
             }
