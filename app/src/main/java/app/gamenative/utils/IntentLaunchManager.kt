@@ -110,12 +110,7 @@ object IntentLaunchManager {
 
             when {
                 override != null && baseConfig != null -> mergeConfigurations(baseConfig, override)
-                override != null -> override.copy(
-                    suspendPolicy = resolveSuspendPolicyOverride(
-                        overridePolicy = override.suspendPolicy,
-                        fallbackPolicy = PrefManager.suspendPolicy,
-                    ),
-                )
+                override != null -> override.withResolvedSuspendPolicy(PrefManager.suspendPolicy)
                 else -> baseConfig
             }
         } catch (e: Exception) {
@@ -152,14 +147,7 @@ object IntentLaunchManager {
     }
 
     fun getTemporaryOverride(appId: String): ContainerData? {
-        return TemporaryConfigStore.getOverride(appId)?.let { config ->
-            config.copy(
-                suspendPolicy = resolveSuspendPolicyOverride(
-                    overridePolicy = config.suspendPolicy,
-                    fallbackPolicy = PrefManager.suspendPolicy,
-                ),
-            )
-        }
+        return TemporaryConfigStore.getOverride(appId)?.withResolvedSuspendPolicy(PrefManager.suspendPolicy)
     }
 
     fun getOriginalConfig(appId: String): ContainerData? {
@@ -192,12 +180,17 @@ object IntentLaunchManager {
         return issues
     }
 
-    private fun resolveSuspendPolicyOverride(overridePolicy: String, fallbackPolicy: String): String =
-        if (overridePolicy == UNSET_SUSPEND_POLICY_OVERRIDE) {
-            Container.normalizeSuspendPolicy(fallbackPolicy)
+    private fun ContainerData.withResolvedSuspendPolicy(fallbackPolicy: String): ContainerData =
+        copy(suspendPolicy = resolveSuspendPolicyValue(suspendPolicy, fallbackPolicy))
+
+    private fun resolveSuspendPolicyValue(suspendPolicy: String, fallbackPolicy: String): String {
+        val resolvedPolicy = if (suspendPolicy == UNSET_SUSPEND_POLICY_OVERRIDE) {
+            fallbackPolicy
         } else {
-            Container.normalizeSuspendPolicy(overridePolicy)
+            suspendPolicy
         }
+        return Container.normalizeSuspendPolicy(resolvedPolicy)
+    }
 
     private fun parseContainerConfig(jsonString: String): ContainerData {
         if (jsonString.length > MAX_CONFIG_JSON_SIZE) {
@@ -255,8 +248,9 @@ object IntentLaunchManager {
                 1.toByte()
             },
             disableMouseInput = if (json.has("disableMouseInput")) json.getBoolean("disableMouseInput") else false,
+            // Preserve "omitted from intent" separately so it can inherit later.
             suspendPolicy = if (json.has("suspendPolicy")) {
-                Container.normalizeSuspendPolicy(json.getString("suspendPolicy"))
+                json.getString("suspendPolicy")
             } else {
                 UNSET_SUSPEND_POLICY_OVERRIDE
             },
@@ -341,7 +335,7 @@ object IntentLaunchManager {
             enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
             dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
             disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
-            suspendPolicy = resolveSuspendPolicyOverride(override.suspendPolicy, base.suspendPolicy),
+            suspendPolicy = resolveSuspendPolicyValue(override.suspendPolicy, base.suspendPolicy),
             shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
             useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,
         )
