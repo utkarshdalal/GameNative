@@ -361,14 +361,19 @@ public class ExternalController {
     }
 
     public static boolean isGameController(InputDevice device) {
-        if (device == null) {
-            return false;
-        }
+        if (device == null) return false;
+        if (device.isVirtual()) return false;
+
         int sources = device.getSources();
-        if (device.isVirtual()) {
-            return false;
-    }
-        return (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+
+        boolean isGamepad = (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD;
+        boolean isJoystick = (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+
+        if (device.getKeyboardType() != InputDevice.KEYBOARD_TYPE_NONE) {
+            isJoystick = false;
+        }
+
+        return isGamepad || isJoystick;
     }
 
     public static float getCenteredAxis(MotionEvent event, int axis, int historyPos) {
