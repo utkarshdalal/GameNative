@@ -213,11 +213,9 @@ class MainViewModel @Inject constructor(
         }
 
         // Determine initial connection state based on service state
-        // On app startup, Steam service is starting to connect, so default to CONNECTING
-        // Only use DISCONNECTED after an actual disconnect event occurs
         val initialConnectionState = when {
             SteamService.isConnected -> ConnectionState.CONNECTED
-            else -> ConnectionState.CONNECTING // Service is starting up or connecting
+            else -> ConnectionState.CONNECTING
         }
 
         _state.update {
