@@ -961,6 +961,8 @@ object SteamUtils {
             val overlayContent = buildString {
                 appendLine("[overlay::general]")
                 appendLine("enable_experimental_overlay=1")
+                appendLine("hook_delay_sec=3")
+                appendLine("renderer_detector_timeout_sec=25")
             }
             if (Files.notExists(overlayIni)) Files.createFile(overlayIni)
             overlayIni.toFile().writeText(overlayContent)
