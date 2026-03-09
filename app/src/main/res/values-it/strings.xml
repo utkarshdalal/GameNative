@@ -196,6 +196,7 @@
     <string name="exit_game">Esci</string>
     <string name="exit">Esci dal Gioco</string>
     <string name="keyboard">Tastiera</string>
+    <string name="resume_game">Riprendi il gioco</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Cancella Ricerca</string>
     <string name="buttons">Pulsanti</string>
@@ -678,6 +679,10 @@
     <string name="drive_letter">Lettera dell\'unità</string>
     <string name="no_available_drive_letters">Nessuna lettera di unità disponibile</string>
     <string name="startup_selection">Selezione Avvio</string>
+    <string name="suspend_behavior">Comportamento di sospensione</string>
+    <string name="suspend_behavior_auto">Sospendi e riprendi automaticamente</string>
+    <string name="suspend_behavior_never">Non sospendere mai</string>
+    <string name="suspend_behavior_manual">Sospendi finché non premi il pulsante Riprendi (predefinito)</string>
     <string name="processor_affinity_32bit">Affinità Processore (app 32-bit)</string>
     <string name="executable_path">Percorso Eseguibile</string>
     <string name="executable_path_placeholder">es. percorso\\a\\exe</string>

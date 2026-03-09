@@ -207,6 +207,7 @@
     <string name="exit_game">Salir</string>
     <string name="exit">Salir del juego</string>
     <string name="keyboard">Teclado</string>
+    <string name="resume_game">Reanudar juego</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Limpiar búsqueda</string>
     <string name="buttons">Botones</string>
@@ -694,6 +695,10 @@
     <string name="drive_letter">Letra de unidad</string>
     <string name="no_available_drive_letters">No hay letras de unidad disponibles.</string>
     <string name="startup_selection">Servicios de inicio</string>
+    <string name="suspend_behavior">Comportamiento de suspensión</string>
+    <string name="suspend_behavior_auto">Suspender y reanudar automáticamente</string>
+    <string name="suspend_behavior_never">Nunca suspender</string>
+    <string name="suspend_behavior_manual">Suspender hasta pulsar el botón Reanudar (predeterminado)</string>
     <string name="processor_affinity_32bit">Afinidad de procesador (apps de 32 bits)</string>
     <string name="executable_path">Ruta del ejecutable</string>
     <string name="executable_path_placeholder">p. ej., ruta\\al\\exe</string>

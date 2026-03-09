@@ -120,6 +120,7 @@
     <string name="exit_game">Afslut</string>
     <string name="exit">Afslut spil</string>
     <string name="keyboard">Tastatur</string>
+    <string name="resume_game">Genoptag spil</string>
     <string name="extra">Ekstra</string>
     <string name="clear_search">Ryd søgning</string>
     <string name="buttons">Knapper</string>
@@ -506,6 +507,10 @@
     <string name="drive_letter">Drevbogstav</string>
     <string name="no_available_drive_letters">Ingen tilgængelige drevbogstaver</string>
     <string name="startup_selection">Opstartsvalg</string>
+    <string name="suspend_behavior">Suspenderingsadfærd</string>
+    <string name="suspend_behavior_auto">Suspendér og genoptag automatisk</string>
+    <string name="suspend_behavior_never">Suspendér aldrig</string>
+    <string name="suspend_behavior_manual">Suspendér indtil knappen Genoptag trykkes (Standard)</string>
     <string name="processor_affinity_32bit">Processor-tilknytning (32-bit apps)</string>
     <string name="executable_path">Sti til eksekverbar fil</string>
     <string name="executable_path_placeholder">f.eks. sti\\til\\exe</string>

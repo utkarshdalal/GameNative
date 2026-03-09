@@ -191,6 +191,7 @@
     <string name="exit_game">退出</string>
     <string name="exit">退出游戏</string>
     <string name="keyboard">键盘</string>
+    <string name="resume_game">恢复游戏</string>
     <string name="extra">额外</string>
     <string name="clear_search">清除搜索</string>
     <string name="buttons">按钮</string>
@@ -678,6 +679,10 @@
     <string name="drive_letter">驱动器盘符</string>
     <string name="no_available_drive_letters">没有可用的驱动器盘符</string>
     <string name="startup_selection">启动选项</string>
+    <string name="suspend_behavior">挂起行为</string>
+    <string name="suspend_behavior_auto">挂起并自动恢复</string>
+    <string name="suspend_behavior_never">从不挂起</string>
+    <string name="suspend_behavior_manual">挂起直到按下“恢复游戏”按钮（默认）</string>
     <string name="processor_affinity_32bit">处理器关联性（32 位应用程序）</string>
     <string name="executable_path">执行路径</string>
     <string name="executable_path_placeholder">例如：path\\to\\exe</string>

@@ -204,6 +204,7 @@
     <string name="exit_game">Wyjdź</string>
     <string name="exit">Wyjdź z gry</string>
     <string name="keyboard">Klawiatura</string>
+    <string name="resume_game">Wznów grę</string>
     <string name="extra">Ekstra</string>
     <string name="clear_search">Wyczyść wyszukiwanie</string>
     <string name="buttons">Przyciski</string>
@@ -695,6 +696,10 @@
     <string name="drive_letter">Litera dysku</string>
     <string name="no_available_drive_letters">Brak dostępnych liter dysków</string>
     <string name="startup_selection">Wybór uruchamiania</string>
+    <string name="suspend_behavior">Zachowanie zawieszania</string>
+    <string name="suspend_behavior_auto">Zawieś i wznów automatycznie</string>
+    <string name="suspend_behavior_never">Nigdy nie zawieszaj</string>
+    <string name="suspend_behavior_manual">Zawieś do naciśnięcia przycisku Wznów (domyślne)</string>
     <string name="processor_affinity_32bit">Koligacja procesora (aplikacje 32-bitowe)</string>
     <string name="executable_path">Ścieżka do pliku wykonywalnego</string>
     <string name="executable_path_placeholder">np. ścieżka\\do\\exe</string>

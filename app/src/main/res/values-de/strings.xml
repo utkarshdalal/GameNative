@@ -185,6 +185,7 @@
     <string name="exit_game">Beenden</string>
     <string name="exit">Spiel beenden</string>
     <string name="keyboard">Tastatur</string>
+    <string name="resume_game">Spiel fortsetzen</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Suche leeren</string>
     <string name="buttons">Tasten</string>
@@ -654,6 +655,10 @@
     <string name="drive_letter">Laufwerksbuchstabe</string>
     <string name="no_available_drive_letters">Keine verfügbaren Laufwerksbuchstaben</string>
     <string name="startup_selection">Startauswahl</string>
+    <string name="suspend_behavior">Suspendierungsverhalten</string>
+    <string name="suspend_behavior_auto">Suspendieren und automatisch fortsetzen</string>
+    <string name="suspend_behavior_never">Niemals suspendieren</string>
+    <string name="suspend_behavior_manual">Suspendieren bis die Schaltfläche „Fortsetzen“ gedrückt wird (Standard)</string>
     <string name="processor_affinity_32bit">Prozessorbindung (32-Bit-Apps)</string>
     <string name="executable_path">Pfad zur Ausführbaren Datei</string>
     <string name="executable_path_placeholder">z.B. pfad\\zu\\exe</string>

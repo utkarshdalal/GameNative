@@ -194,6 +194,7 @@
     <string name="exit_game">Ieșire</string>
     <string name="exit">Ieșire din joc</string>
     <string name="keyboard">Tastatură</string>
+    <string name="resume_game">Reia jocul</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Șterge căutarea</string>
     <string name="buttons">Butoane</string>
@@ -687,6 +688,10 @@
 	<string name="drive_letter">Literă de unitate</string>
 	<string name="no_available_drive_letters">Nu există litere de unitate disponibile</string>
 	<string name="startup_selection">Selecție la pornire</string>
+	<string name="suspend_behavior">Comportament la suspendare</string>
+	<string name="suspend_behavior_auto">Suspendă și reia automat</string>
+	<string name="suspend_behavior_never">Nu suspenda niciodată</string>
+	<string name="suspend_behavior_manual">Suspendă până la apăsarea butonului Reia (implicit)</string>
 	<string name="processor_affinity_32bit">Afilieri procesor (aplicații 32-bit)</string>
 	<string name="executable_path">Cale executabil</string>
 	<string name="executable_path_placeholder">ex.: path\\to\\exe</string>

@@ -188,6 +188,7 @@
     <string name="exit_game">Вийти з гри</string>
     <string name="exit">Вийти</string>
     <string name="keyboard">Клавіатура</string>
+    <string name="resume_game">Продовжити гру</string>
     <string name="extra">Додатково</string>
     <string name="clear_search">Очистити пошук</string>
     <string name="buttons">Кнопки</string>
@@ -678,6 +679,10 @@
     <string name="drive_letter">Літера диска</string>
     <string name="no_available_drive_letters">Немає доступних літер дисків</string>
     <string name="startup_selection">Налаштування при запуску</string>
+    <string name="suspend_behavior">Поведінка при призупиненні</string>
+    <string name="suspend_behavior_auto">Призупиняти й автоматично відновлювати</string>
+    <string name="suspend_behavior_never">Ніколи не призупиняти</string>
+    <string name="suspend_behavior_manual">Призупиняти до натискання кнопки «Продовжити» (типово)</string>
     <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
     <string name="executable_path">Шлях .exe файлу</string>
     <string name="executable_path_placeholder">Наприклад path\\to\\exe</string>

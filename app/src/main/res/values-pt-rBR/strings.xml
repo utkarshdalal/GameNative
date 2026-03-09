@@ -120,6 +120,7 @@
     <string name="exit_game">Sair</string>
     <string name="exit">Sair do Jogo</string>
     <string name="keyboard">Teclado</string>
+    <string name="resume_game">Retomar jogo</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Limpar pesquisa</string>
     <string name="buttons">Botões</string>
@@ -506,6 +507,10 @@
     <string name="drive_letter">Letra da unidade</string>
     <string name="no_available_drive_letters">Nenhuma letra de unidade disponível</string>
     <string name="startup_selection">Seleção de Inicialização</string>
+    <string name="suspend_behavior">Comportamento de suspensão</string>
+    <string name="suspend_behavior_auto">Suspender e retomar automaticamente</string>
+    <string name="suspend_behavior_never">Nunca suspender</string>
+    <string name="suspend_behavior_manual">Suspender até o botão Retomar ser pressionado (Padrão)</string>
     <string name="processor_affinity_32bit">Afinidade de processador (apps 32-bit)</string>
     <string name="executable_path">Caminho Executável</string>
     <string name="executable_path_placeholder">ex.: caminho\\\\para\\\\exe</string>

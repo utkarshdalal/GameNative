@@ -205,6 +205,7 @@
     <string name="exit_game">종료</string>
     <string name="exit">게임 종료</string>
     <string name="keyboard">키보드</string>
+    <string name="resume_game">게임 재개</string>
     <string name="extra">추가</string>
     <string name="clear_search">검색 지우기</string>
     <string name="buttons">버튼</string>
@@ -696,6 +697,10 @@
     <string name="drive_letter">드라이브 문자</string>
     <string name="no_available_drive_letters">사용 가능한 드라이브 문자 없음</string>
     <string name="startup_selection">시작 선택</string>
+    <string name="suspend_behavior">일시 중단 동작</string>
+    <string name="suspend_behavior_auto">일시 중단 후 자동 재개</string>
+    <string name="suspend_behavior_never">일시 중단 안 함</string>
+    <string name="suspend_behavior_manual">재개 버튼을 누를 때까지 일시 중단(기본값)</string>
     <string name="processor_affinity_32bit">프로세서 선호도(32비트 앱)</string>
     <string name="executable_path">실행 파일 경로</string>
     <string name="executable_path_placeholder">예: path\\to\\exe</string>

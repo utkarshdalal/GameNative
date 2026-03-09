@@ -192,6 +192,7 @@
     <string name="exit_game">Quitter</string>
     <string name="exit">Quitter le jeu</string>
     <string name="keyboard">Clavier</string>
+    <string name="resume_game">Reprendre le jeu</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Effacer la recherche</string>
     <string name="buttons">Boutons</string>
@@ -682,6 +683,10 @@
     <string name="drive_letter">Lettre de lecteur</string>
     <string name="no_available_drive_letters">Aucune lettre de lecteur disponible</string>
     <string name="startup_selection">Sélection de démarrage</string>
+    <string name="suspend_behavior">Comportement de suspension</string>
+    <string name="suspend_behavior_auto">Suspendre et reprendre automatiquement</string>
+    <string name="suspend_behavior_never">Ne jamais suspendre</string>
+    <string name="suspend_behavior_manual">Suspendre jusqu\'à l\'appui sur le bouton Reprendre (par défaut)</string>
     <string name="processor_affinity_32bit">Affinité du processeur (apps 32 bits)</string>
     <string name="executable_path">Chemin de l\'exécutable</string>
     <string name="executable_path_placeholder">ex. : chemin\\vers\\exe</string>

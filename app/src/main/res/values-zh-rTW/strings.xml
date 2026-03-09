@@ -191,6 +191,7 @@
     <string name="exit_game">退出</string>
     <string name="exit">退出遊戲</string>
     <string name="keyboard">鍵盤</string>
+    <string name="resume_game">恢復遊戲</string>
     <string name="extra">額外</string>
     <string name="clear_search">清除搜尋</string>
     <string name="buttons">按鈕</string>
@@ -680,6 +681,10 @@
     <string name="drive_letter">磁碟機代號</string>
     <string name="no_available_drive_letters">沒有可用的磁碟機代號</string>
     <string name="startup_selection">啟動選項</string>
+    <string name="suspend_behavior">掛起行為</string>
+    <string name="suspend_behavior_auto">掛起並自動恢復</string>
+    <string name="suspend_behavior_never">永不掛起</string>
+    <string name="suspend_behavior_manual">掛起直到按下「恢復遊戲」按鈕（預設）</string>
     <string name="processor_affinity_32bit">處理器關聯 (32 位元應用程式)</string>
     <string name="executable_path">執行路徑</string>
     <string name="executable_path_placeholder">e.g., path\\to\\exe</string>
