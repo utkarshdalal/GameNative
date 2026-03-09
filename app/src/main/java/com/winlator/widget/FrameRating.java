@@ -87,6 +87,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         frameCount++;
     }
 
+    /** Returns the most recent measured FPS value for the active session. */
     public float getCurrentFPS() {
         return lastFPS;
     }

@@ -7,20 +7,35 @@ import android.content.IntentFilter
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
-import android.os.Handler
-import android.os.Looper
 import android.util.TypedValue
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.io.File
+import java.util.Locale
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+/**
+ * Lightweight floating HUD shown above the in-game surface.
+ *
+ * Metric collection runs off the main thread and rows are hidden automatically
+ * when a given stat is not available on the current device.
+ */
 class PerformanceHudView(
     context: Context,
     private val fpsProvider: () -> Float,
 ) : FrameLayout(context) {
-    private val handler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var updateJob: Job? = null
 
     private val fpsText = createRow(0xFF4CAF50.toInt())
     private val cpuText = createRow(0xFF42A5F5.toInt())
@@ -33,13 +48,6 @@ class PerformanceHudView(
 
     private var lastCpuTotal: Long? = null
     private var lastCpuIdle: Long? = null
-
-    private val updateRunnable = object : Runnable {
-        override fun run() {
-            updateStats()
-            handler.postDelayed(this, UPDATE_INTERVAL_MS)
-        }
-    }
 
     init {
         val background = GradientDrawable().apply {
@@ -71,23 +79,64 @@ class PerformanceHudView(
         ).forEach(container::addView)
 
         addView(container)
-        handler.post(updateRunnable)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        startUpdates()
     }
 
     override fun onDetachedFromWindow() {
-        handler.removeCallbacks(updateRunnable)
+        stopUpdates()
         super.onDetachedFromWindow()
     }
 
-    private fun updateStats() {
-        fpsText.text = "FPS ${String.format("%.1f", fpsProvider().coerceAtLeast(0f))}"
-        updateRow(cpuText, readCpuUsagePercent()?.let { "CPU $it%" })
-        updateRow(gpuText, readGpuUsagePercent()?.let { "GPU $it%" })
-        ramText.text = "RAM ${readUsedRamText()}"
-        updateRow(batteryText, readBatteryPercent()?.let { "BAT $it%" })
-        updateRow(powerText, readPowerWatts()?.let { watts -> "PWR ${String.format("%.1fW", watts)}" })
-        updateRow(cpuTempText, readCpuTempC()?.let { "CPU TEMP ${it}°C" })
-        updateRow(gpuTempText, readGpuTempC()?.let { "GPU TEMP ${it}°C" })
+    private fun startUpdates() {
+        if (updateJob?.isActive == true) {
+            return
+        }
+
+        updateJob = scope.launch {
+            while (isActive) {
+                val currentFps = fpsProvider().coerceAtLeast(0f)
+                val snapshot = withContext(Dispatchers.IO) {
+                    collectSnapshot(currentFps)
+                }
+                renderSnapshot(snapshot)
+                delay(UPDATE_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun stopUpdates() {
+        updateJob?.cancel()
+        updateJob = null
+    }
+
+    private fun collectSnapshot(currentFps: Float): HudSnapshot {
+        return HudSnapshot(
+            fps = String.format(Locale.US, "FPS %.1f", currentFps),
+            cpu = readCpuUsagePercent()?.let { "CPU $it%" },
+            gpu = readGpuUsagePercent()?.let { "GPU $it%" },
+            ram = "RAM ${readUsedRamText()}",
+            battery = readBatteryPercent()?.let { "BAT $it%" },
+            power = readPowerWatts()?.let { watts ->
+                String.format(Locale.US, "PWR %.1fW", watts)
+            },
+            cpuTemp = readCpuTempC()?.let { "CPU TEMP ${it}°C" },
+            gpuTemp = readGpuTempC()?.let { "GPU TEMP ${it}°C" },
+        )
+    }
+
+    private fun renderSnapshot(snapshot: HudSnapshot) {
+        fpsText.text = snapshot.fps
+        updateRow(cpuText, snapshot.cpu)
+        updateRow(gpuText, snapshot.gpu)
+        ramText.text = snapshot.ram
+        updateRow(batteryText, snapshot.battery)
+        updateRow(powerText, snapshot.power)
+        updateRow(cpuTempText, snapshot.cpuTemp)
+        updateRow(gpuTempText, snapshot.gpuTemp)
     }
 
     private fun updateRow(view: TextView, text: String?) {
@@ -165,7 +214,7 @@ class PerformanceHudView(
         val usedBytes = (info.totalMem - info.availMem).coerceAtLeast(0L)
         val usedGb = usedBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
         return if (usedGb >= 1.0) {
-            String.format("%.1fGB", usedGb)
+            String.format(Locale.US, "%.1fGB", usedGb)
         } else {
             val usedMb = usedBytes / (1024L * 1024L)
             "${usedMb}MB"
@@ -196,7 +245,9 @@ class PerformanceHudView(
 
     private fun readCpuTempC(): Int? {
         return readTemperatureC(
-            listOf(
+            discoverThermalZoneTempPaths { type ->
+                type.contains("cpu") || type.contains("tsens")
+            } + listOf(
                 "/sys/class/thermal/thermal_zone0/temp",
                 "/sys/class/thermal/thermal_zone1/temp",
                 "/sys/class/thermal/thermal_zone7/temp",
@@ -208,15 +259,31 @@ class PerformanceHudView(
 
     private fun readGpuTempC(): Int? {
         return readTemperatureC(
-            listOf(
-                "/sys/class/kgsl/kgsl-3d0/temp",
-                "/sys/class/thermal/thermal_zone11/temp",
-            ),
+            listOf("/sys/class/kgsl/kgsl-3d0/temp") +
+                discoverThermalZoneTempPaths { type ->
+                    type.contains("gpu") || type.contains("kgsl")
+                } +
+                listOf("/sys/class/thermal/thermal_zone11/temp"),
         )
     }
 
+    private fun discoverThermalZoneTempPaths(matches: (String) -> Boolean): List<String> {
+        val thermalDir = File("/sys/class/thermal")
+        val zones = thermalDir.listFiles { file ->
+            file.isDirectory && file.name.startsWith("thermal_zone")
+        } ?: return emptyList()
+
+        return zones.mapNotNull { zone ->
+            val type = readFirstLine(File(zone, "type").path)?.trim()?.lowercase(Locale.US) ?: return@mapNotNull null
+            if (!matches(type)) {
+                return@mapNotNull null
+            }
+            File(zone, "temp").path
+        }
+    }
+
     private fun readTemperatureC(paths: List<String>): Int? {
-        for (path in paths) {
+        for (path in paths.distinct()) {
             val raw = readFirstLine(path)?.trim()?.toIntOrNull() ?: continue
             val celsius = if (raw > 1000) raw / 1000 else raw
             if (celsius in 1..150) {
@@ -228,7 +295,7 @@ class PerformanceHudView(
 
     private fun readFirstLine(path: String): String? {
         return try {
-            java.io.File(path).bufferedReader().use { it.readLine() }
+            File(path).bufferedReader().use { it.readLine() }
         } catch (_: Exception) {
             null
         }
@@ -236,6 +303,17 @@ class PerformanceHudView(
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
+
+    private data class HudSnapshot(
+        val fps: String,
+        val cpu: String?,
+        val gpu: String?,
+        val ram: String,
+        val battery: String?,
+        val power: String?,
+        val cpuTemp: String?,
+        val gpuTemp: String?,
+    )
 
     private companion object {
         const val UPDATE_INTERVAL_MS = 1_000L

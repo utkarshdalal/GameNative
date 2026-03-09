@@ -353,6 +353,7 @@ fun XServerScreen(
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
     var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
+    var performanceHudHost by remember { mutableStateOf<FrameLayout?>(null) }
 
     fun removePerformanceHud() {
         performanceHudView?.let { hud ->
@@ -370,11 +371,7 @@ fun XServerScreen(
             return
         }
 
-        var parent = xServerView?.parent as? ViewGroup
-        while (parent != null && parent !is FrameLayout) {
-            parent = parent.parent as? ViewGroup
-        }
-        val targetLayout = parent as? FrameLayout ?: return
+        val targetLayout = performanceHudHost ?: return
         val margin = (12 * context.resources.displayMetrics.density).toInt()
 
         val hud = PerformanceHudView(context) {
@@ -726,6 +723,7 @@ fun XServerScreen(
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
             removePerformanceHud()
+            performanceHudHost = null
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
             if (!SteamService.keepAlive) {
@@ -877,6 +875,7 @@ fun XServerScreen(
             } else {
                 mainRoot as FrameLayout
             }
+            performanceHudHost = frameLayout
             val appId = appId
             val existingXServer =
                 PluviaApp.xEnvironment
@@ -1366,6 +1365,7 @@ fun XServerScreen(
         onRelease = { view ->
             gameRoot = null
             removePerformanceHud()
+            performanceHudHost = null
             // Remove the WindowManager listener to prevent duplicates on AndroidView recreation
             windowModificationListener?.let { listener ->
                 xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
