@@ -476,9 +476,14 @@ fun XServerScreen(
         if (!keyboardRequestedFromOverlay) {
             imeInputReceiver?.hideKeyboard()
         }
+        val resumeImmediatelyForKeyboard = keyboardRequestedFromOverlay && manualResumeMode
         keyboardRequestedFromOverlay = false
         if (!keepPausedForEditor) {
-            resumeIfAllowedAfterOverlay()
+            if (resumeImmediatelyForKeyboard) {
+                forceResumeIfSuspended()
+            } else {
+                resumeIfAllowedAfterOverlay()
+            }
         }
         showQuickMenu = false
     }
