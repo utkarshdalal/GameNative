@@ -21,7 +21,6 @@ object IntentLaunchManager {
     private const val EXTRA_CONTAINER_CONFIG = "container_config"
     private const val ACTION_LAUNCH_GAME = "app.gamenative.LAUNCH_GAME"
     private const val MAX_CONFIG_JSON_SIZE = 50000 // 50KB limit to prevent memory exhaustion
-    private const val UNSET_SUSPEND_POLICY_OVERRIDE = "__intent_suspend_policy_unset__"
 
     data class LaunchRequest(
         val appId: String,
@@ -110,7 +109,7 @@ object IntentLaunchManager {
 
             when {
                 override != null && baseConfig != null -> mergeConfigurations(baseConfig, override)
-                override != null -> override.withResolvedSuspendPolicy(PrefManager.suspendPolicy)
+                override != null -> override
                 else -> baseConfig
             }
         } catch (e: Exception) {
@@ -147,7 +146,7 @@ object IntentLaunchManager {
     }
 
     fun getTemporaryOverride(appId: String): ContainerData? {
-        return TemporaryConfigStore.getOverride(appId)?.withResolvedSuspendPolicy(PrefManager.suspendPolicy)
+        return TemporaryConfigStore.getOverride(appId)
     }
 
     fun getOriginalConfig(appId: String): ContainerData? {
@@ -178,18 +177,6 @@ object IntentLaunchManager {
         }
 
         return issues
-    }
-
-    private fun ContainerData.withResolvedSuspendPolicy(fallbackPolicy: String): ContainerData =
-        copy(suspendPolicy = resolveSuspendPolicyValue(suspendPolicy, fallbackPolicy))
-
-    private fun resolveSuspendPolicyValue(suspendPolicy: String, fallbackPolicy: String): String {
-        val resolvedPolicy = if (suspendPolicy == UNSET_SUSPEND_POLICY_OVERRIDE) {
-            fallbackPolicy
-        } else {
-            suspendPolicy
-        }
-        return Container.normalizeSuspendPolicy(resolvedPolicy)
     }
 
     private fun parseContainerConfig(jsonString: String): ContainerData {
@@ -248,11 +235,10 @@ object IntentLaunchManager {
                 1.toByte()
             },
             disableMouseInput = if (json.has("disableMouseInput")) json.getBoolean("disableMouseInput") else false,
-            // Preserve "omitted from intent" separately so it can inherit later.
             suspendPolicy = if (json.has("suspendPolicy")) {
-                json.getString("suspendPolicy")
+                Container.normalizeSuspendPolicy(json.getString("suspendPolicy"))
             } else {
-                UNSET_SUSPEND_POLICY_OVERRIDE
+                PrefManager.suspendPolicy
             },
             shaderBackend = if (json.has("shaderBackend")) json.getString("shaderBackend") else "glsl",
             useGLSL = if (json.has("useGLSL")) json.getString("useGLSL") else "enabled",
@@ -335,7 +321,7 @@ object IntentLaunchManager {
             enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
             dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
             disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
-            suspendPolicy = resolveSuspendPolicyValue(override.suspendPolicy, base.suspendPolicy),
+            suspendPolicy = base.suspendPolicy,
             shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
             useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,
         )
