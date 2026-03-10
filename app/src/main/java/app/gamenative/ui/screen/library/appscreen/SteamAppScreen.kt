@@ -281,20 +281,6 @@ class SteamAppScreen : BaseAppScreen() {
             return knownConfigInstallStates[gameId]
         }
 
-        private val importConfigRequests = mutableStateMapOf<Int, Boolean>()
-
-        fun requestImportConfig(gameId: Int) {
-            importConfigRequests[gameId] = true
-        }
-
-        fun clearImportConfigRequest(gameId: Int) {
-            importConfigRequests.remove(gameId)
-        }
-
-        fun shouldImportConfig(gameId: Int): Boolean {
-            return importConfigRequests[gameId] == true
-        }
-
         private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
 
         fun showGameManagerDialog(gameId: Int, state: GameManagerDialogState) {
@@ -755,27 +741,6 @@ class SteamAppScreen : BaseAppScreen() {
         )
     }
 
-    /**
-     * Add Steam-specific menu options (Reset DRM, Verify Files, Update)
-     */
-    @Composable
-    override fun getConfigMenuOptions(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): List<AppMenuOption> {
-        val exportOption = getExportConfigOption(context, libraryItem)
-        val gameId = libraryItem.gameId
-        return buildList {
-            exportOption?.let { add(it) }
-            add(
-                AppMenuOption(
-                    AppOptionMenuType.ImportConfig,
-                    onClick = { requestImportConfig(gameId) },
-                )
-            )
-        }
-    }
-
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -1005,17 +970,6 @@ class SteamAppScreen : BaseAppScreen() {
                 }
         }
 
-        var importConfigRequested by remember(gameId) {
-            mutableStateOf(shouldImportConfig(gameId))
-        }
-
-        LaunchedEffect(gameId) {
-            snapshotFlow { shouldImportConfig(gameId) }
-                .collect { shouldRequest ->
-                    importConfigRequested = shouldRequest
-                }
-        }
-
         var gameManagerDialogState by remember(gameId) {
             mutableStateOf(getGameManagerDialogState(gameId) ?: GameManagerDialogState(false))
         }
@@ -1087,53 +1041,6 @@ class SteamAppScreen : BaseAppScreen() {
                 SnackbarManager.show(context.getString(R.string.steam_storage_permission_required))
                 hideInstallDialog(gameId)
                 hideGameManagerDialog(gameId)
-            }
-        }
-
-        val importConfigLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocument(),
-        ) { uri: Uri? ->
-            if (uri == null) {
-                clearImportConfigRequest(gameId)
-                return@rememberLauncherForActivityResult
-            }
-
-            scope.launch(Dispatchers.Main) {
-                try {
-                    SteamService.keepAlive = true
-                    val jsonText = withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                    }.orEmpty()
-                    if (jsonText.isBlank()) {
-                        SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
-                        return@launch
-                    }
-
-                    val configJson = Json.parseToJsonElement(jsonText).jsonObject
-                    val matchType = "exact_gpu_match"
-                    applyConfigForContainer(
-                        context,
-                        gameId,
-                        libraryItem.appId,
-                        configJson,
-                        matchType,
-                        scope,
-                    )
-                } catch (e: Exception) {
-                    Timber.w(e, "Failed to import config: ${e.message}")
-                    SnackbarManager.show(context.getString(R.string.best_config_apply_failed, e.message ?: "Unknown error"))
-                } finally {
-                    clearImportConfigRequest(gameId)
-                    SteamService.keepAlive = false
-                }
-            }
-        }
-
-        LaunchedEffect(importConfigRequested) {
-            if (importConfigRequested) {
-                importConfigLauncher.launch(
-                    arrayOf("application/json", "text/json", "text/plain")
-                )
             }
         }
 

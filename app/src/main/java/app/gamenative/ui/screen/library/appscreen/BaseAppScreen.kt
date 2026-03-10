@@ -55,6 +55,7 @@ abstract class BaseAppScreen {
     companion object {
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
         private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
+        private val importConfigRequests = mutableStateMapOf<String, Boolean>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
             installDialogStates[appId] = state
@@ -78,6 +79,18 @@ abstract class BaseAppScreen {
 
         fun shouldExportConfig(appId: String): Boolean {
             return exportConfigRequests[appId] == true
+        }
+
+        fun requestImportConfig(appId: String) {
+            importConfigRequests[appId] = true
+        }
+
+        fun clearImportConfigRequest(appId: String) {
+            importConfigRequests.remove(appId)
+        }
+
+        fun shouldImportConfig(appId: String): Boolean {
+            return importConfigRequests[appId] == true
         }
     }
 
@@ -282,6 +295,19 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getImportConfigOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ImportConfig,
+            onClick = {
+                requestImportConfig(libraryItem.appId)
+            },
+        )
+    }
+
     /**
      * Get config-related menu options (e.g. Export config, Import config).
      * By default returns only Export config when supported; sources can override
@@ -293,7 +319,10 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
         return if (supportsContainerConfig()) {
-            listOfNotNull(getExportConfigOption(context, libraryItem))
+            listOfNotNull(
+                getExportConfigOption(context, libraryItem),
+                getImportConfigOption(context, libraryItem),
+            )
         } else {
             emptyList()
         }
@@ -667,6 +696,47 @@ abstract class BaseAppScreen {
                 val gameName = displayInfo.name.ifBlank { "game" }
                 val suggestedFileName = "${gameName}_config.json"
                 exportConfigLauncher.launch(suggestedFileName)
+            }
+        }
+
+        var importConfigRequested by remember(appId) {
+            mutableStateOf(shouldImportConfig(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportConfig(appId) }
+                .collect { shouldRequest ->
+                    importConfigRequested = shouldRequest
+                }
+        }
+
+        val importConfigLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri == null) {
+                    clearImportConfigRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        ContainerConfigTransfer.importConfig(
+                            context = context,
+                            appId = appId,
+                            uri = uri,
+                        )
+                    } finally {
+                        clearImportConfigRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(importConfigRequested) {
+            if (importConfigRequested) {
+                importConfigLauncher.launch(
+                    arrayOf("application/json", "text/json", "text/plain"),
+                )
             }
         }
 
