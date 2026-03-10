@@ -94,6 +94,7 @@ public class InputControlsView extends View {
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
+        setDefaultFocusHighlightEnabled(false);
         setBackgroundColor(0x00000000);
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
