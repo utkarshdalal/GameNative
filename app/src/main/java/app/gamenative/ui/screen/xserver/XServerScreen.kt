@@ -2809,37 +2809,7 @@ private fun getRedistDirectory(
     }
 
     return RedistContext(commonRedistDir, driveLetter, guestProgramLauncherComponent)
-}
-
-/**
- * Installs OpenAL redistributables (oalinst.exe) (https://www.openal.org/)
- * Helps with 3D audio implementations between 2001-2010
- */
-private fun installOpenAL(context: RedistContext) {
-    val openalDir = File(context.commonRedistDir, "OpenAL")
-    if (!openalDir.exists() || !openalDir.isDirectory()) return
-
-    val openalInstaller = openalDir.walkTopDown()
-        .filter { it.isFile &&
-            (it.name.equals("oalinst.exe", ignoreCase = true) ||
-             it.name.startsWith("OpenAL", ignoreCase = true)) &&
-            it.name.endsWith(".exe", ignoreCase = true) }
-        .firstOrNull()
-
-    openalInstaller?.let { exeFile ->
-        try {
-            val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-            val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing OpenAL..."))
-            Timber.i("Installing OpenAL: $winePath")
-            val cmd = "wine $winePath /s && wineserver -k"
-            val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-            Timber.i("OpenAL installation output: $output")
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to install OpenAL ${exeFile.name}")
         }
-    }
-}
 
 private fun installXNAFramework(context: RedistContext) {
     val xnaDir = File(context.commonRedistDir, "xnafx")
@@ -2898,7 +2868,6 @@ private fun installRedistributables(
             return
         }
 
-        installOpenAL(redistContext)
         installXNAFramework(redistContext)
 
         Timber.tag("installRedist").i("Finished checking for redistributables")
