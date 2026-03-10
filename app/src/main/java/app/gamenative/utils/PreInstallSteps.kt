@@ -28,6 +28,7 @@ object PreInstallSteps {
         VcRedistStep,
         PhysXStep,
         OpenALStep,
+        XnaFrameworkStep,
         GogScriptInterpreterStep,
     )
 
