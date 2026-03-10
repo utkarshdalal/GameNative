@@ -125,6 +125,7 @@ internal fun winComponentsItemTitleRes(string: String): Int {
     return when (string) {
         "direct3d" -> R.string.direct3d
         "directsound" -> R.string.directsound
+        "directinput" -> R.string.directinput
         "directmusic" -> R.string.directmusic
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
@@ -1158,7 +1159,7 @@ private fun Preview_ContainerConfigDialog() {
             dxwrapper = "dxvk",
             dxwrapperConfig = "",
             audioDriver = "alsa",
-            wincomponents = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
+            wincomponents = "direct3d=1,directsound=1,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
             drives = "",
             execArgs = "",
             executablePath = "",
