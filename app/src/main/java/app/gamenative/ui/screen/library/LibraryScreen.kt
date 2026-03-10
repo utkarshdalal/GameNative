@@ -882,6 +882,7 @@ private fun LibraryScreenContent(
                         resultCount = state.totalAppsInFilter,
                         onScrollToTop = {
                             if (currentPaneType == PaneType.CAROUSEL) {
+                                carouselFocusTargetListIndex = 0
                                 carouselListState.scrollToItem(0)
                             } else {
                                 listState.scrollToItem(0)

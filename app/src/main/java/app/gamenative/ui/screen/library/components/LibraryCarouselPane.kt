@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -38,8 +42,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import app.gamenative.R
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.PaneType
@@ -80,6 +86,27 @@ private fun interpolateByDistance(
         else -> {
             val farProgress = (clampedDistance - 2f).coerceIn(0f, 1f)
             secondStepValue + (farValue - secondStepValue) * farProgress
+        }
+    }
+}
+
+@Composable
+private fun CarouselEmptyState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier.padding(horizontal = 24.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shadowElevation = 8.dp,
+        ) {
+            Text(
+                modifier = Modifier.padding(24.dp),
+                text = stringResource(R.string.library_no_items),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -396,6 +423,8 @@ internal fun LibraryCarouselPane(
                             }
                         }
                     }
+                } else {
+                    CarouselEmptyState()
                 }
             }
         }

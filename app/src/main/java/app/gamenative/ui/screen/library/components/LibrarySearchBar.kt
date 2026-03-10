@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -142,6 +143,8 @@ private fun SearchBarInput(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+    val currentOnSearchQuery = rememberUpdatedState(onSearchQuery)
+    val currentOnScrollToTop = rememberUpdatedState(onScrollToTop)
     var editTextRef by remember { mutableStateOf<EditText?>(null) }
     var isFocused by remember { mutableStateOf(false) }
 
@@ -151,9 +154,9 @@ private fun SearchBarInput(
     }
 
     val onSearchText: (String) -> Unit = { newText ->
-        onSearchQuery(newText)
+        currentOnSearchQuery.value(newText)
         scope.launch {
-            onScrollToTop()
+            currentOnScrollToTop.value()
         }
     }
 
