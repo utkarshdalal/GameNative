@@ -196,6 +196,7 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
+        setShowBootingSplash(true)
     }
 
     private var bootingSplashTimeoutJob: Job? = null

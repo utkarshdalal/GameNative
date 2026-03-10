@@ -370,6 +370,8 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ResetToDefaults,
             AppOptionMenuType.ResetDrm,
             AppOptionMenuType.UseKnownConfig,
+            AppOptionMenuType.ImportConfig,
+            AppOptionMenuType.ExportConfig,
             -> containerSettings.add(option)
 
             // Cloud Saves
@@ -384,8 +386,6 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.SubmitFeedback,
             AppOptionMenuType.FetchSteamGridDBImages,
             AppOptionMenuType.TestGraphics,
-            AppOptionMenuType.ImportConfig,
-            AppOptionMenuType.ExportConfig,
             AppOptionMenuType.ManageGameContent
             -> helpInfo.add(option)
         }

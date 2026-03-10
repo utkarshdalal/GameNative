@@ -2452,26 +2452,28 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 isLoggingOut = true
 
-                performLogOffDuties()
+                performLogOffDuties(clearCloudSyncState = true)
 
                 val steamUser = instance!!._steamUser!!
                 steamUser.logOff()
             }
         }
 
-        private fun clearUserData() {
+        private fun clearUserData(clearCloudSyncState: Boolean = false) {
             PrefManager.clearPreferences()
 
-            clearDatabase()
+            clearDatabase(clearCloudSyncState = clearCloudSyncState)
         }
 
-        fun clearDatabase() {
+        fun clearDatabase(clearCloudSyncState: Boolean = false) {
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
                         appDao.deleteAll()
-                        changeNumbersDao.deleteAll()
-                        fileChangeListsDao.deleteAll()
+                        if (clearCloudSyncState) {
+                            changeNumbersDao.deleteAll()
+                            fileChangeListsDao.deleteAll()
+                        }
                         licenseDao.deleteAll()
                         encryptedAppTicketDao.deleteAll()
                         downloadingAppInfoDao.deleteAll()
@@ -2480,10 +2482,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        private fun performLogOffDuties() {
+        private fun performLogOffDuties(clearCloudSyncState: Boolean = false) {
             val username = PrefManager.username
 
-            clearUserData()
+            clearUserData(clearCloudSyncState = clearCloudSyncState)
 
             val event = SteamEvent.LoggedOut(username)
             PluviaApp.events.emit(event)
@@ -2987,7 +2989,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         notificationHelper.notify("Disconnected...")
 
-        if (isLoggingOut || callback.result == EResult.LogonSessionReplaced) {
+        if (isLoggingOut) {
+            performLogOffDuties(clearCloudSyncState = true)
+
+            scope.launch { stop() }
+        } else if (callback.result == EResult.LogonSessionReplaced) {
             performLogOffDuties()
 
             scope.launch { stop() }

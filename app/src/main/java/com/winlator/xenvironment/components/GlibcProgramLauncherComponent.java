@@ -72,7 +72,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             extractBox64Files();
             copyDefaultBox64RCFile();
             if (preUnpack != null) preUnpack.run();
-            PluviaApp.events.emitJava(new AndroidEvent.SetBootingSplashText("Launching game..."));
             pid = execGuestProgram();
             Log.d("GlibcProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
