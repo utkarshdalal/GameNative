@@ -2841,29 +2841,6 @@ private fun installOpenAL(context: RedistContext) {
     }
 }
 
-private fun installPhysX(context: RedistContext) {
-    val physxDir = File(context.commonRedistDir, "PhysX")
-    if (physxDir.exists() && physxDir.isDirectory()) {
-        physxDir.walkTopDown()
-            .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
-                        it.name.endsWith(".msi", ignoreCase = true) }
-            .forEach { msiFile ->
-                try {
-                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                    val drive = context.driveLetter
-                    val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
-                    Timber.i("Installing PhysX: $winePath")
-                    val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                    Timber.i("PhysX installation output: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to install PhysX ${msiFile.name}")
-                }
-            }
-    }
-}
-
 private fun installXNAFramework(context: RedistContext) {
     val xnaDir = File(context.commonRedistDir, "xnafx")
     if (xnaDir.exists() && xnaDir.isDirectory()) {
@@ -2922,7 +2899,6 @@ private fun installRedistributables(
         }
 
         installOpenAL(redistContext)
-        installPhysX(redistContext)
         installXNAFramework(redistContext)
 
         Timber.tag("installRedist").i("Finished checking for redistributables")
