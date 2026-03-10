@@ -540,7 +540,6 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
-            menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
         }
 
         // Always available options
@@ -550,6 +549,13 @@ abstract class BaseAppScreen {
 
         // Add any source-specific options
         menuOptions.addAll(getSourceSpecificMenuOptions(context, libraryItem, onEditContainer, onBack, onClickPlay, isInstalled))
+
+        // Add config-related options (export/import) after source-specific options,
+        // so container-related items appear as:
+        // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
+        if (isInstalled) {
+            menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
+        }
 
         return menuOptions
     }
