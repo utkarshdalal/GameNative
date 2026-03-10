@@ -119,7 +119,9 @@ internal fun LibraryCarouselPane(
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-    carouselFocusRequester: FocusRequester? = null,
+    firstCarouselItemFocusRequester: FocusRequester? = null,
+    focusTargetListIndex: Int? = null,
+    onFocusedIndexChanged: (Int) -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val pullToRefreshState = rememberPullToRefreshState()
@@ -203,42 +205,7 @@ internal fun LibraryCarouselPane(
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .onPreviewKeyEvent { keyEvent ->
-                    if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) {
-                        return@onPreviewKeyEvent false
-                    }
-
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            if (centeredIndex > 0) {
-                                scope.launch {
-                                    listState.animateScrollToItem(centeredIndex - 1)
-                                }
-                            }
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            if (centeredIndex >= 0 && centeredIndex < state.appInfoList.lastIndex) {
-                                scope.launch {
-                                    listState.animateScrollToItem(centeredIndex + 1)
-                                }
-                            }
-                            true
-                        }
-
-                        else -> false
-                    }
-                }
-                .then(
-                    if (carouselFocusRequester != null) {
-                        Modifier.focusRequester(carouselFocusRequester)
-                    } else {
-                        Modifier
-                    }
-                )
-                .focusable(),
+                .padding(paddingValues),
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (state.appInfoList.isNotEmpty()) {
@@ -339,30 +306,24 @@ internal fun LibraryCarouselPane(
                             }
 
                             val appItemAlpha = if (isVisible) alpha else 0f
+                            val appItemModifier = Modifier
+                                .alpha(if (isCentered) 1f else 0.96f)
+                                .then(
+                                    if (firstCarouselItemFocusRequester != null &&
+                                        focusTargetListIndex != null &&
+                                        listIndex == focusTargetListIndex
+                                    ) {
+                                        Modifier.focusRequester(firstCarouselItemFocusRequester)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
 
                             Box(
                                 modifier = Modifier
                                     .zIndex(zOrder)
                                     .width(cardWidth)
                                     .height(cardHeight)
-                                    .then(
-                                        if (isCentered) {
-                                            Modifier.border(
-                                                BorderStroke(
-                                                    3.dp,
-                                                    Brush.verticalGradient(
-                                                        colors = listOf(
-                                                            MaterialTheme.colorScheme.primary,
-                                                            MaterialTheme.colorScheme.tertiary,
-                                                        ),
-                                                    ),
-                                                ),
-                                                RoundedCornerShape(12.dp),
-                                            )
-                                        } else {
-                                            Modifier
-                                        }
-                                    )
                                     .graphicsLayer {
                                         scaleX = scale
                                         scaleY = scale
@@ -376,15 +337,13 @@ internal fun LibraryCarouselPane(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 AppItem(
-                                    modifier = Modifier.alpha(if (isCentered) 1f else 0.96f),
+                                    modifier = appItemModifier,
                                     appInfo = item,
-                                    onClick = {
-                                        if (!isCentered) {
-                                            scope.launch {
-                                                listState.animateScrollToItem(listIndex)
-                                            }
-                                        } else {
-                                            onNavigate(item.appId)
+                                    onClick = { onNavigate(item.appId) },
+                                    onFocus = {
+                                        onFocusedIndexChanged(listIndex)
+                                        scope.launch {
+                                            listState.animateScrollToItem(listIndex)
                                         }
                                     },
                                     paneType = PaneType.GRID_CAPSULE,

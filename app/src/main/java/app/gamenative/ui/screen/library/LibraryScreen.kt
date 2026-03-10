@@ -287,6 +287,7 @@ private fun LibraryScreenContent(
     val gridFirstItemFocusRequester = remember { FocusRequester() }
     val carouselFocusRequester = remember { FocusRequester() }
     var gridFocusTargetListIndex by remember { mutableIntStateOf(0) }
+    var carouselFocusTargetListIndex by remember { mutableIntStateOf(0) }
     var pendingGridFocusRequest by remember { mutableStateOf(false) }
     var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
 
@@ -309,6 +310,12 @@ private fun LibraryScreenContent(
     fun firstVisibleContentIndex(): Int =
         listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
 
+    fun currentCarouselFocusTargetIndex(): Int =
+        carouselFocusTargetListIndex.coerceIn(0, state.appInfoList.lastIndex)
+
+    fun preferredContentFocusIndex(): Int =
+        if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
+
     fun requestGridFocusOrDefer() {
         if (state.appInfoList.isEmpty()) return
         try {
@@ -320,8 +327,9 @@ private fun LibraryScreenContent(
         }
     }
 
-    fun requestCarouselFocusOrDefer() {
+    fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
         if (state.appInfoList.isEmpty()) return
+        carouselFocusTargetListIndex = targetListIndex.coerceIn(0, state.appInfoList.lastIndex)
         try {
             carouselFocusRequester.requestFocus()
             pendingCarouselFocusRequest = false
@@ -331,10 +339,10 @@ private fun LibraryScreenContent(
         }
     }
 
-    fun requestContentFocusOrDefer(targetListIndex: Int = firstVisibleContentIndex()) {
+    fun requestContentFocusOrDefer(targetListIndex: Int = preferredContentFocusIndex()) {
         if (state.appInfoList.isEmpty()) return
         if (currentPaneType == PaneType.CAROUSEL) {
-            requestCarouselFocusOrDefer()
+            requestCarouselFocusOrDefer(targetListIndex)
         } else {
             gridFocusTargetListIndex = targetListIndex
             requestGridFocusOrDefer()
@@ -477,6 +485,7 @@ private fun LibraryScreenContent(
 
     LaunchedEffect(
         pendingCarouselFocusRequest,
+        carouselFocusTargetListIndex,
         state.appInfoList.size,
         selectedAppId,
         isSystemMenuOpen,
@@ -485,6 +494,9 @@ private fun LibraryScreenContent(
     ) {
         if (pendingCarouselFocusRequest && state.appInfoList.isNotEmpty()) {
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
+                if (listState.layoutInfo.visibleItemsInfo.none { it.index == carouselFocusTargetListIndex }) {
+                    listState.scrollToItem(carouselFocusTargetListIndex)
+                }
                 var retries = 0
                 while (pendingCarouselFocusRequest && retries < 8) {
                     try {
@@ -512,7 +524,7 @@ private fun LibraryScreenContent(
         val listBecameEmpty = previousAppCount > 0 && currentCount == 0
 
         if (listBecameNonEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
-            requestContentFocusOrDefer(firstVisibleContentIndex())
+            requestContentFocusOrDefer()
         }
         if (listBecameEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
             // Empty tabs can drop focused children; re-anchor focus at the root so bumper nav keeps working.
@@ -609,7 +621,7 @@ private fun LibraryScreenContent(
                     KeyEvent.KEYCODE_BUTTON_THUMBR,
                     -> {
                         if (canBootstrapContentFocus()) {
-                            requestContentFocusOrDefer(firstVisibleContentIndex())
+                            requestContentFocusOrDefer()
                             // Do not consume: let normal key routing continue after bootstrap.
                             false
                         } else {
@@ -638,7 +650,7 @@ private fun LibraryScreenContent(
                     kotlin.math.abs(leftY) >= 0.6f
 
                 if (isMoveLike && hasDirectionalAxis) {
-                    requestContentFocusOrDefer(firstVisibleContentIndex())
+                    requestContentFocusOrDefer()
                     // Do not consume: allow normal movement handling after bootstrap.
                     false
                 } else {
@@ -696,7 +708,7 @@ private fun LibraryScreenContent(
                         KeyEvent.KEYCODE_BUTTON_THUMBR,
                         -> {
                             if (canBootstrapContentFocus) {
-                                requestContentFocusOrDefer(firstVisibleContentIndex())
+                                requestContentFocusOrDefer()
                                 false
                             } else {
                                 false
@@ -707,7 +719,7 @@ private fun LibraryScreenContent(
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
                                 if (canBootstrapContentFocus) {
-                                    requestContentFocusOrDefer(firstVisibleContentIndex())
+                                    requestContentFocusOrDefer()
                                 }
                                 onPreviousTab()
                                 true
@@ -720,7 +732,7 @@ private fun LibraryScreenContent(
                         KeyEvent.KEYCODE_BUTTON_R1 -> {
                             if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
                                 if (canBootstrapContentFocus) {
-                                    requestContentFocusOrDefer(firstVisibleContentIndex())
+                                    requestContentFocusOrDefer()
                                 }
                                 onNextTab()
                                 true
@@ -815,7 +827,9 @@ private fun LibraryScreenContent(
                         },
                         onRefresh = onRefresh,
                         modifier = Modifier.fillMaxSize(),
-                        carouselFocusRequester = carouselFocusRequester,
+                        firstCarouselItemFocusRequester = carouselFocusRequester,
+                        focusTargetListIndex = carouselFocusTargetListIndex,
+                        onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
                     )
                 } else {
                     LibraryListPane(
@@ -868,7 +882,7 @@ private fun LibraryScreenContent(
                         onMenuClick = { isSystemMenuOpen = true },
                         onNavigateDownToGrid = {
                             if (state.appInfoList.isNotEmpty()) {
-                                requestContentFocusOrDefer(firstVisibleContentIndex())
+                                requestContentFocusOrDefer()
                             }
                         },
                         onPreviousTab = onPreviousTab,
