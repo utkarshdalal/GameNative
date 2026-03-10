@@ -461,105 +461,109 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun exitSteamApp(context: Context, appId: String) {
+    fun exitSteamApp(context: Context, appId: String, onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
-            Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
-            bootingSplashTimeoutJob?.cancel()
-            bootingSplashTimeoutJob = null
-            setShowBootingSplash(false)
-            // Check if we have a temporary override before doing anything
-            val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
-
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-            Timber.tag("Exit").i("Got game id: $gameId")
-            SteamService.notifyRunningProcesses()
-
-            // Check if this is a GOG or Epic game and sync cloud saves
-            val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-            if (gameSource == GameSource.GOG) {
-                Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
-                // Sync cloud saves (upload local changes to cloud)
-                // Run in background, don't block UI
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
-                        val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
-                            context = context,
-                            appId = appId,
-                            preferredAction = "upload",
-                        )
-                        if (syncSuccess) {
-                            Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
-                        } else {
-                            Timber.tag("GOG").w("[Cloud Saves] Upload sync failed for $appId")
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
-                    }
-                }
-            } else if (gameSource == GameSource.EPIC) {
-                Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
-                // Sync cloud saves (upload local changes to cloud)
-                // Run in background, don't block UI
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
-                        val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
-                            context = context,
-                            appId = gameId,
-                            preferredAction = "upload",
-                        )
-                        if (syncSuccess) {
-                            Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
-                        } else {
-                            Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
-                    }
-                }
-            } else {
-                // For Steam games, sync cloud saves
-                SteamService.closeApp(gameId, isOffline.value) { prefix ->
-                    PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                }.await()
-            }
-
-            // Prompt user to save temporary container configuration if one was applied
-            if (hadTemporaryOverride) {
-                PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(appId))
-                // Dialog handler in PluviaMain manages the save/discard logic
-            }
-
-            // After app closes, check if we need to show the feedback dialog
-            // Show feedback if: first time running this game OR config was changed
             try {
-                // Do not show the Feedback form for non-steam games until we can support.
+                Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
+                bootingSplashTimeoutJob?.cancel()
+                bootingSplashTimeoutJob = null
+                setShowBootingSplash(false)
+                // Check if we have a temporary override before doing anything
+                val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
+
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                Timber.tag("Exit").i("Got game id: $gameId")
+                SteamService.notifyRunningProcesses()
+
+                // Check if this is a GOG or Epic game and sync cloud saves
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                if (gameSource == GameSource.STEAM) {
-                    val container = ContainerUtils.getContainer(context, appId)
-
-                    val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
-                    val configChanged = container.getExtra("config_changed", "false") == "true"
-                    if (!shown) {
-                        container.putExtra("discord_support_prompt_shown", "true")
-                        container.saveData()
-                        _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                if (gameSource == GameSource.GOG) {
+                    Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
+                    // Sync cloud saves (upload local changes to cloud)
+                    // Run in background, don't block UI
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
+                            val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
+                                context = context,
+                                appId = appId,
+                                preferredAction = "upload",
+                            )
+                            if (syncSuccess) {
+                                Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
+                            } else {
+                                Timber.tag("GOG").w("[Cloud Saves] Upload sync failed for $appId")
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
+                        }
                     }
-
-                    // Only show feedback if container config was changed before this game run
-                    if (configChanged) {
-                        // Clear the flag
-                        container.putExtra("config_changed", "false")
-                        container.saveData()
-                        // Show the feedback dialog
-                        _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                } else if (gameSource == GameSource.EPIC) {
+                    Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
+                    // Sync cloud saves (upload local changes to cloud)
+                    // Run in background, don't block UI
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
+                            val syncSuccess = app.gamenative.service.epic.EpicCloudSavesManager.syncCloudSaves(
+                                context = context,
+                                appId = gameId,
+                                preferredAction = "upload",
+                            )
+                            if (syncSuccess) {
+                                Timber.tag("Epic").i("[Cloud Saves] Upload sync completed successfully for $gameId")
+                            } else {
+                                Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
+                        }
                     }
                 } else {
-                    Timber.d("Non-Steam Game Detected, not showing feedback")
+                    // For Steam games, sync cloud saves
+                    SteamService.closeApp(gameId, isOffline.value) { prefix ->
+                        PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                    }.await()
                 }
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to check/update feedback dialog state for $appId")
+
+                // Prompt user to save temporary container configuration if one was applied
+                if (hadTemporaryOverride) {
+                    PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(appId))
+                    // Dialog handler in PluviaMain manages the save/discard logic
+                }
+
+                // After app closes, check if we need to show the feedback dialog
+                // Show feedback if: first time running this game OR config was changed
+                try {
+                    // Do not show the Feedback form for non-steam games until we can support.
+                    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                    if (gameSource == GameSource.STEAM) {
+                        val container = ContainerUtils.getContainer(context, appId)
+
+                        val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
+                        val configChanged = container.getExtra("config_changed", "false") == "true"
+                        if (!shown) {
+                            container.putExtra("discord_support_prompt_shown", "true")
+                            container.saveData()
+                            _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                        }
+
+                        // Only show feedback if container config was changed before this game run
+                        if (configChanged) {
+                            // Clear the flag
+                            container.putExtra("config_changed", "false")
+                            container.saveData()
+                            // Show the feedback dialog
+                            _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                        }
+                    } else {
+                        Timber.d("Non-Steam Game Detected, not showing feedback")
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to check/update feedback dialog state for $appId")
+                }
+            } finally {
+                onComplete?.invoke()
             }
         }
     }
