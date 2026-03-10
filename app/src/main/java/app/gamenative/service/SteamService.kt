@@ -2987,9 +2987,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         notificationHelper.notify("Disconnected...")
 
-        if (isLoggingOut || callback.result == EResult.LogonSessionReplaced) {
+        if (isLoggingOut) {
             performLogOffDuties()
 
+            scope.launch { stop() }
+        } else if (callback.result == EResult.LogonSessionReplaced) {
+            Timber.w(
+                "Steam session was replaced unexpectedly; preserving cached credentials, library, and cloud sync metadata",
+            )
+
+            PluviaApp.events.emit(SteamEvent.Disconnected)
             scope.launch { stop() }
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
