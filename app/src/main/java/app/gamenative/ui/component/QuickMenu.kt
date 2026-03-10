@@ -95,6 +95,12 @@ fun QuickMenu(
 ) {
     val menuItems = buildList {
         add(QuickMenuItem(
+            id = QuickMenuAction.PERFORMANCE_HUD,
+            icon = Icons.Default.QueryStats,
+            labelResId = R.string.performance_hud,
+            accentColor = PluviaTheme.colors.accentWarning,
+        ))
+        add(QuickMenuItem(
             id = QuickMenuAction.KEYBOARD,
             icon = Icons.Default.Keyboard,
             labelResId = R.string.keyboard,
@@ -120,12 +126,6 @@ fun QuickMenu(
                 accentColor = PluviaTheme.colors.accentWarning,
             ))
         }
-        add(QuickMenuItem(
-            id = QuickMenuAction.PERFORMANCE_HUD,
-            icon = Icons.Default.QueryStats,
-            labelResId = R.string.performance_hud,
-            accentColor = PluviaTheme.colors.accentWarning,
-        ))
         add(QuickMenuItem(
             id = QuickMenuAction.EXIT_GAME,
             icon = Icons.AutoMirrored.Filled.ExitToApp,
