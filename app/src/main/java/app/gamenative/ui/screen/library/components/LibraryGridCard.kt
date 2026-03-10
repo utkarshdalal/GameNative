@@ -81,6 +81,10 @@ internal fun GridViewCard(
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
+    val isCapsule = paneType == PaneType.GRID_CAPSULE
+    val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
+    val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
+    val topIconPadding = if (isCapsule) 10.dp else 8.dp
     val glowColor = MaterialTheme.colorScheme.primary
 
     Box(
@@ -219,7 +223,7 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -248,7 +252,7 @@ internal fun GridViewCard(
                         showLabel = true,
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(4.dp),
+                            .padding(top = topOverlayPadding, start = topOverlayPadding),
                     )
                 }
 
@@ -257,7 +261,7 @@ internal fun GridViewCard(
                     gameSource = appInfo.gameSource,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp),
+                        .padding(top = topIconPadding, end = topIconPadding),
                     iconSize = 12,
                 )
             }
