@@ -27,6 +27,7 @@ object PreInstallSteps {
     private val steps: List<PreInstallStep> = listOf(
         VcRedistStep,
         PhysXStep,
+        OpenALStep,
         GogScriptInterpreterStep,
     )
 
