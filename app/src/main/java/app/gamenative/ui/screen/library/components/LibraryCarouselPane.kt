@@ -11,10 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -41,6 +40,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.util.AdaptivePadding
@@ -57,6 +57,8 @@ private const val CAROUSEL_SIDE_OFFSET_RATIO = 0.028464798f
 private const val CAROUSEL_STEP_OFFSET_RATIO = 0.08f
 private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
+private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 40f
+private const val CAROUSEL_BADGE_BOTTOM_PADDING = 8f
 
 private fun interpolateByDistance(
     distanceInSteps: Float,
@@ -86,7 +88,7 @@ private fun interpolateByDistance(
 @Composable
 internal fun LibraryCarouselPane(
     state: LibraryState,
-    listState: LazyGridState,
+    listState: LazyListState,
     onPageChange: (Int) -> Unit,
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -112,15 +114,19 @@ internal fun LibraryCarouselPane(
     }
     val baseCardHeight = baseCardWidth / CAROUSEL_CARD_ASPECT_RATIO
     val cardVerticalOverflow = CAROUSEL_CARD_VERTICAL_OVERFLOW.dp
+    val badgeReservedHeight = CAROUSEL_BADGE_RESERVED_HEIGHT.dp
+    val badgeBottomPadding = CAROUSEL_BADGE_BOTTOM_PADDING.dp
+    val cardTopOverflow = cardVerticalOverflow
+    val cardBottomOverflow = cardVerticalOverflow + badgeReservedHeight
     val availableCarouselHeight =
         (configuration.screenHeightDp.dp - topOverlayClearance - bottomOverlayClearance)
             .coerceAtLeast(220.dp)
     val maxCardHeight =
-        (availableCarouselHeight - (cardVerticalOverflow * 2))
+        (availableCarouselHeight - cardTopOverflow - cardBottomOverflow)
             .coerceAtLeast(180.dp)
     val cardHeight = minOf(baseCardHeight, maxCardHeight)
     val cardWidth = cardHeight * CAROUSEL_CARD_ASPECT_RATIO
-    val itemContainerHeight = cardHeight + (cardVerticalOverflow * 2)
+    val itemContainerHeight = cardHeight + cardTopOverflow + cardBottomOverflow
     val cardWidthPx = with(density) { cardWidth.toPx() }
     val centeredHorizontalPadding = ((configuration.screenWidthDp.dp - cardWidth) / 2).coerceAtLeast(horizontalPadding)
     val overlapSpacing = cardWidth * CAROUSEL_SPACING_RATIO
@@ -138,7 +144,7 @@ internal fun LibraryCarouselPane(
 
             visibleItems
                 .minByOrNull { itemInfo ->
-                    abs((itemInfo.offset.x + itemInfo.size.width / 2f) - viewportCenter)
+                    abs((itemInfo.offset + itemInfo.size / 2f) - viewportCenter)
                 }
                 ?.index ?: -1
         }
@@ -171,15 +177,14 @@ internal fun LibraryCarouselPane(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (state.appInfoList.isNotEmpty()) {
-                    val flingBehavior = rememberSnapFlingBehavior(lazyGridState = listState)
+                    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-                    LazyHorizontalGrid(
-                        rows = GridCells.Fixed(1),
+                    LazyRow(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         flingBehavior = flingBehavior,
                         horizontalArrangement = Arrangement.spacedBy(overlapSpacing),
-                        verticalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                         contentPadding = PaddingValues(
                             start = centeredHorizontalPadding,
                             end = centeredHorizontalPadding,
@@ -197,7 +202,7 @@ internal fun LibraryCarouselPane(
                                 (listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset) / 2f
 
                             val itemCenter = itemLayoutInfo?.let { info ->
-                                info.offset.x + info.size.width / 2f
+                                info.offset + info.size / 2f
                             } ?: viewportCenter
 
                             val distanceFromCenter = itemCenter - viewportCenter
@@ -287,12 +292,13 @@ internal fun LibraryCarouselPane(
                                     .zIndex(zOrder)
                                     .width(cardWidth)
                                     .height(itemContainerHeight),
-                                contentAlignment = Alignment.Center,
                             ) {
                                 Box(
                                     modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = cardTopOverflow)
                                         .width(cardWidth)
-                                        .height(cardHeight)
+                                        .height(cardHeight + badgeReservedHeight)
                                         .graphicsLayer {
                                             scaleX = scale
                                             scaleY = scale
@@ -302,23 +308,47 @@ internal fun LibraryCarouselPane(
                                             cameraDistance = cameraDistancePx
                                             clip = false
                                         },
-                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    AppItem(
-                                        modifier = appItemModifier,
-                                        appInfo = item,
-                                        onClick = { onNavigate(item.appId) },
-                                        onFocus = {
-                                            onFocusedIndexChanged(listIndex)
-                                            scope.launch {
-                                                listState.animateScrollToItem(listIndex)
-                                            }
-                                        },
-                                        paneType = PaneType.GRID_CAPSULE,
-                                        imageRefreshCounter = state.imageRefreshCounter,
-                                        compatibilityStatus = state.compatibilityMap[item.name],
-                                        chromeScale = chromeScale,
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopCenter)
+                                            .width(cardWidth)
+                                            .height(cardHeight),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        AppItem(
+                                            modifier = appItemModifier,
+                                            appInfo = item,
+                                            onClick = { onNavigate(item.appId) },
+                                            onFocus = {
+                                                onFocusedIndexChanged(listIndex)
+                                                scope.launch {
+                                                    listState.animateScrollToItem(listIndex)
+                                                }
+                                            },
+                                            paneType = PaneType.GRID_CAPSULE,
+                                            imageRefreshCounter = state.imageRefreshCounter,
+                                            compatibilityStatus = state.compatibilityMap[item.name],
+                                            chromeScale = chromeScale,
+                                            showCompatibilityBadgeInCard = false,
+                                            enableFocusScale = false,
+                                        )
+                                    }
+
+                                    state.compatibilityMap[item.name]?.let { status ->
+                                        CompatibilityBadge(
+                                            status = status,
+                                            showLabel = true,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomCenter)
+                                                .padding(bottom = badgeBottomPadding)
+                                                .graphicsLayer {
+                                                    scaleX = chromeScale
+                                                    scaleY = chromeScale
+                                                    clip = false
+                                                },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -327,7 +357,7 @@ internal fun LibraryCarouselPane(
                             item {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
+                                        .width(cardWidth)
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -337,12 +367,11 @@ internal fun LibraryCarouselPane(
                         }
                     }
                 } else if (state.isLoading) {
-                    LazyHorizontalGrid(
-                        rows = GridCells.Fixed(1),
+                    LazyRow(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                         contentPadding = PaddingValues(
                             start = centeredHorizontalPadding,
                             end = centeredHorizontalPadding,

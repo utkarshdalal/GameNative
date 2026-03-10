@@ -68,6 +68,8 @@ internal fun AppItem(
     imageRefreshCounter: Long = 0L,
     compatibilityStatus: GameCompatibilityStatus? = null,
     chromeScale: Float = 1f,
+    showCompatibilityBadgeInCard: Boolean = true,
+    enableFocusScale: Boolean = true,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -89,7 +91,7 @@ internal fun AppItem(
 
     // More subtle scale for list view, slightly larger for grid views
     val targetScale = when {
-        !isFocused -> 1f
+        !enableFocusScale || !isFocused -> 1f
         paneType == PaneType.LIST -> 1.015f
         else -> 1.03f
     }
@@ -134,6 +136,7 @@ internal fun AppItem(
             },
             compatibilityStatus = compatibilityStatus,
             chromeScale = chromeScale,
+            showCompatibilityBadgeInCard = showCompatibilityBadgeInCard,
             context = context,
         )
     }

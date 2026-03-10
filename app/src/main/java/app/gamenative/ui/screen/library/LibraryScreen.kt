@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AlertDialog
@@ -272,6 +274,7 @@ private fun LibraryScreenContent(
     }
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
 
@@ -297,7 +300,15 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
-    val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
+        derivedStateOf {
+            if (currentPaneType == PaneType.CAROUSEL) {
+                carouselListState.firstVisibleItemIndex == 0
+            } else {
+                listState.firstVisibleItemIndex == 0
+            }
+        }
+    }
 
     // Dialog state for add custom game prompt
     var showAddCustomGameDialog by remember { mutableStateOf(false) }
@@ -308,7 +319,11 @@ private fun LibraryScreenContent(
     var lastBootstrapAtMs by remember { mutableLongStateOf(0L) }
 
     fun firstVisibleContentIndex(): Int =
-        listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
+        if (currentPaneType == PaneType.CAROUSEL) {
+            carouselListState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
+        } else {
+            listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
+        }
 
     fun currentCarouselFocusTargetIndex(): Int =
         carouselFocusTargetListIndex.coerceIn(0, state.appInfoList.lastIndex)
@@ -494,8 +509,8 @@ private fun LibraryScreenContent(
     ) {
         if (pendingCarouselFocusRequest && state.appInfoList.isNotEmpty()) {
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
-                if (listState.layoutInfo.visibleItemsInfo.none { it.index == carouselFocusTargetListIndex }) {
-                    listState.scrollToItem(carouselFocusTargetListIndex)
+                if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == carouselFocusTargetListIndex }) {
+                    carouselListState.scrollToItem(carouselFocusTargetListIndex)
                 }
                 var retries = 0
                 while (pendingCarouselFocusRequest && retries < 8) {
@@ -819,7 +834,7 @@ private fun LibraryScreenContent(
                 if (currentPaneType == PaneType.CAROUSEL) {
                     LibraryCarouselPane(
                         state = state,
-                        listState = listState,
+                        listState = carouselListState,
                         onPageChange = onPageChange,
                         onNavigate = { appId ->
                             selectedAppId = appId
@@ -856,7 +871,13 @@ private fun LibraryScreenContent(
                         isVisible = true,
                         searchQuery = state.searchQuery,
                         resultCount = state.totalAppsInFilter,
-                        listState = listState,
+                        onScrollToTop = {
+                            if (currentPaneType == PaneType.CAROUSEL) {
+                                carouselListState.scrollToItem(0)
+                            } else {
+                                listState.scrollToItem(0)
+                            }
+                        },
                         onSearchQuery = onSearchQuery,
                         onDismiss = { onIsSearching(false) },
                         modifier = Modifier

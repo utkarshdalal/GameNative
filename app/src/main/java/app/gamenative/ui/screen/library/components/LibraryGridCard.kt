@@ -81,6 +81,7 @@ internal fun GridViewCard(
     onImageLoadFailed: () -> Unit,
     compatibilityStatus: GameCompatibilityStatus?,
     chromeScale: Float,
+    showCompatibilityBadgeInCard: Boolean,
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
@@ -256,19 +257,21 @@ internal fun GridViewCard(
                 }
 
                 // Compatibility badge (top left, including UNKNOWN)
-                compatibilityStatus?.let { status ->
-                    CompatibilityBadge(
-                        status = status,
-                        showLabel = true,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(top = topOverlayPadding, start = topOverlayPadding)
-                            .graphicsLayer {
-                                scaleX = overlayScale
-                                scaleY = overlayScale
-                                transformOrigin = TransformOrigin(0f, 0f)
-                            },
-                    )
+                if (showCompatibilityBadgeInCard) {
+                    compatibilityStatus?.let { status ->
+                        CompatibilityBadge(
+                            status = status,
+                            showLabel = true,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding)
+                                .graphicsLayer {
+                                    scaleX = overlayScale
+                                    scaleY = overlayScale
+                                    transformOrigin = TransformOrigin(0f, 0f)
+                                },
+                        )
+                    }
                 }
 
                 // Game source icon (top right)
