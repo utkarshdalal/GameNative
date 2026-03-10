@@ -162,7 +162,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import com.winlator.container.ContainerManager
 import app.gamenative.statsgen.Achievement
+import app.gamenative.statsgen.StatType
 import app.gamenative.statsgen.StatsAchievementsGenerator
+import app.gamenative.statsgen.VdfParser
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -2634,43 +2638,46 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         suspend fun syncAchievementsFromGoldberg(context: Context, appId: Int) {
             val imageFs = ImageFs.find(context)
-            val gseSavesDir = File(
+            var gseSaveDir = File(
                 imageFs.rootDir,
                 "${ImageFs.WINEPREFIX}/drive_c/users/xuser/AppData/Roaming/GSE Saves/$appId"
             )
-            var goldbergAchFile = File(gseSavesDir, "achievements.json")
-            if (!goldbergAchFile.exists()) {
-                Timber.d("No Goldberg achievements.json at ${goldbergAchFile.absolutePath}, checking userdata path")
+            if (!gseSaveDir.isDirectory) {
+                Timber.d("No GSE Saves dir at ${gseSaveDir.absolutePath}, checking userdata path")
                 val accountId = userSteamId?.accountID?.toInt()
                 if (accountId != null) {
-                    val userdataDir = File(
+                    gseSaveDir = File(
                         imageFs.rootDir,
                         "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
                     )
-                    goldbergAchFile = File(userdataDir, "achievements.json")
                 }
-                if (!goldbergAchFile.exists()) {
-                    Timber.d("No Goldberg achievements.json found for appId=$appId")
+                if (!gseSaveDir.isDirectory) {
+                    Timber.d("No GSE save directory found for appId=$appId")
                     return
                 }
             }
 
             val unlockedNames = mutableSetOf<String>()
-            try {
-                val json = JSONObject(goldbergAchFile.readText(Charsets.UTF_8))
-                for (name in json.keys()) {
-                    val entry = json.optJSONObject(name) ?: continue
-                    if (entry.optBoolean("earned", false)) {
-                        unlockedNames.add(name)
+            val goldbergAchFile = File(gseSaveDir, "achievements.json")
+            if (goldbergAchFile.exists()) {
+                try {
+                    val json = JSONObject(goldbergAchFile.readText(Charsets.UTF_8))
+                    for (name in json.keys()) {
+                        val entry = json.optJSONObject(name) ?: continue
+                        if (entry.optBoolean("earned", false)) {
+                            unlockedNames.add(name)
+                        }
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to parse Goldberg achievements.json for appId=$appId")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to parse Goldberg achievements.json for appId=$appId")
-                return
             }
 
-            if (unlockedNames.isEmpty()) {
-                Timber.d("No earned achievements found in Goldberg output for appId=$appId")
+            val gseStatsDir = File(gseSaveDir, "stats")
+            val hasStats = gseStatsDir.isDirectory && (gseStatsDir.listFiles()?.isNotEmpty() == true)
+
+            if (unlockedNames.isEmpty() && !hasStats) {
+                Timber.d("No earned achievements or stats found in Goldberg output for appId=$appId")
                 return
             }
 
@@ -2680,13 +2687,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return
             }
 
-            Timber.i("Found ${unlockedNames.size} earned achievements for appId=$appId, syncing to Steam")
-//            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames)
-//            result.onSuccess {
-//                Timber.i("Successfully synced achievements to Steam for appId=$appId")
-//            }.onFailure { e ->
-//                Timber.e(e, "Failed to sync achievements to Steam for appId=$appId")
-//            }
+            Timber.i("Found ${unlockedNames.size} earned achievements and ${if (hasStats) "stats" else "no stats"} for appId=$appId, syncing to Steam")
+            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames, gseStatsDir)
+            result.onSuccess {
+                Timber.i("Successfully synced achievements and stats to Steam for appId=$appId")
+            }.onFailure { e ->
+                Timber.e(e, "Failed to sync achievements and stats to Steam for appId=$appId")
+            }
         }
 
         private fun findSteamSettingsDir(context: Context, appId: Int): String? {
@@ -2711,45 +2718,91 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun storeAchievementUnlocks(
             appId: Int,
             configDirectory: String,
-            unlockedNames: Set<String>
+            unlockedNames: Set<String>,
+            gseStatsDir: File
         ): Result<Unit> = runCatching {
-            val mappingFile = File(configDirectory, "achievement_name_to_block.json")
-            if (!mappingFile.exists()) {
-                throw IllegalStateException("achievement_name_to_block.json not found in $configDirectory")
-            }
-            val mappingJson = JSONObject(mappingFile.readText(Charsets.UTF_8))
-            val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
-            for (key in mappingJson.keys()) {
-                val arr = mappingJson.optJSONArray(key) ?: continue
-                if (arr.length() >= 2) {
-                    nameToBlockBit[key] = Pair(arr.getInt(0), arr.getInt(1))
-                }
-            }
-            if (nameToBlockBit.isEmpty()) return@runCatching
-
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
             if (userStats.result != EResult.OK) {
                 throw IllegalStateException("getUserStats failed: ${userStats.result}")
             }
-            val rawBlocks = userStats.achievementBlocks ?: emptyList()
-            val blockBitmasks = mutableMapOf<Int, Int>()
-            for (block in rawBlocks) {
-                val blockId = (block.achievementId as? Number)?.toInt() ?: continue
-                var bitmask = 0
-                val unlockTimes = block.unlockTime ?: emptyList()
-                for (i in unlockTimes.indices) {
-                    val t = unlockTimes[i]
-                    if ((t as? Number)?.toLong() != 0L) bitmask = bitmask or (1 shl i)
+
+            val allStats = mutableMapOf<Int, Int>()
+
+            // Build achievement name-to-block mapping from on-disk file
+            val mappingFile = File(configDirectory, "achievement_name_to_block.json")
+            if (mappingFile.exists() && unlockedNames.isNotEmpty()) {
+                val mappingJson = JSONObject(mappingFile.readText(Charsets.UTF_8))
+                val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
+                for (key in mappingJson.keys()) {
+                    val arr = mappingJson.optJSONArray(key) ?: continue
+                    if (arr.length() >= 2) {
+                        nameToBlockBit[key] = Pair(arr.getInt(0), arr.getInt(1))
+                    }
                 }
-                blockBitmasks[blockId] = bitmask
+
+                // Seed with current achievement bitmasks from server
+                for (block in userStats.achievementBlocks ?: emptyList()) {
+                    val blockId = (block.achievementId as? Number)?.toInt() ?: continue
+                    var bitmask = 0
+                    val unlockTimes = block.unlockTime ?: emptyList()
+                    for (i in unlockTimes.indices) {
+                        val t = unlockTimes[i]
+                        if ((t as? Number)?.toLong() != 0L) bitmask = bitmask or (1 shl i)
+                    }
+                    allStats[blockId] = bitmask
+                }
+
+                // Merge in newly unlocked achievements
+                for (name in unlockedNames) {
+                    val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
+                    val current = allStats.getOrDefault(blockId, 0)
+                    allStats[blockId] = current or (1 shl bitIndex)
+                }
             }
-            for (name in unlockedNames) {
-                val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
-                val current = blockBitmasks.getOrDefault(blockId, 0)
-                blockBitmasks[blockId] = current or (1 shl bitIndex)
+
+            // Merge GSE stat files using schema from getUserStats for name->id mapping
+            if (gseStatsDir.isDirectory) {
+                val statNameToId = mutableMapOf<String, Int>()
+                try {
+                    val parsedSchema = VdfParser().binaryLoads(userStats.schema.toByteArray())
+                    for ((_, appData) in parsedSchema) {
+                        if (appData !is Map<*, *>) continue
+                        val statInfo = (appData as Map<String, Any>)["stats"] as? Map<String, Any> ?: continue
+                        for ((statKey, statData) in statInfo) {
+                            if (statData !is Map<*, *>) continue
+                            val stat = statData as Map<String, Any>
+                            val statType = stat["type"]?.toString() ?: continue
+                            if (statType == StatType.STAT_TYPE_BITS || statType == StatType.ACHIEVEMENTS) continue
+                            val name = stat["name"]?.toString()?.lowercase() ?: continue
+                            val id = statKey.toIntOrNull() ?: continue
+                            statNameToId[name] = id
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to parse schema for stat name mapping, appId=$appId")
+                }
+
+                if (statNameToId.isNotEmpty()) {
+                    for (statFile in gseStatsDir.listFiles() ?: emptyArray()) {
+                        if (!statFile.isFile) continue
+                        val statId = statNameToId[statFile.name.lowercase()] ?: continue
+                        val bytes = statFile.readBytes()
+                        if (bytes.size >= 4) {
+                            val value = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).int
+                            allStats[statId] = value
+                            Timber.d("Read GSE stat: ${statFile.name} -> statId=$statId, value=$value")
+                        }
+                    }
+                }
             }
-            val statsToStore = blockBitmasks.map { (id, mask) -> Stats(statId = id, statValue = mask) }
+
+            if (allStats.isEmpty()) {
+                Timber.d("No stats or achievements to store for appId=$appId")
+                return@runCatching
+            }
+
+            val statsToStore = allStats.map { (id, value) -> Stats(statId = id, statValue = value) }
             Timber.d("storeUserStats: appId=$appId, crcStats=${userStats.crcStats}, stats=$statsToStore")
             val mySteamId = steamUser.steamID!!
 //            val callback = instance?._steamUserStats!!.storeUserStats(
