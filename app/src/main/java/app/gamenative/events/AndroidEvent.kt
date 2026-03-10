@@ -25,6 +25,7 @@ interface AndroidEvent<T> : Event<T> {
     data class LibraryInstallStatusChanged(val appId: Int) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
+    data object AllowedAppsLoaded : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data object ServiceReady : AndroidEvent<Unit>
