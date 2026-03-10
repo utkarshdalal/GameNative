@@ -2987,9 +2987,21 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         notificationHelper.notify("Disconnected...")
 
-        if (isLoggingOut || callback.result == EResult.LogonSessionReplaced) {
+        if (isLoggingOut) {
             performLogOffDuties()
 
+            scope.launch { stop() }
+        } else if (callback.result == EResult.LogonSessionReplaced) {
+            // Treat unexpected session replacement as a disconnect, not a full logout.
+            // Preserving cached credentials, library data, and cloud sync metadata lets us
+            // reconnect later without wiping the user's Steam library or save sync baseline.
+            Timber.w(
+                "Steam session was replaced unexpectedly; preserving cached credentials, library, and cloud sync metadata",
+            )
+
+            // Make sure the UI leaves the connected state even if the transport already
+            // dropped before stop() can trigger the normal onDisconnected callback.
+            PluviaApp.events.emit(SteamEvent.Disconnected)
             scope.launch { stop() }
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
