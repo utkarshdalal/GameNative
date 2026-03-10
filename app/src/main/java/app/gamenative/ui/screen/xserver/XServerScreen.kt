@@ -2809,29 +2809,6 @@ private fun getRedistDirectory(
     }
 
     return RedistContext(commonRedistDir, driveLetter, guestProgramLauncherComponent)
-        }
-
-private fun installXNAFramework(context: RedistContext) {
-    val xnaDir = File(context.commonRedistDir, "xnafx")
-    if (xnaDir.exists() && xnaDir.isDirectory()) {
-        xnaDir.walkTopDown()
-            .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
-                        it.name.endsWith(".msi", ignoreCase = true) }
-            .forEach { msiFile ->
-                try {
-                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                    val drive = context.driveLetter
-                    val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
-                    Timber.i("Installing XNA: $winePath")
-                    val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                    Timber.i("XNA installation output: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to install XNA ${msiFile.name}")
-                }
-            }
-    }
 }
 
 /**
@@ -2867,8 +2844,6 @@ private fun installRedistributables(
             Timber.tag("installRedist").i("Could not set up redistributable context, skipping installation")
             return
         }
-
-        installXNAFramework(redistContext)
 
         Timber.tag("installRedist").i("Finished checking for redistributables")
     } catch (e: Exception) {
