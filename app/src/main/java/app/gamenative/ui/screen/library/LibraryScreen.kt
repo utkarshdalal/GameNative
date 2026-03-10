@@ -318,15 +318,23 @@ private fun LibraryScreenContent(
     var rootHasFocus by remember { mutableStateOf(false) }
     var lastBootstrapAtMs by remember { mutableLongStateOf(0L) }
 
-    fun firstVisibleContentIndex(): Int =
-        if (currentPaneType == PaneType.CAROUSEL) {
-            carouselListState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
-        } else {
-            listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
-        }
+    fun firstVisibleContentIndex(): Int {
+        val lastIndex = state.appInfoList.lastIndex
+        if (lastIndex < 0) return 0
 
-    fun currentCarouselFocusTargetIndex(): Int =
-        carouselFocusTargetListIndex.coerceIn(0, state.appInfoList.lastIndex)
+        return if (currentPaneType == PaneType.CAROUSEL) {
+            carouselListState.firstVisibleItemIndex.coerceIn(0, lastIndex)
+        } else {
+            listState.firstVisibleItemIndex.coerceIn(0, lastIndex)
+        }
+    }
+
+    fun currentCarouselFocusTargetIndex(): Int {
+        val lastIndex = state.appInfoList.lastIndex
+        if (lastIndex < 0) return 0
+
+        return carouselFocusTargetListIndex.coerceIn(0, lastIndex)
+    }
 
     fun preferredContentFocusIndex(): Int =
         if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
@@ -509,8 +517,9 @@ private fun LibraryScreenContent(
     ) {
         if (pendingCarouselFocusRequest && state.appInfoList.isNotEmpty()) {
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
-                if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == carouselFocusTargetListIndex }) {
-                    carouselListState.scrollToItem(carouselFocusTargetListIndex)
+                val targetIndex = currentCarouselFocusTargetIndex()
+                if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
+                    carouselListState.scrollToItem(targetIndex)
                 }
                 var retries = 0
                 while (pendingCarouselFocusRequest && retries < 8) {
@@ -843,7 +852,7 @@ private fun LibraryScreenContent(
                         onRefresh = onRefresh,
                         modifier = Modifier.fillMaxSize(),
                         firstCarouselItemFocusRequester = carouselFocusRequester,
-                        focusTargetListIndex = carouselFocusTargetListIndex,
+                        focusTargetListIndex = currentCarouselFocusTargetIndex(),
                         onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
                     )
                 } else {
