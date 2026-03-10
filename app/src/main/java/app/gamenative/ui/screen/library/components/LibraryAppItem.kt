@@ -67,6 +67,7 @@ internal fun AppItem(
     isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
     compatibilityStatus: GameCompatibilityStatus? = null,
+    chromeScale: Float = 1f,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -132,6 +133,7 @@ internal fun AppItem(
                 alpha = 0.1f
             },
             compatibilityStatus = compatibilityStatus,
+            chromeScale = chromeScale,
             context = context,
         )
     }

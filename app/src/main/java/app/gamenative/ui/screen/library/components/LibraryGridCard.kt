@@ -38,10 +38,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,13 +80,16 @@ internal fun GridViewCard(
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
     compatibilityStatus: GameCompatibilityStatus?,
+    chromeScale: Float,
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
+    val overlayScale = if (isCapsule) chromeScale.coerceIn(0.62f, 1f) else 1f
     val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
+    val bottomGradientHeight = if (isCapsule) 80.dp * overlayScale else 56.dp
     val glowColor = MaterialTheme.colorScheme.primary
 
     Box(
@@ -207,7 +212,7 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height(if (paneType == PaneType.GRID_CAPSULE) 80.dp else 56.dp)
+                        .height(bottomGradientHeight)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -223,7 +228,12 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
+                        .padding(horizontal = 10.dp, vertical = cardContentBottomPadding)
+                        .graphicsLayer {
+                            scaleX = overlayScale
+                            scaleY = overlayScale
+                            transformOrigin = TransformOrigin(0f, 1f)
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -252,7 +262,12 @@ internal fun GridViewCard(
                         showLabel = true,
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(top = topOverlayPadding, start = topOverlayPadding),
+                            .padding(top = topOverlayPadding, start = topOverlayPadding)
+                            .graphicsLayer {
+                                scaleX = overlayScale
+                                scaleY = overlayScale
+                                transformOrigin = TransformOrigin(0f, 0f)
+                            },
                     )
                 }
 
@@ -261,7 +276,12 @@ internal fun GridViewCard(
                     gameSource = appInfo.gameSource,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = topIconPadding, end = topIconPadding),
+                        .padding(top = topIconPadding, end = topIconPadding)
+                        .graphicsLayer {
+                            scaleX = overlayScale
+                            scaleY = overlayScale
+                            transformOrigin = TransformOrigin(1f, 0f)
+                        },
                     iconSize = 12,
                 )
             }

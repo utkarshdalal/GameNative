@@ -235,12 +235,13 @@ internal fun LibraryCarouselPane(
                                 secondStepValue = 0.86f,
                                 farValue = 0.8f,
                             )
-                            val alpha = interpolateByDistance(
+                            val alpha = 1f
+                            val chromeScale = interpolateByDistance(
                                 distanceInSteps = distanceInSteps,
                                 centerValue = 1f,
-                                firstStepValue = 0.88f,
-                                secondStepValue = 0.8f,
-                                farValue = 0.7f,
+                                firstStepValue = 0.78f,
+                                secondStepValue = 0.68f,
+                                farValue = 0.62f,
                             )
                             val rotationY = direction * tiltAngle
                             val translationX = if (direction == 0f) {
@@ -270,7 +271,6 @@ internal fun LibraryCarouselPane(
                             val appItemAlpha = if (isVisible) alpha else 0f
                             val appItemModifier = Modifier
                                 .fillMaxSize()
-                                .alpha(if (isCentered) 1f else 0.96f)
                                 .then(
                                     if (firstCarouselItemFocusRequester != null &&
                                         focusTargetListIndex != null &&
@@ -317,6 +317,7 @@ internal fun LibraryCarouselPane(
                                         paneType = PaneType.GRID_CAPSULE,
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
+                                        chromeScale = chromeScale,
                                     )
                                 }
                             }
