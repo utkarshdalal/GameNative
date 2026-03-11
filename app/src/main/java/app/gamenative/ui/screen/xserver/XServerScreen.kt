@@ -1057,8 +1057,8 @@ fun XServerScreen(
                     }
                     else -> false
                 }
-            } else if (showQuickMenu && isGamepad) {
-                // Let Compose focus system handle gamepad navigation/selection while menu is visible.
+            } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
+                // Let Compose focus system handle keyboard and gamepad navigation/selection while menu is visible.
                 false
             } else {
                 var handled = false
@@ -1077,7 +1077,7 @@ fun XServerScreen(
         val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
             val isGamepad = ExternalController.isGameController(it.event?.device)
 
-            if (showQuickMenu && isGamepad) {
+            if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && isGamepad) {
                 // Let Compose consume any gamepad motion while menu is visible.
                 false
             } else {
