@@ -69,6 +69,7 @@ internal fun AppItem(
     compatibilityStatus: GameCompatibilityStatus? = null,
     chromeScale: Float = 1f,
     showCompatibilityBadgeInCard: Boolean = true,
+    showGameSourceIcon: Boolean = true,
     enableFocusScale: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -137,6 +138,7 @@ internal fun AppItem(
             compatibilityStatus = compatibilityStatus,
             chromeScale = chromeScale,
             showCompatibilityBadgeInCard = showCompatibilityBadgeInCard,
+            showGameSourceIcon = showGameSourceIcon,
             context = context,
         )
     }

@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -177,6 +178,31 @@ internal fun LibraryCarouselPane(
         }
     }
 
+    fun currentTargetIndex(): Int {
+        val lastIndex = state.appInfoList.lastIndex
+        if (lastIndex < 0) return 0
+        val preferredIndex = focusTargetListIndex ?: centeredIndex.takeIf { it >= 0 } ?: listState.firstVisibleItemIndex
+        return preferredIndex.coerceIn(0, lastIndex)
+    }
+
+    fun navigateCarousel(delta: Int) {
+        if (state.appInfoList.isEmpty()) return
+
+        val targetIndex = (currentTargetIndex() + delta).coerceIn(0, state.appInfoList.lastIndex)
+        if (targetIndex == currentTargetIndex()) return
+
+        scope.launch {
+            onFocusedIndexChanged(targetIndex)
+            kotlinx.coroutines.delay(16)
+            listState.animateScrollToItem(targetIndex)
+            kotlinx.coroutines.delay(16)
+            try {
+                firstCarouselItemFocusRequester?.requestFocus()
+            } catch (_: IllegalStateException) {
+            }
+        }
+    }
+
     LaunchedEffect(listState, state.appInfoList.size, state.totalAppsInFilter) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
@@ -200,7 +226,26 @@ internal fun LibraryCarouselPane(
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) {
+                        false
+                    } else {
+                        when (keyEvent.nativeKeyEvent.keyCode) {
+                            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                navigateCarousel(-1)
+                                true
+                            }
+
+                            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                navigateCarousel(1)
+                                true
+                            }
+
+                            else -> false
+                        }
+                    }
+                },
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (state.appInfoList.isNotEmpty()) {
@@ -268,13 +313,7 @@ internal fun LibraryCarouselPane(
                                 farValue = 0.8f,
                             )
                             val alpha = 1f
-                            val chromeScale = interpolateByDistance(
-                                distanceInSteps = distanceInSteps,
-                                centerValue = 1f,
-                                firstStepValue = 0.78f,
-                                secondStepValue = 0.68f,
-                                farValue = 0.62f,
-                            )
+                            val showCenterChrome = isCentered
                             val rotationY = direction * tiltAngle
                             val translationX = if (direction == 0f) {
                                 0f
@@ -349,32 +388,27 @@ internal fun LibraryCarouselPane(
                                             onClick = { onNavigate(item.appId) },
                                             onFocus = {
                                                 onFocusedIndexChanged(listIndex)
-                                                scope.launch {
-                                                    listState.animateScrollToItem(listIndex)
-                                                }
                                             },
                                             paneType = PaneType.GRID_CAPSULE,
                                             imageRefreshCounter = state.imageRefreshCounter,
                                             compatibilityStatus = state.compatibilityMap[item.name],
-                                            chromeScale = chromeScale,
+                                            chromeScale = 1f,
                                             showCompatibilityBadgeInCard = false,
+                                            showGameSourceIcon = showCenterChrome,
                                             enableFocusScale = false,
                                         )
                                     }
 
-                                    state.compatibilityMap[item.name]?.let { status ->
-                                        CompatibilityBadge(
-                                            status = status,
-                                            showLabel = true,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomCenter)
-                                                .padding(bottom = badgeBottomPadding)
-                                                .graphicsLayer {
-                                                    scaleX = chromeScale
-                                                    scaleY = chromeScale
-                                                    clip = false
-                                                },
-                                        )
+                                    if (showCenterChrome) {
+                                        state.compatibilityMap[item.name]?.let { status ->
+                                            CompatibilityBadge(
+                                                status = status,
+                                                showLabel = true,
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .padding(bottom = badgeBottomPadding),
+                                            )
+                                        }
                                     }
                                 }
                             }

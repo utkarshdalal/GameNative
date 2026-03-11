@@ -82,11 +82,13 @@ internal fun GridViewCard(
     compatibilityStatus: GameCompatibilityStatus?,
     chromeScale: Float,
     showCompatibilityBadgeInCard: Boolean,
+    showGameSourceIcon: Boolean,
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
     val overlayScale = if (isCapsule) chromeScale.coerceIn(0.62f, 1f) else 1f
+    val overlayNeedsLayer = overlayScale != 1f
     val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
@@ -230,11 +232,17 @@ internal fun GridViewCard(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .padding(horizontal = 10.dp, vertical = cardContentBottomPadding)
-                        .graphicsLayer {
-                            scaleX = overlayScale
-                            scaleY = overlayScale
-                            transformOrigin = TransformOrigin(0f, 1f)
-                        },
+                        .then(
+                            if (overlayNeedsLayer) {
+                                Modifier.graphicsLayer {
+                                    scaleX = overlayScale
+                                    scaleY = overlayScale
+                                    transformOrigin = TransformOrigin(0f, 1f)
+                                }
+                            } else {
+                                Modifier
+                            }
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -265,28 +273,41 @@ internal fun GridViewCard(
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(top = topOverlayPadding, start = topOverlayPadding)
-                                .graphicsLayer {
-                                    scaleX = overlayScale
-                                    scaleY = overlayScale
-                                    transformOrigin = TransformOrigin(0f, 0f)
-                                },
+                                .then(
+                                    if (overlayNeedsLayer) {
+                                        Modifier.graphicsLayer {
+                                            scaleX = overlayScale
+                                            scaleY = overlayScale
+                                            transformOrigin = TransformOrigin(0f, 0f)
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
                         )
                     }
                 }
 
-                // Game source icon (top right)
-                GameSourceIcon(
-                    gameSource = appInfo.gameSource,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = topIconPadding, end = topIconPadding)
-                        .graphicsLayer {
-                            scaleX = overlayScale
-                            scaleY = overlayScale
-                            transformOrigin = TransformOrigin(1f, 0f)
-                        },
-                    iconSize = 12,
-                )
+                if (showGameSourceIcon) {
+                    GameSourceIcon(
+                        gameSource = appInfo.gameSource,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = topIconPadding, end = topIconPadding)
+                            .then(
+                                if (overlayNeedsLayer) {
+                                    Modifier.graphicsLayer {
+                                        scaleX = overlayScale
+                                        scaleY = overlayScale
+                                        transformOrigin = TransformOrigin(1f, 0f)
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        iconSize = 12,
+                    )
+                }
             }
         }
     }
