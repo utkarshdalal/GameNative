@@ -912,6 +912,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">Ukryj pasek stanu Androida w liście gier, ustawieniach itp. Aplikacja uruchomi się ponownie po zmianie.</string>
     <string name="settings_interface_warn_before_exit_title">Ostrzegaj przed wyjściem</string>
     <string name="settings_interface_warn_before_exit_subtitle">Wymaga podwójnego naciśnięcia wstecz, aby wyjść — pierwsze naciśnięcie pokazuje ostrzeżenie</string>
+    <string name="settings_interface_show_gamepad_hints_title">Pokazuj podpowiedzi kontrolera</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Pokazuje pasek podpowiedzi przycisków kontrolera u dołu ekranu</string>
     <string name="settings_interface_icon_style">Styl ikony</string>
     <string name="settings_interface_wifi_only_title">Pobieraj tylko przez Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Zapobiegaj pobieraniu przez dane komórkowe</string>

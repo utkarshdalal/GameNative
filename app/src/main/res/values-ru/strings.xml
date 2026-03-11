@@ -990,6 +990,8 @@ https://gamenative.app
     <string name="settings_interface_hide_statusbar_title">Скрыть строку состояния, когда не в игре</string>
     <string name="settings_interface_warn_before_exit_title">Предупреждать перед выходом</string>
     <string name="settings_interface_warn_before_exit_subtitle">Для выхода требуется двойное нажатие назад — первое показывает предупреждение</string>
+    <string name="settings_interface_show_gamepad_hints_title">Показывать подсказки геймпада</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">Показывает панель подсказок кнопок геймпада в нижней части экрана</string>
     <string name="settings_interface_icon_style">Стиль значка</string>
     <string name="settings_interface_no_external_storage">Внешнее хранилище не обнаружено</string>
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>

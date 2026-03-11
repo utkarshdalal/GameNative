@@ -913,6 +913,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">게임 목록, 설정 등에서 Android 상태 표시줄을 숨깁니다. 변경 시 앱이 재시작됩니다.</string>
     <string name="settings_interface_warn_before_exit_title">종료 전 경고</string>
     <string name="settings_interface_warn_before_exit_subtitle">종료하려면 뒤로 두 번 눌러야 합니다 — 첫 번째는 경고를 표시합니다</string>
+    <string name="settings_interface_show_gamepad_hints_title">컨트롤러 힌트 표시</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">화면 하단에 컨트롤러 버튼 힌트 바를 표시합니다</string>
     <string name="settings_interface_icon_style">아이콘 스타일</string>
     <string name="settings_interface_wifi_only_title">Wi-Fi/LAN으로만 다운로드</string>
     <string name="settings_interface_wifi_only_subtitle">셀룰러 데이터로 다운로드 방지</string>

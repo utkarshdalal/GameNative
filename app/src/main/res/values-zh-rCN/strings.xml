@@ -894,6 +894,8 @@
     <string name="settings_interface_hide_statusbar_subtitle">在游戏列表、设置等界面隐藏 Android 状态栏。更改后应用程序将重新启动。</string>
     <string name="settings_interface_warn_before_exit_title">退出前警告</string>
     <string name="settings_interface_warn_before_exit_subtitle">需要双击返回键退出——第一次按下显示警告</string>
+    <string name="settings_interface_show_gamepad_hints_title">显示手柄提示</string>
+    <string name="settings_interface_show_gamepad_hints_subtitle">在屏幕底部显示手柄按键提示栏</string>
     <string name="settings_interface_wifi_only_title">仅限通过 Wi-Fi/LAN 下载</string>
     <string name="settings_interface_wifi_only_subtitle">禁止使用移动数据下载</string>
     <string name="settings_interface_external_storage_title">写入外部存储设备</string>

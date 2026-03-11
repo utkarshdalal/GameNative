@@ -948,6 +948,14 @@ object PrefManager {
             setPref(SWAP_FACE_BUTTONS, value)
         }
 
+    // Whether to show the on-screen gamepad hints/action bar in the UI
+    private val SHOW_GAMEPAD_HINTS = booleanPreferencesKey("show_gamepad_hints")
+    var showGamepadHints: Boolean
+        get() = getPref(SHOW_GAMEPAD_HINTS, true)
+        set(value) {
+            setPref(SHOW_GAMEPAD_HINTS, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)
