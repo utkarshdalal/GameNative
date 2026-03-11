@@ -1765,9 +1765,9 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
         // Tell WinHandler to update its internal state.
         if (winHandler != null) {
-            winHandler.refreshControllerMappings()
-        }
+        winHandler.refreshControllerMappings()
     }
+}
 }
 
 private fun hideInputControls() {
@@ -2045,9 +2045,9 @@ private fun setupXEnvironment(
     var gameExecutable = ""
 
     if (container != null) {
-        try {
-            GameFixesRegistry.applyFor(context, appId)
-        } catch (e: Exception) {
+    try {
+        GameFixesRegistry.applyFor(context, appId)
+    } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
         }
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
@@ -2234,7 +2234,7 @@ private fun setupXEnvironment(
 
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
-        if (container.isLaunchRealSteam) {
+    if (container.isLaunchRealSteam) {
             SteamTokenLogin(
                 steamId = PrefManager.steamUserSteamId64.toString(),
                 login = PrefManager.username,
@@ -2247,7 +2247,7 @@ private fun setupXEnvironment(
 
     // Log container settings before starting
     if (container != null) {
-        Timber.i("---- Launching Container ----")
+    Timber.i("---- Launching Container ----")
         Timber.i("ID: ${container.id}")
         Timber.i("Name: ${container.name}")
         Timber.i("Screen Size: ${container.screenSize}")
@@ -3420,16 +3420,14 @@ private fun extractWinComponentFiles(
             dlls.clear()
         }
 
-        val oldWinComponentsIter = KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator()
+        val oldWinComponents = KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).associate { it[0] to it[1] }
 
         for (wincomponent in KeyValueSet(wincomponents)) {
-            try {
-                if (wincomponent[1].equals(oldWinComponentsIter.next()[1]) && !firstTimeBoot) continue
-            } catch (e: StringIndexOutOfBoundsException) {
-                Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
-            }
             val identifier = wincomponent[0]
-            val useNative = wincomponent[1].equals("1")
+            val value = wincomponent[1]
+            val oldValue = oldWinComponents[identifier]
+            if (oldValue == value && !firstTimeBoot) continue
+            val useNative = value == "1"
 
             if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
