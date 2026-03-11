@@ -78,6 +78,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
+import app.gamenative.ui.component.ScreenEffectsPanel
 import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
@@ -346,11 +347,13 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
-    var showScreenEffectDialog by remember { mutableStateOf(false) }
+    var showScreenEffectsPanel by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
+    var quickMenuFocusTargetItemId by remember { mutableStateOf<Int?>(null) }
+    var quickMenuFocusNonce by remember { mutableStateOf(0) }
 
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
@@ -473,6 +476,18 @@ fun XServerScreen(
         }
     }
 
+    val dismissScreenEffectsPanel: () -> Unit = {
+        if (!keyboardRequestedFromOverlay) {
+            imeInputReceiver?.hideKeyboard()
+        }
+        keyboardRequestedFromOverlay = false
+        if (!keepPausedForEditor) {
+            resumeIfAllowedAfterOverlay()
+        }
+        showScreenEffectsPanel = false
+        quickMenuFocusTargetItemId = null
+    }
+
     val dismissOverlayMenu: () -> Unit = {
         if (!keyboardRequestedFromOverlay) {
             imeInputReceiver?.hideKeyboard()
@@ -486,10 +501,12 @@ fun XServerScreen(
                 resumeIfAllowedAfterOverlay()
             }
         }
+        showScreenEffectsPanel = false
         showQuickMenu = false
+        quickMenuFocusTargetItemId = null
     }
 
-    val onQuickMenuItemSelected: (Int) -> Unit = { itemId ->
+    val onQuickMenuItemSelected: (Int) -> Boolean = { itemId ->
         when (itemId) {
             QuickMenuAction.KEYBOARD -> {
                 keyboardRequestedFromOverlay = true
@@ -516,6 +533,7 @@ fun XServerScreen(
                         show()
                     }
                 }
+                true
             }
 
             QuickMenuAction.INPUT_CONTROLS -> {
@@ -540,6 +558,7 @@ fun XServerScreen(
                     }
                 }
                 areControlsVisible = !areControlsVisible
+                true
             }
 
             QuickMenuAction.EDIT_CONTROLS -> {
@@ -615,16 +634,21 @@ fun XServerScreen(
                         areControlsVisible = true
                     }
                 }
+                true
             }
 
             QuickMenuAction.EDIT_PHYSICAL_CONTROLLER -> {
                 PostHog.capture(event = "edit_physical_controller_from_menu")
                 keepPausedForEditor = true
                 showPhysicalControllerDialog = true
+                true
             }
 
             QuickMenuAction.SCREEN_EFFECTS -> {
-                showScreenEffectDialog = true
+                quickMenuFocusTargetItemId = null
+                showScreenEffectsPanel = true
+                showQuickMenu = false
+                false
             }
 
             QuickMenuAction.EXIT_GAME -> {
@@ -639,7 +663,10 @@ fun XServerScreen(
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
                 forceResumeIfSuspended()
                 exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                true
             }
+
+            else -> false
         }
     }
 
@@ -661,6 +688,11 @@ fun XServerScreen(
             return@gameBack
         }
 
+        if (showScreenEffectsPanel) {
+            dismissScreenEffectsPanel()
+            return@gameBack
+        }
+
         if (showQuickMenu) {
             dismissOverlayMenu()
             return@gameBack
@@ -676,6 +708,7 @@ fun XServerScreen(
         controllerManager.scanForDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
 
+        quickMenuFocusTargetItemId = null
         showQuickMenu = true
     }
 
@@ -706,6 +739,7 @@ fun XServerScreen(
                 manualResumeMode &&
                     PluviaApp.isOverlayPaused &&
                     !showQuickMenu &&
+                    !showScreenEffectsPanel &&
                     !keepPausedForEditor
             // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
@@ -720,8 +754,8 @@ fun XServerScreen(
                     }
                     else -> false
                 }
-            } else if (showQuickMenu && isGamepad) {
-                // Let Compose focus system handle gamepad navigation/selection while menu is visible.
+            } else if ((showQuickMenu || showScreenEffectsPanel) && isGamepad) {
+                // Let Compose focus system handle gamepad navigation/selection while overlay UI is visible.
                 false
             } else {
                 var handled = false
@@ -740,8 +774,8 @@ fun XServerScreen(
         val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
             val isGamepad = ExternalController.isGameController(it.event?.device)
 
-            if (showQuickMenu && isGamepad) {
-                // Let Compose consume any gamepad motion while menu is visible.
+            if ((showQuickMenu || showScreenEffectsPanel) && isGamepad) {
+                // Let Compose consume any gamepad motion while overlay UI is visible.
                 false
             } else {
                 var handled = false
@@ -1448,18 +1482,21 @@ fun XServerScreen(
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
             hasPhysicalController = hasPhysicalController,
+            focusTargetItemId = quickMenuFocusTargetItemId,
+            focusRequestNonce = quickMenuFocusNonce,
         )
 
-        if (showScreenEffectDialog) {
+        if (showScreenEffectsPanel) {
             xServerView?.renderer?.let { renderer ->
-                app.gamenative.ui.component.dialog.ScreenEffectDialog(
+                ScreenEffectsPanel(
+                    isVisible = true,
                     renderer = renderer,
-                    onDismiss = { showScreenEffectDialog = false },
+                    onDismiss = dismissScreenEffectsPanel,
                 )
             }
         }
 
-        if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
+        if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !showScreenEffectsPanel && !keepPausedForEditor) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

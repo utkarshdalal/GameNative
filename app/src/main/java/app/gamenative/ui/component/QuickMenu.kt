@@ -89,9 +89,11 @@ data class QuickMenuItem(
 fun QuickMenu(
     isVisible: Boolean,
     onDismiss: () -> Unit,
-    onItemSelected: (Int) -> Unit,
+    onItemSelected: (Int) -> Boolean,
     hasPhysicalController: Boolean = false,
     modifier: Modifier = Modifier,
+    focusTargetItemId: Int? = null,
+    focusRequestNonce: Int = 0,
 ) {
     val menuItems = buildList {
         add(QuickMenuItem(
@@ -134,7 +136,8 @@ fun QuickMenu(
         ))
     }
 
-    val firstItemFocusRequester = remember { FocusRequester() }
+    val itemIds = remember(menuItems) { menuItems.map { it.id } }
+    val itemFocusRequesters = remember(itemIds) { List(itemIds.size) { FocusRequester() } }
 
     BackHandler(enabled = isVisible) {
         onDismiss()
@@ -232,10 +235,12 @@ fun QuickMenu(
                             QuickMenuItemRow(
                                 item = item,
                                 onClick = {
-                                    onItemSelected(item.id)
-                                    onDismiss()
+                                    val shouldDismiss = onItemSelected(item.id)
+                                    if (shouldDismiss) {
+                                        onDismiss()
+                                    }
                                 },
-                                focusRequester = if (index == 0) firstItemFocusRequester else null,
+                                focusRequester = itemFocusRequesters[index],
                             )
                         }
                     }
@@ -244,11 +249,12 @@ fun QuickMenu(
         }
     }
 
-    LaunchedEffect(isVisible, menuItems.size) {
-        if (isVisible) {
+    LaunchedEffect(isVisible, itemIds, focusTargetItemId, focusRequestNonce) {
+        if (isVisible && itemFocusRequesters.isNotEmpty()) {
+            val targetIndex = itemIds.indexOf(focusTargetItemId).takeIf { it >= 0 } ?: 0
             repeat(3) {
                 try {
-                    firstItemFocusRequester.requestFocus()
+                    itemFocusRequesters[targetIndex].requestFocus()
                     return@LaunchedEffect
                 } catch (_: Exception) {
                     // Focus request may fail if composition is not ready.
@@ -356,7 +362,7 @@ private fun Preview_QuickMenu() {
             QuickMenu(
                 isVisible = true,
                 onDismiss = {},
-                onItemSelected = {},
+                onItemSelected = { true },
                 hasPhysicalController = false,
             )
         }
@@ -371,7 +377,7 @@ private fun Preview_QuickMenu_WithController() {
             QuickMenu(
                 isVisible = true,
                 onDismiss = {},
-                onItemSelected = {},
+                onItemSelected = { true },
                 hasPhysicalController = true,
             )
         }
