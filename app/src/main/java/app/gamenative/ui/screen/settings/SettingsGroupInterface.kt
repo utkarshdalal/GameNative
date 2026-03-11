@@ -87,6 +87,7 @@ import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.screen.settings.ContainerStorageManagerDialog
 
 @Composable
 fun SettingsGroupInterface(
@@ -116,6 +117,7 @@ fun SettingsGroupInterface(
     var showLanguageRestartDialog by rememberSaveable { mutableStateOf(false) }
     var pendingLanguageCode by rememberSaveable { mutableStateOf<String?>(null) }
     var showLanguageLoadingDialog by rememberSaveable { mutableStateOf(false) }
+    var showContainerStorageManager by rememberSaveable { mutableStateOf(false) }
     val languageCodes = remember { LocaleHelper.getSupportedLanguageCodes() }
     val languageNames = remember { LocaleHelper.getSupportedLanguageNames() }
     var selectedLanguageIndex by rememberSaveable {
@@ -416,6 +418,23 @@ fun SettingsGroupInterface(
             onClick = { openRegionDialog = true },
         )
     }
+
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_storage_title)) },
+    ) {
+        SettingsMenuLink(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_storage_manage_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_storage_manage_subtitle)) },
+            onClick = { showContainerStorageManager = true },
+        )
+    }
+
+    ContainerStorageManagerDialog(
+        visible = showContainerStorageManager,
+        onDismissRequest = { showContainerStorageManager = false },
+    )
 
     // Steam Download Server choice dialog
     SingleChoiceDialog(

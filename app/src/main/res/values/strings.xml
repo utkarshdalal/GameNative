@@ -807,6 +807,27 @@
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>
 
+    <!-- Settings: Storage -->
+    <string name="settings_storage_title">Storage</string>
+    <string name="settings_storage_manage_title">Manage containers</string>
+    <string name="settings_storage_manage_subtitle">Free internal storage by removing old or unused containers</string>
+    <string name="container_storage_title">Container &amp; Storage Manager</string>
+    <string name="container_storage_subtitle">Review container usage and remove containers while keeping game files installed</string>
+    <string name="container_storage_summary">%1$d containers • %2$s</string>
+    <string name="container_storage_warning">Removing a container frees internal storage. The game files stay installed, but local settings or saves stored inside the Windows environment may be lost.</string>
+    <string name="container_storage_empty">No containers found</string>
+    <string name="container_storage_source_unknown">Unknown</string>
+    <string name="container_storage_source_and_status">%1$s • %2$s</string>
+    <string name="container_storage_status_ready">Ready</string>
+    <string name="container_storage_status_game_files_missing">Game files missing</string>
+    <string name="container_storage_status_orphaned">Orphaned</string>
+    <string name="container_storage_status_unreadable">Unreadable</string>
+    <string name="container_storage_remove_button">Remove container</string>
+    <string name="container_storage_remove_title">Remove container?</string>
+    <string name="container_storage_remove_message">This removes the Windows environment for %1$s and frees internal storage. The game files stay installed.</string>
+    <string name="container_storage_remove_success">Removed container for %1$s</string>
+    <string name="container_storage_remove_failed">Failed to remove container</string>
+
     <!-- Login Screen -->
     <string name="login_app_name">GameNative</string>
     <string name="login_privacy_policy">Privacy Policy</string>
