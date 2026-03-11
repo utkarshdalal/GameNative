@@ -47,13 +47,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.gamenative"
+        applicationId = "app.gamenative.alt.raynoxu"
 
         minSdk = 26
         targetSdk = 28
 
-        versionCode = 12
-        versionName = "0.8.0"
+        versionCode = 100
+        versionName = "1.0.0-alt-raynoxu"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =

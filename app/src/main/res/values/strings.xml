@@ -155,7 +155,8 @@
     <!-- Winlator: Win Components -->
     <string name="direct3d">Direct3D</string>
     <string name="directsound">DirectSound</string>
-    <string name="directinput">DirectInput</string>
+    <string name="dinput8">DirectInput 8</string>
+    <string name="dinput">DirectInput</string>
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
