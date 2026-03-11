@@ -346,6 +346,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var showScreenEffectDialog by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
@@ -620,6 +621,10 @@ fun XServerScreen(
                 PostHog.capture(event = "edit_physical_controller_from_menu")
                 keepPausedForEditor = true
                 showPhysicalControllerDialog = true
+            }
+
+            QuickMenuAction.SCREEN_EFFECTS -> {
+                showScreenEffectDialog = true
             }
 
             QuickMenuAction.EXIT_GAME -> {
@@ -1444,6 +1449,15 @@ fun XServerScreen(
             onItemSelected = onQuickMenuItemSelected,
             hasPhysicalController = hasPhysicalController,
         )
+
+        if (showScreenEffectDialog) {
+            xServerView?.renderer?.let { renderer ->
+                app.gamenative.ui.component.dialog.ScreenEffectDialog(
+                    renderer = renderer,
+                    onDismiss = { showScreenEffectDialog = false },
+                )
+            }
+        }
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
             Box(

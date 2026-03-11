@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Gamepad
@@ -73,6 +74,7 @@ object QuickMenuAction {
     const val EXIT_GAME = 3
     const val EDIT_CONTROLS = 4
     const val EDIT_PHYSICAL_CONTROLLER = 5
+    const val SCREEN_EFFECTS = 6
 }
 
 data class QuickMenuItem(
@@ -118,6 +120,12 @@ fun QuickMenu(
                 accentColor = PluviaTheme.colors.accentWarning,
             ))
         }
+        add(QuickMenuItem(
+            id = QuickMenuAction.SCREEN_EFFECTS,
+            icon = Icons.Default.AutoFixHigh,
+            labelResId = R.string.screen_effects,
+            accentColor = PluviaTheme.colors.accentPink,
+        ))
         add(QuickMenuItem(
             id = QuickMenuAction.EXIT_GAME,
             icon = Icons.AutoMirrored.Filled.ExitToApp,

@@ -53,10 +53,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private int surfaceWidth;
     private int surfaceHeight;
     private boolean sceneInitialized = false;
+    private final EffectComposer effectComposer;
 
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
+        this.effectComposer = new EffectComposer(this);
         rootCursorDrawable = createRootCursorDrawable();
 
         quadVertices.put(new float[]{
@@ -122,10 +124,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             viewportNeedsUpdate = true;
         }
 
-        drawFrame();
+        if (effectComposer.hasEffects()) {
+            effectComposer.render();
+        }
+        else {
+            drawScene();
+        }
     }
 
-    private void drawFrame() {
+    void drawScene() {
         boolean xrFrame = false;
         // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
 
@@ -422,5 +429,25 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public void setMagnifierZoom(float magnifierZoom) {
         this.magnifierZoom = magnifierZoom;
         xServerView.requestRender();
+    }
+
+    public int getSurfaceWidth() {
+        return surfaceWidth;
+    }
+
+    public int getSurfaceHeight() {
+        return surfaceHeight;
+    }
+
+    public VertexAttribute getQuadVertices() {
+        return quadVertices;
+    }
+
+    public void setViewportNeedsUpdate(boolean viewportNeedsUpdate) {
+        this.viewportNeedsUpdate = viewportNeedsUpdate;
+    }
+
+    public EffectComposer getEffectComposer() {
+        return effectComposer;
     }
 }
