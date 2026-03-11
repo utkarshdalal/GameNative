@@ -75,6 +75,7 @@ private const val CAROUSEL_SPACING_RATIO = -0.13735926f
 private const val CAROUSEL_CAMERA_DISTANCE_DP = 6f
 private const val CAROUSEL_SIDE_OFFSET_RATIO = 0.028464798f
 private const val CAROUSEL_STEP_OFFSET_RATIO = 0.08f
+private const val CAROUSEL_ITEM_OVERSCAN_RATIO = 0.4f
 private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
@@ -266,9 +267,18 @@ internal fun LibraryCarouselPane(
     val cardWidth = cardHeight * CAROUSEL_CARD_ASPECT_RATIO
     val itemContainerHeight = cardHeight + cardTopOverflow + cardBottomOverflow
     val cardWidthPx = with(density) { cardWidth.toPx() }
+    // Keep lazy items composed slightly beyond the viewport because rotation/translation can leave
+    // transformed pixels visible after the raw item slot has technically moved offscreen.
+    val cardHorizontalOverscan = cardWidth * CAROUSEL_ITEM_OVERSCAN_RATIO
+    val carouselItemSlotWidth = cardWidth + (cardHorizontalOverscan * 2)
     val centeredHorizontalPadding = ((configuration.screenWidthDp.dp - cardWidth) / 2).coerceAtLeast(horizontalPadding)
+    val centeredSlotHorizontalPadding =
+        ((configuration.screenWidthDp.dp - carouselItemSlotWidth) / 2)
+            .coerceAtLeast((horizontalPadding - cardHorizontalOverscan).coerceAtLeast(0.dp))
     val overlapSpacing = cardWidth * CAROUSEL_SPACING_RATIO
-    val overlapSpacingPx = with(density) { overlapSpacing.toPx() }
+    val carouselItemSpacing = overlapSpacing - (cardHorizontalOverscan * 2)
+    val carouselItemSlotWidthPx = with(density) { carouselItemSlotWidth.toPx() }
+    val carouselItemSpacingPx = with(density) { carouselItemSpacing.toPx() }
     val firstTileOffsetPx = cardWidthPx * 0.08f
     val cameraDistancePx = with(density) { CAROUSEL_CAMERA_DISTANCE_DP.dp.toPx() }
 
@@ -379,11 +389,11 @@ internal fun LibraryCarouselPane(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         flingBehavior = flingBehavior,
-                        horizontalArrangement = Arrangement.spacedBy(overlapSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(carouselItemSpacing),
                         verticalAlignment = Alignment.CenterVertically,
                         contentPadding = PaddingValues(
-                            start = centeredHorizontalPadding,
-                            end = centeredHorizontalPadding,
+                            start = centeredSlotHorizontalPadding,
+                            end = centeredSlotHorizontalPadding,
                             top = topOverlayClearance,
                             bottom = bottomOverlayClearance,
                         ),
@@ -406,7 +416,7 @@ internal fun LibraryCarouselPane(
                                 (distanceFromCenter / (listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset).toFloat())
                                     .coerceIn(-1f, 1f)
                             val absDistance = abs(normalizedDistance)
-                            val itemStepDistancePx = (cardWidthPx + overlapSpacingPx).coerceAtLeast(1f)
+                            val itemStepDistancePx = (carouselItemSlotWidthPx + carouselItemSpacingPx).coerceAtLeast(1f)
                             val distanceInSteps = abs(distanceFromCenter) / itemStepDistancePx
                             val relativeToCenter = if (centeredIndex >= 0) {
                                 listIndex - centeredIndex
@@ -480,7 +490,7 @@ internal fun LibraryCarouselPane(
                             Box(
                                 modifier = Modifier
                                     .zIndex(zOrder)
-                                    .width(cardWidth)
+                                    .width(carouselItemSlotWidth)
                                     .height(itemContainerHeight),
                             ) {
                                 Box(
@@ -545,7 +555,7 @@ internal fun LibraryCarouselPane(
                             item {
                                 Box(
                                     modifier = Modifier
-                                        .width(cardWidth)
+                                        .width(carouselItemSlotWidth)
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
