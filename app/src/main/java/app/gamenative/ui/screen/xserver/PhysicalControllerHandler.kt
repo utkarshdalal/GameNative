@@ -244,28 +244,24 @@ class PhysicalControllerHandler(
                         }
                         Binding.GAMEPAD_DPAD_UP  -> {
                             state.dpad[0] = isActionDown
-
                             if(isActionDown) {
                                 state.dpad[Binding.GAMEPAD_DPAD_DOWN.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
                             }
                         }
                         Binding.GAMEPAD_DPAD_DOWN -> {
                             state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
-
                             if(isActionDown) {
                                 state.dpad[0] = false
                             }
                         }
                        Binding.GAMEPAD_DPAD_LEFT -> {
                             state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
-
-                          if(isActionDown) {
+                            if(isActionDown) {
                               state.dpad[Binding.GAMEPAD_DPAD_RIGHT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
                           }
                         }
                         Binding.GAMEPAD_DPAD_RIGHT -> {
                             state.dpad[binding.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal] = isActionDown
-
                             if(isActionDown) {
                                 state.dpad[Binding.GAMEPAD_DPAD_LEFT.ordinal - Binding.GAMEPAD_DPAD_UP.ordinal ] = false
                             }
