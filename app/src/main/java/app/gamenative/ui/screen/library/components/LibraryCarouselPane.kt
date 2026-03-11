@@ -395,6 +395,9 @@ internal fun LibraryCarouselPane(
                                             chromeScale = 1f,
                                             showCompatibilityBadgeInCard = false,
                                             showGameSourceIcon = showCenterChrome,
+                                            showMetadataOverlay = showCenterChrome,
+                                            showFocusGlow = false,
+                                            useGradientFocusBorder = true,
                                             enableFocusScale = false,
                                         )
                                     }

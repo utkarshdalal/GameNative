@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -70,6 +71,9 @@ internal fun AppItem(
     chromeScale: Float = 1f,
     showCompatibilityBadgeInCard: Boolean = true,
     showGameSourceIcon: Boolean = true,
+    showMetadataOverlay: Boolean = true,
+    showFocusGlow: Boolean = true,
+    useGradientFocusBorder: Boolean = true,
     enableFocusScale: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -97,14 +101,18 @@ internal fun AppItem(
         else -> 1.03f
     }
 
-    val scale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "focusScale",
-    )
+    val scale by if (enableFocusScale) {
+        animateFloatAsState(
+            targetValue = targetScale,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+            label = "focusScale",
+        )
+    } else {
+        rememberUpdatedState(1f)
+    }
 
     when (paneType) {
         PaneType.LIST -> ListViewCard(
@@ -139,6 +147,9 @@ internal fun AppItem(
             chromeScale = chromeScale,
             showCompatibilityBadgeInCard = showCompatibilityBadgeInCard,
             showGameSourceIcon = showGameSourceIcon,
+            showMetadataOverlay = showMetadataOverlay,
+            showFocusGlow = showFocusGlow,
+            useGradientFocusBorder = useGradientFocusBorder,
             context = context,
         )
     }

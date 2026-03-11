@@ -36,13 +36,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,9 @@ internal fun GridViewCard(
     chromeScale: Float,
     showCompatibilityBadgeInCard: Boolean,
     showGameSourceIcon: Boolean,
+    showMetadataOverlay: Boolean,
+    showFocusGlow: Boolean,
+    useGradientFocusBorder: Boolean,
     context: Context,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
@@ -94,30 +98,43 @@ internal fun GridViewCard(
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
     val bottomGradientHeight = if (isCapsule) 80.dp * overlayScale else 56.dp
     val glowColor = MaterialTheme.colorScheme.primary
+    val focusHaloModifier = if (isFocused && showFocusGlow) {
+        Modifier.drawWithCache {
+            val glowBrush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = 0.3f),
+                    Color.Transparent,
+                ),
+                radius = size.maxDimension * 0.7f,
+            )
+            val glowRadius = size.maxDimension * 0.6f
+            onDrawBehind {
+                drawCircle(
+                    brush = glowBrush,
+                    radius = glowRadius,
+                    center = center,
+                )
+            }
+        }
+    } else {
+        Modifier
+    }
+    val focusBorderBrush = if (useGradientFocusBorder) {
+        Brush.verticalGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.tertiary,
+            ),
+        )
+    } else {
+        SolidColor(MaterialTheme.colorScheme.primary)
+    }
 
     Box(
         modifier = modifier
             .padding(vertical = 4.dp)
             .scale(scale)
-            .then(
-                if (isFocused) {
-                    Modifier.drawBehind {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    glowColor.copy(alpha = 0.3f),
-                                    Color.Transparent,
-                                ),
-                                radius = size.maxDimension * 0.7f,
-                            ),
-                            radius = size.maxDimension * 0.6f,
-                            center = center,
-                        )
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+            .then(focusHaloModifier),
     ) {
         val interactionSource = remember { MutableInteractionSource() }
         val isItemFocused by interactionSource.collectIsFocusedAsState()
@@ -141,15 +158,7 @@ internal fun GridViewCard(
                 containerColor = Color.Transparent,
             ),
             border = if (isFocused) {
-                BorderStroke(
-                    2.dp,
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.tertiary,
-                        ),
-                    ),
-                )
+                BorderStroke(2.dp, focusBorderBrush)
             } else {
                 null
             },
@@ -210,58 +219,60 @@ internal fun GridViewCard(
                     }
                 }
 
-                // Gradient overlay at bottom for title
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(bottomGradientHeight)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.85f),
+                if (showMetadataOverlay) {
+                    // Gradient overlay at bottom for title
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(bottomGradientHeight)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.85f),
+                                    ),
                                 ),
                             ),
-                        ),
-                )
-
-                // Title and status icons at bottom
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = cardContentBottomPadding)
-                        .then(
-                            if (overlayNeedsLayer) {
-                                Modifier.graphicsLayer {
-                                    scaleX = overlayScale
-                                    scaleY = overlayScale
-                                    transformOrigin = TransformOrigin(0f, 1f)
-                                }
-                            } else {
-                                Modifier
-                            }
-                        ),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = appInfo.name,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            shadow = Shadow(
-                                color = Color.Black,
-                                offset = Offset(1f, 1f),
-                                blurRadius = 2f,
-                            ),
-                        ),
-                        color = Color.White,
-                        maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
                     )
 
-                    GridStatusIcons(appInfo = appInfo)
+                    // Title and status icons at bottom
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = cardContentBottomPadding)
+                            .then(
+                                if (overlayNeedsLayer) {
+                                    Modifier.graphicsLayer {
+                                        scaleX = overlayScale
+                                        scaleY = overlayScale
+                                        transformOrigin = TransformOrigin(0f, 1f)
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = appInfo.name,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                shadow = Shadow(
+                                    color = Color.Black,
+                                    offset = Offset(1f, 1f),
+                                    blurRadius = 2f,
+                                ),
+                            ),
+                            color = Color.White,
+                            maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+
+                        GridStatusIcons(appInfo = appInfo)
+                    }
                 }
 
                 // Compatibility badge (top left, including UNKNOWN)
