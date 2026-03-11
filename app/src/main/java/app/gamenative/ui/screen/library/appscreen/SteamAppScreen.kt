@@ -469,9 +469,8 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        val gameId = libraryItem.gameId
-        return SteamService.getAppDownloadInfo(gameId) != null
-            && !SteamService.isAppInstalled(gameId)
+        // download job is removed on completion, so non-null means actively downloading
+        return SteamService.getAppDownloadInfo(libraryItem.gameId) != null
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -622,9 +621,7 @@ class SteamAppScreen : BaseAppScreen() {
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
 
         if (downloadInfo != null) {
-            if (!SteamService.isAppInstalled(gameId)) {
-                downloadInfo.cancel()
-            }
+            downloadInfo.cancel()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
