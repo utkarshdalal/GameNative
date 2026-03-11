@@ -602,16 +602,8 @@ private fun ScreenEffectToggleRow(
             )
         }
 
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+        Box(contentAlignment = Alignment.CenterEnd) {
             ScreenEffectSwitch(enabled = enabled, accentColor = accentColor)
-            Text(
-                text = if (enabled) stringResource(R.string.screen_effects_enabled) else stringResource(R.string.disabled),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (enabled) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
