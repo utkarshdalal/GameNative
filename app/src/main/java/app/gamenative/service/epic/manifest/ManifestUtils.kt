@@ -41,17 +41,34 @@ object ManifestUtils {
     }
 
     /**
+     * Get list of files that are part of the default/required install.
+     * Epic manifests list all files including optional (e.g. language packs). Files with
+     * no install tags are typically always installed; files with tags are optional.
+     */
+    fun getRequiredInstallFiles(manifest: EpicManifest): List<FileManifest> {
+        val all = manifest.fileManifestList?.elements ?: return emptyList()
+        val required = all.filter { it.installTags.isEmpty() }
+        return if (required.isEmpty()) all else required
+    }
+
+    /**
      * Get list of all unique chunks referenced by files
      */
     fun getRequiredChunks(manifest: EpicManifest): List<ChunkInfo> {
+        return getRequiredChunksForFileList(manifest, manifest.fileManifestList?.elements ?: emptyList())
+    }
+
+    /**
+     * Get unique chunks referenced by the given file list
+     */
+    fun getRequiredChunksForFileList(manifest: EpicManifest, files: List<FileManifest>): List<ChunkInfo> {
         val chunkGuids = mutableSetOf<String>()
         val chunks = mutableListOf<ChunkInfo>()
 
-        manifest.fileManifestList?.elements?.forEach { file ->
+        files.forEach { file ->
             file.chunkParts.forEach { part ->
                 val guidStr = part.guidStr
                 if (chunkGuids.add(guidStr)) {
-                    // Find the chunk info for this GUID
                     manifest.chunkDataList?.getChunkByGuid(guidStr)?.let { chunk ->
                         chunks.add(chunk)
                     }
@@ -86,17 +103,29 @@ object ManifestUtils {
     }
 
     /**
-     * Calculate total download size for manifest
+     * Calculate total download size for manifest (all files).
      */
     fun getTotalDownloadSize(manifest: EpicManifest): Long {
         return getRequiredChunks(manifest).sumOf { it.fileSize }
     }
 
     /**
-     * Calculate total installed size for manifest
+     * Calculate total installed size for manifest (all files).
      */
     fun getTotalInstalledSize(manifest: EpicManifest): Long {
         return manifest.fileManifestList?.elements?.sumOf { it.fileSize } ?: 0L
+    }
+
+    /**
+     * Calculate download and install size for the given install tags (required + selectedTags).
+     * Use emptyList() for required-only. Same logic as download uses.
+     */
+    fun getSizesForSelectedInstallTags(manifest: EpicManifest, selectedTags: List<String>): Pair<Long, Long> {
+        val files = getFilesForSelectedInstallTags(manifest, selectedTags)
+        val installSize = files.sumOf { it.fileSize }
+        val chunks = getRequiredChunksForFileList(manifest, files)
+        val downloadSize = chunks.sumOf { it.fileSize }
+        return downloadSize to installSize
     }
 
     /**
@@ -114,12 +143,28 @@ object ManifestUtils {
     }
 
     /**
-     * Get files matching install tags
+     * Get files matching install tags (optional content only; does not include required).
      */
     fun getFilesWithTags(manifest: EpicManifest, tags: List<String>): List<FileManifest> {
         return manifest.fileManifestList?.elements?.filter { file ->
             tags.any { tag -> file.installTags.contains(tag) }
         } ?: emptyList()
+    }
+
+    /**
+     * Get the file list to download when the user selects optional install tags (e.g. languages).
+     * Returns required (no-tag) files plus any file that has at least one of [selectedTags].
+     * So: base game + selected optional content (e.g. German + French = required + German files + French files).
+     * Use this when building the download set for "required + these tags" (like Legendary/Heroic).
+     */
+    fun getFilesForSelectedInstallTags(manifest: EpicManifest, selectedTags: List<String>): List<FileManifest> {
+        val all = manifest.fileManifestList?.elements ?: return emptyList()
+        if (selectedTags.isEmpty()) return getRequiredInstallFiles(manifest)
+        val withLanguage = all.filter { file ->
+            file.installTags.isEmpty() || file.installTags.any { it in selectedTags }
+        }
+        // If selected language matched no files (e.g. manifest uses "de" not "German"), fall back to required-only
+        return if (withLanguage.isEmpty()) getRequiredInstallFiles(manifest) else withLanguage
     }
 
     /**

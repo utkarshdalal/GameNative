@@ -199,12 +199,16 @@ data class DownloadInfo(
         if (bytesDownloaded >= totalExpectedBytes) return null
 
         val now = System.currentTimeMillis()
-        trimOldSamples(now, windowSeconds * 1000L)
 
-        if (speedSamples.size < 2) return null
+        // Snapshot via toTypedArray().toList() so we never call toList() on the COWAL
+        // when it's empty (which can crash), and we get a consistent view so another
+        // thread can't shrink the list between our size check and first()/last().
+        val cutoff = now - windowSeconds * 1000L
+        val samples = speedSamples.toTypedArray().filter { it.timeMs >= cutoff }.toList()
+        if (samples.size < 2) return null
 
-        val first = speedSamples.first()
-        val last = speedSamples.last()
+        val first = samples.first()
+        val last = samples.last()
         val elapsedMs = last.timeMs - first.timeMs
         if (elapsedMs <= 0L) return null
 

@@ -1241,6 +1241,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override // android.view.View.OnCapturedPointerListener
     public boolean onCapturedPointer(View view, MotionEvent event) {
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
+            return handleTouchpadEvent(event);
+        }
         if (event.getAction() == MotionEvent.ACTION_MOVE) {
             float dx = 0f;
             float dy = 0f;

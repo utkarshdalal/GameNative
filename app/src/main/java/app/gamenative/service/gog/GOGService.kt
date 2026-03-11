@@ -289,13 +289,6 @@ class GOGService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
-        fun runScriptInterpreterIfNeeded(
-            appId: String,
-            guestProgramLauncherComponent: com.winlator.xenvironment.components.GuestProgramLauncherComponent,
-        ) {
-            getInstance()?.gogManager?.runScriptInterpreterIfNeeded(appId, guestProgramLauncherComponent)
-        }
-
         fun downloadGame(context: Context, gameId: String, installPath: String, containerLanguage: String): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 

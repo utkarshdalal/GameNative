@@ -346,7 +346,7 @@ class EpicService : Service() {
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
         }
 
-        fun downloadGame(context: Context, appId: Int, dlcGameIds: List<Int>, installPath: String): Result<DownloadInfo> {
+        fun downloadGame(context: Context, appId: Int, dlcGameIds: List<Int>, installPath: String, containerLanguage: String): Result<DownloadInfo> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             val game = runBlocking { instance.epicManager.getGameById(appId) }
@@ -380,7 +380,7 @@ class EpicService : Service() {
                         game,
                         installPath,
                         downloadInfo,
-                        "en-US",
+                        containerLanguage,
                         dlcGameIds,
                         commonRedistDir,
                     )

@@ -487,7 +487,7 @@ fun PluviaMain(
             if (shouldAttemptReconnect) {
                 Timber.d("[PluviaMain]: Steam not connected - attempting reconnection")
                 isConnecting = true
-                viewModel.startConnecting() // Update ViewModel state for UI
+                viewModel.startConnecting()
                 context.startForegroundService(Intent(context, SteamService::class.java))
             }
 
@@ -1063,7 +1063,9 @@ fun PluviaMain(
             val startDestination = rememberSaveable {
                 when {
                     SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
-                    GOGService.hasStoredCredentials(context) ||
+                    // skip login screen if any service has stored credentials
+                    (PrefManager.username.isNotEmpty() && PrefManager.refreshToken.isNotEmpty()) ||
+                        GOGService.hasStoredCredentials(context) ||
                         EpicService.hasStoredCredentials(context) ||
                         AmazonService.hasStoredCredentials(context) ->
                         PluviaScreen.Home.route + "?offline=true"
@@ -1109,7 +1111,7 @@ fun PluviaMain(
                         val hasSteamCredentials = PrefManager.refreshToken.isNotEmpty() && PrefManager.username.isNotEmpty()
                         val shouldShowDialogs = !isOffline || !hasSteamCredentials
 
-                        if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive) {
+                        if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive && !MainActivity.wasLaunchedViaExternalIntent) {
                             val currentUpdateInfo = updateInfo
                             if (currentUpdateInfo != null) {
                                 viewModel.setAnnoyingDialogShown(true)

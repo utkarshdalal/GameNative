@@ -1,6 +1,7 @@
 package app.gamenative.service
 
 import android.content.Context
+import android.os.Environment
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,12 +25,23 @@ object DownloadService {
             field = value
         }
 
+    // all mounted non-primary external volumes (SD cards, USB), discovered at init
+    var externalVolumePaths: List<String> = emptyList()
+        private set
+
     fun populateDownloadService(context: Context) {
         baseDataDirPath = context.dataDir.path
         baseCacheDirPath = context.cacheDir.path
         // Prefer the parent of external files dir (Android/data/<package>) so we can create siblings of /files
         val extFiles = context.getExternalFilesDir(null)
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
+
+        val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
+        externalVolumePaths = context.getExternalFilesDirs(null)
+            .filterNotNull()
+            .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+            .filter { sm.getStorageVolume(it)?.isPrimary != true }
+            .map { it.absolutePath }
     }
 
     fun getDownloadDirectoryApps (): MutableList<String> {
@@ -41,11 +53,15 @@ object DownloadService {
         if (lastUpdateTime < (time - 5 * 1000) || lastUpdateTime > time) {
             lastUpdateTime = time
 
-            // For now, grab parent directories from SteamService
-            val subDir = getSubdirectories(SteamService.internalAppInstallPath)
-            subDir += getSubdirectories(SteamService.externalAppInstallPath)
+            // scan internal + all mounted external volumes, deduplicate across volumes
+            val dirs = mutableSetOf<String>()
+            dirs += getSubdirectories(SteamService.internalAppInstallPath)
+            for (volPath in externalVolumePaths) {
+                val extInstallPath = java.nio.file.Paths.get(volPath, "Steam", "steamapps", "common").toString()
+                dirs += getSubdirectories(extInstallPath)
+            }
 
-            downloadDirectoryApps = subDir
+            downloadDirectoryApps = dirs.toMutableList()
         }
 
         return downloadDirectoryApps ?: mutableListOf()

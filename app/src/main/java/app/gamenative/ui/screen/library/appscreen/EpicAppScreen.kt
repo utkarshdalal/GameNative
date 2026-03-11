@@ -391,9 +391,10 @@ class EpicAppScreen : BaseAppScreen() {
                 SnackbarManager.show(message)
 
                 // Start download - EpicService will handle monitoring, database updates, verification, and events
-                // Pass the selected DLC IDs (excluding the base game)
+                // Pass the selected DLC IDs (excluding the base game). Use container language for install-tag selection.
                 val dlcIds = selectedGameIds.filter { it != libraryItem.gameId }
-                val result = EpicService.downloadGame(context, libraryItem.gameId, dlcIds, installPath)
+                val containerData = loadContainerData(context, libraryItem)
+                val result = EpicService.downloadGame(context, libraryItem.gameId, dlcIds, installPath, containerData.language)
 
                 if (result.isSuccess) {
                     Timber.tag(TAG).i("Epic game download started successfully: ${libraryItem.gameId}")
