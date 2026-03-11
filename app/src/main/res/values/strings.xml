@@ -250,6 +250,7 @@
     <string name="screen_effects_ntsc_description">Adds retro composite TV warping, bleed, and scanlines.</string>
     <string name="screen_effects_reset">Reset</string>
     <string name="screen_effects_close">Close</string>
+    <string name="screen_effects_enabled">Enabled</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
