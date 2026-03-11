@@ -46,7 +46,7 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         xServer.pointer.addOnPointerMotionListener(this);
         xServer.keyboard.addOnKeyboardListener(this);
 
-        repeatDelayMs = ViewConfiguration.getLongPressTimeout();
+        repeatDelayMs = ViewConfiguration.getKeyRepeatTimeout();
         repeatRateMs = ViewConfiguration.getKeyRepeatDelay();
     }
 

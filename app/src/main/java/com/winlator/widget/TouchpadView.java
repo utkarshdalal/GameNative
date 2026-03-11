@@ -1280,12 +1280,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
             int historySize = event.getHistorySize();
             for (int i = 0; i < historySize; i++) {
-                dx += event.getHistoricalX(i);
-                dy += event.getHistoricalY(i);
+                dx += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_X, i);
+                dy += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_Y, i);
             }
 
-            dx += event.getX();
-            dy += event.getY();
+            dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
+            dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
             this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
             return true;
         }
