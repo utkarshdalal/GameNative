@@ -39,8 +39,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -76,6 +78,7 @@ private const val CAROUSEL_STEP_OFFSET_RATIO = 0.08f
 private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
 private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
+private val CAROUSEL_BACKDROP_BLUR_RADIUS = 12.dp
 
 private fun interpolateByDistance(
     distanceInSteps: Float,
@@ -136,7 +139,13 @@ private fun CarouselBackdrop(
 
             if (currentImageUrl.isNotEmpty()) {
                 CoilImage(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = 1.06f
+                            scaleY = 1.06f
+                        }
+                        .blur(CAROUSEL_BACKDROP_BLUR_RADIUS),
                     imageModel = { currentImageUrl },
                     imageOptions = ImageOptions(
                         contentScale = ContentScale.Crop,
@@ -152,6 +161,44 @@ private fun CarouselBackdrop(
                 )
             }
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f)),
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black.copy(alpha = 0.74f),
+                            0.16f to Color.Black.copy(alpha = 0.52f),
+                            0.38f to Color.Black.copy(alpha = 0.24f),
+                            0.62f to Color.Black.copy(alpha = 0.34f),
+                            1.0f to Color.Black.copy(alpha = 0.72f),
+                        ),
+                    ),
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black.copy(alpha = 0.34f),
+                            0.14f to Color.Black.copy(alpha = 0.16f),
+                            0.5f to Color.Transparent,
+                            0.86f to Color.Black.copy(alpha = 0.16f),
+                            1.0f to Color.Black.copy(alpha = 0.34f),
+                        ),
+                    ),
+                ),
+        )
     }
 }
 
