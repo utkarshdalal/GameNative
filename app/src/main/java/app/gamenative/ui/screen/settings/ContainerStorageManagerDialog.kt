@@ -120,8 +120,29 @@ fun ContainerStorageManagerDialog(
         val entryName = entry.displayName.ifBlank { context.getString(R.string.container_storage_unknown_container) }
         AlertDialog(
             onDismissRequest = { pendingUninstall = null },
-            title = { Text(stringResource(R.string.container_storage_uninstall_title)) },
-            text = { Text(stringResource(R.string.container_storage_uninstall_message, entryName)) },
+            title = {
+                Text(
+                    stringResource(
+                        if (entry.hasContainer) {
+                            R.string.container_storage_uninstall_title
+                        } else {
+                            R.string.container_storage_uninstall_game_only_title
+                        },
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        if (entry.hasContainer) {
+                            R.string.container_storage_uninstall_message
+                        } else {
+                            R.string.container_storage_uninstall_game_only_message
+                        },
+                        entryName,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -201,7 +222,7 @@ fun ContainerStorageManagerDialog(
                                     stringResource(
                                         R.string.container_storage_summary,
                                         entries.size,
-                                        StorageUtils.formatBinarySize(entries.sumOf { it.combinedSizeBytes ?: it.containerSizeBytes }),
+                                        StorageUtils.formatBinarySize(inventorySummaryBytes(entries)),
                                     )
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
@@ -363,15 +384,19 @@ private fun ContainerStorageRow(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer,
                     )
+                }
+                if (entry.canUninstallGame && entry.hasContainer) {
                     Spacer(modifier = Modifier.size(8.dp))
                 }
-                SquircleActionButton(
-                    text = stringResource(R.string.container_storage_remove_button),
-                    icon = Icons.Default.Delete,
-                    onClick = onRemove,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                )
+                if (entry.hasContainer) {
+                    SquircleActionButton(
+                        text = stringResource(R.string.container_storage_remove_button),
+                        icon = Icons.Default.Delete,
+                        onClick = onRemove,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
     }
@@ -422,8 +447,27 @@ private fun MetadataChip(
     }
 }
 
+private fun inventorySummaryBytes(entries: List<ContainerStorageManager.Entry>): Long {
+    val containerBytes = entries
+        .filter { it.hasContainer }
+        .sumOf { it.containerSizeBytes }
+    val gameBytes = entries
+        .mapNotNull { entry ->
+            val installPath = entry.installPath ?: return@mapNotNull null
+            val gameSize = entry.gameInstallSizeBytes ?: return@mapNotNull null
+            installPath to gameSize
+        }
+        .distinctBy { it.first }
+        .sumOf { it.second }
+    return containerBytes + gameBytes
+}
+
 private fun sizeBreakdown(entry: ContainerStorageManager.Entry): String {
-    val container = "Container ${StorageUtils.formatBinarySize(entry.containerSizeBytes)}"
+    val container = if (entry.hasContainer) {
+        "Container ${StorageUtils.formatBinarySize(entry.containerSizeBytes)}"
+    } else {
+        null
+    }
     val game = entry.gameInstallSizeBytes?.let { "Game ${StorageUtils.formatBinarySize(it)}" }
     val total = entry.combinedSizeBytes?.let { "Total ${StorageUtils.formatBinarySize(it)}" }
     return listOfNotNull(game, container, total).joinToString(" • ")
@@ -442,6 +486,7 @@ private fun gameSourceLabel(gameSource: GameSource?): String = when (gameSource)
 @Composable
 private fun statusLabel(status: ContainerStorageManager.Status): String = when (status) {
     ContainerStorageManager.Status.READY -> stringResource(R.string.container_storage_status_ready)
+    ContainerStorageManager.Status.NO_CONTAINER -> stringResource(R.string.container_storage_status_no_container)
     ContainerStorageManager.Status.GAME_FILES_MISSING -> stringResource(R.string.container_storage_status_game_files_missing)
     ContainerStorageManager.Status.ORPHANED -> stringResource(R.string.container_storage_status_orphaned)
     ContainerStorageManager.Status.UNREADABLE -> stringResource(R.string.container_storage_status_unreadable)
@@ -450,6 +495,7 @@ private fun statusLabel(status: ContainerStorageManager.Status): String = when (
 @Composable
 private fun statusContainerColor(status: ContainerStorageManager.Status) = when (status) {
     ContainerStorageManager.Status.READY -> MaterialTheme.colorScheme.secondaryContainer
+    ContainerStorageManager.Status.NO_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
     ContainerStorageManager.Status.GAME_FILES_MISSING -> MaterialTheme.colorScheme.tertiaryContainer
     ContainerStorageManager.Status.ORPHANED -> MaterialTheme.colorScheme.errorContainer
     ContainerStorageManager.Status.UNREADABLE -> MaterialTheme.colorScheme.surfaceContainerHighest
@@ -458,6 +504,7 @@ private fun statusContainerColor(status: ContainerStorageManager.Status) = when 
 @Composable
 private fun statusContentColor(status: ContainerStorageManager.Status) = when (status) {
     ContainerStorageManager.Status.READY -> MaterialTheme.colorScheme.onSecondaryContainer
+    ContainerStorageManager.Status.NO_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
     ContainerStorageManager.Status.GAME_FILES_MISSING -> MaterialTheme.colorScheme.onTertiaryContainer
     ContainerStorageManager.Status.ORPHANED -> MaterialTheme.colorScheme.onErrorContainer
     ContainerStorageManager.Status.UNREADABLE -> MaterialTheme.colorScheme.onSurface

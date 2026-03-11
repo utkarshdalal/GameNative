@@ -810,16 +810,17 @@
     <!-- Settings: Storage -->
     <string name="settings_storage_title">Storage</string>
     <string name="settings_storage_manage_title">Manage containers</string>
-    <string name="settings_storage_manage_subtitle">Free internal storage by removing old or unused containers</string>
+    <string name="settings_storage_manage_subtitle">Review game and container storage in one place</string>
     <string name="container_storage_title">Container &amp; Storage Manager</string>
-    <string name="container_storage_subtitle">Review container usage and remove containers while keeping game files installed</string>
-    <string name="container_storage_summary">%1$d containers • %2$s</string>
-    <string name="container_storage_empty">No containers found</string>
-    <string name="container_storage_loading">Scanning containers…</string>
+    <string name="container_storage_subtitle">Review game and container storage, including installed games without containers</string>
+    <string name="container_storage_summary">%1$d items • %2$s</string>
+    <string name="container_storage_empty">No storage items found</string>
+    <string name="container_storage_loading">Scanning storage…</string>
     <string name="container_storage_source_unknown">Unknown</string>
     <string name="container_storage_unknown_container">Unknown container</string>
     <string name="container_storage_source_and_status">%1$s • %2$s</string>
     <string name="container_storage_status_ready">Ready</string>
+    <string name="container_storage_status_no_container">No container</string>
     <string name="container_storage_status_game_files_missing">Game files missing</string>
     <string name="container_storage_status_orphaned">Orphaned</string>
     <string name="container_storage_status_unreadable">Unreadable</string>
@@ -831,6 +832,8 @@
     <string name="container_storage_uninstall_button">Uninstall game</string>
     <string name="container_storage_uninstall_title">Uninstall game and container?</string>
     <string name="container_storage_uninstall_message">This uninstalls %1$s, removes its game files, and deletes the linked container.</string>
+    <string name="container_storage_uninstall_game_only_title">Uninstall game?</string>
+    <string name="container_storage_uninstall_game_only_message">This uninstalls %1$s and removes its game files. No container will be deleted.</string>
     <string name="container_storage_uninstall_success">Uninstalled %1$s</string>
     <string name="container_storage_uninstall_failed">Failed to uninstall game: %1$s</string>
 
