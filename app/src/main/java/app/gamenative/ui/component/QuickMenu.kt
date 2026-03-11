@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Gamepad
@@ -43,7 +45,6 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +56,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
+import com.winlator.renderer.GLRenderer
+import kotlinx.coroutines.delay
 
 object QuickMenuAction {
     const val KEYBOARD = 1
@@ -85,6 +87,7 @@ object QuickMenuAction {
 private object QuickMenuTab {
     const val GENERAL = 0
     const val CONTROLLER = 1
+    const val EFFECTS = 2
 }
 
 data class QuickMenuItem(
@@ -100,6 +103,7 @@ fun QuickMenu(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onItemSelected: (Int) -> Unit,
+    renderer: GLRenderer? = null,
     hasPhysicalController: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -156,17 +160,23 @@ fun QuickMenu(
     }
 
     var selectedTab by remember { mutableIntStateOf(QuickMenuTab.GENERAL) }
-    val visibleItems = if (selectedTab == QuickMenuTab.GENERAL) generalItems else controllerItems
-    val selectedTabLabelResId = if (selectedTab == QuickMenuTab.GENERAL) {
-        R.string.quick_menu_tab_general
-    } else {
-        R.string.quick_menu_tab_controller
+    val visibleItems = when (selectedTab) {
+        QuickMenuTab.GENERAL -> generalItems
+        QuickMenuTab.CONTROLLER -> controllerItems
+        else -> emptyList()
+    }
+    val selectedTabLabelResId = when (selectedTab) {
+        QuickMenuTab.GENERAL -> R.string.quick_menu_tab_general
+        QuickMenuTab.CONTROLLER -> R.string.quick_menu_tab_controller
+        else -> R.string.screen_effects
     }
 
     val generalTabFocusRequester = remember { FocusRequester() }
     val controllerTabFocusRequester = remember { FocusRequester() }
+    val effectsTabFocusRequester = remember { FocusRequester() }
     val generalItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
+    val effectsFirstItemFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = isVisible) {
         onDismiss()
@@ -210,7 +220,7 @@ fun QuickMenu(
         ) {
             Surface(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(360.dp))
+                    .width(adaptivePanelWidth(420.dp))
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -275,6 +285,15 @@ fun QuickMenu(
                                 modifier = Modifier.width(56.dp),
                                 focusRequester = controllerTabFocusRequester,
                             )
+                            QuickMenuTabButton(
+                                icon = Icons.Default.AutoFixHigh,
+                                contentDescriptionResId = R.string.screen_effects,
+                                selected = selectedTab == QuickMenuTab.EFFECTS,
+                                accentColor = PluviaTheme.colors.accentPink,
+                                onSelected = { selectedTab = QuickMenuTab.EFFECTS },
+                                modifier = Modifier.width(56.dp),
+                                focusRequester = effectsTabFocusRequester,
+                            )
                         }
 
                         Box(
@@ -288,9 +307,7 @@ fun QuickMenu(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
                                 .focusGroup(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
                                 text = stringResource(selectedTabLabelResId),
@@ -299,24 +316,72 @@ fun QuickMenu(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
 
+                            if (selectedTab == QuickMenuTab.EFFECTS) {
+                                Text(
+                                    text = stringResource(R.string.screen_effects_live_preview),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
+                                )
+                            }
+
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                             )
 
-                            visibleItems.forEachIndexed { index, item ->
-                                QuickMenuItemRow(
-                                    item = item,
-                                    onClick = {
-                                        onItemSelected(item.id)
-                                        onDismiss()
-                                    },
-                                    focusRequester = when {
-                                        selectedTab == QuickMenuTab.GENERAL && index == 0 -> generalItemFocusRequester
-                                        selectedTab == QuickMenuTab.CONTROLLER && index == 0 -> controllerItemFocusRequester
-                                        else -> null
-                                    },
-                                )
+                            Box(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                when (selectedTab) {
+                                    QuickMenuTab.EFFECTS -> {
+                                        if (renderer != null) {
+                                            ScreenEffectsTabContent(
+                                                renderer = renderer,
+                                                modifier = Modifier.fillMaxSize(),
+                                                firstItemFocusRequester = effectsFirstItemFocusRequester,
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 8.dp, vertical = 16.dp),
+                                                contentAlignment = Alignment.TopStart,
+                                            ) {
+                                                Text(
+                                                    text = stringResource(R.string.main_loading),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    else -> {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .verticalScroll(rememberScrollState())
+                                                .focusGroup(),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            visibleItems.forEachIndexed { index, item ->
+                                                QuickMenuItemRow(
+                                                    item = item,
+                                                    onClick = {
+                                                        onItemSelected(item.id)
+                                                        onDismiss()
+                                                    },
+                                                    focusRequester = when {
+                                                        selectedTab == QuickMenuTab.GENERAL && index == 0 -> generalItemFocusRequester
+                                                        selectedTab == QuickMenuTab.CONTROLLER && index == 0 -> controllerItemFocusRequester
+                                                        else -> null
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

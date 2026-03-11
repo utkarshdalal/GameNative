@@ -1491,6 +1491,7 @@ fun XServerScreen(
             isVisible = showQuickMenu,
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
+            renderer = xServerView?.renderer,
             hasPhysicalController = hasPhysicalController,
         )
 
