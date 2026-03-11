@@ -1,8 +1,10 @@
 package com.winlator.renderer;
 
 import android.opengl.GLES20;
+import android.util.Log;
 
 public class RenderTarget extends Texture {
+    private static final String TAG = "RenderTarget";
     private int framebuffer = 0;
     private int width = 0;
     private int height = 0;
@@ -48,8 +50,25 @@ public class RenderTarget extends Texture {
             textureId,
             0
         );
+
+        int framebufferStatus = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER);
+        if (framebufferStatus != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.e(TAG, "Framebuffer incomplete: 0x" + Integer.toHexString(framebufferStatus));
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+            destroy();
+            throw new IllegalStateException("Framebuffer incomplete: 0x" + Integer.toHexString(framebufferStatus));
+        }
+
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+    }
+
+    public void invalidate() {
+        super.invalidate();
+        framebuffer = 0;
+        width = 0;
+        height = 0;
     }
 
     public int getFramebuffer() {

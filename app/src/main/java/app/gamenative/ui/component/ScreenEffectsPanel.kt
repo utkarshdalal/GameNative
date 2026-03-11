@@ -113,7 +113,7 @@ fun ScreenEffectsPanel(
         val effects = mutableListOf<Effect>()
 
         if (abs(brightness) > 0.001f || abs(contrast) > 0.001f || abs(gamma - 1.0f) > 0.001f) {
-            val colorEffect = composer.getEffect(ColorEffect::class.java) ?: ColorEffect()
+            val colorEffect = ColorEffect()
             colorEffect.brightness = brightness / 100f
             colorEffect.contrast = contrast / 100f
             colorEffect.gamma = gamma
@@ -165,6 +165,23 @@ fun ScreenEffectsPanel(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.CenterEnd,
     ) {
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+            )
+        }
+
         AnimatedVisibility(
             visible = isVisible,
             enter = slideInHorizontally(

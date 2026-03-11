@@ -101,6 +101,14 @@ public class EffectComposer {
         renderer.setViewportNeedsUpdate(true);
     }
 
+    public synchronized void invalidateGLResources() {
+        for (Effect effect : effects) {
+            effect.destroy();
+        }
+        readBuffer.invalidate();
+        writeBuffer.invalidate();
+    }
+
     public synchronized void destroy() {
         for (Effect effect : effects) {
             effect.destroy();
