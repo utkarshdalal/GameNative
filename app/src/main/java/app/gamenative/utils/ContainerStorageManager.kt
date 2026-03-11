@@ -1,7 +1,10 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryItem
+import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -31,10 +34,15 @@ object ContainerStorageManager {
         val containerId: String,
         val displayName: String,
         val gameSource: GameSource? = null,
-        val sizeBytes: Long,
+        val containerSizeBytes: Long,
+        val gameInstallSizeBytes: Long? = null,
         val status: Status,
         val installPath: String? = null,
-    )
+        val canUninstallGame: Boolean = false,
+    ) {
+        val combinedSizeBytes: Long?
+            get() = gameInstallSizeBytes?.plus(containerSizeBytes)
+    }
 
     private data class ResolvedGame(
         val name: String?,
@@ -48,38 +56,142 @@ object ContainerStorageManager {
         val dirs = homeDir.listFiles()
             ?.filter { it.isDirectory && it.name.startsWith(prefix) }
             .orEmpty()
+        val pathSizeCache = mutableMapOf<String, Long>()
 
-        dirs.map { dir -> buildEntry(context, dir, prefix) }
-            .sortedWith(compareByDescending<Entry> { it.sizeBytes }.thenBy { it.displayName.lowercase() })
+        Timber.tag("ContainerStorageManager").i("Scanning container inventory in %s (%d candidate dirs)", homeDir.absolutePath, dirs.size)
+
+        val entries = dirs.map { dir -> buildEntry(context, dir, prefix, pathSizeCache) }
+            .sortedWith(compareByDescending<Entry> { it.combinedSizeBytes ?: it.containerSizeBytes }.thenBy { it.displayName.lowercase() })
+
+        Timber.tag("ContainerStorageManager").i(
+            "Loaded %d container entries (%d ready, %d missing files, %d orphaned, %d unreadable)",
+            entries.size,
+            entries.count { it.status == Status.READY },
+            entries.count { it.status == Status.GAME_FILES_MISSING },
+            entries.count { it.status == Status.ORPHANED },
+            entries.count { it.status == Status.UNREADABLE },
+        )
+
+        entries
     }
 
     suspend fun removeContainer(context: Context, containerId: String): Boolean = withContext(Dispatchers.IO) {
         val homeDir = File(ImageFs.find(context).rootDir, "home")
         val containerDir = File(homeDir, "${ImageFs.USER}-$containerId")
         if (!containerDir.exists()) {
-            Timber.tag("ContainerStorageManager").w("Container does not exist: $containerId")
+            Timber.tag("ContainerStorageManager").w("Remove requested for missing container: %s", containerId)
             return@withContext false
         }
+
+        Timber.tag("ContainerStorageManager").i(
+            "Removing container %s at %s (exists=%s)",
+            containerId,
+            containerDir.absolutePath,
+            containerDir.exists(),
+        )
 
         val deleted = try {
             FileUtils.delete(containerDir)
         } catch (e: Exception) {
-            Timber.tag("ContainerStorageManager").e(e, "Failed to delete container directory: $containerId")
+            Timber.tag("ContainerStorageManager").e(e, "Failed to delete container directory: %s", containerId)
             false
         }
 
         if (deleted) {
             relinkActiveSymlinkIfNeeded(homeDir, containerDir)
+            Timber.tag("ContainerStorageManager").i("Removed container %s successfully", containerId)
+        } else {
+            Timber.tag("ContainerStorageManager").w("Container removal reported failure for %s", containerId)
         }
 
         deleted
     }
 
-    private suspend fun buildEntry(context: Context, dir: File, prefix: String): Entry {
+    suspend fun uninstallGameAndContainer(context: Context, entry: Entry): Result<Unit> = withContext(Dispatchers.IO) {
+        val normalizedContainerId = normalizeContainerId(entry.containerId)
+        val gameSource = detectGameSource(normalizedContainerId)
+            ?: return@withContext Result.failure(IllegalArgumentException("Unknown game source"))
+        val gameId = extractGameId(normalizedContainerId)
+            ?: return@withContext Result.failure(IllegalArgumentException("Invalid container id"))
+
+        Timber.tag("ContainerStorageManager").i(
+            "Uninstalling game+container for %s (source=%s, gameId=%d, displayName=%s)",
+            entry.containerId,
+            gameSource,
+            gameId,
+            entry.displayName,
+        )
+
+        try {
+            val result = when (gameSource) {
+                GameSource.STEAM -> {
+                    val deleted = SteamService.deleteApp(gameId)
+                    if (!deleted) {
+                        Result.failure(Exception("Failed to uninstall Steam game"))
+                    } else {
+                        removeContainer(context, entry.containerId)
+                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                        Result.success(Unit)
+                    }
+                }
+
+                GameSource.GOG -> {
+                    val result = GOGService.deleteGame(
+                        context,
+                        LibraryItem(
+                            appId = normalizedContainerId,
+                            name = entry.displayName,
+                            gameSource = GameSource.GOG,
+                        ),
+                    )
+                    if (result.isSuccess) removeContainer(context, entry.containerId)
+                    result
+                }
+
+                GameSource.EPIC -> {
+                    val result = EpicService.deleteGame(context, gameId)
+                    if (result.isSuccess) removeContainer(context, entry.containerId)
+                    result
+                }
+
+                GameSource.AMAZON -> {
+                    val productId = AmazonService.getProductIdByAppId(gameId)
+                        ?: return@withContext Result.failure(Exception("Amazon product id not found"))
+                    val result = AmazonService.deleteGame(context, productId)
+                    if (result.isSuccess) removeContainer(context, entry.containerId)
+                    result
+                }
+
+                GameSource.CUSTOM_GAME -> Result.failure(UnsupportedOperationException("Custom games are not supported"))
+            }
+
+            if (result.isSuccess) {
+                Timber.tag("ContainerStorageManager").i("Uninstall game+container succeeded for %s", entry.containerId)
+            } else {
+                Timber.tag("ContainerStorageManager").w(
+                    "Uninstall game+container failed for %s: %s",
+                    entry.containerId,
+                    result.exceptionOrNull()?.message,
+                )
+            }
+
+            result
+        } catch (e: Exception) {
+            Timber.tag("ContainerStorageManager").e(e, "Failed to uninstall game and container: %s", entry.containerId)
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun buildEntry(
+        context: Context,
+        dir: File,
+        prefix: String,
+        pathSizeCache: MutableMap<String, Long>,
+    ): Entry {
         val containerId = dir.name.removePrefix(prefix)
         val normalizedContainerId = normalizeContainerId(containerId)
         val gameSource = detectGameSource(normalizedContainerId)
-        val sizeBytes = getContainerDirectorySize(dir.toPath())
+        val containerSizeBytes = getContainerDirectorySize(dir.toPath())
         val configFile = File(dir, ".container")
 
         val config = readConfig(configFile)
@@ -88,7 +200,7 @@ object ContainerStorageManager {
                 containerId = containerId,
                 displayName = containerId,
                 gameSource = gameSource,
-                sizeBytes = sizeBytes,
+                containerSizeBytes = containerSizeBytes,
                 status = Status.UNREADABLE,
             )
         }
@@ -112,13 +224,19 @@ object ContainerStorageManager {
             else -> Status.READY
         }
 
+        val gameInstallSizeBytes = installPath
+            ?.takeIf { status == Status.READY }
+            ?.let { path -> pathSizeCache.getOrPut(path) { getContainerDirectorySize(File(path).toPath()) } }
+
         return Entry(
             containerId = containerId,
             displayName = displayName,
             gameSource = gameSource,
-            sizeBytes = sizeBytes,
+            containerSizeBytes = containerSizeBytes,
+            gameInstallSizeBytes = gameInstallSizeBytes,
             status = status,
             installPath = installPath,
+            canUninstallGame = status == Status.READY && gameSource != null && gameSource != GameSource.CUSTOM_GAME,
         )
     }
 

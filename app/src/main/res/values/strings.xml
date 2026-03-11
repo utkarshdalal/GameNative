@@ -814,9 +814,10 @@
     <string name="container_storage_title">Container &amp; Storage Manager</string>
     <string name="container_storage_subtitle">Review container usage and remove containers while keeping game files installed</string>
     <string name="container_storage_summary">%1$d containers • %2$s</string>
-    <string name="container_storage_warning">Removing a container frees internal storage. The game files stay installed, but local settings or saves stored inside the Windows environment may be lost.</string>
     <string name="container_storage_empty">No containers found</string>
+    <string name="container_storage_loading">Scanning containers…</string>
     <string name="container_storage_source_unknown">Unknown</string>
+    <string name="container_storage_unknown_container">Unknown container</string>
     <string name="container_storage_source_and_status">%1$s • %2$s</string>
     <string name="container_storage_status_ready">Ready</string>
     <string name="container_storage_status_game_files_missing">Game files missing</string>
@@ -824,9 +825,14 @@
     <string name="container_storage_status_unreadable">Unreadable</string>
     <string name="container_storage_remove_button">Remove container</string>
     <string name="container_storage_remove_title">Remove container?</string>
-    <string name="container_storage_remove_message">This removes the Windows environment for %1$s and frees internal storage. The game files stay installed.</string>
+    <string name="container_storage_remove_message">This removes the container for %1$s and frees internal storage. The game files stay installed, but local settings or saves stored inside the Windows environment may be lost.</string>
     <string name="container_storage_remove_success">Removed container for %1$s</string>
     <string name="container_storage_remove_failed">Failed to remove container</string>
+    <string name="container_storage_uninstall_button">Uninstall game</string>
+    <string name="container_storage_uninstall_title">Uninstall game and container?</string>
+    <string name="container_storage_uninstall_message">This uninstalls %1$s, removes its game files, and deletes the linked container.</string>
+    <string name="container_storage_uninstall_success">Uninstalled %1$s</string>
+    <string name="container_storage_uninstall_failed">Failed to uninstall game: %1$s</string>
 
     <!-- Login Screen -->
     <string name="login_app_name">GameNative</string>
