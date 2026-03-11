@@ -45,6 +45,7 @@ fun CompatibilityBadge(
     status: GameCompatibilityStatus,
     modifier: Modifier = Modifier,
     showLabel: Boolean = false,
+    compact: Boolean = false,
 ) {
     val badgeStyle = getBadgeStyle(status)
 
@@ -63,6 +64,7 @@ fun CompatibilityBadge(
             backgroundColor = badgeStyle.backgroundColor,
             iconTint = badgeStyle.iconTint,
             contentDescription = badgeStyle.labelResId,
+            compact = compact,
         )
     }
 }
@@ -158,11 +160,16 @@ private fun IconBadge(
     backgroundColor: Color,
     iconTint: Color,
     contentDescription: Int,
+    compact: Boolean = false,
 ) {
+    val badgeSize = if (compact) 20.dp else 24.dp
+    val iconSize = if (compact) 12.dp else 14.dp
+    val shadowSize = if (compact) 2.dp else 4.dp
+
     Box(
         modifier = modifier
-            .size(24.dp)
-            .shadow(4.dp, CircleShape)
+            .size(badgeSize)
+            .shadow(shadowSize, CircleShape)
             .clip(CircleShape)
             .background(backgroundColor),
         contentAlignment = Alignment.Center,
@@ -171,7 +178,7 @@ private fun IconBadge(
             imageVector = icon,
             contentDescription = stringResource(contentDescription),
             tint = iconTint,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(iconSize),
         )
     }
 }

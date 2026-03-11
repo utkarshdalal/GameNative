@@ -316,7 +316,7 @@ internal fun GridViewCard(
                                     Modifier
                                 }
                             ),
-                        iconSize = 12,
+                        iconSize = if (isCapsule) 14 else 12,
                     )
                 }
             }
@@ -431,8 +431,24 @@ internal fun getGridImageUrl(
             GridImageUrls(primary = primary)
         }
 
-        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON ->
-            GridImageUrls(primary = appInfo.iconHash)
+        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON -> {
+            val primary = when (paneType) {
+                PaneType.GRID_CAPSULE -> appInfo.capsuleImageUrl.ifEmpty { appInfo.iconHash }
+                else -> appInfo.headerImageUrl.ifEmpty {
+                    appInfo.heroImageUrl.ifEmpty { appInfo.iconHash }
+                }
+            }
+            val fallback = when {
+                paneType == PaneType.GRID_CAPSULE ->
+                    appInfo.iconHash.takeIf { it.isNotEmpty() && it != primary } ?: ""
+                appInfo.heroImageUrl.isNotEmpty() && appInfo.heroImageUrl != primary ->
+                    appInfo.heroImageUrl
+                appInfo.iconHash.isNotEmpty() && appInfo.iconHash != primary ->
+                    appInfo.iconHash
+                else -> ""
+            }
+            GridImageUrls(primary = primary, fallback = fallback)
+        }
 
         GameSource.STEAM -> when (paneType) {
             PaneType.GRID_CAPSULE ->

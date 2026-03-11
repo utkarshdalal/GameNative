@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.library.components
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -39,23 +41,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import app.gamenative.R
+import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.util.AdaptivePadding
 import app.gamenative.ui.util.shouldShowGamepadUI
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val CAROUSEL_TILT_ANGLE = 30.061367f
 private const val CAROUSEL_SPACING_RATIO = -0.13735926f
@@ -64,8 +75,7 @@ private const val CAROUSEL_SIDE_OFFSET_RATIO = 0.028464798f
 private const val CAROUSEL_STEP_OFFSET_RATIO = 0.08f
 private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_CARD_VERTICAL_OVERFLOW = 32f
-private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 40f
-private const val CAROUSEL_BADGE_BOTTOM_PADDING = 8f
+private const val CAROUSEL_BADGE_RESERVED_HEIGHT = 0f
 
 private fun interpolateByDistance(
     distanceInSteps: Float,
@@ -87,6 +97,60 @@ private fun interpolateByDistance(
         else -> {
             val farProgress = (clampedDistance - 2f).coerceIn(0f, 1f)
             secondStepValue + (farValue - secondStepValue) * farProgress
+        }
+    }
+}
+
+@Composable
+private fun CarouselBackdrop(
+    appInfo: LibraryItem?,
+    imageRefreshCounter: Long,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        if (appInfo != null) {
+            val imageUrls by produceState(
+                initialValue = GridImageUrls("", ""),
+                key1 = appInfo.appId,
+                key2 = imageRefreshCounter,
+            ) {
+                value = withContext(Dispatchers.IO) {
+                    getGridImageUrl(context, appInfo, PaneType.GRID_HERO)
+                }
+            }
+
+            var currentImageUrl by remember(
+                imageUrls.primary,
+                imageUrls.fallback,
+                appInfo.appId,
+                imageRefreshCounter,
+            ) {
+                mutableStateOf(imageUrls.primary)
+            }
+
+            if (currentImageUrl.isNotEmpty()) {
+                CoilImage(
+                    modifier = Modifier.fillMaxSize(),
+                    imageModel = { currentImageUrl },
+                    imageOptions = ImageOptions(
+                        contentScale = ContentScale.Crop,
+                        contentDescription = null,
+                    ),
+                    loading = {},
+                    failure = {
+                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                            currentImageUrl = imageUrls.fallback
+                        }
+                    },
+                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                )
+            }
         }
     }
 }
@@ -143,7 +207,6 @@ internal fun LibraryCarouselPane(
     val baseCardHeight = baseCardWidth / CAROUSEL_CARD_ASPECT_RATIO
     val cardVerticalOverflow = CAROUSEL_CARD_VERTICAL_OVERFLOW.dp
     val badgeReservedHeight = CAROUSEL_BADGE_RESERVED_HEIGHT.dp
-    val badgeBottomPadding = CAROUSEL_BADGE_BOTTOM_PADDING.dp
     val cardTopOverflow = cardVerticalOverflow
     val cardBottomOverflow = cardVerticalOverflow + badgeReservedHeight
     val availableCarouselHeight =
@@ -247,7 +310,21 @@ internal fun LibraryCarouselPane(
                     }
                 },
         ) {
+            val selectedBackdropItem = if (state.appInfoList.isEmpty()) {
+                null
+            } else {
+                val fallbackIndex = listState.firstVisibleItemIndex.coerceIn(0, state.appInfoList.lastIndex)
+                val backdropIndex = centeredIndex.takeIf { it in state.appInfoList.indices } ?: fallbackIndex
+                state.appInfoList.getOrNull(backdropIndex)
+            }
+
             Box(modifier = Modifier.fillMaxSize()) {
+                CarouselBackdrop(
+                    appInfo = selectedBackdropItem,
+                    imageRefreshCounter = state.imageRefreshCounter,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
                 if (state.appInfoList.isNotEmpty()) {
                     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
@@ -406,10 +483,10 @@ internal fun LibraryCarouselPane(
                                         state.compatibilityMap[item.name]?.let { status ->
                                             CompatibilityBadge(
                                                 status = status,
-                                                showLabel = true,
+                                                compact = true,
                                                 modifier = Modifier
-                                                    .align(Alignment.BottomCenter)
-                                                    .padding(bottom = badgeBottomPadding),
+                                                    .align(Alignment.TopStart)
+                                                    .padding(start = 10.dp, top = 8.dp),
                                             )
                                         }
                                     }
