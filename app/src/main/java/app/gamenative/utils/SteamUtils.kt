@@ -32,15 +32,43 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 import timber.log.Timber
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.dnsoverhttps.DnsOverHttps
 import org.json.JSONObject
+import java.net.InetAddress
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object SteamUtils {
 
+    private val bootstrapClient = OkHttpClient.Builder()
+        .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+        .build()
+
+    private val doh: DnsOverHttps = DnsOverHttps.Builder()
+        .client(bootstrapClient)
+        .url("https://dns.google/dns-query".toHttpUrl())
+        .bootstrapDnsHosts(
+            InetAddress.getByName("8.8.8.8"),
+            InetAddress.getByName("8.8.4.4"),
+        )
+        .build()
+
+    private val fallbackDns = object : Dns {
+        override fun lookup(hostname: String): List<InetAddress> {
+            return try {
+                doh.lookup(hostname)
+            } catch (e: Exception) {
+                Timber.w(e, "DoH lookup failed for $hostname, falling back to system DNS")
+                Dns.SYSTEM.lookup(hostname)
+            }
+        }
+    }
+
     internal val http = OkHttpClient.Builder()
-        .readTimeout(5, TimeUnit.MINUTES)      // from 2 min → 5 min
-        .protocols(listOf(Protocol.HTTP_1_1))  // skip HTTP/2 stream stalls
+        .dns(fallbackDns)
+        .readTimeout(5, TimeUnit.MINUTES)
+        .protocols(listOf(Protocol.HTTP_1_1))
         .retryOnConnectionFailure(true)
         .build()
 

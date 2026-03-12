@@ -223,6 +223,7 @@ dependencies {
         }
     }
     implementation(libs.spongycastle)
+    implementation(libs.okhttp.dnsoverhttps)
 
     // Split Modules
     implementation(libs.bundles.google)

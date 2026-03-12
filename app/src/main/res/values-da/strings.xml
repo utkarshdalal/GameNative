@@ -145,6 +145,9 @@
     <string name="open_navigation_menu">Åbn navigationsmenu</string>
     <string name="quick_menu_title">Hurtig menu</string>
     <string name="quick_menu_back">Tilbage</string>
+    <string name="quick_menu_tab_general">Generelt</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Ydelses-HUD</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
@@ -1087,4 +1090,8 @@
     <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
     <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
+    <string name="download_failed_title">Download mislykkedes</string>
+    <string name="download_failed_message">En nødvendig fil kunne ikke downloades. Kontrollér din netværksforbindelse, og prøv igen.</string>
+    <string name="install_failed_title">Installation mislykkedes</string>
+    <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
 </resources>

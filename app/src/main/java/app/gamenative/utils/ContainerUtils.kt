@@ -98,7 +98,7 @@ object ContainerUtils {
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
-            showFPS = PrefManager.showFps,
+            showFPS = false,
             launchRealSteam = PrefManager.launchRealSteam,
             cpuList = PrefManager.cpuList,
             cpuListWoW64 = PrefManager.cpuListWoW64,
@@ -157,7 +157,6 @@ object ContainerUtils {
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
-        PrefManager.showFps = containerData.showFPS
         PrefManager.launchRealSteam = containerData.launchRealSteam
         PrefManager.cpuList = containerData.cpuList
         PrefManager.cpuListWoW64 = containerData.cpuListWoW64
@@ -269,7 +268,7 @@ object ContainerUtils {
             drives = container.drives,
             execArgs = container.execArgs,
             executablePath = container.executablePath,
-            showFPS = container.isShowFPS,
+            showFPS = false,
             launchRealSteam = container.isLaunchRealSteam,
             allowSteamUpdates = container.isAllowSteamUpdates,
             steamType = container.getSteamType(),
@@ -441,7 +440,7 @@ object ContainerUtils {
             container.setNeedsUnpacking(true)
         }
         container.executablePath = containerData.executablePath
-        container.isShowFPS = containerData.showFPS
+        container.isShowFPS = false
         container.isLaunchRealSteam = containerData.launchRealSteam
         container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
@@ -807,7 +806,7 @@ object ContainerUtils {
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,
-                showFPS = PrefManager.showFps,
+                showFPS = false,
                 launchRealSteam = PrefManager.launchRealSteam,
                 wow64Mode = PrefManager.wow64Mode,
                 startupSelection = PrefManager.startupSelection.toByte(),

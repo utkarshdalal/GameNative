@@ -230,6 +230,9 @@
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
     <string name="quick_menu_title">빠른 메뉴</string>
     <string name="quick_menu_back">뒤로</string>
+    <string name="quick_menu_tab_general">일반</string>
+    <string name="quick_menu_tab_controller">컨트롤러</string>
+    <string name="performance_hud">성능 HUD</string>
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
@@ -1221,4 +1224,8 @@
     <string name="manifest_content_untrusted">콘텐츠를 신뢰할 수 없으며 설치되지 않았습니다.</string>
     <string name="manifest_type_mismatch">다운로드한 콘텐츠가 예상 유형과 일치하지 않습니다.</string>
     <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
+    <string name="download_failed_title">다운로드 실패</string>
+    <string name="download_failed_message">필수 파일을 다운로드할 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.</string>
+    <string name="install_failed_title">설치 실패</string>
+    <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
 </resources>

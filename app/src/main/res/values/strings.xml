@@ -232,6 +232,9 @@
     <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_back">Back</string>
+    <string name="quick_menu_tab_general">General</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Performance HUD</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -906,6 +909,10 @@
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
     <string name="main_loading">Loading...</string>
+    <string name="download_failed_title">Download Failed</string>
+    <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
+    <string name="install_failed_title">Installation Failed</string>
+    <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->
     <string name="main_app_running_title">App Running</string>
