@@ -188,6 +188,7 @@
     <string name="exit_game">Вийти з гри</string>
     <string name="exit">Вийти</string>
     <string name="keyboard">Клавіатура</string>
+    <string name="resume_game">Продовжити гру</string>
     <string name="extra">Додатково</string>
     <string name="clear_search">Очистити пошук</string>
     <string name="buttons">Кнопки</string>
@@ -210,6 +211,9 @@
     <string name="open_navigation_menu">Відкрити меню навігації</string>
     <string name="quick_menu_title">Швидке меню</string>
     <string name="quick_menu_back">Назад</string>
+    <string name="quick_menu_tab_general">Загальні</string>
+    <string name="quick_menu_tab_controller">Контролер</string>
+    <string name="performance_hud">HUD продуктивності</string>
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
@@ -513,6 +517,8 @@
     <string name="height">Висота</string>
     <string name="audio_driver">Аудіо драйвер</string>
     <string name="show_fps">Показати FPS</string>
+    <string name="portrait_mode">Портретний режим</string>
+    <string name="portrait_mode_description">Для контролерів типу 8BitDo FlipPad/GameSir Pocket Taco</string>
     <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер «%s»? Цю дію не можна скасувати.</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -676,6 +682,10 @@
     <string name="drive_letter">Літера диска</string>
     <string name="no_available_drive_letters">Немає доступних літер дисків</string>
     <string name="startup_selection">Налаштування при запуску</string>
+    <string name="suspend_behavior">Поведінка при призупиненні</string>
+    <string name="suspend_behavior_auto">Призупиняти й автоматично відновлювати</string>
+    <string name="suspend_behavior_never">Ніколи не призупиняти</string>
+    <string name="suspend_behavior_manual">Призупиняти до натискання кнопки «Продовжити» (типово)</string>
     <string name="processor_affinity_32bit">Спорідненість процесора (32-bit програми)</string>
     <string name="executable_path">Шлях .exe файлу</string>
     <string name="executable_path_placeholder">Наприклад path\\to\\exe</string>
@@ -796,7 +806,7 @@
     <string name="login_password_show">Показати пароль</string>
     <string name="login_password_hide">Приховати пароль</string>
     <string name="login_remember_session">Запам\'ятати мене</string>
-    <string name="login_sign_in">Увійти</string>
+    <string name="login_sign_in">Увійти через Steam</string>
     <string name="login_qr_failed">Помилка QR-коду</string>
     <string name="login_retry_qr">Спробувати ще раз</string>
     <string name="login_qr_instructions">Відкрийте мобільний застосунок Steam і відскануйте цей QR-код, щоб миттєво увійти.</string>
@@ -1206,4 +1216,8 @@
     <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
     <string name="steam_client_sync_warning_title">Попередження синхронізації клієнта Steam</string>
     <string name="steam_client_sync_warning_message">Увімкнено лише локальні збереження, але клієнт Steam налаштовано на запуск. Клієнт Steam все одно може синхронізувати хмарні збереження, якщо ви не вимкнете Steam Cloud у клієнті.</string>
+    <string name="download_failed_title">Помилка завантаження</string>
+    <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
+    <string name="install_failed_title">Помилка інсталяції</string>
+    <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
 </resources>

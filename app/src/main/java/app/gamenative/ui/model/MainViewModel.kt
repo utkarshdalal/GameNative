@@ -15,6 +15,8 @@ import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.ui.enums.Orientation
+import java.util.EnumSet
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.ui.data.MainState
@@ -62,7 +64,6 @@ class MainViewModel @Inject constructor(
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
-        data class ShowToast(val message: String) : MainUiEvent()
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -196,6 +197,7 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
+        setShowBootingSplash(true)
     }
 
     private var bootingSplashTimeoutJob: Job? = null
@@ -213,11 +215,9 @@ class MainViewModel @Inject constructor(
         }
 
         // Determine initial connection state based on service state
-        // On app startup, Steam service is starting to connect, so default to CONNECTING
-        // Only use DISCONNECTED after an actual disconnect event occurs
         val initialConnectionState = when {
             SteamService.isConnected -> ConnectionState.CONNECTED
-            else -> ConnectionState.CONNECTING // Service is starting up or connecting
+            else -> ConnectionState.CONNECTING
         }
 
         _state.update {
@@ -645,9 +645,4 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun showToast(message: String) {
-        viewModelScope.launch {
-            _uiEvent.send(MainUiEvent.ShowToast(message))
-        }
-    }
 }

@@ -72,7 +72,7 @@ class GOGManifestParser @Inject constructor() {
         val requestedCodes = GOGConstants.containerLanguageToGogCodes(containerLanguage)
         val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
 
-        // Try all requested language codes first (e.g. de-DE, then de)
+        // Try all requested language codes first (e.g. german, de-DE, then de)
         for (lang in requestedCodes) {
             val matched = filter(lang)
             if (matched.isNotEmpty()) {
@@ -94,22 +94,6 @@ class GOGManifestParser @Inject constructor() {
         val effectiveLang = requestedCodes.firstOrNull() ?: "en"
         Timber.tag(TAG).d("No language match for $containerLanguage, using all ${manifest.depots.size} depots with effective: $effectiveLang")
         return manifest.depots to effectiveLang
-    }
-
-    /**
-     * Filter depots based on OS bitness
-     *
-     * @param depots List of depots to filter
-     * @param bitness Target bitness (e.g., "64", "32")
-     * @return Filtered list of depots matching bitness
-     */
-    fun filterDepotsByBitness(depots: List<Depot>, bitness: String = "64"): List<Depot> {
-        val filtered = depots.filter { depot ->
-            depot.osBitness == null || depot.osBitness.contains(bitness)
-        }
-
-        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for bitness: $bitness")
-        return filtered
     }
 
     /**

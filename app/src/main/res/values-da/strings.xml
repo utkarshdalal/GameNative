@@ -120,6 +120,7 @@
     <string name="exit_game">Afslut</string>
     <string name="exit">Afslut spil</string>
     <string name="keyboard">Tastatur</string>
+    <string name="resume_game">Genoptag spil</string>
     <string name="extra">Ekstra</string>
     <string name="clear_search">Ryd søgning</string>
     <string name="buttons">Knapper</string>
@@ -142,6 +143,9 @@
     <string name="open_navigation_menu">Åbn navigationsmenu</string>
     <string name="quick_menu_title">Hurtig menu</string>
     <string name="quick_menu_back">Tilbage</string>
+    <string name="quick_menu_tab_general">Generelt</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Ydelses-HUD</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
@@ -357,6 +361,8 @@
     <string name="height">Højde</string>
     <string name="audio_driver">Lyd-driver</string>
     <string name="show_fps">Vis FPS</string>
+    <string name="portrait_mode">Portrættilstand</string>
+    <string name="portrait_mode_description">Til 8BitDo FlipPad/GameSir Pocket Taco-type controllere</string>
     <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -504,6 +510,10 @@
     <string name="drive_letter">Drevbogstav</string>
     <string name="no_available_drive_letters">Ingen tilgængelige drevbogstaver</string>
     <string name="startup_selection">Opstartsvalg</string>
+    <string name="suspend_behavior">Suspenderingsadfærd</string>
+    <string name="suspend_behavior_auto">Suspendér og genoptag automatisk</string>
+    <string name="suspend_behavior_never">Suspendér aldrig</string>
+    <string name="suspend_behavior_manual">Suspendér indtil knappen Genoptag trykkes (Standard)</string>
     <string name="processor_affinity_32bit">Processor-tilknytning (32-bit apps)</string>
     <string name="executable_path">Sti til eksekverbar fil</string>
     <string name="executable_path_placeholder">f.eks. sti\\til\\exe</string>
@@ -622,7 +632,7 @@
     <string name="login_password_show">Vis adgangskode</string>
     <string name="login_password_hide">Skjul adgangskode</string>
     <string name="login_remember_session">Husk session</string>
-    <string name="login_sign_in">Log ind</string>
+    <string name="login_sign_in">Log ind med Steam</string>
     <string name="login_qr_failed">QR-kode fejlede</string>
     <string name="login_retry_qr">Prøv QR-kode igen</string>
     <string name="login_qr_instructions">Åbn Steam-mobilappen og scan denne QR-kode for at logge ind øjeblikkeligt</string>
@@ -1080,4 +1090,8 @@
     <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
     <string name="steam_client_sync_warning_title">Advarsel om synkronisering i Steam-klienten</string>
     <string name="steam_client_sync_warning_message">Kun lokale gemninger er slået til, men Steam-klienten er sat til at starte. Steam-klienten kan stadig synkronisere sky-gemninger, medmindre du deaktiverer Steam Cloud i klienten.</string>
+    <string name="download_failed_title">Download mislykkedes</string>
+    <string name="download_failed_message">En nødvendig fil kunne ikke downloades. Kontrollér din netværksforbindelse, og prøv igen.</string>
+    <string name="install_failed_title">Installation mislykkedes</string>
+    <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
 </resources>

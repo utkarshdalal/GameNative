@@ -194,6 +194,7 @@
     <string name="exit_game">Ieșire</string>
     <string name="exit">Ieșire din joc</string>
     <string name="keyboard">Tastatură</string>
+    <string name="resume_game">Reia jocul</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Șterge căutarea</string>
     <string name="buttons">Butoane</string>
@@ -216,6 +217,9 @@
     <string name="open_navigation_menu">Deschide meniul de navigare</string>
     <string name="quick_menu_title">Meniu rapid</string>
     <string name="quick_menu_back">Înapoi</string>
+    <string name="quick_menu_tab_general">General</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">HUD de performanță</string>
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>
@@ -522,6 +526,8 @@
 	<string name="height">Înălțime</string>
 	<string name="audio_driver">Driver audio</string>
 	<string name="show_fps">Afișează FPS</string>
+	<string name="portrait_mode">Mod portret</string>
+	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -685,6 +691,10 @@
 	<string name="drive_letter">Literă de unitate</string>
 	<string name="no_available_drive_letters">Nu există litere de unitate disponibile</string>
 	<string name="startup_selection">Selecție la pornire</string>
+	<string name="suspend_behavior">Comportament la suspendare</string>
+	<string name="suspend_behavior_auto">Suspendă și reia automat</string>
+	<string name="suspend_behavior_never">Nu suspenda niciodată</string>
+	<string name="suspend_behavior_manual">Suspendă până la apăsarea butonului Reia (implicit)</string>
 	<string name="processor_affinity_32bit">Afilieri procesor (aplicații 32-bit)</string>
 	<string name="executable_path">Cale executabil</string>
 	<string name="executable_path_placeholder">ex.: path\\to\\exe</string>
@@ -805,7 +815,7 @@
 	<string name="login_password_show">Arată parola</string>
 	<string name="login_password_hide">Ascunde parola</string>
 	<string name="login_remember_session">Ține-mă minte</string>
-	<string name="login_sign_in">Autentificare</string>
+	<string name="login_sign_in">Autentificare cu Steam</string>
 	<string name="login_qr_failed">Cod QR eșuat</string>
 	<string name="login_retry_qr">Reîncearcă codul QR</string>
 	<string name="login_qr_instructions">Deschide aplicația Steam pe mobil și scanează acest cod QR pentru autentificare instantă</string>
@@ -1215,4 +1225,8 @@
     <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
     <string name="steam_client_sync_warning_title">Avertisment de sincronizare a clientului Steam</string>
     <string name="steam_client_sync_warning_message">Doar salvările locale sunt activate, dar clientul Steam este setat să pornească. Clientul Steam poate sincroniza în continuare salvările în cloud, cu excepția cazului în care dezactivezi Steam Cloud în client.</string>
+    <string name="download_failed_title">Descărcarea a eșuat</string>
+    <string name="download_failed_message">Un fișier necesar nu a putut fi descărcat. Verifică conexiunea la rețea și încearcă din nou.</string>
+    <string name="install_failed_title">Instalarea a eșuat</string>
+    <string name="install_failed_message">Fișierele de sistem nu au putut fi instalate. Încearcă din nou. Dacă problema persistă, încearcă o altă rețea sau folosește un VPN.</string>
 </resources>

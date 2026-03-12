@@ -19,6 +19,8 @@ object GameFixesRegistry {
         GOG_Fix_1454315831,
         GOG_Fix_1454587428,
         GOG_Fix_1458058109,
+        GOG_Fix_1589319779,
+        GOG_Fix_2147483047,
         STEAM_Fix_22300,
         STEAM_Fix_22380,
         STEAM_Fix_22330,

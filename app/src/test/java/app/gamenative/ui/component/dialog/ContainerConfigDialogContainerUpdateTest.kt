@@ -198,7 +198,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.dxwrapperConfig, container.dxWrapperConfig)
 
         // Boolean flags
-        assertEquals(mutated.showFPS, container.isShowFPS)
+        assertFalse(container.isShowFPS)
         assertEquals(mutated.launchRealSteam, container.isLaunchRealSteam)
         assertEquals(mutated.allowSteamUpdates, container.isAllowSteamUpdates)
         assertEquals(mutated.forceDlc, container.isForceDlc)
@@ -342,7 +342,7 @@ class ContainerConfigDialogContainerUpdateTest {
         assertEquals(mutated.dxwrapperConfig, container.dxWrapperConfig)
 
         // Boolean flags
-        assertEquals(mutated.showFPS, container.isShowFPS)
+        assertFalse(container.isShowFPS)
         assertEquals(mutated.launchRealSteam, container.isLaunchRealSteam)
         assertEquals(mutated.allowSteamUpdates, container.isAllowSteamUpdates)
         assertEquals(mutated.forceDlc, container.isForceDlc)
@@ -472,7 +472,7 @@ class ContainerConfigDialogContainerUpdateTest {
 
         ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
 
-        assertTrue(container.isShowFPS)
+        assertFalse(container.isShowFPS)
         assertTrue(container.isLaunchRealSteam)
         assertTrue(container.isAllowSteamUpdates)
         assertTrue(container.isForceDlc)

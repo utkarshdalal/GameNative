@@ -192,6 +192,7 @@
     <string name="exit_game">Quitter</string>
     <string name="exit">Quitter le jeu</string>
     <string name="keyboard">Clavier</string>
+    <string name="resume_game">Reprendre le jeu</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Effacer la recherche</string>
     <string name="buttons">Boutons</string>
@@ -214,6 +215,9 @@
     <string name="open_navigation_menu">Ouvrir le menu de navigation</string>
     <string name="quick_menu_title">Menu rapide</string>
     <string name="quick_menu_back">Retour</string>
+    <string name="quick_menu_tab_general">Général</string>
+    <string name="quick_menu_tab_controller">Contrôles</string>
+    <string name="performance_hud">HUD de performance</string>
     <string name="touchpad_help">Aide du pavé tactile</string>
     <string name="hide_controls_with_controller">Masquer les contrôles à l\'écran avec manette</string>
     <string name="hide_controls_with_controller_description">Masquer automatiquement les contrôles à l\'écran lorsqu\'un contrôleur physique est connecté</string>
@@ -517,6 +521,8 @@
     <string name="height">Hauteur</string>
     <string name="audio_driver">Pilote audio</string>
     <string name="show_fps">Afficher les FPS</string>
+    <string name="portrait_mode">Mode portrait</string>
+    <string name="portrait_mode_description">Pour les manettes de type 8BitDo FlipPad/GameSir Pocket Taco</string>
     <string name="remove_driver_confirmation">Êtes-vous sûr de vouloir supprimer le pilote « %s » ? Cette action ne peut pas être annulée</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -680,6 +686,10 @@
     <string name="drive_letter">Lettre de lecteur</string>
     <string name="no_available_drive_letters">Aucune lettre de lecteur disponible</string>
     <string name="startup_selection">Sélection de démarrage</string>
+    <string name="suspend_behavior">Comportement de suspension</string>
+    <string name="suspend_behavior_auto">Suspendre et reprendre automatiquement</string>
+    <string name="suspend_behavior_never">Ne jamais suspendre</string>
+    <string name="suspend_behavior_manual">Suspendre jusqu\'à l\'appui sur le bouton Reprendre (par défaut)</string>
     <string name="processor_affinity_32bit">Affinité du processeur (apps 32 bits)</string>
     <string name="executable_path">Chemin de l\'exécutable</string>
     <string name="executable_path_placeholder">ex. : chemin\\vers\\exe</string>
@@ -800,7 +810,7 @@
     <string name="login_password_show">Afficher le mot de passe</string>
     <string name="login_password_hide">Masquer le mot de passe</string>
     <string name="login_remember_session">Se souvenir de la session</string>
-    <string name="login_sign_in">Se connecter</string>
+    <string name="login_sign_in">Se connecter avec Steam</string>
     <string name="login_qr_failed">Échec du code QR</string>
     <string name="login_retry_qr">Réessayer le code QR</string>
     <string name="login_qr_instructions">Ouvrez l\'application mobile Steam et scannez ce code QR pour vous connecter instantanément</string>
@@ -1210,4 +1220,8 @@
     <string name="manifest_glibc_not_supported">Les builds GLIBC ne sont pas pris en charge.</string>
     <string name="steam_client_sync_warning_title">Avertissement de synchronisation du client Steam</string>
     <string name="steam_client_sync_warning_message">Sauvegardes locales uniquement est activé, mais le client Steam est configuré pour se lancer. Le client Steam peut encore synchroniser les sauvegardes dans le cloud, sauf si vous désactivez Steam Cloud dans le client.</string>
+    <string name="download_failed_title">Échec du téléchargement</string>
+    <string name="download_failed_message">Un fichier requis n\'a pas pu être téléchargé. Veuillez vérifier votre connexion réseau et réessayer.</string>
+    <string name="install_failed_title">Échec de l\'installation</string>
+    <string name="install_failed_message">Les fichiers système n\'ont pas pu être installés. Veuillez réessayer. Si le problème persiste, essayez un autre réseau ou utilisez un VPN.</string>
 </resources>

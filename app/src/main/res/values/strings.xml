@@ -207,6 +207,7 @@
     <string name="exit_game">Exit</string>
     <string name="exit">Exit Game</string>
     <string name="keyboard">Keyboard</string>
+    <string name="resume_game">Resume Game</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Clear Search</string>
     <string name="buttons">Buttons</string>
@@ -229,6 +230,9 @@
     <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_back">Back</string>
+    <string name="quick_menu_tab_general">General</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Performance HUD</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -566,6 +570,8 @@
     <string name="height">Height</string>
     <string name="audio_driver">Audio Driver</string>
     <string name="show_fps">Show FPS</string>
+    <string name="portrait_mode">Portrait Mode</string>
+    <string name="portrait_mode_description">For 8BitDo FlipPad/GameSir Pocket Taco type controllers</string>
     <string name="remove_driver_confirmation">Are you sure you want to remove driver "%s"? This cannot be undone</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -696,6 +702,10 @@
     <string name="drive_letter">Drive letter</string>
     <string name="no_available_drive_letters">No available drive letters</string>
     <string name="startup_selection">Startup Selection</string>
+    <string name="suspend_behavior">Suspend Behavior</string>
+    <string name="suspend_behavior_auto">Suspend and auto-resume</string>
+    <string name="suspend_behavior_never">Never suspend</string>
+    <string name="suspend_behavior_manual">Suspend until Resume button (Default)</string>
     <string name="processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="executable_path">Executable Path</string>
     <string name="executable_path_placeholder">e.g., path\\to\\exe</string>
@@ -818,7 +828,7 @@
     <string name="login_password_show">Show password</string>
     <string name="login_password_hide">Hide password</string>
     <string name="login_remember_session">Remember session</string>
-    <string name="login_sign_in">Sign In</string>
+    <string name="login_sign_in">Sign in with Steam</string>
     <string name="login_qr_failed">QR Code Failed</string>
     <string name="login_retry_qr">Retry QR Code</string>
     <string name="login_qr_instructions">Open the Steam mobile app and scan this QR code to sign in instantly</string>
@@ -868,6 +878,10 @@
     <string name="library_wifi_only_enabled">Install over Wi-Fi/LAN only enabled</string>
     <string name="library_file_count">File %1$d of %2$d</string>
 
+    <!-- SteamService: Download Notifications -->
+    <string name="download_no_wifi">Not connected to Wi-Fi/LAN</string>
+    <string name="download_paused_wifi">Download paused – waiting for Wi-Fi/LAN</string>
+
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">Update Available</string>
     <string name="main_update_available_message">A new version (%1$s) is available!%2$s</string>
@@ -897,6 +911,10 @@
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
     <string name="main_loading">Loading...</string>
+    <string name="download_failed_title">Download Failed</string>
+    <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
+    <string name="install_failed_title">Installation Failed</string>
+    <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->
     <string name="main_app_running_title">App Running</string>

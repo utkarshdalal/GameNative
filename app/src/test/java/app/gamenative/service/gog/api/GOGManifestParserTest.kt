@@ -182,30 +182,6 @@ class GOGManifestParserTest {
     }
 
     @Test
-    fun testFilterDepotsByBitness() {
-        val depot64 = createTestDepot().copy(osBitness = listOf("64"))
-        val depot32 = createTestDepot().copy(osBitness = listOf("32"))
-        val depotBoth = createTestDepot().copy(osBitness = listOf("32", "64"))
-        val depots = listOf(depot64, depot32, depotBoth)
-
-        val result = parser.filterDepotsByBitness(depots, "64")
-
-        assertEquals(2, result.size)
-        assertTrue(result.any { it.osBitness?.contains("64") == true })
-    }
-
-    @Test
-    fun testFilterDepotsByBitness_nullBitnessIncluded() {
-        val depotWithBitness = createTestDepot().copy(osBitness = listOf("64"))
-        val depotNoBitness = createTestDepot().copy(osBitness = null)
-        val depots = listOf(depotWithBitness, depotNoBitness)
-
-        val result = parser.filterDepotsByBitness(depots, "64")
-
-        assertEquals(2, result.size) // Both should be included
-    }
-
-    @Test
     fun testFilterDepotsByOwnership() {
         val ownedDepot = createTestDepot().copy(productId = "12345")
         val unownedDepot = createTestDepot().copy(productId = "67890")

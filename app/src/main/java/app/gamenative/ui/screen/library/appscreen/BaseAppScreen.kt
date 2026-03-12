@@ -2,7 +2,8 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.ContainerConfigTransfer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
@@ -37,6 +39,7 @@ import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.createPinnedShortcut
 import com.winlator.container.ContainerData
 import java.io.File
+import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,6 +54,8 @@ abstract class BaseAppScreen {
     // Shared state for install dialog - map of appId (String) to MessageDialogState
     companion object {
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
+        private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
+        private val importConfigRequests = mutableStateMapOf<String, Boolean>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
             installDialogStates[appId] = state
@@ -62,6 +67,30 @@ abstract class BaseAppScreen {
 
         fun getInstallDialogState(appId: String): app.gamenative.ui.component.dialog.state.MessageDialogState? {
             return installDialogStates[appId]
+        }
+
+        fun requestExportConfig(appId: String) {
+            exportConfigRequests[appId] = true
+        }
+
+        fun clearExportConfigRequest(appId: String) {
+            exportConfigRequests.remove(appId)
+        }
+
+        fun shouldExportConfig(appId: String): Boolean {
+            return exportConfigRequests[appId] == true
+        }
+
+        fun requestImportConfig(appId: String) {
+            importConfigRequests[appId] = true
+        }
+
+        fun clearImportConfigRequest(appId: String) {
+            importConfigRequests.remove(appId)
+        }
+
+        fun shouldImportConfig(appId: String): Boolean {
+            return importConfigRequests[appId] == true
         }
     }
 
@@ -250,6 +279,56 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Get export-config menu option. Subclasses can override to customize behavior
+     * or disable export-config entirely by returning null.
+     */
+    @Composable
+    protected open fun getExportConfigOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ExportConfig,
+            onClick = {
+                requestExportConfig(libraryItem.appId)
+            },
+        )
+    }
+
+    @Composable
+    protected open fun getImportConfigOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ImportConfig,
+            onClick = {
+                requestImportConfig(libraryItem.appId)
+            },
+        )
+    }
+
+    /**
+     * Get config-related menu options (e.g. Export config, Import config).
+     * By default returns only Export config when supported; sources can override
+     * to add Import config or other options so they appear grouped together.
+     */
+    @Composable
+    protected open fun getConfigMenuOptions(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): List<AppMenuOption> {
+        return if (supportsContainerConfig()) {
+            listOfNotNull(
+                getExportConfigOption(context, libraryItem),
+                getImportConfigOption(context, libraryItem),
+            )
+        } else {
+            emptyList()
+        }
+    }
+
+    /**
      * Get Create Shortcut menu option. Subclasses can override to customize behavior.
      */
     @Composable
@@ -274,24 +353,9 @@ abstract class BaseAppScreen {
                             gameSource = gameSource,
                             iconUrl = iconUrl,
                         )
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.base_app_shortcut_created),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_created))
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                context.getString(
-                                    R.string.base_app_shortcut_failed,
-                                    e.message ?: "",
-                                ),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show(context.getString(R.string.base_app_shortcut_failed, e.message ?: ""))
                     }
                 }
             },
@@ -346,33 +410,12 @@ abstract class BaseAppScreen {
                             PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
                             onAfterFetchImages(context, libraryItem, gameFolderPath)
 
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.base_app_images_fetched),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
+                            SnackbarManager.show(context.getString(R.string.base_app_images_fetched))
                         } else {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.base_app_game_folder_not_found),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
+                            SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
                         }
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                context.getString(
-                                    R.string.base_app_images_fetch_failed,
-                                    e.message ?: "",
-                                ),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        SnackbarManager.show(context.getString(R.string.base_app_images_fetch_failed, e.message ?: ""))
                     }
                 }
             },
@@ -440,7 +483,7 @@ abstract class BaseAppScreen {
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
 
-        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+        SnackbarManager.show("Container reset to defaults")
     }
 
     /**
@@ -507,6 +550,13 @@ abstract class BaseAppScreen {
         // Add any source-specific options
         menuOptions.addAll(getSourceSpecificMenuOptions(context, libraryItem, onEditContainer, onBack, onClickPlay, isInstalled))
 
+        // Add config-related options (export/import) after source-specific options,
+        // so container-related items appear as:
+        // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
+        if (isInstalled) {
+            menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
+        }
+
         return menuOptions
     }
 
@@ -533,6 +583,7 @@ abstract class BaseAppScreen {
     ) {
         val context = LocalContext.current
         val displayInfo = getGameDisplayInfo(context, libraryItem)
+        val appId = libraryItem.appId
 
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
@@ -603,30 +654,97 @@ abstract class BaseAppScreen {
                             outputStream.write(content.toByteArray(Charsets.UTF_8))
                             outputStream.flush()
                         }
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.base_app_exported),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.base_app_exported))
                     } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            context.getString(
-                                R.string.base_app_export_failed,
-                                e.message ?: "",
-                            ),
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.base_app_export_failed, e.message ?: ""))
                     }
                 } else {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.base_app_export_cancelled),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(context.getString(R.string.base_app_export_cancelled))
                 }
             },
         )
+
+        var exportConfigRequested by remember(appId) {
+            mutableStateOf(shouldExportConfig(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldExportConfig(appId) }
+                .collect { shouldRequest ->
+                    exportConfigRequested = shouldRequest
+                }
+        }
+
+        val exportConfigLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/json"),
+            ) { uri ->
+                if (uri == null) {
+                    clearExportConfigRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        ContainerConfigTransfer.exportConfig(
+                            context = context,
+                            appId = appId,
+                            uri = uri,
+                        )
+                    } finally {
+                        clearExportConfigRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(exportConfigRequested) {
+            if (exportConfigRequested) {
+                val gameName = displayInfo.name.ifBlank { "game" }
+                val suggestedFileName = "${gameName}_config.json"
+                exportConfigLauncher.launch(suggestedFileName)
+            }
+        }
+
+        var importConfigRequested by remember(appId) {
+            mutableStateOf(shouldImportConfig(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportConfig(appId) }
+                .collect { shouldRequest ->
+                    importConfigRequested = shouldRequest
+                }
+        }
+
+        val importConfigLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri == null) {
+                    clearImportConfigRequest(appId)
+                    return@rememberLauncherForActivityResult
+                }
+
+                uiScope.launch {
+                    try {
+                        ContainerConfigTransfer.importConfig(
+                            context = context,
+                            appId = appId,
+                            uri = uri,
+                        )
+                    } finally {
+                        clearImportConfigRequest(appId)
+                    }
+                }
+            }
+
+        LaunchedEffect(importConfigRequested) {
+            if (importConfigRequested) {
+                importConfigLauncher.launch(
+                    arrayOf("application/json", "text/json", "text/plain"),
+                )
+            }
+        }
 
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, exportFrontendLauncher)
 

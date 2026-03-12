@@ -1,7 +1,6 @@
 package app.gamenative.ui.util
 
 import android.content.Context
-import android.widget.Toast
 import app.gamenative.R
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -43,11 +42,7 @@ object PlatformAuthUiHelpers {
                     if (result.isSuccess) {
                         Timber.i("[PlatformAuthUiHelpers][GOG] Logout successful")
                         callbacks.onSuccess()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.gog_logout_success),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.gog_logout_success))
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[PlatformAuthUiHelpers][GOG] Logout failed")
@@ -56,11 +51,7 @@ object PlatformAuthUiHelpers {
                             error?.message ?: "Unknown error",
                         )
                         callbacks.onError(message)
-                        Toast.makeText(
-                            context,
-                            message,
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        SnackbarManager.show(message)
                     }
                 }
             } catch (e: Exception) {
@@ -72,11 +63,7 @@ object PlatformAuthUiHelpers {
                         e.message ?: "Unknown error",
                     )
                     callbacks.onError(message)
-                    Toast.makeText(
-                        context,
-                        message,
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    SnackbarManager.show(message)
                 }
             }
         }
@@ -97,11 +84,7 @@ object PlatformAuthUiHelpers {
                     if (result.isSuccess) {
                         Timber.i("[PlatformAuthUiHelpers][Epic] Logout successful")
                         callbacks.onSuccess()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.epic_logout_success),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.epic_logout_success))
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[PlatformAuthUiHelpers][Epic] Logout failed")
@@ -110,11 +93,7 @@ object PlatformAuthUiHelpers {
                             error?.message ?: "Unknown",
                         )
                         callbacks.onError(message)
-                        Toast.makeText(
-                            context,
-                            message,
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(message)
                     }
                 }
             } catch (e: Exception) {
@@ -126,11 +105,7 @@ object PlatformAuthUiHelpers {
                         e.message ?: "Unknown",
                     )
                     callbacks.onError(message)
-                    Toast.makeText(
-                        context,
-                        message,
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(message)
                 }
             }
         }
@@ -151,11 +126,7 @@ object PlatformAuthUiHelpers {
                     if (result.isSuccess) {
                         Timber.i("[PlatformAuthUiHelpers][Amazon] Logout successful")
                         callbacks.onSuccess()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.amazon_logout_success),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(context.getString(R.string.amazon_logout_success))
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[PlatformAuthUiHelpers][Amazon] Logout failed")
@@ -164,11 +135,7 @@ object PlatformAuthUiHelpers {
                             error?.message ?: "Unknown",
                         )
                         callbacks.onError(message)
-                        Toast.makeText(
-                            context,
-                            message,
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        SnackbarManager.show(message)
                     }
                 }
             } catch (e: Exception) {
@@ -180,11 +147,7 @@ object PlatformAuthUiHelpers {
                         e.message ?: "Unknown",
                     )
                     callbacks.onError(message)
-                    Toast.makeText(
-                        context,
-                        message,
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    SnackbarManager.show(message)
                 }
             }
         }

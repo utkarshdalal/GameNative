@@ -24,6 +24,8 @@ import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.LibraryTab
@@ -33,6 +35,7 @@ import app.gamenative.ui.enums.SortOption
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -387,7 +390,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 .filter { item ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        item.name.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(item.name, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -448,7 +451,7 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(game.title, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -483,7 +486,7 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(game.title, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -518,7 +521,7 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
-                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                        matches(game.title, currentState.searchQuery)
                     } else {
                         true
                     }
@@ -580,23 +583,23 @@ class LibraryViewModel @Inject constructor(
                 currentTab.showCustom
             }
 
-            val includeGOG = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeGOG = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showGOGInLibrary
             } else {
                 currentTab.showGoG
-            }
+            }) && GOGService.hasStoredCredentials(context)
 
-            val includeEpic = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeEpic = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showEpicInLibrary
             } else {
                 currentTab.showEpic
-            }
+            }) && EpicService.hasStoredCredentials(context)
 
-            val includeAmazon = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeAmazon = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showAmazonInLibrary
             } else {
                 currentTab.showAmazon
-            }
+            }) && AmazonService.hasStoredCredentials(context)
 
             // Combine both lists and apply sort option
             val sortComparator: Comparator<LibraryEntry> = when (currentState.currentSortOption) {
@@ -657,16 +660,29 @@ class LibraryViewModel @Inject constructor(
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
                     isLoading = false, // Loading complete
-                    // Per-source counts for tab badges (pre-source-filter totals)
-                    allCount = steamEntries.size + customEntries.size + gogEntries.size + epicEntries.size + amazonEntries.size,
-                    steamCount = steamEntries.size,
-                    gogCount = gogEntries.size,
-                    epicCount = epicEntries.size,
-                    amazonCount = amazonEntries.size,
-                    localCount = customEntries.size,
+                    // Per-source counts for tab badges
+                    // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
+                    allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
+                        (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
+                        (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
+                        (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
+                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
+                    steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
+                    gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
+                    epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
+                    amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
+                    localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                 )
             }
         }
+    }
+
+    /**
+     * Compares the game name against the search query using an exact match
+     * and then again using a normalized form with diacritics removed.
+     */
+    private fun matches(gameName: String, searchQuery:String): Boolean {
+        return gameName.contains(searchQuery, ignoreCase = true) || gameName.unaccent().contains(searchQuery, ignoreCase = true)
     }
 
     /**

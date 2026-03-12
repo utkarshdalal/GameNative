@@ -33,6 +33,7 @@
         android:largeHeap="true"
         android:theme="@style/Theme.Pluvia"
         android:allowAudioPlaybackCapture="true"
+        android:appCategory="game"
         tools:targetApi="29">
         <!--
          android:windowSoftInputMode must always be in the activity block.
@@ -41,6 +42,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@style/Theme.Pluvia">

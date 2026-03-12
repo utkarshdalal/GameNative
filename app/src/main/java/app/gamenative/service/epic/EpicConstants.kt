@@ -11,6 +11,55 @@ import timber.log.Timber
  * Constants for Epic Games Store integration
  */
 object EpicConstants {
+
+    /** Container language value for "required only" (no optional language tags). Same key as [PrefManager.containerLanguage]. */
+    const val EPIC_FALLBACK_CONTAINER_LANGUAGE = "english"
+
+    /**
+     * Maps container language (same values as GOG/Steam container language) to Epic manifest install tag names.
+     * Used to download required + selected language files. Keys match [PrefManager.containerLanguage].
+     * Each value lists tag names/codes that may appear in manifests (e.g. "German" or "de-DE"). Same codes as GOG where applicable.
+     */
+    internal val CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS: Map<String, List<String>> = mapOf(
+        "arabic" to listOf("Arabic", "ar"),
+        "bulgarian" to listOf("Bulgarian", "bg-BG", "bg"),
+        "schinese" to listOf("Chinese", "ChineseSimplified", "zh-Hans", "zh_Hans", "zh"),
+        "tchinese" to listOf("ChineseTraditional", "zh-Hant", "zh_Hant"),
+        "czech" to listOf("Czech", "cs-CZ", "cs"),
+        "danish" to listOf("Danish", "da-DK", "da"),
+        "dutch" to listOf("Dutch", "nl-NL", "nl"),
+        "english" to listOf("English", "en-US", "en"),
+        "finnish" to listOf("Finnish", "fi-FI", "fi"),
+        "french" to listOf("French", "fr-FR", "fr"),
+        "german" to listOf("German", "de-DE", "de"),
+        "greek" to listOf("Greek", "el-GR", "el"),
+        "hungarian" to listOf("Hungarian", "hu-HU", "hu"),
+        "italian" to listOf("Italian", "it-IT", "it"),
+        "japanese" to listOf("Japanese", "ja-JP", "ja"),
+        "koreana" to listOf("Korean", "ko-KR", "ko"),
+        "norwegian" to listOf("Norwegian", "nb-NO", "no"),
+        "polish" to listOf("Polish", "pl-PL", "pl"),
+        "portuguese" to listOf("Portuguese", "pt-PT", "pt"),
+        "brazilian" to listOf("PortugueseBrazilian", "Brazilian", "pt-BR", "br"),
+        "romanian" to listOf("Romanian", "ro-RO", "ro"),
+        "russian" to listOf("Russian", "ru-RU", "ru"),
+        "spanish" to listOf("Spanish", "es-ES", "es"),
+        "latam" to listOf("SpanishLatinAmerica", "Latam", "es-MX", "es_mx"),
+        "swedish" to listOf("Swedish", "sv-SE", "sv"),
+        "thai" to listOf("Thai", "th-TH", "th"),
+        "turkish" to listOf("Turkish", "tr-TR", "tr"),
+        "ukrainian" to listOf("Ukrainian", "uk-UA", "uk"),
+        "vietnamese" to listOf("Vietnamese", "vi-VN", "vi"),
+    )
+
+    /**
+     * Maps container language name to Epic manifest install tags to include (in addition to required files).
+     * Uses the same container language values as GOG. Returns empty list for unknown → required-only is always used as fallback.
+     */
+    fun containerLanguageToEpicInstallTags(containerLanguage: String): List<String> =
+        CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS[containerLanguage.lowercase()]
+            ?: CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS.getValue(EPIC_FALLBACK_CONTAINER_LANGUAGE)
+
     //! OAuth Configuration - Using Legendary's official credentials (Do not worry, these are hard-coded and not sensitive.)
     const val EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
     const val EPIC_CLIENT_SECRET = "daafbccc737745039dffe53d94fc76cf"

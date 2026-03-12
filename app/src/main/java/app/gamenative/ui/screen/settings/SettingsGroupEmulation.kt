@@ -84,6 +84,7 @@ fun SettingsGroupEmulation() {
             subtitle = { Text(text = stringResource(R.string.settings_emulation_orientations_subtitle)) },
             onClick = { showOrientationDialog = true },
         )
+
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_emulation_default_config_title)) },

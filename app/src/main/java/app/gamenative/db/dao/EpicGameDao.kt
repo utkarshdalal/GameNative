@@ -49,7 +49,8 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE app_name = :appName")
     suspend fun getByAppName(appName: String): EpicGame?
 
-    @Query("SELECT * FROM epic_games WHERE is_dlc = 0 AND namespace != 'ue' ORDER BY title ASC")
+    // Note: '89efe5924d3d467c839449ab6ab52e7f' and 'ue' are the namespaces for Unreal Engine software/assets.
+    @Query("SELECT * FROM epic_games WHERE is_dlc = 0 AND namespace != 'ue' AND namespace != '89efe5924d3d467c839449ab6ab52e7f' ORDER BY title ASC")
     fun getAll(): Flow<List<EpicGame>>
 
     @Query("SELECT * FROM epic_games WHERE is_installed = :isInstalled ORDER BY title ASC")
@@ -61,7 +62,7 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE base_game_app_name IS NOT NULL AND is_dlc = 1")
     fun getAllDlcTitles(): Flow<List<EpicGame>>
 
-    @Query("SELECT * FROM epic_games WHERE is_dlc = 0 AND namespace != 'ue' AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
+    @Query("SELECT * FROM epic_games WHERE is_dlc = 0 AND namespace != 'ue' AND namespace != '89efe5924d3d467c839449ab6ab52e7f' AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<EpicGame>>
 
     // Only delete non-installed games from DB - Need to preserve any currently installed games.

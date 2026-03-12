@@ -196,6 +196,7 @@
     <string name="exit_game">Esci</string>
     <string name="exit">Esci dal Gioco</string>
     <string name="keyboard">Tastiera</string>
+    <string name="resume_game">Riprendi il gioco</string>
     <string name="extra">Extra</string>
     <string name="clear_search">Cancella Ricerca</string>
     <string name="buttons">Pulsanti</string>
@@ -218,6 +219,9 @@
     <string name="open_navigation_menu">Apri Menu Navigazione</string>
     <string name="quick_menu_title">Menu rapido</string>
     <string name="quick_menu_back">Indietro</string>
+    <string name="quick_menu_tab_general">Generale</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">HUD prestazioni</string>
     <string name="touchpad_help">Aiuto Touchpad</string>
     <string name="hide_controls_with_controller">Nascondi controlli a schermo con controller</string>
     <string name="hide_controls_with_controller_description">Nascondi automaticamente i controlli a schermo quando è connesso un controller fisico</string>
@@ -521,6 +525,8 @@
     <string name="height">Altezza</string>
     <string name="audio_driver">Driver Audio</string>
     <string name="show_fps">Mostra FPS</string>
+    <string name="portrait_mode">Modalità verticale</string>
+    <string name="portrait_mode_description">Per controller tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
     <string name="remove_driver_confirmation">Sei sicuro di voler rimuovere il driver "%s"? Questo non può essere annullato</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -676,6 +682,10 @@
     <string name="drive_letter">Lettera dell\'unità</string>
     <string name="no_available_drive_letters">Nessuna lettera di unità disponibile</string>
     <string name="startup_selection">Selezione Avvio</string>
+    <string name="suspend_behavior">Comportamento di sospensione</string>
+    <string name="suspend_behavior_auto">Sospendi e riprendi automaticamente</string>
+    <string name="suspend_behavior_never">Non sospendere mai</string>
+    <string name="suspend_behavior_manual">Sospendi finché non premi il pulsante Riprendi (predefinito)</string>
     <string name="processor_affinity_32bit">Affinità Processore (app 32-bit)</string>
     <string name="executable_path">Percorso Eseguibile</string>
     <string name="executable_path_placeholder">es. percorso\\a\\exe</string>
@@ -796,7 +806,7 @@
     <string name="login_password_show">Mostra password</string>
     <string name="login_password_hide">Nascondi password</string>
     <string name="login_remember_session">Ricorda sessione</string>
-    <string name="login_sign_in">Accedi</string>
+    <string name="login_sign_in">Accedi con Steam</string>
     <string name="login_qr_failed">Codice QR Fallito</string>
     <string name="login_retry_qr">Riprova Codice QR</string>
     <string name="login_qr_instructions">Apri l\'app mobile di Steam e scansiona questo codice QR per accedere istantaneamente</string>
@@ -1206,4 +1216,8 @@
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
     <string name="steam_client_sync_warning_title">Avviso di sincronizzazione del client Steam</string>
     <string name="steam_client_sync_warning_message">Solo salvataggi locali è attivo, ma il client Steam è impostato per l\'avvio. Il client Steam potrebbe comunque sincronizzare i salvataggi nel cloud a meno che tu non disabiliti Steam Cloud nel client.</string>
+    <string name="download_failed_title">Download non riuscito</string>
+    <string name="download_failed_message">Non è stato possibile scaricare un file necessario. Controlla la connessione di rete e riprova.</string>
+    <string name="install_failed_title">Installazione non riuscita</string>
+    <string name="install_failed_message">Non è stato possibile installare i file di sistema. Riprova. Se il problema persiste, prova una rete diversa o usa una VPN.</string>
 </resources>

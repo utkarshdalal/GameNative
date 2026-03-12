@@ -41,7 +41,13 @@ object GogScriptInterpreterDependency : LaunchDependency {
             return
         }
         val redistDir = File(installPath, "_CommonRedist")
-        val result = downloadManager.downloadRedist(redistDir, listOf("ISI")) { callbacks.setLoadingProgress(it) }
+        val result = downloadManager.downloadDependenciesWithProgress(
+            gameId = "redist",
+            dependencies = listOf("ISI"),
+            gameDir = redistDir,
+            supportDir = redistDir,
+            onProgress = { callbacks.setLoadingProgress(it) },
+        )
         if (result.isFailure) {
             Timber.tag("GOG").w(result.exceptionOrNull(), "GOG redist download failed, continuing anyway")
         }

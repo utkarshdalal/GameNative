@@ -151,7 +151,10 @@ public abstract class ImageFsInstaller {
             }
             else {
                 Log.e("ImageFsInstaller", "Failed to install system files");
-                // AppUtils.showToast(context, R.string.unable_to_install_system_files);
+                if (downloaded.exists()) {
+                    Log.w("ImageFsInstaller", "Deleting corrupt archive so next attempt re-downloads: " + downloaded.getPath());
+                    downloaded.delete();
+                }
             }
             return success;
             // dialog.closeOnUiThread();

@@ -191,6 +191,7 @@
     <string name="exit_game">退出</string>
     <string name="exit">退出游戏</string>
     <string name="keyboard">键盘</string>
+    <string name="resume_game">恢复游戏</string>
     <string name="extra">额外</string>
     <string name="clear_search">清除搜索</string>
     <string name="buttons">按钮</string>
@@ -213,6 +214,9 @@
     <string name="open_navigation_menu">打开导航菜单</string>
     <string name="quick_menu_title">快捷菜单</string>
     <string name="quick_menu_back">返回</string>
+    <string name="quick_menu_tab_general">常规</string>
+    <string name="quick_menu_tab_controller">控制器</string>
+    <string name="performance_hud">性能 HUD</string>
     <string name="touchpad_help">触摸板支持</string>
     <string name="hide_controls_with_controller">使用控制器时隐藏屏幕控制器</string>
     <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏屏幕控制器</string>
@@ -513,6 +517,8 @@
     <string name="height">高度</string>
     <string name="audio_driver">音频驱动程序</string>
     <string name="show_fps">显示帧率</string>
+    <string name="portrait_mode">竖屏模式</string>
+    <string name="portrait_mode_description">适用于 8BitDo FlipPad/GameSir Pocket Taco 类型控制器</string>
     <string name="remove_driver_confirmation">确定要移除驱动程序“%s”？此操作无法撤销</string>
 
     <!-- 容器配置：Steam 集成 -->
@@ -676,6 +682,10 @@
     <string name="drive_letter">驱动器盘符</string>
     <string name="no_available_drive_letters">没有可用的驱动器盘符</string>
     <string name="startup_selection">启动选项</string>
+    <string name="suspend_behavior">挂起行为</string>
+    <string name="suspend_behavior_auto">挂起并自动恢复</string>
+    <string name="suspend_behavior_never">从不挂起</string>
+    <string name="suspend_behavior_manual">挂起直到按下“恢复游戏”按钮（默认）</string>
     <string name="processor_affinity_32bit">处理器关联性（32 位应用程序）</string>
     <string name="executable_path">执行路径</string>
     <string name="executable_path_placeholder">例如：path\\to\\exe</string>
@@ -795,7 +805,7 @@
     <string name="login_password_show">显示密码</string>
     <string name="login_password_hide">隐藏密码</string>
     <string name="login_remember_session">记住登录状态</string>
-    <string name="login_sign_in">登录</string>
+    <string name="login_sign_in">通过 Steam 登录</string>
     <string name="login_qr_failed">QR 码扫描失败</string>
     <string name="login_retry_qr">重试 QR 码扫描</string>
     <string name="login_qr_instructions">打开 Steam 移动应用程序，扫描此 QR 码即可立即登录</string>
@@ -1204,4 +1214,8 @@
     <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
     <string name="steam_client_sync_warning_title">Steam 客户端同步警告</string>
     <string name="steam_client_sync_warning_message">已启用“仅本地存档”，但 Steam 客户端设置为启动。除非你在客户端中禁用 Steam Cloud，否则 Steam 客户端仍可能同步云存档。</string>
+    <string name="download_failed_title">下载失败</string>
+    <string name="download_failed_message">无法下载所需文件。请检查您的网络连接后重试。</string>
+    <string name="install_failed_title">安装失败</string>
+    <string name="install_failed_message">无法安装系统文件。请重试。如果问题持续存在，请尝试使用其他网络或使用 VPN。</string>
 </resources>

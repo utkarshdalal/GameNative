@@ -1241,19 +1241,25 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override // android.view.View.OnCapturedPointerListener
     public boolean onCapturedPointer(View view, MotionEvent event) {
-        if (event.getAction() == 2) {
-            float dx = event.getX() * this.sensitivity;
-            if (Math.abs(dx) > 6.0f) {
-                dx *= CURSOR_ACCELERATION;
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
+            return handleTouchpadEvent(event);
+        }
+        if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            float dx = 0f;
+            float dy = 0f;
+
+            int historySize = event.getHistorySize();
+            for (int i = 0; i < historySize; i++) {
+                dx += event.getHistoricalX(i);
+                dy += event.getHistoricalY(i);
             }
-            float dy = event.getY() * this.sensitivity;
-            if (Math.abs(dy) > 6.0f) {
-                dy *= CURSOR_ACCELERATION;
-            }
+
+            dx += event.getX();
+            dy += event.getY();
             this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
             return true;
         }
-        event.setSource(event.getSource() | 8194);
+        event.setSource(event.getSource() | InputDevice.SOURCE_MOUSE);
         return onExternalMouseEvent(event);
     }
 

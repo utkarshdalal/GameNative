@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import androidx.collection.ArrayMap;
 import android.util.Log;
-import dalvik.annotation.optimization.CriticalNative;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -34,7 +33,9 @@ public abstract class GPUHelper {
     private static final CompletableFuture<Integer> apiVersionFuture =
             CompletableFuture.supplyAsync(GPUHelper::vkGetApiVersion, io);
 
-    @CriticalNative
+    // Note: Removed @CriticalNative to allow proper JNI error handling and logging
+    // in the native implementation. Performance is not impacted since this is
+    // called asynchronously on a background thread.
     public static native int vkGetApiVersion();
 
     public static int vkGetApiVersionSafe() {

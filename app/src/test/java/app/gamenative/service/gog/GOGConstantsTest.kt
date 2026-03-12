@@ -31,6 +31,7 @@ class GOGConstantsTest {
         val filesDir = File("/tmp/internal")
         filesDir.mkdirs()
         Mockito.`when`(context.filesDir).thenReturn(filesDir)
+        Mockito.`when`(context.dataDir).thenReturn(filesDir)
         Mockito.`when`(context.applicationContext).thenReturn(context)
 
         PrefManager.init(context)

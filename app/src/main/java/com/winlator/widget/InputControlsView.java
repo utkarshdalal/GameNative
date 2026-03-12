@@ -117,6 +117,14 @@ public class InputControlsView extends View {
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (profile != null && profile.isElementsLoaded() && oldw > 0 && w != oldw) {
+            profile.loadElements(this);
+        }
+    }
+
+    @Override
     protected synchronized void onDraw(Canvas canvas) {
         int width = getWidth();
         int height = getHeight();

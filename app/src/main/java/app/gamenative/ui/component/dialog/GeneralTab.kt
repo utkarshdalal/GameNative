@@ -48,6 +48,16 @@ fun GeneralTabContent(
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
+    val suspendBehaviorEntries = listOf(
+        stringResource(R.string.suspend_behavior_manual),
+        stringResource(R.string.suspend_behavior_auto),
+        stringResource(R.string.suspend_behavior_never),
+    )
+    val suspendBehaviorIndex = when {
+        config.suspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true) -> 0
+        config.suspendPolicy.equals(Container.SUSPEND_POLICY_NEVER, ignoreCase = true) -> 2
+        else -> 1
+    }
 
     if (state.showCustomResolutionDialog.value) {
         AlertDialog(
@@ -286,6 +296,13 @@ fun GeneralTabContent(
                 }
             },
         )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.portrait_mode)) },
+            subtitle = { Text(text = stringResource(R.string.portrait_mode_description)) },
+            state = config.portraitMode,
+            onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
+        )
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },
@@ -295,12 +312,6 @@ fun GeneralTabContent(
                 state.audioDriverIndex.value = it
                 state.config.value = config.copy(audioDriver = StringUtils.parseIdentifier(state.audioDrivers[it]))
             },
-        )
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.show_fps)) },
-            state = config.showFPS,
-            onCheckedChange = { state.config.value = config.copy(showFPS = it) },
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -363,6 +374,21 @@ fun GeneralTabContent(
                     else -> Container.STEAM_TYPE_NORMAL
                 }
                 state.config.value = config.copy(steamType = type)
+            },
+        )
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.suspend_behavior)) },
+            value = suspendBehaviorIndex,
+            items = suspendBehaviorEntries,
+            onItemSelected = { index ->
+                val policy = when (index) {
+                    0 -> Container.SUSPEND_POLICY_MANUAL
+                    1 -> Container.SUSPEND_POLICY_AUTO
+                    2 -> Container.SUSPEND_POLICY_NEVER
+                    else -> Container.SUSPEND_POLICY_MANUAL
+                }
+                state.config.value = config.copy(suspendPolicy = policy)
             },
         )
     }

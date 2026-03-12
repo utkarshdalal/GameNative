@@ -8,6 +8,8 @@ import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import org.json.JSONArray
 import org.json.JSONObject
@@ -177,6 +179,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Gen 1 (legacy): different manifest format and download flow (direct file URLs, no chunks)
             if (selectedBuild.generation == 1 && gameManifest.productTimestamp != null) {
+                Timber.tag("GOG").i("Using Gen 1 (legacy) downloader for game $gameId")
                 return@withContext downloadGameGen1(
                     gameId = gameId,
                     installPath = installPath,
@@ -188,6 +191,8 @@ class GOGDownloadManager @Inject constructor(
                     supportDir = supportDir,
                 )
             }
+
+            Timber.tag("GOG").i("Using Gen 2 downloader for game $gameId")
 
             // Grab Dependencies from the gameManifest for later.
             val dependencies = gameManifest.dependencies
@@ -202,20 +207,14 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
 
-            // Step 4: Filter depots by OS bitness
-            val bitnessDepots = parser.filterDepotsByBitness(languageDepots, bitness = "64")
-            if (bitnessDepots.isEmpty()) {
-                return@withContext Result.failure(Exception("No 64-bit depots found for language: $effectiveLang"))
-            }
-
             // Filter by ownership to exclude unowned DLC depots
             val ownedGameIds = gogManager.getAllGameIds()
-            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            val depots = parser.filterDepotsByOwnership(languageDepots, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found for language: $effectiveLang"))
             }
 
-            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang (64-bit)")
+            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang")
             depots.forEachIndexed { index, depot ->
                 Timber.tag("GOG").d("  Depot $index: productId=${depot.productId}, manifest=${depot.manifest}, size=${depot.size}, compressedSize=${depot.compressedSize}")
             }
@@ -376,6 +375,10 @@ class GOGDownloadManager @Inject constructor(
             // Step 8: Download chunks
             Timber.tag("GOG").i("Downoading Chunks for game $gameId")
 
+            // Mark download as in-progress so UI and install checks can detect partial installs
+            installPath.mkdirs()
+            MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+
             downloadInfo.updateStatusMessage("Downloading chunks...")
 
             val chunkCacheDir = File(installPath, ".gog_chunks")
@@ -391,6 +394,7 @@ class GOGDownloadManager @Inject constructor(
             )
 
             if (downloadResult.isFailure) {
+                MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext downloadResult
             }
 
@@ -402,6 +406,7 @@ class GOGDownloadManager @Inject constructor(
 
             val assembleResult = assembleFiles(gameFiles, chunkCacheDir, gameInstallDir, downloadInfo)
             if (assembleResult.isFailure) {
+                MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext assembleResult
             }
 
@@ -436,6 +441,9 @@ class GOGDownloadManager @Inject constructor(
             app.gamenative.PluviaApp.events.emitJava(
                 app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
             )
+
+            // Ensure in-progress marker is cleared on failure
+            MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
             Result.failure(e)
         }
@@ -504,6 +512,8 @@ class GOGDownloadManager @Inject constructor(
         downloadInfo.setProgress(1.0f)
         downloadInfo.setActive(false)
         downloadInfo.emitProgressChange()
+        MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+        MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
         app.gamenative.PluviaApp.events.emitJava(
             app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
         )
@@ -527,15 +537,20 @@ class GOGDownloadManager @Inject constructor(
         supportDir: File?,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            Timber.tag("GOG").i("Starting Gen 1 (legacy) download for game $gameId")
             val timestamp = gameManifest.productTimestamp ?: return@withContext Result.failure(Exception("Gen 1 manifest missing productTimestamp"))
             val platform = selectedBuild.platform
             val ownedGameIds = gogManager.getAllGameIds()
 
-            // Gen 1: do not filter by language — some games put main content in a depot tagged with another
-            // language (or no tag), so filtering to en-US can leave only a small depot and skip the main one.
+            // Filter depots by selected language (same logic as Gen 2), then by ownership
             downloadInfo.updateStatusMessage("Filtering depots...")
-            val bitnessDepots = parser.filterDepotsByBitness(gameManifest.depots, bitness = "64")
-            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            val (languageDepots, effectiveLang) = parser.filterDepotsByLanguage(gameManifest, language)
+            if (languageDepots.isEmpty()) {
+                return@withContext Result.failure(
+                    Exception("No depots found for requested or fallback (English) languages"),
+                )
+            }
+            val depots = parser.filterDepotsByOwnership(languageDepots, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found"))
             }
@@ -690,7 +705,6 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            val (_, effectiveLang) = parser.filterDepotsByLanguage(gameManifest, language)
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
@@ -988,36 +1002,29 @@ class GOGDownloadManager @Inject constructor(
         }
     }
 
-    /**
-     * Downloads GOG redistributables (e.g. ISI/scriptinterpreter.exe) to a shared directory.
-     * Used so scriptinterpreter can be run on first launch for games that need it (e.g. Fallout 3).
-     * Heroic uses the same approach: download redist to a shared path via gogdl redist command.
-     *
-     * @param redistDir Target directory (e.g. context.filesDir/GOG/redist). Files end up under redistDir/ISI/ etc.
-     * @param dependencyIds Dependency IDs to download; default ISI (scriptinterpreter).
-     * @param onProgress Progress callback 0f..1f
-     */
-    suspend fun downloadRedist(
-        redistDir: File,
-        dependencyIds: List<String> = listOf("ISI"),
-        onProgress: (Float) -> Unit,
+    suspend fun downloadDependenciesWithProgress(
+        gameId: String,
+        dependencies: List<String>,
+        gameDir: File,
+        supportDir: File,
+        onProgress: ((Float) -> Unit)? = null,
     ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (dependencies.isEmpty()) return@withContext Result.success(Unit)
         val downloadInfo = DownloadInfo(
             jobCount = 1,
             gameId = 0,
             downloadingAppIds = CopyOnWriteArrayList(),
         )
-        downloadInfo.addProgressListener { onProgress(it) }
-        redistDir.mkdirs()
+        onProgress?.let { downloadInfo.addProgressListener(it) }
         val result = downloadDependencies(
-            gameId = "redist",
-            dependencies = dependencyIds,
-            gameDir = redistDir,
-            supportDir = redistDir,
+            gameId = gameId,
+            dependencies = dependencies,
+            gameDir = gameDir,
+            supportDir = supportDir,
             downloadInfo = downloadInfo,
         )
         if (result.isSuccess) {
-            onProgress(1f)
+            onProgress?.invoke(1f)
         }
         result
     }
@@ -1055,6 +1062,12 @@ class GOGDownloadManager @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val chunks = chunkUrlMap.entries.toList()
+            val totalChunks = chunks.size
+            var downloadedChunks = 0
+
+            downloadInfo.setProgress(0f)
+            downloadInfo.setActive(true)
+            downloadInfo.emitProgressChange()
 
             // Download in batches
             chunks.chunked(MAX_PARALLEL_DOWNLOADS).forEach { chunkBatch ->
@@ -1070,6 +1083,10 @@ class GOGDownloadManager @Inject constructor(
                         failedResult.exceptionOrNull() ?: Exception("Failed to download chunk"),
                     )
                 }
+
+                downloadedChunks += chunkBatch.size
+                downloadInfo.setProgress(downloadedChunks.toFloat() / totalChunks)
+                downloadInfo.emitProgressChange()
             }
 
             Result.success(Unit)

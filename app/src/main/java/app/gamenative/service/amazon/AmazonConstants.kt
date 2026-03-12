@@ -58,9 +58,8 @@ object AmazonConstants {
             File(path).mkdirs()
             path
         } else {
-            val path = File(context.filesDir, "Amazon").absolutePath
+            val path = Paths.get(context.dataDir.path, "Amazon").toString()
             Timber.i("Amazon using internal storage: $path")
-            // Ensure directory exists for StatFs
             File(path).mkdirs()
             path
         }

@@ -98,7 +98,7 @@ object ContainerUtils {
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
-            showFPS = PrefManager.showFps,
+            showFPS = false,
             launchRealSteam = PrefManager.launchRealSteam,
             cpuList = PrefManager.cpuList,
             cpuListWoW64 = PrefManager.cpuListWoW64,
@@ -116,6 +116,7 @@ object ContainerUtils {
             steamOfflineMode = PrefManager.steamOfflineMode,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
+            suspendPolicy = PrefManager.suspendPolicy,
             wineVersion = PrefManager.wineVersion,
             emulator = PrefManager.emulator,
             fexcoreVersion = PrefManager.fexcoreVersion,
@@ -136,6 +137,7 @@ object ContainerUtils {
 			enableDInput = PrefManager.dinputEnabled,
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
+            portraitMode = PrefManager.portraitMode,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
             sharpnessEffect = PrefManager.sharpnessEffect,
@@ -156,7 +158,6 @@ object ContainerUtils {
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
-        PrefManager.showFps = containerData.showFPS
         PrefManager.launchRealSteam = containerData.launchRealSteam
         PrefManager.cpuList = containerData.cpuList
         PrefManager.cpuListWoW64 = containerData.cpuListWoW64
@@ -198,6 +199,8 @@ object ContainerUtils {
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
+        PrefManager.suspendPolicy = containerData.suspendPolicy
+        PrefManager.portraitMode = containerData.portraitMode
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
@@ -267,7 +270,7 @@ object ContainerUtils {
             drives = container.drives,
             execArgs = container.execArgs,
             executablePath = container.executablePath,
-            showFPS = container.isShowFPS,
+            showFPS = false,
             launchRealSteam = container.isLaunchRealSteam,
             allowSteamUpdates = container.isAllowSteamUpdates,
             steamType = container.getSteamType(),
@@ -293,6 +296,8 @@ object ContainerUtils {
             steamOfflineMode = container.isSteamOfflineMode(),
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
+            suspendPolicy = container.suspendPolicy,
+            portraitMode = container.isPortraitMode,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -376,6 +381,7 @@ object ContainerUtils {
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
                 "steamOfflineMode" -> value?.let { updatedData.copy(steamOfflineMode = it as? Boolean ?: updatedData.steamOfflineMode) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
+                "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
                 "envVars" -> value?.let { updatedData.copy(envVars = it as? String ?: updatedData.envVars) } ?: updatedData
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
                 "cpuListWoW64" -> value?.let { updatedData.copy(cpuListWoW64 = it as? String ?: updatedData.cpuListWoW64) } ?: updatedData
@@ -437,7 +443,7 @@ object ContainerUtils {
             container.setNeedsUnpacking(true)
         }
         container.executablePath = containerData.executablePath
-        container.isShowFPS = containerData.showFPS
+        container.isShowFPS = false
         container.isLaunchRealSteam = containerData.launchRealSteam
         container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
@@ -469,6 +475,8 @@ object ContainerUtils {
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
+        container.setSuspendPolicy(containerData.suspendPolicy)
+        container.setPortraitMode(containerData.portraitMode)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }
@@ -802,7 +810,7 @@ object ContainerUtils {
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,
-                showFPS = PrefManager.showFps,
+                showFPS = false,
                 launchRealSteam = PrefManager.launchRealSteam,
                 wow64Mode = PrefManager.wow64Mode,
                 startupSelection = PrefManager.startupSelection.toByte(),
@@ -836,6 +844,8 @@ object ContainerUtils {
                 steamOfflineMode = PrefManager.steamOfflineMode,
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
+                suspendPolicy = PrefManager.suspendPolicy,
+                portraitMode = PrefManager.portraitMode,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
             )
@@ -1078,6 +1088,26 @@ object ContainerUtils {
         if (!hasContainer(context, appId)) return false
         val container = getContainer(context, appId)
         return container.isLocalSavesOnly
+    }
+
+    /**
+     * Resolves the display name for a game from its container ID,
+     * looking up the appropriate store service.
+     */
+    fun resolveGameName(containerId: String): String {
+        val gameSource = extractGameSourceFromContainerId(containerId)
+        val gameId = extractGameIdFromContainerId(containerId)
+        return when (gameSource) {
+            GameSource.STEAM -> SteamService.getAppInfoOf(gameId)?.name
+            GameSource.GOG -> GOGService.getGOGGameOf(gameId.toString())?.title
+            GameSource.EPIC -> EpicService.getEpicGameOf(gameId)?.title
+            GameSource.AMAZON -> AmazonService.getAmazonGameByAppId(gameId)?.title
+            GameSource.CUSTOM_GAME -> {
+                val customAppId = "${GameSource.CUSTOM_GAME.name}_$gameId"
+                CustomGameScanner.getFolderPathFromAppId(customAppId)
+                    ?.let { File(it).name }
+            }
+        } ?: "Unknown"
     }
 
     /**
