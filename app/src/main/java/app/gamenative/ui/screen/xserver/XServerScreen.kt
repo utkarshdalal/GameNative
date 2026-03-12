@@ -1347,11 +1347,6 @@ fun XServerScreen(
             frameRating = FrameRating(context)
             frameRating?.setVisibility(View.GONE)
 
-            if (container.isShowFPS()) {
-                Timber.i("Attempting to show FPS")
-                frameRating?.let { frameLayout.addView(it) }
-            }
-
             if (container.isDisableMouseInput){
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true);
             }
@@ -2020,11 +2015,6 @@ private fun setupXEnvironment(
     envVars.put("MESA_DEBUG", "silent")
     envVars.put("MESA_NO_ERROR", "1")
     envVars.put("WINEPREFIX", imageFs.wineprefix)
-    if (container.isShowFPS){
-        envVars.put("DXVK_HUD", "fps,frametimes")
-        envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_MESA_overlay")
-        envVars.put("MESA_OVERLAY_SHOW_FPS", 1)
-    }
     if (container.isSdlControllerAPI){
         if (container.inputType == PreferredInputApi.XINPUT.ordinal || container.inputType == PreferredInputApi.AUTO.ordinal){
             envVars.put("SDL_XINPUT_ENABLED", "1")
