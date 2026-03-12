@@ -227,6 +227,9 @@
     <string name="open_navigation_menu">Otwórz menu nawigacji</string>
     <string name="quick_menu_title">Menu szybkie</string>
     <string name="quick_menu_back">Wstecz</string>
+    <string name="quick_menu_tab_general">Ogólne</string>
+    <string name="quick_menu_tab_controller">Kontroler</string>
+    <string name="performance_hud">HUD wydajności</string>
     <string name="touchpad_help">Pomoc touchpada</string>
     <string name="hide_controls_with_controller">Ukryj kontroler ekranowy przy podłączonym kontrolerze</string>
     <string name="hide_controls_with_controller_description">Automatycznie ukrywa kontroler ekranowy, gdy podłączony jest kontroler fizyczny</string>
