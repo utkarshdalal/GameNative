@@ -72,6 +72,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -2288,6 +2289,26 @@ private fun setupXEnvironment(
 
     environment.startEnvironmentComponents()
 
+    if (gameSource == GameSource.STEAM) {
+        val gameIdInt = ContainerUtils.extractGameIdFromContainerId(appId)
+        val achAppId = SteamService.cachedAchievementsAppId
+        if (gameIdInt != null && achAppId != null) {
+            val watchDirs = SteamService.getGseSaveDirs(context, gameIdInt)
+            val displayNameMap = SteamService.cachedAchievements?.associate { ach ->
+                ach.name to (ach.displayName?.get(container.language)
+                    ?: ach.displayName?.get("english")
+                    ?: ach.name)
+            } ?: emptyMap()
+            val iconUrlMap = SteamService.cachedAchievements?.associate { ach ->
+                ach.name to ach.icon?.let {
+                    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$achAppId/$it"
+                }
+            } ?: emptyMap()
+            PluviaApp.achievementWatcher = AchievementWatcher(watchDirs, displayNameMap, iconUrlMap)
+                .also { it.start() }
+        }
+    }
+
     // put in separate scope since winhandler start method does some network stuff
     CoroutineScope(Dispatchers.IO).launch {
         xServer.winHandler.start()
@@ -2750,6 +2771,10 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
         container.putSessionMetadata("session_length_sec", rating.sessionLengthSec.toInt())
         container.saveData()
     }
+
+    PluviaApp.achievementWatcher?.stop()
+    PluviaApp.achievementWatcher = null
+    SteamService.clearCachedAchievements()
 
     PluviaApp.touchpadView?.releasePointerCapture()
     winHandler?.stop()

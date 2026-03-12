@@ -301,6 +301,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         internal var instance: SteamService? = null
 
+        var cachedAchievements: List<app.gamenative.statsgen.Achievement>? = null
+            private set
+        var cachedAchievementsAppId: Int? = null
+            private set
+
+        fun clearCachedAchievements() {
+            cachedAchievements = null
+            cachedAchievementsAppId = null
+        }
+
         val isWifiConnected: Boolean get() = NetworkMonitor.isWifiConnected.value
 
         /** @return true if download may proceed; false if blocked (notifies user) */
@@ -2631,6 +2641,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             val schemaArray = userStats.schema.toByteArray()
             val generator = StatsAchievementsGenerator()
             val result = generator.generateStatsAchievements(schemaArray, configDirectory)
+            cachedAchievements = result.achievements
+            cachedAchievementsAppId = appId
 
             val nameToBlockBit = result.nameToBlockBit
             Timber.d("nameToBlockBit size=${nameToBlockBit.size} for appId=$appId")
@@ -2645,25 +2657,29 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun syncAchievementsFromGoldberg(context: Context, appId: Int) {
+        fun getGseSaveDirs(context: Context, appId: Int): List<File> {
             val imageFs = ImageFs.find(context)
-            var gseSaveDir = File(
+            val dirs = mutableListOf<File>()
+            dirs.add(File(
                 imageFs.rootDir,
                 "${ImageFs.WINEPREFIX}/drive_c/users/xuser/AppData/Roaming/GSE Saves/$appId"
-            )
-            if (!gseSaveDir.isDirectory) {
-                Timber.d("No GSE Saves dir at ${gseSaveDir.absolutePath}, checking userdata path")
-                val accountId = userSteamId?.accountID?.toInt()
-                if (accountId != null) {
-                    gseSaveDir = File(
-                        imageFs.rootDir,
-                        "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
-                    )
-                }
-                if (!gseSaveDir.isDirectory) {
-                    Timber.d("No GSE save directory found for appId=$appId")
-                    return
-                }
+            ))
+            val accountId = userSteamId?.accountID?.toInt()
+                ?: PrefManager.steamUserAccountId.takeIf { it != 0 }
+            if (accountId != null) {
+                dirs.add(File(
+                    imageFs.rootDir,
+                    "${ImageFs.WINEPREFIX}/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId"
+                ))
+            }
+            return dirs
+        }
+
+        suspend fun syncAchievementsFromGoldberg(context: Context, appId: Int) {
+            val gseSaveDir = getGseSaveDirs(context, appId).firstOrNull { it.isDirectory }
+            if (gseSaveDir == null) {
+                Timber.d("No GSE save directory found for appId=$appId")
+                return
             }
 
             val unlockedNames = mutableSetOf<String>()

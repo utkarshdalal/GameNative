@@ -508,8 +508,7 @@
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
-    <string name="show_achievement_popups">Erfolgs-Popups anzeigen</string>
-    <string name="show_achievement_popups_description">Kann Darstellungsprobleme oder Abstürze verursachen</string>
+    <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="launch_steam_client_description">Reduziert Performance und verlängert den Start\nErmöglicht Online-Spiel und behebt DRM- und Controller-Probleme\nNicht alle Spiele funktionieren</string>
     <string name="allow_steam_updates">Steam-Updates erlauben</string>
     <string name="allow_steam_updates_description">Aktualisiert Steam auf die neueste Version. Reduziert die Leistung spürbar.</string>

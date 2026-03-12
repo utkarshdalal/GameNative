@@ -581,8 +581,7 @@
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
-    <string name="show_achievement_popups">Mostrar popups de logros</string>
-    <string name="show_achievement_popups_description">Puede causar problemas de renderizado o bloqueos</string>
+    <string name="achievement_unlocked">Logro desbloqueado</string>
     <string name="allow_steam_updates">Permitir actualizaciones de Steam</string>
     <string name="allow_steam_updates_description">Actualiza Steam a la última versión. Reduce significativamente el rendimiento.</string>
     <string name="steam_type">Tipo de Steam</string>

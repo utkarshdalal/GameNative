@@ -113,7 +113,6 @@ object ContainerUtils {
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
             steamOfflineMode = PrefManager.steamOfflineMode,
-            showAchievementPopups = PrefManager.showAchievementPopups,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
             suspendPolicy = PrefManager.suspendPolicy,
@@ -197,7 +196,6 @@ object ContainerUtils {
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
-        PrefManager.showAchievementPopups = containerData.showAchievementPopups
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
         PrefManager.suspendPolicy = containerData.suspendPolicy
@@ -246,7 +244,6 @@ object ContainerUtils {
         val enableD = apiOrdinal == PreferredInputApi.DINPUT.ordinal || apiOrdinal == PreferredInputApi.BOTH.ordinal
         val mapperType = container.getDinputMapperType()
         val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
-        val showAchievementPopups = container.getExtra("showAchievementPopups", "false").toBoolean()
         // Read disable-mouse flag from container
         val disableMouse = container.isDisableMouseInput()
         // Read touchscreen-mode flag from container
@@ -295,7 +292,6 @@ object ContainerUtils {
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
             steamOfflineMode = container.isSteamOfflineMode(),
-            showAchievementPopups = showAchievementPopups,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
@@ -474,7 +470,6 @@ object ContainerUtils {
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
-        container.putExtra("showAchievementPopups", containerData.showAchievementPopups)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
@@ -844,7 +839,6 @@ object ContainerUtils {
                 disableMouseInput = PrefManager.disableMouseInput,
                 forceDlc = PrefManager.forceDlc,
                 steamOfflineMode = PrefManager.steamOfflineMode,
-                showAchievementPopups = PrefManager.showAchievementPopups,
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
                 suspendPolicy = PrefManager.suspendPolicy,

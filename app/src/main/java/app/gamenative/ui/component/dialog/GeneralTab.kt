@@ -350,13 +350,6 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.show_achievement_popups)) },
-            subtitle = { Text(text = stringResource(R.string.show_achievement_popups_description)) },
-            state = config.showAchievementPopups,
-            onCheckedChange = { state.config.value = config.copy(showAchievementPopups = it) },
-        )
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,
