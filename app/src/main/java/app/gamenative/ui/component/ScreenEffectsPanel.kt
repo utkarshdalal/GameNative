@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -228,6 +229,8 @@ private fun ScreenEffectAdjustmentRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPink
+    
+    var isAdjustmentLocked by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -251,7 +254,7 @@ private fun ScreenEffectAdjustmentRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && !isAdjustmentLocked) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -259,35 +262,49 @@ private fun ScreenEffectAdjustmentRow(
                     )
                 } else {
                     Modifier
-                },
+                }
             )
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {},
-            )
+            .onFocusChanged {
+                if (!it.isFocused) {
+                    isAdjustmentLocked = false
+                }
+            }
             .focusable(interactionSource = interactionSource)
             .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                    when {
+                        // Toggle adjustment lock mode with A button
+                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
+                            isAdjustmentLocked = !isAdjustmentLocked
+                            true
+                        }
+                        // Exit adjustment lock mode with B button
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B -> {
+                            isAdjustmentLocked = false
+                            true
+                        }
+                        // Adjust in lock mode with D-pad left/right
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> {
                             onDecrease()
                             true
                         }
-
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             onIncrease()
                             true
                         }
-
                         else -> false
                     }
                 } else {
                     false
                 }
             }
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {},
+            )
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Row(
@@ -301,11 +318,23 @@ private fun ScreenEffectAdjustmentRow(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (isAdjustmentLocked) {
+                    Text(
+                        text = "●",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accentColor,
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -323,13 +352,13 @@ private fun ScreenEffectAdjustmentRow(
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(10.dp))
                     .background(
-                        if (isFocused) accentColor.copy(alpha = 0.18f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        if (isAdjustmentLocked) accentColor.copy(alpha = 0.25f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isFocused) 0.32f else 0.45f),
                     )
                     .border(
-                        width = 1.dp,
-                        color = if (isFocused) accentColor.copy(alpha = 0.55f)
-                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                        width = if (isAdjustmentLocked) 2.dp else 0.dp,
+                        color = if (isAdjustmentLocked) accentColor.copy(alpha = 0.9f)
+                        else Color.Transparent,
                         shape = RoundedCornerShape(10.dp),
                     )
                     .clickable(
@@ -343,7 +372,7 @@ private fun ScreenEffectAdjustmentRow(
                     text = "-",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
+                    color = if (isAdjustmentLocked) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -393,13 +422,13 @@ private fun ScreenEffectAdjustmentRow(
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(10.dp))
                     .background(
-                        if (isFocused) accentColor.copy(alpha = 0.18f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        if (isAdjustmentLocked) accentColor.copy(alpha = 0.25f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isFocused) 0.32f else 0.45f),
                     )
                     .border(
-                        width = 1.dp,
-                        color = if (isFocused) accentColor.copy(alpha = 0.55f)
-                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                        width = if (isAdjustmentLocked) 2.dp else 0.dp,
+                        color = if (isAdjustmentLocked) accentColor.copy(alpha = 0.9f)
+                        else Color.Transparent,
                         shape = RoundedCornerShape(10.dp),
                     )
                     .clickable(
@@ -413,7 +442,7 @@ private fun ScreenEffectAdjustmentRow(
                     text = "+",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
+                    color = if (isAdjustmentLocked) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
