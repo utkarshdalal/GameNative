@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -237,13 +236,7 @@ fun QuickMenu(
                             ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.quick_menu_back),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        QuickMenuCloseButton(onClick = onDismiss)
                     }
 
                     HorizontalDivider(
@@ -348,6 +341,65 @@ fun QuickMenu(
 }
 
 @Composable
+private fun QuickMenuCloseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(14.dp)
+
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        BorderStroke(
+                            2.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                ),
+                            ),
+                        ),
+                        shape,
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .clip(shape)
+            .background(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    Color.Transparent
+                }
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.quick_menu_back),
+            tint = if (isFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
 private fun QuickMenuTabButton(
     icon: ImageVector,
     contentDescriptionResId: Int,
@@ -439,11 +491,28 @@ private fun QuickMenuItemRow(
     }
 
     val disabledAlpha = 0.4f
+    val shape = RoundedCornerShape(12.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (isFocused && isEnabled) {
+                    Modifier.border(
+                        BorderStroke(
+                            2.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                ),
+                            ),
+                        ),
+                        shape,
+                    )
+                } else Modifier
+            )
+            .clip(shape)
             .then(
                 if (isFocused && isEnabled) {
                     Modifier.background(
@@ -467,6 +536,10 @@ private fun QuickMenuItemRow(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
+            )
+            .focusable(
+                enabled = isEnabled,
+                interactionSource = interactionSource,
             )
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
