@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
@@ -125,6 +126,14 @@ fun QuickMenu(
                 icon = Icons.Default.Keyboard,
                 labelResId = R.string.keyboard,
                 accentColor = PluviaTheme.colors.accentCyan,
+            )
+        )
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.INPUT_CONTROLS,
+                icon = Icons.Default.TouchApp,
+                labelResId = R.string.input_controls,
+                accentColor = PluviaTheme.colors.accentPurple,
             )
         )
         if (hasPhysicalController) {
