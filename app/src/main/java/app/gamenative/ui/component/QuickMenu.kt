@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -353,6 +355,24 @@ private fun QuickMenuTabButton(
     Box(
         modifier = modifier
             .size(56.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        BorderStroke(
+                            2.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                ),
+                            ),
+                        ),
+                        shape,
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .clip(shape)
             .background(
                 when {
