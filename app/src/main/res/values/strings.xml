@@ -807,9 +807,9 @@
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>
 
-    <!-- Settings: Storage -->
+    <!-- Settings: Storage Manager -->
     <string name="settings_storage_title">Storage</string>
-    <string name="settings_storage_manage_title">Manage containers</string>
+    <string name="settings_storage_manage_title">Storage Manager</string>
     <string name="settings_storage_manage_subtitle">Review game and container storage in one place</string>
     <string name="container_storage_title">Container &amp; Storage Manager</string>
     <string name="container_storage_subtitle">Review game and container storage, including installed games without containers</string>
@@ -836,6 +836,15 @@
     <string name="container_storage_uninstall_game_only_message">This uninstalls %1$s and removes its game files. No container will be deleted.</string>
     <string name="container_storage_uninstall_success">Uninstalled %1$s</string>
     <string name="container_storage_uninstall_failed">Failed to uninstall game: %1$s</string>
+    <string name="container_storage_move_to_external_button">Move to external</string>
+    <string name="container_storage_move_to_internal_button">Move to internal</string>
+    <string name="container_storage_move_success">Moved %1$s to %2$s storage</string>
+    <string name="container_storage_move_failed">Failed to move %1$s: %2$s</string>
+    <string name="container_storage_move_external_disabled">Enable Write to external storage first</string>
+    <string name="container_storage_location_internal">Internal</string>
+    <string name="container_storage_location_external">External</string>
+    <string name="container_storage_location_unknown">Unknown location</string>
+    <string name="container_storage_unknown_error">Unknown error</string>
 
     <!-- Login Screen -->
     <string name="login_app_name">GameNative</string>

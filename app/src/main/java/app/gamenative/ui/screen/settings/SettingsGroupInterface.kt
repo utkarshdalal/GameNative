@@ -285,6 +285,13 @@ fun SettingsGroupInterface(
         modifier = Modifier.background(Color.Transparent),
         title = { Text(text = stringResource(R.string.settings_downloads_title)) },
     ) {
+        SettingsMenuLink(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_storage_manage_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_storage_manage_subtitle)) },
+            onClick = { showContainerStorageManager = true },
+        )
+
         var wifiOnlyDownload by rememberSaveable { mutableStateOf(PrefManager.downloadOnWifiOnly) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -416,18 +423,6 @@ fun SettingsGroupInterface(
                 Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default))
             },
             onClick = { openRegionDialog = true },
-        )
-    }
-
-    SettingsGroup(
-        modifier = Modifier.background(Color.Transparent),
-        title = { Text(text = stringResource(R.string.settings_storage_title)) },
-    ) {
-        SettingsMenuLink(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.settings_storage_manage_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_storage_manage_subtitle)) },
-            onClick = { showContainerStorageManager = true },
         )
     }
 

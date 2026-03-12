@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -12,8 +13,11 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import com.winlator.core.FileUtils
 import com.winlator.xenvironment.ImageFs
@@ -49,6 +53,17 @@ object ContainerStorageManager {
         GAME_FILES_MISSING,
         ORPHANED,
         UNREADABLE,
+    }
+
+    enum class MoveTarget {
+        INTERNAL,
+        EXTERNAL,
+    }
+
+    enum class StorageLocation {
+        INTERNAL,
+        EXTERNAL,
+        UNKNOWN,
     }
 
     data class Entry(
@@ -127,6 +142,166 @@ object ContainerStorageManager {
         )
 
         entries
+    }
+
+    fun isExternalStorageConfigured(): Boolean {
+        return PrefManager.useExternalStorage &&
+            PrefManager.externalStoragePath.isNotBlank() &&
+            File(PrefManager.externalStoragePath).exists()
+    }
+
+    fun getStorageLocation(context: Context, entry: Entry): StorageLocation {
+        val installPath = entry.installPath ?: return StorageLocation.UNKNOWN
+        val gameSource = entry.gameSource ?: detectGameSource(normalizeContainerId(entry.containerId)) ?: return StorageLocation.UNKNOWN
+        return getStorageLocation(context, gameSource, installPath)
+    }
+
+    fun canMoveToExternal(context: Context, entry: Entry): Boolean {
+        return canMoveGame(entry) &&
+            isExternalStorageConfigured() &&
+            getStorageLocation(context, entry) == StorageLocation.INTERNAL
+    }
+
+    fun canMoveToInternal(context: Context, entry: Entry): Boolean {
+        return canMoveGame(entry) &&
+            isExternalStorageConfigured() &&
+            getStorageLocation(context, entry) == StorageLocation.EXTERNAL
+    }
+
+    suspend fun moveGame(
+        context: Context,
+        entry: Entry,
+        target: MoveTarget,
+        onProgressUpdate: (currentFile: String, fileProgress: Float, movedFiles: Int, totalFiles: Int) -> Unit,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val normalizedContainerId = normalizeContainerId(entry.containerId)
+        val gameSource = entry.gameSource ?: detectGameSource(normalizedContainerId)
+            ?: return@withContext Result.failure(IllegalArgumentException("Unknown game source"))
+
+        if (!canMoveGame(entry)) {
+            return@withContext Result.failure(IllegalArgumentException("This game cannot be moved"))
+        }
+        if (!isExternalStorageConfigured()) {
+            return@withContext Result.failure(IllegalStateException("External storage is not enabled"))
+        }
+
+        val sourceDir = File(entry.installPath.orEmpty())
+        if (!sourceDir.exists() || !sourceDir.isDirectory) {
+            return@withContext Result.failure(IllegalArgumentException("Game install folder does not exist"))
+        }
+
+        val currentLocation = getStorageLocation(context, gameSource, sourceDir.absolutePath)
+        when (target) {
+            MoveTarget.EXTERNAL -> if (currentLocation != StorageLocation.INTERNAL) {
+                return@withContext Result.failure(IllegalStateException("Game is not stored internally"))
+            }
+
+            MoveTarget.INTERNAL -> if (currentLocation != StorageLocation.EXTERNAL) {
+                return@withContext Result.failure(IllegalStateException("Game is not stored externally"))
+            }
+        }
+
+        val targetRoot = resolveTargetInstallRoot(context, gameSource, target)
+            ?: return@withContext Result.failure(IllegalArgumentException("Unsupported game source"))
+        val targetDir = File(targetRoot, sourceDir.name)
+
+        if (samePath(sourceDir, targetDir)) {
+            return@withContext Result.success(Unit)
+        }
+        if (targetDir.exists()) {
+            return@withContext Result.failure(
+                IllegalStateException("Destination already exists: ${targetDir.absolutePath}"),
+            )
+        }
+
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            StorageManagerDaoEntryPoint::class.java,
+        )
+
+        val steamGameId = if (gameSource == GameSource.STEAM) {
+            extractGameId(normalizedContainerId)
+                ?: return@withContext Result.failure(IllegalArgumentException("Invalid Steam game id"))
+        } else {
+            null
+        }
+        val gogGame = if (gameSource == GameSource.GOG) {
+            val gameId = extractGameId(normalizedContainerId)?.toString()
+                ?: return@withContext Result.failure(IllegalArgumentException("Invalid GOG game id"))
+            entryPoint.gogGameDao().getById(gameId)
+                ?: return@withContext Result.failure(IllegalStateException("GOG game not found in database"))
+        } else {
+            null
+        }
+        val epicGame = if (gameSource == GameSource.EPIC) {
+            val gameId = extractGameId(normalizedContainerId)
+                ?: return@withContext Result.failure(IllegalArgumentException("Invalid Epic game id"))
+            entryPoint.epicGameDao().getById(gameId)
+                ?: return@withContext Result.failure(IllegalStateException("Epic game not found in database"))
+        } else {
+            null
+        }
+        val amazonGame = if (gameSource == GameSource.AMAZON) {
+            val gameId = extractGameId(normalizedContainerId)
+                ?: return@withContext Result.failure(IllegalArgumentException("Invalid Amazon game id"))
+            entryPoint.amazonGameDao().getByAppId(gameId)
+                ?: return@withContext Result.failure(IllegalStateException("Amazon game not found in database"))
+        } else {
+            null
+        }
+
+        Timber.tag("ContainerStorageManager").i(
+            "Moving game %s from %s to %s",
+            entry.containerId,
+            sourceDir.absolutePath,
+            targetDir.absolutePath,
+        )
+
+        val moveResult = StorageUtils.moveDirectory(
+            sourceDir = sourceDir.absolutePath,
+            targetDir = targetDir.absolutePath,
+            onProgressUpdate = onProgressUpdate,
+        )
+        if (moveResult.isFailure) {
+            return@withContext moveResult
+        }
+
+        val installSize = entry.gameInstallSizeBytes ?: StorageUtils.getFolderSize(targetDir.absolutePath)
+        when (gameSource) {
+            GameSource.STEAM -> {
+                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it)) }
+            }
+
+            GameSource.GOG -> {
+                gogGame?.let {
+                    entryPoint.gogGameDao().update(it.copy(installPath = targetDir.absolutePath, installSize = installSize))
+                }
+            }
+
+            GameSource.EPIC -> {
+                epicGame?.let {
+                    entryPoint.epicGameDao().update(it.copy(installPath = targetDir.absolutePath, installSize = installSize))
+                }
+            }
+
+            GameSource.AMAZON -> {
+                amazonGame?.let {
+                    entryPoint.amazonGameDao().markAsInstalled(it.productId, targetDir.absolutePath, installSize, it.versionId)
+                }
+            }
+
+            GameSource.CUSTOM_GAME -> {
+                return@withContext Result.failure(UnsupportedOperationException("Custom games are not supported"))
+            }
+        }
+
+        Timber.tag("ContainerStorageManager").i(
+            "Moved game %s successfully to %s",
+            entry.containerId,
+            targetDir.absolutePath,
+        )
+
+        Result.success(Unit)
     }
 
     suspend fun removeContainer(context: Context, containerId: String): Boolean = withContext(Dispatchers.IO) {
@@ -462,6 +637,95 @@ object ContainerStorageManager {
             canUninstallGame = installedGame.gameSource != GameSource.CUSTOM_GAME,
             hasContainer = false,
         )
+    }
+
+    private fun canMoveGame(entry: Entry): Boolean {
+        return (entry.status == Status.READY || entry.status == Status.NO_CONTAINER) &&
+            entry.gameSource != null &&
+            entry.gameSource != GameSource.CUSTOM_GAME &&
+            !entry.installPath.isNullOrBlank()
+    }
+
+    private fun resolveTargetInstallRoot(context: Context, gameSource: GameSource, target: MoveTarget): String? {
+        return when (gameSource) {
+            GameSource.STEAM -> when (target) {
+                MoveTarget.INTERNAL -> SteamService.internalAppInstallPath
+                MoveTarget.EXTERNAL -> SteamService.externalAppInstallPath
+            }
+
+            GameSource.GOG -> when (target) {
+                MoveTarget.INTERNAL -> GOGConstants.internalGOGGamesPath
+                MoveTarget.EXTERNAL -> GOGConstants.externalGOGGamesPath
+            }
+
+            GameSource.EPIC -> when (target) {
+                MoveTarget.INTERNAL -> EpicConstants.internalEpicGamesPath(context)
+                MoveTarget.EXTERNAL -> EpicConstants.externalEpicGamesPath()
+            }
+
+            GameSource.AMAZON -> when (target) {
+                MoveTarget.INTERNAL -> AmazonConstants.internalAmazonGamesPath(context)
+                MoveTarget.EXTERNAL -> AmazonConstants.externalAmazonGamesPath()
+            }
+
+            GameSource.CUSTOM_GAME -> null
+        }
+    }
+
+    private fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
+        val normalizedPath = normalizePath(installPath)
+
+        val internalRoots = when (gameSource) {
+            GameSource.STEAM -> listOf(SteamService.internalAppInstallPath)
+            GameSource.GOG -> listOf(GOGConstants.internalGOGGamesPath)
+            GameSource.EPIC -> listOf(EpicConstants.internalEpicGamesPath(context))
+            GameSource.AMAZON -> listOf(AmazonConstants.internalAmazonGamesPath(context))
+            GameSource.CUSTOM_GAME -> emptyList()
+        }
+
+        if (internalRoots.any { root -> isPathWithin(normalizedPath, root) }) {
+            return StorageLocation.INTERNAL
+        }
+
+        val externalRoots = when (gameSource) {
+            GameSource.STEAM -> buildList {
+                if (PrefManager.externalStoragePath.isNotBlank()) {
+                    add(SteamService.externalAppInstallPath)
+                }
+                addAll(
+                    DownloadService.externalVolumePaths.map { volumePath ->
+                        Paths.get(volumePath, "Steam", "steamapps", "common").toString()
+                    },
+                )
+            }
+
+            GameSource.GOG -> if (PrefManager.externalStoragePath.isNotBlank()) listOf(GOGConstants.externalGOGGamesPath) else emptyList()
+            GameSource.EPIC -> if (PrefManager.externalStoragePath.isNotBlank()) listOf(EpicConstants.externalEpicGamesPath()) else emptyList()
+            GameSource.AMAZON -> if (PrefManager.externalStoragePath.isNotBlank()) listOf(AmazonConstants.externalAmazonGamesPath()) else emptyList()
+            GameSource.CUSTOM_GAME -> emptyList()
+        }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (externalRoots.any { root -> isPathWithin(normalizedPath, root) }) {
+            return StorageLocation.EXTERNAL
+        }
+
+        return StorageLocation.UNKNOWN
+    }
+
+    private fun samePath(first: File, second: File): Boolean {
+        return normalizePath(first.path) == normalizePath(second.path)
+    }
+
+    private fun isPathWithin(path: String, root: String): Boolean {
+        if (root.isBlank()) return false
+        val normalizedRoot = normalizePath(root)
+        return path == normalizedRoot || path.startsWith(normalizedRoot + File.separator)
+    }
+
+    private fun normalizePath(path: String): String {
+        return runCatching { File(path).canonicalPath }.getOrElse { File(path).absolutePath }
     }
 
     private fun InstalledGame.toResolvedGame(): ResolvedGame = ResolvedGame(
