@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
@@ -754,15 +755,27 @@ class SteamAppScreen : BaseAppScreen() {
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
         val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
-
-        if (!isInstalled || isDownloadInProgress) {
-            return emptyList()
-        }
-
         val scope = rememberCoroutineScope()
 
-        // Steam-specific options (only when installed)
-        return listOf(
+        val options = mutableListOf<AppMenuOption>(
+            AppMenuOption(
+                AppOptionMenuType.BrowseOnlineSaves,
+                onClick = {
+                    val browserIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://store.steampowered.com/account/remotestorageapp/?appid=$gameId"),
+                    )
+                    context.startActivity(browserIntent)
+                },
+            ),
+        )
+
+        if (!isInstalled || isDownloadInProgress) {
+            return options
+        }
+
+        // Steam-specific options that only make sense once the game is installed.
+        options += listOf(
             AppMenuOption(
                 AppOptionMenuType.ResetDrm,
                 onClick = {
@@ -902,6 +915,8 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             ),
         )
+
+        return options
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
