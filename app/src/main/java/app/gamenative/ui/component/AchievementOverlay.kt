@@ -75,7 +75,7 @@ fun BoxScope.AchievementOverlay() {
 private fun AchievementNotificationContent(notification: AchievementNotification) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shadowElevation = 6.dp,
         tonalElevation = 2.dp,
     ) {
