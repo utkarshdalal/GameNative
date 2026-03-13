@@ -4,17 +4,23 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
+import java.util.ArrayDeque
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.max
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -76,6 +82,20 @@ class PerformanceHudView(
         gpuTempMetric,
     )
 
+    private val fpsGraphStacked = FpsGraphView(context).apply {
+        layoutParams = LinearLayout.LayoutParams(72.dp, 16.dp).apply {
+            topMargin = 1.dp
+            bottomMargin = 3.dp
+        }
+    }
+
+    private val fpsGraphCompact = FpsGraphView(context).apply {
+        layoutParams = LinearLayout.LayoutParams(44.dp, 12.dp).apply {
+            marginStart = 6.dp
+            marginEnd = 2.dp
+        }
+    }
+
     private val compactSeparators = mutableListOf<TextView>()
 
     private var lastCpuTotal: Long? = null
@@ -90,8 +110,25 @@ class PerformanceHudView(
         }
         setPadding(10.dp, 8.dp, 10.dp, 8.dp)
 
-        metrics.forEachIndexed { index, metric ->
+        stackedContainer.addView(fpsMetric.stacked)
+        stackedContainer.addView(fpsGraphStacked)
+        metrics.drop(1).forEach { metric ->
             stackedContainer.addView(metric.stacked)
+        }
+
+        compactContainer.addView(fpsMetric.compact)
+        compactContainer.addView(fpsGraphCompact)
+        metrics.forEachIndexed { index, metric ->
+            if (index == 0) {
+                if (index < metrics.lastIndex) {
+                    createSeparator().also {
+                        compactSeparators += it
+                        compactContainer.addView(it)
+                    }
+                }
+                return@forEachIndexed
+            }
+
             compactContainer.addView(metric.compact)
             if (index < metrics.lastIndex) {
                 createSeparator().also {
@@ -157,6 +194,7 @@ class PerformanceHudView(
 
     private fun collectSnapshot(currentFps: Float): HudSnapshot {
         return HudSnapshot(
+            fpsValue = currentFps,
             fps = String.format(Locale.US, "FPS %.1f", currentFps),
             cpu = readCpuUsagePercent()?.let { "CPU $it%" },
             gpu = readGpuUsagePercent()?.let { "GPU $it%" },
@@ -172,6 +210,8 @@ class PerformanceHudView(
 
     private fun renderSnapshot(snapshot: HudSnapshot) {
         updateMetric(fpsMetric, snapshot.fps)
+        fpsGraphStacked.addSample(snapshot.fpsValue)
+        fpsGraphCompact.addSample(snapshot.fpsValue)
         updateMetric(cpuMetric, snapshot.cpu)
         updateMetric(gpuMetric, snapshot.gpu)
         updateMetric(ramMetric, snapshot.ram)
@@ -193,12 +233,27 @@ class PerformanceHudView(
     }
 
     private fun updateCompactSeparators() {
-        var hasVisibleMetricBefore = false
-        metrics.forEachIndexed { index, metric ->
-            if (index > 0) {
-                compactSeparators[index - 1].visibility =
-                    if (metric.compact.visibility == VISIBLE && hasVisibleMetricBefore) VISIBLE else GONE
+        val compactMetricTail = listOf(
+            cpuMetric,
+            gpuMetric,
+            ramMetric,
+            batteryMetric,
+            powerMetric,
+            cpuTempMetric,
+            gpuTempMetric,
+        )
+
+        compactSeparators.firstOrNull()?.visibility =
+            if (fpsMetric.compact.visibility == VISIBLE && compactMetricTail.any { it.compact.visibility == VISIBLE }) {
+                VISIBLE
+            } else {
+                GONE
             }
+
+        var hasVisibleMetricBefore = compactMetricTail.firstOrNull()?.compact?.visibility == VISIBLE
+        compactMetricTail.drop(1).forEachIndexed { index, metric ->
+            compactSeparators[index + 1].visibility =
+                if (metric.compact.visibility == VISIBLE && hasVisibleMetricBefore) VISIBLE else GONE
             if (metric.compact.visibility == VISIBLE) {
                 hasVisibleMetricBefore = true
             }
@@ -383,12 +438,16 @@ class PerformanceHudView(
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 
+    private val Float.dpF: Float
+        get() = this * resources.displayMetrics.density
+
     private data class MetricViews(
         val stacked: TextView,
         val compact: TextView,
     )
 
     private data class HudSnapshot(
+        val fpsValue: Float,
         val fps: String,
         val cpu: String?,
         val gpu: String?,
@@ -399,7 +458,64 @@ class PerformanceHudView(
         val gpuTemp: String?,
     )
 
+    private inner class FpsGraphView(context: Context) : View(context) {
+        private val samples = ArrayDeque<Float>()
+        private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x664CAF50
+            style = Paint.Style.STROKE
+            strokeWidth = 3.dp.toFloat()
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF7CFF6B.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f.dpF
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val path = Path()
+
+        fun addSample(fps: Float) {
+            if (samples.size >= FPS_GRAPH_SAMPLE_COUNT) {
+                samples.removeFirst()
+            }
+            samples.addLast(fps.coerceAtLeast(0f))
+            invalidate()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            if (samples.size < 2 || width <= 0 || height <= 0) {
+                return
+            }
+
+            val chartWidth = width.toFloat()
+            val chartHeight = height.toFloat()
+            val values = samples.toList()
+            val maxValue = max(FPS_GRAPH_MIN_SCALE, (values.maxOrNull() ?: FPS_GRAPH_MIN_SCALE) * 1.05f)
+            val xStep = if (values.size > 1) chartWidth / (values.size - 1) else chartWidth
+
+            path.reset()
+            values.forEachIndexed { index, value ->
+                val x = index * xStep
+                val normalized = (value / maxValue).coerceIn(0f, 1f)
+                val y = chartHeight - (normalized * chartHeight)
+                if (index == 0) {
+                    path.moveTo(x, y)
+                } else {
+                    path.lineTo(x, y)
+                }
+            }
+
+            canvas.drawPath(path, glowPaint)
+            canvas.drawPath(path, linePaint)
+        }
+    }
+
     private companion object {
         const val UPDATE_INTERVAL_MS = 1_000L
+        const val FPS_GRAPH_SAMPLE_COUNT = 30
+        const val FPS_GRAPH_MIN_SCALE = 60f
     }
 }
