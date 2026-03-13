@@ -283,13 +283,6 @@ object PrefManager {
             setPref(SHOW_FPS, value)
         }
 
-    private val PERFORMANCE_HUD_ENABLED = booleanPreferencesKey("performance_hud_enabled")
-    var performanceHudEnabled: Boolean
-        get() = getPref(PERFORMANCE_HUD_ENABLED, false)
-        set(value) {
-            setPref(PERFORMANCE_HUD_ENABLED, value)
-        }
-
     private val PERFORMANCE_HUD_X_FRACTION = floatPreferencesKey("performance_hud_x_fraction")
     var performanceHudXFraction: Float
         get() = getPref(PERFORMANCE_HUD_X_FRACTION, -1f)

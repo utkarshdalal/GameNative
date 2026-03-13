@@ -360,109 +360,40 @@ fun XServerScreen(
     var performanceHudDragOffsetX by remember { mutableStateOf(0f) }
     var performanceHudDragOffsetY by remember { mutableStateOf(0f) }
 
-    fun getPerformanceHudDefaultOffsetPx(host: ViewGroup, hud: View): Pair<Float, Float> {
+    fun restorePerformanceHudPosition() {
+        val host = performanceHudHost ?: return
+        val hud = performanceHudView ?: return
+        if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) return
+
+        val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
+        val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
         val margin = 12 * context.resources.displayMetrics.density
-        val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
-        val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
-        return Pair(
-            margin.coerceAtMost(maxX),
-            margin.coerceAtMost(maxY),
-        )
+        val savedX = PrefManager.performanceHudXFraction
+        val savedY = PrefManager.performanceHudYFraction
+
+        hud.x = if (savedX in 0f..1f) maxX * savedX else margin.coerceAtMost(maxX)
+        hud.y = if (savedY in 0f..1f) maxY * savedY else margin.coerceAtMost(maxY)
+
+        PrefManager.performanceHudXFraction = if (maxX > 0f) hud.x / maxX else 0f
+        PrefManager.performanceHudYFraction = if (maxY > 0f) hud.y / maxY else 0f
     }
 
-    fun persistPerformanceHudPosition(x: Float, y: Float) {
+    fun movePerformanceHud(rawX: Float, rawY: Float, save: Boolean) {
         val host = performanceHudHost ?: return
         val hud = performanceHudView ?: return
-        val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
-        val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
-
-        PrefManager.performanceHudXFraction = if (maxX > 0f) {
-            (x.coerceIn(0f, maxX) / maxX).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-        PrefManager.performanceHudYFraction = if (maxY > 0f) {
-            (y.coerceIn(0f, maxY) / maxY).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-    }
-
-    fun clampPerformanceHudPosition(persist: Boolean) {
-        val host = performanceHudHost ?: return
-        val hud = performanceHudView ?: return
-        if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) {
-            return
-        }
-
-        val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
-        val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
-        val clampedX = hud.x.coerceIn(0f, maxX)
-        val clampedY = hud.y.coerceIn(0f, maxY)
-
-        if (hud.x != clampedX) hud.x = clampedX
-        if (hud.y != clampedY) hud.y = clampedY
-        if (persist) {
-            persistPerformanceHudPosition(clampedX, clampedY)
-        }
-    }
-
-    fun applySavedPerformanceHudPosition(persistIfDefault: Boolean = false) {
-        val host = performanceHudHost ?: return
-        val hud = performanceHudView ?: return
-        if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) {
-            return
-        }
-
-        val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
-        val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
-        val savedXFraction = PrefManager.performanceHudXFraction
-        val savedYFraction = PrefManager.performanceHudYFraction
-        val hasSavedPosition = savedXFraction in 0f..1f && savedYFraction in 0f..1f
-        val (defaultX, defaultY) = getPerformanceHudDefaultOffsetPx(host, hud)
-
-        val targetX = if (hasSavedPosition) maxX * savedXFraction else defaultX
-        val targetY = if (hasSavedPosition) maxY * savedYFraction else defaultY
-
-        hud.x = targetX.coerceIn(0f, maxX)
-        hud.y = targetY.coerceIn(0f, maxY)
-
-        if (persistIfDefault || hasSavedPosition) {
-            persistPerformanceHudPosition(hud.x, hud.y)
-        }
-    }
-
-    fun isTouchInsideView(view: View, event: MotionEvent): Boolean {
-        if (!view.isShown || view.width <= 0 || view.height <= 0) {
-            return false
-        }
-        val location = IntArray(2)
-        view.getLocationOnScreen(location)
-        val left = location[0].toFloat()
-        val top = location[1].toFloat()
-        val right = left + view.width
-        val bottom = top + view.height
-        return event.rawX in left..right && event.rawY in top..bottom
-    }
-
-    fun movePerformanceHud(rawX: Float, rawY: Float, persist: Boolean) {
-        val host = performanceHudHost ?: return
-        val hud = performanceHudView ?: return
-        if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) {
-            return
-        }
+        if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) return
 
         val hostLocation = IntArray(2)
         host.getLocationOnScreen(hostLocation)
         val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
         val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
-        val targetX = (rawX - hostLocation[0] - performanceHudDragOffsetX).coerceIn(0f, maxX)
-        val targetY = (rawY - hostLocation[1] - performanceHudDragOffsetY).coerceIn(0f, maxY)
 
-        hud.x = targetX
-        hud.y = targetY
-        if (persist) {
-            persistPerformanceHudPosition(targetX, targetY)
+        hud.x = (rawX - hostLocation[0] - performanceHudDragOffsetX).coerceIn(0f, maxX)
+        hud.y = (rawY - hostLocation[1] - performanceHudDragOffsetY).coerceIn(0f, maxY)
+
+        if (save) {
+            PrefManager.performanceHudXFraction = if (maxX > 0f) hud.x / maxX else 0f
+            PrefManager.performanceHudYFraction = if (maxY > 0f) hud.y / maxY else 0f
         }
     }
 
@@ -495,18 +426,14 @@ fun XServerScreen(
         }
 
         targetLayout.addView(hud, layoutParams)
+        performanceHudView = hud
         hud.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            if (!isDraggingPerformanceHud) {
-                applySavedPerformanceHudPosition(persistIfDefault = true)
-            }
+            if (!isDraggingPerformanceHud) restorePerformanceHudPosition()
         }
         targetLayout.post {
-            if (performanceHudView === hud) {
-                applySavedPerformanceHudPosition(persistIfDefault = true)
-            }
+            if (performanceHudView === hud) restorePerformanceHudPosition()
         }
         hud.bringToFront()
-        performanceHudView = hud
     }
 
     fun clearOverlayPauseState() {
@@ -782,7 +709,7 @@ fun XServerScreen(
 
             QuickMenuAction.PERFORMANCE_HUD -> {
                 val enabled = performanceHudView == null
-                PrefManager.performanceHudEnabled = enabled
+                PrefManager.showFps = enabled
                 updatePerformanceHud(enabled)
                 PostHog.capture(
                     event = "performance_hud_toggled",
@@ -964,18 +891,25 @@ fun XServerScreen(
                 if (hud != null) {
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
-                            if (isTouchInsideView(hud, event)) {
+                            if (hud.isShown && hud.width > 0 && hud.height > 0) {
                                 val hudLocation = IntArray(2)
                                 hud.getLocationOnScreen(hudLocation)
-                                performanceHudDragOffsetX = event.rawX - hudLocation[0]
-                                performanceHudDragOffsetY = event.rawY - hudLocation[1]
-                                isDraggingPerformanceHud = true
-                                return@pointerInteropFilter true
+                                val insideHud =
+                                    event.rawX >= hudLocation[0] &&
+                                        event.rawX <= hudLocation[0] + hud.width &&
+                                        event.rawY >= hudLocation[1] &&
+                                        event.rawY <= hudLocation[1] + hud.height
+                                if (insideHud) {
+                                    performanceHudDragOffsetX = event.rawX - hudLocation[0]
+                                    performanceHudDragOffsetY = event.rawY - hudLocation[1]
+                                    isDraggingPerformanceHud = true
+                                    return@pointerInteropFilter true
+                                }
                             }
                         }
                         MotionEvent.ACTION_MOVE -> {
                             if (isDraggingPerformanceHud) {
-                                movePerformanceHud(event.rawX, event.rawY, persist = true)
+                                movePerformanceHud(event.rawX, event.rawY, save = true)
                                 return@pointerInteropFilter true
                             }
                         }
@@ -983,7 +917,7 @@ fun XServerScreen(
                         MotionEvent.ACTION_CANCEL,
                         -> {
                             if (isDraggingPerformanceHud) {
-                                movePerformanceHud(event.rawX, event.rawY, persist = true)
+                                movePerformanceHud(event.rawX, event.rawY, save = true)
                                 isDraggingPerformanceHud = false
                                 return@pointerInteropFilter true
                             }
@@ -1503,7 +1437,7 @@ fun XServerScreen(
             frameRating = FrameRating(context)
             frameRating?.setVisibility(View.GONE)
 
-            if (PrefManager.performanceHudEnabled) {
+            if (PrefManager.showFps) {
                 frameLayout.post {
                     updatePerformanceHud(true)
                 }
