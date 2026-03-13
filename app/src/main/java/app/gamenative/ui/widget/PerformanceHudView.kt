@@ -272,6 +272,7 @@ class PerformanceHudView(
             setTextColor(color)
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setSingleLine(true)
             setPadding(0, 2.dp, 0, 2.dp)
         }
     }
