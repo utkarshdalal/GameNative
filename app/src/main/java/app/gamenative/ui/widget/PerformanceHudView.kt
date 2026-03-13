@@ -10,6 +10,7 @@ import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -20,6 +21,7 @@ import java.io.File
 import java.util.ArrayDeque
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -177,7 +179,8 @@ class PerformanceHudView(
 
         updateJob = scope.launch {
             while (isActive) {
-                val currentFps = fpsProvider().coerceAtLeast(0f)
+                val rawFps = fpsProvider()
+                val currentFps = if (rawFps.isFinite()) rawFps.coerceAtLeast(0f) else 0f
                 val snapshot = withContext(Dispatchers.IO) {
                     collectSnapshot(currentFps)
                 }
@@ -219,6 +222,7 @@ class PerformanceHudView(
         updateMetric(powerMetric, snapshot.power)
         updateMetric(cpuTempMetric, snapshot.cpuTemp)
         updateMetric(gpuTempMetric, snapshot.gpuTemp)
+        updateStackedMinimumWidth()
         updateCompactSeparators()
     }
 
@@ -230,6 +234,31 @@ class PerformanceHudView(
     private fun updateText(view: TextView, text: String?) {
         view.text = text.orEmpty()
         view.visibility = if (text.isNullOrBlank()) GONE else VISIBLE
+    }
+
+    private fun updateStackedMinimumWidth() {
+        val widestTextWidth = listOf(
+            fpsMetric.stacked,
+            cpuMetric.stacked,
+            gpuMetric.stacked,
+            ramMetric.stacked,
+            batteryMetric.stacked,
+            powerMetric.stacked,
+            cpuTempMetric.stacked,
+            gpuTempMetric.stacked,
+        ).filter { it.visibility == VISIBLE }
+            .maxOfOrNull { textView ->
+                textView.paint.measureText(textView.text?.toString().orEmpty()) +
+                    textView.paddingLeft +
+                    textView.paddingRight
+            } ?: 0f
+
+        val graphWidth = (fpsGraphStacked.layoutParams?.width ?: 0).toFloat()
+        val targetWidth = ceil(max(widestTextWidth, graphWidth)).toInt()
+        if (stackedContainer.minimumWidth != targetWidth) {
+            stackedContainer.minimumWidth = targetWidth
+            stackedContainer.requestLayout()
+        }
     }
 
     private fun updateCompactSeparators() {
@@ -272,7 +301,8 @@ class PerformanceHudView(
             setTextColor(color)
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setSingleLine(true)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
             setPadding(0, 2.dp, 0, 2.dp)
         }
     }
@@ -282,7 +312,8 @@ class PerformanceHudView(
             setTextColor(color)
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setSingleLine(true)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
         }
     }
 
@@ -478,10 +509,11 @@ class PerformanceHudView(
         private val path = Path()
 
         fun addSample(fps: Float) {
+            val safeFps = if (fps.isFinite()) fps.coerceAtLeast(0f) else 0f
             if (samples.size >= FPS_GRAPH_SAMPLE_COUNT) {
                 samples.removeFirst()
             }
-            samples.addLast(fps.coerceAtLeast(0f))
+            samples.addLast(safeFps)
             invalidate()
         }
 

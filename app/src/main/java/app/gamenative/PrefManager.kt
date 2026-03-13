@@ -304,6 +304,15 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_COMPACT_MODE, value)
         }
 
+    fun setPerformanceHudPositionFractions(xFraction: Float, yFraction: Float) {
+        scope.launch {
+            dataStore.edit { pref ->
+                pref[PERFORMANCE_HUD_X_FRACTION] = xFraction.coerceIn(-1f, 1f)
+                pref[PERFORMANCE_HUD_Y_FRACTION] = yFraction.coerceIn(-1f, 1f)
+            }
+        }
+    }
+
     private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
     var launchRealSteam: Boolean
         get() = getPref(LAUNCH_REAL_STEAM, false)
