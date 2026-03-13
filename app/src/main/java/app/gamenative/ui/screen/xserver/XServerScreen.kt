@@ -1138,6 +1138,12 @@ fun XServerScreen(
                             }
                         } catch (e: Exception) {
                             Timber.e(e, "Error during wine setup operations")
+                            try {
+                                PluviaApp.xEnvironment?.stopEnvironmentComponents()
+                            } catch (cleanupEx: Exception) {
+                                Timber.e(cleanupEx, "Error cleaning up environment after setup failure")
+                            }
+                            PluviaApp.xEnvironment = null
                             onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
                         } finally {
                             setupExecutor.shutdown()
