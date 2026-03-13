@@ -1341,14 +1341,23 @@ object SteamUtils {
     }
 
     fun generateAchievementsFile(dllPath: Path, appId: String) {
+        if (!SteamService.isLoggedIn) {
+            Timber.w("Skipping achievements generation for $appId — Steam not logged in")
+            return
+        }
+
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val settingsDir = dllPath.parent.resolve("steam_settings")
         if (Files.notExists(settingsDir)) {
             Files.createDirectories(settingsDir)
         }
 
-        runBlocking {
-            SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
+        try {
+            runBlocking {
+                SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to generate achievements for $appId")
         }
     }
 }
