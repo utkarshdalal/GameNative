@@ -540,6 +540,7 @@
     <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
+    <string name="achievement_unlocked">Obiettivo sbloccato</string>
     <string name="launch_steam_client_description">Riduce le prestazioni e rallenta l\'avvio\nConsente il gioco online e corregge problemi di DRM e controller\nNon tutti i giochi funzionano</string>
     <string name="allow_steam_updates">Consenti aggiornamenti Steam</string>
     <string name="allow_steam_updates_description">Aggiorna Steam all\'ultima versione. Riduce significativamente le prestazioni.</string>

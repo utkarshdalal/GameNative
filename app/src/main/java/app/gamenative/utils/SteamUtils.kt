@@ -17,6 +17,7 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.types.KeyValue
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -248,6 +249,9 @@ object SteamUtils {
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
 
+        // Generate achievements.json
+        generateAchievementsFile(rootPath.resolve("steam_settings"), appId)
+
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
 
@@ -287,7 +291,9 @@ object SteamUtils {
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
-        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64, isOffline)
+        val path = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath()
+        ensureSteamSettings(context, path, appId, ticketBase64, isOffline)
+        generateAchievementsFile(path, appId)
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
@@ -977,7 +983,6 @@ object SteamUtils {
             }
         }
 
-
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
         if (Files.notExists(supportedLanguagesFile)) {
@@ -1332,6 +1337,27 @@ object SteamUtils {
             Timber.i("[${mapping.description}] Created symlink: ${targetPath.absolutePath} -> ${sourcePath.absolutePath}")
         } catch (e: Exception) {
             Timber.e(e, "[${mapping.description}] Failed to create save location symlink")
+        }
+    }
+
+    fun generateAchievementsFile(dllPath: Path, appId: String) {
+        if (!SteamService.isLoggedIn) {
+            Timber.w("Skipping achievements generation for $appId — Steam not logged in")
+            return
+        }
+
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val settingsDir = dllPath.parent.resolve("steam_settings")
+        if (Files.notExists(settingsDir)) {
+            Files.createDirectories(settingsDir)
+        }
+
+        try {
+            runBlocking {
+                SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to generate achievements for $appId")
         }
     }
 }

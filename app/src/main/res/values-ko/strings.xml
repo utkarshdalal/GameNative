@@ -550,6 +550,7 @@
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
+    <string name="achievement_unlocked">업적 달성</string>
     <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>

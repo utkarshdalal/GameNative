@@ -1152,6 +1152,7 @@ https://gamenative.app
     <string name="wine_version">Версия Wine</string>
     <string name="wmdecoder">Декодер Windows Media</string>
     <string name="working">Работа...</string>
+    <string name="achievement_unlocked">Достижение разблокировано</string>
     <string name="yes">Да</string>
     <string name="download_failed_title">Ошибка загрузки</string>
     <string name="download_failed_message">Не удалось загрузить необходимый файл. Проверьте подключение к сети и попробуйте снова.</string>

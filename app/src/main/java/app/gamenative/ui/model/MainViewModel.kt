@@ -521,7 +521,7 @@ class MainViewModel @Inject constructor(
                 }
             } else {
                 // For Steam games, sync cloud saves
-                SteamService.closeApp(gameId, isOffline.value) { prefix ->
+                SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
                     PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
                 }.await()
             }

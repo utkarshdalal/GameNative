@@ -373,6 +373,7 @@
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
+    <string name="achievement_unlocked">Præstation låst op</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>

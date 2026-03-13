@@ -56,7 +56,7 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = "Turnip_Gen8_V23"
+            DefaultVersion.WRAPPER = "Turnip_Gen8_V25"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
             DefaultVersion.ASYNC_CACHE = "1"
         } else {

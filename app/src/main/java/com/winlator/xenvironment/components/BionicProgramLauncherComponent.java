@@ -90,6 +90,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     @Override
     public void start() {
         synchronized (lock) {
+            stop();
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
             else
