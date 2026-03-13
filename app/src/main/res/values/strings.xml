@@ -1232,4 +1232,11 @@
     <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
     <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
     <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Sign in to access your Steam library.</string>
+    <string name="library_source_not_logged_in_gog">Sign in to access your GOG library.</string>
+    <string name="library_source_not_logged_in_epic">Sign in to access your Epic library.</string>
+    <string name="library_source_not_logged_in_amazon">Sign in to access your Amazon library.</string>
+    <string name="library_source_no_custom_games">You have not added any custom games.</string>
 </resources>
