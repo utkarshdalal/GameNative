@@ -283,6 +283,27 @@ object PrefManager {
             setPref(SHOW_FPS, value)
         }
 
+    private val PERFORMANCE_HUD_ENABLED = booleanPreferencesKey("performance_hud_enabled")
+    var performanceHudEnabled: Boolean
+        get() = getPref(PERFORMANCE_HUD_ENABLED, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_ENABLED, value)
+        }
+
+    private val PERFORMANCE_HUD_X_FRACTION = floatPreferencesKey("performance_hud_x_fraction")
+    var performanceHudXFraction: Float
+        get() = getPref(PERFORMANCE_HUD_X_FRACTION, -1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_X_FRACTION, value.coerceIn(-1f, 1f))
+        }
+
+    private val PERFORMANCE_HUD_Y_FRACTION = floatPreferencesKey("performance_hud_y_fraction")
+    var performanceHudYFraction: Float
+        get() = getPref(PERFORMANCE_HUD_Y_FRACTION, -1f)
+        set(value) {
+            setPref(PERFORMANCE_HUD_Y_FRACTION, value.coerceIn(-1f, 1f))
+        }
+
     private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
     var launchRealSteam: Boolean
         get() = getPref(LAUNCH_REAL_STEAM, false)
