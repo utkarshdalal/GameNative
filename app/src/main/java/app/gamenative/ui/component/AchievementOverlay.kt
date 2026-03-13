@@ -99,9 +99,8 @@ private fun AchievementNotificationContent(notification: AchievementNotification
             Column {
                 Text(
                     text = stringResource(R.string.achievement_unlocked),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = notification.name,
