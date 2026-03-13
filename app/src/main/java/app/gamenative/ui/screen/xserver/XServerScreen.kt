@@ -11,6 +11,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
@@ -357,8 +358,12 @@ fun XServerScreen(
     var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
     var performanceHudHost by remember { mutableStateOf<FrameLayout?>(null) }
     var isDraggingPerformanceHud by remember { mutableStateOf(false) }
+    var isTrackingPerformanceHudTouch by remember { mutableStateOf(false) }
+    var performanceHudTouchDownRawX by remember { mutableStateOf(0f) }
+    var performanceHudTouchDownRawY by remember { mutableStateOf(0f) }
     var performanceHudDragOffsetX by remember { mutableStateOf(0f) }
     var performanceHudDragOffsetY by remember { mutableStateOf(0f) }
+    val performanceHudTouchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
 
     fun restorePerformanceHudPosition() {
         val host = performanceHudHost ?: return
@@ -399,10 +404,23 @@ fun XServerScreen(
 
     fun removePerformanceHud() {
         isDraggingPerformanceHud = false
+        isTrackingPerformanceHudTouch = false
         performanceHudView?.let { hud ->
             (hud.parent as? ViewGroup)?.removeView(hud)
         }
         performanceHudView = null
+    }
+
+    fun togglePerformanceHudLayout() {
+        val hud = performanceHudView ?: return
+        val compactMode = !hud.isCompactMode()
+        hud.setCompactMode(compactMode)
+        PrefManager.performanceHudCompactMode = compactMode
+        hud.post {
+            if (performanceHudView === hud && !isDraggingPerformanceHud) {
+                restorePerformanceHudPosition()
+            }
+        }
     }
 
     fun updatePerformanceHud(show: Boolean) {
@@ -415,9 +433,13 @@ fun XServerScreen(
         }
 
         val targetLayout = performanceHudHost ?: return
-        val hud = PerformanceHudView(context) {
-            frameRating?.currentFPS ?: 0f
-        }
+        val hud = PerformanceHudView(
+            context = context,
+            fpsProvider = {
+                frameRating?.currentFPS ?: 0f
+            },
+            initialCompactMode = PrefManager.performanceHudCompactMode,
+        )
         val layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -900,24 +922,48 @@ fun XServerScreen(
                                         event.rawY >= hudLocation[1] &&
                                         event.rawY <= hudLocation[1] + hud.height
                                 if (insideHud) {
+                                    performanceHudTouchDownRawX = event.rawX
+                                    performanceHudTouchDownRawY = event.rawY
                                     performanceHudDragOffsetX = event.rawX - hudLocation[0]
                                     performanceHudDragOffsetY = event.rawY - hudLocation[1]
-                                    isDraggingPerformanceHud = true
+                                    isTrackingPerformanceHudTouch = true
+                                    isDraggingPerformanceHud = false
                                     return@pointerInteropFilter true
                                 }
                             }
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            if (isDraggingPerformanceHud) {
-                                movePerformanceHud(event.rawX, event.rawY, save = true)
+                            if (isTrackingPerformanceHudTouch) {
+                                if (!isDraggingPerformanceHud) {
+                                    val deltaX = event.rawX - performanceHudTouchDownRawX
+                                    val deltaY = event.rawY - performanceHudTouchDownRawY
+                                    val distanceSquared = (deltaX * deltaX) + (deltaY * deltaY)
+                                    if (distanceSquared >= performanceHudTouchSlop * performanceHudTouchSlop) {
+                                        isDraggingPerformanceHud = true
+                                    }
+                                }
+                                if (isDraggingPerformanceHud) {
+                                    movePerformanceHud(event.rawX, event.rawY, save = true)
+                                }
                                 return@pointerInteropFilter true
                             }
                         }
-                        MotionEvent.ACTION_UP,
-                        MotionEvent.ACTION_CANCEL,
-                        -> {
-                            if (isDraggingPerformanceHud) {
-                                movePerformanceHud(event.rawX, event.rawY, save = true)
+                        MotionEvent.ACTION_UP -> {
+                            if (isTrackingPerformanceHudTouch) {
+                                if (isDraggingPerformanceHud) {
+                                    movePerformanceHud(event.rawX, event.rawY, save = true)
+                                } else {
+                                    hud.performClick()
+                                    togglePerformanceHudLayout()
+                                }
+                                isTrackingPerformanceHudTouch = false
+                                isDraggingPerformanceHud = false
+                                return@pointerInteropFilter true
+                            }
+                        }
+                        MotionEvent.ACTION_CANCEL -> {
+                            if (isTrackingPerformanceHudTouch || isDraggingPerformanceHud) {
+                                isTrackingPerformanceHudTouch = false
                                 isDraggingPerformanceHud = false
                                 return@pointerInteropFilter true
                             }

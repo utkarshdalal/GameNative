@@ -297,6 +297,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_Y_FRACTION, value.coerceIn(-1f, 1f))
         }
 
+    private val PERFORMANCE_HUD_COMPACT_MODE = booleanPreferencesKey("performance_hud_compact_mode")
+    var performanceHudCompactMode: Boolean
+        get() = getPref(PERFORMANCE_HUD_COMPACT_MODE, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_COMPACT_MODE, value)
+        }
+
     private val LAUNCH_REAL_STEAM = booleanPreferencesKey("launch_real_steam")
     var launchRealSteam: Boolean
         get() = getPref(LAUNCH_REAL_STEAM, false)

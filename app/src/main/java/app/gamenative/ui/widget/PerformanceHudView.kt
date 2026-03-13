@@ -8,7 +8,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
 import android.util.TypedValue
-import android.view.ViewGroup
+import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -33,52 +33,89 @@ import kotlinx.coroutines.withContext
 class PerformanceHudView(
     context: Context,
     private val fpsProvider: () -> Float,
+    initialCompactMode: Boolean = false,
 ) : FrameLayout(context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var updateJob: Job? = null
+    private var isCompactMode = initialCompactMode
 
-    private val fpsText = createRow(0xFF4CAF50.toInt())
-    private val cpuText = createRow(0xFF42A5F5.toInt())
-    private val gpuText = createRow(0xFFEF5350.toInt())
-    private val ramText = createRow(0xFFFFEE58.toInt())
-    private val batteryText = createRow(0xFFFFFFFF.toInt())
-    private val powerText = createRow(0xFF4DD0E1.toInt())
-    private val cpuTempText = createRow(0xFFBDBDBD.toInt())
-    private val gpuTempText = createRow(0xFFBDBDBD.toInt())
+    private val stackedContainer = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+        )
+    }
+
+    private val compactContainer = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        layoutParams = LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+        )
+    }
+
+    private val fpsMetric = createMetricViews(0xFF4CAF50.toInt())
+    private val cpuMetric = createMetricViews(0xFF42A5F5.toInt())
+    private val gpuMetric = createMetricViews(0xFFEF5350.toInt())
+    private val ramMetric = createMetricViews(0xFFFFEE58.toInt())
+    private val batteryMetric = createMetricViews(0xFFFFFFFF.toInt())
+    private val powerMetric = createMetricViews(0xFF4DD0E1.toInt())
+    private val cpuTempMetric = createMetricViews(0xFFBDBDBD.toInt())
+    private val gpuTempMetric = createMetricViews(0xFFBDBDBD.toInt())
+
+    private val metrics = listOf(
+        fpsMetric,
+        cpuMetric,
+        gpuMetric,
+        ramMetric,
+        batteryMetric,
+        powerMetric,
+        cpuTempMetric,
+        gpuTempMetric,
+    )
+
+    private val compactSeparators = mutableListOf<TextView>()
 
     private var lastCpuTotal: Long? = null
     private var lastCpuIdle: Long? = null
 
     init {
-        val background = GradientDrawable().apply {
+        background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 10.dp.toFloat()
             setColor(0xB8000000.toInt())
             setStroke(1.dp, 0x44FFFFFF)
         }
+        setPadding(10.dp, 8.dp, 10.dp, 8.dp)
 
-        val container = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-            setPadding(10.dp, 8.dp, 10.dp, 8.dp)
-            this.background = background
+        metrics.forEachIndexed { index, metric ->
+            stackedContainer.addView(metric.stacked)
+            compactContainer.addView(metric.compact)
+            if (index < metrics.lastIndex) {
+                createSeparator().also {
+                    compactSeparators += it
+                    compactContainer.addView(it)
+                }
+            }
         }
 
-        listOf(
-            fpsText,
-            cpuText,
-            gpuText,
-            ramText,
-            batteryText,
-            powerText,
-            cpuTempText,
-            gpuTempText,
-        ).forEach(container::addView)
+        addView(stackedContainer)
+        addView(compactContainer)
+        applyLayoutMode()
+    }
 
-        addView(container)
+    fun isCompactMode(): Boolean = isCompactMode
+
+    fun setCompactMode(compactMode: Boolean) {
+        if (isCompactMode == compactMode) {
+            return
+        }
+
+        isCompactMode = compactMode
+        applyLayoutMode()
+        requestLayout()
     }
 
     override fun onAttachedToWindow() {
@@ -89,6 +126,11 @@ class PerformanceHudView(
     override fun onDetachedFromWindow() {
         stopUpdates()
         super.onDetachedFromWindow()
+    }
+
+    private fun applyLayoutMode() {
+        stackedContainer.visibility = if (isCompactMode) GONE else VISIBLE
+        compactContainer.visibility = if (isCompactMode) VISIBLE else GONE
     }
 
     private fun startUpdates() {
@@ -129,27 +171,71 @@ class PerformanceHudView(
     }
 
     private fun renderSnapshot(snapshot: HudSnapshot) {
-        fpsText.text = snapshot.fps
-        updateRow(cpuText, snapshot.cpu)
-        updateRow(gpuText, snapshot.gpu)
-        ramText.text = snapshot.ram
-        updateRow(batteryText, snapshot.battery)
-        updateRow(powerText, snapshot.power)
-        updateRow(cpuTempText, snapshot.cpuTemp)
-        updateRow(gpuTempText, snapshot.gpuTemp)
+        updateMetric(fpsMetric, snapshot.fps)
+        updateMetric(cpuMetric, snapshot.cpu)
+        updateMetric(gpuMetric, snapshot.gpu)
+        updateMetric(ramMetric, snapshot.ram)
+        updateMetric(batteryMetric, snapshot.battery)
+        updateMetric(powerMetric, snapshot.power)
+        updateMetric(cpuTempMetric, snapshot.cpuTemp)
+        updateMetric(gpuTempMetric, snapshot.gpuTemp)
+        updateCompactSeparators()
     }
 
-    private fun updateRow(view: TextView, text: String?) {
+    private fun updateMetric(metric: MetricViews, text: String?) {
+        updateText(metric.stacked, text)
+        updateText(metric.compact, text)
+    }
+
+    private fun updateText(view: TextView, text: String?) {
         view.text = text.orEmpty()
         view.visibility = if (text.isNullOrBlank()) GONE else VISIBLE
     }
 
-    private fun createRow(color: Int): TextView {
+    private fun updateCompactSeparators() {
+        var hasVisibleMetricBefore = false
+        metrics.forEachIndexed { index, metric ->
+            if (index > 0) {
+                compactSeparators[index - 1].visibility =
+                    if (metric.compact.visibility == VISIBLE && hasVisibleMetricBefore) VISIBLE else GONE
+            }
+            if (metric.compact.visibility == VISIBLE) {
+                hasVisibleMetricBefore = true
+            }
+        }
+    }
+
+    private fun createMetricViews(color: Int): MetricViews {
+        return MetricViews(
+            stacked = createStackedTextView(color),
+            compact = createCompactTextView(color),
+        )
+    }
+
+    private fun createStackedTextView(color: Int): TextView {
         return TextView(context).apply {
             setTextColor(color)
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             setPadding(0, 2.dp, 0, 2.dp)
+        }
+    }
+
+    private fun createCompactTextView(color: Int): TextView {
+        return TextView(context).apply {
+            setTextColor(color)
+            setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setSingleLine(true)
+        }
+    }
+
+    private fun createSeparator(): TextView {
+        return TextView(context).apply {
+            text = " | "
+            setTextColor(0x88FFFFFF.toInt())
+            setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         }
     }
 
@@ -296,6 +382,11 @@ class PerformanceHudView(
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
+
+    private data class MetricViews(
+        val stacked: TextView,
+        val compact: TextView,
+    )
 
     private data class HudSnapshot(
         val fps: String,
