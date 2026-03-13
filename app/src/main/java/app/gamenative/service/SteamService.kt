@@ -2830,21 +2830,21 @@ class SteamService : Service(), IChallengeUrlChanged {
             val statsToStore = allStats.map { (id, value) -> Stats(statId = id, statValue = value) }
             Timber.d("storeUserStats: appId=$appId, crcStats=${userStats.crcStats}, stats=$statsToStore")
             val mySteamId = steamUser.steamID!!
-//            val callback = instance?._steamUserStats!!.storeUserStats(
-//                appId, statsToStore, mySteamId, mySteamId, userStats.crcStats
-//            ).await()
-//            if (callback.result != EResult.OK) {
-//                throw IllegalStateException("storeUserStats failed: ${callback.result}")
-//            }
-//            if (callback.statsOutOfDate) {
-//                Timber.w("Stats were out of date on server for appId=$appId")
-//            }
-//            if (callback.statsFailedValidation.isNotEmpty()) {
-//                Timber.w("${callback.statsFailedValidation.size} stats failed validation for appId=$appId")
-//                callback.statsFailedValidation.forEach { f ->
-//                    Timber.w("  statId=${f.statId} reverted to ${f.revertedStatValue}")
-//                }
-//            }
+            val callback = instance?._steamUserStats!!.storeUserStats(
+                appId, statsToStore, mySteamId, mySteamId, userStats.crcStats
+            ).await()
+            if (callback.result != EResult.OK) {
+                throw IllegalStateException("storeUserStats failed: ${callback.result}")
+            }
+            if (callback.statsOutOfDate) {
+                Timber.w("Stats were out of date on server for appId=$appId")
+            }
+            if (callback.statsFailedValidation.isNotEmpty()) {
+                Timber.w("${callback.statsFailedValidation.size} stats failed validation for appId=$appId")
+                callback.statsFailedValidation.forEach { f ->
+                    Timber.w("  statId=${f.statId} reverted to ${f.revertedStatValue}")
+                }
+            }
         }
 
     }
