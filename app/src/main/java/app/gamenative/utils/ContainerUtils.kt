@@ -1024,13 +1024,37 @@ object ContainerUtils {
      * Deletes the container associated with the given appId, if it exists.
      */
     fun deleteContainer(context: Context, appId: String) {
+        Timber.i("[ContainerDeletion] Attempting to delete container for appId=$appId")
         val manager = ContainerManager(context)
-        if (manager.hasContainer(appId)) {
+        val hasContainer = manager.hasContainer(appId)
+        Timber.i("[ContainerDeletion] hasContainer($appId) = $hasContainer")
+        if (hasContainer) {
             // Remove the container directory asynchronously
             manager.removeContainerAsync(
                 manager.getContainerById(appId),
             ) {
-                Timber.i("Deleted container for appId=$appId")
+                Timber.i("[ContainerDeletion] Successfully deleted container for appId=$appId")
+            }
+        } else {
+            Timber.w("[ContainerDeletion] No container found for appId=$appId — deletion aborted.")
+
+            // Containers successfully parsed by ContainerManager (config file was readable)
+            val loadedIds = manager.containers.map { it.id }
+            Timber.w("[ContainerDeletion] Loaded containers (${loadedIds.size}): $loadedIds")
+
+            // Raw filesystem scan — catches directories whose config file was empty/corrupt and
+            // were silently skipped by ContainerManager. These are potential orphans.
+            // Directory layout: <filesDir>/imagefs/home/xuser-<containerId>
+            val homeDir = java.io.File(context.filesDir, "imagefs/home")
+            val prefix = "${com.winlator.xenvironment.ImageFs.USER}-"
+            val rawIds = homeDir.listFiles()
+                ?.filter { it.isDirectory && it.name.startsWith(prefix) }
+                ?.map { it.name.removePrefix(prefix) }
+                ?: emptyList()
+            val unloadedIds = rawIds - loadedIds.toSet()
+            Timber.w("[ContainerDeletion] Raw filesystem dirs (${rawIds.size}): $rawIds")
+            if (unloadedIds.isNotEmpty()) {
+                Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
         }
     }

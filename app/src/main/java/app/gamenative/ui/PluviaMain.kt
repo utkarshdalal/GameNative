@@ -1261,8 +1261,8 @@ fun PluviaMain(
                         onWindowMapped = { context, window ->
                             viewModel.onWindowMapped(context, window, state.launchedAppId)
                         },
-                        onExit = {
-                            viewModel.exitSteamApp(context, state.launchedAppId)
+                        onExit = { onComplete ->
+                            viewModel.exitSteamApp(context, state.launchedAppId, onComplete)
                         },
                         onGameLaunchError = { error ->
                             viewModel.onGameLaunchError(error)

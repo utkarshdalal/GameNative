@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import app.gamenative.MainActivity
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -235,7 +237,7 @@ fun XServerScreen(
     testGraphics: Boolean = false,
     registerBackAction: ( ( ) -> Unit ) -> Unit,
     navigateBack: () -> Unit,
-    onExit: () -> Unit,
+    onExit: (onComplete: (() -> Unit)?) -> Unit,
     onWindowMapped: ((Context, Window) -> Unit)? = null,
     onWindowUnmapped: ((Window) -> Unit)? = null,
     onGameLaunchError: ((String) -> Unit)? = null,
@@ -260,6 +262,10 @@ fun XServerScreen(
     var vkbasaltConfig = ""
     var taskAffinityMask = 0
     var taskAffinityMaskWoW64 = 0
+
+    LaunchedEffect(appId) {
+        isExiting.set(false)
+    }
 
     val container = remember(appId) {
         ContainerUtils.getContainer(context, appId)
@@ -2808,22 +2814,33 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
-private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, appId: String, onExit: () -> Unit, navigateBack: () -> Unit) {
+private fun exit(
+    winHandler: WinHandler?,
+    environment: XEnvironment?,
+    frameRating: FrameRating?,
+    appInfo: SteamApp?,
+    container: Container,
+    appId: String,
+    onExit: (onComplete: (() -> Unit)?) -> Unit,
+    navigateBack: () -> Unit,
+) {
     Timber.i("Exit called")
 
-    // Prevent duplicate PostHog events when multiple exit triggers fire simultaneously
-    if (isExiting.compareAndSet(false, true)) {
-        PostHog.capture(
-            event = "game_exited",
-            properties = mapOf(
-                "game_name" to ContainerUtils.resolveGameName(appId),
-                "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-                "session_length" to (frameRating?.sessionLengthSec ?: 0),
-                "avg_fps" to (frameRating?.avgFPS ?: 0.0),
-                "container_config" to container.containerJson,
-            ),
-        )
+    if (!isExiting.compareAndSet(false, true)) {
+        Timber.i("Exit already in progress, ignoring duplicate request")
+        return
     }
+
+    PostHog.capture(
+        event = "game_exited",
+        properties = mapOf(
+            "game_name" to ContainerUtils.resolveGameName(appId),
+            "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+            "session_length" to (frameRating?.sessionLengthSec ?: 0),
+            "avg_fps" to (frameRating?.avgFPS ?: 0.0),
+            "container_config" to container.containerJson,
+        ),
+    )
 
     // Store session data in container metadata
     frameRating?.let { rating ->
@@ -2852,8 +2869,14 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     // PluviaApp.touchMouse = null
     // PluviaApp.keyboard = null
     frameRating?.writeSessionSummary()
-    onExit()
-    navigateBack()
+
+    if (MainActivity.wasLaunchedViaExternalIntent) {
+        Timber.i("[IntentLaunch]: Waiting for exit handling before returning to external launcher")
+        onExit(navigateBack)
+    } else {
+        onExit(null)
+        navigateBack()
+    }
 }
 
 /**

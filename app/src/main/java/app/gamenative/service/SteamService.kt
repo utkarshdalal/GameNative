@@ -2678,30 +2678,38 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         suspend fun syncAchievementsFromGoldberg(context: Context, appId: Int) {
-            val gseSaveDir = getGseSaveDirs(context, appId).firstOrNull { it.isDirectory }
-            if (gseSaveDir == null) {
+            val gseSaveDirs = getGseSaveDirs(context, appId).filter { it.isDirectory }
+            if (gseSaveDirs.isEmpty()) {
                 Timber.d("No GSE save directory found for appId=$appId")
                 return
             }
 
             val unlockedNames = mutableSetOf<String>()
-            val goldbergAchFile = File(gseSaveDir, "achievements.json")
-            if (goldbergAchFile.exists()) {
-                try {
-                    val json = JSONObject(goldbergAchFile.readText(Charsets.UTF_8))
-                    for (name in json.keys()) {
-                        val entry = json.optJSONObject(name) ?: continue
-                        if (entry.optBoolean("earned", false)) {
-                            unlockedNames.add(name)
+            var gseStatsDir: File? = null
+
+            for (gseSaveDir in gseSaveDirs) {
+                val goldbergAchFile = File(gseSaveDir, "achievements.json")
+                if (goldbergAchFile.exists()) {
+                    try {
+                        val json = JSONObject(goldbergAchFile.readText(Charsets.UTF_8))
+                        for (name in json.keys()) {
+                            val entry = json.optJSONObject(name) ?: continue
+                            if (entry.optBoolean("earned", false)) {
+                                unlockedNames.add(name)
+                            }
                         }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to parse Goldberg achievements.json in ${gseSaveDir.absolutePath} for appId=$appId")
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to parse Goldberg achievements.json for appId=$appId")
+                }
+
+                val statsDir = File(gseSaveDir, "stats")
+                if (gseStatsDir == null && statsDir.isDirectory && (statsDir.listFiles()?.isNotEmpty() == true)) {
+                    gseStatsDir = statsDir
                 }
             }
 
-            val gseStatsDir = File(gseSaveDir, "stats")
-            val hasStats = gseStatsDir.isDirectory && (gseStatsDir.listFiles()?.isNotEmpty() == true)
+            val hasStats = gseStatsDir != null
 
             if (unlockedNames.isEmpty() && !hasStats) {
                 Timber.d("No earned achievements or stats found in Goldberg output for appId=$appId")
@@ -2715,7 +2723,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             Timber.i("Found ${unlockedNames.size} earned achievements and ${if (hasStats) "stats" else "no stats"} for appId=$appId, syncing to Steam")
-            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames, gseStatsDir)
+            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames, gseStatsDir ?: gseSaveDirs.first().resolve("stats"))
             result.onSuccess {
                 Timber.i("Successfully synced achievements and stats to Steam for appId=$appId")
             }.onFailure { e ->
