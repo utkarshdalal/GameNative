@@ -9,7 +9,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.IBinder
 import android.util.Base64
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
 import app.gamenative.NetworkMonitor
@@ -1862,13 +1862,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 removeDownloadJob(downloadInfo.gameId)
                 instance?.let { service ->
-                    service.scope.launch(Dispatchers.Main) {
-                        Toast.makeText(
-                            service.applicationContext,
-                            service.getString(R.string.download_failed_try_again),
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
+                    SnackbarManager.show(service.getString(R.string.download_failed_try_again))
                 }
             }
 
