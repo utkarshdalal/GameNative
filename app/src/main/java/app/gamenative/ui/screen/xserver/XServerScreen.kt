@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.view.Display
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -74,6 +75,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -81,10 +83,11 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.data.XServerState
+import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
-import app.gamenative.utils.PreLaunchSteps
+import app.gamenative.utils.PreInstallSteps
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
@@ -356,6 +359,44 @@ fun XServerScreen(
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
+    var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
+    var performanceHudHost by remember { mutableStateOf<FrameLayout?>(null) }
+
+    fun removePerformanceHud() {
+        performanceHudView?.let { hud ->
+            (hud.parent as? ViewGroup)?.removeView(hud)
+        }
+        performanceHudView = null
+    }
+
+    fun updatePerformanceHud(show: Boolean) {
+        if (!show) {
+            removePerformanceHud()
+            return
+        }
+        if (performanceHudView != null) {
+            return
+        }
+
+        val targetLayout = performanceHudHost ?: return
+        val margin = (12 * context.resources.displayMetrics.density).toInt()
+
+        val hud = PerformanceHudView(context) {
+            frameRating?.currentFPS ?: 0f
+        }
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            marginStart = margin
+            topMargin = margin
+        }
+
+        targetLayout.addView(hud, layoutParams)
+        hud.bringToFront()
+        performanceHudView = hud
+    }
 
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
@@ -628,6 +669,15 @@ fun XServerScreen(
                 showPhysicalControllerDialog = true
             }
 
+            QuickMenuAction.PERFORMANCE_HUD -> {
+                val enabled = performanceHudView == null
+                updatePerformanceHud(enabled)
+                PostHog.capture(
+                    event = "performance_hud_toggled",
+                    properties = mapOf("enabled" to enabled),
+                )
+            }
+
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
@@ -684,6 +734,8 @@ fun XServerScreen(
         registerBackAction(gameBack)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
+            removePerformanceHud()
+            performanceHudHost = null
             imeInputReceiver?.hideKeyboard()
             imeInputReceiver = null
             if (!SteamService.keepAlive) {
@@ -835,6 +887,7 @@ fun XServerScreen(
             } else {
                 mainRoot as FrameLayout
             }
+            performanceHudHost = frameLayout
             val appId = appId
             val existingXServer =
                 PluviaApp.xEnvironment
@@ -1092,6 +1145,12 @@ fun XServerScreen(
                             }
                         } catch (e: Exception) {
                             Timber.e(e, "Error during wine setup operations")
+                            try {
+                                PluviaApp.xEnvironment?.stopEnvironmentComponents()
+                            } catch (cleanupEx: Exception) {
+                                Timber.e(cleanupEx, "Error cleaning up environment after setup failure")
+                            }
+                            PluviaApp.xEnvironment = null
                             onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
                         } finally {
                             setupExecutor.shutdown()
@@ -1301,11 +1360,6 @@ fun XServerScreen(
             frameRating = FrameRating(context)
             frameRating?.setVisibility(View.GONE)
 
-            if (container.isShowFPS()) {
-                Timber.i("Attempting to show FPS")
-                frameRating?.let { frameLayout.addView(it) }
-            }
-
             if (container.isDisableMouseInput){
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true);
             }
@@ -1323,6 +1377,8 @@ fun XServerScreen(
         },
         onRelease = { view ->
             gameRoot = null
+            removePerformanceHud()
+            performanceHudHost = null
             // Remove the WindowManager listener to prevent duplicates on AndroidView recreation
             windowModificationListener?.let { listener ->
                 xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
@@ -1972,11 +2028,6 @@ private fun setupXEnvironment(
     envVars.put("MESA_DEBUG", "silent")
     envVars.put("MESA_NO_ERROR", "1")
     envVars.put("WINEPREFIX", imageFs.wineprefix)
-    if (container.isShowFPS){
-        envVars.put("DXVK_HUD", "fps,frametimes")
-        envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_MESA_overlay")
-        envVars.put("MESA_OVERLAY_SHOW_FPS", 1)
-    }
     if (container.isSdlControllerAPI){
         if (container.inputType == PreferredInputApi.XINPUT.ordinal || container.inputType == PreferredInputApi.AUTO.ordinal){
             envVars.put("SDL_XINPUT_ENABLED", "1")
@@ -2047,7 +2098,15 @@ private fun setupXEnvironment(
         )
     }
 
+    var preInstallCommands: List<PreInstallSteps.PreInstallCommand> = emptyList()
+    var gameExecutable = ""
+
     if (container != null) {
+        try {
+            GameFixesRegistry.applyFor(context, appId)
+        } catch (e: Exception) {
+            Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
+        }
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
             if (container.containerVariant.equals(Container.BIONIC)){
                 Timber.d("Incorrect startup selection detected. Reverting to essential startup selection")
@@ -2062,11 +2121,19 @@ private fun setupXEnvironment(
         val wow64Mode = container.isWoW64Mode
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
-        val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
+        gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
+        preInstallCommands = PreInstallSteps.getPreInstallCommands(
+            container,
+            appId,
+            gameSource,
+            xServer.screenInfo.toString(),
+            containerVariantChanged,
+        )
+        guestProgramLauncherComponent.guestExecutable =
+            preInstallCommands.firstOrNull()?.executable ?: gameExecutable
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
-        guestProgramLauncherComponent.guestExecutable = guestExecutable
         // Set steam type for selecting appropriate box64rc
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
@@ -2094,12 +2161,6 @@ private fun setupXEnvironment(
             guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
         }
         guestProgramLauncherComponent.setPreUnpack {
-            try {
-                GameFixesRegistry.applyFor(context, appId)
-            } catch (e: Exception) {
-                Timber.tag("GameFixes").w(e, "Game fixes failed in preUnpack")
-            }
-            PreLaunchSteps().run(context, appId, container, guestProgramLauncherComponent, gameSource)
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
@@ -2110,6 +2171,11 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
+            if (preInstallCommands.isNotEmpty()) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            } else {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+            }
         }
 
         val enableGstreamer = container.isGstreamerWorkaround()
@@ -2175,14 +2241,48 @@ private fun setupXEnvironment(
     }
 
     guestProgramLauncherComponent.envVars = envVars
-    guestProgramLauncherComponent.setTerminationCallback { status ->
+
+    val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
-            navigateBack()
         }
         PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
     }
+
+    fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
+        if (remaining.isEmpty()) {
+            guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
+            guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
+            return
+        }
+        guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
+        guestProgramLauncherComponent.setTerminationCallback { _ ->
+            val current = remaining.first()
+            PreInstallSteps.markStepDone(container, current.marker)
+            guestProgramLauncherComponent.setPreUnpack(null)
+            try {
+                guestProgramLauncherComponent.execShellCommand("wineserver -k")
+            } catch (e: Exception) {
+                Timber.w(e, "wineserver -k between pre-install steps (non-fatal)")
+            }
+            val nextRemaining = remaining.drop(1)
+            if (nextRemaining.isEmpty()) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+            } else {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            }
+            chainPreInstallSteps(nextRemaining)
+            guestProgramLauncherComponent.start()
+        }
+    }
+
+    if (preInstallCommands.isNotEmpty()) {
+        chainPreInstallSteps(preInstallCommands)
+    } else {
+        guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
+    }
+
     environment.addComponent(guestProgramLauncherComponent)
 
     environment.addComponent(WineRequestComponent())
@@ -2243,7 +2343,37 @@ private fun setupXEnvironment(
         }
     }
 
-    environment.startEnvironmentComponents()
+    try {
+        environment.startEnvironmentComponents()
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to start environment components, cleaning up")
+        try {
+            environment.stopEnvironmentComponents()
+        } catch (cleanupEx: Exception) {
+            Timber.e(cleanupEx, "Error during environment cleanup")
+        }
+        throw e
+    }
+
+    if (gameSource == GameSource.STEAM) {
+        val gameIdInt = ContainerUtils.extractGameIdFromContainerId(appId)
+        val achAppId = SteamService.cachedAchievementsAppId
+        if (gameIdInt != null && achAppId != null) {
+            val watchDirs = SteamService.getGseSaveDirs(context, gameIdInt)
+            val displayNameMap = SteamService.cachedAchievements?.associate { ach ->
+                ach.name to (ach.displayName?.get(container.language)
+                    ?: ach.displayName?.get("english")
+                    ?: ach.name)
+            } ?: emptyMap()
+            val iconUrlMap = SteamService.cachedAchievements?.associate { ach ->
+                ach.name to ach.icon?.let {
+                    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$achAppId/$it"
+                }
+            } ?: emptyMap()
+            PluviaApp.achievementWatcher = AchievementWatcher(watchDirs, displayNameMap, iconUrlMap)
+                .also { it.start() }
+        }
+    }
 
     // put in separate scope since winhandler start method does some network stuff
     CoroutineScope(Dispatchers.IO).launch {
@@ -2719,6 +2849,10 @@ private fun exit(
         container.saveData()
     }
 
+    PluviaApp.achievementWatcher?.stop()
+    PluviaApp.achievementWatcher = null
+    SteamService.clearCachedAchievements()
+
     PluviaApp.touchpadView?.releasePointerCapture()
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
@@ -2785,104 +2919,6 @@ private fun getRedistDirectory(
     return RedistContext(commonRedistDir, driveLetter, guestProgramLauncherComponent)
 }
 
-private fun installVcRedist(context: RedistContext) {
-        val vcredistDir = File(context.commonRedistDir, "vcredist")
-        if (vcredistDir.exists() && vcredistDir.isDirectory()) {
-            vcredistDir.walkTopDown()
-                .filter { it.isFile && it.name.equals("VC_redist.x64.exe", ignoreCase = true) }
-                .forEach { exeFile ->
-                    try {
-                        val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                        val drive = context.driveLetter
-                        val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributables..."))
-                        Timber.i("Installing vcredist: $winePath")
-                        val cmd = "wine $winePath /quiet /norestart && wineserver -k"
-                        val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                        Timber.i("vcredist installation output: $output")
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install vcredist ${exeFile.name}")
-                    }
-                }
-        }
-}
-
-/**
- * Installs OpenAL redistributables (oalinst.exe) (https://www.openal.org/)
- * Helps with 3D audio implementations between 2001-2010
- */
-private fun installOpenAL(context: RedistContext) {
-    val openalDir = File(context.commonRedistDir, "OpenAL")
-    if (!openalDir.exists() || !openalDir.isDirectory()) return
-
-    val openalInstaller = openalDir.walkTopDown()
-        .filter { it.isFile &&
-            (it.name.equals("oalinst.exe", ignoreCase = true) ||
-             it.name.startsWith("OpenAL", ignoreCase = true)) &&
-            it.name.endsWith(".exe", ignoreCase = true) }
-        .firstOrNull()
-
-    openalInstaller?.let { exeFile ->
-        try {
-            val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-            val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing OpenAL..."))
-            Timber.i("Installing OpenAL: $winePath")
-            val cmd = "wine $winePath /s && wineserver -k"
-            val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-            Timber.i("OpenAL installation output: $output")
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to install OpenAL ${exeFile.name}")
-        }
-    }
-}
-
-private fun installPhysX(context: RedistContext) {
-    val physxDir = File(context.commonRedistDir, "PhysX")
-    if (physxDir.exists() && physxDir.isDirectory()) {
-        physxDir.walkTopDown()
-            .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
-                        it.name.endsWith(".msi", ignoreCase = true) }
-            .forEach { msiFile ->
-                try {
-                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                    val drive = context.driveLetter
-                    val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
-                    Timber.i("Installing PhysX: $winePath")
-                    val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                    Timber.i("PhysX installation output: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to install PhysX ${msiFile.name}")
-                }
-            }
-    }
-}
-
-private fun installXNAFramework(context: RedistContext) {
-    val xnaDir = File(context.commonRedistDir, "xnafx")
-    if (xnaDir.exists() && xnaDir.isDirectory()) {
-        xnaDir.walkTopDown()
-            .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
-                        it.name.endsWith(".msi", ignoreCase = true) }
-            .forEach { msiFile ->
-                try {
-                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                    val drive = context.driveLetter
-                    val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
-                    Timber.i("Installing XNA: $winePath")
-                    val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                    Timber.i("XNA installation output: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to install XNA ${msiFile.name}")
-                }
-            }
-    }
-}
-
 /**
  * Installs redistributables from _CommonRedist folder
  * if shared depots are present and the redistributable executables exist.
@@ -2916,11 +2952,6 @@ private fun installRedistributables(
             Timber.tag("installRedist").i("Could not set up redistributable context, skipping installation")
             return
         }
-
-        installVcRedist(redistContext)
-        installOpenAL(redistContext)
-        installPhysX(redistContext)
-        installXNAFramework(redistContext)
 
         Timber.tag("installRedist").i("Finished checking for redistributables")
     } catch (e: Exception) {

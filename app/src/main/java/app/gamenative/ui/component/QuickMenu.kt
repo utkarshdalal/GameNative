@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -39,23 +40,28 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,6 +79,12 @@ object QuickMenuAction {
     const val EXIT_GAME = 3
     const val EDIT_CONTROLS = 4
     const val EDIT_PHYSICAL_CONTROLLER = 5
+    const val PERFORMANCE_HUD = 6
+}
+
+private object QuickMenuTab {
+    const val GENERAL = 0
+    const val CONTROLLER = 1
 }
 
 data class QuickMenuItem(
@@ -91,42 +103,70 @@ fun QuickMenu(
     hasPhysicalController: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val menuItems = buildList {
-        add(QuickMenuItem(
-            id = QuickMenuAction.KEYBOARD,
-            icon = Icons.Default.Keyboard,
-            labelResId = R.string.keyboard,
-            accentColor = PluviaTheme.colors.accentCyan,
-        ))
-        add(QuickMenuItem(
-            id = QuickMenuAction.INPUT_CONTROLS,
-            icon = Icons.Default.TouchApp,
-            labelResId = R.string.input_controls,
-            accentColor = PluviaTheme.colors.accentPurple,
-        ))
-        add(QuickMenuItem(
-            id = QuickMenuAction.EDIT_CONTROLS,
-            icon = Icons.Default.Edit,
-            labelResId = R.string.edit_controls,
-            accentColor = PluviaTheme.colors.accentSuccess,
-        ))
-        if (hasPhysicalController) {
-            add(QuickMenuItem(
-                id = QuickMenuAction.EDIT_PHYSICAL_CONTROLLER,
-                icon = Icons.Default.Gamepad,
-                labelResId = R.string.edit_physical_controller,
-                accentColor = PluviaTheme.colors.accentWarning,
-            ))
-        }
-        add(QuickMenuItem(
+    val generalItems = listOf(
+        QuickMenuItem(
+            id = QuickMenuAction.PERFORMANCE_HUD,
+            icon = Icons.Default.QueryStats,
+            labelResId = R.string.performance_hud,
+            accentColor = PluviaTheme.colors.accentWarning,
+        ),
+        QuickMenuItem(
             id = QuickMenuAction.EXIT_GAME,
             icon = Icons.AutoMirrored.Filled.ExitToApp,
             labelResId = R.string.exit_game,
             accentColor = PluviaTheme.colors.accentDanger,
-        ))
+        ),
+    )
+
+    val controllerItems = buildList {
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.KEYBOARD,
+                icon = Icons.Default.Keyboard,
+                labelResId = R.string.keyboard,
+                accentColor = PluviaTheme.colors.accentCyan,
+            )
+        )
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.INPUT_CONTROLS,
+                icon = Icons.Default.TouchApp,
+                labelResId = R.string.input_controls,
+                accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
+        if (hasPhysicalController) {
+            add(
+                QuickMenuItem(
+                    id = QuickMenuAction.EDIT_PHYSICAL_CONTROLLER,
+                    icon = Icons.Default.Gamepad,
+                    labelResId = R.string.edit_physical_controller,
+                    accentColor = PluviaTheme.colors.accentWarning,
+                )
+            )
+        }
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.EDIT_CONTROLS,
+                icon = Icons.Default.Edit,
+                labelResId = R.string.edit_controls,
+                accentColor = PluviaTheme.colors.accentSuccess,
+            )
+        )
     }
 
-    val firstItemFocusRequester = remember { FocusRequester() }
+    var selectedTab by remember { mutableIntStateOf(QuickMenuTab.GENERAL) }
+    val visibleItems = if (selectedTab == QuickMenuTab.GENERAL) generalItems else controllerItems
+    val selectedTabLabelResId = if (selectedTab == QuickMenuTab.GENERAL) {
+        R.string.quick_menu_tab_general
+    } else {
+        R.string.quick_menu_tab_controller
+    }
+
+    val generalTabFocusRequester = remember { FocusRequester() }
+    val controllerTabFocusRequester = remember { FocusRequester() }
+    val generalItemFocusRequester = remember { FocusRequester() }
+    val controllerItemFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = isVisible) {
         onDismiss()
@@ -170,7 +210,7 @@ fun QuickMenu(
         ) {
             Surface(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(280.dp))
+                    .width(adaptivePanelWidth(360.dp))
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -196,13 +236,7 @@ fun QuickMenu(
                             ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.quick_menu_back),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        QuickMenuCloseButton(onClick = onDismiss)
                     }
 
                     HorizontalDivider(
@@ -210,25 +244,80 @@ fun QuickMenu(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .focusGroup()
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                            .padding(horizontal = 12.dp, vertical = 12.dp)
                     ) {
-                        menuItems.forEachIndexed { index, item ->
-                            QuickMenuItemRow(
-                                item = item,
-                                onClick = {
-                                    onItemSelected(item.id)
-                                    onDismiss()
-                                },
-                                focusRequester = if (index == 0) firstItemFocusRequester else null,
+                        Column(
+                            modifier = Modifier
+                                .width(64.dp)
+                                .fillMaxHeight()
+                                .focusGroup(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            QuickMenuTabButton(
+                                icon = Icons.Default.Tune,
+                                contentDescriptionResId = R.string.quick_menu_tab_general,
+                                selected = selectedTab == QuickMenuTab.GENERAL,
+                                accentColor = PluviaTheme.colors.accentCyan,
+                                onSelected = { selectedTab = QuickMenuTab.GENERAL },
+                                modifier = Modifier.width(56.dp),
+                                focusRequester = generalTabFocusRequester,
                             )
+                            QuickMenuTabButton(
+                                icon = Icons.Default.Gamepad,
+                                contentDescriptionResId = R.string.quick_menu_tab_controller,
+                                selected = selectedTab == QuickMenuTab.CONTROLLER,
+                                accentColor = PluviaTheme.colors.accentPurple,
+                                onSelected = { selectedTab = QuickMenuTab.CONTROLLER },
+                                modifier = Modifier.width(56.dp),
+                                focusRequester = controllerTabFocusRequester,
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .focusGroup(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(selectedTabLabelResId),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                            )
+
+                            visibleItems.forEachIndexed { index, item ->
+                                QuickMenuItemRow(
+                                    item = item,
+                                    onClick = {
+                                        onItemSelected(item.id)
+                                        onDismiss()
+                                    },
+                                    focusRequester = when {
+                                        selectedTab == QuickMenuTab.GENERAL && index == 0 -> generalItemFocusRequester
+                                        selectedTab == QuickMenuTab.CONTROLLER && index == 0 -> controllerItemFocusRequester
+                                        else -> null
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -236,18 +325,151 @@ fun QuickMenu(
         }
     }
 
-    LaunchedEffect(isVisible, menuItems.size) {
+    LaunchedEffect(isVisible) {
         if (isVisible) {
+            selectedTab = QuickMenuTab.GENERAL
             repeat(3) {
                 try {
-                    firstItemFocusRequester.requestFocus()
+                    generalTabFocusRequester.requestFocus()
                     return@LaunchedEffect
                 } catch (_: Exception) {
-                    // Focus request may fail if composition is not ready.
                     delay(80)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun QuickMenuCloseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(14.dp)
+
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        BorderStroke(
+                            2.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                ),
+                            ),
+                        ),
+                        shape,
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .clip(shape)
+            .background(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    Color.Transparent
+                }
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.quick_menu_back),
+            tint = if (isFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun QuickMenuTabButton(
+    icon: ImageVector,
+    contentDescriptionResId: Int,
+    selected: Boolean,
+    accentColor: Color,
+    onSelected: () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(14.dp)
+
+    Box(
+        modifier = modifier
+            .size(56.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        BorderStroke(
+                            2.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                ),
+                            ),
+                        ),
+                        shape,
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .clip(shape)
+            .background(
+                when {
+                    selected -> accentColor.copy(alpha = 0.18f)
+                    isFocused -> accentColor.copy(alpha = 0.12f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                }
+            )
+            .then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else Modifier
+            )
+            .onFocusChanged {
+                if (it.isFocused && !selected) {
+                    onSelected()
+                }
+            }
+            .selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onSelected,
+            )
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = stringResource(contentDescriptionResId),
+            tint = when {
+                selected || isFocused -> accentColor
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
@@ -269,11 +491,28 @@ private fun QuickMenuItemRow(
     }
 
     val disabledAlpha = 0.4f
+    val shape = RoundedCornerShape(12.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (isFocused && isEnabled) {
+                    Modifier.border(
+                        BorderStroke(
+                            2.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                ),
+                            ),
+                        ),
+                        shape,
+                    )
+                } else Modifier
+            )
+            .clip(shape)
             .then(
                 if (isFocused && isEnabled) {
                     Modifier.background(
@@ -297,6 +536,10 @@ private fun QuickMenuItemRow(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
+            )
+            .focusable(
+                enabled = isEnabled,
+                interactionSource = interactionSource,
             )
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

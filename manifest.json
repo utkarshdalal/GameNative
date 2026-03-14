@@ -4,6 +4,18 @@
   "items": {
     "driver": [
       {
+        "id": "Turnip-Gen8-V23",
+        "name": "Turnip_Gen8_V23",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V23.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip Adreno Driver T26 (@Mr_Purple_666)",
+        "name": "Turnip Adreno Driver T26 (@Mr_Purple_666)",
+        "url": "https://downloads.gamenative.app/drivers/turnip_mrpurple_T26-toasted.adpkg.zip",
+        "variant": "bionic"
+      },
+      {
         "id": "a8xx-gen8-V22",
         "name": "turnip_v26.0.0_R8_b5",
         "url": "https://downloads.gamenative.app/drivers/a8xx-gen8-V22.zip",

@@ -196,6 +196,7 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
+        setShowBootingSplash(true)
     }
 
     private var bootingSplashTimeoutJob: Job? = null
@@ -521,7 +522,7 @@ class MainViewModel @Inject constructor(
                     }
                 } else {
                     // For Steam games, sync cloud saves
-                    SteamService.closeApp(gameId, isOffline.value) { prefix ->
+                    SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
                         PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
                     }.await()
                 }
@@ -536,8 +537,8 @@ class MainViewModel @Inject constructor(
                 // Show feedback if: first time running this game OR config was changed
                 try {
                     // Do not show the Feedback form for non-steam games until we can support.
-                    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                    if (gameSource == GameSource.STEAM) {
+                    val feedbackGameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                    if (feedbackGameSource == GameSource.STEAM) {
                         val container = ContainerUtils.getContainer(context, appId)
 
                         val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"

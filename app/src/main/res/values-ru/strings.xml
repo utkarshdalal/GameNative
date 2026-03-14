@@ -805,6 +805,9 @@ https://gamenative.app
     <string name="properties">Свойства</string>
     <string name="quick_menu_back">Назад</string>
     <string name="quick_menu_title">Быстрое меню</string>
+    <string name="quick_menu_tab_general">Общие</string>
+    <string name="quick_menu_tab_controller">Контроллер</string>
+    <string name="performance_hud">HUD производительности</string>
     <string name="quick_presets">Быстрые предустановки</string>
     <string name="range_1_to_0">1 – 0</string>
     <string name="range_a_to_z">A – Z</string>
@@ -1146,5 +1149,10 @@ https://gamenative.app
     <string name="wine_version">Версия Wine</string>
     <string name="wmdecoder">Декодер Windows Media</string>
     <string name="working">Работа...</string>
+    <string name="achievement_unlocked">Достижение разблокировано</string>
     <string name="yes">Да</string>
+    <string name="download_failed_title">Ошибка загрузки</string>
+    <string name="download_failed_message">Не удалось загрузить необходимый файл. Проверьте подключение к сети и попробуйте снова.</string>
+    <string name="install_failed_title">Ошибка установки</string>
+    <string name="install_failed_message">Не удалось установить системные файлы. Попробуйте снова. Если проблема сохраняется, попробуйте другую сеть или используйте VPN.</string>
 </resources>

@@ -214,6 +214,9 @@
     <string name="open_navigation_menu">開啟導航選單</string>
     <string name="quick_menu_title">快捷選單</string>
     <string name="quick_menu_back">返回</string>
+    <string name="quick_menu_tab_general">一般</string>
+    <string name="quick_menu_tab_controller">控制器</string>
+    <string name="performance_hud">效能 HUD</string>
     <string name="touchpad_help">觸摸板支援</string>
     <string name="hide_controls_with_controller">使用控制器時隱藏螢幕控制器</string>
     <string name="hide_controls_with_controller_description">當實體控制器連接時自動隱藏螢幕控制器</string>
@@ -529,6 +532,7 @@
     <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
+    <string name="achievement_unlocked">成就已解鎖</string>
     <string name="launch_steam_client_description">降低效能並減慢啟動速度\n允許線上遊玩並修復 DRM 和控制器問題\n並非所有遊戲都適用</string>
     <string name="allow_steam_updates">允許 Steam 更新</string>
     <string name="allow_steam_updates_description">將 Steam 更新至最新版本, 會顯著降低效能</string>
@@ -1212,6 +1216,10 @@
     <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
     <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
     <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
+    <string name="download_failed_title">下載失敗</string>
+    <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
+    <string name="install_failed_title">安裝失敗</string>
+    <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
 </resources>
 
 

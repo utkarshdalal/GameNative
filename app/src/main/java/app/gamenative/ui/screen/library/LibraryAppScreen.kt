@@ -672,7 +672,7 @@ internal fun AppScreenContent(
                     }
                 }
 
-                // Gradient overlay
+                // Gradient overlay (bottom, for title/action bar)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -682,6 +682,25 @@ internal fun AppScreenContent(
                                     Color.Transparent,
                                     Color.Black.copy(alpha = 0.3f),
                                     Color.Black.copy(alpha = 0.85f),
+                                ),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY,
+                            ),
+                        ),
+                )
+
+                // Top gradient overlay (so back button is visible on light/white images)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.5f),
+                                    Color.Black.copy(alpha = 0.15f),
+                                    Color.Transparent,
                                 ),
                                 startY = 0f,
                                 endY = Float.POSITIVE_INFINITY,

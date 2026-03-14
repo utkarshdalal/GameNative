@@ -230,6 +230,9 @@
     <string name="open_navigation_menu">Abrir menú de navegación</string>
     <string name="quick_menu_title">Menú rápido</string>
     <string name="quick_menu_back">Atrás</string>
+    <string name="quick_menu_tab_general">General</string>
+    <string name="quick_menu_tab_controller">Controles</string>
+    <string name="performance_hud">HUD de rendimiento</string>
     <string name="touchpad_help">Ayuda del touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles táctiles al usar mando</string>
     <string name="hide_controls_with_controller_description">Oculta automáticamente los controles en pantalla cuando se conecta un mando físico.</string>
@@ -581,6 +584,7 @@
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
+    <string name="achievement_unlocked">Logro desbloqueado</string>
     <string name="allow_steam_updates">Permitir actualizaciones de Steam</string>
     <string name="allow_steam_updates_description">Actualiza Steam a la última versión. Reduce significativamente el rendimiento.</string>
     <string name="steam_type">Tipo de Steam</string>
@@ -1220,4 +1224,8 @@
     <string name="manifest_content_untrusted">El contenido no es de confianza y no se instaló.</string>
     <string name="manifest_type_mismatch">El contenido descargado no coincide con el tipo esperado.</string>
     <string name="manifest_glibc_not_supported">Las versiones GLIBC no son compatibles.</string>
+    <string name="download_failed_title">Error de descarga</string>
+    <string name="download_failed_message">No se pudo descargar un archivo necesario. Comprueba tu conexión de red e inténtalo de nuevo.</string>
+    <string name="install_failed_title">Error de instalación</string>
+    <string name="install_failed_message">No se pudieron instalar los archivos del sistema. Inténtalo de nuevo. Si el problema persiste, prueba con una red diferente o usa una VPN.</string>
 </resources>

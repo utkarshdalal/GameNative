@@ -208,6 +208,9 @@
     <string name="open_navigation_menu">Navigationsmenü öffnen</string>
     <string name="quick_menu_title">Schnellmenü</string>
     <string name="quick_menu_back">Zurück</string>
+    <string name="quick_menu_tab_general">Allgemein</string>
+    <string name="quick_menu_tab_controller">Controller</string>
+    <string name="performance_hud">Leistungs-HUD</string>
     <string name="touchpad_help">Touchpad-Hilfe</string>
     <string name="hide_controls_with_controller">On-Screen-Controller bei Gamepad ausblenden</string>
     <string name="hide_controls_with_controller_description">On-Screen-Steuerung automatisch ausblenden, wenn ein physischer Controller verbunden ist</string>
@@ -508,6 +511,7 @@
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
+    <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="launch_steam_client_description">Reduziert Performance und verlängert den Start\nErmöglicht Online-Spiel und behebt DRM- und Controller-Probleme\nNicht alle Spiele funktionieren</string>
     <string name="allow_steam_updates">Steam-Updates erlauben</string>
     <string name="allow_steam_updates_description">Aktualisiert Steam auf die neueste Version. Reduziert die Leistung spürbar.</string>
@@ -1155,4 +1159,8 @@
     <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
     <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
     <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
+    <string name="download_failed_title">Download fehlgeschlagen</string>
+    <string name="download_failed_message">Eine erforderliche Datei konnte nicht heruntergeladen werden. Bitte überprüfe deine Netzwerkverbindung und versuche es erneut.</string>
+    <string name="install_failed_title">Installation fehlgeschlagen</string>
+    <string name="install_failed_message">Systemdateien konnten nicht installiert werden. Bitte versuche es erneut. Falls das Problem weiterhin besteht, versuche ein anderes Netzwerk oder verwende ein VPN.</string>
 </resources>

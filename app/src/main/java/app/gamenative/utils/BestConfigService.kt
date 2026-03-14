@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Service for fetching best configurations for games from GameNative API.
  */
 object BestConfigService {
-    private const val API_BASE_URL = "https://gamenative-best-config-worker.gamenative.workers.dev/api/best-config"
+    private const val API_BASE_URL = "https://api.gamenative.app/api/best-config"
     private const val TIMEOUT_SECONDS = 10L
 
     private val httpClient = OkHttpClient.Builder()

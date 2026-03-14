@@ -228,6 +228,9 @@
     <string name="open_navigation_menu">탐색 메뉴 열기</string>
     <string name="quick_menu_title">빠른 메뉴</string>
     <string name="quick_menu_back">뒤로</string>
+    <string name="quick_menu_tab_general">일반</string>
+    <string name="quick_menu_tab_controller">컨트롤러</string>
+    <string name="performance_hud">성능 HUD</string>
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
@@ -545,6 +548,7 @@
     <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
+    <string name="achievement_unlocked">업적 달성</string>
     <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
@@ -1219,4 +1223,8 @@
     <string name="manifest_content_untrusted">콘텐츠를 신뢰할 수 없으며 설치되지 않았습니다.</string>
     <string name="manifest_type_mismatch">다운로드한 콘텐츠가 예상 유형과 일치하지 않습니다.</string>
     <string name="manifest_glibc_not_supported">GLIBC 빌드는 지원되지 않습니다.</string>
+    <string name="download_failed_title">다운로드 실패</string>
+    <string name="download_failed_message">필수 파일을 다운로드할 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.</string>
+    <string name="install_failed_title">설치 실패</string>
+    <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
 </resources>

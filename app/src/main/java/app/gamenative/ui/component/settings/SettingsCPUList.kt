@@ -40,20 +40,22 @@ fun SettingsCPUList(
         shadowElevation = shadowElevation,
         action = action,
         subtitle = {
-            val cpuAffinity = value.split(",").map { it.toInt() }
+            val cpuAffinity = value.split(",").mapNotNull { it.toIntOrNull() }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 for (cpu in 0 until Runtime.getRuntime().availableProcessors()) {
+                    val isLastSelectedCpu = cpuAffinity.size == 1 && cpuAffinity.contains(cpu)
                     Column {
                         Checkbox(
                             checked = cpuAffinity.contains(cpu),
+                            enabled = enabled && !isLastSelectedCpu,
                             onCheckedChange = {
                                 val newAffinity = if (it) {
                                     (cpuAffinity + cpu).sorted()
                                 } else {
-                                    cpuAffinity.filter { it != cpu }
+                                    cpuAffinity.takeIf { it.size > 1 }?.filter { it != cpu } ?: cpuAffinity
                                 }
                                 onValueChange(newAffinity.joinToString(","))
                             },

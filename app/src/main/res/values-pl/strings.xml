@@ -227,6 +227,9 @@
     <string name="open_navigation_menu">Otwórz menu nawigacji</string>
     <string name="quick_menu_title">Menu szybkie</string>
     <string name="quick_menu_back">Wstecz</string>
+    <string name="quick_menu_tab_general">Ogólne</string>
+    <string name="quick_menu_tab_controller">Kontroler</string>
+    <string name="performance_hud">HUD wydajności</string>
     <string name="touchpad_help">Pomoc touchpada</string>
     <string name="hide_controls_with_controller">Ukryj kontroler ekranowy przy podłączonym kontrolerze</string>
     <string name="hide_controls_with_controller_description">Automatycznie ukrywa kontroler ekranowy, gdy podłączony jest kontroler fizyczny</string>
@@ -544,6 +547,7 @@
     <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
+    <string name="achievement_unlocked">Osiągnięcie odblokowane</string>
     <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>
@@ -1218,4 +1222,8 @@
     <string name="manifest_content_untrusted">Zawartość nie jest zaufana i nie została zainstalowana.</string>
     <string name="manifest_type_mismatch">Pobrana zawartość nie pasuje do oczekiwanego typu.</string>
     <string name="manifest_glibc_not_supported">Wersje GLIBC nie są obsługiwane.</string>
+    <string name="download_failed_title">Pobieranie nie powiodło się</string>
+    <string name="download_failed_message">Nie udało się pobrać wymaganego pliku. Sprawdź połączenie sieciowe i spróbuj ponownie.</string>
+    <string name="install_failed_title">Instalacja nie powiodła się</string>
+    <string name="install_failed_message">Nie udało się zainstalować plików systemowych. Spróbuj ponownie. Jeśli problem będzie się powtarzał, spróbuj innej sieci lub użyj VPN.</string>
 </resources>
