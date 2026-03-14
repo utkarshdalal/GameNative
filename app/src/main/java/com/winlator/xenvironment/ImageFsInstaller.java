@@ -62,9 +62,9 @@ public abstract class ImageFsInstaller {
 
     public static void installWineFromAssets(final Context context, AssetManager assetManager) {
         String[] versions = context.getResources().getStringArray(R.array.bionic_wine_entries);
-        File rootDir = ImageFs.find(context).getRootDir();
+        File protonDir = ImageFs.getSharedProtonDir(context);
         for (String version : versions) {
-            File outFile = new File(rootDir, "/opt/" + version);
+            File outFile = new File(protonDir, version);
             outFile.mkdirs();
             TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, version + ".txz", outFile);
         }
@@ -73,10 +73,11 @@ public abstract class ImageFsInstaller {
     public static void installWineFromDownloads(final Context context, File rootDir) {
         String[] versions = context.getResources().getStringArray(R.array.bionic_wine_entries);
         File downloadsDir = context.getFilesDir();
+        File protonDir = ImageFs.getSharedProtonDir(context);
         for (String version : versions) {
             File downloaded = new File(downloadsDir, version + ".txz");
             if (!downloaded.exists()) continue;
-            File outFile = new File(rootDir, "/opt/" + version);
+            File outFile = new File(protonDir, version);
             if (outFile.exists() && outFile.isDirectory()) {
                 String[] listing = outFile.list();
                 if (listing != null && listing.length > 0) continue;
@@ -155,6 +156,7 @@ public abstract class ImageFsInstaller {
 
                 if (containerVariant.equals(Container.BIONIC)) {
                     installWineFromDownloads(context, rootDir);
+                    ensureSharedProtonDir(context, rootDir);
                 }
 
                 // Clear Steam DLL markers for all games
@@ -350,6 +352,22 @@ public abstract class ImageFsInstaller {
 
     private static File getImageFsSharedDir(Context context) {
         return new File(context.getFilesDir(), "imagefs_shared");
+    }
+
+    /**
+     * For Bionic: ensures rootDir/opt/proton is a symlink to imagefs_shared/proton.
+     * Path resolution then uses /opt/proton/<current version> (see WineInfo).
+     */
+    private static void ensureSharedProtonDir(Context context, File rootDir) {
+        File optProton = new File(rootDir, "opt/proton");
+        File sharedProton = ImageFs.getSharedProtonDir(context);
+        if (optProton.exists()) return;
+        try {
+            FileUtils.symlink(sharedProton.getAbsolutePath(), optProton.getAbsolutePath());
+            Log.d("ImageFsInstaller", "Created opt/proton -> imagefs_shared/proton for Bionic");
+        } catch (Exception e) {
+            Log.e("ImageFsInstaller", "ensureSharedProtonDir failed", e);
+        }
     }
 
     /**

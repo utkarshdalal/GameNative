@@ -163,7 +163,7 @@ public class WineInfo implements Parcelable {
             String[] wineVersions = context.getResources().getStringArray(R.array.bionic_wine_entries);
             for (String wineVersion : wineVersions) {
                 if (wineVersion.contains(identifier)) {
-                    path = imageFs.getRootDir().getPath() + "/opt/" + identifier;
+                    path = imageFs.getRootDir().getPath() + "/opt/proton/" + identifier;
                     break;
                 }
             }
