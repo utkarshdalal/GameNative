@@ -13,10 +13,14 @@ import org.robolectric.RobolectricTestRunner
 class ImageFsTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val sharedDir = File(context.filesDir, "imagefs_shared")
+    private val glibcDir = File(context.filesDir, "glibc")
+    private val bionicDir = File(context.filesDir, "bionic")
 
     @After
     fun tearDown() {
         sharedDir.deleteRecursively()
+        glibcDir.deleteRecursively()
+        bionicDir.deleteRecursively()
     }
 
     @Test
@@ -46,5 +50,24 @@ class ImageFsTest {
         val expected = File(sharedRoot, "proton")
 
         assertEquals(expected.absolutePath, sharedProton.absolutePath)
+    }
+
+    @Test
+    fun getVariantRootDir_createsAndReturnsVariantDirectory() {
+        val actual = ImageFs.getVariantRootDir(context, "glibc")
+        val expected = File(context.filesDir, "glibc/imagefs")
+
+        assertTrue("Variant root dir should exist after call", actual.exists())
+        assertTrue("Variant root dir should be a directory", actual.isDirectory)
+        assertEquals(expected.absolutePath, actual.absolutePath)
+    }
+
+    @Test
+    fun getVariantRootDir_returnsDistinctPathsPerVariant() {
+        val glibcRoot = ImageFs.getVariantRootDir(context, "glibc")
+        val bionicRoot = ImageFs.getVariantRootDir(context, "bionic")
+
+        assertEquals(File(context.filesDir, "glibc/imagefs").absolutePath, glibcRoot.absolutePath)
+        assertEquals(File(context.filesDir, "bionic/imagefs").absolutePath, bionicRoot.absolutePath)
     }
 }

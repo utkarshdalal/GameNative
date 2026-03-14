@@ -74,7 +74,7 @@ class ImageFSLegacyMigratorTest {
     }
 
     @Test
-    fun migrateLegacyDirsIfNeeded_succeedsWhenLegacyHomeIsSymlinkAndKeepsLegacyRoot() {
+    fun migrateLegacyDirsIfNeeded_succeedsWhenLegacyHomeIsSymlinkAndRemovesLegacyRoot() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val realHome = File(legacyImageFsRoot, "real-home").apply { mkdirs() }
         val symlinkPath = File(legacyImageFsRoot, "home").toPath()
@@ -83,7 +83,10 @@ class ImageFSLegacyMigratorTest {
         val migrated = ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, legacyImageFsRoot)
 
         assertTrue(migrated)
-        assertTrue("Migrator only moves legacy directories and does not delete root", legacyImageFsRoot.exists())
+        assertFalse(
+            "Home symlink case skips home migration but legacy root is still removed afterward",
+            legacyImageFsRoot.exists(),
+        )
     }
 
     @Test
@@ -114,9 +117,10 @@ class ImageFSLegacyMigratorTest {
         val migrated = ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, legacyImageFsRoot)
 
         assertTrue(migrated)
-        assertTrue("Skipped opt entries remain under legacy root until installer cleanup", legacyImageFsRoot.exists())
-        assertTrue(File(optDir, "wine-ge-custom").exists())
-        assertTrue(Files.isSymbolicLink(protonSymlinkPath))
+        assertFalse(
+            "Those opt entries are not migrated to shared but go away with the legacy root",
+            legacyImageFsRoot.exists(),
+        )
         assertFalse(File(sharedDir, "proton/wine-ge-custom").exists())
         assertFalse(File(sharedDir, "proton/proton-symlink").exists())
     }
@@ -135,5 +139,23 @@ class ImageFSLegacyMigratorTest {
         assertTrue(migrated)
         assertFalse("Legacy proton should be removed when shared exists", legacyProton.exists())
         assertEquals("shared", File(existingShared, "existing.txt").readText())
+    }
+
+    @Test
+    fun migrateLegacyDirsIfNeeded_deletesLegacyRootAfterSuccessfulMigration() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        File(legacyImageFsRoot, "home").apply {
+            mkdirs()
+            File(this, "marker.txt").writeText("home")
+        }
+        File(legacyImageFsRoot, "opt/proton-ge-9-2").apply {
+            mkdirs()
+            File(this, "version.txt").writeText("ge-9-2")
+        }
+
+        val migrated = ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, legacyImageFsRoot)
+
+        assertTrue(migrated)
+        assertFalse("Legacy root should be removed after migration", legacyImageFsRoot.exists())
     }
 }
