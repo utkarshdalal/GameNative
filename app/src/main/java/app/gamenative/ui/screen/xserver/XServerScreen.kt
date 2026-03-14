@@ -870,13 +870,10 @@ fun XServerScreen(
 
             val observer = LifecycleEventObserver { _, event ->
                 when (event) {
-                    Lifecycle.Event.ON_PAUSE -> {
-                        Timber.d("Pausing XServerView renderer for lifecycle pause")
-                        currentXServerView.onPause()
-                    }
+                    Lifecycle.Event.ON_PAUSE,
                     Lifecycle.Event.ON_RESUME -> {
-                        Timber.d("Resuming XServerView renderer for lifecycle resume")
-                        currentXServerView.onResume()
+                        Timber.d("Synchronizing XServerView renderer for lifecycle event: $event")
+                        syncRendererToCurrentLifecycleState()
                     }
                     else -> Unit
                 }
