@@ -103,6 +103,7 @@ public abstract class ImageFsInstaller {
         // dialog.show(R.string.installing_system_files);
         return Executors.newSingleThreadExecutor().submit(() -> {
             ImageFs.ensureImageFsSymlink(context, containerVariant);
+            ensureSharedHomeRoot(context, rootDir);
 
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
@@ -344,6 +345,42 @@ public abstract class ImageFsInstaller {
             return version >= LATEST_VERSION;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private static File getImageFsSharedDir(Context context) {
+        return new File(context.getFilesDir(), "imagefs_shared");
+    }
+
+    /**
+     * Ensures that:
+     * - A shared home backing directory exists at imagefs_shared/home (containing xuser, etc.)
+     * - The given imagefs rootDir exposes /home as a symlink to that shared root.
+     *
+     * This allows the same user home (e.g. .wine, .cache) to be shared across variants.
+     */
+    private static void ensureSharedHomeRoot(Context context, File rootDir) {
+        File sharedHomeRoot = new File(getImageFsSharedDir(context), "home");
+        if (!sharedHomeRoot.exists()) {
+            sharedHomeRoot.mkdirs();
+        }
+
+        File homePathInImageFs = new File(rootDir, "home");
+        if (homePathInImageFs.exists() && !FileUtils.isSymlink(homePathInImageFs)) {
+            // Migrate existing /home contents into the shared backing directory
+            File[] children = homePathInImageFs.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    File target = new File(sharedHomeRoot, child.getName());
+                    if (!target.exists()) {
+                        child.renameTo(target);
+                    }
+                }
+            }
+            FileUtils.delete(homePathInImageFs);
+        }
+        if (!homePathInImageFs.exists()) {
+            FileUtils.symlink(sharedHomeRoot.getPath(), homePathInImageFs.getPath());
         }
     }
 }
