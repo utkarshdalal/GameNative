@@ -32,6 +32,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
 import java.nio.file.Paths
 import javax.inject.Inject
 import kotlin.io.path.name
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -522,9 +523,15 @@ class MainViewModel @Inject constructor(
                     }
                 } else {
                     // For Steam games, sync cloud saves
-                    SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
-                        PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                    }.await()
+                    try {
+                        SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
+                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                        }.await()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (t: Throwable) {
+                        Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
+                    }
                 }
 
                 // Prompt user to save temporary container configuration if one was applied
