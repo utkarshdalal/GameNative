@@ -994,6 +994,7 @@
     <string name="best_config_applied_successfully">설정이 성공적으로 적용되었습니다</string>
     <string name="best_config_known_config_invalid">알려진 설정이 유효하지 않음</string>
     <string name="best_config_no_config_available">이 게임에 사용 가능한 최적 설정이 없습니다</string>
+    <string name="best_config_fetch_failed">설정을 가져오지 못했습니다. 네트워크 연결을 확인하세요.</string>
     <string name="best_config_apply_failed">설정 적용 실패: %s</string>
     <string name="best_config_missing_content">%s 누락됨</string>
     <string name="import_config">설정 가져오기</string>

@@ -876,7 +876,11 @@ class SteamAppScreen : BaseAppScreen() {
                             val gpuName = GPUInformation.getRenderer(context)
 
                             val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
-                            if (bestConfig != null && bestConfig.matchType != "no_match") {
+                            if (bestConfig == null) {
+                                SnackbarManager.show(context.getString(R.string.best_config_fetch_failed))
+                            } else if (bestConfig.matchType == "no_match") {
+                                SnackbarManager.show(context.getString(R.string.best_config_no_config_available))
+                            } else {
                                 applyConfigForContainer(
                                     context,
                                     gameId,
@@ -885,8 +889,6 @@ class SteamAppScreen : BaseAppScreen() {
                                     bestConfig.matchType,
                                     scope,
                                 )
-                            } else {
-                                SnackbarManager.show(context.getString(R.string.best_config_no_config_available))
                             }
                         } catch (e: Exception) {
                             Timber.w(e, "Failed to apply known config: ${e.message}")

@@ -1004,6 +1004,7 @@
     <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
+    <string name="best_config_fetch_failed">Failed to fetch config. Please check your network connection.</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
     <string name="best_config_missing_content">%s missing</string>
     <string name="import_config">Import config</string>

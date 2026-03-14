@@ -972,6 +972,7 @@
     <string name="best_config_applied_successfully">配置已成功应用</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
+    <string name="best_config_fetch_failed">获取配置失败，请检查网络连接。</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
     <string name="best_config_missing_content">%s 缺失</string>
     <string name="import_config">导入配置</string>

@@ -975,6 +975,7 @@
     <string name="best_config_applied_successfully">配置已成功套用</string>
     <string name="best_config_known_config_invalid">已知配置無效</string>
     <string name="best_config_no_config_available">此遊戲沒有可用的最佳配置</string>
+    <string name="best_config_fetch_failed">無法取得配置，請檢查網路連線。</string>
     <string name="best_config_apply_failed">套用配置失敗: %s</string>
     <string name="best_config_missing_content">%s 缺少</string>
     <string name="import_config">匯入設定</string>

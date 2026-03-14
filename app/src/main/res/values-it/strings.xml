@@ -976,6 +976,7 @@
     <string name="best_config_applied_successfully">Config applicata con successo</string>
     <string name="best_config_known_config_invalid">Config nota non valida</string>
     <string name="best_config_no_config_available">Nessuna miglior config disponibile per questo gioco</string>
+    <string name="best_config_fetch_failed">Impossibile recuperare la configurazione. Controlla la connessione di rete.</string>
     <string name="best_config_apply_failed">Impossibile applicare config: %s</string>
     <string name="best_config_missing_content">%s mancante</string>
     <string name="import_config">Importa configurazione</string>

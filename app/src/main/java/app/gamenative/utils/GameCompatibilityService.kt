@@ -7,12 +7,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 
 /**
  * Service for fetching game compatibility information from GameNative API.
@@ -21,10 +19,7 @@ object GameCompatibilityService {
     private const val API_BASE_URL = "https://api.gamenative.app/api/game-runs"
     private const val TIMEOUT_SECONDS = 10L
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = Net.http
 
     /**
      * Data class for API request.

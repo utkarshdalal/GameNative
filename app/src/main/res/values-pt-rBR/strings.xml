@@ -804,6 +804,7 @@
     <string name="best_config_applied_successfully">Config aplicada com sucesso</string>
     <string name="best_config_known_config_invalid">Config conhecida inválida</string>
     <string name="best_config_no_config_available">Nenhuma melhor config disponível para este jogo</string>
+    <string name="best_config_fetch_failed">Falha ao obter a configuração. Verifique sua conexão de rede.</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
     <string name="best_config_missing_content">%s ausente</string>
     <string name="import_config">Importar configuração</string>

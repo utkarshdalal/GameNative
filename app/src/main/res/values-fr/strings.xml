@@ -980,6 +980,7 @@
     <string name="best_config_applied_successfully">Configuration appliquée avec succès</string>
     <string name="best_config_known_config_invalid">Configuration connue invalide</string>
     <string name="best_config_no_config_available">Aucune meilleure configuration disponible pour ce jeu</string>
+    <string name="best_config_fetch_failed">Échec de la récupération de la configuration. Vérifiez votre connexion réseau.</string>
     <string name="best_config_apply_failed">Échec de l\'application de la configuration : %s</string>
     <string name="best_config_missing_content">%s manquant</string>
     <string name="import_config">Importer la configuration</string>

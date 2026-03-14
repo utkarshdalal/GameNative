@@ -996,6 +996,7 @@
     <string name="best_config_applied_successfully">La mejor configuración se ha aplicado correctamente.</string>
     <string name="best_config_known_config_invalid">La configuración conocida es inválida.</string>
     <string name="best_config_no_config_available">No hay una mejor configuración disponible para este juego.</string>
+    <string name="best_config_fetch_failed">Error al obtener la configuración. Compruebe su conexión de red.</string>
     <string name="best_config_apply_failed">Error al aplicar la configuración: %s.</string>
     <string name="best_config_missing_content">Falta %s.</string>
     <string name="import_config">Importar configuración</string>

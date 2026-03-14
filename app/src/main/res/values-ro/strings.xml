@@ -984,6 +984,7 @@
 	<string name="best_config_applied_successfully">Configurația a fost aplicată cu succes</string>
 	<string name="best_config_known_config_invalid">Config cunoscut invalid</string>
 	<string name="best_config_no_config_available">Nu există o configurație optimă pentru acest joc</string>
+	<string name="best_config_fetch_failed">Nu s-a putut obține configurația. Verificați conexiunea la rețea.</string>
 	<string name="best_config_apply_failed">Aplicarea configurației a eșuat: %s</string>
 	<string name="best_config_missing_content">%s lipsește</string>
 	<string name="import_config">Importă configurarea</string>
