@@ -187,6 +187,12 @@ private val isExiting = AtomicBoolean(false)
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
 private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
+
+private data class XServerViewReleaseBinding(
+    val xServerView: XServerView,
+    val windowModificationListener: WindowManager.OnWindowModificationListener,
+)
+
 private val CORE_WINE_PROCESSES = setOf(
     "wineserver",
     "services",
@@ -846,6 +852,22 @@ fun XServerScreen(
         if (currentXServerView == null) {
             onDispose { }
         } else {
+            fun syncRendererToCurrentLifecycleState() {
+                if (!currentXServerView.isAttachedToWindow) return
+
+                when {
+                    lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED -> Unit
+                    lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) -> {
+                        Timber.d("Synchronizing XServerView renderer to current resumed lifecycle state")
+                        currentXServerView.onResume()
+                    }
+                    else -> {
+                        Timber.d("Synchronizing XServerView renderer to current paused lifecycle state")
+                        currentXServerView.onPause()
+                    }
+                }
+            }
+
             val observer = LifecycleEventObserver { _, event ->
                 when (event) {
                     Lifecycle.Event.ON_PAUSE -> {
@@ -859,9 +881,19 @@ fun XServerScreen(
                     else -> Unit
                 }
             }
+            val attachStateListener = object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    syncRendererToCurrentLifecycleState()
+                }
+
+                override fun onViewDetachedFromWindow(v: View) = Unit
+            }
 
             lifecycleOwner.lifecycle.addObserver(observer)
+            currentXServerView.addOnAttachStateChangeListener(attachStateListener)
+            syncRendererToCurrentLifecycleState()
             onDispose {
+                currentXServerView.removeOnAttachStateChangeListener(attachStateListener)
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }
         }
@@ -1035,6 +1067,7 @@ fun XServerScreen(
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
                 windowModificationListener = wmListener
+                mainRoot.tag = XServerViewReleaseBinding(this, wmListener)
 
                 if (PluviaApp.xEnvironment == null) {
                     // Launch all blocking wine setup operations on a background thread to avoid blocking main thread
@@ -1407,14 +1440,16 @@ fun XServerScreen(
             gameRoot = null
             removePerformanceHud()
             performanceHudHost = null
-            // Remove the WindowManager listener to prevent duplicates on AndroidView recreation
-            windowModificationListener?.let { listener ->
-                xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
+
+            val releaseBinding = view.tag as? XServerViewReleaseBinding
+            releaseBinding?.let { binding ->
+                // Remove the WindowManager listener associated with the released AndroidView.
+                binding.xServerView.getxServer().windowManager.removeOnWindowModificationListener(binding.windowModificationListener)
+                if (PluviaApp.xServerView === binding.xServerView) {
+                    PluviaApp.xServerView = null
+                }
             }
-            windowModificationListener = null
-            if (PluviaApp.xServerView === xServerView) {
-                PluviaApp.xServerView = null
-            }
+            view.tag = null
         },
     )
         }
