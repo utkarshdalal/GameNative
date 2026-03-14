@@ -1224,6 +1224,13 @@
     <string name="manifest_content_untrusted">Conținutul nu este de încredere și nu a fost instalat.</string>
     <string name="manifest_type_mismatch">Conținutul descărcat nu corespunde tipului așteptat.</string>
     <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Conectează-te pentru a accesa biblioteca ta Steam.</string>
+    <string name="library_source_not_logged_in_gog">Conectează-te pentru a accesa biblioteca ta GOG.</string>
+    <string name="library_source_not_logged_in_epic">Conectează-te pentru a accesa biblioteca ta Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Conectează-te pentru a accesa biblioteca ta Amazon.</string>
+    <string name="library_source_no_custom_games">Nu ai adăugat niciun joc personalizat.</string>
     <string name="download_failed_title">Descărcarea a eșuat</string>
     <string name="download_failed_message">Un fișier necesar nu a putut fi descărcat. Verifică conexiunea la rețea și încearcă din nou.</string>
     <string name="install_failed_title">Instalarea a eșuat</string>

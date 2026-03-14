@@ -1216,6 +1216,13 @@
     <string name="manifest_content_untrusted">內容不受信任，未安裝。</string>
     <string name="manifest_type_mismatch">下載的內容與預期類型不符。</string>
     <string name="manifest_glibc_not_supported">不支援 GLIBC 版本。</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">登入以存取您的 Steam 遊戲庫。</string>
+    <string name="library_source_not_logged_in_gog">登入以存取您的 GOG 遊戲庫。</string>
+    <string name="library_source_not_logged_in_epic">登入以存取您的 Epic 遊戲庫。</string>
+    <string name="library_source_not_logged_in_amazon">登入以存取您的 Amazon 遊戲庫。</string>
+    <string name="library_source_no_custom_games">您尚未新增任何自訂遊戲。</string>
     <string name="download_failed_title">下載失敗</string>
     <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
     <string name="install_failed_title">安裝失敗</string>

@@ -704,6 +704,14 @@ https://gamenative.app
     <string name="manifest_install_failed">Ошибка установки %1$s</string>
     <string name="manifest_install_success">%1$s установлен</string>
     <string name="manifest_type_mismatch">Загруженный контент не соответствует ожидаемому типу.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Войдите, чтобы получить доступ к библиотеке Steam.</string>
+    <string name="library_source_not_logged_in_gog">Войдите, чтобы получить доступ к библиотеке GOG.</string>
+    <string name="library_source_not_logged_in_epic">Войдите, чтобы получить доступ к библиотеке Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Войдите, чтобы получить доступ к библиотеке Amazon.</string>
+    <string name="library_source_no_custom_games">Вы не добавили ни одной пользовательской игры.</string>
+
     <string name="material_clock_display_divider">:</string>
     <string name="material_clock_toggle_content_description">Выберите AM или PM</string>
     <string name="material_motion_easing_accelerated">cubic-bezier(0.4, 0.0, 1.0, 1.0)</string>

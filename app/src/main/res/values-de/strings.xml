@@ -1159,6 +1159,13 @@
     <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
     <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
     <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Melde dich an, um auf deine Steam-Bibliothek zuzugreifen.</string>
+    <string name="library_source_not_logged_in_gog">Melde dich an, um auf deine GOG-Bibliothek zuzugreifen.</string>
+    <string name="library_source_not_logged_in_epic">Melde dich an, um auf deine Epic-Bibliothek zuzugreifen.</string>
+    <string name="library_source_not_logged_in_amazon">Melde dich an, um auf deine Amazon-Bibliothek zuzugreifen.</string>
+    <string name="library_source_no_custom_games">Du hast keine benutzerdefinierten Spiele hinzugefügt.</string>
     <string name="download_failed_title">Download fehlgeschlagen</string>
     <string name="download_failed_message">Eine erforderliche Datei konnte nicht heruntergeladen werden. Bitte überprüfe deine Netzwerkverbindung und versuche es erneut.</string>
     <string name="install_failed_title">Installation fehlgeschlagen</string>

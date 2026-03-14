@@ -1224,6 +1224,13 @@
     <string name="manifest_content_untrusted">El contenido no es de confianza y no se instaló.</string>
     <string name="manifest_type_mismatch">El contenido descargado no coincide con el tipo esperado.</string>
     <string name="manifest_glibc_not_supported">Las versiones GLIBC no son compatibles.</string>
+
+    <!-- Library: source not logged in splash -->
+    <string name="library_source_not_logged_in_steam">Inicia sesión para acceder a tu biblioteca de Steam.</string>
+    <string name="library_source_not_logged_in_gog">Inicia sesión para acceder a tu biblioteca de GOG.</string>
+    <string name="library_source_not_logged_in_epic">Inicia sesión para acceder a tu biblioteca de Epic.</string>
+    <string name="library_source_not_logged_in_amazon">Inicia sesión para acceder a tu biblioteca de Amazon.</string>
+    <string name="library_source_no_custom_games">No has añadido ningún juego personalizado.</string>
     <string name="download_failed_title">Error de descarga</string>
     <string name="download_failed_message">No se pudo descargar un archivo necesario. Comprueba tu conexión de red e inténtalo de nuevo.</string>
     <string name="install_failed_title">Error de instalación</string>
