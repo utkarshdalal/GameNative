@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class XConnectorEpoll implements Runnable {
+    private static final String TAG = "XConnectorEpoll";
+
     private final ConnectionHandler connectionHandler;
     private final int epollFd;
     private Thread epollThread;
@@ -75,12 +77,14 @@ public class XConnectorEpoll implements Runnable {
         Thread thread;
         if (!this.running && (thread = this.epollThread) != null) {
             this.running = true;
+            Log.d(TAG, "Starting connector thread");
             thread.start();
         }
     }
 
     public synchronized void stop() {
         if (this.running && this.epollThread != null) {
+            Log.d(TAG, "Stopping connector thread");
             this.running = false;
             requestShutdown();
             while (this.epollThread.isAlive()) {
@@ -97,6 +101,9 @@ public class XConnectorEpoll implements Runnable {
     public void run() {
         while (this.running) {
             if (!doEpollIndefinitely(this.epollFd, this.serverFd, !this.multithreadedClients && this.monitorClients)) {
+                if (this.running) {
+                    Log.e(TAG, "epoll loop exited unexpectedly; shutting down all X clients");
+                }
                 break;
             }
         }

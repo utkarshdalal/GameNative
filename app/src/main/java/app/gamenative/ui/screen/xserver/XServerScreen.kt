@@ -59,6 +59,8 @@ import app.gamenative.ui.util.SnackbarManager
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
@@ -839,6 +841,32 @@ fun XServerScreen(
         }
     }
 
+    DisposableEffect(lifecycleOwner, xServerView) {
+        val currentXServerView = xServerView
+        if (currentXServerView == null) {
+            onDispose { }
+        } else {
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> {
+                        Timber.d("Pausing XServerView renderer for lifecycle pause")
+                        currentXServerView.onPause()
+                    }
+                    Lifecycle.Event.ON_RESUME -> {
+                        Timber.d("Resuming XServerView renderer for lifecycle resume")
+                        currentXServerView.onResume()
+                    }
+                    else -> Unit
+                }
+            }
+
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+    }
+
     val isPortrait = container.isPortraitMode
     // var launchedView by rememberSaveable { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1384,6 +1412,9 @@ fun XServerScreen(
                 xServerView?.getxServer()?.windowManager?.removeOnWindowModificationListener(listener)
             }
             windowModificationListener = null
+            if (PluviaApp.xServerView === xServerView) {
+                PluviaApp.xServerView = null
+            }
         },
     )
         }
