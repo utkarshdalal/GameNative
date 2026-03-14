@@ -182,8 +182,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         private final long touchTime;
         private int x;
         private int y;
-        private int dx;
-        private int dy;
 
         public Finger(float x, float y) {
             float[] transformedPoint = XForm.transformPoint(TouchpadView.this.xform, x, y);
@@ -200,17 +198,16 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             this.y = (int)transformedPoint[1];
         }
 
-        public void setDeltas(int dx, int dy) {
-            this.dx = dx;
-            this.dy = dy;
-        }
-
         public int deltaX() {
-            return dx;
+            float dx = (this.x - this.lastX) * TouchpadView.this.sensitivity;
+            if (Math.abs(dx) > CURSOR_ACCELERATION_THRESHOLD) dx *= CURSOR_ACCELERATION;
+            return Mathf.roundPoint(dx);
         }
 
         public int deltaY() {
-            return dy;
+            float dy = (this.y - this.lastY) * TouchpadView.this.sensitivity;
+            if (Math.abs(dy) > CURSOR_ACCELERATION_THRESHOLD) dy *= CURSOR_ACCELERATION;
+            return Mathf.roundPoint(dy);
         }
 
         public boolean isTap() {
@@ -360,50 +357,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                         if (fingers[i] != null) {
                             int pointerIndex = event.findPointerIndex(i);
                             if (pointerIndex >= 0) {
-                                float dx = 0f;
-                                float dy = 0f;
-                                float fx = event.getX(pointerIndex);
-                                float fy = event.getY(pointerIndex);
-                                int historySize = event.getHistorySize();
-
-                                if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
-                                    for (int k = 0; k < historySize; k++) {
-                                        dx += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_X, pointerIndex, k);
-                                        dy += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_Y, pointerIndex, k);
-                                    }
-                                    dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X, pointerIndex);
-                                    dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y, pointerIndex);
-                                } else if (event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN)) {
-                                    // Manually calculate delta from past X/Y and/or history X/Y from event
-                                    // To calculate delta we need to be in the same space, lastX and lastY
-                                    // will be in the transformed space, so we need to also convert the
-                                    // current values from the event to transformed space
-                                    float lastX = fingers[i].lastX;
-                                    float lastY = fingers[i].lastY;
-
-                                    for (int h = 0; h < historySize; h++) {
-                                        float hx = event.getHistoricalX(pointerIndex, h);
-                                        float hy = event.getHistoricalY(pointerIndex, h);
-                                        float[] hp = XForm.transformPoint(xform, hx, hy);
-                                        float hxT = hp[0];
-                                        float hyT = hp[1];
-
-                                        dx += hxT - lastX;
-                                        dy += hyT - lastY;
-
-                                        lastX = hxT;
-                                        lastY = hyT;
-                                    }
-
-                                    float[] p = XForm.transformPoint(xform, fx, fy);
-                                    float fxT = p[0];
-                                    float fyT = p[1];
-
-                                    dx += fxT - lastX;
-                                    dy += fyT - lastY;
-                                }
-                                fingers[i].update(fx, fy);
-                                fingers[i].setDeltas(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
+                                fingers[i].update(event.getX(pointerIndex), event.getY(pointerIndex));
                                 handleFingerMove(fingers[i]);
                             } else {
                                 handleFingerUp(fingers[i]);
