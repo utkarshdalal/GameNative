@@ -34,6 +34,45 @@ public class ImageFs {
         wineprefix = rootDir + WINEPREFIX;
     }
 
+    /**
+     * Root directory for a given variant's imagefs. Both variants can be installed in parallel:
+     * files/glibc/imagefs and files/bionic/imagefs.
+     */
+    public static File getVariantRootDir(Context context, String variant) {
+        return new File(context.getFilesDir(), variant + "/imagefs");
+    }
+
+    /** Shared Proton directory; opt/<version> in each variant symlinks here. */
+    public static File getSharedProtonDir(Context context) {
+        return new File(context.getFilesDir(), "imagefs_shared/proton");
+    }
+
+    /**
+     * Makes files/imagefs a symlink to files/{variant}/imagefs so that ImageFs.find(context)
+     * resolves to the given variant. Call before using imagefs when the container variant is known.
+     */
+    public static void ensureImageFsSymlink(Context context, String variant) {
+        File filesDir = context.getFilesDir();
+        File link = new File(filesDir, "imagefs");
+        File target = getVariantRootDir(context, variant);
+        if (!target.exists() || !target.isDirectory()) {
+            return;
+        }
+        try {
+            if (FileUtils.isSymlink(link)) {
+                File currentTarget = link.getCanonicalFile();
+                if (currentTarget.equals(target.getCanonicalFile())) {
+                    return;
+                }
+            } else if (link.exists()) {
+                return;
+            }
+            FileUtils.symlink(target.getAbsolutePath(), link.getAbsolutePath());
+        } catch (IOException e) {
+            android.util.Log.e("ImageFs", "Failed to create imagefs symlink", e);
+        }
+    }
+
     public static ImageFs find(Context context) {
         ImageFs local = INSTANCE;
         if (local != null) return local;
