@@ -48,6 +48,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private String steamType = DefaultVersion.STEAM_TYPE;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
+    private int launchGeneration = 0;
     private boolean wow64Mode = true;
     private final ContentsManager contentsManager;
     private final ContentProfile wineProfile;
@@ -69,10 +70,11 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Log.d("GlibcProgramLauncherComponent", "Starting...");
         synchronized (lock) {
             stop();
+            int currentGeneration = ++launchGeneration;
             extractBox64Files();
             copyDefaultBox64RCFile();
             if (preUnpack != null) preUnpack.run();
-            pid = execGuestProgram();
+            pid = execGuestProgram(currentGeneration);
             Log.d("GlibcProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
         }
@@ -82,10 +84,12 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     public void stop() {
         Log.d("GlibcProgramLauncherComponent", "Stopping...");
         synchronized (lock) {
+            launchGeneration++;
             if (pid != -1) {
-                Process.killProcess(pid);
-                Log.d("GlibcProgramLauncherComponent", "Stopped process " + pid);
+                int processToStop = pid;
                 pid = -1;
+                Process.killProcess(processToStop);
+                Log.d("GlibcProgramLauncherComponent", "Stopped process " + processToStop);
                 List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
@@ -168,7 +172,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         this.workingDir = workingDir;
     }
 
-    private int execGuestProgram() {
+    private int execGuestProgram(final int generation) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -229,9 +233,17 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Log.d("GlibcProgramLauncherComponent", "Final command: " + command);
 
         return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
-            Log.d("GlibcProgramLauncherComponent", "Process terminated " + pid + " with status " + status);
+            boolean isStaleCallback;
             synchronized (lock) {
-                pid = -1;
+                isStaleCallback = generation != launchGeneration;
+                if (!isStaleCallback) {
+                    Log.d("GlibcProgramLauncherComponent", "Process terminated " + pid + " with status " + status);
+                    pid = -1;
+                }
+            }
+            if (isStaleCallback) {
+                Log.d("GlibcProgramLauncherComponent", "Ignoring stale termination callback for generation " + generation + " with status " + status);
+                return;
             }
             SteamService.setKeepAlive(false);
             if (terminationCallback != null) terminationCallback.call(status);

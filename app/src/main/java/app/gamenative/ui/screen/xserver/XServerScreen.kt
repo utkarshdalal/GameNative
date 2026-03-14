@@ -441,82 +441,101 @@ fun XServerScreen(
         clearOverlayPauseState()
     }
 
-    fun startExitWatchForUnmappedGameWindow(window: Window) {
-        val winHandler = xServerView?.getxServer()?.winHandler ?: return
-        if (exitWatchJob?.isActive == true) return
-        val targetExecutable = extractExecutableBasename(container.executablePath)
-        if (!windowMatchesExecutable(window, targetExecutable)) return
+    suspend fun awaitNoNonEssentialWineProcesses(winHandler: WinHandler, reason: String): Boolean {
+        val allowlist = buildEssentialProcessAllowlist()
+        val previousListener = winHandler.getOnGetProcessInfoListener()
+        val lock = Any()
+        var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
+        var currentList = mutableListOf<ProcessInfo>()
+        var expectedCount = 0
 
-        exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
-            val allowlist = buildEssentialProcessAllowlist()
-            val previousListener = winHandler.getOnGetProcessInfoListener()
-            val lock = Any()
-            var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
-            var currentList = mutableListOf<ProcessInfo>()
-            var expectedCount = 0
-
-            val listener = OnGetProcessInfoListener { index, count, processInfo ->
-                previousListener?.onGetProcessInfo(index, count, processInfo)
-                synchronized(lock) {
-                    val deferred = pendingSnapshot ?: return@synchronized
-                    if (count == 0 && processInfo == null) {
-                        if (!deferred.isCompleted) deferred.complete(null)
-                        return@synchronized
-                    }
-                    if (index == 0) {
-                        currentList = mutableListOf()
-                        expectedCount = count
-                    }
-                    if (processInfo != null) {
-                        currentList.add(processInfo)
-                    }
-                    if (currentList.size >= expectedCount && !deferred.isCompleted) {
-                        deferred.complete(currentList.toList())
-                    }
+        val listener = OnGetProcessInfoListener { index, count, processInfo ->
+            previousListener?.onGetProcessInfo(index, count, processInfo)
+            synchronized(lock) {
+                val deferred = pendingSnapshot ?: return@synchronized
+                if (count == 0 && processInfo == null) {
+                    if (!deferred.isCompleted) deferred.complete(null)
+                    return@synchronized
                 }
-            }
-
-            winHandler.setOnGetProcessInfoListener(listener)
-            try {
-                val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < EXIT_PROCESS_TIMEOUT_MS) {
-                    val deferred = CompletableDeferred<List<ProcessInfo>?>()
-                    synchronized(lock) {
-                        pendingSnapshot = deferred
-                    }
-                    winHandler.listProcesses()
-                    val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
-                        deferred.await()
-                    }
-                    if (snapshot != null) {
-                        val hasNonEssential = snapshot.any {
-                            !allowlist.contains(normalizeProcessName(it.name))
-                        }
-                        if (!hasNonEssential) {
-                            withContext(Dispatchers.Main) {
-                                exit(
-                                    winHandler,
-                                    PluviaApp.xEnvironment,
-                                    frameRating,
-                                    currentAppInfo,
-                                    container,
-                                    appId,
-                                    onExit,
-                                    navigateBack,
-                                )
-                            }
-                            break
-                        }
-                    }
-                    delay(EXIT_PROCESS_POLL_INTERVAL_MS)
+                if (index == 0) {
+                    currentList = mutableListOf()
+                    expectedCount = count
                 }
-            } finally {
-                winHandler.setOnGetProcessInfoListener(previousListener)
-                synchronized(lock) {
-                    pendingSnapshot = null
+                if (processInfo != null) {
+                    currentList.add(processInfo)
+                }
+                if (currentList.size >= expectedCount && !deferred.isCompleted) {
+                    deferred.complete(currentList.toList())
                 }
             }
         }
+
+        winHandler.setOnGetProcessInfoListener(listener)
+        try {
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < EXIT_PROCESS_TIMEOUT_MS) {
+                val deferred = CompletableDeferred<List<ProcessInfo>?>()
+                synchronized(lock) {
+                    pendingSnapshot = deferred
+                }
+                winHandler.listProcesses()
+                val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
+                    deferred.await()
+                }
+                if (snapshot != null) {
+                    val nonEssentialProcesses = snapshot.filter {
+                        !allowlist.contains(normalizeProcessName(it.name))
+                    }
+                    if (nonEssentialProcesses.isEmpty()) {
+                        return true
+                    }
+                    Timber.tag("ExitWatch").d(
+                        "Waiting to exit (%s); non-essential Wine processes still running: %s",
+                        reason,
+                        nonEssentialProcesses.joinToString { "${it.name}(${it.pid})" },
+                    )
+                }
+                delay(EXIT_PROCESS_POLL_INTERVAL_MS)
+            }
+            return false
+        } finally {
+            winHandler.setOnGetProcessInfoListener(previousListener)
+            synchronized(lock) {
+                pendingSnapshot = null
+            }
+        }
+    }
+
+    fun startExitWatch(winHandler: WinHandler, reason: String) {
+        if (isExiting.get()) return
+        if (exitWatchJob?.isActive == true) return
+
+        exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
+            val isSafeToExit = awaitNoNonEssentialWineProcesses(winHandler, reason)
+            if (isSafeToExit) {
+                withContext(Dispatchers.Main) {
+                    exit(
+                        winHandler,
+                        PluviaApp.xEnvironment,
+                        frameRating,
+                        currentAppInfo,
+                        container,
+                        appId,
+                        onExit,
+                        navigateBack,
+                    )
+                }
+            } else {
+                Timber.tag("ExitWatch").w("Timed out waiting for Wine processes to exit after %s", reason)
+            }
+        }
+    }
+
+    fun startExitWatchForUnmappedGameWindow(window: Window) {
+        val winHandler = xServerView?.getxServer()?.winHandler ?: return
+        val targetExecutable = extractExecutableBasename(container.executablePath)
+        if (!windowMatchesExecutable(window, targetExecutable)) return
+        startExitWatch(winHandler, "window unmapped for ${window.className}")
     }
 
     val dismissOverlayMenu: () -> Unit = {
@@ -812,7 +831,13 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            val winHandler = xServerView?.getxServer()?.winHandler
+            if (winHandler == null) {
+                Timber.w("Guest program terminated but WinHandler is unavailable; exiting immediately")
+                exit(null, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+            } else {
+                startExitWatch(winHandler, "guest program terminated")
+            }
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")

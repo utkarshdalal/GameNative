@@ -64,6 +64,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
+    private int launchGeneration = 0;
     private boolean wow64Mode = true;
     private final ContentsManager contentsManager;
     private final ContentProfile wineProfile;
@@ -91,12 +92,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public void start() {
         synchronized (lock) {
             stop();
+            int currentGeneration = ++launchGeneration;
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
             else
                 extractBox64Files();
             if (preUnpack != null) preUnpack.run();
-            pid = execGuestProgram();
+            pid = execGuestProgram(currentGeneration);
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
         }
@@ -105,9 +107,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     @Override
     public void stop() {
         synchronized (lock) {
+            launchGeneration++;
             if (pid != -1) {
-                Process.killProcess(pid);
-                Log.d("BionicProgramLauncherComponent", "Stopped process " + pid);
+                int processToStop = pid;
+                pid = -1;
+                Process.killProcess(processToStop);
+                Log.d("BionicProgramLauncherComponent", "Stopped process " + processToStop);
                 List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);
@@ -176,7 +181,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.workingDir = workingDir;
     }
 
-    private int execGuestProgram() {
+    private int execGuestProgram(final int generation) {
 
         final int MAX_PLAYERS = 1; // old static method
 
@@ -337,8 +342,16 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
+            boolean isStaleCallback;
             synchronized (lock) {
-                pid = -1;
+                isStaleCallback = generation != launchGeneration;
+                if (!isStaleCallback) {
+                    pid = -1;
+                }
+            }
+            if (isStaleCallback) {
+                Log.d("BionicProgramLauncherComponent", "Ignoring stale termination callback for generation " + generation + " with status " + status);
+                return;
             }
             if (!environment.isWinetricksRunning()) {
                 SteamService.setKeepAlive(false);
@@ -520,7 +533,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public void restartWineServer() {
         ProcessHelper.terminateAllWineProcesses();
-        pid = execGuestProgram();
+        synchronized (lock) {
+            int currentGeneration = ++launchGeneration;
+            pid = execGuestProgram(currentGeneration);
+        }
         Log.d("BionicProgramLauncherComponent", "Wine restarted successfully");
 
     }
