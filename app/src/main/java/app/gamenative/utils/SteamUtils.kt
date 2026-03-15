@@ -41,6 +41,7 @@ object SteamUtils {
 
     internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
         .protocols(listOf(Protocol.HTTP_1_1))
         .build()
 

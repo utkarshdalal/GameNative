@@ -109,34 +109,33 @@ object BestConfigService {
             }
             val request = requestBuilder.build()
 
-            val response = httpClient.newCall(request).execute()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("BestConfigService")
+                        .w("API request failed - HTTP ${response.code}")
+                    return@withContext null
+                }
 
-            if (!response.isSuccessful) {
+                val responseBody = response.body?.string() ?: return@withContext null
+                val jsonResponse = JSONObject(responseBody)
+
+                val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
+                val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
+
+                val bestConfigResponse = BestConfigResponse(
+                    bestConfig = bestConfig,
+                    matchType = jsonResponse.getString("matchType"),
+                    matchedGpu = jsonResponse.getString("matchedGpu"),
+                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
+                )
+
+                cache[cacheKey] = bestConfigResponse
+
                 Timber.tag("BestConfigService")
-                    .w("API request failed - HTTP ${response.code}")
-                return@withContext null
+                    .d("Fetched best config for $gameName on $gpuName (matchType: ${bestConfigResponse.matchType})")
+
+                bestConfigResponse
             }
-
-            val responseBody = response.body?.string() ?: return@withContext null
-            val jsonResponse = JSONObject(responseBody)
-
-            val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
-            val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
-
-            val bestConfigResponse = BestConfigResponse(
-                bestConfig = bestConfig,
-                matchType = jsonResponse.getString("matchType"),
-                matchedGpu = jsonResponse.getString("matchedGpu"),
-                matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
-            )
-
-            // Cache the response
-            cache[cacheKey] = bestConfigResponse
-
-            Timber.tag("BestConfigService")
-                .d("Fetched best config for $gameName on $gpuName (matchType: ${bestConfigResponse.matchType})")
-
-            bestConfigResponse
         } catch (e: Exception) {
             Timber.tag("BestConfigService")
                 .e(e, "Error fetching best config: ${e.message}")
