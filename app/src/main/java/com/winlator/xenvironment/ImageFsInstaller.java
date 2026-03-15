@@ -78,9 +78,10 @@ public abstract class ImageFsInstaller {
             File downloaded = new File(downloadsDir, version + ".txz");
             if (!downloaded.exists()) continue;
             File outFile = new File(protonDir, version);
-            if (outFile.exists() && outFile.isDirectory()) {
-                String[] listing = outFile.list();
-                if (listing != null && listing.length > 0) continue;
+            File binDir = new File(outFile, "bin");
+            if (binDir.exists() && binDir.isDirectory()) continue;
+            if (outFile.exists()) {
+                FileUtils.delete(outFile);
             }
             outFile.mkdirs();
             TarCompressorUtils.extract(

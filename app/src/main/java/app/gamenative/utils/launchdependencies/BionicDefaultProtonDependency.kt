@@ -46,26 +46,26 @@ object BionicDefaultProtonDependency : LaunchDependency {
         callbacks: LaunchDependencyCallbacks,
         gameSource: GameSource,
         gameId: Int,
-    ) = withContext(Dispatchers.IO) {
+    ) = coroutineScope {
         val protonVersion = container.wineVersion
-        val imageFs = ImageFs.find(context)
+        val imageFs = withContext(Dispatchers.IO) { ImageFs.find(context) }
 
-        if (protonVersion.contains("proton-9.0-arm64ec") && !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")) {
+        if (protonVersion.contains("proton-9.0-arm64ec") && !withContext(Dispatchers.IO) { SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz") }) {
             callbacks.setLoadingMessage("Downloading arm64ec Proton")
-            coroutineScope {
+            withContext(Dispatchers.IO) {
                 SteamService.downloadFile(
                     onDownloadProgress = { callbacks.setLoadingProgress(it) },
-                    parentScope = this,
+                    parentScope = this@coroutineScope,
                     context = context,
                     "proton-9.0-arm64ec.txz",
                 ).await()
             }
-        } else if (protonVersion.contains("proton-9.0-x86_64") && !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")) {
+        } else if (protonVersion.contains("proton-9.0-x86_64") && !withContext(Dispatchers.IO) { SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz") }) {
             callbacks.setLoadingMessage("Downloading x86_64 Proton")
-            coroutineScope {
+            withContext(Dispatchers.IO) {
                 SteamService.downloadFile(
                     onDownloadProgress = { callbacks.setLoadingProgress(it) },
-                    parentScope = this,
+                    parentScope = this@coroutineScope,
                     context = context,
                     "proton-9.0-x86_64.txz",
                 ).await()
@@ -74,17 +74,23 @@ object BionicDefaultProtonDependency : LaunchDependency {
 
         val outFile = File(ImageFs.getSharedProtonDir(context), protonVersion)
         val binDir = File(outFile, "bin")
-        if (!binDir.exists() || !binDir.isDirectory) {
+        val needsExtract = withContext(Dispatchers.IO) { !binDir.exists() || !binDir.isDirectory }
+        if (needsExtract) {
             Timber.i("Extracting $protonVersion to ${outFile.absolutePath}")
             callbacks.setLoadingMessage("Extracting $protonVersion")
             callbacks.setLoadingProgress(LOADING_PROGRESS_UNKNOWN)
             val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-            TarCompressorUtils.extract(
-                TarCompressorUtils.Type.XZ,
-                downloaded,
-                outFile,
-            )
-            downloaded.delete()
+            withContext(Dispatchers.IO) {
+                val success = TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.XZ,
+                    downloaded,
+                    outFile,
+                )
+                if (!success) {
+                    throw IllegalStateException("Failed to extract $protonVersion from ${downloaded.absolutePath}")
+                }
+                downloaded.delete()
+            }
         }
     }
 }
