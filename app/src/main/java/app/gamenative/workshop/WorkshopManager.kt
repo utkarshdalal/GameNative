@@ -25,7 +25,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import okhttp3.OkHttpClient
+import app.gamenative.utils.Net
 import okhttp3.Request
 import org.json.JSONObject
 import org.tukaani.xz.LZMAInputStream
@@ -33,7 +33,6 @@ import timber.log.Timber
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -813,18 +812,13 @@ object WorkshopManager {
         val itemDir = File(installDirectory)
         itemDir.mkdirs()
 
-        val client = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.MINUTES)
-            .build()
-
         val request = Request.Builder()
             .url(item.fileUrl)
             .build()
 
         Timber.tag(TAG).d("HTTP download starting: '${item.title}' from ${item.fileUrl.take(80)}")
 
-        val response = client.newCall(request).execute()
+        val response = Net.http.newCall(request).execute()
         if (!response.isSuccessful) {
             response.close()
             throw WorkshopDownloadException(
