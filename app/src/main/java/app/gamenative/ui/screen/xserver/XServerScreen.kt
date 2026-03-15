@@ -166,9 +166,49 @@ import kotlin.io.path.name
 import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
 
-// Always re-extract drivers and DXVK on every launch to handle cases of container corruption
-// where games randomly stop working. Set to false once corruption issues are resolved.
-private const val ALWAYS_REEXTRACT = true
+/**
+ * Checks whether extraction-relevant config has changed since the last successful extraction.
+ * hash-based cache validation so that second+ launches with the same config
+ * skip all I/O-heavy extraction steps.
+ */
+private fun needsReextract(container: Container, context: Context): Boolean {
+    val configDir = ImageFs.find(context).configDir
+    val sentinel = File(configDir, ".extract_cache_id")
+
+    val cacheKey = listOf(
+        app.gamenative.BuildConfig.VERSION_CODE.toString(),
+        container.wineVersion,
+        container.dxWrapper ?: "",
+        container.dxWrapperConfig ?: "",
+        container.graphicsDriver,
+        container.graphicsDriverVersion,
+        container.containerVariant ?: "",
+    ).joinToString("|")
+
+    val storedKey = sentinel.takeIf { it.exists() }?.readText() ?: ""
+    return cacheKey != storedKey
+}
+
+/**
+ * Writes the extraction cache sentinel after all extractions succeed.
+ */
+private fun writeExtractCacheSentinel(container: Container, context: Context) {
+    val configDir = ImageFs.find(context).configDir
+    val sentinel = File(configDir, ".extract_cache_id")
+
+    val cacheKey = listOf(
+        app.gamenative.BuildConfig.VERSION_CODE.toString(),
+        container.wineVersion,
+        container.dxWrapper ?: "",
+        container.dxWrapperConfig ?: "",
+        container.graphicsDriver,
+        container.graphicsDriverVersion,
+        container.containerVariant ?: "",
+    ).joinToString("|")
+
+    sentinel.parentFile?.mkdirs()
+    sentinel.writeText(cacheKey)
+}
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
@@ -983,6 +1023,7 @@ fun XServerScreen(
                                 firstTimeBoot,
                                 vkbasaltConfig,
                             )
+                            writeExtractCacheSentinel(container, context)
                             changeWineAudioDriver(xServerState.value.audioDriver, container, ImageFs.find(context))
                             setImagefsContainerVariant(context, container)
                             PluviaApp.xEnvironment = setupXEnvironment(
@@ -3067,7 +3108,7 @@ private fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
+    val needReextract = needsReextract(container, context) || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
@@ -3453,7 +3494,7 @@ private fun extractGraphicsDriverFiles(
         val configDir = imageFs.configDir
         val sentinel = File(configDir, ".current_graphics_driver")   // lives in shared tree
         val onDiskId = sentinel.takeIf { it.exists() }?.readText() ?: ""
-        val changed = ALWAYS_REEXTRACT || cacheId != container.getExtra("graphicsDriver") || cacheId != onDiskId
+        val changed = needsReextract(container, context) || cacheId != container.getExtra("graphicsDriver") || cacheId != onDiskId
         Timber.i("Changed is " + changed + " will re-extract drivers accordingly.")
         val rootDir = imageFs.rootDir
         envVars.put("vblank_mode", "0")
@@ -3627,7 +3668,7 @@ private fun extractGraphicsDriverFiles(
         val lastInstalledMainWrapper = container.getExtra("lastInstalledMainWrapper")
 
         // 3. Check if we need to extract a new wrapper file.
-        if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
+        if (needsReextract(container, context) || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
             // We only extract if the selection is actually a wrapper file.
             if (mainWrapperSelection.lowercase(Locale.getDefault()).startsWith("wrapper")) {
                 val assetPath = "graphics_driver/" + mainWrapperSelection.lowercase(Locale.getDefault()) + ".tzst"
