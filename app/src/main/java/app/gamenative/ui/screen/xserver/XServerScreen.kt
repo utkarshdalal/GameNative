@@ -364,6 +364,7 @@ fun XServerScreen(
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
+    var performanceHudToggledFromOverlay by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
@@ -532,9 +533,11 @@ fun XServerScreen(
             imeInputReceiver?.hideKeyboard()
         }
         val resumeImmediatelyForKeyboard = keyboardRequestedFromOverlay && manualResumeMode
+        val resumeImmediatelyForPerformanceHud = performanceHudToggledFromOverlay && manualResumeMode
         keyboardRequestedFromOverlay = false
+        performanceHudToggledFromOverlay = false
         if (!keepPausedForEditor) {
-            if (resumeImmediatelyForKeyboard) {
+            if (resumeImmediatelyForKeyboard || resumeImmediatelyForPerformanceHud) {
                 forceResumeIfSuspended()
             } else {
                 resumeIfAllowedAfterOverlay()
@@ -678,6 +681,7 @@ fun XServerScreen(
             }
 
             QuickMenuAction.PERFORMANCE_HUD -> {
+                performanceHudToggledFromOverlay = true
                 val enabled = performanceHudView == null
                 updatePerformanceHud(enabled)
                 PostHog.capture(
@@ -730,6 +734,7 @@ fun XServerScreen(
         // Suspend game and audio while the navigation overlay is visible.
         pauseForOverlayIfAllowed()
         keyboardRequestedFromOverlay = false
+        performanceHudToggledFromOverlay = false
 
         val controllerManager = ControllerManager.getInstance()
         controllerManager.scanForDevices()
