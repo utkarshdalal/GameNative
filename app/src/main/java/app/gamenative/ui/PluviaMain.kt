@@ -189,9 +189,6 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
     )
 }
 
-private fun resolveNotInstalledGameName(appId: String): String {
-    return ContainerUtils.resolveGameName(appId)
-}
 
 /** Steam game that needs login before launch (excludes offline-mode games) */
 private fun needsSteamLogin(context: Context, appId: String): Boolean {
@@ -283,6 +280,7 @@ fun PluviaMain(
             // Steam games needing login will be handled by OnLogonEnded
             if (needsSteamLogin(context, launchRequest.appId)) {
                 MainActivity.setPendingLaunchRequest(launchRequest)
+                SnackbarManager.show(context.getString(R.string.intent_launch_steam_login_required))
             } else {
                 when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
                     is GameResolutionResult.Success -> {
@@ -308,7 +306,7 @@ fun PluviaMain(
                     }
 
                     is GameResolutionResult.NotFound -> {
-                        val appName = resolveNotInstalledGameName(resolution.originalAppId)
+                        val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
                         Timber.w("[PluviaMain]: Game not installed: $appName (${launchRequest.appId})")
                         msgDialogState = MessageDialogState(
                             visible = true,
@@ -367,7 +365,7 @@ fun PluviaMain(
                         }
 
                         is GameResolutionResult.NotFound -> {
-                            val appName = resolveNotInstalledGameName(resolution.originalAppId)
+                            val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
                             Timber.w("[PluviaMain]: Game not installed: $appName (${event.appId})")
                             msgDialogState = MessageDialogState(
                                 visible = true,
@@ -411,7 +409,7 @@ fun PluviaMain(
                                         .i("Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
                                     when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
                                         is GameResolutionResult.NotFound -> {
-                                            val appName = resolveNotInstalledGameName(resolution.originalAppId)
+                                            val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
                                             Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
                                             msgDialogState = MessageDialogState(
                                                 visible = true,

@@ -42,6 +42,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.LocaleHelper
+import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -246,6 +247,11 @@ class MainActivity : ComponentActivity() {
                     setPendingLaunchRequest(launchRequest)
                     Timber.d("[IntentLaunch]: Stored pending launch request for app ${launchRequest.appId}")
                 }
+            } else if (intent.action == "${BuildConfig.APPLICATION_ID}.LAUNCH_GAME") {
+                // intent matched our action but failed to parse — tell the user
+                wasLaunchedViaExternalIntent = false
+                Timber.w("[IntentLaunch]: parseLaunchIntent returned null for LAUNCH_GAME intent")
+                SnackbarManager.show(getString(R.string.intent_launch_failed))
             }
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")

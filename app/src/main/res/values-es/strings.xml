@@ -180,6 +180,8 @@
     <string name="content_info">Información de contenido</string>
     <string name="game_not_installed_title">Juego no instalado</string>
     <string name="game_not_installed_message">%s no está instalado. Instala el juego antes de iniciarlo.</string>
+    <string name="intent_launch_failed">No se pudo iniciar el juego: acceso directo de inicio no válido</string>
+    <string name="intent_launch_steam_login_required">Se requiere iniciar sesión en Steam para iniciar este juego</string>
     <string name="game_executable_not_found_title">No se puede iniciar</string>
     <string name="game_executable_not_found">No se pudo seleccionar automáticamente el ejecutable. Establece la ruta en los ajustes del contenedor.</string>
     <string name="save_container_settings_title">Guardar configuración del contenedor</string>

@@ -161,6 +161,8 @@
     <string name="content_info">Інформація про вміст</string>
     <string name="game_not_installed_title">Гра не інстальована</string>
     <string name="game_not_installed_message">Гра %s не інстальована. Будь ласка, інсталюйте гру перед запуском.</string>
+    <string name="intent_launch_failed">Не вдалося запустити гру: недійсний ярлик запуску</string>
+    <string name="intent_launch_steam_login_required">Для запуску цієї гри потрібен вхід у Steam</string>
     <string name="game_executable_not_found_title">Неможливо запустити</string>
     <string name="game_executable_not_found">Виконуваний файл не вдалося вибрати автоматично. Вкажіть шлях до виконуваного файлу в налаштуваннях контейнера.</string>
     <string name="save_container_settings_title">Зберегти налаштування контейнера?</string>

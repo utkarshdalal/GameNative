@@ -164,6 +164,8 @@
     <string name="content_info">內容信息</string>
     <string name="game_not_installed_title">遊戲未安裝</string>
     <string name="game_not_installed_message">%s 未安裝, 請在啟動前先安裝遊戲</string>
+    <string name="intent_launch_failed">無法啟動遊戲：啟動捷徑無效</string>
+    <string name="intent_launch_steam_login_required">啟動此遊戲需要登入 Steam</string>
     <string name="game_executable_not_found_title">無法啟動</string>
     <string name="game_executable_not_found">無法自動選擇可執行檔。請在容器配置中指定可執行檔路徑。</string>
     <string name="save_container_settings_title">保存容器配置?</string>

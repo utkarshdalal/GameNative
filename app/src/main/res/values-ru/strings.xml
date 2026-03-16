@@ -429,6 +429,8 @@
     <string name="game_feedback_issues_question">Выберите проблемы, которые вы встретили:</string>
     <string name="game_information">Информация об игре</string>
     <string name="game_not_installed_message">%s не установлена. Пожалуйста, установите игру перед запуском.</string>
+    <string name="intent_launch_failed">Не удалось запустить игру: недействительный ярлык запуска</string>
+    <string name="intent_launch_steam_login_required">Для запуска этой игры требуется вход в Steam</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
     <string name="game_options_container">Контейнер</string>

@@ -93,6 +93,8 @@
     <string name="content_info">Info de Conteúdo</string>
     <string name="game_not_installed_title">Jogo Não instalado</string>
     <string name="game_not_installed_message">%s não está instalado. Por favor instale o jogo primeiro antes de iniciar.</string>
+    <string name="intent_launch_failed">Não foi possível iniciar o jogo: atalho de inicialização inválido</string>
+    <string name="intent_launch_steam_login_required">Login no Steam necessário para iniciar este jogo</string>
     <string name="game_executable_not_found_title">Não é possível iniciar</string>
     <string name="game_executable_not_found">O executável não pôde ser selecionado automaticamente. Defina o caminho do executável nas configurações do contêiner.</string>
     <string name="save_container_settings_title">Salvar configuração do contêiner?</string>

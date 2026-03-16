@@ -169,6 +169,8 @@
     <string name="content_info">Info Contenuto</string>
     <string name="game_not_installed_title">Gioco Non Installato</string>
     <string name="game_not_installed_message">%s non è installato. Installa prima il gioco per avviarlo.</string>
+    <string name="intent_launch_failed">Impossibile avviare il gioco: collegamento di avvio non valido</string>
+    <string name="intent_launch_steam_login_required">Accesso a Steam necessario per avviare questo gioco</string>
     <string name="game_executable_not_found_title">Impossibile avviare</string>
     <string name="game_executable_not_found">L\'eseguibile non è stato selezionato automaticamente. Imposta il percorso dell\'eseguibile nelle impostazioni del Container.</string>
     <string name="save_container_settings_title">Salvare Configurazione Container?</string>

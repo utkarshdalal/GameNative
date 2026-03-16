@@ -93,6 +93,8 @@
     <string name="content_info">Indholdsinfo</string>
     <string name="game_not_installed_title">Spillet er ikke installeret</string>
     <string name="game_not_installed_message">%s er ikke installeret. Installér spillet før du starter det.</string>
+    <string name="intent_launch_failed">Kunne ikke starte spillet: ugyldig startgenvej</string>
+    <string name="intent_launch_steam_login_required">Steam-login er påkrævet for at starte dette spil</string>
     <string name="game_executable_not_found_title">Kan ikke starte</string>
     <string name="game_executable_not_found">Den eksekverbare fil kunne ikke vælges automatisk. Angiv stien til den eksekverbare fil i containerindstillinger.</string>
     <string name="save_container_settings_title">Gem containerkonfiguration?</string>

@@ -158,6 +158,8 @@
     <string name="content_info">Inhaltsinfo</string>
     <string name="game_not_installed_title">Spiel nicht installiert</string>
     <string name="game_not_installed_message">%s ist nicht installiert. Bitte installiere das Spiel, bevor du es startest.</string>
+    <string name="intent_launch_failed">Spiel konnte nicht gestartet werden: ungültige Startverknüpfung</string>
+    <string name="intent_launch_steam_login_required">Steam-Anmeldung erforderlich, um dieses Spiel zu starten</string>
     <string name="game_executable_not_found_title">Start nicht möglich</string>
     <string name="game_executable_not_found">Die ausführbare Datei konnte nicht automatisch ausgewählt werden. Bitte lege den Pfad in den Containereinstellungen fest.</string>
     <string name="save_container_settings_title">Container-Konfiguration speichern?</string>

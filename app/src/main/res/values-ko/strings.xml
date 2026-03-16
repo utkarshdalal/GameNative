@@ -178,6 +178,8 @@
     <string name="content_info">콘텐츠 정보</string>
     <string name="game_not_installed_title">게임이 설치되지 않음</string>
     <string name="game_not_installed_message">%s이(가) 설치되지 않았습니다. 실행하기 전에 먼저 게임을 설치하세요.</string>
+    <string name="intent_launch_failed">게임을 실행할 수 없습니다: 잘못된 실행 바로가기</string>
+    <string name="intent_launch_steam_login_required">이 게임을 실행하려면 Steam 로그인이 필요합니다</string>
     <string name="game_executable_not_found_title">실행할 수 없음</string>
     <string name="game_executable_not_found">실행 파일을 자동으로 선택할 수 없습니다. 컨테이너 설정에서 실행 파일 경로를 지정하세요.</string>
     <string name="save_container_settings_title">컨테이너 구성을 저장하시겠습니까?</string>
