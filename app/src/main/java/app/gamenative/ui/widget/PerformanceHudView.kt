@@ -210,7 +210,7 @@ class PerformanceHudView(
         backgroundDrawable.setStroke(
             appearance.strokeWidthDp.dp.coerceAtLeast(1),
             Color.argb(
-                (opacity * 96f).roundToInt().coerceAtLeast(24),
+                (opacity * 96f).roundToInt(),
                 255,
                 255,
                 255,
@@ -602,7 +602,7 @@ class PerformanceHudView(
 
     private companion object {
         const val UPDATE_INTERVAL_MS = 1_000L
-        const val MIN_BACKGROUND_OPACITY = 0.15f
+        const val MIN_BACKGROUND_OPACITY = 0.0f
         const val MAX_BACKGROUND_OPACITY = 1.0f
         const val MAX_RUNTIME_HOURS = 72.0
         const val RUNTIME_SMOOTHING_OLD_WEIGHT = 0.65

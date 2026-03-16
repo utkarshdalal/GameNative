@@ -494,7 +494,6 @@ private fun PerformanceHudQuickMenuTab(
 
         QuickMenuSectionHeader(
             title = stringResource(R.string.performance_hud_presets),
-            subtitle = stringResource(R.string.performance_hud_presets_description),
         )
 
         FlowRow(
@@ -513,7 +512,7 @@ private fun PerformanceHudQuickMenuTab(
                             onTogglePerformanceHud()
                         }
                     },
-                    modifier = Modifier.width(126.dp),
+                    modifier = Modifier.width(56.dp),
                 )
             }
         }
@@ -522,7 +521,6 @@ private fun PerformanceHudQuickMenuTab(
 
         QuickMenuSectionHeader(
             title = stringResource(R.string.performance_hud_appearance),
-            subtitle = stringResource(R.string.performance_hud_appearance_description),
         )
 
         Text(
@@ -550,7 +548,7 @@ private fun PerformanceHudQuickMenuTab(
                     onClick = {
                         onPerformanceHudConfigChanged(performanceHudConfig.copy(size = size))
                     },
-                    modifier = Modifier.width(92.dp),
+                    modifier = Modifier.width(56.dp),
                 )
             }
         }
@@ -561,18 +559,18 @@ private fun PerformanceHudQuickMenuTab(
                 R.string.performance_hud_percentage_value,
                 (performanceHudConfig.backgroundOpacity * 100f).roundToInt(),
             ),
-            progress = normalizedProgress(performanceHudConfig.backgroundOpacity, 0.15f, 1f),
+            progress = normalizedProgress(performanceHudConfig.backgroundOpacity, 0f, 1f),
             onDecrease = {
                 onPerformanceHudConfigChanged(
                     performanceHudConfig.copy(
-                        backgroundOpacity = (performanceHudConfig.backgroundOpacity - 0.05f).coerceIn(0.15f, 1f),
+                        backgroundOpacity = (performanceHudConfig.backgroundOpacity - 0.05f).coerceIn(0f, 1f),
                     ),
                 )
             },
             onIncrease = {
                 onPerformanceHudConfigChanged(
                     performanceHudConfig.copy(
-                        backgroundOpacity = (performanceHudConfig.backgroundOpacity + 0.05f).coerceIn(0.15f, 1f),
+                        backgroundOpacity = (performanceHudConfig.backgroundOpacity + 0.05f).coerceIn(0f, 1f),
                     ),
                 )
             },
@@ -583,7 +581,6 @@ private fun PerformanceHudQuickMenuTab(
 
         QuickMenuSectionHeader(
             title = stringResource(R.string.performance_hud_metrics),
-            subtitle = stringResource(R.string.performance_hud_metrics_description),
         )
 
         QuickMenuToggleRow(

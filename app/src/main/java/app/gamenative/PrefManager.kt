@@ -364,7 +364,7 @@ object PrefManager {
     var performanceHudBackgroundOpacity: Float
         get() = getPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, 0.72f)
         set(value) {
-            setPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, value.coerceIn(0.15f, 1f))
+            setPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, value.coerceIn(0f, 1f))
         }
 
     private val PERFORMANCE_HUD_SIZE = stringPreferencesKey("performance_hud_size")
