@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -147,13 +149,13 @@ private fun applyPerformanceHudPreset(
 
         PerformanceHudPreset.BATTERY -> currentConfig.copy(
             showFrameRate = true,
-            showCpuUsage = false,
-            showGpuUsage = false,
-            showRamUsage = false,
+            showCpuUsage = true,
+            showGpuUsage = true,
+            showRamUsage = true,
             showBatteryLevel = true,
-            showPowerDraw = true,
+            showPowerDraw = false,
             showBatteryRuntime = true,
-            showClockTime = true,
+            showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
             showFrameRateGraph = true,
@@ -254,13 +256,15 @@ fun QuickMenu(
         )
     }
 
-    var selectedTab by remember { mutableIntStateOf(QuickMenuTab.HUD) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(QuickMenuTab.HUD) }
     val selectedTabLabelResId = if (selectedTab == QuickMenuTab.HUD) {
         R.string.performance_hud
     } else {
         R.string.quick_menu_tab_controller
     }
 
+    val hudScrollState = rememberScrollState()
+    val controllerScrollState = rememberScrollState()
     val hudTabFocusRequester = remember { FocusRequester() }
     val controllerTabFocusRequester = remember { FocusRequester() }
     val hudItemFocusRequester = remember { FocusRequester() }
@@ -430,6 +434,7 @@ fun QuickMenu(
                                             onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
                                         },
                                         onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
+                                        scrollState = hudScrollState,
                                         focusRequester = hudItemFocusRequester,
                                         modifier = Modifier.fillMaxSize(),
                                     )
@@ -437,7 +442,7 @@ fun QuickMenu(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .verticalScroll(rememberScrollState())
+                                            .verticalScroll(controllerScrollState)
                                             .focusGroup(),
                                         verticalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
@@ -463,10 +468,14 @@ fun QuickMenu(
 
     LaunchedEffect(isVisible) {
         if (isVisible) {
-            selectedTab = QuickMenuTab.HUD
+            val initialFocusRequester = if (selectedTab == QuickMenuTab.HUD) {
+                hudTabFocusRequester
+            } else {
+                controllerTabFocusRequester
+            }
             repeat(3) {
                 try {
-                    hudTabFocusRequester.requestFocus()
+                    initialFocusRequester.requestFocus()
                     return@LaunchedEffect
                 } catch (_: Exception) {
                     delay(80)
@@ -482,6 +491,7 @@ private fun PerformanceHudQuickMenuTab(
     performanceHudConfig: PerformanceHudConfig,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
+    scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -489,7 +499,7 @@ private fun PerformanceHudQuickMenuTab(
 
     Column(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
