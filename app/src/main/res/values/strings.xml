@@ -790,6 +790,9 @@
     <string name="settings_emulation_wine_proton_manager_title">Wine/Proton Manager</string>
     <string name="settings_emulation_wine_proton_manager_subtitle">Import custom Wine/Proton versions (Bionic only)</string>
 
+    <!-- Container Config: General -->
+    <string name="container_config_install_ubisoft_connect">Install Ubisoft Connect</string>
+
     <!-- Settings: Debug Group -->
     <string name="settings_debug_title">Debug</string>
     <string name="settings_debug_wine_channels_title">Select Wine Debug Channels</string>

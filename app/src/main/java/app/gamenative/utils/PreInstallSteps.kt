@@ -30,6 +30,7 @@ object PreInstallSteps {
         OpenALStep,
         XnaFrameworkStep,
         GogScriptInterpreterStep,
+        UbisoftConnectStep,
     )
 
     private val allMarkers = steps.map { it.marker }.distinct()

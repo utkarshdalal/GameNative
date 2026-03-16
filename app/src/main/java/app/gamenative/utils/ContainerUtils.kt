@@ -243,6 +243,7 @@ object ContainerUtils {
         val enableD = apiOrdinal == PreferredInputApi.DINPUT.ordinal || apiOrdinal == PreferredInputApi.BOTH.ordinal
         val mapperType = container.getDinputMapperType()
         val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
+        val installUbisoftConnect = container.getExtra("installUbisoftConnect", "false").toBoolean()
         // Read disable-mouse flag from container
         val disableMouse = container.isDisableMouseInput()
         // Read touchscreen-mode flag from container
@@ -314,6 +315,7 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+            installUbisoftConnect = installUbisoftConnect,
         )
     }
 
@@ -479,6 +481,7 @@ object ContainerUtils {
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
+        container.putExtra("installUbisoftConnect", containerData.installUbisoftConnect.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
