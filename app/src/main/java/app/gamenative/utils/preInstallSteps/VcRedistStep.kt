@@ -20,7 +20,7 @@ private val vcRedistMap: Map<String, String> = mapOf(
     "A:\\_CommonRedist\\vcredist\\2015\\vc_redist.x86.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\vcredist\\2015\\vc_redist.x64.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\vcredist\\2017\\vc_redist.x86.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\vcredist\\2017\\vc_redist_x64\\vc_redist.x64.exe" to "/install /passive /norestart",
+    "A:\\_CommonRedist\\vcredist\\2017\\vc_redist.x64.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\vcredist\\2019\\vc_redist.x86.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\vcredist\\2019\\vc_redist.x64.exe" to "/install /passive /norestart",
     "A:\\redist\\vcredist_x86.exe" to "",
