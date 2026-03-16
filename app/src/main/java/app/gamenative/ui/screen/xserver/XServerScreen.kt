@@ -1890,8 +1890,8 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
         // Tell WinHandler to update its internal state.
         if (winHandler != null) {
-        winHandler.refreshControllerMappings()
-    }
+            winHandler.refreshControllerMappings()
+        }
 }
 }
 
@@ -2165,9 +2165,9 @@ private fun setupXEnvironment(
     var gameExecutable = ""
 
     if (container != null) {
-    try {
-        GameFixesRegistry.applyFor(context, appId)
-    } catch (e: Exception) {
+        try {
+            GameFixesRegistry.applyFor(context, appId)
+        } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
         }
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
@@ -2354,7 +2354,7 @@ private fun setupXEnvironment(
 
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
-    if (container.isLaunchRealSteam) {
+        if (container.isLaunchRealSteam) {
             SteamTokenLogin(
                 steamId = PrefManager.steamUserSteamId64.toString(),
                 login = PrefManager.username,
@@ -2367,7 +2367,7 @@ private fun setupXEnvironment(
 
     // Log container settings before starting
     if (container != null) {
-    Timber.i("---- Launching Container ----")
+        Timber.i("---- Launching Container ----")
         Timber.i("ID: ${container.id}")
         Timber.i("Name: ${container.name}")
         Timber.i("Screen Size: ${container.screenSize}")
