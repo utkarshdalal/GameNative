@@ -421,7 +421,13 @@ class PerformanceHudView(
             addMetricIfVisible(gpuTempMetric, config.showGpuTemperature)
         }
 
-        val signatures = visibleMetrics.map { MetricSignature(it.metric.id, it.showGraph) }
+        val signatures = visibleMetrics.map {
+            MetricSignature(
+                id = it.metric.id,
+                showText = it.showText,
+                showGraph = it.showGraph,
+            )
+        }
         if (signatures != attachedMetricSignature) {
             rebuildVisibleMetrics(visibleMetrics)
             attachedMetricSignature = signatures
@@ -435,14 +441,23 @@ class PerformanceHudView(
         enabled: Boolean,
         showGraph: Boolean = false,
     ) {
-        val isMetricVisible = enabled && metric.stackedText.text.isNotBlank()
-        val shouldShowGraph = isMetricVisible && showGraph && metric.supportsGraph
+        val hasText = metric.stackedText.text.isNotBlank()
+        val shouldShowText = enabled && hasText
+        val shouldShowGraph = showGraph && metric.supportsGraph
 
+        metric.stackedText.visibility = if (shouldShowText) VISIBLE else GONE
+        metric.compactText.visibility = if (shouldShowText) VISIBLE else GONE
         metric.stackedGraph?.visibility = if (shouldShowGraph) VISIBLE else GONE
         metric.compactGraph?.visibility = if (shouldShowGraph) VISIBLE else GONE
 
-        if (isMetricVisible) {
-            add(VisibleMetric(metric = metric, showGraph = shouldShowGraph))
+        if (shouldShowText || shouldShowGraph) {
+            add(
+                VisibleMetric(
+                    metric = metric,
+                    showText = shouldShowText,
+                    showGraph = shouldShowGraph,
+                ),
+            )
         }
     }
 
@@ -487,7 +502,13 @@ class PerformanceHudView(
 
         val stackedContainer = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            addView(stackedText)
+            addView(
+                stackedText,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
             stackedGraph?.let {
                 addView(
                     it,
@@ -503,7 +524,13 @@ class PerformanceHudView(
         val compactContainer = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(compactText)
+            addView(
+                compactText,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
             compactGraph?.let {
                 addView(
                     it,
@@ -798,11 +825,13 @@ class PerformanceHudView(
 
     private data class VisibleMetric(
         val metric: MetricViews,
+        val showText: Boolean,
         val showGraph: Boolean,
     )
 
     private data class MetricSignature(
         val id: MetricId,
+        val showText: Boolean,
         val showGraph: Boolean,
     )
 
