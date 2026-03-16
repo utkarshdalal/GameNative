@@ -301,7 +301,6 @@
     <string name="directsound">DirectSound</string>
     <string name="directinput8">DirectInput 8</string>
     <string name="directinput">DirectInput</string>
-
     <string name="directx">DirectX</string>
     <string name="disable_mouse_input">Отключить ввод мыши</string>
     <string name="disable_present_wait">Отключить KHR_present_wait</string>

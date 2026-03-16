@@ -74,7 +74,6 @@
     <string name="directsound">DirectSound</string>
     <string name="directinput8">DirectInput 8</string>
     <string name="directinput">DirectInput</string>
-
     <string name="directmusic">DirectMusic</string>
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
