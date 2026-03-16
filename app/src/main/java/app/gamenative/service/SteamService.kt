@@ -666,8 +666,10 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun filterForDownloadableDepots(depot: DepotInfo, has64Bit: Boolean, preferredLanguage: String, ownedDlc: Map<Int, DepotInfo>?): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty())
                 return false
-            // 1. Has something to download
+            // 1. Has something to download (0-byte manifests = stale PICS data from interrupted fetch)
             if (depot.manifests.isEmpty() && !depot.sharedInstall)
+                return false
+            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L || it.download == 0L })
                 return false
             // 2. Supported OS
             if (!(depot.osList.contains(OS.windows) ||
@@ -772,20 +774,36 @@ class SteamService : Service(), IChallengeUrlChanged {
             return appName
         }
 
+        /**
+         * Resolve best matching directory: completed install > partial > null.
+         * Extracted for testability — called by [getAppDirPath].
+         */
+        fun resolveExistingAppDir(installPaths: List<String>, names: List<String>): String? {
+            var firstExisting: String? = null
+            for (basePath in installPaths) {
+                for (name in names) {
+                    if (name.isEmpty()) continue
+                    val path = Paths.get(basePath, name)
+                    if (Files.isDirectory(path)) {
+                        if (MarkerUtils.hasMarker(path.pathString, Marker.DOWNLOAD_COMPLETE_MARKER)) {
+                            return path.pathString
+                        }
+                        if (firstExisting == null) firstExisting = path.pathString
+                    }
+                }
+            }
+            return firstExisting
+        }
+
         fun getAppDirPath(gameId: Int): String {
             val info = getAppInfoOf(gameId)
             val appName = getAppDirName(info)
             val oldName = info?.name.orEmpty()
+            val names = if (oldName.isNotEmpty() && oldName != appName) listOf(appName, oldName) else listOf(appName)
 
-            // search internal, configured external, and all mounted volumes
-            for (basePath in allInstallPaths) {
-                val path = Paths.get(basePath, appName)
-                if (Files.exists(path)) return path.pathString
-                if (oldName.isNotEmpty()) {
-                    val oldPath = Paths.get(basePath, oldName)
-                    if (Files.exists(oldPath)) return oldPath.pathString
-                }
-            }
+            // prefer completed installs over partial/stale directories
+            val resolved = resolveExistingAppDir(allInstallPaths, names)
+            if (resolved != null) return resolved
 
             // nothing on disk yet — default to preferred install location
             if (PrefManager.useExternalStorage) {
@@ -1010,8 +1028,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun deleteApp(appId: Int): Boolean {
-            // Remove any download-complete marker
-            MarkerUtils.removeMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+            // snapshot path before marker removal (removing the marker changes resolution)
+            val appDirPath = getAppDirPath(appId)
+            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
             // Remove from DB
             with(instance!!) {
                 scope.launch {
@@ -1030,8 +1049,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
             }
-
-            val appDirPath = getAppDirPath(appId)
 
             return File(appDirPath).deleteRecursively()
         }
@@ -2889,6 +2906,15 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+
+        // clear stale download records (completed games) but keep interrupted ones (preserves DLC selection)
+        scope.launch {
+            for (record in downloadingAppInfoDao.getAll()) {
+                if (isAppInstalled(record.appId)) {
+                    downloadingAppInfoDao.deleteApp(record.appId)
+                }
+            }
+        }
 
         notificationHelper = NotificationHelper(applicationContext)
         // pause downloads when WiFi/Ethernet is lost
