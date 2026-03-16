@@ -209,8 +209,12 @@ class EpicService : Service() {
                 instance.epicManager.uninstall(appId)
 
                 // Delete container
+                // Use game.id (the auto-generated numeric Room DB primary key) to match the container
+                // ID format used at creation time: "EPIC_${libraryItem.gameId}" = "EPIC_${game.id}".
+                // Previously used game.appName (the Legendary identifier, e.g. a UUID) which never
+                // matched the stored container ID, causing orphaned containers.
                 withContext(Dispatchers.Main) {
-                    ContainerUtils.deleteContainer(context, "EPIC_${game.appName}")
+                    ContainerUtils.deleteContainer(context, "EPIC_${game.id}")
                 }
 
                 // Trigger library refresh event

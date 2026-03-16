@@ -371,6 +371,7 @@
     <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
+    <string name="achievement_unlocked">Præstation låst op</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
@@ -803,6 +804,7 @@
     <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
+    <string name="best_config_fetch_failed">Kunne ikke hente konfiguration. Kontrollér din netværksforbindelse.</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
     <string name="best_config_missing_content">%s mangler</string>
     <string name="import_config">Importér konfiguration</string>

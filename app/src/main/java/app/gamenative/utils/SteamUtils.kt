@@ -17,6 +17,7 @@ import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.types.KeyValue
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -32,44 +33,16 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 import timber.log.Timber
 import okhttp3.*
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.dnsoverhttps.DnsOverHttps
 import org.json.JSONObject
-import java.net.InetAddress
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object SteamUtils {
 
-    private val bootstrapClient = OkHttpClient.Builder()
-        .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
-        .build()
-
-    private val doh: DnsOverHttps = DnsOverHttps.Builder()
-        .client(bootstrapClient)
-        .url("https://dns.google/dns-query".toHttpUrl())
-        .bootstrapDnsHosts(
-            InetAddress.getByName("8.8.8.8"),
-            InetAddress.getByName("8.8.4.4"),
-        )
-        .build()
-
-    private val fallbackDns = object : Dns {
-        override fun lookup(hostname: String): List<InetAddress> {
-            return try {
-                doh.lookup(hostname)
-            } catch (e: Exception) {
-                Timber.w(e, "DoH lookup failed for $hostname, falling back to system DNS")
-                Dns.SYSTEM.lookup(hostname)
-            }
-        }
-    }
-
-    internal val http = OkHttpClient.Builder()
-        .dns(fallbackDns)
+    internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
         .protocols(listOf(Protocol.HTTP_1_1))
-        .retryOnConnectionFailure(true)
         .build()
 
     private val sfd by lazy {
@@ -248,6 +221,9 @@ object SteamUtils {
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
 
+        // Generate achievements.json
+        generateAchievementsFile(rootPath.resolve("steam_settings"), appId)
+
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
 
@@ -287,7 +263,9 @@ object SteamUtils {
 
         // Get ticket and pass to ensureSteamSettings
         val ticketBase64 = SteamService.instance?.getEncryptedAppTicketBase64(steamAppId)
-        ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId, ticketBase64, isOffline)
+        val path = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath()
+        ensureSteamSettings(context, path, appId, ticketBase64, isOffline)
+        generateAchievementsFile(path, appId)
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
@@ -977,7 +955,6 @@ object SteamUtils {
             }
         }
 
-
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
         if (Files.notExists(supportedLanguagesFile)) {
@@ -1332,6 +1309,27 @@ object SteamUtils {
             Timber.i("[${mapping.description}] Created symlink: ${targetPath.absolutePath} -> ${sourcePath.absolutePath}")
         } catch (e: Exception) {
             Timber.e(e, "[${mapping.description}] Failed to create save location symlink")
+        }
+    }
+
+    fun generateAchievementsFile(dllPath: Path, appId: String) {
+        if (!SteamService.isLoggedIn) {
+            Timber.w("Skipping achievements generation for $appId — Steam not logged in")
+            return
+        }
+
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val settingsDir = dllPath.parent.resolve("steam_settings")
+        if (Files.notExists(settingsDir)) {
+            Files.createDirectories(settingsDir)
+        }
+
+        try {
+            runBlocking {
+                SteamService.generateAchievements(steamAppId, settingsDir.absolutePathString())
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to generate achievements for $appId")
         }
     }
 }

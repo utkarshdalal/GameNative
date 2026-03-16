@@ -469,9 +469,8 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
-        val gameId = libraryItem.gameId
-        return SteamService.getAppDownloadInfo(gameId) != null
-            && !SteamService.isAppInstalled(gameId)
+        // download job is removed on completion, so non-null means actively downloading
+        return SteamService.getAppDownloadInfo(libraryItem.gameId) != null
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -622,9 +621,7 @@ class SteamAppScreen : BaseAppScreen() {
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
 
         if (downloadInfo != null) {
-            if (!SteamService.isAppInstalled(gameId)) {
-                downloadInfo.cancel()
-            }
+            downloadInfo.cancel()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(gameId)
@@ -879,7 +876,11 @@ class SteamAppScreen : BaseAppScreen() {
                             val gpuName = GPUInformation.getRenderer(context)
 
                             val bestConfig = BestConfigService.fetchBestConfig(gameName, gpuName)
-                            if (bestConfig != null && bestConfig.matchType != "no_match") {
+                            if (bestConfig == null) {
+                                SnackbarManager.show(context.getString(R.string.best_config_fetch_failed))
+                            } else if (bestConfig.matchType == "no_match") {
+                                SnackbarManager.show(context.getString(R.string.best_config_no_config_available))
+                            } else {
                                 applyConfigForContainer(
                                     context,
                                     gameId,
@@ -888,8 +889,6 @@ class SteamAppScreen : BaseAppScreen() {
                                     bestConfig.matchType,
                                     scope,
                                 )
-                            } else {
-                                SnackbarManager.show(context.getString(R.string.best_config_no_config_available))
                             }
                         } catch (e: Exception) {
                             Timber.w(e, "Failed to apply known config: ${e.message}")

@@ -584,6 +584,7 @@
     <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
+    <string name="achievement_unlocked">Logro desbloqueado</string>
     <string name="allow_steam_updates">Permitir actualizaciones de Steam</string>
     <string name="allow_steam_updates_description">Actualiza Steam a la última versión. Reduce significativamente el rendimiento.</string>
     <string name="steam_type">Tipo de Steam</string>
@@ -995,6 +996,7 @@
     <string name="best_config_applied_successfully">La mejor configuración se ha aplicado correctamente.</string>
     <string name="best_config_known_config_invalid">La configuración conocida es inválida.</string>
     <string name="best_config_no_config_available">No hay una mejor configuración disponible para este juego.</string>
+    <string name="best_config_fetch_failed">Error al obtener la configuración. Compruebe su conexión de red.</string>
     <string name="best_config_apply_failed">Error al aplicar la configuración: %s.</string>
     <string name="best_config_missing_content">Falta %s.</string>
     <string name="import_config">Importar configuración</string>

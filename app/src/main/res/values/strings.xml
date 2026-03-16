@@ -588,6 +588,7 @@
     <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
+    <string name="achievement_unlocked">Achievement Unlocked</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
@@ -1007,6 +1008,7 @@
     <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
+    <string name="best_config_fetch_failed">Failed to fetch config. Please check your network connection.</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
     <string name="best_config_missing_content">%s missing</string>
     <string name="import_config">Import config</string>

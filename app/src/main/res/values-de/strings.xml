@@ -511,6 +511,7 @@
     <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
+    <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="launch_steam_client_description">Reduziert Performance und verlängert den Start\nErmöglicht Online-Spiel und behebt DRM- und Controller-Probleme\nNicht alle Spiele funktionieren</string>
     <string name="allow_steam_updates">Steam-Updates erlauben</string>
     <string name="allow_steam_updates_description">Aktualisiert Steam auf die neueste Version. Reduziert die Leistung spürbar.</string>
@@ -921,6 +922,7 @@
     <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
+    <string name="best_config_fetch_failed">Konfiguration konnte nicht abgerufen werden. Bitte überprüfen Sie Ihre Netzwerkverbindung.</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
     <string name="best_config_missing_content">%s fehlt</string>
     <string name="import_config">Konfiguration importieren</string>

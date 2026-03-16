@@ -530,6 +530,7 @@
     <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
     <string name="steam_offline_mode">Steam 离线模式</string>
     <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
+    <string name="achievement_unlocked">成就已解锁</string>
     <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
@@ -971,6 +972,7 @@
     <string name="best_config_applied_successfully">配置已成功应用</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
+    <string name="best_config_fetch_failed">获取配置失败，请检查网络连接。</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
     <string name="best_config_missing_content">%s 缺失</string>
     <string name="import_config">导入配置</string>

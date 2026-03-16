@@ -530,6 +530,7 @@
     <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
+    <string name="achievement_unlocked">Досягнення розблоковано</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -975,6 +976,7 @@
     <string name="best_config_applied_successfully">Конфігурацію успішно застосовано</string>
     <string name="best_config_known_config_invalid">Відома конфігурація недійсна</string>
     <string name="best_config_no_config_available">Немає доступної найкращої конфігурації для цієї гри</string>
+    <string name="best_config_fetch_failed">Не вдалося отримати конфігурацію. Перевірте підключення до мережі.</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
     <string name="best_config_missing_content">%s відсутній</string>
     <string name="import_config">Імпортувати конфігурацію</string>
