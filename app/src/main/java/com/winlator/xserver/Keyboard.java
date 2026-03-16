@@ -107,6 +107,11 @@ public class Keyboard {
         int action = event.getAction();
         if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
             int keyCode = event.getKeyCode();
+
+            // Check that the keycode is within the valid keycode range
+            // in case the device sends a custom keycode outside the range
+            if (keyCode >= keycodeMap.length) return false;
+
             XKeycode xKeycode = keycodeMap[keyCode];
             if (xKeycode == null) return false;
 
